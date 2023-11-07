@@ -25,7 +25,7 @@ public class HelloWorldPlugin : BasePlugin
         Console.WriteLine(
             $"Test Plugin has been loaded, and the hot reload flag was {hotReload}, path is {ModulePath}");    
         // Message(HudDestination.Center, message);
-        Message(HudDestination.Chat, "{RED}HOT RELOADED{RED}");
+        Message(HudDestination.Center, "{RED}LIVE\n LIVE\n LIVE!{RED}");
     }
    
     
