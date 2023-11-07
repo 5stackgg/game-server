@@ -8,19 +8,19 @@
     "net7.0": []
   },
   "packageFolders": {
-    "/Users/luke/.nuget/packages/": {}
+    "/root/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/luke/Code/playcs/mod/PlayCS/PlayCS.csproj",
+      "projectUniqueName": "/opt/playcs/PlayCS/PlayCS.csproj",
       "projectName": "PlayCS",
-      "projectPath": "/Users/luke/Code/playcs/mod/PlayCS/PlayCS.csproj",
-      "packagesPath": "/Users/luke/.nuget/packages/",
-      "outputPath": "/Users/luke/Code/playcs/mod/PlayCS/obj/",
+      "projectPath": "/opt/playcs/PlayCS/PlayCS.csproj",
+      "packagesPath": "/root/.nuget/packages/",
+      "outputPath": "/opt/playcs/PlayCS/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/Users/luke/.nuget/NuGet/NuGet.Config"
+        "/root/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net7.0"
@@ -59,7 +59,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/7.0.403/RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/7.0.403/RuntimeIdentifierGraph.json"
       }
     }
   }

@@ -1,0 +1,9 @@
+namespaces: [playcs]
+image: mcr.microsoft.com/dotnet/sdk:7.0-alpine
+container: dev
+deployment: cs-servers
+supplemental: true
+sync:
+  - .:/opt/playcs
+ignore:
+  - "PlayCS/bin"

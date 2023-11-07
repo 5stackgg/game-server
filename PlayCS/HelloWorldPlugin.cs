@@ -25,13 +25,14 @@ public class HelloWorldPlugin : BasePlugin
         Console.WriteLine(
             $"Test Plugin has been loaded, and the hot reload flag was {hotReload}, path is {ModulePath}");    
         // Message(HudDestination.Center, message);
+        Message(HudDestination.Chat, "{RED}HOT RELOADED{RED}");
     }
    
     
     [ConsoleCommand("custom_command", "Sends a message to the server")]
     public void OnCommand(CCSPlayerController? player, CommandInfo command)
     {
-        Message(HudDestination.Chat, "{RED}Hello{RED}");
+        Message(HudDestination.Chat, "{RED}Test{RED}");
     }
     
     private void Message(HudDestination destination, string message)

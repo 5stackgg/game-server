@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "u/m77sUum02vCnfZFsBuzswY00MjT7vOiFL6z8Kjo6iReirGCrR/nqR5JA4Cc1L32xSql2Ju2nFazaotBmKG4Q==",
+  "dgSpecHash": "DBj5fzurwQMrsSHH4mBqyh86mO3GiKlgEIuRlHmxkfzj60eigxHofMHcZA8NhO8juOzppld+E7ToqTHcdqjTUQ==",
   "success": true,
-  "projectFilePath": "/Users/luke/Code/playcs/mod/PlayCS/PlayCS.csproj",
+  "projectFilePath": "/opt/playcs/PlayCS/PlayCS.csproj",
   "expectedPackageFiles": [],
   "logs": []
 }
