@@ -14,6 +14,14 @@ using CounterStrikeSharp.API.Modules.Utils;
 
 
 namespace HelloWorldPlugin;
+
+public class PlayerData
+{
+    public string? name { get; set; }
+    public string? side { get; set; }
+    public string? steamId { get; set; }
+}
+
 public class HelloWorldPlugin : BasePlugin
 {
     public override string ModuleName => "PlayCS Mod";
@@ -22,31 +30,95 @@ public class HelloWorldPlugin : BasePlugin
 
     public override void Load(bool hotReload)
     {
-        Console.WriteLine(
-            $"Test Plugin has been loaded, and the hot reload flag was {hotReload}, path is {ModulePath}");    
-        // Message(HudDestination.Center, message);
-        Message(HudDestination.Center, "{RED}LIVE\n LIVE\n LIVE!{RED}");
+        Console.WriteLine($"Test Plugin has been loaded, and the hot reload flag was {hotReload}, path is {ModulePath}");    
+
+        AddCommandListener("meta", CommandListener_BlockOutput);
+        
+        Message(HudDestination.Center, "PlayCS Loaded");
     }
-   
+
+    [ConsoleCommand("players", "get players")]
+    public void GetPlayers(CCSPlayerController? player, CommandInfo command)
+    {
+        if (player != null)
+        {
+            player.PrintToChat(ReplaceColorTags("{GRAY}[ {BLUE}PlayCS{GRAY} ]{LIGHTRED} you do not have access to this command"));
+            return;
+        }
+        var playerDataList = new List<PlayerData>();
+        var playerEntities = Utilities.FindAllEntitiesByDesignerName<CCSPlayerController>("cs_player_controller");
+
+        foreach (var playerEntity in playerEntities)
+        {
+            if (!playerEntity.IsBot)
+            {
+                var playerData = new PlayerData
+                {
+                    name = playerEntity.PlayerName,
+                    // 1 = spectator , 2 = t , 3 = ct
+                    side = playerEntity.TeamNum.ToString(),
+                    steamId = playerEntity.SteamID.ToString(),
+                };
+                
+                playerDataList.Add(playerData);
+            }
+        }
+        
+        Message(HudDestination.Console, JsonSerializer.Serialize(playerDataList));
+    }
     
-    [ConsoleCommand("custom_command", "Sends a message to the server")]
+    [ConsoleCommand("message_notify", "Sends a message to the server")]
+    [ConsoleCommand("message_console", "Sends a message to the server")]
+    [ConsoleCommand("message_chat", "Sends a message to the server")]
+    [ConsoleCommand("message_center", "Sends a message to the server")]
     public void OnCommand(CCSPlayerController? player, CommandInfo command)
     {
-        Message(HudDestination.Chat, "{RED}Test{RED}");
+        if (player != null)
+        {
+            player.PrintToChat(ReplaceColorTags("{GRAY}[ {BLUE}PlayCS{GRAY} ]{LIGHTRED} you do not have access to this command"));
+            return;
+        }
+        
+        switch (command.ArgByIndex(0))
+        {
+            case  "message_notify":
+                Message(HudDestination.Notify, command.ArgString);
+                break;
+            case  "message_console":
+                Message(HudDestination.Console, command.ArgString);
+                break;
+            case  "message_chat":
+                Message(HudDestination.Chat, command.ArgString);
+                break;
+            case  "message_center":
+                Message(HudDestination.Center, command.ArgString);
+                break;
+        }
     }
     
     private void Message(HudDestination destination, string message)
     {
         message = ReplaceColorTags(message);
 
-        if (destination != HudDestination.Center)
+        if (destination == HudDestination.Console)
+        {
+            Server.PrintToConsole(message);
+        }
+
+        else if (destination == HudDestination.Center)
+        {
+            VirtualFunctions.ClientPrintAll(destination, $" {message}", 0, 0, 0, 0);
+        }
+        
+        else
         {
             var parts = message.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
             foreach (var part in parts)
+            {
                 Server.PrintToChatAll($" {part}");
+            }
         }
-        else
-            VirtualFunctions.ClientPrintAll(destination, $" {message}", 0, 0, 0, 0);
+        
     }
     
 
@@ -64,8 +136,20 @@ public class HelloWorldPlugin : BasePlugin
         };
 
         for (var i = 0; i < colorPatterns.Length; i++)
+        {
             input = input.Replace(colorPatterns[i], colorReplacements[i]);
+        }
 
         return input;
+    }
+    
+    private HookResult CommandListener_BlockOutput(CCSPlayerController? player, CommandInfo info)
+    {
+        if (player == null)
+        {
+            return HookResult.Continue;
+        }
+
+        return HookResult.Stop;
     }
 }
