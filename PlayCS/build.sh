@@ -9,7 +9,7 @@ kill_dotnet_watch() {
 }
 
 # Start dotnet watch build in the background
-#dotnet watch build &
+dotnet watch build &
 
 # Set up a trap to kill dotnet watch when the script exits
 trap kill_dotnet_watch EXIT

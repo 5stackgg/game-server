@@ -13,16 +13,16 @@ using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 
 
-namespace HelloWorldPlugin;
+namespace PlayCs;
 
 public class PlayerData
 {
     public string? name { get; set; }
     public string? side { get; set; }
-    public string? steamId { get; set; }
+    public string? steam_id { get; set; }
 }
 
-public class HelloWorldPlugin : BasePlugin
+public class PlayCsPlugin : BasePlugin
 {
     public override string ModuleName => "PlayCS Mod";
 
@@ -57,7 +57,7 @@ public class HelloWorldPlugin : BasePlugin
                     name = playerEntity.PlayerName,
                     // 1 = spectator , 2 = t , 3 = ct
                     side = playerEntity.TeamNum.ToString(),
-                    steamId = playerEntity.SteamID.ToString(),
+                    steam_id = playerEntity.SteamID.ToString(),
                 };
                 
                 playerDataList.Add(playerData);
@@ -71,6 +71,7 @@ public class HelloWorldPlugin : BasePlugin
     [ConsoleCommand("message_console", "Sends a message to the server")]
     [ConsoleCommand("message_chat", "Sends a message to the server")]
     [ConsoleCommand("message_center", "Sends a message to the server")]
+    [ConsoleCommand("message_player", "Sends a message to a player")]
     public void OnCommand(CCSPlayerController? player, CommandInfo command)
     {
         if (player != null)
@@ -93,14 +94,52 @@ public class HelloWorldPlugin : BasePlugin
             case  "message_center":
                 Message(HudDestination.Center, command.ArgString);
                 break;
+            case  "message_player":
+                var playerEntities = Utilities.FindAllEntitiesByDesignerName<CCSPlayerController>("cs_player_controller");
+                
+                Message(HudDestination.Center, command.ArgByIndex(2), playerEntities.First((player) => player.SteamID.ToString() == command.ArgByIndex(1)));
+                break;
         }
     }
+
+    [ConsoleCommand("move_player", "Moves a player to a side")]
+    public void MovePlayer(CCSPlayerController? player, CommandInfo command)
+    {
+        if (player != null)
+        {
+            player.PrintToChat(ReplaceColorTags("{GRAY}[ {BLUE}PlayCS{GRAY} ]{LIGHTRED} you do not have access to this command"));
+            return;
+        }
+        
+        var playerEntities = Utilities.FindAllEntitiesByDesignerName<CCSPlayerController>("cs_player_controller");
+
+        var foundPlayer = playerEntities.First((player) => player.SteamID.ToString() == command.ArgByIndex(1));
+                
+        switch (command.ArgByIndex(2))
+        {
+            case  "CT":
+                foundPlayer.ChangeTeam(CsTeam.CounterTerrorist);
+                break;
+            case  "TERRORIST":
+                foundPlayer.ChangeTeam(CsTeam.Terrorist);
+                break;
+        }
+    } 
     
-    private void Message(HudDestination destination, string message)
+    private void Message(HudDestination destination, string message, CCSPlayerController? player = null)
     {
         message = ReplaceColorTags(message);
 
-        if (destination == HudDestination.Console)
+        if (player != null)
+        {
+            var parts = message.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            foreach (var part in parts)
+            {
+                player.PrintToChat($"{part}");
+            }
+        }
+        
+        else if (destination == HudDestination.Console)
         {
             Server.PrintToConsole(message);
         }
@@ -115,7 +154,7 @@ public class HelloWorldPlugin : BasePlugin
             var parts = message.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
             foreach (var part in parts)
             {
-                Server.PrintToChatAll($" {part}");
+                Server.PrintToChatAll($"{part}");
             }
         }
         
