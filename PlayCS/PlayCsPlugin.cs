@@ -31,7 +31,6 @@ public class PlayCsPlugin : BasePlugin
     public override void Load(bool hotReload)
     {
         Console.WriteLine($"Test Plugin has been loaded, and the hot reload flag was {hotReload}, path is {ModulePath}");    
-
         
         AddCommandListener("meta", CommandListener_BlockOutput);
         AddCommandListener("css", CommandListener_BlockOutput);
