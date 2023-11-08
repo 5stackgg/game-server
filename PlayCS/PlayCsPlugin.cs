@@ -32,7 +32,10 @@ public class PlayCsPlugin : BasePlugin
     {
         Console.WriteLine($"Test Plugin has been loaded, and the hot reload flag was {hotReload}, path is {ModulePath}");    
 
+        
         AddCommandListener("meta", CommandListener_BlockOutput);
+        AddCommandListener("css", CommandListener_BlockOutput);
+        AddCommandListener("css_plugins", CommandListener_BlockOutput);
         
         Message(HudDestination.Center, "PlayCS Loaded");
     }
