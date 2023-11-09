@@ -14,15 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="packages\" />
+    <PackageReference Include="NRedisStack" Version="0.10.1" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="packages\counterstrikesharp\.DS_Store" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="StackExchange.Redis" Version="2.7.4" />
-  </ItemGroup>
-
+  
 </Project>

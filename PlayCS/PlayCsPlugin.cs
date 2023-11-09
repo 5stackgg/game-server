@@ -5,6 +5,8 @@ using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Utils;
+using NRedisStack;
+using NRedisStack.RedisStackCommands;
 using StackExchange.Redis;
 
 namespace PlayCs;
@@ -24,20 +26,23 @@ public class PlayCsPlugin : BasePlugin
 
     public override void Load(bool hotReload)
     {
+        
         try
         {
             ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("localhost");
             IDatabase db = redis.GetDatabase();
             
-            db.StringSet("mykey", "asdfasdf");
+            db.StringSet("mykey", "sssssdddss");
             
-            string value = db.StringGet("mykey");
+            string? value = db.StringGet("mykey");
             Console.WriteLine(value); 
         }
         catch
         {
             Console.WriteLine("fail!"); 
         }
+        
+        
         
         Console.WriteLine($"Test Plugin has been loaded, and the hot reload flag was {hotReload}, path is {ModulePath}");    
         
