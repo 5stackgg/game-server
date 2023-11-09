@@ -27,7 +27,4 @@ while true; do
 
   chmod 777 "$directory_to_watch" -R
   cp "$directory_to_watch"/* "/serverdata/serverfiles/game/csgo/addons/counterstrikesharp/plugins/PlayCS"
-
-  # Update dotnet watch PID in case it changes
-  dotnet_watch_pid=$!
 done
