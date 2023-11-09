@@ -60,7 +60,6 @@ if [ ! -f ${DATA_DIR}/.steam/sdk64/steamclient.so ]; then
     fi
     cp -R ${STEAMCMD_DIR}/linux64/* ${DATA_DIR}/.steam/sdk64/
 fi
-chmod -R ${DATA_PERM} ${DATA_DIR}
 
 if [ ! -d ${SERVER_DIR}/game/csgo/addons ]; then
   mkdir ${SERVER_DIR}/game/csgo/addons
@@ -97,6 +96,8 @@ if [ ! -d ${SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/PlayCS ]; th
   echo "---Install PlayCS---"
   cp -R /opt/mod "${SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/PlayCS"
 fi
+
+chmod -R ${DATA_PERM} ${DATA_DIR}
 
 echo "---Server ready---"
 cd ${SERVER_DIR}
