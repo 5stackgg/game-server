@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="StackExchange.Redis">
+    <PackageReference Include="StackExchange.Redis" Version="2.7.4">
       <HintPath>packages/stackexchange.redis/StackExchange.Redis.dll</HintPath>
     </PackageReference>
   </ItemGroup>

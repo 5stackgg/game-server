@@ -7,3 +7,5 @@ sync:
   - .:/opt/playcs
 ignore:
   - "PlayCS/bin"
+  - "PlayCS/obj"
+
