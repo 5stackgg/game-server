@@ -5,21 +5,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Version>0.0.1</Version>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
     <Reference Include="CounterStrikeSharp.API">
       <HintPath>packages/counterstrikesharp/api/CounterStrikeSharp.API.dll</HintPath>
     </Reference>
-    <Reference Include="StackExchange.Redis">
-      <HintPath>stackexchange.redis/StackExchange.Redis.dll</HintPath>
-    </Reference>
-    <Reference Include="Pipelines.Sockets.Unofficial">
-      <HintPath>pipelines.sockets.unofficial/Pipelines.Sockets.Unofficial.dll</HintPath>
-    </Reference>
-    <Reference Include="Pipelines.Sockets.Unofficial">
-      <HintPath>pipelines.sockets.unofficial/Pipelines.Sockets.Unofficial.dll</HintPath>
-    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="StackExchange.Redis" Version="2.7.4" />
   </ItemGroup>
 
 </Project>

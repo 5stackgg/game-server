@@ -32,7 +32,7 @@ public class PlayCsPlugin : BasePlugin
             db.StringSet("mykey", "LETS GO 2");
             
             string? value = db.StringGet("mykey");
-            Console.WriteLine("SUCCESS"); 
+            Console.WriteLine($"SUCCESS: {value}"); 
         }
         catch (Exception ex)
         {
