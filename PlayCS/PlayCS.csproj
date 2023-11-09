@@ -14,11 +14,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="packages\" />
+    <PackageReference Include="StackExchange.Redis">
+      <HintPath>packages/stackexchange.redis/StackExchange.Redis.dll</HintPath>
+    </PackageReference>
   </ItemGroup>
-
+  
   <ItemGroup>
-    <Content Include="packages\counterstrikesharp\.DS_Store" />
+    <Folder Include="packages\" />
   </ItemGroup>
 
 </Project>
