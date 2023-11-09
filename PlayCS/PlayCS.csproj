@@ -11,19 +11,15 @@
     <Reference Include="CounterStrikeSharp.API">
       <HintPath>packages/counterstrikesharp/api/CounterStrikeSharp.API.dll</HintPath>
     </Reference>
+    <Reference Include="StackExchange.Redis">
+      <HintPath>stackexchange.redis/StackExchange.Redis.dll</HintPath>
+    </Reference>
+    <Reference Include="Pipelines.Sockets.Unofficial">
+      <HintPath>pipelines.sockets.unofficial/Pipelines.Sockets.Unofficial.dll</HintPath>
+    </Reference>
+    <Reference Include="Pipelines.Sockets.Unofficial">
+      <HintPath>pipelines.sockets.unofficial/Pipelines.Sockets.Unofficial.dll</HintPath>
+    </Reference>
   </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="NRedisStack" Version="0.10.1">
-      <HintPath>packages/nredisstack/NRedisStack.dll</HintPath>
-    </PackageReference>
-    <PackageReference Include="StackExchange.Redis" Version="2.7.4" />
-  </ItemGroup>
-
-<!--  <ItemGroup>-->
-<!--    <PackageReference Include="StackExchange.Redis">-->
-<!--      <HintPath>packages/stackexchange.redis/StackExchange.Redis.dll</HintPath>-->
-<!--    </PackageReference>-->
-<!--  </ItemGroup>-->
 
 </Project>

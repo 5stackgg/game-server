@@ -1,7 +1,5 @@
 apk add inotify-tools
 
-directory_to_watch="/opt/playcs/PlayCS/bin/Debug/net7.0"
-
 # Variable to store the PID of dotnet watch process
 dotnet_watch_pid=""
 
@@ -13,14 +11,13 @@ kill_dotnet_watch() {
   fi
 }
 
-# Start dotnet watch build process and capture its PID
-dotnet add package StackExchange.Redis --version 2.7.4
-
 dotnet watch build &
 dotnet_watch_pid=$!
 
- Set up trap to kill dotnet watch process on script exit
+Set up trap to kill dotnet watch process on script exit
 trap kill_dotnet_watch EXIT
+
+directory_to_watch="/opt/playcs/PlayCS/bin/Debug/net7.0"
 
 while true; do
   inotifywait -r -e modify,create,delete,move "$directory_to_watch"
