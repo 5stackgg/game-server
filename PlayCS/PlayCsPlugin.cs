@@ -1,17 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
-using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Memory;
-using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
-
+using StackExchange.Redis;
 
 namespace PlayCs;
 
@@ -30,6 +24,22 @@ public class PlayCsPlugin : BasePlugin
 
     public override void Load(bool hotReload)
     {
+        try
+        {
+            ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("localhost");
+            IDatabase db = redis.GetDatabase();
+            
+            string value = "abcdefg";
+            db.StringSet("mykey", value);
+            
+            string value = db.StringGet("mykey");
+            Console.WriteLine(value); // writes: "abcdefg"
+        }
+        catch
+        {
+            
+        }
+        
         Console.WriteLine($"Test Plugin has been loaded, and the hot reload flag was {hotReload}, path is {ModulePath}");    
         
         AddCommandListener("meta", CommandListener_BlockOutput);
@@ -115,7 +125,7 @@ public class PlayCsPlugin : BasePlugin
         
         var playerEntities = Utilities.FindAllEntitiesByDesignerName<CCSPlayerController>("cs_player_controller");
 
-        var foundPlayer = playerEntities.First((player) => player.SteamID.ToString() == command.ArgByIndex(1));
+        var foundPlayer = playerEntities.First((ccsPlayerController) => ccsPlayerController.SteamID.ToString() == command.ArgByIndex(1));
                 
         switch (command.ArgByIndex(2))
         {

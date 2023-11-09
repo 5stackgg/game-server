@@ -21,4 +21,8 @@
     <Content Include="packages\counterstrikesharp\.DS_Store" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="StackExchange.Redis" Version="2.7.4" />
+  </ItemGroup>
+
 </Project>
