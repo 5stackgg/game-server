@@ -8,3 +8,4 @@ sync:
 ignore:
   - "PlayCS/bin"
   - "PlayCS/obj"
+  - "PlayCS/Folder.DotSettings.user"

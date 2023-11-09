@@ -26,23 +26,21 @@ public class PlayCsPlugin : BasePlugin
 
     public override void Load(bool hotReload)
     {
-        
-        try
-        {
-            ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("localhost");
-            IDatabase db = redis.GetDatabase();
-            
-            db.StringSet("mykey", "sssssdddss");
-            
-            string? value = db.StringGet("mykey");
-            Console.WriteLine(value); 
-        }
-        catch
-        {
-            Console.WriteLine("fail!"); 
-        }
-        
-        
+        //
+        // try
+        // {
+        //     ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("localhost");
+        //     IDatabase db = redis.GetDatabase();
+        //     
+        //     db.StringSet("mykey", "asdfasdffdsaasdf");
+        //     
+        //     string? value = db.StringGet("mykey");
+        //     Console.WriteLine(value); 
+        // }
+        // catch
+        // {
+        //     Console.WriteLine("fail!"); 
+        // }
         
         Console.WriteLine($"Test Plugin has been loaded, and the hot reload flag was {hotReload}, path is {ModulePath}");    
         
