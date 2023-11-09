@@ -1,4 +1,7 @@
-﻿using System.Text.Json;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
@@ -29,15 +32,14 @@ public class PlayCsPlugin : BasePlugin
             ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("localhost");
             IDatabase db = redis.GetDatabase();
             
-            string value = "abcdefg";
-            db.StringSet("mykey", value);
+            db.StringSet("mykey", "asdfasdf");
             
             string value = db.StringGet("mykey");
-            Console.WriteLine(value); // writes: "abcdefg"
+            Console.WriteLine(value); 
         }
         catch
         {
-            
+            Console.WriteLine("fail!"); 
         }
         
         Console.WriteLine($"Test Plugin has been loaded, and the hot reload flag was {hotReload}, path is {ModulePath}");    
