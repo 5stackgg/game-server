@@ -78,6 +78,7 @@ new_line="                        Game    csgo/addons/metamod"
 
 # Check if the line already exists
 if ! grep -qFx "$new_line" "$gameinfo_path"; then
+    echo "---Adding Metamod---"
     # If the line doesn't exist, add it
     line_number=$(awk '/Game_LowViolence/{print NR; exit}' "$gameinfo_path")
     sed -i "${line_number}a\\$new_line" "$gameinfo_path"
