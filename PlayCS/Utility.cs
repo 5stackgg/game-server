@@ -37,6 +37,21 @@ public partial class PlayCsPlugin
         }
     }
 
+    private CsTeam TeamStringToCsTeam(string team)
+    {
+        switch (team)
+        {
+            case "Spectator":
+                return CsTeam.Spectator;
+            case "TERRORIST":
+                return CsTeam.Terrorist;
+            case "CT":
+                return CsTeam.CounterTerrorist;
+            default:
+                return CsTeam.None;
+        }
+    }
+
     /*
      * HitGroup_t
      */

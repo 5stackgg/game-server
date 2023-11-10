@@ -1,6 +1,6 @@
 namespace PlayCs.entities;
 
-public class MatchData
+public class Match
 {
     public Guid id { get; set; }
     public int mr { get; set; }
@@ -9,4 +9,5 @@ public class MatchData
     public bool overtime { get; set; }
     public string password { get; set; }
     public bool knife_round { get; set; }
+    public List<MatchMember?> members { get; set; }
 }

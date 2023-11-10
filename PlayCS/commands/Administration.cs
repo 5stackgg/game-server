@@ -9,7 +9,7 @@ namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
-    private MatchData? matchData;
+    private Match? matchData;
     private ConVar password = ConVar.Find("sv_password");
 
     // RegisterListener<Listeners.OnMapStart>((mapName) =>
@@ -33,7 +33,7 @@ public partial class PlayCsPlugin
 
     public void SetMatchDetails(CCSPlayerController? player, CommandInfo command)
     {
-        matchData = JsonSerializer.Deserialize<MatchData>(command.ArgString);
+        matchData = JsonSerializer.Deserialize<Match>(command.ArgString);
 
         if (matchData == null)
         {
