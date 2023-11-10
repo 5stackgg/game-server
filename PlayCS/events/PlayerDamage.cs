@@ -20,11 +20,11 @@ public partial class PlayCsPlugin
                     Dictionary<string, object>
                 >
                 {
-                    @event = "test",
+                    @event = "damage",
                     data = new Dictionary<string, object> { { "name", "hello" }, { "damage", 123 } }
                 };
 
-                redis.Publish(matchId, "match", eventData);
+                redis.Publish(matchId, eventData);
 
                 return HookResult.Continue;
             }

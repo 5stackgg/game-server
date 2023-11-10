@@ -18,11 +18,11 @@ public class Redis
         connection = redis.GetDatabase(0);
     }
 
-    public void Publish<T>(string matchId, string eventName, EventData<T> eventData)
+    public void Publish<T>(string matchId, EventData<T> eventData)
     {
         try
         {
-            connection.Publish($"{eventName}:{matchId}", JsonSerializer.Serialize(eventData));
+            connection.Publish($"match:{matchId}", JsonSerializer.Serialize(eventData));
         }
         catch (ArgumentException error)
         {
