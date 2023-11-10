@@ -21,11 +21,6 @@ public partial class PlayCsPlugin
     {
         if (player != null)
         {
-            player.PrintToChat(
-                ReplaceColorTags(
-                    "{GRAY}[ {BLUE}PlayCS{GRAY} ]{LIGHTRED} you do not have access to this command"
-                )
-            );
             return;
         }
 

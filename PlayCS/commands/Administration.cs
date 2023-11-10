@@ -1,7 +1,6 @@
 using System.Text.Json;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 using PlayCs.entities;
@@ -10,16 +9,36 @@ namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
-    [ConsoleCommand("players", "get players")]
+    public string? matchId;
+
+    public void RegisterAdministrationCommands()
+    {
+        AddCommandListener("meta", CommandListener_BlockOutput);
+        AddCommandListener("css", CommandListener_BlockOutput);
+        AddCommandListener("css_plugins", CommandListener_BlockOutput);
+
+        AddCommand("players", "gets the list of players currently in the server", RegisterMatchId);
+        AddCommand(
+            "set_match_id",
+            "sets the match id for the current running match",
+            RegisterMatchId
+        );
+    }
+
+    public void RegisterMatchId(CCSPlayerController? player, CommandInfo command)
+    {
+        Console.WriteLine("YAY");
+
+        if (player == null)
+        {
+            this.matchId = command.ArgString;
+        }
+    }
+
     public void GetPlayers(CCSPlayerController? player, CommandInfo command)
     {
         if (player != null)
         {
-            player.PrintToChat(
-                ReplaceColorTags(
-                    "{GRAY}[ {BLUE}PlayCS{GRAY} ]{LIGHTRED} you do not have access to this command"
-                )
-            );
             return;
         }
         var playerDataList = new List<PlayerData>();
@@ -44,5 +63,15 @@ public partial class PlayCsPlugin
         }
 
         Message(HudDestination.Console, JsonSerializer.Serialize(playerDataList));
+    }
+
+    public HookResult CommandListener_BlockOutput(CCSPlayerController? player, CommandInfo info)
+    {
+        if (player == null)
+        {
+            return HookResult.Continue;
+        }
+
+        return HookResult.Stop;
     }
 }

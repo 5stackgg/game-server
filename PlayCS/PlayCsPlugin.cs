@@ -24,8 +24,8 @@ public partial class PlayCsPlugin : BasePlugin
         CaptureRoundEnd();
         CapturePlayerDamage();
 
-        BlockServerCommands();
         RegisterMessageCommands();
+        RegisterAdministrationCommands();
 
         Message(HudDestination.Center, "PlayCS Loaded");
     }
@@ -36,11 +36,6 @@ public partial class PlayCsPlugin : BasePlugin
     {
         if (player != null)
         {
-            player.PrintToChat(
-                ReplaceColorTags(
-                    "{GRAY}[ {BLUE}PlayCS{GRAY} ]{LIGHTRED} you do not have access to this command"
-                )
-            );
             return;
         }
 

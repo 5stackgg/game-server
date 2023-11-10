@@ -9,7 +9,10 @@ public partial class PlayCsPlugin
         RegisterEventHandler<EventPlayerHurt>(
             (@event, info) =>
             {
-                string matchId = "6556546546";
+                if (matchId == null)
+                {
+                    return HookResult.Continue;
+                }
 
                 CCSPlayerController attacker = @event.Attacker;
 
