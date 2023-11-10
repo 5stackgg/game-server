@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Text.RegularExpressions;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
@@ -16,6 +17,17 @@ public class PlayerData
     public string? steam_id { get; set; }
 }
 
+public class TestEvent
+{
+    public string? @event { get; set; }
+    public TestEventData data { get; set; }
+}
+
+public class TestEventData
+{
+    public int test { get; set; }
+}
+
 public class PlayCsPlugin : BasePlugin
 {
     public override string ModuleName => "PlayCS Mod";
@@ -27,12 +39,21 @@ public class PlayCsPlugin : BasePlugin
         try
         {
             ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("redis");
-            IDatabase db = redis.GetDatabase();
+            IDatabase db = redis.GetDatabase(0);
+
+            var data = new TestEventData();
+
+            data.test = 500;
             
-            db.StringSet("mykey", "LETS GO 2");
+            var myEvent = new TestEvent()
+            {
+                @event = "test",
+                data = data
+            };
             
-            string? value = db.StringGet("mykey");
-            Console.WriteLine($"SUCCESS: {value}"); 
+            string matchId = "6556546546";
+            Console.WriteLine($"{JsonSerializer.Serialize(myEvent).Replace("@event", "event")}");
+            db.Publish($"match:{matchId}", JsonSerializer.Serialize(myEvent).Replace("@event", "event"));
         }
         catch (Exception ex)
         {
