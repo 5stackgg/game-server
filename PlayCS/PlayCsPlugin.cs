@@ -70,32 +70,4 @@ public partial class PlayCsPlugin : BasePlugin
             Server.ExecuteCommand(command);
         }
     }
-
-    // TODO - this may not be from the server
-    [ConsoleCommand("move_player", "Moves a player to a side")]
-    private void MovePlayer(CCSPlayerController? player, CommandInfo command)
-    {
-        if (player != null)
-        {
-            return;
-        }
-
-        var playerEntities = Utilities.FindAllEntitiesByDesignerName<CCSPlayerController>(
-            "cs_player_controller"
-        );
-
-        var foundPlayer = playerEntities.First(
-            (ccsPlayerController) => ccsPlayerController.SteamID.ToString() == command.ArgByIndex(1)
-        );
-
-        switch (command.ArgByIndex(2))
-        {
-            case "CT":
-                foundPlayer.ChangeTeam(CsTeam.CounterTerrorist);
-                break;
-            case "TERRORIST":
-                foundPlayer.ChangeTeam(CsTeam.Terrorist);
-                break;
-        }
-    }
 }

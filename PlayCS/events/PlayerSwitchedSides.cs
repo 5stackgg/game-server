@@ -10,14 +10,13 @@ public partial class PlayCsPlugin
         RegisterEventHandler<EventPlayerDisconnect>(
             (@event, info) =>
             {
-                
                 if (CurrentPhase == ePhase.Warmup || CurrentPhase == ePhase.Knife)
                 {
                     CsTeam team = TeamNumToCSTeam(@event.Userid.TeamNum);
-                    
+
                     Captains[team] = null;
                 }
-                
+
                 return HookResult.Continue;
             }
         );

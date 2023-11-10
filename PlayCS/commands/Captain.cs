@@ -5,9 +5,6 @@ using CounterStrikeSharp.API.Modules.Utils;
 
 namespace PlayCs;
 
-/**
- * TODO : show whos not ready
- */
 public partial class PlayCsPlugin
 {
     [ConsoleCommand("css_c", "Shows / Claims Captain Spots")]

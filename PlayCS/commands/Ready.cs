@@ -8,7 +8,6 @@ namespace PlayCs;
 
 /**
  * TODO : show who is not ready
- * TODO - do .nr and .not-ready isntaed
  */
 public partial class PlayCsPlugin
 {
@@ -61,7 +60,7 @@ public partial class PlayCsPlugin
 
     public void SendReadyMessage(CCSPlayerController player)
     {
-        // TODO - get total that should be marked ready
+        // TODO - get total that should be marked ready 10 is good for now
         Message(
             HudDestination.Chat,
             $"You have been marked {(ReadyPlayers[player.UserId.Value] ? $"{ChatColors.Red}ready" : $"{ChatColors.Red}not ready")} {ChatColors.Default}({TotalReady()}/10)",
