@@ -1,9 +1,9 @@
-﻿using DotNetEnv;
-using CounterStrikeSharp.API;
+﻿using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Utils;
-using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Utils;
+using DotNetEnv;
 
 namespace PlayCs;
 
@@ -19,7 +19,7 @@ public partial class PlayCsPlugin : BasePlugin
     {
         // TODO - figure out how to load it later
         // Env.Load("/opt/playcs/PlayCS/.env");
-        
+
         Console.WriteLine(
             $"Test Plugin has been loaded, and the hot reload flag was {hotReload}, path is {ModulePath}"
         );

@@ -1,9 +1,9 @@
-using PlayCs.entities;
 using System.Text.Json;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
+using PlayCs.entities;
 
 namespace PlayCs;
 
@@ -17,9 +17,9 @@ public partial class PlayCsPlugin
 
         // this is just for testing....
         matchId = "19887352-5ae8-499c-ad72-ebb9b23319a8";
-        
+
         Console.WriteLine($"MATCH ID {matchId}");
-        
+
         AddCommandListener("meta", CommandListener_BlockOutput);
         AddCommandListener("css", CommandListener_BlockOutput);
         AddCommandListener("css_plugins", CommandListener_BlockOutput);
