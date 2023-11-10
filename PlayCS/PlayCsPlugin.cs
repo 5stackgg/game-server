@@ -38,6 +38,7 @@ public partial class PlayCsPlugin : BasePlugin
         CapatureChat();
         CaptureRoundEnd();
         CapturePlayerDamage();
+        CapturePlayerConnected();
 
         RegisterMessageCommands();
         RegisterAdministrationCommands();

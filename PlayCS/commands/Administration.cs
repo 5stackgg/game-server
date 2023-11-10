@@ -40,9 +40,10 @@ public partial class PlayCsPlugin
             return;
         }
 
-        Console.WriteLine($"SET PASSSWORD {matchData.password}");
+        // Console.WriteLine($"SET PASSSWORD {matchData.password}");
         // we cant detect it has changed, its encrypted
-        password.StringValue = matchData.password;
+        // password.StringValue = matchData.password;
+        // password.StringValue = "connectme";
 
         if (matchData.map != CurrentMap)
         {
