@@ -28,6 +28,15 @@ public partial class PlayCsPlugin
 
         SendCommands(new[] { "mp_swapteams" });
 
+        Eventing.PublishMatchEvent(
+            matchData.id,
+            new Eventing.EventData<Dictionary<string, object>>
+            {
+                @event = "switch",
+                data = new Dictionary<string, object> { }
+            }
+        );
+
         UpdatePhase(ePhase.Live);
     }
 }
