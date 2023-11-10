@@ -6,10 +6,11 @@ public partial class PlayCsPlugin
 {
     public void CapatureChat()
     {
-        RegisterEventHandler<EventPlayerChat>((@event, info) =>
-        {
-           
-            return HookResult.Continue;
-        });
+        RegisterEventHandler<EventPlayerChat>(
+            (@event, info) =>
+            {
+                return HookResult.Continue;
+            }
+        );
     }
 }

@@ -11,7 +11,7 @@ public partial class PlayCsPlugin
         AddCommandListener("css", CommandListener_BlockOutput);
         AddCommandListener("css_plugins", CommandListener_BlockOutput);
     }
-    
+
     public HookResult CommandListener_BlockOutput(CCSPlayerController? player, CommandInfo info)
     {
         if (player == null)

@@ -1,10 +1,10 @@
-using PlayCs.entities;
 using System.Text.Json;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Utils;
-using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Utils;
+using PlayCs.entities;
 
 namespace PlayCs;
 
@@ -15,11 +15,17 @@ public partial class PlayCsPlugin
     {
         if (player != null)
         {
-            player.PrintToChat(ReplaceColorTags("{GRAY}[ {BLUE}PlayCS{GRAY} ]{LIGHTRED} you do not have access to this command"));
+            player.PrintToChat(
+                ReplaceColorTags(
+                    "{GRAY}[ {BLUE}PlayCS{GRAY} ]{LIGHTRED} you do not have access to this command"
+                )
+            );
             return;
         }
         var playerDataList = new List<PlayerData>();
-        var playerEntities = Utilities.FindAllEntitiesByDesignerName<CCSPlayerController>("cs_player_controller");
+        var playerEntities = Utilities.FindAllEntitiesByDesignerName<CCSPlayerController>(
+            "cs_player_controller"
+        );
 
         foreach (var playerEntity in playerEntities)
         {
@@ -32,11 +38,11 @@ public partial class PlayCsPlugin
                     side = playerEntity.TeamNum.ToString(),
                     steam_id = playerEntity.SteamID.ToString(),
                 };
-                
+
                 playerDataList.Add(playerData);
             }
         }
-        
+
         Message(HudDestination.Console, JsonSerializer.Serialize(playerDataList));
     }
 }

@@ -6,10 +6,11 @@ public partial class PlayCsPlugin
 {
     public void CaptureRoundEnd()
     {
-        RegisterEventHandler<EventRoundEnd>((@event, info) =>
-        {
-           
-            return HookResult.Continue;
-        });
+        RegisterEventHandler<EventRoundEnd>(
+            (@event, info) =>
+            {
+                return HookResult.Continue;
+            }
+        );
     }
 }
