@@ -41,6 +41,7 @@ public partial class PlayCsPlugin
             return;
         }
 
+        Console.WriteLine($"SET PASSSWORD {matchData.password}");
         // we cant detect it has changed, its encrypted
         password.StringValue = matchData.password;
 

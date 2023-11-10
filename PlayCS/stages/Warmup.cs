@@ -1,21 +1,22 @@
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 
 namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
+    private Dictionary<int, bool> readyPlayers = new Dictionary<int, bool>();
+
     public void startWarmup()
     {
-        Console.WriteLine($"I AM PAHSE {Phase}");
         if (Phase != ePhase.Unknown && Phase != ePhase.Knife && Phase != ePhase.Scheduled)
         {
             return;
         }
 
-        Message(HudDestination.Center, "Starting Warmup!");
+        Message(HudDestination.Center, "[PlayCS] Starting Warmup!");
 
-        // mp_warmup_start -- should be able todo this easily
-        // TODO - detect warmup
         SendCommands(
             new[]
             {
@@ -33,14 +34,38 @@ public partial class PlayCsPlugin
                 "mp_maxmoney 60000",
                 "mp_startmoney 60000",
                 "mp_free_armor 1",
-                // "mp_warmup_start",
-                // "mp_restartgame 3"
+                // TODO - we have issues because we cant accurately detect if in a warmup status
+                "mp_warmup_start",
             }
         );
 
         UpdatePhase(ePhase.Warmup);
 
         // await this.setupTeamNames(matchId);
-        // await UpdateStatus(matchId, EMatchStatusEnum.Warmup);
+    }
+
+    private bool IsWarmup()
+    {
+        CCSGameRules? rules = GameRules();
+
+        if (rules == null)
+        {
+            return false;
+        }
+
+        return rules.WarmupPeriod;
+    }
+
+    private int TotalReady()
+    {
+        return readyPlayers.Count(pair => pair.Value);
+    }
+
+    private CCSGameRules? GameRules()
+    {
+        return Utilities
+            .FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+            .First()
+            .GameRules;
     }
 }
