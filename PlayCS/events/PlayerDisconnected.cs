@@ -5,7 +5,7 @@ namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
-    private void CapturePlayerSwitchedSides()
+    private void CapturePlayerDisconnected()
     {
         RegisterEventHandler<EventPlayerDisconnect>(
             (@event, info) =>
