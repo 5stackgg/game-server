@@ -4,7 +4,7 @@ namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
-    public void CapatureChat()
+    private void CapatureChat()
     {
         RegisterEventHandler<EventPlayerChat>(
             (@event, info) =>

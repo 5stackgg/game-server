@@ -2,6 +2,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Utils;
 using DotNetEnv;
 
@@ -9,7 +10,10 @@ namespace PlayCs;
 
 public partial class PlayCsPlugin : BasePlugin
 {
-    public Redis redis = new Redis();
+    private ePhase Phase = ePhase.Unknown;
+    private Eventing Eventing = new Eventing();
+
+    public string CurrentMap = Server.MapName;
 
     public override string ModuleName => "PlayCS Mod";
 
@@ -32,11 +36,34 @@ public partial class PlayCsPlugin : BasePlugin
         RegisterAdministrationCommands();
 
         Message(HudDestination.Center, "PlayCS Loaded");
+
+        string serverId = "82c90c4f-ab44-432b-9025-29332461bfe2";
+        // string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
+
+        if (serverId != null)
+        {
+            Eventing.PublishServerEvent(
+                serverId,
+                new Eventing.EventData<Dictionary<string, object>>
+                {
+                    @event = "connected",
+                    data = new Dictionary<string, object> { { "server_id", serverId }, }
+                }
+            );
+        }
+    }
+
+    public void SendCommands(string[] commands)
+    {
+        foreach (var command in commands)
+        {
+            Server.ExecuteCommand(command);
+        }
     }
 
     // TODO - this may not be from the server
     [ConsoleCommand("move_player", "Moves a player to a side")]
-    public void MovePlayer(CCSPlayerController? player, CommandInfo command)
+    private void MovePlayer(CCSPlayerController? player, CommandInfo command)
     {
         if (player != null)
         {

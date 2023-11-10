@@ -4,7 +4,7 @@ namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
-    public void CaptureRoundEnd()
+    private void CaptureRoundEnd()
     {
         RegisterEventHandler<EventRoundEnd>(
             (@event, info) =>

@@ -8,7 +8,7 @@ namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
-    public void RegisterMessageCommands()
+    private void RegisterMessageCommands()
     {
         AddCommand("message_notify", "Prints Message to Server", MessageCommand);
         AddCommand("message_console", "Prints Message to Server", MessageCommand);
