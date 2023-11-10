@@ -9,8 +9,6 @@ public partial class PlayCsPlugin
         RegisterEventHandler<EventPlayerHurt>(
             (@event, info) =>
             {
-                Console.WriteLine("GOT END OF ROUND!");
-
                 string matchId = "6556546546";
 
                 CCSPlayerController attacker = @event.Attacker;
