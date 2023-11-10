@@ -3,7 +3,6 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Cvars;
-using CounterStrikeSharp.API.Modules.Utils;
 using PlayCs.entities;
 
 namespace PlayCs;
@@ -25,7 +24,6 @@ public partial class PlayCsPlugin
         AddCommandListener("css_plugins", CommandListener_BlockOutput);
 
         AddCommand("update_phase", "updates the match phase", ServerUpdatePhase);
-        AddCommand("players", "gets the list of players currently in the server", GetPlayers);
         AddCommand(
             "match_details",
             "gets the list of players currently in the server",
@@ -60,12 +58,11 @@ public partial class PlayCsPlugin
 
     public void UpdatePhase(ePhase phase)
     {
-        Console.WriteLine($"UPDATING PHASE {phase}");
+        Console.WriteLine($"Updating Phase: {phase}");
 
         switch (phase)
         {
             case ePhase.Scheduled:
-                Console.WriteLine("Scheduled phase");
                 break;
             case ePhase.Warmup:
                 startWarmup();
@@ -87,10 +84,7 @@ public partial class PlayCsPlugin
                 Console.WriteLine("Overtime phase");
                 break;
             case ePhase.Paused:
-                Console.WriteLine("Paused phase");
-                break;
             case ePhase.TechTimeout:
-                Console.WriteLine("TechTimeout phase");
                 break;
             case ePhase.Finished:
                 Console.WriteLine("Finished phase");
@@ -117,44 +111,13 @@ public partial class PlayCsPlugin
             return;
         }
 
-        // TODO - check if i exist in subscribed map list
+        // TODO - check if map exist in subscribed map list
         SendCommands(new[] { $"host_workshop_map \"{map}\"" });
     }
 
-    // TODO - terrible name
     private void ServerUpdatePhase(CCSPlayerController? player, CommandInfo command)
     {
         UpdatePhase(PhaseStringToEnum(command.ArgString));
-    }
-
-    public void GetPlayers(CCSPlayerController? player, CommandInfo command)
-    {
-        if (player != null)
-        {
-            return;
-        }
-        var playerDataList = new List<PlayerData>();
-        var playerEntities = Utilities.FindAllEntitiesByDesignerName<CCSPlayerController>(
-            "cs_player_controller"
-        );
-
-        foreach (var playerEntity in playerEntities)
-        {
-            if (!playerEntity.IsBot)
-            {
-                var playerData = new PlayerData
-                {
-                    name = playerEntity.PlayerName,
-                    // 1 = spectator , 2 = t , 3 = ct
-                    side = playerEntity.TeamNum.ToString(),
-                    steam_id = playerEntity.SteamID.ToString(),
-                };
-
-                playerDataList.Add(playerData);
-            }
-        }
-
-        Message(HudDestination.Console, JsonSerializer.Serialize(playerDataList));
     }
 
     public HookResult CommandListener_BlockOutput(CCSPlayerController? player, CommandInfo info)

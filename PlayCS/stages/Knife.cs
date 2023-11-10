@@ -86,10 +86,9 @@ public partial class PlayCsPlugin
 
         CCSPlayerController? player = players[Random.Shared.Next(players.Count)];
 
-        Captains[team] = player;
-
-        Message(
-            HudDestination.Notify,
+        ClaimCaptain(
+            team,
+            player,
             $" {(team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{TeamNumToString((int)team)}'s {ChatColors.Default}captain was auto selected to be {ChatColors.Red}{player.PlayerName}"
         );
     }

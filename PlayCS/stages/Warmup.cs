@@ -1,6 +1,5 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Utils;
 
 namespace PlayCs;
 
@@ -19,8 +18,6 @@ public partial class PlayCsPlugin
             return;
         }
 
-        Message(HudDestination.Center, "[PlayCS] Starting Warmup!");
-
         SendCommands(
             new[]
             {
@@ -38,7 +35,6 @@ public partial class PlayCsPlugin
                 "mp_maxmoney 60000",
                 "mp_startmoney 60000",
                 "mp_free_armor 1",
-                // TODO - we have issues because we cant accurately detect if in a warmup status
                 "mp_warmup_start",
             }
         );
@@ -71,3 +67,37 @@ public partial class PlayCsPlugin
             .GameRules;
     }
 }
+
+// private async setupTeamNames(matchId: string) {
+//    const { v_match_team_captains: captains } = await this.graphQL.query({
+//      v_match_team_captains: [
+//        {
+//          where: {
+//            match_id: {
+//              _eq: matchId,
+//            },
+//          },
+//        },
+//        {
+//          id: true,
+//          name: true,
+//          team: {
+//            name: true,
+//            starting_side: true,
+//          },
+//        },
+//      ],
+//    });
+//
+//    for (const captain of captains) {
+//      let teamNumber;
+//
+//      const teamName = `Team ${captain.name}`;
+//      if (captain.team.starting_side === e_sides_enum.CT) {
+//        teamNumber = 1;
+//      } else {
+//        teamNumber = 2;
+//      }
+//      await this.command(matchId, `mp_teamname_${teamNumber} ${teamName}`);
+//    }
+//  }

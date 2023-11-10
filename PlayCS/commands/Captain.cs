@@ -34,11 +34,7 @@ public partial class PlayCsPlugin
         // autoclaim captain
         if (Captains[team] == null)
         {
-            Message(
-                HudDestination.Alert,
-                $"{player.PlayerName} was assigned captain for the {TeamNumToString((int)team)}"
-            );
-            Captains[team] = player;
+            ClaimCaptain(team, player);
         }
 
         ShowCaptains();
@@ -88,5 +84,31 @@ public partial class PlayCsPlugin
         Captains[team] = null;
 
         ShowCaptains();
+    }
+
+    private void ClaimCaptain(CsTeam team, CCSPlayerController player, string? message = null)
+    {
+        Captains[team] = player;
+        if (message == null)
+        {
+            Message(
+                HudDestination.Alert,
+                $"{player.PlayerName} was assigned captain for the {TeamNumToString((int)team)}"
+            );
+        }
+
+        Eventing.PublishMatchEvent(
+            matchData!.id,
+            new Eventing.EventData<Dictionary<string, object>>
+            {
+                @event = "captain",
+                data = new Dictionary<string, object>
+                {
+                    { "steam_id", player.SteamID },
+                    { "player_name", player.PlayerName },
+                    { "team", TeamNumToString((int)team) },
+                }
+            }
+        );
     }
 }
