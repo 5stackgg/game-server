@@ -60,8 +60,6 @@ public partial class PlayCsPlugin
         CCSPlayerController? player = null
     )
     {
-        message = ReplaceColorTags(message);
-
         if (player != null)
         {
             var parts = message.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
@@ -74,7 +72,7 @@ public partial class PlayCsPlugin
         {
             Server.PrintToConsole(message);
         }
-        else if (destination == HudDestination.Center)
+        else if (destination == HudDestination.Alert || destination == HudDestination.Center)
         {
             VirtualFunctions.ClientPrintAll(destination, $" {message}", 0, 0, 0, 0);
         }
@@ -86,50 +84,5 @@ public partial class PlayCsPlugin
                 Server.PrintToChatAll($"{part}");
             }
         }
-    }
-
-    private string ReplaceColorTags(string input)
-    {
-        string[] colorPatterns =
-        {
-            "{DEFAULT}",
-            "{RED}",
-            "{LIGHTPURPLE}",
-            "{GREEN}",
-            "{LIME}",
-            "{LIGHTGREEN}",
-            "{LIGHTRED}",
-            "{GRAY}",
-            "{LIGHTOLIVE}",
-            "{OLIVE}",
-            "{LIGHTBLUE}",
-            "{BLUE}",
-            "{PURPLE}",
-            "{GRAYBLUE}"
-        };
-        string[] colorReplacements =
-        {
-            "\x01",
-            "\x02",
-            "\x03",
-            "\x04",
-            "\x05",
-            "\x06",
-            "\x07",
-            "\x08",
-            "\x09",
-            "\x10",
-            "\x0B",
-            "\x0C",
-            "\x0E",
-            "\x0A"
-        };
-
-        for (var i = 0; i < colorPatterns.Length; i++)
-        {
-            input = input.Replace(colorPatterns[i], colorReplacements[i]);
-        }
-
-        return input;
     }
 }

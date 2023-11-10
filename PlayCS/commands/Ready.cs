@@ -1,3 +1,4 @@
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
@@ -20,13 +21,23 @@ public partial class PlayCsPlugin
             return;
         }
 
-        if (!readyPlayers.ContainsKey(player.UserId!.Value))
+        if (!ReadyPlayers.ContainsKey(player.UserId!.Value))
         {
-            readyPlayers[player.UserId.Value] = true;
+            ReadyPlayers[player.UserId.Value] = true;
         }
         else
         {
-            readyPlayers[player.UserId.Value] = true;
+            ReadyPlayers[player.UserId.Value] = true;
+        }
+
+        if (TotalReady() == 10)
+        {
+            if (matchData!.knife_round)
+            {
+                startKnife();
+                return;
+            }
+            startLive();
         }
 
         SendReadyMessage(player);
@@ -41,13 +52,13 @@ public partial class PlayCsPlugin
             return;
         }
 
-        if (!readyPlayers.ContainsKey(player.UserId!.Value))
+        if (!ReadyPlayers.ContainsKey(player.UserId!.Value))
         {
-            readyPlayers[player.UserId.Value] = false;
+            ReadyPlayers[player.UserId.Value] = false;
         }
         else
         {
-            readyPlayers[player.UserId.Value] = false;
+            ReadyPlayers[player.UserId.Value] = false;
         }
 
         SendReadyMessage(player);
@@ -58,7 +69,7 @@ public partial class PlayCsPlugin
         // TODO - get total that should be marked ready
         Message(
             HudDestination.Chat,
-            $"You have been marked {(readyPlayers[player.UserId.Value] ? "{GREEN}ready" : "{RED}not ready")} {{DEFAULT}}({TotalReady()}/10)",
+            $"You have been marked {(ReadyPlayers[player.UserId.Value] ? $"{ChatColors.Red}ready" : $"{ChatColors.Red}not ready")} {ChatColors.Default}({TotalReady()}/10)",
             player
         );
     }

@@ -6,7 +6,7 @@ namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
-    private Dictionary<int, bool> readyPlayers = new Dictionary<int, bool>();
+    private Dictionary<int, bool> ReadyPlayers = new Dictionary<int, bool>();
 
     public void startWarmup()
     {
@@ -58,7 +58,7 @@ public partial class PlayCsPlugin
 
     private int TotalReady()
     {
-        return readyPlayers.Count(pair => pair.Value);
+        return ReadyPlayers.Count(pair => pair.Value);
     }
 
     private CCSGameRules? GameRules()

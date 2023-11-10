@@ -2,9 +2,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
-using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Utils;
-using DotNetEnv;
 
 namespace PlayCs;
 
@@ -14,6 +12,15 @@ public partial class PlayCsPlugin : BasePlugin
     private Eventing Eventing = new Eventing();
 
     public string CurrentMap = Server.MapName;
+
+    private Dictionary<CsTeam, CCSPlayerController?> Captains = new Dictionary<
+        CsTeam,
+        CCSPlayerController?
+    >
+    {
+        { CsTeam.Terrorist, null },
+        { CsTeam.CounterTerrorist, null }
+    };
 
     public override string ModuleName => "PlayCS Mod";
 
@@ -35,7 +42,7 @@ public partial class PlayCsPlugin : BasePlugin
         RegisterMessageCommands();
         RegisterAdministrationCommands();
 
-        Message(HudDestination.Center, "PlayCS Loaded");
+        Message(HudDestination.Alert, "PlayCS Loaded");
 
         string serverId = "82c90c4f-ab44-432b-9025-29332461bfe2";
         // string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");

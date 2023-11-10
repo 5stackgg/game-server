@@ -1,3 +1,5 @@
+using CounterStrikeSharp.API.Modules.Utils;
+
 namespace PlayCs;
 
 /**
@@ -5,6 +7,21 @@ namespace PlayCs;
  */
 public partial class PlayCsPlugin
 {
+    private CsTeam TeamNumToCSTeam(int teamNum)
+    {
+        switch (teamNum)
+        {
+            case 1:
+                return CsTeam.Spectator;
+            case 2:
+                return CsTeam.Terrorist;
+            case 3:
+                return CsTeam.CounterTerrorist;
+            default:
+                return CsTeam.None;
+        }
+    }
+
     private string TeamNumToString(int teamNum)
     {
         switch (teamNum)
