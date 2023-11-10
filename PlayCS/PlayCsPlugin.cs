@@ -39,6 +39,8 @@ public partial class PlayCsPlugin : BasePlugin
         CaptureRoundEnd();
         CapturePlayerDamage();
         CapturePlayerConnected();
+        CapturePlayerDisconnected();
+        CapturePlayerSwitchedSides();
 
         RegisterMessageCommands();
         RegisterAdministrationCommands();

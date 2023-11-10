@@ -7,9 +7,6 @@ using CounterStrikeSharp.API.Modules.Utils;
 
 namespace PlayCs;
 
-/**
- * TODO : show who is not ready
- */
 public partial class PlayCsPlugin
 {
     // [ConsoleCommand("css_help", "Shows Help Command")]
