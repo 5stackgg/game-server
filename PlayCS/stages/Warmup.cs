@@ -10,7 +10,11 @@ public partial class PlayCsPlugin
 
     public void startWarmup()
     {
-        if (Phase != ePhase.Unknown && Phase != ePhase.Knife && Phase != ePhase.Scheduled)
+        if (
+            CurrentPhase != ePhase.Unknown
+            && CurrentPhase != ePhase.Knife
+            && CurrentPhase != ePhase.Scheduled
+        )
         {
             return;
         }
@@ -38,8 +42,6 @@ public partial class PlayCsPlugin
                 "mp_warmup_start",
             }
         );
-
-        UpdatePhase(ePhase.Warmup);
 
         // await this.setupTeamNames(matchId);
     }

@@ -8,8 +8,8 @@ namespace PlayCs;
 
 public partial class PlayCsPlugin : BasePlugin
 {
-    private ePhase Phase = ePhase.Unknown;
     private Eventing Eventing = new Eventing();
+    private ePhase CurrentPhase = ePhase.Unknown;
 
     public string CurrentMap = Server.MapName;
 

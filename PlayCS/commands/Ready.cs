@@ -32,12 +32,7 @@ public partial class PlayCsPlugin
 
         if (TotalReady() == 10)
         {
-            if (matchData!.knife_round)
-            {
-                startKnife();
-                return;
-            }
-            startLive();
+            UpdatePhase(ePhase.Knife);
         }
 
         SendReadyMessage(player);

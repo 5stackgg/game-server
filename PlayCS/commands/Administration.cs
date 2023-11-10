@@ -24,6 +24,7 @@ public partial class PlayCsPlugin
         AddCommandListener("css", CommandListener_BlockOutput);
         AddCommandListener("css_plugins", CommandListener_BlockOutput);
 
+        AddCommand("update_phase", "updates the match phase", ServerUpdatePhase);
         AddCommand("players", "gets the list of players currently in the server", GetPlayers);
         AddCommand(
             "match_details",
@@ -51,9 +52,17 @@ public partial class PlayCsPlugin
             ChangeMap(matchData.map);
         }
 
-        // "mp_backup_round_file playcs_1",
+        if (PhaseStringToEnum(matchData.status) != CurrentPhase)
+        {
+            UpdatePhase(PhaseStringToEnum(matchData.status));
+        }
+    }
 
-        switch (PhaseStringToEnum(matchData.status))
+    public void UpdatePhase(ePhase phase)
+    {
+        Console.WriteLine($"UPDATING PHASE {phase}");
+
+        switch (phase)
         {
             case ePhase.Scheduled:
                 Console.WriteLine("Scheduled phase");
@@ -62,10 +71,17 @@ public partial class PlayCsPlugin
                 startWarmup();
                 break;
             case ePhase.Knife:
-                Console.WriteLine("Knife phase");
+                if (matchData!.knife_round)
+                {
+                    startKnife();
+                }
+                else
+                {
+                    UpdatePhase(ePhase.Live);
+                }
                 break;
             case ePhase.Live:
-                Console.WriteLine("Live phase");
+                startLive();
                 break;
             case ePhase.Overtime:
                 Console.WriteLine("Overtime phase");
@@ -80,33 +96,35 @@ public partial class PlayCsPlugin
                 Console.WriteLine("Finished phase");
                 break;
         }
-    }
 
-    public void UpdatePhase(ePhase ePhase)
-    {
-        Console.WriteLine($"UPDATING PHASE {ePhase}");
         Eventing.PublishMatchEvent(
-            matchData.id,
+            matchData!.id,
             new Eventing.EventData<Dictionary<string, object>>
             {
                 @event = "status",
-                data = new Dictionary<string, object> { { "status", ePhase.ToString() }, }
+                data = new Dictionary<string, object> { { "status", phase.ToString() }, }
             }
         );
 
-        Phase = ePhase;
+        CurrentPhase = phase;
     }
 
-    public void ChangeMap(string Map)
+    public void ChangeMap(string map)
     {
-        if (Server.IsMapValid(Map))
+        if (Server.IsMapValid(map))
         {
-            SendCommands(new[] { $"changelevel \"{Map}\"" });
+            SendCommands(new[] { $"changelevel \"{map}\"" });
             return;
         }
 
         // TODO - check if i exist in subscribed map list
-        SendCommands(new[] { $"host_workshop_map \"{Map}\"" });
+        SendCommands(new[] { $"host_workshop_map \"{map}\"" });
+    }
+
+    // TODO - terrible name
+    private void ServerUpdatePhase(CCSPlayerController? player, CommandInfo command)
+    {
+        UpdatePhase(PhaseStringToEnum(command.ArgString));
     }
 
     public void GetPlayers(CCSPlayerController? player, CommandInfo command)

@@ -8,6 +8,7 @@ namespace PlayCs;
 /**
  * TODO : show whos not ready
  * TODO : player switches side remove them as captain
+ * TODO : claim event
  */
 public partial class PlayCsPlugin
 {
