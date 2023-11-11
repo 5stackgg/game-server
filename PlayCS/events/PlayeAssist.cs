@@ -6,6 +6,6 @@ public partial class PlayCsPlugin
 {
     private void CaptureAssists()
     {
-       // TODO - not sure how to capture assists
+        // TODO - not sure how to capture assists
     }
 }

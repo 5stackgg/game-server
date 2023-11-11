@@ -11,7 +11,7 @@ public partial class PlayCsPlugin
         RegisterEventHandler<EventPlayerConnect>(
             (@event, info) =>
             {
-                if (@event.Userid == null || @event.Userid.IsBot || _matchData == null)
+                if (@event.Userid == null || _matchData == null)
                 {
                     return HookResult.Continue;
                 }

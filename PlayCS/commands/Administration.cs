@@ -40,10 +40,9 @@ public partial class PlayCsPlugin
 
         Message(HudDestination.Alert, "Received Match Data");
 
-        // Console.WriteLine($"SET PASSSWORD {matchData.password}");
         // we cant detect it has changed, its encrypted
-        // password.StringValue = matchData.password;
-        // password.StringValue = "connectme";
+        _password.StringValue = _matchData.password;
+
         SetupTeamNames();
 
         UpdateCurrentRound();
