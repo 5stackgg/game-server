@@ -13,8 +13,8 @@ public partial class PlayCsPlugin
 
     private void RegisterAdministrationCommands()
     {
-        AddCommand("update_phase", "updates the match phase", ServerUpdatePhase);
         AddCommand("set_match_id", "sets match id", SetMatchMatchId);
+        AddCommand("update_phase", "updates the match phase", ServerUpdatePhase);
     }
 
     public void SetMatchMatchId(CCSPlayerController? player, CommandInfo command)
