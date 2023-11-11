@@ -13,6 +13,7 @@ public partial class PlayCsPlugin
             || !@event.Userid.IsValid
             || @event.Userid.IsBot
             || _matchData == null
+            || !isLive()
         )
         {
             return HookResult.Continue;

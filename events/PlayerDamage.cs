@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
+using PlayCS.enums;
 
 namespace PlayCs;
 
@@ -13,6 +14,7 @@ public partial class PlayCsPlugin
             || !@event.Userid.IsValid
             || @event.Userid.IsBot
             || _matchData == null
+            || !isLive()
         )
         {
             return HookResult.Continue;
