@@ -51,6 +51,8 @@ public partial class PlayCsPlugin
 
     public bool isLive()
     {
-        return _currentPhase != ePhase.Unknown && _currentPhase != ePhase.Warmup && _currentPhase != ePhase.Knife;
+        return _currentPhase != ePhase.Unknown
+            && _currentPhase != ePhase.Warmup
+            && _currentPhase != ePhase.Knife;
     }
 }

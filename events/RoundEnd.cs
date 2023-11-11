@@ -43,7 +43,7 @@ public partial class PlayCsPlugin
         {
             return HookResult.Continue;
         }
-        
+
         _redis.PublishMatchEvent(
             _matchData.id,
             new Redis.EventData<Dictionary<string, object>>
