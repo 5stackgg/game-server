@@ -30,6 +30,7 @@ public partial class PlayCsPlugin
                             { "attacker_team", $"{TeamNumToString(attacker.TeamNum)}" },
                             { "attacker_location", $"{attacker.PlayerPawn.Value.LastPlaceName}" },
                             // { "attacker_location_vector", $"{@event.Attacker.PlayerPawn.Value.Controller.Value.}"},
+                            // ‘CBodyComponent?.SceneNode?.AbsOrigin’
                             { "weapon", $"{@event.Weapon}" },
                             { "damage", @event.DmgHealth },
                             { "damage_armor", @event.DmgArmor },

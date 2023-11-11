@@ -1,7 +1,6 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
-using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Utils;
 using PlayCs.entities;
 using PlayCS.enums;
@@ -11,11 +10,6 @@ namespace PlayCs;
 public partial class PlayCsPlugin
 {
     private Match? _matchData;
-
-    // RegisterListener<Listeners.OnMapStart>((mapName) =>
-    // {
-    //     Task.Run(() => SendMessage($"> Changed map to: {mapName}"));
-    // });
 
     private void RegisterAdministrationCommands()
     {
@@ -39,13 +33,6 @@ public partial class PlayCsPlugin
 
         Message(HudDestination.Alert, "Received Match Data");
 
-        if (_matchData.map != CurrentMap)
-        {
-            Console.WriteLine($"Change Level {_matchData.map}");
-            ChangeMap(_matchData.map);
-            return;
-        }
-
         SetupMatch();
     }
 
@@ -55,9 +42,17 @@ public partial class PlayCsPlugin
         {
             return;
         }
+
+        if (_matchData.map != _currentMap)
+        {
+            Console.WriteLine($"Changing Map {_matchData.map}");
+            ChangeMap(_matchData.map);
+            return;
+        }
+
         Console.WriteLine($"Setup Match {_matchData.id}");
 
-        SendCommands(new[] { $"password {_matchData.password}" });
+        SendCommands(new[] { $"sv_password \"{_matchData.password}\"" });
 
         SetupTeamNames();
 

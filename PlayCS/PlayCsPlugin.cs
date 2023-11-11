@@ -9,9 +9,8 @@ public partial class PlayCsPlugin : BasePlugin
 {
     private int _currentRound = 0;
     private Redis _redis = new Redis();
+    private string _currentMap = Server.MapName;
     private ePhase _currentPhase = ePhase.Unknown;
-
-    public readonly string CurrentMap = Server.MapName;
 
     private Dictionary<CsTeam, CCSPlayerController?> Captains = new Dictionary<
         CsTeam,
@@ -37,6 +36,7 @@ public partial class PlayCsPlugin : BasePlugin
 
         CaptureChat();
         CaptureRoundEnd();
+        CaptureMapChange();
 
         CaptureAssists();
         CapturePlayerKills();
@@ -65,11 +65,6 @@ public partial class PlayCsPlugin : BasePlugin
                 }
             );
         }
-
-        RegisterListener<Listeners.OnMapStart>(name =>
-        {
-            SetupMatch();
-        });
     }
 
     public void SendCommands(string[] commands)
