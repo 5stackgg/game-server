@@ -24,7 +24,7 @@ public partial class PlayCsPlugin
         RegisterEventHandler<EventRoundEnd>(
             (@event, info) =>
             {
-                if (_currentPhase == ePhase.Knife)
+                if (_matchData == null || _currentPhase == ePhase.Knife)
                 {
                     Console.WriteLine($"TEAM ASSIGNED {@event.Winner}");
 
@@ -37,21 +37,19 @@ public partial class PlayCsPlugin
 
                 UpdateCurrentRound();
 
-                Console.WriteLine($"SCORE OF TEAM 1! {GetTeamScore(1).ToString()}");
-                Console.WriteLine($"SCORE OF TEAM 2! {GetTeamScore(2).ToString()}");
-                // Eventing.PublishMatchEvent(
-                //     matchData.id,
-                //     new Eventing.EventData<Dictionary<string, object>>
-                //     {
-                //         @event = "score",
-                //         data = new Dictionary<string, object>
-                //         {
-                //             { "round", CurrentRound },
-                //             { "team_1_score", $"{GetTeamScore(1)}" },
-                //             { "team_2_score", $"{GetTeamScore(2)}" },
-                //         }
-                //     }
-                // );
+                _redis.PublishMatchEvent(
+                    _matchData.id,
+                    new Redis.EventData<Dictionary<string, object>>
+                    {
+                        @event = "score",
+                        data = new Dictionary<string, object>
+                        {
+                            { "round", _currentRound },
+                            { "team_1_score", $"{GetTeamScore(1)}" },
+                            { "team_2_score", $"{GetTeamScore(2)}" },
+                        }
+                    }
+                );
 
                 return HookResult.Continue;
             }
@@ -69,7 +67,14 @@ public partial class PlayCsPlugin
 
         foreach (var teamManager in teamManagers)
         {
-            MatchTeam? team = _matchData.teams.Find(t => t.name == teamManager.Teamname);
+            MatchTeam? team = _matchData
+                .teams
+                .Find(
+                    (_team) =>
+                    {
+                        return _team.name == teamManager.ClanTeamname;
+                    }
+                );
 
             if (team != null && team.team_number == teamNumber)
             {

@@ -2,6 +2,7 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Cvars;
+using CounterStrikeSharp.API.Modules.Utils;
 using PlayCs.entities;
 using PlayCS.enums;
 
@@ -37,6 +38,8 @@ public partial class PlayCsPlugin
             return;
         }
 
+        Message(HudDestination.Alert, "Received Match Data");
+
         // Console.WriteLine($"SET PASSSWORD {matchData.password}");
         // we cant detect it has changed, its encrypted
         // password.StringValue = matchData.password;
@@ -64,7 +67,6 @@ public partial class PlayCsPlugin
 
         foreach (var team in _matchData.teams)
         {
-            Console.WriteLine($"TEAM {team.team_number} is {team.name}");
             SendCommands(new[] { $"mp_teamname_{team.team_number} {team.name}" });
         }
     }
