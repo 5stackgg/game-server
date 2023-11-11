@@ -65,6 +65,11 @@ public partial class PlayCsPlugin : BasePlugin
                 }
             );
         }
+
+        RegisterListener<Listeners.OnMapStart>(name =>
+        {
+            SetupMatch();
+        });
     }
 
     public void SendCommands(string[] commands)

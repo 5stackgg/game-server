@@ -11,7 +11,6 @@ namespace PlayCs;
 public partial class PlayCsPlugin
 {
     private Match? _matchData;
-    private ConVar _password = ConVar.Find("sv_password")!;
 
     // RegisterListener<Listeners.OnMapStart>((mapName) =>
     // {
@@ -40,18 +39,29 @@ public partial class PlayCsPlugin
 
         Message(HudDestination.Alert, "Received Match Data");
 
-        // we cant detect it has changed, its encrypted
-        _password.StringValue = _matchData.password;
-
-        SetupTeamNames();
-
-        UpdateCurrentRound();
-
         if (_matchData.map != CurrentMap)
         {
             Console.WriteLine($"Change Level {_matchData.map}");
             ChangeMap(_matchData.map);
+            return;
         }
+
+        SetupMatch();
+    }
+
+    public void SetupMatch()
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+        Console.WriteLine($"Setup Match {_matchData.id}");
+
+        SendCommands(new[] { $"password {_matchData.password}" });
+
+        SetupTeamNames();
+
+        UpdateCurrentRound();
 
         if (PhaseStringToEnum(_matchData.status) != _currentPhase)
         {
