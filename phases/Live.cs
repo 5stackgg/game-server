@@ -56,7 +56,7 @@ public partial class PlayCsPlugin
         Message(HudDestination.Alert, "LIVE LIVE LIVE!");
     }
 
-    public bool isLive()
+    public bool IsLive()
     {
         return _currentPhase != ePhase.Unknown
             && _currentPhase != ePhase.Warmup

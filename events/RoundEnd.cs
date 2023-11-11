@@ -39,7 +39,7 @@ public partial class PlayCsPlugin
             return HookResult.Continue;
         }
 
-        if (!isLive())
+        if (!IsLive())
         {
             return HookResult.Continue;
         }
