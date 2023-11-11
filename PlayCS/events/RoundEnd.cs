@@ -19,7 +19,15 @@ public partial class PlayCsPlugin
             }
         );
 
-        // EventRoundOfficiallyEnded
+        RegisterEventHandler<EventRoundOfficiallyEnded>(
+            (@event, info) =>
+            {
+                Console.WriteLine("OFFCIALLY ENDED");
+                UpdateCurrentRound();
+
+                return HookResult.Continue;
+            }
+        );
 
         RegisterEventHandler<EventRoundEnd>(
             (@event, info) =>
@@ -35,8 +43,6 @@ public partial class PlayCsPlugin
                     return HookResult.Continue;
                 }
 
-                UpdateCurrentRound();
-
                 _redis.PublishMatchEvent(
                     _matchData.id,
                     new Redis.EventData<Dictionary<string, object>>
@@ -44,7 +50,7 @@ public partial class PlayCsPlugin
                         @event = "score",
                         data = new Dictionary<string, object>
                         {
-                            { "round", _currentRound },
+                            { "round", _currentRound + 1 },
                             { "team_1_score", $"{GetTeamScore(1)}" },
                             { "team_2_score", $"{GetTeamScore(2)}" },
                         }

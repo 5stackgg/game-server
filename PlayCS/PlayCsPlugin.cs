@@ -54,6 +54,7 @@ public partial class PlayCsPlugin : BasePlugin
         string serverId = "82c90c4f-ab44-432b-9025-29332461bfe2";
         // string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
 
+        // SV:  64 player server started - detect that
         if (serverId != null)
         {
             _redis.PublishServerEvent(
