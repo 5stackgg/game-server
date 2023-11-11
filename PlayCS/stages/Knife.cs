@@ -29,6 +29,10 @@ public partial class PlayCsPlugin
         SendCommands(
             new[]
             {
+                "mp_autokick 0",
+                "mp_autoteambalance 0",
+                "mp_warmuptime_all_players_connected 0",
+                "sv_disable_teamselect_menu 1",
                 "mp_maxrounds 12",
                 "mp_roundtime 60",
                 "mp_roundtime_defuse 60",

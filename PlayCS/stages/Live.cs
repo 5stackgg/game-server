@@ -20,6 +20,8 @@ public partial class PlayCsPlugin
         SendCommands(
             new[]
             {
+                "mp_autokick 0",
+                "mp_autoteambalance 0",
                 "mp_warmup_end",
                 $"mp_backup_round_file ${_matchData.id}",
                 "mp_round_restart_delay 3",
