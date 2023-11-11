@@ -18,7 +18,7 @@ RUN dotnet build -c Release -o release
 
 RUN rm /mod/release/CounterStrikeSharp.API.dll
 
-FROM ich777/debian-baseimage:bullseye_amd64 as runtime
+FROM debian:bookworm-slim
 
 ENV DATA_DIR="/serverdata"
 ENV STEAMCMD_DIR="${DATA_DIR}/steamcmd"

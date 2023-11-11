@@ -1,4 +1,5 @@
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Utils;
 using PlayCS.enums;
 
@@ -6,25 +7,21 @@ namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
-    private void CapturePlayerDisconnected()
+    [GameEventHandler]
+    public HookResult OnPlayerDisconnect(EventPlayerConnect @event, GameEventInfo info)
     {
-        RegisterEventHandler<EventPlayerDisconnect>(
-            (@event, info) =>
-            {
-                if (@event.Userid == null || @event.Userid.IsBot)
-                {
-                    return HookResult.Continue;
-                }
+        if (@event.Userid == null || !@event.Userid.IsValid || @event.Userid.IsBot)
+        {
+            return HookResult.Continue;
+        }
 
-                if (_currentPhase == ePhase.Warmup || _currentPhase == ePhase.Knife)
-                {
-                    CsTeam team = TeamNumToCSTeam(@event.Userid.TeamNum);
+        if (_currentPhase == ePhase.Warmup || _currentPhase == ePhase.Knife)
+        {
+            CsTeam team = TeamNumToCSTeam(@event.Userid.TeamNum);
 
-                    Captains[team] = null;
-                }
+            _captains[team] = null;
+        }
 
-                return HookResult.Continue;
-            }
-        );
+        return HookResult.Continue;
     }
 }

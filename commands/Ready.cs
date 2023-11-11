@@ -6,9 +6,6 @@ using PlayCS.enums;
 
 namespace PlayCs;
 
-/**
- * TODO : show who is not ready
- */
 public partial class PlayCsPlugin
 {
     [ConsoleCommand("css_r", "Marks the player as ready")]

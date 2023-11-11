@@ -32,34 +32,12 @@ public partial class PlayCsPlugin
         }
 
         // autoclaim captain
-        if (Captains[team] == null)
+        if (_captains[team] == null)
         {
             ClaimCaptain(team, player);
         }
 
         ShowCaptains();
-    }
-
-    private void ShowCaptains()
-    {
-        foreach (var pair in Captains)
-        {
-            CsTeam team = pair.Key;
-
-            if (pair.Value == null)
-            {
-                Message(
-                    HudDestination.Notify,
-                    $"[{TeamNumToString((int)team)}] {ChatColors.Green}!captain to claim"
-                );
-                return;
-            }
-
-            Message(
-                HudDestination.Notify,
-                $"[{TeamNumToString((int)team)}] {(team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{pair.Value.PlayerName}"
-            );
-        }
     }
 
     [ConsoleCommand("css_rc", "Release Captain Spot")]
@@ -85,19 +63,41 @@ public partial class PlayCsPlugin
             return;
         }
 
-        Captains[team] = null;
+        _captains[team] = null;
 
         ShowCaptains();
     }
 
-    private void ClaimCaptain(CsTeam team, CCSPlayerController player, string? message = null)
+    public void ShowCaptains()
+    {
+        foreach (var pair in _captains)
+        {
+            CsTeam team = pair.Key;
+
+            if (pair.Value == null)
+            {
+                Message(
+                    HudDestination.Notify,
+                    $"[{TeamNumToString((int)team)}] {ChatColors.Green}!captain to claim"
+                );
+                return;
+            }
+
+            Message(
+                HudDestination.Notify,
+                $"[{TeamNumToString((int)team)}] {(team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{pair.Value.PlayerName}"
+            );
+        }
+    }
+
+    public void ClaimCaptain(CsTeam team, CCSPlayerController player, string? message = null)
     {
         if (player == null || _matchData == null)
         {
             return;
         }
 
-        Captains[team] = player;
+        _captains[team] = player;
         if (message == null)
         {
             Message(

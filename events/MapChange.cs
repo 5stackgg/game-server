@@ -1,16 +1,22 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using PlayCS.enums;
 
 namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
-    private void CaptureMapChange()
+    public void ListenForMapChange()
     {
         RegisterListener<Listeners.OnMapStart>(
-            (mapName) =>
+            async (mapName) =>
             {
+                _currentRound = 0;
                 _currentMap = Server.MapName;
+                _currentPhase = ePhase.Unknown;
+
+                // code smell: we have to wait till server exec's default cfgs
+                await Task.Delay(1000 * 5);
 
                 SetupMatch();
             }

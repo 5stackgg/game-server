@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 using PlayCs.entities;
@@ -11,16 +12,7 @@ public partial class PlayCsPlugin
 {
     private Match? _matchData;
 
-    private void RegisterAdministrationCommands()
-    {
-        AddCommandListener("meta", CommandListener_BlockOutput);
-        AddCommandListener("css", CommandListener_BlockOutput);
-        AddCommandListener("css_plugins", CommandListener_BlockOutput);
-
-        AddCommand("update_phase", "updates the match phase", ServerUpdatePhase);
-        AddCommand("set_match_id", "sets match id", SetMatchMatchId);
-    }
-
+    [ConsoleCommand("set_match_id", "Set the match id for the server to configure the match for")]
     public void SetMatchMatchId(CCSPlayerController? player, CommandInfo command)
     {
         string matchId = command.ArgString;
@@ -36,49 +28,15 @@ public partial class PlayCsPlugin
         SetupMatch();
     }
 
-    public void SetupMatch()
+    [ConsoleCommand("match_phase", "Forces a match to update its current phase")]
+    public void SetMatchPhase(CCSPlayerController? player, CommandInfo command)
     {
-        if (_matchData == null)
-        {
-            return;
-        }
-
-        if (_matchData.map != _currentMap)
-        {
-            Console.WriteLine($"Changing Map {_matchData.map}");
-            ChangeMap(_matchData.map);
-            return;
-        }
-
-        Console.WriteLine($"Setup Match {_matchData.id}");
-
-        SendCommands(new[] { $"sv_password \"{_matchData.password}\"" });
-
-        SetupTeamNames();
-
-        UpdateCurrentRound();
-
-        if (PhaseStringToEnum(_matchData.status) != _currentPhase)
-        {
-            UpdatePhase(PhaseStringToEnum(_matchData.status));
-        }
-    }
-
-    private void SetupTeamNames()
-    {
-        if (_matchData == null)
-        {
-            return;
-        }
-
-        foreach (var team in _matchData.teams)
-        {
-            SendCommands(new[] { $"mp_teamname_{team.team_number} {team.name}" });
-        }
+        UpdatePhase(PhaseStringToEnum(command.ArgString));
     }
 
     public void UpdatePhase(ePhase phase)
     {
+        Console.WriteLine($"Update Phase {_currentPhase} -> {phase}");
         if (_matchData == null)
         {
             Console.WriteLine("missing event data");
@@ -129,30 +87,61 @@ public partial class PlayCsPlugin
         _currentPhase = phase;
     }
 
-    public void ChangeMap(string map)
+    public async void SetupMatch()
     {
-        if (Server.IsMapValid(map))
+        if (_matchData == null)
         {
-            SendCommands(new[] { $"changelevel \"{map}\"" });
+            Console.WriteLine("Missing Match Data");
+            return;
+        }
+        Console.WriteLine($"Setup Match ${_matchData.id}");
+
+        if (_matchData.map != _currentMap)
+        {
+            Console.WriteLine($"Changing Map {_matchData.map}");
+            await ChangeMap(_matchData.map);
             return;
         }
 
-        // TODO - check if map exist in subscribed map list
-        SendCommands(new[] { $"host_workshop_map \"{map}\"" });
-    }
+        SendCommands(new[] { $"sv_password \"{_matchData.password}\"" });
 
-    private void ServerUpdatePhase(CCSPlayerController? player, CommandInfo command)
-    {
-        UpdatePhase(PhaseStringToEnum(command.ArgString));
-    }
+        SetupTeamNames();
 
-    public HookResult CommandListener_BlockOutput(CCSPlayerController? player, CommandInfo info)
-    {
-        if (player == null)
+        UpdateCurrentRound();
+
+        Console.WriteLine($"Current Phase {_currentPhase}");
+
+        if (PhaseStringToEnum(_matchData.status) != _currentPhase)
         {
-            return HookResult.Continue;
+            UpdatePhase(PhaseStringToEnum(_matchData.status));
+        }
+    }
+
+    public void SetupTeamNames()
+    {
+        if (_matchData == null)
+        {
+            return;
         }
 
-        return HookResult.Stop;
+        foreach (var team in _matchData.teams)
+        {
+            SendCommands(new[] { $"mp_teamname_{team.team_number} {team.name}" });
+        }
+    }
+
+    public async Task ChangeMap(string map)
+    {
+        string changeCommand = Server.IsMapValid(map) ? "changelevel" : "host_workshop_map";
+
+        SendCommands(new[] { $"{changeCommand} \"{map}\"" });
+
+        // give the server some time to change, if the map didnt change we will try again.
+        await Task.Delay(1000 * 5);
+
+        if (_currentMap != map)
+        {
+            await ChangeMap(map);
+        }
     }
 }

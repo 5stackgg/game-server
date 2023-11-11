@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Utils;
 using PlayCs.entities;
 using PlayCS.enums;
@@ -8,58 +9,51 @@ namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
-    private void CaptureRoundEnd()
+    [GameEventHandler]
+    public HookResult OnGameEnd(EventGameEnd @event, GameEventInfo info)
     {
-        RegisterEventHandler<EventGameEnd>(
-            (@event, info) =>
+        UpdatePhase(ePhase.Finished);
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnRoundOfficallyOver(EventRoundOfficiallyEnded @event, GameEventInfo info)
+    {
+        UpdateCurrentRound();
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnRoundOver(EventRoundEnd @event, GameEventInfo info)
+    {
+        if (_matchData == null || _currentPhase == ePhase.Knife)
+        {
+            Console.WriteLine($"TEAM ASSIGNED {@event.Winner}");
+
+            KnifeWinningTeam = TeamNumToCSTeam(@event.Winner);
+
+            _NotifyCaptainSideSelection();
+
+            return HookResult.Continue;
+        }
+
+        _redis.PublishMatchEvent(
+            _matchData.id,
+            new Redis.EventData<Dictionary<string, object>>
             {
-                UpdatePhase(ePhase.Finished);
-
-                return HookResult.Continue;
-            }
-        );
-
-        RegisterEventHandler<EventRoundOfficiallyEnded>(
-            (@event, info) =>
-            {
-                Console.WriteLine("OFFCIALLY ENDED");
-                UpdateCurrentRound();
-
-                return HookResult.Continue;
-            }
-        );
-
-        RegisterEventHandler<EventRoundEnd>(
-            (@event, info) =>
-            {
-                if (_matchData == null || _currentPhase == ePhase.Knife)
+                @event = "score",
+                data = new Dictionary<string, object>
                 {
-                    Console.WriteLine($"TEAM ASSIGNED {@event.Winner}");
-
-                    _knifeWinningTeam = TeamNumToCSTeam(@event.Winner);
-
-                    NotifyCaptainSideSelection();
-
-                    return HookResult.Continue;
+                    { "round", _currentRound + 1 },
+                    { "team_1_score", $"{GetTeamScore(1)}" },
+                    { "team_2_score", $"{GetTeamScore(2)}" },
                 }
-
-                _redis.PublishMatchEvent(
-                    _matchData.id,
-                    new Redis.EventData<Dictionary<string, object>>
-                    {
-                        @event = "score",
-                        data = new Dictionary<string, object>
-                        {
-                            { "round", _currentRound + 1 },
-                            { "team_1_score", $"{GetTeamScore(1)}" },
-                            { "team_2_score", $"{GetTeamScore(2)}" },
-                        }
-                    }
-                );
-
-                return HookResult.Continue;
             }
         );
+
+        return HookResult.Continue;
     }
 
     public int GetTeamScore(int teamNumber)
@@ -108,5 +102,26 @@ public partial class PlayCsPlugin
         }
 
         _currentRound = roundsPlayed;
+    }
+
+    public void _NotifyCaptainSideSelection()
+    {
+        if (KnifeWinningTeam == null)
+        {
+            return;
+        }
+
+        CsTeam knifeTeam =
+            KnifeWinningTeam == CsTeam.Terrorist ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
+
+        Message(
+            HudDestination.Chat,
+            $"As the captain you must select to {ChatColors.Green}!stay {ChatColors.Default} or {ChatColors.Green}!switch",
+            _captains[knifeTeam]
+        );
+        Message(
+            HudDestination.Alert,
+            $"{(KnifeWinningTeam == CsTeam.Terrorist ? "Terrorist" : "CT")} - Captain is Picking Sides!"
+        );
     }
 }

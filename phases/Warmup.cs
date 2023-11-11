@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Utils;
 using PlayCS.enums;
 
 namespace PlayCs;
@@ -18,6 +19,9 @@ public partial class PlayCsPlugin
         {
             return;
         }
+
+        _resetCaptains();
+        _resetReadyPlayers();
 
         SendCommands(
             new[]
@@ -41,9 +45,9 @@ public partial class PlayCsPlugin
         );
     }
 
-    private bool IsWarmup()
+    public bool IsWarmup()
     {
-        CCSGameRules? rules = GameRules();
+        CCSGameRules? rules = _gameRules();
 
         if (rules == null)
         {
@@ -53,12 +57,23 @@ public partial class PlayCsPlugin
         return rules.WarmupPeriod;
     }
 
-    private int TotalReady()
+    private void _resetReadyPlayers()
+    {
+        _readyPlayers = new Dictionary<int, bool>();
+    }
+
+    private void _resetCaptains()
+    {
+        _captains[CsTeam.Terrorist] = null;
+        _captains[CsTeam.CounterTerrorist] = null;
+    }
+
+    public int TotalReady()
     {
         return _readyPlayers.Count(pair => pair.Value);
     }
 
-    private CCSGameRules? GameRules()
+    private CCSGameRules? _gameRules()
     {
         return Utilities
             .FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
