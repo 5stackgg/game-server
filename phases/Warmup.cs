@@ -43,6 +43,8 @@ public partial class PlayCsPlugin
                 "mp_warmup_start",
             }
         );
+
+        _publishPhase(ePhase.Warmup);
     }
 
     public bool IsWarmup()

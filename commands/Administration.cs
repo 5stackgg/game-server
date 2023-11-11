@@ -52,29 +52,29 @@ public partial class PlayCsPlugin
                 StartWarmup();
                 break;
             case ePhase.Knife:
-                if (_matchData!.knife_round)
-                {
-                    StartKnife();
-                }
-                else
+                if (!_matchData.knife_round)
                 {
                     UpdatePhase(ePhase.Live);
+                    break;
                 }
+                StartKnife();
                 break;
             case ePhase.Live:
                 StartLive();
                 break;
             case ePhase.Overtime:
-                Console.WriteLine("Overtime phase");
-                break;
             case ePhase.Paused:
             case ePhase.TechTimeout:
-                break;
             case ePhase.Finished:
-                Console.WriteLine("Finished phase");
+                _publishPhase(phase);
                 break;
         }
 
+        _currentPhase = phase;
+    }
+
+    private void _publishPhase(ePhase phase)
+    {
         _redis.PublishMatchEvent(
             _matchData.id,
             new Redis.EventData<Dictionary<string, object>>
@@ -83,8 +83,6 @@ public partial class PlayCsPlugin
                 data = new Dictionary<string, object> { { "status", phase.ToString() }, }
             }
         );
-
-        _currentPhase = phase;
     }
 
     public async void SetupMatch()
