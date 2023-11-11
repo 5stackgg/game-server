@@ -1,5 +1,6 @@
 ﻿using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Utils;
 using PlayCS.enums;
 
@@ -36,9 +37,6 @@ public partial class PlayCsPlugin : BasePlugin
 
         ListenForMapChange();
 
-        RegisterMessageCommands();
-        RegisterAdministrationCommands();
-
         Message(HudDestination.Alert, "PlayCS Loaded");
 
         string serverId = "82c90c4f-ab44-432b-9025-29332461bfe2";
@@ -55,6 +53,38 @@ public partial class PlayCsPlugin : BasePlugin
                     data = new Dictionary<string, object> { { "server_id", serverId }, }
                 }
             );
+        }
+    }
+
+    public void Message(
+        HudDestination destination,
+        string message,
+        CCSPlayerController? player = null
+    )
+    {
+        if (player != null)
+        {
+            var parts = message.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            foreach (var part in parts)
+            {
+                player.PrintToChat($"{part}");
+            }
+        }
+        else if (destination == HudDestination.Console)
+        {
+            Server.PrintToConsole(message);
+        }
+        else if (destination == HudDestination.Alert || destination == HudDestination.Center)
+        {
+            VirtualFunctions.ClientPrintAll(destination, $" {message}", 0, 0, 0, 0);
+        }
+        else
+        {
+            var parts = message.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            foreach (var part in parts)
+            {
+                Server.PrintToChatAll($"{part}");
+            }
         }
     }
 

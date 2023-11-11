@@ -8,7 +8,7 @@ namespace PlayCs;
 public partial class PlayCsPlugin
 {
     [GameEventHandler]
-    public HookResult OnPlayerConnect(EventPlayerConnect @event, GameEventInfo info)
+    private HookResult OnPlayerConnect(EventPlayerConnect @event, GameEventInfo info)
     {
         if (@event.Userid == null || !@event.Userid.IsValid || _matchData == null)
         {

@@ -7,7 +7,7 @@ namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
-    private CsTeam? _knifeWinningTeam;
+    public CsTeam? KnifeWinningTeam;
 
     public async void StartKnife()
     {
@@ -18,12 +18,12 @@ public partial class PlayCsPlugin
 
         if (Captains[CsTeam.Terrorist] == null)
         {
-            AutoSelectCaptain(CsTeam.Terrorist);
+            _AutoSelectCaptain(CsTeam.Terrorist);
         }
 
         if (Captains[CsTeam.CounterTerrorist] == null)
         {
-            AutoSelectCaptain(CsTeam.CounterTerrorist);
+            _AutoSelectCaptain(CsTeam.CounterTerrorist);
         }
 
         SendCommands(
@@ -55,28 +55,7 @@ public partial class PlayCsPlugin
         Message(HudDestination.Alert, "KNIFE KNIFE KNIFE!");
     }
 
-    public void NotifyCaptainSideSelection()
-    {
-        if (_knifeWinningTeam == null)
-        {
-            return;
-        }
-
-        CsTeam knifeTeam =
-            _knifeWinningTeam == CsTeam.Terrorist ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
-
-        Message(
-            HudDestination.Chat,
-            $"As the captain you must select to {ChatColors.Green}!stay {ChatColors.Default} or {ChatColors.Green}!switch",
-            Captains[knifeTeam]
-        );
-        Message(
-            HudDestination.Alert,
-            $"{(_knifeWinningTeam == CsTeam.Terrorist ? "Terrorist" : "CT")} - Captain is Picking Sides!"
-        );
-    }
-
-    private void AutoSelectCaptain(CsTeam team)
+    private void _AutoSelectCaptain(CsTeam team)
     {
         List<CCSPlayerController> players = Utilities
             .GetPlayers()

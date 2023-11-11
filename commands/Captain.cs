@@ -10,7 +10,7 @@ public partial class PlayCsPlugin
 {
     [ConsoleCommand("css_c", "Shows / Claims Captain Spots")]
     [ConsoleCommand("css_captain", "Shows / Claims Captain Spots")]
-    public void OnCaptain(CCSPlayerController? player, CommandInfo? command)
+    private void OnCaptain(CCSPlayerController? player, CommandInfo? command)
     {
         if (
             player == null
@@ -40,31 +40,9 @@ public partial class PlayCsPlugin
         ShowCaptains();
     }
 
-    private void ShowCaptains()
-    {
-        foreach (var pair in Captains)
-        {
-            CsTeam team = pair.Key;
-
-            if (pair.Value == null)
-            {
-                Message(
-                    HudDestination.Notify,
-                    $"[{TeamNumToString((int)team)}] {ChatColors.Green}!captain to claim"
-                );
-                return;
-            }
-
-            Message(
-                HudDestination.Notify,
-                $"[{TeamNumToString((int)team)}] {(team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{pair.Value.PlayerName}"
-            );
-        }
-    }
-
     [ConsoleCommand("css_rc", "Release Captain Spot")]
     [ConsoleCommand("css_release_captain", "Release Captain Spot")]
-    public void OnReleaseCaptain(CCSPlayerController? player, CommandInfo? command)
+    private void OnReleaseCaptain(CCSPlayerController? player, CommandInfo? command)
     {
         if (
             player == null
@@ -90,7 +68,29 @@ public partial class PlayCsPlugin
         ShowCaptains();
     }
 
-    private void ClaimCaptain(CsTeam team, CCSPlayerController player, string? message = null)
+    public void ShowCaptains()
+    {
+        foreach (var pair in Captains)
+        {
+            CsTeam team = pair.Key;
+
+            if (pair.Value == null)
+            {
+                Message(
+                    HudDestination.Notify,
+                    $"[{TeamNumToString((int)team)}] {ChatColors.Green}!captain to claim"
+                );
+                return;
+            }
+
+            Message(
+                HudDestination.Notify,
+                $"[{TeamNumToString((int)team)}] {(team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{pair.Value.PlayerName}"
+            );
+        }
+    }
+
+    public void ClaimCaptain(CsTeam team, CCSPlayerController player, string? message = null)
     {
         if (player == null || _matchData == null)
         {

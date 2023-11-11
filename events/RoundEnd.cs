@@ -10,7 +10,7 @@ namespace PlayCs;
 public partial class PlayCsPlugin
 {
     [GameEventHandler]
-    public HookResult OnGameEnd(EventGameEnd @event, GameEventInfo info)
+    private HookResult OnGameEnd(EventGameEnd @event, GameEventInfo info)
     {
         UpdatePhase(ePhase.Finished);
 
@@ -18,7 +18,7 @@ public partial class PlayCsPlugin
     }
 
     [GameEventHandler]
-    public HookResult OnRoundOfficallyOver(EventRoundOfficiallyEnded @event, GameEventInfo info)
+    private HookResult OnRoundOfficallyOver(EventRoundOfficiallyEnded @event, GameEventInfo info)
     {
         UpdateCurrentRound();
 
@@ -26,15 +26,15 @@ public partial class PlayCsPlugin
     }
 
     [GameEventHandler]
-    public HookResult OnRoundOver(EventRoundEnd @event, GameEventInfo info)
+    private HookResult OnRoundOver(EventRoundEnd @event, GameEventInfo info)
     {
         if (_matchData == null || _currentPhase == ePhase.Knife)
         {
             Console.WriteLine($"TEAM ASSIGNED {@event.Winner}");
 
-            _knifeWinningTeam = TeamNumToCSTeam(@event.Winner);
+            KnifeWinningTeam = TeamNumToCSTeam(@event.Winner);
 
-            NotifyCaptainSideSelection();
+            _NotifyCaptainSideSelection();
 
             return HookResult.Continue;
         }
@@ -56,7 +56,7 @@ public partial class PlayCsPlugin
         return HookResult.Continue;
     }
 
-    private int GetTeamScore(int teamNumber)
+    public int GetTeamScore(int teamNumber)
     {
         if (_matchData == null)
         {
@@ -102,5 +102,26 @@ public partial class PlayCsPlugin
         }
 
         _currentRound = roundsPlayed;
+    }
+
+    public void _NotifyCaptainSideSelection()
+    {
+        if (KnifeWinningTeam == null)
+        {
+            return;
+        }
+
+        CsTeam knifeTeam =
+            KnifeWinningTeam == CsTeam.Terrorist ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
+
+        Message(
+            HudDestination.Chat,
+            $"As the captain you must select to {ChatColors.Green}!stay {ChatColors.Default} or {ChatColors.Green}!switch",
+            Captains[knifeTeam]
+        );
+        Message(
+            HudDestination.Alert,
+            $"{(KnifeWinningTeam == CsTeam.Terrorist ? "Terrorist" : "CT")} - Captain is Picking Sides!"
+        );
     }
 }

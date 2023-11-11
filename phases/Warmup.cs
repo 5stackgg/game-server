@@ -41,9 +41,9 @@ public partial class PlayCsPlugin
         );
     }
 
-    private bool IsWarmup()
+    public bool IsWarmup()
     {
-        CCSGameRules? rules = GameRules();
+        CCSGameRules? rules = _GameRules();
 
         if (rules == null)
         {
@@ -53,12 +53,12 @@ public partial class PlayCsPlugin
         return rules.WarmupPeriod;
     }
 
-    private int TotalReady()
+    public int TotalReady()
     {
         return _readyPlayers.Count(pair => pair.Value);
     }
 
-    private CCSGameRules? GameRules()
+    private CCSGameRules? _GameRules()
     {
         return Utilities
             .FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")

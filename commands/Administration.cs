@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 using PlayCs.entities;
@@ -11,13 +12,8 @@ public partial class PlayCsPlugin
 {
     private Match? _matchData;
 
-    private void RegisterAdministrationCommands()
-    {
-        AddCommand("set_match_id", "sets match id", SetMatchMatchId);
-        AddCommand("update_phase", "updates the match phase", ServerUpdatePhase);
-    }
-
-    public void SetMatchMatchId(CCSPlayerController? player, CommandInfo command)
+    [ConsoleCommand("set_match_id", "Set the match id for the server to configure the match for")]
+    private void SetMatchMatchId(CCSPlayerController? player, CommandInfo command)
     {
         string matchId = command.ArgString;
         _matchData = _redis.GetMatch(matchId);
@@ -32,46 +28,10 @@ public partial class PlayCsPlugin
         SetupMatch();
     }
 
-    public void SetupMatch()
+    [ConsoleCommand("match_phase", "Forces a match to update its current phase")]
+    private void SetMatchPhase(CCSPlayerController? player, CommandInfo command)
     {
-        if (_matchData == null)
-        {
-            return;
-        }
-
-        if (_matchData.map != _currentMap)
-        {
-            Console.WriteLine($"Changing Map {_matchData.map}");
-            ChangeMap(_matchData.map);
-
-            return;
-        }
-
-        Console.WriteLine($"Setup Match {_matchData.id}");
-
-        SendCommands(new[] { $"sv_password \"{_matchData.password}\"" });
-
-        SetupTeamNames();
-
-        UpdateCurrentRound();
-
-        if (PhaseStringToEnum(_matchData.status) != _currentPhase)
-        {
-            UpdatePhase(PhaseStringToEnum(_matchData.status));
-        }
-    }
-
-    private void SetupTeamNames()
-    {
-        if (_matchData == null)
-        {
-            return;
-        }
-
-        foreach (var team in _matchData.teams)
-        {
-            SendCommands(new[] { $"mp_teamname_{team.team_number} {team.name}" });
-        }
+        UpdatePhase(PhaseStringToEnum(command.ArgString));
     }
 
     public void UpdatePhase(ePhase phase)
@@ -126,6 +86,48 @@ public partial class PlayCsPlugin
         _currentPhase = phase;
     }
 
+    public void SetupMatch()
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        if (_matchData.map != _currentMap)
+        {
+            Console.WriteLine($"Changing Map {_matchData.map}");
+            ChangeMap(_matchData.map);
+
+            return;
+        }
+
+        Console.WriteLine($"Setup Match {_matchData.id}");
+
+        SendCommands(new[] { $"sv_password \"{_matchData.password}\"" });
+
+        SetupTeamNames();
+
+        UpdateCurrentRound();
+
+        if (PhaseStringToEnum(_matchData.status) != _currentPhase)
+        {
+            UpdatePhase(PhaseStringToEnum(_matchData.status));
+        }
+    }
+
+    public void SetupTeamNames()
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        foreach (var team in _matchData.teams)
+        {
+            SendCommands(new[] { $"mp_teamname_{team.team_number} {team.name}" });
+        }
+    }
+
     public void ChangeMap(string map)
     {
         if (Server.IsMapValid(map))
@@ -136,10 +138,5 @@ public partial class PlayCsPlugin
 
         // TODO - check if map exist in subscribed map list
         SendCommands(new[] { $"host_workshop_map \"{map}\"" });
-    }
-
-    private void ServerUpdatePhase(CCSPlayerController? player, CommandInfo command)
-    {
-        UpdatePhase(PhaseStringToEnum(command.ArgString));
     }
 }

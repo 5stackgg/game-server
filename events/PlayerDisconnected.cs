@@ -8,7 +8,7 @@ namespace PlayCs;
 public partial class PlayCsPlugin
 {
     [GameEventHandler]
-    public HookResult OnPlayerDisconnect(EventPlayerConnect @event, GameEventInfo info)
+    private HookResult OnPlayerDisconnect(EventPlayerConnect @event, GameEventInfo info)
     {
         if (@event.Userid == null || @event.Userid.IsBot)
         {
