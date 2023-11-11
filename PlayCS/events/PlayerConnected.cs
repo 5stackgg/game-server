@@ -69,3 +69,39 @@ public partial class PlayCsPlugin
         );
     }
 }
+
+// TODO - error
+//   used during construction differ from defaults. Please re-export the map.
+// Nav mesh (v33/1) loaded with 0 nav areas for 3 hulls.
+// CNavGenParams - Nav mesh requests project default generation parameters but actual parameters
+//   used during construction differ from defaults. Please re-exportSystem.Reflection.TargetInvocationException: Exception has been thrown by the target of an invocation.
+//  ---> System.NullReferenceException: Object reference not set to an instance of an object.
+//    at PlayCs.PlayCsPlugin.<CapturePlayerConnected>b__27_0(EventPlayerConnect event, GameEventInfo info) in /opt/playcs/PlayCS/events/PlayerConnected.cs:line 21
+//    at InvokeStub_GameEventHandler`1.Invoke(Object, Object, IntPtr*)
+//    at System.Reflection.MethodInvoker.Invoke(Object obj, IntPtr* args, BindingFlags invokeAttr)
+//    --- End of inner exception stack trace ---
+//    at System.Reflection.MethodInvoker.Invoke(Object obj, IntPtr* args, BindingFlags invokeAttr)
+//    at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+//    at System.Delegate.DynamicInvokeImpl(Object[] args)
+//    at CounterStrikeSharp.API.Core.FunctionReference.<>c__DisplayClass3_0.<.ctor>b__0(fxScriptContext* context) in /__w/CounterStrikeSharp/CounterStrikeSharp/managed/CounterStrikeSharp.API/Core/FunctionReference.cs:line 70
+// System.Reflection.TargetInvocationException: Exception has been thrown by the target of an invocation.
+//  ---> System.NullReferenceException: Object reference not set to an instance of an object.
+//    at PlayCs.PlayCsPlugin.<CapturePlayerConnected>b__27_0(EventPlayerConnect event, GameEventInfo info) in /opt/playcs/PlayCS/events/PlayerConnected.cs:line 21
+//    at InvokeStub_GameEventHandler`1.Invoke(Object, Object, IntPtr*)
+//    at System.Reflection.MethodInvoker.Invoke(Object obj, IntPtr* args, BindingFlags invokeAttr)
+//    --- End of inner exception stack trace ---
+//    at System.Reflection.MethodInvoker.Invoke(Object obj, IntPtr* args, BindingFlags invokeAttr)
+//    at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+//    at System.Delegate.DynamicInvokeImpl(Object[] args)
+//    at CounterStrikeSharp.API.Core.FunctionReference.<>c__DisplayClass3_0.<.ctor>b__0(fxScriptContext* context) in /__w/CounterStrikeSharp/CounterStrikeSharp/managed/CounterStrikeSharp.API/Core/FunctionReference.cs:line 70
+// System.Reflection.TargetInvocationException: Exception has been thrown by the target of an invocation.
+//  ---> System.NullReferenceException: Object reference not set to an instance of an object.
+//    at PlayCs.PlayCsPlugin.<CapturePlayerConnected>b__27_0(EventPlayerConnect event, GameEventInfo info) in /opt/playcs/PlayCS/events/PlayerConnected.cs:line 21
+//    at InvokeStub_GameEventHandler`1.Invoke(Object, Object, IntPtr*)
+//    at System.Reflection.MethodInvoker.Invoke(Object obj, IntPtr* args, BindingFlags invokeAttr)
+//    --- End of inner exception stack trace ---
+//    at System.Reflection.MethodInvoker.Invoke(Object obj, IntPtr* args, BindingFlags invokeAttr)
+//    at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+//    at System.Delegate.DynamicInvokeImpl(Object[] args)
+//    at CounterStrikeSharp.API.Core.FunctionReference.<>c__DisplayClass3_0.<.ctor>b__0(fxScriptContext* context) in /__w/CounterStrikeSharp/CounterStrikeSharp/managed/CounterStrikeSharp.API/Core/FunctionReference.cs:line 70
+//  the map.
