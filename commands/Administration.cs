@@ -75,6 +75,11 @@ public partial class PlayCsPlugin
 
     private void _publishPhase(ePhase phase)
     {
+        if (_matchData == null)
+        {
+            return;
+        }
+
         _redis.PublishMatchEvent(
             _matchData.id,
             new Redis.EventData<Dictionary<string, object>>
