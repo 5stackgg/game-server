@@ -11,11 +11,7 @@ public partial class PlayCsPlugin
 
     public void StartWarmup()
     {
-        if (
-            _currentPhase != ePhase.Unknown
-            && _currentPhase != ePhase.Knife
-            && _currentPhase != ePhase.Scheduled
-        )
+        if (_matchData == null || IsLive())
         {
             return;
         }
