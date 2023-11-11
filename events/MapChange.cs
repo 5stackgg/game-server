@@ -5,7 +5,7 @@ namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
-    private void CaptureMapChange()
+    private void ListenForMapChange()
     {
         RegisterListener<Listeners.OnMapStart>(
             (mapName) =>

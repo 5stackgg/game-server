@@ -34,17 +34,7 @@ public partial class PlayCsPlugin : BasePlugin
             $"Test Plugin has been loaded, and the hot reload flag was {hotReload}, path is {ModulePath}"
         );
 
-        CaptureChat();
-        CaptureRoundEnd();
-        CaptureMapChange();
-
-        CaptureAssists();
-        CapturePlayerKills();
-        CapturePlayerDamage();
-
-        CapturePlayerConnected();
-        CapturePlayerDisconnected();
-        CapturePlayerSwitchedSides();
+        ListenForMapChange();
 
         RegisterMessageCommands();
         RegisterAdministrationCommands();

@@ -43,6 +43,7 @@ public partial class PlayCsPlugin
         {
             Console.WriteLine($"Changing Map {_matchData.map}");
             ChangeMap(_matchData.map);
+
             return;
         }
 
