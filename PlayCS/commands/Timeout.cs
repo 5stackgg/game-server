@@ -2,6 +2,7 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
+using PlayCS.enums;
 
 namespace PlayCs;
 
@@ -17,7 +18,7 @@ public partial class PlayCsPlugin
     };
 
     [ConsoleCommand("css_pause", "Pauses the match")]
-    public void onPause(CCSPlayerController? player, CommandInfo? command)
+    public void OnPause(CCSPlayerController? player, CommandInfo? command)
     {
         if (player == null)
         {
@@ -33,7 +34,7 @@ public partial class PlayCsPlugin
     }
 
     [ConsoleCommand("css_resume", "Resumes the match ")]
-    public void onResume(CCSPlayerController? player, CommandInfo? command)
+    public void OnResume(CCSPlayerController? player, CommandInfo? command)
     {
         if (player == null)
         {
@@ -49,7 +50,7 @@ public partial class PlayCsPlugin
     }
 
     [ConsoleCommand("css_timeout", "Tactical Timeout")]
-    public void onTimeout(CCSPlayerController? player, CommandInfo? command)
+    public void OnTimeout(CCSPlayerController? player, CommandInfo? command)
     {
         if (player == null)
         {

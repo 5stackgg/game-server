@@ -1,5 +1,7 @@
 using System.ComponentModel;
 
+namespace PlayCS.enums;
+
 public enum ePhase
 {
     [Description("Finished")]

@@ -3,6 +3,7 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Cvars;
 using PlayCs.entities;
+using PlayCS.enums;
 
 namespace PlayCs;
 
@@ -29,7 +30,7 @@ public partial class PlayCsPlugin
     public void SetMatchMatchId(CCSPlayerController? player, CommandInfo command)
     {
         string matchId = command.ArgString;
-        _matchData = _redis.getMatch(matchId);
+        _matchData = _redis.GetMatch(matchId);
 
         if (_matchData == null)
         {

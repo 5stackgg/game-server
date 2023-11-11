@@ -6,19 +6,19 @@ namespace PlayCs;
 
 public class Redis
 {
-    private IDatabase cache;
-    private IDatabase pubsub;
+    private readonly IDatabase _cache;
+    private readonly IDatabase _pubsub;
 
     public Redis()
     {
         ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("redis");
-        pubsub = redis.GetDatabase(0);
-        cache = redis.GetDatabase(1);
+        _cache = redis.GetDatabase(1);
+        _pubsub = redis.GetDatabase(0);
     }
 
-    public Match? getMatch(string matchId)
+    public Match? GetMatch(string matchId)
     {
-        string? match = cache.StringGet($"match:{matchId}");
+        string? match = _cache.StringGet($"match:{matchId}");
 
         if (match == null)
         {
@@ -39,14 +39,11 @@ public class Redis
             return;
         }
 
-        if (pubsub == null)
-        {
-            Console.WriteLine("unable to publish, not connected");
-            return;
-        }
         try
         {
-            pubsub.Publish($"match:{matchId}", JsonSerializer.Serialize(eventData));
+            RedisChannel channel = RedisChannel.Literal($"match:{matchId}");
+
+            _pubsub.Publish(channel, JsonSerializer.Serialize(eventData));
         }
         catch (ArgumentException error)
         {
@@ -56,14 +53,11 @@ public class Redis
 
     public void PublishServerEvent<T>(string serverId, EventData<T> eventData)
     {
-        if (pubsub == null)
-        {
-            Console.WriteLine("unable to publish, not connected");
-            return;
-        }
         try
         {
-            pubsub.Publish($"server:{serverId}", JsonSerializer.Serialize(eventData));
+            RedisChannel channel = RedisChannel.Literal($"server:{serverId}");
+
+            _pubsub.Publish(channel, JsonSerializer.Serialize(eventData));
         }
         catch (ArgumentException error)
         {

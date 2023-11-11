@@ -47,7 +47,7 @@ public partial class PlayCsPlugin
                     HudDestination.Center,
                     command.ArgByIndex(2),
                     playerEntities.First(
-                        (player) => player.SteamID.ToString() == command.ArgByIndex(1)
+                        (playerEntity) => playerEntity.SteamID.ToString() == command.ArgByIndex(1)
                     )
                 );
                 break;

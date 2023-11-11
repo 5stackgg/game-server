@@ -1,11 +1,12 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using PlayCS.enums;
 
 namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
-    private Dictionary<int, bool> ReadyPlayers = new Dictionary<int, bool>();
+    private Dictionary<int, bool> _readyPlayers = new Dictionary<int, bool>();
 
     public void StartWarmup()
     {
@@ -54,7 +55,7 @@ public partial class PlayCsPlugin
 
     private int TotalReady()
     {
-        return ReadyPlayers.Count(pair => pair.Value);
+        return _readyPlayers.Count(pair => pair.Value);
     }
 
     private CCSGameRules? GameRules()
