@@ -6,11 +6,11 @@ namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
-    private CsTeam KnifeWinningTeam;
+    private CsTeam? _knifeWinningTeam;
 
-    public async void startKnife()
+    public async void StartKnife()
     {
-        if (CurrentPhase != ePhase.Warmup)
+        if (_currentPhase != ePhase.Warmup)
         {
             return;
         }
@@ -52,21 +52,22 @@ public partial class PlayCsPlugin
 
     public void NotifyCaptainSideSelection()
     {
-        if (KnifeWinningTeam == null || Captains[KnifeWinningTeam] == null)
+        if (_knifeWinningTeam == null)
         {
-            Console.WriteLine("CAPTAIN IS MISSING..?");
-
             return;
         }
+
+        CsTeam knifeTeam =
+            _knifeWinningTeam == CsTeam.Terrorist ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
 
         Message(
             HudDestination.Chat,
             $"As the captain you must select to {ChatColors.Green}!stay {ChatColors.Default} or {ChatColors.Green}!switch",
-            Captains[KnifeWinningTeam]
+            Captains[knifeTeam]
         );
         Message(
             HudDestination.Alert,
-            $"{(KnifeWinningTeam == CsTeam.Terrorist ? "Terrorist" : "CT")} - Captain is Picking Sides!"
+            $"{(_knifeWinningTeam == CsTeam.Terrorist ? "Terrorist" : "CT")} - Captain is Picking Sides!"
         );
     }
 
@@ -84,7 +85,7 @@ public partial class PlayCsPlugin
             return;
         }
 
-        CCSPlayerController? player = players[Random.Shared.Next(players.Count)];
+        CCSPlayerController player = players[Random.Shared.Next(players.Count)];
 
         ClaimCaptain(
             team,

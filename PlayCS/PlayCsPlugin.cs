@@ -1,17 +1,16 @@
 ﻿using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Core.Attributes.Registration;
-using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 
 namespace PlayCs;
 
 public partial class PlayCsPlugin : BasePlugin
 {
-    private Eventing Eventing = new Eventing();
-    private ePhase CurrentPhase = ePhase.Unknown;
+    private int _currentRound = 0;
+    private Redis _redis = new Redis();
+    private ePhase _currentPhase = ePhase.Unknown;
 
-    public string CurrentMap = Server.MapName;
+    public readonly string CurrentMap = Server.MapName;
 
     private Dictionary<CsTeam, CCSPlayerController?> Captains = new Dictionary<
         CsTeam,
@@ -35,7 +34,7 @@ public partial class PlayCsPlugin : BasePlugin
             $"Test Plugin has been loaded, and the hot reload flag was {hotReload}, path is {ModulePath}"
         );
 
-        CapatureChat();
+        CaptureChat();
         CaptureRoundEnd();
         CapturePlayerDamage();
         CapturePlayerConnected();
@@ -52,9 +51,9 @@ public partial class PlayCsPlugin : BasePlugin
 
         if (serverId != null)
         {
-            Eventing.PublishServerEvent(
+            _redis.PublishServerEvent(
                 serverId,
-                new Eventing.EventData<Dictionary<string, object>>
+                new Redis.EventData<Dictionary<string, object>>
                 {
                     @event = "connected",
                     data = new Dictionary<string, object> { { "server_id", serverId }, }

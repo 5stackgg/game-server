@@ -10,12 +10,12 @@ public partial class PlayCsPlugin
         RegisterEventHandler<EventPlayerDisconnect>(
             (@event, info) =>
             {
-                if (@event.Userid.IsBot)
+                if (@event.Userid == null || @event.Userid.IsBot)
                 {
                     return HookResult.Continue;
                 }
 
-                if (CurrentPhase == ePhase.Warmup || CurrentPhase == ePhase.Knife)
+                if (_currentPhase == ePhase.Warmup || _currentPhase == ePhase.Knife)
                 {
                     CsTeam team = TeamNumToCSTeam(@event.Userid.TeamNum);
 

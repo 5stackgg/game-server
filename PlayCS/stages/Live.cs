@@ -2,19 +2,25 @@ using CounterStrikeSharp.API.Modules.Utils;
 
 namespace PlayCs;
 
+/**
+ * TODO - check is live if plugin restarts
+ */
 public partial class PlayCsPlugin
 {
-    public async void startLive()
+    public async void StartLive()
     {
-        if (CurrentPhase != ePhase.Warmup && CurrentPhase != ePhase.Knife)
+        if (_matchData == null || (_currentPhase != ePhase.Warmup && _currentPhase != ePhase.Knife))
         {
             return;
         }
 
+        UpdateCurrentRound();
+
         SendCommands(
             new[]
             {
-                $"mp_backup_round_file ${matchData.id}",
+                "mp_warmup_end",
+                $"mp_backup_round_file ${_matchData.id}",
                 "mp_round_restart_delay 3",
                 "mp_free_armor 0",
                 "mp_give_player_c4 1",
@@ -28,13 +34,13 @@ public partial class PlayCsPlugin
                 "mp_spectators_max 0",
                 "sv_disable_teamselect_menu 1",
                 // OT settings
-                $"mp_overtime_enable {matchData.overtime}",
+                $"mp_overtime_enable {_matchData.overtime}",
                 "mp_overtime_startmoney 10000",
                 "mp_overtime_maxrounds 6",
                 "mp_overtime_halftime_pausetimer 0",
                 "cash_team_bonus_shorthanded 0",
                 // MR settings
-                $"mp_maxrounds {matchData.mr * 2}",
+                $"mp_maxrounds {_matchData.mr * 2}",
                 "mp_restartgame 1"
             }
         );

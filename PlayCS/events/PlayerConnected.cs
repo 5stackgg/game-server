@@ -11,22 +11,16 @@ public partial class PlayCsPlugin
         RegisterEventHandler<EventPlayerConnect>(
             (@event, info) =>
             {
-                CCSPlayerController player = @event.Userid;
-
-                if (player.IsBot)
+                if (@event.Userid == null || @event.Userid.IsBot || _matchData == null)
                 {
                     return HookResult.Continue;
                 }
 
-                if (matchData == null)
-                {
-                    Console.WriteLine("We do not have any match data");
-                    return HookResult.Continue;
-                }
+                CCSPlayerController? player = @event.Userid;
 
-                Eventing.PublishMatchEvent(
-                    matchData.id,
-                    new Eventing.EventData<Dictionary<string, object>>
+                _redis.PublishMatchEvent(
+                    _matchData.id,
+                    new Redis.EventData<Dictionary<string, object>>
                     {
                         @event = "player",
                         data = new Dictionary<string, object>
@@ -37,30 +31,38 @@ public partial class PlayCsPlugin
                     }
                 );
 
-                MatchMember? foundMatchingMember = matchData
-                    .members
-                    .Find(member =>
-                    {
-                        if (member.steam_id == null)
-                        {
-                            return member.name.StartsWith(player.PlayerName);
-                        }
-                        return (ulong)member.steam_id == player.SteamID;
-                    });
+                // MatchMember? foundMatchingMember = matchData
+                //     .members
+                //     .Find(member =>
+                //     {
+                //         if (member.steam_id == null)
+                //         {
+                //             return member.name.StartsWith(player.PlayerName);
+                //         }
+                //         return (ulong)member.steam_id == player.SteamID;
+                //     });
 
-                if (foundMatchingMember != null)
-                {
-                    CsTeam startingSide = TeamStringToCsTeam(
-                        foundMatchingMember.team.starting_side
-                    );
-                    if (TeamNumToCSTeam((int)player.TeamNum) != startingSide)
-                    {
-                        Console.WriteLine(
-                            $"Switching {player.PlayerName} to {foundMatchingMember.team.starting_side}"
-                        );
-                        player.SwitchTeam(startingSide);
-                    }
-                }
+                // if (foundMatchingMember != null)
+                // {
+                //     MatchTeam? team = matchData
+                //         .teams
+                //         .Find(team =>
+                //         {
+                //             return team.id == foundMatchingMember.team_id;
+                //         });
+                //
+                //     if (team != null)
+                //     {
+                //         CsTeam startingSide = TeamStringToCsTeam(team.starting_side);
+                //         if (TeamNumToCSTeam((int)player.TeamNum) != startingSide)
+                //         {
+                //             Console.WriteLine(
+                //                 $"Switching {player.PlayerName} to {team.starting_side}"
+                //             );
+                //             player.SwitchTeam(startingSide);
+                //         }
+                //     }
+                // }
 
                 return HookResult.Continue;
             }

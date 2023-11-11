@@ -9,7 +9,7 @@ public partial class PlayCsPlugin
         RegisterEventHandler<EventPlayerHurt>(
             (@event, info) =>
             {
-                if (matchData == null)
+                if (_matchData == null)
                 {
                     return HookResult.Continue;
                 }
@@ -18,9 +18,9 @@ public partial class PlayCsPlugin
 
                 CCSPlayerController attacked = @event.Userid;
 
-                Eventing.PublishMatchEvent(
-                    matchData.id,
-                    new Eventing.EventData<Dictionary<string, object>>
+                _redis.PublishMatchEvent(
+                    _matchData.id,
+                    new Redis.EventData<Dictionary<string, object>>
                     {
                         @event = "damage",
                         data = new Dictionary<string, object>

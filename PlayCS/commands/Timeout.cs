@@ -19,6 +19,11 @@ public partial class PlayCsPlugin
     [ConsoleCommand("css_pause", "Pauses the match")]
     public void onPause(CCSPlayerController? player, CommandInfo? command)
     {
+        if (player == null)
+        {
+            return;
+        }
+
         // TODO - send up which team / person called timeout
 
         SendCommands(new[] { "mp_pause_match" });
@@ -30,6 +35,11 @@ public partial class PlayCsPlugin
     [ConsoleCommand("css_resume", "Resumes the match ")]
     public void onResume(CCSPlayerController? player, CommandInfo? command)
     {
+        if (player == null)
+        {
+            return;
+        }
+
         // TODO - send up which team / person called timeout
         SendCommands(new[] { "mp_unpause_match" });
         Message(HudDestination.Center, $"{player.PlayerName} {ChatColors.Red}resumed the match");
@@ -41,6 +51,11 @@ public partial class PlayCsPlugin
     [ConsoleCommand("css_timeout", "Tactical Timeout")]
     public void onTimeout(CCSPlayerController? player, CommandInfo? command)
     {
+        if (player == null)
+        {
+            return;
+        }
+
         // TODO - send up which team / person called timeout
 
         CsTeam team = TeamNumToCSTeam(player.TeamNum);

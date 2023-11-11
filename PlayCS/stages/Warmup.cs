@@ -7,12 +7,12 @@ public partial class PlayCsPlugin
 {
     private Dictionary<int, bool> ReadyPlayers = new Dictionary<int, bool>();
 
-    public void startWarmup()
+    public void StartWarmup()
     {
         if (
-            CurrentPhase != ePhase.Unknown
-            && CurrentPhase != ePhase.Knife
-            && CurrentPhase != ePhase.Scheduled
+            _currentPhase != ePhase.Unknown
+            && _currentPhase != ePhase.Knife
+            && _currentPhase != ePhase.Scheduled
         )
         {
             return;
@@ -38,8 +38,6 @@ public partial class PlayCsPlugin
                 "mp_warmup_start",
             }
         );
-
-        // await this.setupTeamNames(matchId);
     }
 
     private bool IsWarmup()
@@ -67,37 +65,3 @@ public partial class PlayCsPlugin
             .GameRules;
     }
 }
-
-// private async setupTeamNames(matchId: string) {
-//    const { v_match_team_captains: captains } = await this.graphQL.query({
-//      v_match_team_captains: [
-//        {
-//          where: {
-//            match_id: {
-//              _eq: matchId,
-//            },
-//          },
-//        },
-//        {
-//          id: true,
-//          name: true,
-//          team: {
-//            name: true,
-//            starting_side: true,
-//          },
-//        },
-//      ],
-//    });
-//
-//    for (const captain of captains) {
-//      let teamNumber;
-//
-//      const teamName = `Team ${captain.name}`;
-//      if (captain.team.starting_side === e_sides_enum.CT) {
-//        teamNumber = 1;
-//      } else {
-//        teamNumber = 2;
-//      }
-//      await this.command(matchId, `mp_teamname_${teamNumber} ${teamName}`);
-//    }
-//  }

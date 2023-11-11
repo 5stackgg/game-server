@@ -1,4 +1,3 @@
-using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
@@ -60,6 +59,11 @@ public partial class PlayCsPlugin
 
     public void SendReadyMessage(CCSPlayerController player)
     {
+        if (player.UserId == null)
+        {
+            return;
+        }
+
         // TODO - get total that should be marked ready 10 is good for now
         Message(
             HudDestination.Chat,

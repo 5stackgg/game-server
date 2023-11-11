@@ -1,21 +1,31 @@
 using System.Text.Json;
+using PlayCs.entities;
 using StackExchange.Redis;
 
 namespace PlayCs;
 
-public class Eventing
+public class Redis
 {
-    private IDatabase? _database;
+    private IDatabase cache;
+    private IDatabase pubsub;
 
-    public Eventing()
-    {
-        Init();
-    }
-
-    void Init()
+    public Redis()
     {
         ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("redis");
-        _database = redis.GetDatabase(0);
+        pubsub = redis.GetDatabase(0);
+        cache = redis.GetDatabase(1);
+    }
+
+    public Match? getMatch(string matchId)
+    {
+        string? match = cache.StringGet($"match:{matchId}");
+
+        if (match == null)
+        {
+            return null;
+        }
+
+        return JsonSerializer.Deserialize<Match>(match);
     }
 
     /**
@@ -29,14 +39,14 @@ public class Eventing
             return;
         }
 
-        if (_database == null)
+        if (pubsub == null)
         {
             Console.WriteLine("unable to publish, not connected");
             return;
         }
         try
         {
-            _database.Publish($"match:{matchId}", JsonSerializer.Serialize(eventData));
+            pubsub.Publish($"match:{matchId}", JsonSerializer.Serialize(eventData));
         }
         catch (ArgumentException error)
         {
@@ -46,14 +56,14 @@ public class Eventing
 
     public void PublishServerEvent<T>(string serverId, EventData<T> eventData)
     {
-        if (_database == null)
+        if (pubsub == null)
         {
             Console.WriteLine("unable to publish, not connected");
             return;
         }
         try
         {
-            _database.Publish($"server:{serverId}", JsonSerializer.Serialize(eventData));
+            pubsub.Publish($"server:{serverId}", JsonSerializer.Serialize(eventData));
         }
         catch (ArgumentException error)
         {

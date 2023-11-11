@@ -12,8 +12,12 @@ public partial class PlayCsPlugin
     public void OnCaptain(CCSPlayerController? player, CommandInfo? command)
     {
         if (
-            PhaseStringToEnum(matchData.status) != ePhase.Warmup
-            && PhaseStringToEnum(matchData.status) != ePhase.Knife
+            player == null
+            || _matchData == null
+            || (
+                PhaseStringToEnum(_matchData.status) != ePhase.Warmup
+                && PhaseStringToEnum(_matchData.status) != ePhase.Knife
+            )
         )
         {
             return;
@@ -40,9 +44,8 @@ public partial class PlayCsPlugin
         foreach (var pair in Captains)
         {
             CsTeam team = pair.Key;
-            CCSPlayerController captain = pair.Value;
 
-            if (captain == null)
+            if (pair.Value == null)
             {
                 Message(
                     HudDestination.Notify,
@@ -50,9 +53,10 @@ public partial class PlayCsPlugin
                 );
                 return;
             }
+
             Message(
                 HudDestination.Notify,
-                $"[{TeamNumToString((int)team)}] {(team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{captain.PlayerName}"
+                $"[{TeamNumToString((int)team)}] {(team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{pair.Value.PlayerName}"
             );
         }
     }
@@ -62,8 +66,12 @@ public partial class PlayCsPlugin
     public void OnReleaseCaptain(CCSPlayerController? player, CommandInfo? command)
     {
         if (
-            PhaseStringToEnum(matchData.status) != ePhase.Warmup
-            && PhaseStringToEnum(matchData.status) != ePhase.Knife
+            player == null
+            || _matchData == null
+            || (
+                PhaseStringToEnum(_matchData.status) != ePhase.Warmup
+                && PhaseStringToEnum(_matchData.status) != ePhase.Knife
+            )
         )
         {
             return;
@@ -83,6 +91,11 @@ public partial class PlayCsPlugin
 
     private void ClaimCaptain(CsTeam team, CCSPlayerController player, string? message = null)
     {
+        if (player == null || _matchData == null)
+        {
+            return;
+        }
+
         Captains[team] = player;
         if (message == null)
         {
@@ -92,9 +105,9 @@ public partial class PlayCsPlugin
             );
         }
 
-        Eventing.PublishMatchEvent(
-            matchData!.id,
-            new Eventing.EventData<Dictionary<string, object>>
+        _redis.PublishMatchEvent(
+            _matchData.id,
+            new Redis.EventData<Dictionary<string, object>>
             {
                 @event = "captain",
                 data = new Dictionary<string, object>
