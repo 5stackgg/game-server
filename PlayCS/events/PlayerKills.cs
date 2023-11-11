@@ -4,9 +4,9 @@ namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
-    private void CapturePlayerDamage()
+    private void CapturePlayerKills()
     {
-        RegisterEventHandler<EventPlayerHurt>(
+        RegisterEventHandler<EventPlayerDeath>(
             (@event, info) =>
             {
                 if (_matchData == null)
@@ -22,7 +22,7 @@ public partial class PlayCsPlugin
                     _matchData.id,
                     new Redis.EventData<Dictionary<string, object>>
                     {
-                        @event = "damage",
+                        @event = "kill",
                         data = new Dictionary<string, object>
                         {
                             { "round", _currentRound },
@@ -31,11 +31,7 @@ public partial class PlayCsPlugin
                             { "attacker_location", $"{attacker.PlayerPawn.Value.LastPlaceName}" },
                             // { "attacker_location_vector", $"{@event.Attacker.PlayerPawn.Value.Controller.Value.}"},
                             { "weapon", $"{@event.Weapon}" },
-                            { "damage", @event.DmgHealth },
-                            { "damage_armor", @event.DmgArmor },
                             { "hitgroup", $"{HitGroupToString(@event.Hitgroup)}" },
-                            { "health", @event.Health },
-                            { "armor", @event.Armor },
                             { "attacked_steam_id", attacked.SteamID },
                             { "attacked_team", $"{TeamNumToString(attacked.TeamNum)}" },
                             { "attacked_location", $"{attacked.PlayerPawn.Value.LastPlaceName}" },

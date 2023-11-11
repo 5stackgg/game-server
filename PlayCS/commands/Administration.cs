@@ -46,6 +46,8 @@ public partial class PlayCsPlugin
         // password.StringValue = "connectme";
         SetupTeamNames();
 
+        UpdateCurrentRound();
+
         if (_matchData.map != CurrentMap)
         {
             Console.WriteLine($"Change Level {_matchData.map}");

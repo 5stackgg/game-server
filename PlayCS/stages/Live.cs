@@ -15,8 +15,6 @@ public partial class PlayCsPlugin
             return;
         }
 
-        UpdateCurrentRound();
-
         SendCommands(
             new[]
             {
@@ -47,6 +45,8 @@ public partial class PlayCsPlugin
                 "mp_restartgame 1"
             }
         );
+
+        UpdateCurrentRound();
 
         await Task.Delay(3000);
         Message(HudDestination.Alert, "LIVE LIVE LIVE!");

@@ -37,6 +37,7 @@ public partial class PlayCsPlugin : BasePlugin
 
         CaptureChat();
         CaptureRoundEnd();
+        CapturePlayerKills();
         CapturePlayerDamage();
         CapturePlayerConnected();
         CapturePlayerDisconnected();
