@@ -28,7 +28,7 @@ public partial class PlayCsPlugin : BasePlugin
     public override void Load(bool hotReload)
     {
         // TODO - figure out how to load it later
-        // Env.Load("/opt/playcs/PlayCS/.env");
+        // Env.Load("/opt/PlayCS/.env");
 
         Console.WriteLine(
             $"Test Plugin has been loaded, and the hot reload flag was {hotReload}, path is {ModulePath}"
