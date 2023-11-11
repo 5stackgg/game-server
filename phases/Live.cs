@@ -7,13 +7,13 @@ public partial class PlayCsPlugin
 {
     public async void StartLive()
     {
-        // require phase coming from Warmup / Knife 
-        if (_matchData == null || (_currentPhase != ePhase.Warmup && _currentPhase != ePhase.Knife))
+        if (_matchData == null)
         {
             return;
         }
-
-        if (_currentPhase != ePhase.Knife && IsWarmup())
+        
+        // require phase coming from Warmup / Knife 
+        if (_currentPhase != ePhase.Knife && !IsWarmup())
         {
             _currentPhase = ePhase.Live;
             return;
