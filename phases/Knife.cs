@@ -16,14 +16,14 @@ public partial class PlayCsPlugin
             return;
         }
 
-        if (Captains[CsTeam.Terrorist] == null)
+        if (_captains[CsTeam.Terrorist] == null)
         {
-            _AutoSelectCaptain(CsTeam.Terrorist);
+            _autoSelectCaptain(CsTeam.Terrorist);
         }
 
-        if (Captains[CsTeam.CounterTerrorist] == null)
+        if (_captains[CsTeam.CounterTerrorist] == null)
         {
-            _AutoSelectCaptain(CsTeam.CounterTerrorist);
+            _autoSelectCaptain(CsTeam.CounterTerrorist);
         }
 
         SendCommands(
@@ -55,7 +55,7 @@ public partial class PlayCsPlugin
         Message(HudDestination.Alert, "KNIFE KNIFE KNIFE!");
     }
 
-    private void _AutoSelectCaptain(CsTeam team)
+    private void _autoSelectCaptain(CsTeam team)
     {
         List<CCSPlayerController> players = Utilities
             .GetPlayers()

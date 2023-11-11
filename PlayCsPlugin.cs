@@ -13,7 +13,7 @@ public partial class PlayCsPlugin : BasePlugin
     private string _currentMap = Server.MapName;
     private ePhase _currentPhase = ePhase.Unknown;
 
-    private Dictionary<CsTeam, CCSPlayerController?> Captains = new Dictionary<
+    private Dictionary<CsTeam, CCSPlayerController?> _captains = new Dictionary<
         CsTeam,
         CCSPlayerController?
     >
@@ -44,12 +44,13 @@ public partial class PlayCsPlugin : BasePlugin
         // SV:  64 player server started - detect that
         if (serverId != null)
         {
+            Console.WriteLine($"Server Connected ${serverId}");
             _redis.PublishServerEvent(
                 serverId,
                 new Redis.EventData<Dictionary<string, object>>
                 {
                     @event = "connected",
-                    data = new Dictionary<string, object> { { "server_id", serverId }, }
+                    data = new Dictionary<string, object>()
                 }
             );
         }

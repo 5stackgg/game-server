@@ -10,7 +10,7 @@ public partial class PlayCsPlugin
 {
     [ConsoleCommand("css_c", "Shows / Claims Captain Spots")]
     [ConsoleCommand("css_captain", "Shows / Claims Captain Spots")]
-    private void OnCaptain(CCSPlayerController? player, CommandInfo? command)
+    public void OnCaptain(CCSPlayerController? player, CommandInfo? command)
     {
         if (
             player == null
@@ -32,7 +32,7 @@ public partial class PlayCsPlugin
         }
 
         // autoclaim captain
-        if (Captains[team] == null)
+        if (_captains[team] == null)
         {
             ClaimCaptain(team, player);
         }
@@ -42,7 +42,7 @@ public partial class PlayCsPlugin
 
     [ConsoleCommand("css_rc", "Release Captain Spot")]
     [ConsoleCommand("css_release_captain", "Release Captain Spot")]
-    private void OnReleaseCaptain(CCSPlayerController? player, CommandInfo? command)
+    public void OnReleaseCaptain(CCSPlayerController? player, CommandInfo? command)
     {
         if (
             player == null
@@ -63,14 +63,14 @@ public partial class PlayCsPlugin
             return;
         }
 
-        Captains[team] = null;
+        _captains[team] = null;
 
         ShowCaptains();
     }
 
     public void ShowCaptains()
     {
-        foreach (var pair in Captains)
+        foreach (var pair in _captains)
         {
             CsTeam team = pair.Key;
 
@@ -97,7 +97,7 @@ public partial class PlayCsPlugin
             return;
         }
 
-        Captains[team] = player;
+        _captains[team] = player;
         if (message == null)
         {
             Message(

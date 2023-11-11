@@ -8,9 +8,9 @@ namespace PlayCs;
 public partial class PlayCsPlugin
 {
     [GameEventHandler]
-    private HookResult OnPlayerDisconnect(EventPlayerConnect @event, GameEventInfo info)
+    public HookResult OnPlayerDisconnect(EventPlayerConnect @event, GameEventInfo info)
     {
-        if (@event.Userid == null || @event.Userid.IsBot)
+        if (@event.Userid == null || !@event.Userid.IsValid || @event.Userid.IsBot)
         {
             return HookResult.Continue;
         }
@@ -19,7 +19,7 @@ public partial class PlayCsPlugin
         {
             CsTeam team = TeamNumToCSTeam(@event.Userid.TeamNum);
 
-            Captains[team] = null;
+            _captains[team] = null;
         }
 
         return HookResult.Continue;

@@ -8,9 +8,14 @@ namespace PlayCs;
 public partial class PlayCsPlugin
 {
     [GameEventHandler]
-    private HookResult OnPlayerConnect(EventPlayerConnect @event, GameEventInfo info)
+    public HookResult OnPlayerConnect(EventPlayerConnect @event, GameEventInfo info)
     {
-        if (@event.Userid == null || !@event.Userid.IsValid || _matchData == null)
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || @event.Userid.IsBot
+            || _matchData == null
+        )
         {
             return HookResult.Continue;
         }
@@ -24,8 +29,8 @@ public partial class PlayCsPlugin
                 @event = "player",
                 data = new Dictionary<string, object>
                 {
-                    { "steam_id", player.SteamID },
                     { "player_name", player.PlayerName },
+                    { "steam_id", player.SteamID.ToString() },
                 }
             }
         );
@@ -38,7 +43,11 @@ public partial class PlayCsPlugin
                 {
                     return member.name.StartsWith(player.PlayerName);
                 }
-                return (ulong)member.steam_id == player.SteamID;
+
+                Console.WriteLine(
+                    $"MEMBER HAS STEMA ID {member.steam_id.ToString()}: {player.SteamID.ToString()}"
+                );
+                return member.steam_id == player.SteamID.ToString();
             });
 
         if (foundMatchingMember != null)

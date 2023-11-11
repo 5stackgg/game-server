@@ -10,7 +10,7 @@ namespace PlayCs;
 public partial class PlayCsPlugin
 {
     [GameEventHandler]
-    private HookResult OnGameEnd(EventGameEnd @event, GameEventInfo info)
+    public HookResult OnGameEnd(EventGameEnd @event, GameEventInfo info)
     {
         UpdatePhase(ePhase.Finished);
 
@@ -18,7 +18,7 @@ public partial class PlayCsPlugin
     }
 
     [GameEventHandler]
-    private HookResult OnRoundOfficallyOver(EventRoundOfficiallyEnded @event, GameEventInfo info)
+    public HookResult OnRoundOfficallyOver(EventRoundOfficiallyEnded @event, GameEventInfo info)
     {
         UpdateCurrentRound();
 
@@ -26,7 +26,7 @@ public partial class PlayCsPlugin
     }
 
     [GameEventHandler]
-    private HookResult OnRoundOver(EventRoundEnd @event, GameEventInfo info)
+    public HookResult OnRoundOver(EventRoundEnd @event, GameEventInfo info)
     {
         if (_matchData == null || _currentPhase == ePhase.Knife)
         {
@@ -117,7 +117,7 @@ public partial class PlayCsPlugin
         Message(
             HudDestination.Chat,
             $"As the captain you must select to {ChatColors.Green}!stay {ChatColors.Default} or {ChatColors.Green}!switch",
-            Captains[knifeTeam]
+            _captains[knifeTeam]
         );
         Message(
             HudDestination.Alert,

@@ -10,7 +10,7 @@ public partial class PlayCsPlugin
 {
     [ConsoleCommand("css_r", "Marks the player as ready")]
     [ConsoleCommand("css_ready", "Marks the player as ready")]
-    private void OnReady(CCSPlayerController? player, CommandInfo? command)
+    public void OnReady(CCSPlayerController? player, CommandInfo? command)
     {
         if (!IsWarmup() || player == null)
         {
@@ -36,7 +36,7 @@ public partial class PlayCsPlugin
 
     [ConsoleCommand("css_nr", "Marks the player as ready")]
     [ConsoleCommand("css_not-ready", "Marks the player as ready")]
-    private void OnNotReady(CCSPlayerController? player, CommandInfo? command)
+    public void OnNotReady(CCSPlayerController? player, CommandInfo? command)
     {
         if (!IsWarmup() || player == null)
         {

@@ -18,7 +18,7 @@ public partial class PlayCsPlugin
     };
 
     [ConsoleCommand("css_pause", "Pauses the match")]
-    private void OnPause(CCSPlayerController? player, CommandInfo? command)
+    public void OnPause(CCSPlayerController? player, CommandInfo? command)
     {
         if (player == null)
         {
@@ -32,7 +32,7 @@ public partial class PlayCsPlugin
     }
 
     [ConsoleCommand("css_resume", "Resumes the match ")]
-    private void OnResume(CCSPlayerController? player, CommandInfo? command)
+    public void OnResume(CCSPlayerController? player, CommandInfo? command)
     {
         if (player == null)
         {
@@ -47,7 +47,7 @@ public partial class PlayCsPlugin
     }
 
     [ConsoleCommand("css_timeout", "Tactical Timeout")]
-    private void OnTimeout(CCSPlayerController? player, CommandInfo? command)
+    public void OnTimeout(CCSPlayerController? player, CommandInfo? command)
     {
         if (player == null)
         {

@@ -13,7 +13,7 @@ public partial class PlayCsPlugin
     private Match? _matchData;
 
     [ConsoleCommand("set_match_id", "Set the match id for the server to configure the match for")]
-    private void SetMatchMatchId(CCSPlayerController? player, CommandInfo command)
+    public void SetMatchMatchId(CCSPlayerController? player, CommandInfo command)
     {
         string matchId = command.ArgString;
         _matchData = _redis.GetMatch(matchId);
@@ -29,13 +29,14 @@ public partial class PlayCsPlugin
     }
 
     [ConsoleCommand("match_phase", "Forces a match to update its current phase")]
-    private void SetMatchPhase(CCSPlayerController? player, CommandInfo command)
+    public void SetMatchPhase(CCSPlayerController? player, CommandInfo command)
     {
         UpdatePhase(PhaseStringToEnum(command.ArgString));
     }
 
     public void UpdatePhase(ePhase phase)
     {
+        Console.WriteLine($"Update Phase {_currentPhase} -> {phase}");
         if (_matchData == null)
         {
             Console.WriteLine("missing event data");
@@ -86,28 +87,29 @@ public partial class PlayCsPlugin
         _currentPhase = phase;
     }
 
-    public void SetupMatch()
+    public async void SetupMatch()
     {
         if (_matchData == null)
         {
+            Console.WriteLine("Missing Match Data");
             return;
         }
+        Console.WriteLine($"Setup Match ${_matchData.id}");
 
         if (_matchData.map != _currentMap)
         {
             Console.WriteLine($"Changing Map {_matchData.map}");
-            ChangeMap(_matchData.map);
-
+            await ChangeMap(_matchData.map);
             return;
         }
-
-        Console.WriteLine($"Setup Match {_matchData.id}");
 
         SendCommands(new[] { $"sv_password \"{_matchData.password}\"" });
 
         SetupTeamNames();
 
         UpdateCurrentRound();
+
+        Console.WriteLine($"Current Phase {_currentPhase}");
 
         if (PhaseStringToEnum(_matchData.status) != _currentPhase)
         {
@@ -128,14 +130,18 @@ public partial class PlayCsPlugin
         }
     }
 
-    public void ChangeMap(string map)
+    public async Task ChangeMap(string map)
     {
-        if (Server.IsMapValid(map))
+        string changeCommand = Server.IsMapValid(map) ? "changelevel" : "host_workshop_map";
+
+        SendCommands(new[] { $"{changeCommand} \"{map}\"" });
+
+        // give the server some time to change, if the map didnt change we will try again.
+        await Task.Delay(1000 * 5);
+
+        if (_currentMap != map)
         {
-            SendCommands(new[] { $"changelevel \"{map}\"" });
-            return;
+            await ChangeMap(map);
         }
-        
-        SendCommands(new[] { $"host_workshop_map \"{map}\"" });
     }
 }

@@ -6,9 +6,14 @@ namespace PlayCs;
 public partial class PlayCsPlugin
 {
     [GameEventHandler]
-    private HookResult OnPlayerKill(EventPlayerDeath @event, GameEventInfo info)
+    public HookResult OnPlayerKill(EventPlayerDeath @event, GameEventInfo info)
     {
-        if (_matchData == null)
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || @event.Userid.IsBot
+            || _matchData == null
+        )
         {
             return HookResult.Continue;
         }
@@ -25,13 +30,13 @@ public partial class PlayCsPlugin
                 data = new Dictionary<string, object>
                 {
                     { "round", _currentRound },
-                    { "attacker_steam_id", attacker.SteamID },
+                    { "attacker_steam_id", attacker.SteamID.ToString() },
                     { "attacker_team", $"{TeamNumToString(attacker.TeamNum)}" },
                     { "attacker_location", $"{attacker.PlayerPawn.Value.LastPlaceName}" },
                     // { "attacker_location_vector", $"{@event.Attacker.PlayerPawn.Value.Controller.Value.}"},
                     { "weapon", $"{@event.Weapon}" },
                     { "hitgroup", $"{HitGroupToString(@event.Hitgroup)}" },
-                    { "attacked_steam_id", attacked.SteamID },
+                    { "attacked_steam_id", attacked.SteamID.ToString() },
                     { "attacked_team", $"{TeamNumToString(attacked.TeamNum)}" },
                     { "attacked_location", $"{attacked.PlayerPawn.Value.LastPlaceName}" },
                 }
