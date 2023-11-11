@@ -11,11 +11,7 @@ public partial class PlayCsPlugin
 
     public void StartWarmup()
     {
-        if (
-            _currentPhase != ePhase.Unknown
-            && _currentPhase != ePhase.Knife
-            && _currentPhase != ePhase.Scheduled
-        )
+        if (_matchData == null || IsLive())
         {
             return;
         }
@@ -43,6 +39,8 @@ public partial class PlayCsPlugin
                 "mp_warmup_start",
             }
         );
+
+        _publishPhase(ePhase.Warmup);
     }
 
     public bool IsWarmup()

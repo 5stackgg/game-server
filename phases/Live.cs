@@ -7,8 +7,15 @@ public partial class PlayCsPlugin
 {
     public async void StartLive()
     {
-        if (_matchData == null || (_currentPhase != ePhase.Warmup && _currentPhase != ePhase.Knife))
+        if (_matchData == null)
         {
+            return;
+        }
+
+        // require phase coming from Warmup / Knife
+        if (_currentPhase != ePhase.Knife && !IsWarmup())
+        {
+            _currentPhase = ePhase.Live;
             return;
         }
 
@@ -45,7 +52,17 @@ public partial class PlayCsPlugin
 
         UpdateCurrentRound();
 
+        _publishPhase(ePhase.Live);
+
         await Task.Delay(3000);
         Message(HudDestination.Alert, "LIVE LIVE LIVE!");
+    }
+
+    public bool IsLive()
+    {
+        return _currentPhase != ePhase.Unknown
+            && _currentPhase != ePhase.Warmup
+            && _currentPhase != ePhase.Knife
+            && _currentPhase != ePhase.Scheduled;
     }
 }

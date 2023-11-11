@@ -51,6 +51,8 @@ public partial class PlayCsPlugin
             }
         );
 
+        _publishPhase(ePhase.Knife);
+
         await Task.Delay(1000);
         Message(HudDestination.Alert, "KNIFE KNIFE KNIFE!");
     }
