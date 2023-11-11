@@ -3,9 +3,6 @@ using PlayCS.enums;
 
 namespace PlayCs;
 
-/**
- * TODO - check is live if plugin restarts
- */
 public partial class PlayCsPlugin
 {
     public async void StartLive()
