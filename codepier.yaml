@@ -6,4 +6,6 @@ supplemental: true
 sync:
   - .:/opt/playcs
 ignore:
-  - "PlayCS/bin"
+  - "bin"
+  - "obj"
+  - "Folder.DotSettings.user"

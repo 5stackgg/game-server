@@ -1,2 +1,4 @@
-PlayCS/bin
-PlayCS/obj
+bin
+obj
+Folder.DotSettings.user
+.env

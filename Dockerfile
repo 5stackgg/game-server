@@ -5,13 +5,13 @@ FROM mcr.microsoft.com/dotnet/sdk:7.0-alpine AS build
 WORKDIR /mod
 
 # Copy the .csproj file to the container
-COPY PlayCS/*.csproj .
+COPY *.csproj .
 
 # Restore the dependencies
 RUN dotnet restore
 
 # Copy the remaining files to the container
-COPY PlayCS .
+COPY . .
 
 # Build the application
 RUN dotnet build -c Release -o release
@@ -54,7 +54,7 @@ RUN mkdir /opt/metamod
 RUN curl -L https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1256-linux.tar.gz | tar -xz -C "/opt/metamod"
 
 RUN mkdir /opt/counterstrikesharp
-ADD https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v15/counterstrikesharp-with-runtime-build-15-19a0923.zip /tmp/counterstrikesharp.zip
+ADD https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v30/counterstrikesharp-with-runtime-build-30-fe23680.zip /tmp/counterstrikesharp.zip
 RUN unzip /tmp/counterstrikesharp.zip -d /opt/counterstrikesharp && rm /tmp/counterstrikesharp.zip
 
 COPY /cfg /opt/server-cfg
