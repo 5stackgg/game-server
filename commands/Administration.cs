@@ -13,10 +13,6 @@ public partial class PlayCsPlugin
 
     private void RegisterAdministrationCommands()
     {
-        AddCommandListener("meta", CommandListener_BlockOutput);
-        AddCommandListener("css", CommandListener_BlockOutput);
-        AddCommandListener("css_plugins", CommandListener_BlockOutput);
-
         AddCommand("update_phase", "updates the match phase", ServerUpdatePhase);
         AddCommand("set_match_id", "sets match id", SetMatchMatchId);
     }
@@ -144,15 +140,5 @@ public partial class PlayCsPlugin
     private void ServerUpdatePhase(CCSPlayerController? player, CommandInfo command)
     {
         UpdatePhase(PhaseStringToEnum(command.ArgString));
-    }
-
-    public HookResult CommandListener_BlockOutput(CCSPlayerController? player, CommandInfo info)
-    {
-        if (player == null)
-        {
-            return HookResult.Continue;
-        }
-
-        return HookResult.Stop;
     }
 }
