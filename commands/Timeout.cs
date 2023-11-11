@@ -25,8 +25,6 @@ public partial class PlayCsPlugin
             return;
         }
 
-        // TODO - send up which team / person called timeout
-
         SendCommands(new[] { "mp_pause_match" });
         Message(HudDestination.Center, $"{player.PlayerName} {ChatColors.Red}paused the match");
 
@@ -41,7 +39,6 @@ public partial class PlayCsPlugin
             return;
         }
 
-        // TODO - send up which team / person called timeout
         SendCommands(new[] { "mp_unpause_match" });
         Message(HudDestination.Center, $"{player.PlayerName} {ChatColors.Red}resumed the match");
 
@@ -56,8 +53,6 @@ public partial class PlayCsPlugin
         {
             return;
         }
-
-        // TODO - send up which team / person called timeout
 
         CsTeam team = TeamNumToCSTeam(player.TeamNum);
 

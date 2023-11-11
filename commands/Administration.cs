@@ -135,8 +135,7 @@ public partial class PlayCsPlugin
             SendCommands(new[] { $"changelevel \"{map}\"" });
             return;
         }
-
-        // TODO - check if map exist in subscribed map list
+        
         SendCommands(new[] { $"host_workshop_map \"{map}\"" });
     }
 }

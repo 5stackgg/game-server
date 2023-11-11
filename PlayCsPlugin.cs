@@ -28,7 +28,6 @@ public partial class PlayCsPlugin : BasePlugin
 
     public override void Load(bool hotReload)
     {
-        // TODO - figure out how to load it later
         // Env.Load("/opt/PlayCS/.env");
 
         Console.WriteLine(
