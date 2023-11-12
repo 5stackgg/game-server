@@ -11,7 +11,7 @@ public partial class PlayCsPlugin
     [ConsoleCommand("css_playcs", "Shows Available Commands")]
     [ConsoleCommand("css_commands", "Shows Available Commands")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
-    public void OnHelp(CCSPlayerController? player, CommandInfo? command)
+    public void OnHelp(CCSPlayerController? player, CommandInfo command)
     {
         if (player == null)
         {
