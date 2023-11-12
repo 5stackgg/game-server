@@ -101,7 +101,7 @@ public partial class PlayCsPlugin
         }
         Console.WriteLine($"Setup Match ${_matchData.id}");
 
-        if (!IsOnMap(_currentMap))
+        if (!IsOnMap(_matchData.map))
         {
             Console.WriteLine($"Changing Map {_matchData.map}");
             await ChangeMap(_matchData.map);
@@ -134,7 +134,7 @@ public partial class PlayCsPlugin
             SendCommands(new[] { $"mp_teamname_{team.team_number} {team.name}" });
         }
     }
-    
+
     // TODO - read from config
     private Dictionary<string, string> _workshopMaps = new Dictionary<string, string>
     {
@@ -145,7 +145,7 @@ public partial class PlayCsPlugin
 
     public async Task ChangeMap(string map)
     {
-        if (Server.IsMapValid(map))
+        if (Server.IsMapValid(map) && !_workshopMaps.ContainsKey(map))
         {
             SendCommands(new[] { $"changelevel \"{map}\"" });
         }
@@ -164,7 +164,7 @@ public partial class PlayCsPlugin
         // give the server some time to change, if the map didnt change we will try again.
         await Task.Delay(1000 * 5);
 
-        if (IsOnMap(map))
+        if (!IsOnMap(map))
         {
             await ChangeMap(map);
         }
@@ -172,6 +172,8 @@ public partial class PlayCsPlugin
 
     public bool IsOnMap(string map)
     {
+        Console.WriteLine($"IS ON MAP {_currentMap}:{map == _currentMap}");
+
         return map == _currentMap;
     }
 }
