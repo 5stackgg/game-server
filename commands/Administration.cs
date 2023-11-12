@@ -13,6 +13,7 @@ public partial class PlayCsPlugin
     private Match? _matchData;
 
     [ConsoleCommand("set_match_id", "Set the match id for the server to configure the match for")]
+    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void SetMatchMatchId(CCSPlayerController? player, CommandInfo command)
     {
         string matchId = command.ArgString;
@@ -29,6 +30,7 @@ public partial class PlayCsPlugin
     }
 
     [ConsoleCommand("match_phase", "Forces a match to update its current phase")]
+    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void SetMatchPhase(CCSPlayerController? player, CommandInfo command)
     {
         UpdatePhase(PhaseStringToEnum(command.ArgString));
