@@ -59,8 +59,10 @@ public partial class PlayCsPlugin
             if (team != null)
             {
                 CsTeam startingSide = TeamStringToCsTeam(team.starting_side);
-                Console.WriteLine($"Team {team.id} starts on {startingSide}, player on {TeamNumToCSTeam(player.TeamNum)}");
-                
+                Console.WriteLine(
+                    $"Team {team.id} starts on {startingSide}, player on {TeamNumToCSTeam(player.TeamNum)}"
+                );
+
                 if (TeamNumToCSTeam(player.TeamNum) != startingSide)
                 {
                     Console.WriteLine($"Switching {player.PlayerName} to {team.starting_side}");
