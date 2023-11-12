@@ -2,7 +2,6 @@
 
 ## TODO
 
-[ ] max player override -maxplayers_override 16
 [ ] player chat
 [ ] assists / flash assists
 [ ] timeouts : send up which team / person called timeout (needs db changes)
