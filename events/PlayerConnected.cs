@@ -8,7 +8,7 @@ namespace PlayCs;
 public partial class PlayCsPlugin
 {
     [GameEventHandler]
-    public HookResult OnPlayerConnect(EventPlayerConnect @event, GameEventInfo info)
+    public HookResult OnPlayerConnect(EventPlayerConnectFull @event, GameEventInfo info)
     {
         if (
             @event.Userid == null
@@ -41,12 +41,9 @@ public partial class PlayCsPlugin
             {
                 if (member.steam_id == null)
                 {
-                    return member.name.StartsWith(player.PlayerName);
+                    return member.name.ToLower().StartsWith(player.PlayerName.ToLower());
                 }
 
-                Console.WriteLine(
-                    $"MEMBER HAS STEMA ID {member.steam_id.ToString()}: {player.SteamID.ToString()}"
-                );
                 return member.steam_id == player.SteamID.ToString();
             });
 
@@ -62,10 +59,13 @@ public partial class PlayCsPlugin
             if (team != null)
             {
                 CsTeam startingSide = TeamStringToCsTeam(team.starting_side);
+                Console.WriteLine($"Team {team.id} starts on {startingSide}, player on {TeamNumToCSTeam(player.TeamNum)}");
+                
                 if (TeamNumToCSTeam(player.TeamNum) != startingSide)
                 {
                     Console.WriteLine($"Switching {player.PlayerName} to {team.starting_side}");
-                    player.SwitchTeam(startingSide);
+                    // TODO - this works but you get stuck in limbo
+                    // player.SwitchTeam(startingSide);
                 }
             }
         }
