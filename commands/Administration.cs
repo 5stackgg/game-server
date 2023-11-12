@@ -134,6 +134,14 @@ public partial class PlayCsPlugin
             SendCommands(new[] { $"mp_teamname_{team.team_number} {team.name}" });
         }
     }
+    
+    // TODO - read from config
+    private Dictionary<string, string> _workshopMaps = new Dictionary<string, string>
+    {
+        { "de_cache", "3070596702" },
+        { "de_cbble", "3070212801" },
+        { "de_train", "3070284539" }
+    };
 
     public async Task ChangeMap(string map)
     {
@@ -161,14 +169,6 @@ public partial class PlayCsPlugin
             await ChangeMap(map);
         }
     }
-
-    // TODO - read from config
-    private Dictionary<string, string> _workshopMaps = new Dictionary<string, string>
-    {
-        { "de_cache", "3070596702" },
-        { "de_cbble", "3070212801" },
-        { "de_train", "3070284539" }
-    };
 
     public bool IsOnMap(string map)
     {
