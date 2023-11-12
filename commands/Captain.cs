@@ -8,8 +8,8 @@ namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
-    [ConsoleCommand("css_c", "Shows / Claims Captain Spots")]
     [ConsoleCommand("css_captain", "Shows / Claims Captain Spots")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnCaptain(CCSPlayerController? player, CommandInfo? command)
     {
         if (
@@ -40,8 +40,8 @@ public partial class PlayCsPlugin
         ShowCaptains();
     }
 
-    [ConsoleCommand("css_rc", "Release Captain Spot")]
     [ConsoleCommand("css_release_captain", "Release Captain Spot")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnReleaseCaptain(CCSPlayerController? player, CommandInfo? command)
     {
         if (

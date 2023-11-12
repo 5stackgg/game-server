@@ -6,9 +6,6 @@ using PlayCS.enums;
 
 namespace PlayCs;
 
-/**
- * Pause needs full .r by at least 1 person on each side (technical timeouts)
- */
 public partial class PlayCsPlugin
 {
     private Dictionary<CsTeam, int> TeamTimeouts = new Dictionary<CsTeam, int>
@@ -18,6 +15,7 @@ public partial class PlayCsPlugin
     };
 
     [ConsoleCommand("css_pause", "Pauses the match")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnPause(CCSPlayerController? player, CommandInfo? command)
     {
         if (player == null)
@@ -31,7 +29,8 @@ public partial class PlayCsPlugin
         UpdatePhase(ePhase.Paused);
     }
 
-    [ConsoleCommand("css_resume", "Resumes the match ")]
+    [ConsoleCommand("css_resume", "Resumes the match")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnResume(CCSPlayerController? player, CommandInfo? command)
     {
         if (player == null)
@@ -47,6 +46,7 @@ public partial class PlayCsPlugin
     }
 
     [ConsoleCommand("css_timeout", "Tactical Timeout")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnTimeout(CCSPlayerController? player, CommandInfo? command)
     {
         if (player == null)
@@ -69,7 +69,5 @@ public partial class PlayCsPlugin
             HudDestination.Center,
             $"{player.PlayerName} {ChatColors.Red}called a tactical timeout ({TeamTimeouts[team]}/4)"
         );
-
-        UpdatePhase(ePhase.TechTimeout);
     }
 }

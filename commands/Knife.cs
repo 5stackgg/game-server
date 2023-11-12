@@ -9,6 +9,7 @@ namespace PlayCs;
 public partial class PlayCsPlugin
 {
     [ConsoleCommand("css_stay", "")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnStay(CCSPlayerController? player, CommandInfo? command)
     {
         if (player == null)
@@ -25,6 +26,7 @@ public partial class PlayCsPlugin
     }
 
     [ConsoleCommand("css_switch", "")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnSwitch(CCSPlayerController? player, CommandInfo? command)
     {
         if (player == null || _matchData == null)

@@ -8,8 +8,8 @@ namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
-    [ConsoleCommand("css_r", "Marks the player as ready")]
     [ConsoleCommand("css_ready", "Marks the player as ready")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnReady(CCSPlayerController? player, CommandInfo? command)
     {
         if (!IsWarmup() || player == null)
@@ -34,8 +34,8 @@ public partial class PlayCsPlugin
         SendReadyMessage(player);
     }
 
-    [ConsoleCommand("css_nr", "Marks the player as ready")]
     [ConsoleCommand("css_not-ready", "Marks the player as ready")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnNotReady(CCSPlayerController? player, CommandInfo? command)
     {
         if (!IsWarmup() || player == null)
