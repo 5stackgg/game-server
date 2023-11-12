@@ -101,7 +101,7 @@ public partial class PlayCsPlugin
         }
         Console.WriteLine($"Setup Match ${_matchData.id}");
 
-        if (IsOnMap(_currentMap))
+        if (!IsOnMap(_currentMap))
         {
             Console.WriteLine($"Changing Map {_matchData.map}");
             await ChangeMap(_matchData.map);
@@ -137,10 +137,21 @@ public partial class PlayCsPlugin
 
     public async Task ChangeMap(string map)
     {
-        string changeCommand = Server.IsMapValid(map) ? "changelevel" : "host_workshop_map";
-
-        Console.WriteLine($"CHANGE CMD {changeCommand}");
-        // SendCommands(new[] { $"{changeCommand} \"{map}\"" });
+        if (Server.IsMapValid(map))
+        {
+            SendCommands(new[] { $"changelevel \"{map}\"" });
+        }
+        else
+        {
+            if (!_workshopMaps.ContainsKey(map))
+            {
+                UpdatePhase(ePhase.Scheduled);
+                // dont want to break the server by changing it forever
+                _matchData = null;
+                return;
+            }
+            SendCommands(new[] { $"host_workshop_map {_workshopMaps[map]}" });
+        }
 
         // give the server some time to change, if the map didnt change we will try again.
         await Task.Delay(1000 * 5);
@@ -154,24 +165,13 @@ public partial class PlayCsPlugin
     // TODO - read from config
     private Dictionary<string, string> _workshopMaps = new Dictionary<string, string>
     {
-        { "3070596702", "de_cache" },
-        { "3070212801", "de_cbble" },
-        { "3070284539", "de_train" }
+        { "de_cache", "3070596702" },
+        { "de_cbble", "3070212801" },
+        { "de_train", "3070284539" }
     };
 
     public bool IsOnMap(string map)
     {
-        if (Server.IsMapValid(map))
-        {
-            return map == _currentMap;
-        }
-
-        if (!_workshopMaps.ContainsKey(map))
-        {
-            Console.WriteLine("WARN: we could not match custom map.");
-            return true;
-        }
-
-        return map == _workshopMaps[map];
+        return map == _currentMap;
     }
 }
