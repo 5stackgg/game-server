@@ -71,6 +71,11 @@ public partial class PlayCsPlugin
 
     private void _startDemoRecording()
     {
+        if (_matchData == null)
+        {
+            return;
+        }
+        
         SendCommands(new[] { $"tv_record /opt/demo/{_matchData.id}" });
     }
 }
