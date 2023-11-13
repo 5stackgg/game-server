@@ -24,7 +24,10 @@ public partial class PlayCsPlugin
             return;
         }
 
-        Message(HudDestination.Alert, "Received Match Data");
+        if (!IsLive())
+        {
+            Message(HudDestination.Alert, "Received Match Data");
+        }
 
         SetupMatch();
     }
@@ -34,6 +37,35 @@ public partial class PlayCsPlugin
     public void SetMatchState(CCSPlayerController? player, CommandInfo command)
     {
         UpdateGameState(GameStateStringToEnum(command.ArgString));
+    }
+
+    [ConsoleCommand("restore_round", "Restores to a previous round")]
+    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public void RestoreRound(CCSPlayerController? player, CommandInfo command)
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        string round = command.ArgByIndex(1);
+        string backupRoundFile =
+            $"{GetSafeMatchPrefix()}_round{round.ToString().PadLeft(2, '0')}.txt";
+
+        Console.WriteLine($"OK {backupRoundFile}");
+
+        if (!File.Exists(Path.Join(Server.GameDirectory + "/csgo/", backupRoundFile)))
+        {
+            command.ReplyToCommand($"Unable to restore round, missing file ({backupRoundFile})");
+            return;
+        }
+
+        SendCommands(new[] { "mp_pause_match", $"mp_backup_restore_load_file {backupRoundFile}" });
+
+        Message(
+            HudDestination.Alert,
+            $" {ChatColors.Red}Round {round} has been restored (.resume to continue)"
+        );
     }
 
     public void UpdateGameState(eGameState gameState)

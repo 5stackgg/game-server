@@ -122,4 +122,13 @@ public partial class PlayCsPlugin
                 throw new ArgumentException($"Unsupported status string: {state}");
         }
     }
+
+    public string GetSafeMatchPrefix()
+    {
+        if (_matchData == null)
+        {
+            return "backup";
+        }
+        return $"{_matchData.id}".Replace("-", "");
+    }
 }

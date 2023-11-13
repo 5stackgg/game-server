@@ -76,6 +76,6 @@ public partial class PlayCsPlugin
         return Utilities
             .FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
             .First()
-            .GameRules;
+            ?.GameRules;
     }
 }
