@@ -1,3 +1,4 @@
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Utils;
@@ -35,6 +36,56 @@ public partial class PlayCsPlugin
             }
         );
 
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnPlayerFullConnect(EventPlayerConnectFull @event, GameEventInfo info)
+    {
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || @event.Userid.IsBot
+            || _matchData == null
+        )
+        {
+            return HookResult.Continue;
+        }
+
+        Message(
+            HudDestination.Chat,
+            $"{ChatColors.Default}type {ChatColors.Green}!ready {ChatColors.Default}to be marked as ready for the match",
+            @event.Userid
+        );
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnPlayerJoinTeam(EventPlayerTeam @event, GameEventInfo info)
+    {
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || @event.Userid.IsBot
+            || _matchData == null
+        )
+        {
+            return HookResult.Continue;
+        }
+
+        CCSPlayerController player = @event.Userid;
+
+        _enforceMemberTeam(player);
+
+        return HookResult.Continue;
+    }
+
+    private async void _enforceMemberTeam(CCSPlayerController player)
+    {
+        // the server needs some time apparently
+        await Task.Delay(3000);
+
         MatchMember? foundMatchingMember = _matchData
             .members
             .Find(member =>
@@ -43,10 +94,6 @@ public partial class PlayCsPlugin
                 {
                     return member.name.StartsWith(player.PlayerName);
                 }
-
-                Console.WriteLine(
-                    $"MEMBER HAS STEMA ID {member.steam_id.ToString()}: {player.SteamID.ToString()}"
-                );
                 return member.steam_id == player.SteamID.ToString();
             });
 
@@ -65,13 +112,14 @@ public partial class PlayCsPlugin
                 if (TeamNumToCSTeam(player.TeamNum) != startingSide)
                 {
                     Console.WriteLine($"Switching {player.PlayerName} to {team.starting_side}");
-                    // TODO - this works but you get stuck in limbo
-                    player.SwitchTeam(CsTeam.Spectator);
-                    player.SwitchTeam(startingSide);
+                    player.ChangeTeam(startingSide);
+                    Message(
+                        HudDestination.Chat,
+                        $" You've been assigned to {(startingSide == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{team.starting_side}.",
+                        player
+                    );
                 }
             }
         }
-
-        return HookResult.Continue;
     }
 }

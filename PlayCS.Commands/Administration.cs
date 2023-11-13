@@ -112,8 +112,6 @@ public partial class PlayCsPlugin
 
         SetupTeamNames();
 
-        UpdateCurrentRound();
-
         Console.WriteLine($"Current Phase {_currentPhase}");
 
         if (PhaseStringToEnum(_matchData.status) != _currentPhase)

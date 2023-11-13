@@ -12,6 +12,8 @@ public partial class PlayCsPlugin
             return;
         }
 
+        UpdateCurrentRound();
+
         // require phase coming from Warmup / Knife
         if (_currentPhase != ePhase.Knife && !IsWarmup())
         {
@@ -50,11 +52,9 @@ public partial class PlayCsPlugin
             }
         );
 
-        UpdateCurrentRound();
-
         _publishPhase(ePhase.Live);
 
-        await Task.Delay(3000);
+        await Task.Delay(1000);
         Message(HudDestination.Alert, "LIVE LIVE LIVE!");
     }
 
