@@ -13,12 +13,17 @@ public partial class PlayCsPlugin
     public HookResult OnGameEnd(EventGameEnd @event, GameEventInfo info)
     {
         UpdateGameState(eGameState.Finished);
+        
+        SendCommands(new []
+        {
+            "tv_stoprecord"
+        });
 
         return HookResult.Continue;
     }
 
     [GameEventHandler]
-    public HookResult OnRoundOfficallyOver(EventRoundOfficiallyEnded @event, GameEventInfo info)
+    public HookResult OnRoundOfficiallyEnded(EventRoundOfficiallyEnded @event, GameEventInfo info)
     {
         UpdateCurrentRound();
 

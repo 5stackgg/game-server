@@ -20,10 +20,10 @@
     - [x] Kills
     - [x] Assists
 - [x] Discord Veto System
+- [x] demo recording
+- [x] demo upload
 
 ## WIP
-- [ ] demo recording
-- [ ] demo upload
 
 ## Future 
 - [ ] coach support
@@ -34,9 +34,14 @@
   - [ ] Enemies Flash /
   - [ ] Friendlys Flashed
   - [ ] MVP
+  - [ ] death by bomb / suicide
+  - [ ] won by plant / defuse (and who) 
 - [ ] round restore
 - [ ] web ui at playcs.live
 - [ ] allow players .pause / .resume or just admin
+- [ ] require steam id
+  - [ ] kick if not assigned 
+  - [ ] discord assign steam id
 
 ## Dev TODO
 [ ] .env setup
