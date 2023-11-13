@@ -11,7 +11,7 @@ kill_dotnet_watch() {
   fi
 }
 
-dotnet watch build &
+dotnet watch build src &
 dotnet_watch_pid=$!
 
 Set up trap to kill dotnet watch process on script exit

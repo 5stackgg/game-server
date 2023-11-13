@@ -1,4 +1,4 @@
-bin
-obj
-Folder.DotSettings.user
+src/bin
+src/obj
+src/Folder.DotSettings.user
 .env
