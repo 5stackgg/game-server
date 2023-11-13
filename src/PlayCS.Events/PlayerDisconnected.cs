@@ -22,6 +22,12 @@ public partial class PlayCsPlugin
             _captains[team] = null;
         }
 
+        if (IsLive())
+        {
+            SendCommands(new[] { "mp_pause_match" });
+            Message(HudDestination.Center, $" {ChatColors.Red}Match Paused");
+        }
+
         return HookResult.Continue;
     }
 }

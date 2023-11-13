@@ -45,7 +45,7 @@ public partial class PlayCsPlugin
         UpdateGameState(eGameState.Live);
     }
 
-    [ConsoleCommand("css_timeout", "Tactical Timeout")]
+    [ConsoleCommand("css_tac", "Tactical Timeout")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnTimeout(CCSPlayerController? player, CommandInfo? command)
     {
