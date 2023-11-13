@@ -36,7 +36,7 @@
   - [ ] MVP
 - [ ] round restore
 - [ ] web ui at playcs.live
-
+- [ ] allow players .pause / .resume or just admin
 
 ## Dev TODO
 [ ] .env setup
