@@ -15,7 +15,7 @@ public partial class PlayCsPlugin
         {
             return;
         }
-
+        
         _resetCaptains();
         _resetReadyPlayers();
 
