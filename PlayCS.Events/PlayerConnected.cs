@@ -76,20 +76,19 @@ public partial class PlayCsPlugin
 
         CCSPlayerController player = @event.Userid;
 
-        _enforceMemberTeam(player);
+        _enforceMemberTeam(player, TeamNumToCSTeam(@event.Team));
 
         return HookResult.Continue;
     }
 
-    private async void _enforceMemberTeam(CCSPlayerController player)
+    private CancellationTokenSource? _cancelSwitchTeams;
+
+    private async void _enforceMemberTeam(CCSPlayerController player, CsTeam currentTeam)
     {
         if (_matchData == null)
         {
             return;
         }
-
-        // the server needs some time apparently
-        await Task.Delay(3000);
 
         MatchMember? foundMatchingMember = _matchData
             .members
@@ -99,6 +98,7 @@ public partial class PlayCsPlugin
                 {
                     return member.name.StartsWith(player.PlayerName);
                 }
+
                 return member.steam_id == player.SteamID.ToString();
             });
 
@@ -114,14 +114,15 @@ public partial class PlayCsPlugin
             if (team != null)
             {
                 CsTeam startingSide = TeamStringToCsTeam(team.starting_side);
-                if (TeamNumToCSTeam(player.TeamNum) != startingSide)
+                if (currentTeam != startingSide)
                 {
-                    Console.WriteLine($"Switching {player.PlayerName} to {team.starting_side}");
-                    // TODO - its fucked
-                    // player.ChangeTeam(startingSide);
+                    // the server needs some time apparently
+                    await Task.Delay(1000 * 1);
+
+                    player.ChangeTeam(startingSide);
                     Message(
                         HudDestination.Chat,
-                        $" You've been assigned to {(startingSide == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{team.starting_side}.",
+                        $" You've been assigned to {(startingSide == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{CSTeamToString(startingSide)}.",
                         player
                     );
                 }
