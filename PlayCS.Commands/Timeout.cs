@@ -26,7 +26,7 @@ public partial class PlayCsPlugin
         SendCommands(new[] { "mp_pause_match" });
         Message(HudDestination.Center, $"{player.PlayerName} {ChatColors.Red}paused the match");
 
-        UpdatePhase(ePhase.Paused);
+        UpdateGameState(eGameState.Paused);
     }
 
     [ConsoleCommand("css_resume", "Resumes the match")]
@@ -42,7 +42,7 @@ public partial class PlayCsPlugin
         Message(HudDestination.Center, $"{player.PlayerName} {ChatColors.Red}resumed the match");
 
         // TODO - detect if its in overtime
-        UpdatePhase(ePhase.Live);
+        UpdateGameState(eGameState.Live);
     }
 
     [ConsoleCommand("css_timeout", "Tactical Timeout")]

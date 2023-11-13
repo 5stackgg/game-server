@@ -15,7 +15,7 @@ public partial class PlayCsPlugin
             return HookResult.Continue;
         }
 
-        if (_currentPhase == ePhase.Warmup || _currentPhase == ePhase.Knife)
+        if (_currentGameState == eGameState.Warmup || _currentGameState == eGameState.Knife)
         {
             CsTeam team = TeamNumToCSTeam(@event.Userid.TeamNum);
 

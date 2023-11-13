@@ -83,6 +83,11 @@ public partial class PlayCsPlugin
 
     private async void _enforceMemberTeam(CCSPlayerController player)
     {
+        if (_matchData == null)
+        {
+            return;
+        }
+
         // the server needs some time apparently
         await Task.Delay(3000);
 
@@ -112,7 +117,8 @@ public partial class PlayCsPlugin
                 if (TeamNumToCSTeam(player.TeamNum) != startingSide)
                 {
                     Console.WriteLine($"Switching {player.PlayerName} to {team.starting_side}");
-                    player.ChangeTeam(startingSide);
+                    // TODO - its fucked
+                    // player.ChangeTeam(startingSide);
                     Message(
                         HudDestination.Chat,
                         $" You've been assigned to {(startingSide == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{team.starting_side}.",

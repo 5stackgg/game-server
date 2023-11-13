@@ -12,7 +12,7 @@ public partial class PlayCsPlugin
     [GameEventHandler]
     public HookResult OnGameEnd(EventGameEnd @event, GameEventInfo info)
     {
-        UpdatePhase(ePhase.Finished);
+        UpdateGameState(eGameState.Finished);
 
         return HookResult.Continue;
     }
@@ -28,7 +28,7 @@ public partial class PlayCsPlugin
     [GameEventHandler]
     public HookResult OnRoundOver(EventRoundEnd @event, GameEventInfo info)
     {
-        if (_matchData == null || _currentPhase == ePhase.Knife)
+        if (_matchData == null || _currentGameState == eGameState.Knife)
         {
             Console.WriteLine($"TEAM ASSIGNED {@event.Winner}");
 

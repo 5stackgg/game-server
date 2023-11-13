@@ -13,7 +13,7 @@ public partial class PlayCsPlugin
             {
                 _currentRound = 0;
                 _currentMap = Server.MapName;
-                _currentPhase = ePhase.Unknown;
+                _currentGameState = eGameState.Unknown;
 
                 // code smell: we have to wait till server exec's default cfgs
                 await Task.Delay(1000 * 5);

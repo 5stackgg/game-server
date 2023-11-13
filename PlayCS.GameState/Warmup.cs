@@ -40,7 +40,7 @@ public partial class PlayCsPlugin
             }
         );
 
-        _publishPhase(ePhase.Warmup);
+        _publishGameState(eGameState.Warmup);
     }
 
     public bool IsWarmup()

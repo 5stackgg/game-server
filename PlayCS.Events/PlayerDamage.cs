@@ -24,17 +24,8 @@ public partial class PlayCsPlugin
 
         CCSPlayerController attacked = @event.Userid;
 
-        /*
-        var absOrigin = player.PlayerPawn.Value.AbsOrigin;
-        //* var absRotation = player.PlayerPawn.Value.AbsRotation;
-        var spawnX = Convert.ToInt32(absOrigin.X);
-        var spawnY = Convert.ToInt32(absOrigin.Y);
-        var spawnZ = Convert.ToInt32(absOrigin.Z);
-        Console.WriteLine($"{player.PlayerName} spawned at {absOrigin}");
-        Console.WriteLine($"{spawnX}");
-        Console.WriteLine($"{spawnY}");
-        Console.WriteLine($"{spawnZ}");
-        */
+        var attackerLocation = attacker.PlayerPawn.Value.AbsOrigin;
+        var attackedLocation = attacked.PlayerPawn.Value.AbsOrigin;
 
         _redis.PublishMatchEvent(
             _matchData.id,
@@ -47,8 +38,12 @@ public partial class PlayCsPlugin
                     { "attacker_steam_id", attacker.SteamID.ToString() },
                     { "attacker_team", $"{TeamNumToString(attacker.TeamNum)}" },
                     { "attacker_location", $"{attacker.PlayerPawn.Value.LastPlaceName}" },
-                    // { "attacker_location_vector", $"{@event.Attacker.PlayerPawn.Value.Controller.Value.}"},
-                    // ‘CBodyComponent?.SceneNode?.AbsOrigin’
+                    {
+                        "attacker_location_coordinates",
+                        attackerLocation != null
+                            ? $"{Convert.ToInt32(attackerLocation.X)} {Convert.ToInt32(attackerLocation.Y)} {Convert.ToInt32(attackerLocation.Z)}"
+                            : ""
+                    },
                     { "weapon", $"{@event.Weapon}" },
                     { "damage", @event.DmgHealth },
                     { "damage_armor", @event.DmgArmor },
@@ -58,6 +53,12 @@ public partial class PlayCsPlugin
                     { "attacked_steam_id", attacked.SteamID.ToString() },
                     { "attacked_team", $"{TeamNumToString(attacked.TeamNum)}" },
                     { "attacked_location", $"{attacked.PlayerPawn.Value.LastPlaceName}" },
+                    {
+                        "attacked_location_coordinates",
+                        attackedLocation != null
+                            ? $"{Convert.ToInt32(attackedLocation.X)} {Convert.ToInt32(attackedLocation.Y)} {Convert.ToInt32(attackedLocation.Z)}"
+                            : ""
+                    },
                 }
             }
         );
