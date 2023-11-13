@@ -54,7 +54,7 @@ public partial class PlayCsPlugin
 
         _publishPhase(ePhase.Live);
 
-        await Task.Delay(3000);
+        await Task.Delay(1000);
         Message(HudDestination.Alert, "LIVE LIVE LIVE!");
     }
 
