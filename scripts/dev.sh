@@ -11,13 +11,13 @@ kill_dotnet_watch() {
   fi
 }
 
-dotnet watch build src &
+dotnet watch build --project src &
 dotnet_watch_pid=$!
 
 Set up trap to kill dotnet watch process on script exit
 trap kill_dotnet_watch EXIT
 
-directory_to_watch="/opt/playcs/bin/Debug/net7.0"
+directory_to_watch="/opt/playcs/src/bin/Debug/net7.0"
 
 while true; do
   inotifywait -r -e modify,create,delete,move "$directory_to_watch"

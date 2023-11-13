@@ -7,13 +7,13 @@ WORKDIR /mod
 # Copy the .csproj file to the container
 COPY *.csproj .
 
-RUN dotnet restore src
+RUN dotnet restore --package src
 
 # Copy the remaining files to the container
 COPY . .
 
 # Build the application
-RUN dotnet build src -c Release -o release
+RUN dotnet build --package src -c Release -o release
 
 RUN rm /mod/release/CounterStrikeSharp.API.dll
 
