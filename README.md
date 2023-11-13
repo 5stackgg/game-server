@@ -21,7 +21,7 @@
     - [x] Assists
 - [x] Discord Veto System
 - [x] demo recording
-- [x] demo upload
+  - [ ] downloadable
 - [x] round restore
 
 ## WIP
