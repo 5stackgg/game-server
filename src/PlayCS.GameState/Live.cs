@@ -54,7 +54,7 @@ public partial class PlayCsPlugin
         );
 
         _startDemoRecording();
-        
+
         _publishGameState(eGameState.Live);
 
         await Task.Delay(1000);
@@ -68,12 +68,9 @@ public partial class PlayCsPlugin
             && _currentGameState != eGameState.Knife
             && _currentGameState != eGameState.Scheduled;
     }
-    
+
     private void _startDemoRecording()
     {
-        SendCommands(new []
-        {
-            $"tv_record /opt/demo/{_matchData.id}"
-        });
+        SendCommands(new[] { $"tv_record /opt/demo/{_matchData.id}" });
     }
 }

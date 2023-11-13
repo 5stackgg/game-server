@@ -29,9 +29,7 @@ public partial class PlayCsPlugin
         command.ReplyToCommand(
             $" {ChatColors.BlueGrey}Captains: {ChatColors.Default}!captain, !release-captain"
         );
-        command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Tactical Pause: {ChatColors.Default}!tac"
-        );
+        command.ReplyToCommand($" {ChatColors.BlueGrey}Tactical Pause: {ChatColors.Default}!tac");
         command.ReplyToCommand(
             $" {ChatColors.BlueGrey}Tech Pause: {ChatColors.Default}!pause, !resume"
         );

@@ -13,11 +13,8 @@ public partial class PlayCsPlugin
     public HookResult OnGameEnd(EventGameEnd @event, GameEventInfo info)
     {
         UpdateGameState(eGameState.Finished);
-        
-        SendCommands(new []
-        {
-            "tv_stoprecord"
-        });
+
+        SendCommands(new[] { "tv_stoprecord" });
 
         return HookResult.Continue;
     }
