@@ -38,6 +38,21 @@ public partial class PlayCsPlugin
         }
     }
 
+    private string CSTeamToString(CsTeam team)
+    {
+        switch (team)
+        {
+            case CsTeam.Spectator:
+                return "Spectator";
+            case CsTeam.Terrorist:
+                return "TERRORIST";
+            case CsTeam.CounterTerrorist:
+                return "CT";
+            default:
+                return "None";
+        }
+    }
+
     private CsTeam TeamStringToCsTeam(string team)
     {
         switch (team)
