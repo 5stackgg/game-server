@@ -73,9 +73,17 @@ public partial class PlayCsPlugin
 
     private CCSGameRules? _gameRules()
     {
-        return Utilities
-            .FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
-            .First()
-            ?.GameRules;
+        try
+        {
+            return Utilities
+                .FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+                .First()
+                .GameRules;
+        }
+        catch
+        {
+            // do nothing
+        }
+        return null;
     }
 }
