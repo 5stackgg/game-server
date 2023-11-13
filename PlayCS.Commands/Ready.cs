@@ -29,7 +29,7 @@ public partial class PlayCsPlugin
 
         if (TotalReady() == 10)
         {
-            UpdatePhase(ePhase.Knife);
+            UpdateGameState(eGameState.Knife);
         }
 
         SendReadyMessage(player);

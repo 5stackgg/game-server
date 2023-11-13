@@ -83,28 +83,28 @@ public partial class PlayCsPlugin
         }
     }
 
-    private ePhase PhaseStringToEnum(string statusString)
+    private eGameState GameStateStringToEnum(string state)
     {
-        switch (statusString)
+        switch (state)
         {
             case "Finished":
-                return ePhase.Finished;
+                return eGameState.Finished;
             case "Knife":
-                return ePhase.Knife;
+                return eGameState.Knife;
             case "Live":
-                return ePhase.Live;
+                return eGameState.Live;
             case "Overtime":
-                return ePhase.Overtime;
+                return eGameState.Overtime;
             case "Paused":
-                return ePhase.Paused;
+                return eGameState.Paused;
             case "Scheduled":
-                return ePhase.Scheduled;
+                return eGameState.Scheduled;
             case "TechTimeout":
-                return ePhase.TechTimeout;
+                return eGameState.TechTimeout;
             case "Warmup":
-                return ePhase.Warmup;
+                return eGameState.Warmup;
             default:
-                throw new ArgumentException($"Unsupported status string: {statusString}");
+                throw new ArgumentException($"Unsupported status string: {state}");
         }
     }
 }

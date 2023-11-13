@@ -2,7 +2,7 @@ using System.ComponentModel;
 
 namespace PlayCS.enums;
 
-public enum ePhase
+public enum eGameState
 {
     [Description("Finished")]
     Finished,

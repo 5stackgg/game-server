@@ -16,8 +16,8 @@ public partial class PlayCsPlugin
             player == null
             || _matchData == null
             || (
-                PhaseStringToEnum(_matchData.status) != ePhase.Warmup
-                && PhaseStringToEnum(_matchData.status) != ePhase.Knife
+                GameStateStringToEnum(_matchData.status) != eGameState.Warmup
+                && GameStateStringToEnum(_matchData.status) != eGameState.Knife
             )
         )
         {
@@ -48,8 +48,8 @@ public partial class PlayCsPlugin
             player == null
             || _matchData == null
             || (
-                PhaseStringToEnum(_matchData.status) != ePhase.Warmup
-                && PhaseStringToEnum(_matchData.status) != ePhase.Knife
+                GameStateStringToEnum(_matchData.status) != eGameState.Warmup
+                && GameStateStringToEnum(_matchData.status) != eGameState.Knife
             )
         )
         {

@@ -11,7 +11,7 @@ public partial class PlayCsPlugin
 
     public async void StartKnife()
     {
-        if (_currentPhase != ePhase.Warmup)
+        if (_currentGameState != eGameState.Warmup)
         {
             return;
         }
@@ -51,7 +51,7 @@ public partial class PlayCsPlugin
             }
         );
 
-        _publishPhase(ePhase.Knife);
+        _publishGameState(eGameState.Knife);
 
         await Task.Delay(1000);
         Message(HudDestination.Alert, "KNIFE KNIFE KNIFE!");

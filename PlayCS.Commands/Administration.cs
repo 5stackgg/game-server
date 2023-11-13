@@ -29,53 +29,53 @@ public partial class PlayCsPlugin
         SetupMatch();
     }
 
-    [ConsoleCommand("match_phase", "Forces a match to update its current phase")]
+    [ConsoleCommand("match_state", "Forces a match to update its current state")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
-    public void SetMatchPhase(CCSPlayerController? player, CommandInfo command)
+    public void SetMatchState(CCSPlayerController? player, CommandInfo command)
     {
-        UpdatePhase(PhaseStringToEnum(command.ArgString));
+        UpdateGameState(GameStateStringToEnum(command.ArgString));
     }
 
-    public void UpdatePhase(ePhase phase)
+    public void UpdateGameState(eGameState gameState)
     {
-        Console.WriteLine($"Update Phase {_currentPhase} -> {phase}");
+        Console.WriteLine($"Update Game State {_currentGameState} -> {gameState}");
         if (_matchData == null)
         {
             Console.WriteLine("missing event data");
             return;
         }
-        Console.WriteLine($"Updating Phase: {phase}");
+        Console.WriteLine($"Updating Game State: {gameState}");
 
-        switch (phase)
+        switch (gameState)
         {
-            case ePhase.Scheduled:
+            case eGameState.Scheduled:
                 break;
-            case ePhase.Warmup:
+            case eGameState.Warmup:
                 StartWarmup();
                 break;
-            case ePhase.Knife:
+            case eGameState.Knife:
                 if (!_matchData.knife_round)
                 {
-                    UpdatePhase(ePhase.Live);
+                    UpdateGameState(eGameState.Live);
                     break;
                 }
                 StartKnife();
                 break;
-            case ePhase.Live:
+            case eGameState.Live:
                 StartLive();
                 break;
-            case ePhase.Overtime:
-            case ePhase.Paused:
-            case ePhase.TechTimeout:
-            case ePhase.Finished:
-                _publishPhase(phase);
+            case eGameState.Overtime:
+            case eGameState.Paused:
+            case eGameState.TechTimeout:
+            case eGameState.Finished:
+                _publishGameState(gameState);
                 break;
         }
 
-        _currentPhase = phase;
+        _currentGameState = gameState;
     }
 
-    private void _publishPhase(ePhase phase)
+    private void _publishGameState(eGameState gameState)
     {
         if (_matchData == null)
         {
@@ -87,7 +87,7 @@ public partial class PlayCsPlugin
             new Redis.EventData<Dictionary<string, object>>
             {
                 @event = "status",
-                data = new Dictionary<string, object> { { "status", phase.ToString() }, }
+                data = new Dictionary<string, object> { { "status", gameState.ToString() }, }
             }
         );
     }
@@ -112,11 +112,11 @@ public partial class PlayCsPlugin
 
         SetupTeamNames();
 
-        Console.WriteLine($"Current Phase {_currentPhase}");
+        Console.WriteLine($"Current Game State {_currentGameState}");
 
-        if (PhaseStringToEnum(_matchData.status) != _currentPhase)
+        if (GameStateStringToEnum(_matchData.status) != _currentGameState)
         {
-            UpdatePhase(PhaseStringToEnum(_matchData.status));
+            UpdateGameState(GameStateStringToEnum(_matchData.status));
         }
     }
 

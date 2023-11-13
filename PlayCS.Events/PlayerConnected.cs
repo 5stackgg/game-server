@@ -112,7 +112,8 @@ public partial class PlayCsPlugin
                 if (TeamNumToCSTeam(player.TeamNum) != startingSide)
                 {
                     Console.WriteLine($"Switching {player.PlayerName} to {team.starting_side}");
-                    player.ChangeTeam(startingSide);
+                    // TODO - its fucked
+                    // player.ChangeTeam(startingSide);
                     Message(
                         HudDestination.Chat,
                         $" You've been assigned to {(startingSide == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{team.starting_side}.",

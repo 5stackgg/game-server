@@ -22,7 +22,7 @@ public partial class PlayCsPlugin
             $"captain picked to {ChatColors.Red}stay {ChatColors.Default}sides"
         );
 
-        UpdatePhase(ePhase.Live);
+        UpdateGameState(eGameState.Live);
     }
 
     [ConsoleCommand("css_switch", "")]
@@ -50,6 +50,6 @@ public partial class PlayCsPlugin
             }
         );
 
-        UpdatePhase(ePhase.Live);
+        UpdateGameState(eGameState.Live);
     }
 }

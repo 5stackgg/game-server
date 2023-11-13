@@ -11,7 +11,7 @@ public partial class PlayCsPlugin : BasePlugin
     private int _currentRound = 0;
     private Redis _redis = new Redis();
     private string _currentMap = Server.MapName;
-    private ePhase _currentPhase = ePhase.Unknown;
+    private eGameState _currentGameState = eGameState.Unknown;
 
     private Dictionary<CsTeam, CCSPlayerController?> _captains = new Dictionary<
         CsTeam,

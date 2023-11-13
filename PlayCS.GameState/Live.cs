@@ -14,10 +14,10 @@ public partial class PlayCsPlugin
 
         UpdateCurrentRound();
 
-        // require phase coming from Warmup / Knife
-        if (_currentPhase != ePhase.Knife && !IsWarmup())
+        // require game state coming from Warmup / Knife
+        if (_currentGameState != eGameState.Knife && !IsWarmup())
         {
-            _currentPhase = ePhase.Live;
+            _currentGameState = eGameState.Live;
             return;
         }
 
@@ -52,7 +52,7 @@ public partial class PlayCsPlugin
             }
         );
 
-        _publishPhase(ePhase.Live);
+        _publishGameState(eGameState.Live);
 
         await Task.Delay(1000);
         Message(HudDestination.Alert, "LIVE LIVE LIVE!");
@@ -60,9 +60,9 @@ public partial class PlayCsPlugin
 
     public bool IsLive()
     {
-        return _currentPhase != ePhase.Unknown
-            && _currentPhase != ePhase.Warmup
-            && _currentPhase != ePhase.Knife
-            && _currentPhase != ePhase.Scheduled;
+        return _currentGameState != eGameState.Unknown
+            && _currentGameState != eGameState.Warmup
+            && _currentGameState != eGameState.Knife
+            && _currentGameState != eGameState.Scheduled;
     }
 }
