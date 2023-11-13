@@ -48,3 +48,6 @@
 [ ] .env setup
 [ ] subscribed map list / validate
 [ ] matches at k8s jobs
+[ ] mid-match server restart = bad news bears 
+  [ ] need to re-ready up 
+  [ ] need to load last round
