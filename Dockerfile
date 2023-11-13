@@ -38,6 +38,18 @@ ENV DATA_PERM=770
 ENV METAMOD_DOWNLOAD_LINK=""
 ENV COUNTER_STRIKE_SHARP_URL=""
 
+RUN  echo "deb http://deb.debian.org/debian bookworm contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+	apt-get update && apt-get -y upgrade && \
+	apt-get -y install --no-install-recommends wget locales procps && \
+	touch /etc/locale.gen && \
+	echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
+	locale-gen && \
+	apt-get -y install --reinstall ca-certificates && \
+	rm -rf /var/lib/apt/lists/*
+
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
 
 RUN apt-get update && \
 	apt-get -y install --no-install-recommends curl unzip lib32gcc-s1 lib32stdc++6 lib32z1 lsof libicu-dev && \
