@@ -83,6 +83,11 @@ public partial class PlayCsPlugin
 
     private async void _enforceMemberTeam(CCSPlayerController player)
     {
+        if (_matchData == null)
+        {
+            return;
+        }
+
         // the server needs some time apparently
         await Task.Delay(3000);
 

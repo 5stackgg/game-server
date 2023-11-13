@@ -25,7 +25,7 @@ public partial class PlayCsPlugin
         CCSPlayerController attacked = @event.Userid;
 
         var attackerLocation = attacker.PlayerPawn.Value.AbsOrigin;
-        var attackedLocation = attacker.PlayerPawn.Value.AbsOrigin;
+        var attackedLocation = attacked.PlayerPawn.Value.AbsOrigin;
 
         _redis.PublishMatchEvent(
             _matchData.id,
@@ -39,8 +39,10 @@ public partial class PlayCsPlugin
                     { "attacker_team", $"{TeamNumToString(attacker.TeamNum)}" },
                     { "attacker_location", $"{attacker.PlayerPawn.Value.LastPlaceName}" },
                     {
-                        "attacker_location_vector",
-                        $"{Convert.ToInt32(attackerLocation.X)} {Convert.ToInt32(attackerLocation.Y)} {Convert.ToInt32(attackerLocation.Z)}"
+                        "attacker_location_coordinates",
+                        attackerLocation != null
+                            ? $"{Convert.ToInt32(attackerLocation.X)} {Convert.ToInt32(attackerLocation.Y)} {Convert.ToInt32(attackerLocation.Z)}"
+                            : ""
                     },
                     { "weapon", $"{@event.Weapon}" },
                     { "damage", @event.DmgHealth },
@@ -52,8 +54,10 @@ public partial class PlayCsPlugin
                     { "attacked_team", $"{TeamNumToString(attacked.TeamNum)}" },
                     { "attacked_location", $"{attacked.PlayerPawn.Value.LastPlaceName}" },
                     {
-                        "attacked_location_vector",
-                        $"{Convert.ToInt32(attackedLocation.X)} {Convert.ToInt32(attackedLocation.Y)} {Convert.ToInt32(attackedLocation.Z)}"
+                        "attacked_location_coordinates",
+                        attackedLocation != null
+                            ? $"{Convert.ToInt32(attackedLocation.X)} {Convert.ToInt32(attackedLocation.Y)} {Convert.ToInt32(attackedLocation.Z)}"
+                            : ""
                     },
                 }
             }
