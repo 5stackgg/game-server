@@ -1,4 +1,3 @@
-using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Modules.Utils;
 using PlayCS.enums;
 
@@ -13,6 +12,7 @@ public partial class PlayCsPlugin
             return;
         }
 
+        _startDemoRecording();
         UpdateCurrentRound();
 
         // require game state coming from Warmup / Knife
@@ -28,7 +28,7 @@ public partial class PlayCsPlugin
                 "mp_autokick 0",
                 "mp_autoteambalance 0",
                 "mp_warmup_end",
-                $"mp_backup_round_file ${_matchData.id}",
+                $"mp_backup_round_file {GetSafeMatchPrefix()}",
                 "mp_round_restart_delay 3",
                 "mp_free_armor 0",
                 "mp_give_player_c4 1",
@@ -75,7 +75,7 @@ public partial class PlayCsPlugin
         {
             return;
         }
-        
-        SendCommands(new[] { $"tv_record /opt/demo/{_matchData.id}" });
+
+        SendCommands(new[] { $"tv_record /opt/demos/{GetSafeMatchPrefix()}" });
     }
 }

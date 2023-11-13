@@ -21,7 +21,8 @@
     - [x] Assists
 - [x] Discord Veto System
 - [x] demo recording
-- [x] demo upload
+  - [ ] downloadable
+- [x] round restore
 
 ## WIP
 
@@ -36,7 +37,6 @@
   - [ ] MVP
   - [ ] death by bomb / suicide
   - [ ] won by plant / defuse (and who) 
-- [ ] round restore
 - [ ] web ui at playcs.live
 - [ ] allow players .pause / .resume or just admin
 - [ ] require steam id

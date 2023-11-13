@@ -82,7 +82,7 @@ public partial class PlayCsPlugin
 
     private async void _enforceMemberTeam(CCSPlayerController player, CsTeam currentTeam)
     {
-        if (_matchData == null)
+        if (_matchData == null || IsLive())
         {
             return;
         }

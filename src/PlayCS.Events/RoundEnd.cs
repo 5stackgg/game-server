@@ -10,16 +10,6 @@ namespace PlayCs;
 public partial class PlayCsPlugin
 {
     [GameEventHandler]
-    public HookResult OnGameEnd(EventGameEnd @event, GameEventInfo info)
-    {
-        UpdateGameState(eGameState.Finished);
-
-        SendCommands(new[] { "tv_stoprecord" });
-
-        return HookResult.Continue;
-    }
-
-    [GameEventHandler]
     public HookResult OnRoundOfficiallyEnded(EventRoundOfficiallyEnded @event, GameEventInfo info)
     {
         UpdateCurrentRound();
@@ -28,7 +18,7 @@ public partial class PlayCsPlugin
     }
 
     [GameEventHandler]
-    public HookResult OnRoundOver(EventRoundEnd @event, GameEventInfo info)
+    public HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info)
     {
         if (_matchData == null || _currentGameState == eGameState.Knife)
         {
