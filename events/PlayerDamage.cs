@@ -24,6 +24,18 @@ public partial class PlayCsPlugin
 
         CCSPlayerController attacked = @event.Userid;
 
+        /*
+        var absOrigin = player.PlayerPawn.Value.AbsOrigin;
+        //* var absRotation = player.PlayerPawn.Value.AbsRotation;
+        var spawnX = Convert.ToInt32(absOrigin.X);
+        var spawnY = Convert.ToInt32(absOrigin.Y);
+        var spawnZ = Convert.ToInt32(absOrigin.Z);
+        Console.WriteLine($"{player.PlayerName} spawned at {absOrigin}");
+        Console.WriteLine($"{spawnX}");
+        Console.WriteLine($"{spawnY}");
+        Console.WriteLine($"{spawnZ}");
+        */
+
         _redis.PublishMatchEvent(
             _matchData.id,
             new Redis.EventData<Dictionary<string, object>>

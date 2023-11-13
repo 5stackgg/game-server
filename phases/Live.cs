@@ -12,6 +12,8 @@ public partial class PlayCsPlugin
             return;
         }
 
+        UpdateCurrentRound();
+
         // require phase coming from Warmup / Knife
         if (_currentPhase != ePhase.Knife && !IsWarmup())
         {
@@ -49,8 +51,6 @@ public partial class PlayCsPlugin
                 "mp_restartgame 1"
             }
         );
-
-        UpdateCurrentRound();
 
         _publishPhase(ePhase.Live);
 
