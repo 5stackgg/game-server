@@ -10,7 +10,8 @@
   - [x] stay / switch
 - [x] ready system
 - [x] Overtime (infinite)]
-- [x] Custom Workshop Maps
+- [x] Workshop Maps
+  - [ ]  adding ability by config
 - [x] Game Events
     - [x] Report start of match
     - [x] Report round results
