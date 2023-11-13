@@ -53,7 +53,6 @@ RUN mkdir $DATA_DIR && \
 RUN mkdir /opt/metamod
 ADD https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1258-linux.tar.gz /tmp/metamod.tar.gz
 RUN tar -xz -C /opt/metamod -f /tmp/metamod.tar.gz && rm /tmp/metamod.tar.gz
-COPY metamod /opt/metamod
 
 RUN mkdir /opt/counterstrikesharp
 ADD https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v50/counterstrikesharp-with-runtime-build-50-linux-414710d.zip /tmp/counterstrikesharp.zip
