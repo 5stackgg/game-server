@@ -22,9 +22,7 @@ public partial class PlayCsPlugin
         SendCommands(
             new[]
             {
-                "mp_force_pick_time 1",
                 "mp_autokick 0",
-                "mp_limiteams 0",
                 "mp_limitteams 0",
                 "mp_autoteambalance 0",
                 "sv_disable_teamselect_menu 0",
