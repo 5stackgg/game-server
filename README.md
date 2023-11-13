@@ -26,7 +26,7 @@
 - [ ] demo upload
 
 ## Future 
-- [ ] coache support
+- [ ] coach support
 - [ ] best of x
 - [ ] Configuration via http(s) json / json file
 - [ ] Advanced stats
