@@ -65,11 +65,8 @@ public partial class PlayCsPlugin
                 if (TeamNumToCSTeam(player.TeamNum) != startingSide)
                 {
                     Console.WriteLine($"Switching {player.PlayerName} to {team.starting_side}");
-<<<<<<< Updated upstream
-=======
                     // TODO - this works but you get stuck in limbo
                     player.SwitchTeam(CsTeam.Spectator);
->>>>>>> Stashed changes
                     player.SwitchTeam(startingSide);
                 }
             }
