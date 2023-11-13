@@ -131,7 +131,7 @@ public partial class PlayCsPlugin
         }
         Console.WriteLine($"Setup Match ${_matchData.id}");
 
-        if (_matchData.map != _currentMap)
+        if (!IsOnMap(_matchData.map))
         {
             Console.WriteLine($"Changing Map {_matchData.map}");
             await ChangeMap(_matchData.map);
@@ -163,18 +163,45 @@ public partial class PlayCsPlugin
         }
     }
 
+    
+    private Dictionary<string, string> _workshopMaps = new Dictionary<string, string>
+    {
+        { "de_cache", "3070596702" },
+        { "de_cbble", "3070212801" },
+        { "de_train", "3070284539" }
+    };
+    
     public async Task ChangeMap(string map)
     {
-        string changeCommand = Server.IsMapValid(map) ? "changelevel" : "host_workshop_map";
-
-        SendCommands(new[] { $"{changeCommand} \"{map}\"" });
+        if (Server.IsMapValid(map) && !_workshopMaps.ContainsKey(map))
+        {
+            SendCommands(new[] { $"changelevel \"{map}\"" });
+        }
+        else
+        {
+            if (!_workshopMaps.ContainsKey(map))
+            {
+                // dont want to break the server by changing it forever
+                UpdateGameState(eGameState.Scheduled);
+                _matchData = null;
+                return;
+            }
+            SendCommands(new[] { $"host_workshop_map {_workshopMaps[map]}" });
+        }
 
         // give the server some time to change, if the map didnt change we will try again.
         await Task.Delay(1000 * 5);
 
-        if (_currentMap != map)
+        if (!IsOnMap(map))
         {
             await ChangeMap(map);
         }
+    }
+    
+    public bool IsOnMap(string map)
+    {
+        Console.WriteLine($"Map Check: {_currentMap}:{map == _currentMap}");
+
+        return map == _currentMap;
     }
 }
