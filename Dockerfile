@@ -5,15 +5,15 @@ FROM mcr.microsoft.com/dotnet/sdk:7.0-alpine AS build
 WORKDIR /mod
 
 # Copy the .csproj file to the container
-COPY *.csproj .
+COPY src/*.csproj .
 
-RUN dotnet restore --package src
+RUN dotnet restore
 
 # Copy the remaining files to the container
 COPY . .
 
 # Build the application
-RUN dotnet build --package src -c Release -o release
+RUN dotnet build -c Release -o release
 
 RUN rm /mod/release/CounterStrikeSharp.API.dll
 
