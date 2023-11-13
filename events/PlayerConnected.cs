@@ -84,7 +84,7 @@ public partial class PlayCsPlugin
     private async void _enforceMemberTeam(CCSPlayerController player)
     {
         // the server needs some time apparently
-        await Task.Delay(1000);
+        await Task.Delay(3000);
 
         MatchMember? foundMatchingMember = _matchData
             .members
