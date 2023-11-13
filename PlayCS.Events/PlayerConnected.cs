@@ -80,8 +80,6 @@ public partial class PlayCsPlugin
         return HookResult.Continue;
     }
 
-    private CancellationTokenSource? _cancelSwitchTeams;
-
     private async void _enforceMemberTeam(CCSPlayerController player, CsTeam currentTeam)
     {
         if (_matchData == null)
