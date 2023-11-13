@@ -52,8 +52,6 @@ public partial class PlayCsPlugin
         string backupRoundFile =
             $"{GetSafeMatchPrefix()}_round{round.ToString().PadLeft(2, '0')}.txt";
 
-        Console.WriteLine($"OK {backupRoundFile}");
-
         if (!File.Exists(Path.Join(Server.GameDirectory + "/csgo/", backupRoundFile)))
         {
             command.ReplyToCommand($"Unable to restore round, missing file ({backupRoundFile})");
