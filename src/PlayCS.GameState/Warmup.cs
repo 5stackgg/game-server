@@ -15,9 +15,18 @@ public partial class PlayCsPlugin
         {
             return;
         }
-        
+
         _resetCaptains();
         _resetReadyPlayers();
+
+        if (_matchData.type == "Wingman")
+        {
+            SendCommands(new[] { "game_type 0; game_mode 2" });
+        }
+        else
+        {
+            SendCommands(new[] { "game_type 0; game_mode 1" });
+        }
 
         SendCommands(
             new[]

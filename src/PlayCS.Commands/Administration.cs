@@ -163,14 +163,13 @@ public partial class PlayCsPlugin
         }
     }
 
-    
     private Dictionary<string, string> _workshopMaps = new Dictionary<string, string>
     {
         { "de_cache", "3070596702" },
         { "de_cbble", "3070212801" },
         { "de_train", "3070284539" }
     };
-    
+
     public async Task ChangeMap(string map)
     {
         if (Server.IsMapValid(map) && !_workshopMaps.ContainsKey(map))
@@ -197,7 +196,7 @@ public partial class PlayCsPlugin
             await ChangeMap(map);
         }
     }
-    
+
     public bool IsOnMap(string map)
     {
         Console.WriteLine($"Map Check: {_currentMap}:{map == _currentMap}");
