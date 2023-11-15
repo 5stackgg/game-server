@@ -28,6 +28,7 @@
 ## WIP
 
 ## Future 
+- [ ] wingman
 - [ ] coach support
 - [ ] best of x
 - [ ] Configuration via http(s) json / json file
