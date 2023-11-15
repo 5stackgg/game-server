@@ -44,6 +44,7 @@
 - [ ] require steam id
   - [ ] kick if not assigned 
   - [ ] discord assign steam id
+- [ ] allow map of "custom" which will ask the admin or a player the map they wish to play
 
 ## Dev TODO
 [ ] .env setup
