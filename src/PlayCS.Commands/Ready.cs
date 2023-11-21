@@ -27,7 +27,7 @@ public partial class PlayCsPlugin
             _readyPlayers[player.UserId.Value] = !_readyPlayers[player.UserId.Value];
         }
 
-        if (TotalReady() == 10)
+        if (TotalReady() == _getExpectedPlayerCount())
         {
             UpdateGameState(eGameState.Knife);
         }
@@ -37,6 +37,20 @@ public partial class PlayCsPlugin
         SendNotReadyMessage();
     }
 
+    [ConsoleCommand("css_force_start", "Forces the match to start")]
+    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public void OnForceStart(CCSPlayerController? player, CommandInfo? command)
+    {
+        if (!IsWarmup())
+        {
+            return;
+        }
+
+        Message(HudDestination.Center, $"Game has been forced to start.", player);
+
+        UpdateGameState(eGameState.Knife);
+    }
+
     public void SendReadyMessage(CCSPlayerController player)
     {
         if (player.UserId == null)
@@ -44,10 +58,9 @@ public partial class PlayCsPlugin
             return;
         }
 
-        // TODO - get total that should be marked ready 10 is good for now
         Message(
             HudDestination.Chat,
-            $"You have been marked {(_readyPlayers[player.UserId.Value] ? $"{ChatColors.Green}ready" : $"{ChatColors.Red}not ready")} {ChatColors.Default}({TotalReady()}/10)",
+            $"You have been marked {(_readyPlayers[player.UserId.Value] ? $"{ChatColors.Green}ready" : $"{ChatColors.Red}not ready")} {ChatColors.Default}({TotalReady()}/{_getExpectedPlayerCount()})",
             player
         );
     }
@@ -106,5 +119,14 @@ public partial class PlayCsPlugin
         }
 
         return notReadyPlayers.ToArray();
+    }
+
+    private int _getExpectedPlayerCount()
+    {
+        if (_matchData == null)
+        {
+            return 10;
+        }
+        return _matchData.type == "Wingman" ? 4 : 10;
     }
 }

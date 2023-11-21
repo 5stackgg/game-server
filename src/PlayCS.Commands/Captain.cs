@@ -72,7 +72,7 @@ public partial class PlayCsPlugin
     {
         foreach (var pair in _captains)
         {
-            CsTeam team = pair.Key;
+            CsTeam? team = pair.Key;
 
             if (pair.Value == null)
             {

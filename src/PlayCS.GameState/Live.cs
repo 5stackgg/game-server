@@ -16,7 +16,7 @@ public partial class PlayCsPlugin
         UpdateCurrentRound();
 
         // require game state coming from Warmup / Knife
-        if (_currentGameState != eGameState.Knife && !IsWarmup())
+        if (!IsKnife() && !IsWarmup())
         {
             _currentGameState = eGameState.Live;
             return;
@@ -34,6 +34,7 @@ public partial class PlayCsPlugin
         SendCommands(
             new[]
             {
+                "bot_kick",
                 "mp_autokick 0",
                 "mp_autoteambalance 0",
                 "mp_warmup_end",
@@ -86,5 +87,10 @@ public partial class PlayCsPlugin
         }
 
         SendCommands(new[] { $"tv_record /opt/demos/{GetSafeMatchPrefix()}" });
+    }
+
+    public bool IsKnife()
+    {
+        return _currentGameState == eGameState.Knife;
     }
 }

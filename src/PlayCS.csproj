@@ -9,9 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.50" />
-    <PackageReference Include="DotNetEnv" Version="1.4.0" />
+    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.65" />
     <PackageReference Include="StackExchange.Redis" Version="2.7.4" />
   </ItemGroup>
-
+  
 </Project>

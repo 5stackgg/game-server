@@ -12,8 +12,14 @@ public partial class PlayCsPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnStay(CCSPlayerController? player, CommandInfo? command)
     {
-        if (player == null)
+        if (player == null || KnifeWinningTeam == null || !IsKnife())
         {
+            return;
+        }
+
+        if (_captains[(CsTeam)KnifeWinningTeam]?.SteamID != player.SteamID)
+        {
+            Message(HudDestination.Chat, $" {ChatColors.Red}You are not the captain!", player);
             return;
         }
 
@@ -29,8 +35,14 @@ public partial class PlayCsPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnSwitch(CCSPlayerController? player, CommandInfo? command)
     {
-        if (player == null || _matchData == null)
+        if (player == null || _matchData == null || KnifeWinningTeam == null || !IsKnife())
         {
+            return;
+        }
+
+        if (_captains[(CsTeam)KnifeWinningTeam]?.SteamID != player.SteamID)
+        {
+            Message(HudDestination.Chat, $" {ChatColors.Red}You are not the captain!", player);
             return;
         }
 
@@ -38,8 +50,6 @@ public partial class PlayCsPlugin
             HudDestination.Alert,
             $"captain picked to {ChatColors.Red}swap {ChatColors.Default}sides"
         );
-
-        SendCommands(new[] { "mp_swapteams" });
 
         _redis.PublishMatchEvent(
             _matchData.id,
@@ -49,6 +59,22 @@ public partial class PlayCsPlugin
                 data = new Dictionary<string, object>()
             }
         );
+
+        SendCommands(new[] { "mp_swapteams" });
+
+        UpdateGameState(eGameState.Live);
+    }
+
+    [ConsoleCommand("css_skip_knife", "Skips knife round")]
+    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public void OnSkipKnife(CCSPlayerController? player, CommandInfo? command)
+    {
+        if (!IsKnife())
+        {
+            return;
+        }
+
+        Message(HudDestination.Center, $"Skipping Knife.", player);
 
         UpdateGameState(eGameState.Live);
     }

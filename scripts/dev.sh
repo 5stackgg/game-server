@@ -11,10 +11,18 @@ kill_dotnet_watch() {
   fi
 }
 
+read -p "Enter Server ID: " server_id
+
+# Set Server ID as an environment variable
+export SERVER_ID=$server_id
+
+echo "Server ID set as environment variable: SERVER_ID=$SERVER_ID"
+echo "SERVER_ID=$SERVER_ID" > /serverdata/serverfiles/.env
+
 dotnet watch build --project src &
 dotnet_watch_pid=$!
 
-Set up trap to kill dotnet watch process on script exit
+# Set up trap to kill dotnet watch process on script exit
 trap kill_dotnet_watch EXIT
 
 directory_to_watch="/opt/playcs/src/bin/Debug/net7.0"

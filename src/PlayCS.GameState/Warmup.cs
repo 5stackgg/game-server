@@ -31,6 +31,7 @@ public partial class PlayCsPlugin
         SendCommands(
             new[]
             {
+                "bot_kick",
                 "mp_autokick 0",
                 "mp_limitteams 0",
                 "mp_autoteambalance 0",
