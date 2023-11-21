@@ -12,7 +12,7 @@ public partial class PlayCsPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnStay(CCSPlayerController? player, CommandInfo? command)
     {
-        if (player == null || KnifeWinningTeam == null)
+        if (player == null || KnifeWinningTeam == null || !IsKnife())
         {
             return;
         }
@@ -35,7 +35,7 @@ public partial class PlayCsPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnSwitch(CCSPlayerController? player, CommandInfo? command)
     {
-        if (player == null || _matchData == null || KnifeWinningTeam == null)
+        if (player == null || _matchData == null || KnifeWinningTeam == null || !IsKnife())
         {
             return;
         }
@@ -69,7 +69,7 @@ public partial class PlayCsPlugin
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnSkipKnife(CCSPlayerController? player, CommandInfo? command)
     {
-        if (!IsWarmup())
+        if (!IsKnife())
         {
             return;
         }
