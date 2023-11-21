@@ -37,6 +37,20 @@ public partial class PlayCsPlugin
         SendNotReadyMessage();
     }
 
+    [ConsoleCommand("css_force_start", "Forces the match to start")]
+    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public void OnForceStart(CCSPlayerController? player, CommandInfo? command)
+    {
+        if (!IsWarmup())
+        {
+            return;
+        }
+
+        Message(HudDestination.Center, $"Game has been forced to start.", player);
+
+        UpdateGameState(eGameState.Knife);
+    }
+
     public void SendReadyMessage(CCSPlayerController player)
     {
         if (player.UserId == null)
