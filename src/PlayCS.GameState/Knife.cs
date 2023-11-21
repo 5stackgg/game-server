@@ -29,6 +29,7 @@ public partial class PlayCsPlugin
         SendCommands(
             new[]
             {
+                "bot_kick",
                 "mp_autokick 0",
                 "mp_autoteambalance 0",
                 "mp_warmuptime_all_players_connected 0",
