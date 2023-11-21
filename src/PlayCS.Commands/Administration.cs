@@ -168,7 +168,7 @@ public partial class PlayCsPlugin
         { "de_cache", "3070596702" },
         { "de_cbble", "3070212801" },
         { "de_train", "3070284539" },
-        { "biome", "3075706807" },
+        { "de_biome", "3075706807" },
         { "assembly", "3071005299" },
         { "brewery", "3070290240" },
         { "drawbridge", "3070192462" }
