@@ -28,6 +28,7 @@ public partial class PlayCsPlugin : BasePlugin
 
     public override void Load(bool hotReload)
     {
+        
         // Env.Load("/opt/PlayCS/.env");
 
         Console.WriteLine(
@@ -38,13 +39,11 @@ public partial class PlayCsPlugin : BasePlugin
 
         Message(HudDestination.Alert, "PlayCS Loaded");
 
-        string serverId = "82c90c4f-ab44-432b-9025-29332461bfe2";
-        // string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
+        string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
 
-        // SV:  64 player server started - detect that
         if (serverId != null)
         {
-            Console.WriteLine($"Server Connected ${serverId}");
+            Console.WriteLine($"Server Connected: {serverId}");
             _redis.PublishServerEvent(
                 serverId,
                 new Redis.EventData<Dictionary<string, object>>

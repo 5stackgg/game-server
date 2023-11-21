@@ -102,3 +102,8 @@ chmod -R ${DATA_PERM} ${DATA_DIR}
 echo "---Server ready---"
 cd ${SERVER_DIR}
 ${SERVER_DIR}/game/bin/linuxsteamrt64/cs2 ${GAME_PARAMS}
+
+if [ $? -ne 0 ]; then
+    echo "Exit code: $?"
+    exit 1
+fi
