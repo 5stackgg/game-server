@@ -203,7 +203,7 @@ public partial class PlayCsPlugin
 
     public bool IsOnMap(string map)
     {
-        Console.WriteLine($"Map Check: {_currentMap}:{map == _currentMap}");
+        Console.WriteLine($"Map Check: {_currentMap}:{map}");
 
         return map == _currentMap;
     }
