@@ -39,28 +39,6 @@ public partial class PlayCsPlugin
     }
 
     [GameEventHandler]
-    public HookResult OnPlayerFullConnect(EventPlayerConnectFull @event, GameEventInfo info)
-    {
-        if (
-            @event.Userid == null
-            || !@event.Userid.IsValid
-            || @event.Userid.IsBot
-            || _matchData == null
-        )
-        {
-            return HookResult.Continue;
-        }
-
-        Message(
-            HudDestination.Chat,
-            $"{ChatColors.Default}type {ChatColors.Green}!ready {ChatColors.Default}to be marked as ready for the match",
-            @event.Userid
-        );
-
-        return HookResult.Continue;
-    }
-
-    [GameEventHandler]
     public HookResult OnPlayerJoinTeam(EventPlayerTeam @event, GameEventInfo info)
     {
         if (
@@ -76,6 +54,12 @@ public partial class PlayCsPlugin
         CCSPlayerController player = @event.Userid;
 
         _enforceMemberTeam(player, TeamNumToCSTeam(@event.Team));
+
+        Message(
+            HudDestination.Chat,
+            $"{ChatColors.Default}type {ChatColors.Green}!ready {ChatColors.Default}to be marked as ready for the match",
+            @event.Userid
+        );
 
         return HookResult.Continue;
     }
