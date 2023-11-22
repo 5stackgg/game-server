@@ -154,7 +154,7 @@ public partial class PlayCsPlugin
             Console.WriteLine("Missing Match Data");
             return;
         }
-        Console.WriteLine($"Setup Match ${_matchData.id}");
+        Console.WriteLine($"Setup Match {_matchData.id}");
 
         if (!IsOnMap(_matchData.map))
         {
