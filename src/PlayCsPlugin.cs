@@ -40,21 +40,7 @@ public partial class PlayCsPlugin : BasePlugin
         ListenForMapChange();
 
         Message(HudDestination.Alert, "PlayCS Loaded");
-
-        string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
-
-        if (serverId != null)
-        {
-            Console.WriteLine($"Server Connected: {serverId}");
-            _redis.PublishServerEvent(
-                serverId,
-                new Redis.EventData<Dictionary<string, object>>
-                {
-                    @event = "connected",
-                    data = new Dictionary<string, object>()
-                }
-            );
-        }
+        RequestMatchData();
     }
 
     public void Message(

@@ -66,6 +66,31 @@ public partial class PlayCsPlugin
         );
     }
 
+    public async void RequestMatchData()
+    {
+        string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
+
+        if (serverId != null)
+        {
+            Console.WriteLine($"Request Match Data: {serverId}");
+            _redis.PublishServerEvent(
+                serverId,
+                new Redis.EventData<Dictionary<string, object>>
+                {
+                    @event = "connected",
+                    data = new Dictionary<string, object>()
+                }
+            );
+
+            await Task.Delay(1000 * 5);
+
+            if (_matchData == null)
+            {
+                RequestMatchData();
+            }
+        }
+    }
+
     public void UpdateGameState(eGameState gameState)
     {
         Console.WriteLine($"Update Game State {_currentGameState} -> {gameState}");
