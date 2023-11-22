@@ -63,10 +63,9 @@ public partial class PlayCsPlugin
             }
         );
 
-
         TeamTimeouts[CsTeam.Terrorist] = 0;
         TeamTimeouts[CsTeam.CounterTerrorist] = 0;
-        
+
         _startDemoRecording();
 
         _publishGameState(eGameState.Live);
