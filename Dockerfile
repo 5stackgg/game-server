@@ -62,7 +62,7 @@ RUN mkdir $DATA_DIR && \
 	ulimit -n 2048
 
 RUN mkdir /opt/metamod
-ADD https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1258-linux.tar.gz /tmp/metamod.tar.gz
+ADD https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1270-linux.tar.gz /tmp/metamod.tar.gz
 RUN tar -xz -C /opt/metamod -f /tmp/metamod.tar.gz && rm /tmp/metamod.tar.gz
 
 RUN mkdir /opt/counterstrikesharp
