@@ -61,6 +61,12 @@ public partial class PlayCsPlugin
             @event.Userid
         );
 
+        Message(
+            HudDestination.Chat,
+            $"type ${ChatColors.Green}.help ${ChatColors.Default}to view additional commands",
+            @event.Userid
+        );
+
         return HookResult.Continue;
     }
 
