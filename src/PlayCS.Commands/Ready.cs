@@ -89,7 +89,7 @@ public partial class PlayCsPlugin
 
             Message(
                 HudDestination.Notify,
-                $" {ChatColors.Red}Players Not Ready: {ChatColors.Default}{string.Join(", ", notReadyPlayers)}"
+                $" Players {ChatColors.Red}Not Ready: {ChatColors.Default}{string.Join(", ", notReadyPlayers)} type {{ChatColors.Green}}!ready"
             );
         }
         catch (TaskCanceledException)
