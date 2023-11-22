@@ -72,7 +72,7 @@ public partial class PlayCsPlugin
 
         if (serverId != null)
         {
-            Console.WriteLine($"Server Connected: {serverId}");
+            Console.WriteLine($"Request Match Data: {serverId}");
             _redis.PublishServerEvent(
                 serverId,
                 new Redis.EventData<Dictionary<string, object>>
