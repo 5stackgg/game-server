@@ -133,7 +133,6 @@ public partial class PlayCsPlugin
 
         if (!IsOnMap(_matchData.map))
         {
-            Console.WriteLine($"Changing Map {_matchData.map}");
             await ChangeMap(_matchData.map);
             return;
         }
@@ -176,6 +175,8 @@ public partial class PlayCsPlugin
 
     public async Task ChangeMap(string map)
     {
+        Console.WriteLine($"Changing Map {map}");
+
         if (Server.IsMapValid(map) && !_workshopMaps.ContainsKey(map))
         {
             SendCommands(new[] { $"changelevel \"{map}\"" });
@@ -186,6 +187,7 @@ public partial class PlayCsPlugin
             {
                 // dont want to break the server by changing it forever
                 UpdateGameState(eGameState.Scheduled);
+                Console.WriteLine($"Map not found in the workshop maps: {map}");
                 _matchData = null;
                 return;
             }
