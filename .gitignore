@@ -2,3 +2,4 @@ src/bin
 src/obj
 src/Folder.DotSettings.user
 .env
+release
