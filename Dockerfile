@@ -64,7 +64,7 @@ RUN mkdir $DATA_DIR && \
 	mkdir $BASE_SERVER_DIR && \
 	useradd -d $DATA_DIR -s /bin/bash $USER && \
 	chown -R $USER $DATA_DIR && \
-	ulimit -n 2048 \
+	ulimit -n 2048
 
 RUN mkdir /opt/metamod
 ADD https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1266-linux.tar.gz /tmp/metamod.tar.gz
