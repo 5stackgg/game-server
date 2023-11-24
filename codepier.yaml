@@ -1,0 +1,11 @@
+namespaces: [playcs]
+image: mcr.microsoft.com/dotnet/sdk:7.0-alpine
+container: dev
+deployment: dev-cs-server
+supplemental: true
+sync:
+  - .:/opt/playcs
+ignore:
+  - "bin"
+  - "obj"
+  - "Folder.DotSettings.user"

@@ -1,0 +1,52 @@
+# playcs-mod
+
+## Features
+- [x] automatic team assignment
+- [x] automatic pause if player disconnects
+- [x] tactical timeouts (4 30 second timeouts for each team )
+  - [ ] db reporting
+- [x] tech pause / unpause
+  - [ ] permissions players / coach / admin
+- [x] Knife Round (with captains)
+  - [x] stay / switch
+- [x] ready system
+- [x] Overtime (infinite)]
+- [x] Workshop Maps
+  - [ ] by config (http)
+- [x] Game Events
+    - [x] Report start of match
+    - [x] Report round results
+    - [x] Report map ended
+- [x] Player Stats
+    - [x] Damage
+    - [x] Kills
+    - [x] Assists
+- [x] Discord Veto System
+- [x] demo recording
+  - [x] downloadable
+- [x] round restore
+- [x] setup to handle multiple servers natively
+- [x] wingman
+- [ ] coach support
+- [ ] best of x
+- [ ] Configuration via http(s) json / json file
+- [ ] Advanced stats
+  - [ ] TradeKill
+  - [ ] Enemies Flash /
+  - [ ] Friendlies Flashed
+  - [ ] MVP
+  - [ ] death by bomb / suicide
+  - [ ] won by plant / defuse (and who)
+- [ ] web ui at playcs.live
+- [ ] require steam id
+  - [ ] kick if not assigned
+  - [ ] discord assign steam id
+
+## Dev TODO
+- [ ] k8s job to update server files 
+  - [ ] updating server files mid match, what happens?
+- [ ] k8s volume for match round backups
+- [ ] mid-match server restart = bad news bears 
+  - [ ] change job attempts to infinite
+  - [ ] need to re-ready up 
+  - [ ] need to load last round
