@@ -17,6 +17,8 @@ public partial class PlayCsPlugin
     public void SetMatchMatchId(CCSPlayerController? player, CommandInfo command)
     {
         string matchId = command.ArgString;
+        
+        // TODO - change this to use http request instead
         _matchData = _redis.GetMatch(matchId);
 
         if (_matchData == null)

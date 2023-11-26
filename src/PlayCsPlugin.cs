@@ -21,6 +21,16 @@ public partial class PlayCsPlugin : BasePlugin
         { CsTeam.Terrorist, null },
         { CsTeam.CounterTerrorist, null }
     };
+    
+    private Dictionary<CsTeam, CCSPlayerController?> _coaches = new Dictionary<
+        CsTeam,
+        CCSPlayerController?
+    >
+    {
+        { CsTeam.Terrorist, null },
+        { CsTeam.CounterTerrorist, null }
+    };
+
 
     public override string ModuleName => "PlayCS Mod";
 

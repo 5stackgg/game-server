@@ -85,7 +85,7 @@ public partial class PlayCsPlugin
 
             Message(
                 HudDestination.Notify,
-                $"[{TeamNumToString((int)team)}] {(team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{pair.Value.PlayerName}"
+                $"[{TeamNumToString((int)team)} Captain] {(team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{pair.Value.PlayerName}"
             );
         }
     }

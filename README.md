@@ -10,6 +10,8 @@
 - [x] Knife Round (with captains)
   - [x] stay / switch
 - [x] ready system
+  - [ ] hint system https://user-images.githubusercontent.com/32937653/284095437-2122c5f3-3a88-4853-a408-df790bcede85.png
+  - [ ] show ready tag in clan name
 - [x] Overtime (infinite)]
 - [x] Workshop Maps
   - [ ] by config (http)
@@ -21,10 +23,16 @@
     - [x] Damage
     - [x] Kills
     - [x] Assists
-- [x] Discord Veto System
+- [x] Discord Integration
+  - [x] player picks
+  - [x] veto system
+  - [x] match creation
+  - [x] current score / status of match
 - [x] demo recording
   - [x] downloadable
-- [x] round restore
+  - [ ] link to discord match overview
+- [x] backup rounds 
+  - [ ] upload to db
 - [x] setup to handle multiple servers natively
 - [x] wingman
 - [ ] coach support
@@ -38,15 +46,18 @@
   - [ ] death by bomb / suicide
   - [ ] won by plant / defuse (and who)
 - [ ] web ui at playcs.live
+  - [ ] rcon
+  - [ ] permissions
+  - [ ] creation of matches
 - [ ] require steam id
   - [ ] kick if not assigned
   - [ ] discord assign steam id
+- [ ] rules command
 
 ## Dev TODO
 - [ ] k8s job to update server files 
   - [ ] updating server files mid match, what happens?
-- [ ] k8s volume for match round backups
-- [ ] mid-match server restart = bad news bears 
-  - [ ] change job attempts to infinite
+- [ ] delete backup rounds after done
+- [ ] mid-match server restart = bad news bears
   - [ ] need to re-ready up 
   - [ ] need to load last round

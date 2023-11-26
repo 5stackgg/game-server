@@ -18,7 +18,7 @@ public partial class PlayCsPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnPause(CCSPlayerController? player, CommandInfo? command)
     {
-        if (player == null && IsLive())
+        if (player == null || IsLive())
         {
             return;
         }
@@ -33,7 +33,7 @@ public partial class PlayCsPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnResume(CCSPlayerController? player, CommandInfo? command)
     {
-        if (player == null && IsLive())
+        if (player == null || IsLive())
         {
             return;
         }
@@ -49,7 +49,7 @@ public partial class PlayCsPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnTimeout(CCSPlayerController? player, CommandInfo? command)
     {
-        if (player == null && IsLive())
+        if (player == null || IsLive())
         {
             return;
         }

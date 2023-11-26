@@ -50,6 +50,13 @@ public partial class PlayCsPlugin
         {
             return HookResult.Continue;
         }
+        
+        // dont allow them to join a team
+        if (_coaches[CsTeam.Terrorist] == @event.Userid || _coaches[CsTeam.CounterTerrorist] == @event.Userid) {
+            @event.Silent = true;
+            return HookResult.Changed;
+        }
+        
 
         CCSPlayerController player = @event.Userid;
 
