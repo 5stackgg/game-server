@@ -2,6 +2,8 @@
 
 copy_directories=(
   "game/csgo/cfg"
+  "game/csgo/models"
+  "game/csgo/sound"
   "game/csgo/gameinfo.gi"
 )
 
@@ -10,12 +12,8 @@ for dir in "${copy_directories[@]}"; do
 done
 
 make_directories=(
-  "game/csgo/maps"
-  "game/csgo/addons"
-  "game/csgo/maps/cfg"
   "game/csgo/maps/soundcache"
   "game/csgo/logs"
-  "game/csgo/resource/overviews"
 )
 
 for dir in "${make_directories[@]}"; do
@@ -23,7 +21,6 @@ for dir in "${make_directories[@]}"; do
 done
 
 echo "---Create Symbolic Links---"
-IGNORE_DIRECTORIES="game/csgo/addons"
 
 create_symlinks() {
     local source_path="$1"
@@ -102,7 +99,7 @@ if [ ! -f "${DATA_DIR}/.steam/sdk64/steamclient.so" ]; then
 fi
 
 chmod -R "${DATA_PERM}" "${DATA_DIR}"
-
+chmod -R "${DATA_PERM}" "${INSTANCE_SERVER_DIR}/game/csgo/addons"
 
 echo "---Starting Server...--"
 cd ${INSTANCE_SERVER_DIR}
