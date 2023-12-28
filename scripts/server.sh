@@ -41,14 +41,12 @@ create_symlinks() {
 
         # Check if it's a regular file
         if [ -f "$file" ]; then
-            # Check if the symlink or file already exists in the destination
-            if [ -e "$destination_file" ]; then
-                echo "Skipping $destination_file, already exists."
-            else
-                # Create the symlink
-                ln -s "$file" "$destination_file"
-                echo "Symlink created: $destination_file"
-            fi
+          # Check if the symlink or file does not exist in the destination
+          if [ ! -e "$destination_file" ]; then
+              # Create the symlink
+              ln -s "$file" "$destination_file"
+              echo "Symlink created: $destination_file"
+          fi
         elif [ -d "$file" ]; then
             # Check if the destination directory exists
             if [ ! -e "$destination_file" ]; then
@@ -74,11 +72,13 @@ echo "---Check Metamod Install---"
 gameinfo_path="${INSTANCE_SERVER_DIR}/game/csgo/gameinfo.gi"
 new_line="                        Game    csgo/addons/metamod"
 
-# Check if the line already exists
+echo "Checking if $new_line exists in $gameinfo_path"
 if ! grep -qFx "$new_line" "$gameinfo_path"; then
     echo "---Adding Metamod---"
     # If the line doesn't exist, add it
     line_number=$(awk '/Game_LowViolence/{print NR; exit}' "$gameinfo_path")
+    echo "Found Game_LowViolence at line $line_number"
+
     sed -i "${line_number}a\\$new_line" "$gameinfo_path"
 fi
 

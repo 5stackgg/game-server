@@ -38,6 +38,7 @@ public partial class PlayCsPlugin : BasePlugin
 
     public override void Load(bool hotReload)
     {
+        Console.WriteLine("LOADED PLUGBN...");
         if (bool.TryParse(Environment.GetEnvironmentVariable("DEV_SERVER"), out var isDev) && isDev)
         {
             DotEnv.Load("/serverdata/serverfiles/.env");

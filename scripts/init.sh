@@ -15,8 +15,11 @@ chmod -R 750 /opt/scripts
 echo "---Permissions...---"
 chown -R ${UID}:${GID} ${DATA_DIR}
 
-# TODO - figure out how to deal with auto updating
-echo "---Updating...---"
-su ${USER} -c "/opt/scripts/update.sh"
+if [ "${UPDATE_SERVER}" == "1" ]; then
+  echo "---Updating...---"
+  su ${USER} -c "/opt/scripts/update.sh"
+else
+  echo "---Skipping update as UPDATE_SERVER is not set---"
+fi
 
 su ${USER} -c "/opt/scripts/server.sh"
