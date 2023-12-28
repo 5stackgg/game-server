@@ -1,14 +1,7 @@
 #!/bin/bash
 
-copy_directories=(
-  "game/csgo/cfg"
-)
-
-for dir in "${copy_directories[@]}"; do
-    cp -R "$BASE_SERVER_DIR/$dir" "$INSTANCE_SERVER_DIR/$dir"
-done
-
 make_directories=(
+  "game/csgo/cfg",
   "game/csgo/addons",
   "game/csgo/maps/soundcache"
   "game/csgo/logs"
@@ -16,6 +9,14 @@ make_directories=(
 
 for dir in "${make_directories[@]}"; do
     mkdir -p "$INSTANCE_SERVER_DIR/$dir"
+done
+
+copy_directories=(
+  "game/csgo/cfg"
+)
+
+for dir in "${copy_directories[@]}"; do
+    cp -R "$BASE_SERVER_DIR/$dir" "$INSTANCE_SERVER_DIR/$dir"
 done
 
 echo "---Create Symbolic Links---"
