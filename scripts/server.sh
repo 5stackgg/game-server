@@ -1,5 +1,14 @@
 #!/bin/bash
 
+copy_directories=(
+  "game/csgo/cfg"
+  "game/csgo/gameinfo.gi"
+)
+
+for dir in "${copy_directories[@]}"; do
+    cp -R "$BASE_SERVER_DIR/$dir" "$INSTANCE_SERVER_DIR/$dir"
+done
+
 make_directories=(
   "game/csgo/maps"
   "game/csgo/addons"
