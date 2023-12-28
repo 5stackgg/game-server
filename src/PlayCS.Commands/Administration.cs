@@ -1,8 +1,10 @@
+using System.Text.Json;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
+using Microsoft.Extensions.Logging;
 using PlayCs.entities;
 using PlayCS.enums;
 
@@ -12,26 +14,64 @@ public partial class PlayCsPlugin
 {
     private Match? _matchData;
 
-    [ConsoleCommand("set_match_id", "Set the match id for the server to configure the match for")]
+    [ConsoleCommand("get_match_details", "Gets match details")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void SetMatchMatchId(CCSPlayerController? player, CommandInfo command)
     {
-        string matchId = command.ArgString;
-        
-        // TODO - change this to use http request instead
-        _matchData = _redis.GetMatch(matchId);
+        GetMatch();
+    }
 
-        if (_matchData == null)
+    private async void GetMatch()
+    {
+        HttpClient httpClient = new HttpClient();
+
+        string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
+
+        if (serverId == null)
         {
+            await Task.Delay(1000 * 5);
+
+            GetMatch();
             return;
         }
 
-        if (!IsLive())
+        try
         {
-            Message(HudDestination.Alert, "Received Match Data");
-        }
+            string? response = await httpClient.GetStringAsync(
+                $"https://api.playcs.live/server/match/{serverId}"
+            );
 
-        SetupMatch();
+            if (response == null)
+            {
+                return;
+            }
+
+            _matchData = JsonSerializer.Deserialize<Match>(response);
+
+            if (_matchData == null)
+            {
+                return;
+            }
+
+            if (!IsLive())
+            {
+                Message(HudDestination.Alert, "Received Match Data");
+            }
+
+            SetupMatch();
+        }
+        catch (HttpRequestException ex)
+        {
+            Logger.LogInformation($"HTTP request error: {ex.Message}");
+        }
+        catch (JsonException ex)
+        {
+            Logger.LogInformation($"JSON deserialization error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogInformation($"An unexpected error occurred: {ex.Message}");
+        }
     }
 
     [ConsoleCommand("match_state", "Forces a match to update its current state")]
@@ -68,40 +108,15 @@ public partial class PlayCsPlugin
         );
     }
 
-    public async void RequestMatchData()
-    {
-        string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
-
-        if (serverId != null)
-        {
-            Console.WriteLine($"Request Match Data: {serverId}");
-            _redis.PublishServerEvent(
-                serverId,
-                new Redis.EventData<Dictionary<string, object>>
-                {
-                    @event = "connected",
-                    data = new Dictionary<string, object>()
-                }
-            );
-
-            await Task.Delay(1000 * 5);
-
-            if (_matchData == null)
-            {
-                RequestMatchData();
-            }
-        }
-    }
-
     public void UpdateGameState(eGameState gameState)
     {
-        Console.WriteLine($"Update Game State {_currentGameState} -> {gameState}");
+        Logger.LogInformation($"Update Game State {_currentGameState} -> {gameState}");
         if (_matchData == null)
         {
-            Console.WriteLine("missing event data");
+            Logger.LogInformation("missing event data");
             return;
         }
-        Console.WriteLine($"Updating Game State: {gameState}");
+        Logger.LogInformation($"Updating Game State: {gameState}");
 
         switch (gameState)
         {
@@ -153,10 +168,10 @@ public partial class PlayCsPlugin
     {
         if (_matchData == null)
         {
-            Console.WriteLine("Missing Match Data");
+            Logger.LogInformation("Missing Match Data");
             return;
         }
-        Console.WriteLine($"Setup Match {_matchData.id}");
+        Logger.LogInformation($"Setup Match {_matchData.id}");
 
         if (!IsOnMap(_matchData.map))
         {
@@ -168,7 +183,7 @@ public partial class PlayCsPlugin
 
         SetupTeamNames();
 
-        Console.WriteLine($"Current Game State {_currentGameState}");
+        Logger.LogInformation($"Current Game State {_currentGameState}");
 
         if (GameStateStringToEnum(_matchData.status) != _currentGameState)
         {
@@ -202,7 +217,7 @@ public partial class PlayCsPlugin
 
     public async Task ChangeMap(string map)
     {
-        Console.WriteLine($"Changing Map {map}");
+        Logger.LogInformation($"Changing Map {map}");
 
         if (Server.IsMapValid(map) && !_workshopMaps.ContainsKey(map))
         {
@@ -214,7 +229,7 @@ public partial class PlayCsPlugin
             {
                 // dont want to break the server by changing it forever
                 UpdateGameState(eGameState.Scheduled);
-                Console.WriteLine($"Map not found in the workshop maps: {map}");
+                Logger.LogInformation($"Map not found in the workshop maps: {map}");
                 _matchData = null;
                 return;
             }
@@ -232,7 +247,7 @@ public partial class PlayCsPlugin
 
     public bool IsOnMap(string map)
     {
-        Console.WriteLine($"Map Check: {_currentMap}:{map}");
+        Logger.LogInformation($"Map Check: {_currentMap}:{map}");
 
         return map == _currentMap;
     }

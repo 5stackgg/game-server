@@ -1,5 +1,4 @@
 using System.Text.Json;
-using PlayCs.entities;
 using StackExchange.Redis;
 
 namespace PlayCs;
@@ -14,18 +13,6 @@ public class Redis
         ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("redis");
         _cache = redis.GetDatabase(1);
         _pubsub = redis.GetDatabase(0);
-    }
-
-    public Match? GetMatch(string matchId)
-    {
-        string? match = _cache.StringGet($"match:{matchId}");
-
-        if (match == null)
-        {
-            return null;
-        }
-
-        return JsonSerializer.Deserialize<Match>(match);
     }
 
     /**

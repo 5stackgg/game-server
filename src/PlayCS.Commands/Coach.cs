@@ -15,9 +15,7 @@ public partial class PlayCsPlugin
         if (
             player == null
             || _matchData == null
-            || (
-                GameStateStringToEnum(_matchData.status) != eGameState.Warmup
-            )
+            || (GameStateStringToEnum(_matchData.status) != eGameState.Warmup)
         )
         {
             return;
@@ -35,9 +33,7 @@ public partial class PlayCsPlugin
         if (
             player == null
             || _matchData == null
-            || (
-                GameStateStringToEnum(_matchData.status) != eGameState.Warmup
-            )
+            || (GameStateStringToEnum(_matchData.status) != eGameState.Warmup)
         )
         {
             return;

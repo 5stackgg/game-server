@@ -2,6 +2,7 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Utils;
+using Microsoft.Extensions.Logging;
 using PlayCs.entities;
 using PlayCS.enums;
 
@@ -22,7 +23,7 @@ public partial class PlayCsPlugin
     {
         if (_matchData == null || _currentGameState == eGameState.Knife)
         {
-            Console.WriteLine($"TEAM ASSIGNED {@event.Winner}");
+            Logger.LogInformation($"TEAM ASSIGNED {@event.Winner}");
 
             KnifeWinningTeam = TeamNumToCSTeam(@event.Winner);
 

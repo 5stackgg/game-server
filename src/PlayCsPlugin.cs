@@ -2,6 +2,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Utils;
+using Microsoft.Extensions.Logging;
 using PlayCS.enums;
 
 namespace PlayCs;
@@ -21,7 +22,7 @@ public partial class PlayCsPlugin : BasePlugin
         { CsTeam.Terrorist, null },
         { CsTeam.CounterTerrorist, null }
     };
-    
+
     private Dictionary<CsTeam, CCSPlayerController?> _coaches = new Dictionary<
         CsTeam,
         CCSPlayerController?
@@ -30,7 +31,6 @@ public partial class PlayCsPlugin : BasePlugin
         { CsTeam.Terrorist, null },
         { CsTeam.CounterTerrorist, null }
     };
-
 
     public override string ModuleName => "PlayCS Mod";
 
@@ -43,14 +43,14 @@ public partial class PlayCsPlugin : BasePlugin
             DotEnv.Load("/serverdata/serverfiles/.env");
         }
 
-        Console.WriteLine(
+        Logger.LogInformation(
             $"Test Plugin has been loaded, and the hot reload flag was {hotReload}, path is {ModulePath}"
         );
 
         ListenForMapChange();
 
         Message(HudDestination.Alert, "PlayCS Loaded");
-        RequestMatchData();
+        GetMatch();
     }
 
     public void Message(
