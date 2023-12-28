@@ -24,31 +24,18 @@ create_symlinks() {
     local source_path="$1"
     local destination_path="$2"
 
-    # Iterate through each file in the source directory
     for file in "$source_path"/*; do
-
-        # Extract the relative path of the file from the source directory
         relative_path="${file#$source_path/}"
-
-        # Build the corresponding destination path
         destination_file="$destination_path/$relative_path"
 
-        # Check if it's a regular file
         if [ -f "$file" ]; then
-          # Check if the symlink or file does not exist in the destination
           if [ ! -e "$destination_file" ]; then
-              # Create the symlink
               ln -s "$file" "$destination_file"
-              echo "Symlink created: $destination_file"
           fi
         elif [ -d "$file" ]; then
-            # Check if the destination directory exists
             if [ ! -e "$destination_file" ]; then
-                # Create the symlink
                 ln -s "$file" "$destination_file"
-                echo "Symlink created: $destination_file"
             fi
-            # Recursively call the function
             create_symlinks "$file" "$destination_file"
         fi
     done
