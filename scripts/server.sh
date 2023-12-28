@@ -21,6 +21,9 @@ for dir in "${copy_directories[@]}"; do
 done
 
 echo "---Create Symbolic Links---"
+IGNORE_DIRECTORIES=(
+  "game/csgo/addons"
+)
 
 create_symlinks() {
     local source_path="$1"
@@ -29,6 +32,11 @@ create_symlinks() {
     for file in "$source_path"/*; do
         relative_path="${file#$source_path/}"
         destination_file="$destination_path/$relative_path"
+
+        if [[ "${IGNORE_DIRECTORIES[@]}" =~ "$relative_path" ]]; then
+            echo "Skipping directory: $relative_path"
+            continue
+        fi
 
         if [ -f "$file" ]; then
           if [ ! -e "$destination_file" ]; then
@@ -90,6 +98,10 @@ fi
 
 chmod -R "${DATA_PERM}" "${DATA_DIR}"
 chmod -R "${DATA_PERM}" "${INSTANCE_SERVER_DIR}/game/csgo/addons"
+
+if [ "${DEV_SWAPPED}" == "1" ]; then
+  ln -s "/serverdata/serverfiles/game/csgo/addons/counterstrikesharp/plugins/PlayCS" "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/plugins/PlayCS"
+fi
 
 echo "---Starting Server...--"
 ${INSTANCE_SERVER_DIR}/game/bin/linuxsteamrt64/cs2 ${GAME_PARAMS}
