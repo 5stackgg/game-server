@@ -51,12 +51,12 @@ echo "---Install Metamod---"
 cp -R /opt/metamod/addons "${INSTANCE_SERVER_DIR}/game/csgo"
 
 echo "---Check Metamod Install---"
-gameinfo_path="${INSTANCE_SERVER_DIR}/game/csgo/gameinfo.gi"
+gameinfo_path="${BASE_SERVER_DIR}/game/csgo/gameinfo.gi"
 new_line="                        Game    csgo/addons/metamod"
 
 echo "Checking if $new_line exists in $gameinfo_path"
 if ! grep -qFx "$new_line" "$gameinfo_path"; then
-    echo "---Adding Metamod---"
+    echo "---Adding Metamod Loadergiut ---"
     # If the line doesn't exist, add it
     line_number=$(awk '/Game_LowViolence/{print NR; exit}' "$gameinfo_path")
     echo "Found Game_LowViolence at line $line_number"
