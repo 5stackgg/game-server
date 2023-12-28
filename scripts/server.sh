@@ -91,6 +91,7 @@ chmod -R "${DATA_PERM}" "${DATA_DIR}"
 chmod -R "${DATA_PERM}" "${INSTANCE_SERVER_DIR}/game/csgo/addons"
 
 echo "---Starting Server...--"
+cd ${INSTANCE_SERVER_DIR}
 ${INSTANCE_SERVER_DIR}/game/bin/linuxsteamrt64/cs2 ${GAME_PARAMS}
 
 if [ $? -ne 0 ]; then
