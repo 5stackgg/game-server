@@ -62,15 +62,12 @@ echo "---Check Metamod Install---"
 gameinfo_path="${INSTANCE_SERVER_DIR}/game/csgo/gameinfo.gi"
 new_line="                        Game    csgo/addons/metamod"
 
-echo "Checking if $new_line exists in $gameinfo_path"
-if ! grep -qFx "$new_line" "$gameinfo_path"; then
-    echo "---Adding Metamod---"
-    # If the line doesn't exist, add it
-    line_number=$(awk '/Game_LowViolence/{print NR; exit}' "$gameinfo_path")
-    echo "Found Game_LowViolence at line $line_number"
+echo "---Adding Metamod---"
+# If the line doesn't exist, add it
+line_number=$(awk '/Game_LowViolence/{print NR; exit}' "$gameinfo_path")
+echo "Found Game_LowViolence at line $line_number"
 
-    sed -i "${line_number}a\\$new_line" "$gameinfo_path"
-fi
+sed -i "${line_number}a\\$new_line" "$gameinfo_path"
 
 echo "---Install CounterStrikeSharp---"
 cp -R /opt/counterstrikesharp/addons "${INSTANCE_SERVER_DIR}/game/csgo"
