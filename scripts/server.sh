@@ -100,7 +100,8 @@ chmod -R "${DATA_PERM}" "${DATA_DIR}"
 chmod -R "${DATA_PERM}" "${INSTANCE_SERVER_DIR}/game/csgo/addons"
 
 if [ "${DEV_SWAPPED}" == "1" ]; then
-  ln -s "/serverdata/serverfiles/game/csgo/addons/counterstrikesharp/plugins/PlayCS" "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/plugins/PlayCS"
+  mkdir -p ${$BASE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/PlayCS
+  ln -s "${$BASE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/PlayCS" "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/plugins/PlayCS"
 fi
 
 echo "---Starting Server...--"
