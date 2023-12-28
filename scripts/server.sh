@@ -12,6 +12,7 @@ for dir in "${copy_directories[@]}"; do
 done
 
 make_directories=(
+  "game/csgo/addons",
   "game/csgo/maps/soundcache"
   "game/csgo/logs"
 )
