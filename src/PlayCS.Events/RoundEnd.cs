@@ -45,8 +45,8 @@ public partial class PlayCsPlugin
                 data = new Dictionary<string, object>
                 {
                     { "round", _currentRound + 1 },
-                    { "team_1_score", $"{GetTeamScore(1)}" },
-                    { "team_2_score", $"{GetTeamScore(2)}" },
+                    { "team_1_score", $"{GetTeamScore(_matchData.lineup_1.name)}" },
+                    { "team_2_score", $"{GetTeamScore(_matchData.lineup_2.name)}" },
                 }
             }
         );
@@ -54,7 +54,7 @@ public partial class PlayCsPlugin
         return HookResult.Continue;
     }
 
-    public int GetTeamScore(int teamNumber)
+    public int GetTeamScore(string teamName)
     {
         if (_matchData == null)
         {
@@ -63,8 +63,13 @@ public partial class PlayCsPlugin
 
         var teamManagers = Utilities.FindAllEntitiesByDesignerName<CCSTeam>("cs_team_manager");
 
-        // TODO - fix this
-        foreach (var teamManager in teamManagers) { }
+        foreach (var teamManager in teamManagers)
+        {
+            if (teamManager.ClanTeamname == teamName)
+            {
+                return teamManager.Score;
+            }
+        }
 
         return 0;
     }
