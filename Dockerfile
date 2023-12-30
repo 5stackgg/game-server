@@ -87,6 +87,8 @@ RUN cp -R /opt/metamod/addons /opt/addons
 RUN rm -rf /opt/metamod
 
 RUN cp -R /opt/counterstrikesharp/addons /opt/addons
+RUN mkdir -p /opt/addons/counterstrikesharp/plugins
+
 RUN rm -rf /opt/counterstrikesharp
 
 RUN chmod -R 770 /opt/scripts/

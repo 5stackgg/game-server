@@ -72,9 +72,6 @@ if ! grep -qFx "$new_line" "$gameinfo_path"; then
     sed -i "${line_number}a\\$new_line" "$gameinfo_path"
 fi
 
-# Create plugins directory
-mkdir -p "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins"
-
 echo "---Permissions...---"
 chown -R ${UID}:${GID} ${DATA_DIR}
 
