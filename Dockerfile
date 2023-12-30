@@ -82,12 +82,13 @@ COPY /scripts /opt/scripts
 COPY --from=build /mod/release /opt/mod
 
 RUN mv /opt/metamod/addons /opt/addons
-#RUN rm -rf /opt/metamod
 
-RUN cp -R /opt/counterstrikesharp/addons /opt/addons
+RUN cp -R /opt/counterstrikesharp/addons/metamod /opt/addons
+RUN cp -R /opt/counterstrikesharp/addons/counterstrikesharp /opt/addons
 RUN mkdir -p /opt/addons/counterstrikesharp/plugins
 
-#RUN rm -rf /opt/counterstrikesharp
+RUN rm -rf /opt/metamod
+RUN rm -rf /opt/counterstrikesharp
 
 RUN chmod -R 770 /opt/scripts/
 
