@@ -56,8 +56,11 @@ create_symlinks "$BASE_SERVER_DIR" "$INSTANCE_SERVER_DIR"
 cp "/opt/server-cfg/server.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
 cp "/opt/server-cfg/subscribed_file_ids.txt" "$INSTANCE_SERVER_DIR/game/csgo"
 
-echo "---Install Metamod---"
-cp -R /opt/metamod/addons "${INSTANCE_SERVER_DIR}/game/csgo"
+echo "---Install Addons---"
+cp "/opt/addons" "${INSTANCE_SERVER_DIR}/game/csgo"
+
+echo "---Install PlayCS---"
+ln -s "/opt/mod" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/PlayCS"
 
 echo "---Check Metamod Install---"
 gameinfo_path="${BASE_SERVER_DIR}/game/csgo/gameinfo.gi"
@@ -73,14 +76,8 @@ if ! grep -qFx "$new_line" "$gameinfo_path"; then
     sed -i "${line_number}a\\$new_line" "$gameinfo_path"
 fi
 
-echo "---Install CounterStrikeSharp---"
-cp -R /opt/counterstrikesharp/addons "${INSTANCE_SERVER_DIR}/game/csgo"
-
 # Create plugins directory
 mkdir -p "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins"
-
-echo "---Install PlayCS---"
-cp -R /opt/mod "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/PlayCS"
 
 echo "---Permissions...---"
 chown -R ${UID}:${GID} ${DATA_DIR}
@@ -98,16 +95,3 @@ fi
 
 chmod -R "${DATA_PERM}" "${DATA_DIR}"
 chmod -R "${DATA_PERM}" "${INSTANCE_SERVER_DIR}/game/csgo/addons"
-
-if [ "${DEV_SWAPPED}" == "1" ]; then
-  mkdir -p "${BASE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/PlayCS"
-  ln -s "${BASE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/PlayCS" "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/plugins/PlayCS"
-fi
-
-echo "---Starting Server...--"
-${INSTANCE_SERVER_DIR}/game/bin/linuxsteamrt64/cs2 ${GAME_PARAMS}
-
-if [ $? -ne 0 ]; then
-    echo "Exit code: $?"
-    exit 1
-fi
