@@ -17,8 +17,10 @@ public partial class PlayCsPlugin
 
                 // code smell: we have to wait till server exec's default cfgs
                 await Task.Delay(1000 * 5);
-
-                SetupMatch();
+                Server.NextFrame(() =>
+                {
+                    SetupMatch();
+                });
             }
         );
     }

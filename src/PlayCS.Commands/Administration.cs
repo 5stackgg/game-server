@@ -30,8 +30,11 @@ public partial class PlayCsPlugin
         if (serverId == null)
         {
             await Task.Delay(1000 * 5);
+            Server.NextFrame(() =>
+            {
+                GetMatch();
+            });
 
-            GetMatch();
             return;
         }
 
@@ -40,21 +43,21 @@ public partial class PlayCsPlugin
             string? response = await httpClient.GetStringAsync(
                 $"https://api.playcs.live/server/match/{serverId}"
             );
-            
-            if (response == null)
-            {
-                return;
-            }
 
-            _matchData = JsonSerializer.Deserialize<Match>(response);
-            
-            if (_matchData == null)
-            {
-                return;
-            }
-            
             Server.NextFrame(() =>
             {
+                if (response == null)
+                {
+                    return;
+                }
+
+                _matchData = JsonSerializer.Deserialize<Match>(response);
+
+                if (_matchData == null)
+                {
+                    return;
+                }
+
                 if (!IsLive())
                 {
                     Message(HudDestination.Alert, "Received Match Data");
@@ -63,7 +66,6 @@ public partial class PlayCsPlugin
                 SetupMatch();
             });
         }
-        
         catch (HttpRequestException ex)
         {
             Logger.LogInformation($"HTTP request error: {ex.Message}");
@@ -179,7 +181,7 @@ public partial class PlayCsPlugin
 
         if (!IsOnMap(_matchData.map))
         {
-            // ChangeMap(_matchData.map);
+            ChangeMap(_matchData.map);
             return;
         }
 
@@ -218,38 +220,37 @@ public partial class PlayCsPlugin
         { "de_brewery", "3070290240" },
         { "drawbridge", "3070192462" }
     };
-    
-    
-    
-    // public async Task ChangeMap(string map)
-    // {
-    //     Logger.LogInformation($"Changing Map {map}");
-    //
-    //     if (Server.IsMapValid(map) && !_workshopMaps.ContainsKey(map))
-    //     {
-    //         SendCommands(new[] { $"changelevel \"{map}\"" });
-    //     }
-    //     else
-    //     {
-    //         if (!_workshopMaps.ContainsKey(map))
-    //         {
-    //             // dont want to break the server by changing it forever
-    //             UpdateGameState(eGameState.Scheduled);
-    //             Logger.LogInformation($"Map not found in the workshop maps: {map}");
-    //             _matchData = null;
-    //             return;
-    //         }
-    //         SendCommands(new[] { $"host_workshop_map {_workshopMaps[map]}" });
-    //     }
-    //
-    //     // give the server some time to change, if the map didnt change we will try again.
-    //     await Task.Delay(1000 * 5);
-    //
-    //     if (!IsOnMap(map))
-    //     {
-    //         await ChangeMap(map);
-    //     }
-    // }
+
+    public async void ChangeMap(string map)
+    {
+        Logger.LogInformation($"Changing Map    {map}");
+
+        if (Server.IsMapValid(map) && !_workshopMaps.ContainsKey(map))
+        {
+            SendCommands(new[] { $"changelevel \"{map}\"" });
+        }
+        else
+        {
+            if (!_workshopMaps.ContainsKey(map))
+            {
+                // dont want to break the server by changing it forever
+                UpdateGameState(eGameState.Scheduled);
+                Logger.LogInformation($"Map not found in the workshop maps: {map}");
+                _matchData = null;
+                return;
+            }
+            SendCommands(new[] { $"host_workshop_map {_workshopMaps[map]}" });
+        }
+
+        await Task.Delay(1000 * 5);
+        Server.NextFrame(() =>
+        {
+            if (!IsOnMap(map))
+            {
+                ChangeMap(map);
+            }
+        });
+    }
 
     public bool IsOnMap(string map)
     {

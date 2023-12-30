@@ -1,3 +1,4 @@
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Modules.Utils;
 using PlayCS.enums;
 
@@ -71,7 +72,10 @@ public partial class PlayCsPlugin
         _publishGameState(eGameState.Live);
 
         await Task.Delay(1000);
-        Message(HudDestination.Alert, "LIVE LIVE LIVE!");
+        Server.NextFrame(() =>
+        {
+            Message(HudDestination.Alert, "LIVE LIVE LIVE!");
+        });
     }
 
     public bool IsLive()

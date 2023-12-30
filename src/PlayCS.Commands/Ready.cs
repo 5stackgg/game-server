@@ -76,21 +76,24 @@ public partial class PlayCsPlugin
             _cancelSendNotReadyMessage = new CancellationTokenSource();
             await Task.Delay(1000 * 5, _cancelSendNotReadyMessage.Token);
 
-            if (_cancelSendNotReadyMessage.IsCancellationRequested)
+            Server.NextFrame(() =>
             {
-                return;
-            }
+                if (_cancelSendNotReadyMessage.IsCancellationRequested)
+                {
+                    return;
+                }
 
-            string[] notReadyPlayers = _getNotReadyPlayers();
-            if (notReadyPlayers.Length == 0)
-            {
-                return;
-            }
+                string[] notReadyPlayers = _getNotReadyPlayers();
+                if (notReadyPlayers.Length == 0)
+                {
+                    return;
+                }
 
-            Message(
-                HudDestination.Notify,
-                $" Players {ChatColors.Red}Not Ready: {ChatColors.Default}{string.Join(", ", notReadyPlayers)} type {{ChatColors.Green}}!ready"
-            );
+                Message(
+                    HudDestination.Notify,
+                    $" Players {ChatColors.Red}Not Ready: {ChatColors.Default}{string.Join(", ", notReadyPlayers)} type {{ChatColors.Green}}!ready"
+                );
+            });
         }
         catch (TaskCanceledException)
         {

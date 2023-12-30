@@ -55,7 +55,10 @@ public partial class PlayCsPlugin
         _publishGameState(eGameState.Knife);
 
         await Task.Delay(1000);
-        Message(HudDestination.Alert, "KNIFE KNIFE KNIFE!");
+        Server.NextFrame(() =>
+        {
+            Message(HudDestination.Alert, "KNIFE KNIFE KNIFE!");
+        });
     }
 
     private void _autoSelectCaptain(CsTeam team)

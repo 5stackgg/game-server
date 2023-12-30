@@ -1,3 +1,4 @@
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Utils;
@@ -116,12 +117,15 @@ public partial class PlayCsPlugin
                     // the server needs some time apparently
                     await Task.Delay(1000 * 1);
 
-                    player.ChangeTeam(startingSide);
-                    Message(
-                        HudDestination.Chat,
-                        $" You've been assigned to {(startingSide == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{CSTeamToString(startingSide)}.",
-                        player
-                    );
+                    Server.NextFrame(() =>
+                    {
+                        player.ChangeTeam(startingSide);
+                        Message(
+                            HudDestination.Chat,
+                            $" You've been assigned to {(startingSide == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{CSTeamToString(startingSide)}.",
+                            player
+                        );
+                    });
                 }
             }
         }
