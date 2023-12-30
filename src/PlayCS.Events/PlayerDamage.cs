@@ -1,18 +1,17 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
-using PlayCS.enums;
+using Microsoft.Extensions.Logging;
 
 namespace PlayCs;
 
 public partial class PlayCsPlugin
 {
     [GameEventHandler]
-    public HookResult OnPlayerConnect(EventPlayerHurt @event, GameEventInfo info)
+    public HookResult OnPlayerDamage(EventPlayerHurt @event, GameEventInfo info)
     {
         if (
             @event.Userid == null
             || !@event.Userid.IsValid
-            || @event.Userid.IsBot
             || _matchData == null
             || !IsLive()
         )

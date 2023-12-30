@@ -11,7 +11,6 @@ public partial class PlayCsPlugin
         if (
             @event.Userid == null
             || !@event.Userid.IsValid
-            || @event.Userid.IsBot
             || _matchData == null
             || !IsLive()
         )
