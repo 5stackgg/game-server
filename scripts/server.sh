@@ -59,10 +59,9 @@ else
 fi
 
 echo "---Check Metamod Install---"
-gameinfo_path="${BASE_SERVER_DIR}/game/csgo/gameinfo.gi"
+gameinfo_path="${INSTANCE_SERVER_DIR}/game/csgo/gameinfo.gi"
 new_line="                        Game    csgo/addons/metamod"
 
-echo "Checking if $new_line exists in $gameinfo_path"
 if ! grep -qFx "$new_line" "$gameinfo_path"; then
     echo "---Adding Metamod Loader ---"
     # If the line doesn't exist, add it
@@ -88,3 +87,7 @@ fi
 
 chmod -R "${DATA_PERM}" "${DATA_DIR}"
 chmod -R "${DATA_PERM}" "${INSTANCE_SERVER_DIR}/game/csgo/addons"
+
+echo "---Starting Server...--"
+cd ${INSTANCE_SERVER_DIR}
+${INSTANCE_SERVER_DIR}/game/bin/linuxsteamrt64/cs2 ${GAME_PARAMS}
