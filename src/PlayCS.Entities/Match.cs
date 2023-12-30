@@ -10,6 +10,7 @@ public class Match
     public bool overtime { get; set; } = true;
     public string password { get; set; } = "connectme";
     public bool knife_round { get; set; } = true;
-    public List<MatchMember> members { get; set; } = new List<MatchMember>();
-    public List<MatchTeam> teams { get; set; } = new List<MatchTeam>();
+
+    public MatchLineUp lineup_1 { get; set; } = new MatchLineUp();
+    public MatchLineUp lineup_2 { get; set; } = new MatchLineUp();
 }

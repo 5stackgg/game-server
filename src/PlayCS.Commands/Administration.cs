@@ -16,7 +16,7 @@ public partial class PlayCsPlugin
 
     [ConsoleCommand("get_match_details", "Gets match details")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
-    public void SetMatchMatchId(CCSPlayerController? player, CommandInfo command)
+    public void get_match_details(CCSPlayerController? player, CommandInfo command)
     {
         GetMatch();
     }
@@ -204,9 +204,14 @@ public partial class PlayCsPlugin
             return;
         }
 
-        foreach (var team in _matchData.teams)
+        if (_matchData.lineup_1.name != null)
         {
-            SendCommands(new[] { $"mp_teamname_{team.team_number} {team.name}" });
+            SendCommands(new[] { $"mp_teamname_1 {_matchData.lineup_1.name}" });
+        }
+
+        if (_matchData.lineup_2.name != null)
+        {
+            SendCommands(new[] { $"mp_teamname_2 {_matchData.lineup_2.name}" });
         }
     }
 

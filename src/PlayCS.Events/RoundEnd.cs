@@ -63,22 +63,8 @@ public partial class PlayCsPlugin
 
         var teamManagers = Utilities.FindAllEntitiesByDesignerName<CCSTeam>("cs_team_manager");
 
-        foreach (var teamManager in teamManagers)
-        {
-            MatchTeam? team = _matchData
-                .teams
-                .Find(
-                    (_team) =>
-                    {
-                        return _team.name == teamManager.ClanTeamname;
-                    }
-                );
-
-            if (team != null && team.team_number == teamNumber)
-            {
-                return teamManager.Score;
-            }
-        }
+        // TODO - fix this
+        foreach (var teamManager in teamManagers) { }
 
         return 0;
     }

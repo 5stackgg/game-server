@@ -1,7 +1,9 @@
+using System.Text.Json;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Utils;
+using Microsoft.Extensions.Logging;
 using PlayCs.entities;
 
 namespace PlayCs;
@@ -88,46 +90,53 @@ public partial class PlayCsPlugin
             return;
         }
 
-        MatchMember? foundMatchingMember = _matchData
-            .members
-            .Find(member =>
-            {
-                if (member.steam_id == null)
-                {
-                    return member.name.StartsWith(player.PlayerName);
-                }
+        // .Concat(_matchData.lineup_2.lineup_players).ToList();
+        List<MatchMember> players = _matchData.lineup_1.lineup_players;
 
-                return member.steam_id == player.SteamID.ToString();
-            });
+        // Convert the object to a JSON string
+        string jsonString = JsonSerializer.Serialize(_matchData.lineup_1);
 
-        if (foundMatchingMember != null)
+        // Write the JSON string to the console
+        Console.WriteLine($"LINEUP1 : {jsonString}");
+
+        MatchMember? foundMatchingMember = players.Find(member =>
         {
-            MatchTeam? team = _matchData
-                .teams
-                .Find(team =>
-                {
-                    return team.id == foundMatchingMember.team_id;
-                });
-
-            if (team != null)
+            Logger.LogInformation("I AM A MEMEMBER");
+            if (member.steam_id == null)
             {
-                CsTeam startingSide = TeamStringToCsTeam(team.starting_side);
-                if (currentTeam != startingSide)
-                {
-                    // the server needs some time apparently
-                    await Task.Delay(1000 * 1);
-
-                    Server.NextFrame(() =>
-                    {
-                        player.ChangeTeam(startingSide);
-                        Message(
-                            HudDestination.Chat,
-                            $" You've been assigned to {(startingSide == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{CSTeamToString(startingSide)}.",
-                            player
-                        );
-                    });
-                }
+                return member.name.StartsWith(player.PlayerName);
             }
+
+            Logger.LogInformation($"STEAM ID {member.steam_id} = {player.SteamID.ToString()}");
+            return member.steam_id == player.SteamID.ToString();
+        });
+
+        if (foundMatchingMember == null)
+        {
+            Logger.LogInformation($"Unable to find player {player.SteamID.ToString()}");
+            return;
+        }
+
+        MatchLineUp? matchLineUp =
+            _matchData.lineup_1.id == foundMatchingMember.match_lineup_id
+                ? _matchData.lineup_1
+                : _matchData.lineup_2;
+
+        CsTeam startingSide = TeamStringToCsTeam(matchLineUp.starting_side);
+        if (currentTeam != startingSide)
+        {
+            // the server needs some time apparently
+            await Task.Delay(1000 * 1);
+
+            Server.NextFrame(() =>
+            {
+                player.ChangeTeam(startingSide);
+                Message(
+                    HudDestination.Chat,
+                    $" You've been assigned to {(startingSide == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{CSTeamToString(startingSide)}.",
+                    player
+                );
+            });
         }
     }
 }
