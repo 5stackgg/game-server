@@ -57,10 +57,14 @@ cp "/opt/server-cfg/server.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
 cp "/opt/server-cfg/subscribed_file_ids.txt" "$INSTANCE_SERVER_DIR/game/csgo"
 
 echo "---Install Addons---"
-cp "/opt/addons" "${INSTANCE_SERVER_DIR}/game/csgo"
+cp -r "/opt/addons" "${INSTANCE_SERVER_DIR}/game/csgo"
 
 echo "---Install PlayCS---"
-ln -s "/opt/mod" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/PlayCS"
+if [ "${DEV_SWAPPED}" == "1" ]; then
+  ln -s "/opt/dev" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/PlayCS"
+else
+  ln -s "/opt/mod" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/PlayCS"
+fi
 
 echo "---Check Metamod Install---"
 gameinfo_path="${BASE_SERVER_DIR}/game/csgo/gameinfo.gi"
