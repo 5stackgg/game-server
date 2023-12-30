@@ -81,9 +81,7 @@ COPY /cfg /opt/server-cfg
 COPY /scripts /opt/scripts
 COPY --from=build /mod/release /opt/mod
 
-RUN mkdir /opt/addons
-
-RUN cp -R /opt/metamod/addons /opt/addons
+RUN mv /opt/metamod/addons /opt/addons
 RUN rm -rf /opt/metamod
 
 RUN cp -R /opt/counterstrikesharp/addons /opt/addons
