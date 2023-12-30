@@ -3,7 +3,7 @@
 make_directories=(
   "game/csgo/cfg",
   "game/csgo/addons",
-  "game/csgo/maps/soundcache"
+  "game/csgo/maps/soundcache",
   "game/csgo/logs"
 )
 
