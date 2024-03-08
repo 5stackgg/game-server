@@ -65,8 +65,6 @@ RUN mkdir $DATA_DIR && \
 	mkdir $BASE_SERVER_DIR && \
     mkdir $INSTANCE_SERVER_DIR && \
 	useradd -d $DATA_DIR -s /bin/bash $USER && \
-	chown -R $USER $DATA_DIR && \
-    chown -R $USER $INSTANCE_SERVER_DIR && \
 	ulimit -n 2048
 
 RUN mkdir /opt/metamod
@@ -90,7 +88,5 @@ RUN mkdir -p /opt/addons/counterstrikesharp/plugins
 RUN rm -rf /opt/metamod
 RUN rm -rf /opt/counterstrikesharp
 
-RUN chmod -R 770 /opt/scripts/
-
 #Server Start
-ENTRYPOINT ["/opt/scripts/init.sh"]
+ENTRYPOINT ["/opt/scripts/server.sh"]

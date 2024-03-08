@@ -32,6 +32,5 @@ while true; do
 
   rm "$directory_to_watch/CounterStrikeSharp.API.dll"
 
-  chmod 777 "$directory_to_watch" -R
   cp "$directory_to_watch"/* "/opt/dev"
 done
