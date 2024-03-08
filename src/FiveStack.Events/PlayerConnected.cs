@@ -4,11 +4,11 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Utils;
 using Microsoft.Extensions.Logging;
-using PlayCs.entities;
+using FiveStack.entities;
 
-namespace PlayCs;
+namespace FiveStack;
 
-public partial class PlayCsPlugin
+public partial class FiveStackPlugin
 {
     [GameEventHandler]
     public HookResult OnPlayerConnect(EventPlayerConnect @event, GameEventInfo info)

@@ -2,11 +2,11 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
-using PlayCS.enums;
+using FiveStack.enums;
 
-namespace PlayCs;
+namespace FiveStack;
 
-public partial class PlayCsPlugin
+public partial class FiveStackPlugin
 {
     private Dictionary<CsTeam, int> TeamTimeouts = new Dictionary<CsTeam, int>
     {

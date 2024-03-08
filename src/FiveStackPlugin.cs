@@ -3,11 +3,11 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Utils;
 using Microsoft.Extensions.Logging;
-using PlayCS.enums;
+using FiveStack.enums;
 
-namespace PlayCs;
+namespace FiveStack;
 
-public partial class PlayCsPlugin : BasePlugin
+public partial class FiveStackPlugin : BasePlugin
 {
     private int _currentRound = 0;
     private Redis _redis = new Redis();
@@ -32,7 +32,7 @@ public partial class PlayCsPlugin : BasePlugin
         { CsTeam.CounterTerrorist, null }
     };
 
-    public override string ModuleName => "PlayCS Mod";
+    public override string ModuleName => "5Stack Mod";
 
     public override string ModuleVersion => "0.0.1";
 

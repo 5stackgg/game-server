@@ -1,4 +1,4 @@
-# playcs-mod
+# 5stack-mod
 
 ## Features
 - [x] automatic team assignment
@@ -45,8 +45,8 @@
   - [ ] MVP
   - [ ] death by bomb / suicide
   - [ ] won by plant / defuse (and who)
-- [ ] web ui at playcs.live
-  - [ ] rcon
+- [ ] web ui at 5stack.gg
+  - [x] rcon
   - [ ] permissions
   - [ ] creation of matches
 - [ ] require steam id

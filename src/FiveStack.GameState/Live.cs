@@ -1,10 +1,10 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Modules.Utils;
-using PlayCS.enums;
+using FiveStack.enums;
 
-namespace PlayCs;
+namespace FiveStack;
 
-public partial class PlayCsPlugin
+public partial class FiveStackPlugin
 {
     public async void StartLive()
     {

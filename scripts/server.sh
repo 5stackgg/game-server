@@ -51,11 +51,11 @@ cp "/opt/server-cfg/subscribed_file_ids.txt" "$INSTANCE_SERVER_DIR/game/csgo"
 echo "---Install Addons---"
 cp -r "/opt/addons" "${INSTANCE_SERVER_DIR}/game/csgo"
 
-echo "---Install PlayCS---"
+echo "---Install 5Stack---"
 if [ "${DEV_SWAPPED}" == "1" ]; then
-  ln -s "/opt/dev" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/PlayCS"
+  ln -s "/opt/dev" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/FiveStack"
 else
-  ln -s "/opt/mod" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/PlayCS"
+  ln -s "/opt/mod" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/FiveStack"
 fi
 
 echo "---Check Metamod Install---"
