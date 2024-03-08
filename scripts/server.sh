@@ -72,15 +72,8 @@ if ! grep -qFx "$new_line" "$gameinfo_path"; then
 fi
 
 echo "---Prepare Server---"
-if [ ! -f "${DATA_DIR}/.steam/sdk64/steamclient.so" ]; then
-    if [ ! -d "${DATA_DIR}/.steam" ]; then
-        mkdir "${DATA_DIR}/.steam"
-    fi
-    if [ ! -d "${DATA_DIR}/.steam/sdk64" ]; then
-        mkdir "${DATA_DIR}/.steam/sdk64"
-    fi
-    cp -R "${STEAMCMD_DIR}/linux64/"* "${DATA_DIR}/.steam/sdk64/"
-fi
+mkdir -p /root/.steam/sdk64
+cp -R "${STEAMCMD_DIR}/linux64/"* "/root/.steam/sdk64/"
 
 echo "---Starting Server...--"
 cd ${INSTANCE_SERVER_DIR}
