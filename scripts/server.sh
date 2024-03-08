@@ -71,9 +71,6 @@ if ! grep -qFx "$new_line" "$gameinfo_path"; then
     sed -i "${line_number}a\\$new_line" "$gameinfo_path"
 fi
 
-echo "---Permissions...---"
-chown -R ${UID}:${GID} ${DATA_DIR}
-
 echo "---Prepare Server---"
 if [ ! -f "${DATA_DIR}/.steam/sdk64/steamclient.so" ]; then
     if [ ! -d "${DATA_DIR}/.steam" ]; then
@@ -84,9 +81,6 @@ if [ ! -f "${DATA_DIR}/.steam/sdk64/steamclient.so" ]; then
     fi
     cp -R "${STEAMCMD_DIR}/linux64/"* "${DATA_DIR}/.steam/sdk64/"
 fi
-
-chmod -R "${DATA_PERM}" "${DATA_DIR}"
-chmod -R "${DATA_PERM}" "${INSTANCE_SERVER_DIR}/game/csgo/addons"
 
 echo "---Starting Server...--"
 cd ${INSTANCE_SERVER_DIR}
