@@ -1,11 +1,11 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using Microsoft.Extensions.Logging;
-using PlayCS.enums;
+using FiveStack.enums;
 
-namespace PlayCs;
+namespace FiveStack;
 
-public partial class PlayCsPlugin
+public partial class FiveStackPlugin
 {
     [GameEventHandler]
     public HookResult OnGameEnd(EventGameEnd @event, GameEventInfo info)

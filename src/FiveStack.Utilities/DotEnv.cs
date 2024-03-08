@@ -1,4 +1,4 @@
-namespace PlayCs;
+namespace FiveStack;
 
 public static class DotEnv
 {

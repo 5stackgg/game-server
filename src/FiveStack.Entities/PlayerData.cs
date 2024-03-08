@@ -1,4 +1,4 @@
-namespace PlayCs.entities;
+namespace FiveStack.entities;
 
 public class PlayerData
 {

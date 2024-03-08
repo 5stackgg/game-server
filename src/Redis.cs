@@ -1,7 +1,7 @@
 using System.Text.Json;
 using StackExchange.Redis;
 
-namespace PlayCs;
+namespace FiveStack;
 
 public class Redis
 {

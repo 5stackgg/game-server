@@ -1,12 +1,12 @@
 using CounterStrikeSharp.API.Modules.Utils;
-using PlayCS.enums;
+using FiveStack.enums;
 
-namespace PlayCs;
+namespace FiveStack;
 
 /**
  * i dont think these need to be in a class, move out later
  */
-public partial class PlayCsPlugin
+public partial class FiveStackPlugin
 {
     private CsTeam TeamNumToCSTeam(int teamNum)
     {

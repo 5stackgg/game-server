@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace PlayCS.enums;
+namespace FiveStack.enums;
 
 public enum eGameState
 {

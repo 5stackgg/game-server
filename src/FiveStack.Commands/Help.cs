@@ -3,12 +3,12 @@ using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 
-namespace PlayCs;
+namespace FiveStack;
 
-public partial class PlayCsPlugin
+public partial class FiveStackPlugin
 {
     [ConsoleCommand("css_help", "Shows Available Commands")]
-    [ConsoleCommand("css_playcs", "Shows Available Commands")]
+    [ConsoleCommand("css_5stack", "Shows Available Commands")]
     [ConsoleCommand("css_commands", "Shows Available Commands")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnHelp(CCSPlayerController? player, CommandInfo command)

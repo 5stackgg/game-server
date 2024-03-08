@@ -1,10 +1,10 @@
-namespaces: [playcs]
+namespaces: [5stack]
 image: mcr.microsoft.com/dotnet/sdk:7.0-alpine
 container: dev
 deployment: dev-cs-server
 supplemental: true
 sync:
-  - .:/opt/playcs
+  - .:/opt/5stack
 ignore:
   - "bin"
   - "obj"

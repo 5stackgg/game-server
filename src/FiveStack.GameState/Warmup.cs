@@ -1,11 +1,11 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
-using PlayCS.enums;
+using FiveStack.enums;
 
-namespace PlayCs;
+namespace FiveStack;
 
-public partial class PlayCsPlugin
+public partial class FiveStackPlugin
 {
     private Dictionary<int, bool> _readyPlayers = new Dictionary<int, bool>();
 

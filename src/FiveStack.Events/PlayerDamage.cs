@@ -1,12 +1,13 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
+using Microsoft.Extensions.Logging;
 
-namespace PlayCs;
+namespace FiveStack;
 
-public partial class PlayCsPlugin
+public partial class FiveStackPlugin
 {
     [GameEventHandler]
-    public HookResult OnPlayerKill(EventPlayerDeath @event, GameEventInfo info)
+    public HookResult OnPlayerDamage(EventPlayerHurt @event, GameEventInfo info)
     {
         if (
             @event.Userid == null
@@ -19,6 +20,7 @@ public partial class PlayCsPlugin
         }
 
         CCSPlayerController attacker = @event.Attacker;
+
         CCSPlayerController attacked = @event.Userid;
 
         if (attacker.PlayerPawn.Value != null && attacked.PlayerPawn.Value != null)
@@ -30,7 +32,7 @@ public partial class PlayCsPlugin
                 _matchData.id,
                 new Redis.EventData<Dictionary<string, object>>
                 {
-                    @event = "kill",
+                    @event = "damage",
                     data = new Dictionary<string, object>
                     {
                         { "round", _currentRound },
@@ -44,7 +46,11 @@ public partial class PlayCsPlugin
                                 : ""
                         },
                         { "weapon", $"{@event.Weapon}" },
+                        { "damage", @event.DmgHealth },
+                        { "damage_armor", @event.DmgArmor },
                         { "hitgroup", $"{HitGroupToString(@event.Hitgroup)}" },
+                        { "health", @event.Health },
+                        { "armor", @event.Armor },
                         { "attacked_steam_id", attacked.SteamID.ToString() },
                         { "attacked_team", $"{TeamNumToString(attacked.TeamNum)}" },
                         { "attacked_location", $"{attacked.PlayerPawn.Value.LastPlaceName}" },
@@ -57,32 +63,6 @@ public partial class PlayCsPlugin
                     }
                 }
             );
-        }
-
-        CCSPlayerController? assister = @event.Assister;
-
-        if (assister != null && assister.IsValid)
-        {
-            if (attacker.TeamNum != attacked.TeamNum)
-            {
-                _redis.PublishMatchEvent(
-                    _matchData.id,
-                    new Redis.EventData<Dictionary<string, object>>
-                    {
-                        @event = "assist",
-                        data = new Dictionary<string, object>
-                        {
-                            { "match_id", _matchData.id },
-                            { "round", _currentRound },
-                            { "attacker_steam_id", assister.SteamID.ToString() },
-                            { "attacker_team", $"{TeamNumToString(attacker.TeamNum)}" },
-                            { "attacked_steam_id", attacked.SteamID.ToString() },
-                            { "attacked_team", $"{TeamNumToString(attacked.TeamNum)}" },
-                            { "flash", @event.Assistedflash },
-                        }
-                    }
-                );
-            }
         }
 
         return HookResult.Continue;
