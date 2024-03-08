@@ -41,7 +41,7 @@ public partial class PlayCsPlugin
         try
         {
             string? response = await httpClient.GetStringAsync(
-                $"https://api.playcs.live/server/match/{serverId}"
+                $"https://api.5stack.gg/server/match/{serverId}"
             );
 
             Server.NextFrame(() =>

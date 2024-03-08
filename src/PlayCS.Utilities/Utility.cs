@@ -118,6 +118,8 @@ public partial class PlayCsPlugin
                 return eGameState.TechTimeout;
             case "Warmup":
                 return eGameState.Warmup;
+            case "PickingPlayers":
+                return eGameState.Warmup;
             default:
                 throw new ArgumentException($"Unsupported status string: {state}");
         }
