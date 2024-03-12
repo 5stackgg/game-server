@@ -127,6 +127,7 @@ public partial class FiveStackPlugin
         switch (gameState)
         {
             case eGameState.Scheduled:
+            case eGameState.PickingPlayers:
                 break;
             case eGameState.Warmup:
                 StartWarmup();
