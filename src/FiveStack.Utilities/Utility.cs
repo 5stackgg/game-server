@@ -119,7 +119,7 @@ public partial class FiveStackPlugin
             case "Warmup":
                 return eGameState.Warmup;
             case "PickingPlayers":
-                return eGameState.Warmup;
+                return eGameState.PickingPlayers;
             default:
                 throw new ArgumentException($"Unsupported status string: {state}");
         }

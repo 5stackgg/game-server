@@ -28,6 +28,9 @@ public enum eGameState
     [Description("Warmup")]
     Warmup,
 
+    [Description("PickingPlayers")]
+    PickingPlayers,
+
     [Description("Unknown")]
     Unknown
 }
