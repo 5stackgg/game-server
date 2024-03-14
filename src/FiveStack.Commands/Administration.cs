@@ -165,15 +165,6 @@ public partial class FiveStackPlugin
             _matchData.id,
             new Redis.EventData<Dictionary<string, object>>
             {
-                @event = "matchStatus",
-                data = new Dictionary<string, object> { { "status", gameState.ToString() }, }
-            }
-        );
-
-        _redis.PublishMatchEvent(
-            _matchData.id,
-            new Redis.EventData<Dictionary<string, object>>
-            {
                 @event = "mapStatus",
                 data = new Dictionary<string, object> { { "status", gameState.ToString() }, }
             }
