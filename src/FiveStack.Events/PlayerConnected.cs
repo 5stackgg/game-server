@@ -32,7 +32,7 @@ public partial class FiveStackPlugin
                 @event = "player",
                 data = new Dictionary<string, object>
                 {
-                    { "match_map_id" , _matchData.current_match_map_id },
+                    { "match_map_id", _matchData.current_match_map_id },
                     { "player_name", player.PlayerName },
                     { "steam_id", player.SteamID.ToString() },
                 }

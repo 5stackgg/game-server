@@ -9,3 +9,4 @@ ignore:
   - "bin"
   - "obj"
   - "Folder.DotSettings.user"
+  - "src/src.sln"
