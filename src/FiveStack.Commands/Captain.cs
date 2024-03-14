@@ -66,6 +66,20 @@ public partial class FiveStackPlugin
         _captains[team] = null;
 
         ShowCaptains();
+
+        _redis.PublishMatchEvent(
+            _matchData.id,
+            new Redis.EventData<Dictionary<string, object>>
+            {
+                @event = "captain",
+                data = new Dictionary<string, object>
+                {
+                    { "claim", false },
+                    { "steam_id", player.SteamID.ToString() },
+                    { "player_name", player.PlayerName }
+                }
+            }
+        );
     }
 
     public void ShowCaptains()
@@ -113,9 +127,9 @@ public partial class FiveStackPlugin
                 @event = "captain",
                 data = new Dictionary<string, object>
                 {
+                    { "claim", true },
                     { "steam_id", player.SteamID.ToString() },
-                    { "player_name", player.PlayerName },
-                    { "team", TeamNumToString((int)team) },
+                    { "player_name", player.PlayerName }
                 }
             }
         );
