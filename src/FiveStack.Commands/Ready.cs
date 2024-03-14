@@ -9,6 +9,7 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
+    [ConsoleCommand("css_r", "Toggles the player as ready")]
     [ConsoleCommand("css_ready", "Toggles the player as ready")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnReady(CCSPlayerController? player, CommandInfo? command)
@@ -37,7 +38,7 @@ public partial class FiveStackPlugin
         SendNotReadyMessage();
     }
 
-    [ConsoleCommand("css_force_ready", "Forces the match to start")]
+    [ConsoleCommand("force-ready", "Forces the match to start")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnForceStart(CCSPlayerController? player, CommandInfo? command)
     {
@@ -91,7 +92,7 @@ public partial class FiveStackPlugin
 
                 Message(
                     HudDestination.Notify,
-                    $" Players {ChatColors.Red}Not Ready: {ChatColors.Default}{string.Join(", ", notReadyPlayers)} type {{ChatColors.Green}}!ready"
+                    $" Players {ChatColors.Red}Not Ready: {ChatColors.Default}{string.Join(", ", notReadyPlayers)} type {ChatColors.Green}.ready"
                 );
             });
         }

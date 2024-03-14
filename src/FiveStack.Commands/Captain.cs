@@ -92,7 +92,7 @@ public partial class FiveStackPlugin
             {
                 Message(
                     HudDestination.Notify,
-                    $"[{TeamNumToString((int)team)}] {ChatColors.Green}!captain to claim"
+                    $"[{TeamNumToString((int)team)}] {ChatColors.Green}.captain to claim"
                 );
                 return;
             }
