@@ -20,15 +20,16 @@ public partial class FiveStackPlugin
 
         command.ReplyToCommand($"  Available Commands: ");
         command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Ready: {ChatColors.Default}.ready, .not-ready"
+            $" {ChatColors.BlueGrey}Toggle Ready: {ChatColors.Default}.r"
         );
-        command.ReplyToCommand($" {ChatColors.BlueGrey}Timeouts: {ChatColors.Default}/timeout");
         command.ReplyToCommand(
             $" {ChatColors.BlueGrey}Knife Round: {ChatColors.Default}.stay, .switch"
         );
         command.ReplyToCommand(
             $" {ChatColors.BlueGrey}Captains: {ChatColors.Default}/captain, /release-captain"
         );
+
+        command.ReplyToCommand($" {ChatColors.BlueGrey}Timeouts: {ChatColors.Default}/timeout");
         command.ReplyToCommand($" {ChatColors.BlueGrey}Tactical Pause: {ChatColors.Default}/tac");
         command.ReplyToCommand(
             $" {ChatColors.BlueGrey}Tech Pause: {ChatColors.Default}.pause, .resume"
