@@ -180,11 +180,7 @@ public partial class FiveStackPlugin
         }
         Logger.LogInformation($"Setup Match {_matchData.id}");
 
-        var currentMap = _matchData.match_maps?.FirstOrDefault(match_map =>
-        {
-            Logger.LogInformation($"Looking {match_map.id}");
-            return match_map.id == _matchData.current_match_map_id;
-        });
+        var currentMap = GetCurrentMap();
 
         if (currentMap == null)
         {
@@ -208,6 +204,19 @@ public partial class FiveStackPlugin
         {
             UpdateGameState(GameStateStringToEnum(_matchData.status));
         }
+    }
+
+    public MatchMap? GetCurrentMap()
+    {
+        if (_matchData == null)
+        {
+            return null;
+        }
+
+        return _matchData?.match_maps.FirstOrDefault(match_map =>
+        {
+            return match_map.id == _matchData.current_match_map_id;
+        });
     }
 
     public void SetupTeamNames()

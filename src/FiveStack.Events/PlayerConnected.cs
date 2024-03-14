@@ -90,14 +90,19 @@ public partial class FiveStackPlugin
             return;
         }
 
-        // .Concat(_matchData.lineup_2.lineup_players).ToList();
+        var currentMap = GetCurrentMap();
+
+        if (currentMap == null)
+        {
+            Logger.LogWarning("Unable to find map");
+            return;
+        }
+
         List<MatchMember> players = _matchData.lineup_1.lineup_players;
 
-        // Convert the object to a JSON string
         string jsonString = JsonSerializer.Serialize(_matchData.lineup_1);
 
-        // Write the JSON string to the console
-        Console.WriteLine($"LINEUP1 : {jsonString}");
+        Logger.LogInformation($"LINEUP1 {jsonString}");
 
         MatchMember? foundMatchingMember = players.Find(member =>
         {
@@ -117,12 +122,11 @@ public partial class FiveStackPlugin
             return;
         }
 
-        MatchLineUp? matchLineUp =
-            _matchData.lineup_1.id == foundMatchingMember.match_lineup_id
-                ? _matchData.lineup_1
-                : _matchData.lineup_2;
-
-        CsTeam startingSide = TeamStringToCsTeam(matchLineUp.starting_side);
+        CsTeam startingSide = TeamStringToCsTeam(
+            _matchData.lineup_1_id == foundMatchingMember.match_lineup_id
+                ? currentMap.lineup_1_side
+                : currentMap.lineup_2_side
+        );
         if (currentTeam != startingSide)
         {
             // the server needs some time apparently
