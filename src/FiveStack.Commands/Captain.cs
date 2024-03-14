@@ -40,7 +40,7 @@ public partial class FiveStackPlugin
         ShowCaptains();
     }
 
-    [ConsoleCommand("css_release_captain", "Release Captain Spot")]
+    [ConsoleCommand("css_release-captain", "Release Captain Spot")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnReleaseCaptain(CCSPlayerController? player, CommandInfo? command)
     {
@@ -113,7 +113,7 @@ public partial class FiveStackPlugin
                 @event = "captain",
                 data = new Dictionary<string, object>
                 {
-                    { "steam_id", player.SteamID },
+                    { "steam_id", player.SteamID.ToString() },
                     { "player_name", player.PlayerName },
                     { "team", TeamNumToString((int)team) },
                 }
