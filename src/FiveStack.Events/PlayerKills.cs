@@ -28,6 +28,7 @@ public partial class FiveStackPlugin
                     @event = "kill",
                     data = new Dictionary<string, object>
                     {
+                        { "match_map_id" , _matchData.current_match_map_id },
                         { "round", _currentRound },
                         { "attacker_steam_id", attacker.SteamID.ToString() },
                         { "attacker_team", $"{TeamNumToString(attacker.TeamNum)}" },
@@ -67,6 +68,7 @@ public partial class FiveStackPlugin
                         @event = "assist",
                         data = new Dictionary<string, object>
                         {
+                            { "match_map_id" , _matchData.current_match_map_id },
                             { "match_id", _matchData.id },
                             { "round", _currentRound },
                             { "attacker_steam_id", assister.SteamID.ToString() },
