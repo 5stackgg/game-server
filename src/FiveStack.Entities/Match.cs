@@ -14,6 +14,9 @@ public class Match
 
     public MatchMap[] match_maps { get; set; } = new MatchMap[0];
 
+    public Guid lineup_1_id { get; set; } = Guid.Empty;
+    public Guid lineup_2_id { get; set; } = Guid.Empty;
+
     public MatchLineUp lineup_1 { get; set; } = new MatchLineUp();
     public MatchLineUp lineup_2 { get; set; } = new MatchLineUp();
 }
