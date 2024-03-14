@@ -29,7 +29,7 @@ public partial class FiveStackPlugin
                 }
             }
         );
-        
+
         return HookResult.Continue;
     }
 
@@ -61,7 +61,7 @@ public partial class FiveStackPlugin
         return HookResult.Continue;
     }
 
-     [GameEventHandler]
+    [GameEventHandler]
     public HookResult BombExploded(EventBombExploded @event, GameEventInfo info)
     {
         if (@event.Userid == null || !@event.Userid.IsValid || _matchData == null || !IsLive())
