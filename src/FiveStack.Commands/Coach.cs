@@ -8,8 +8,15 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    [ConsoleCommand("css_coach", "Shows / Claims Coach Spots ")]
+    [ConsoleCommand("css_coaches", "Shows Coaches ")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    public void OnCoaches(CCSPlayerController? player, CommandInfo? command)
+    {
+        ShowCoaches();
+    }
+
+    [ConsoleCommand("css_coach", "Shows / Claims Coach Spots ")]
+    [CommandHelper(minArgs: 1, usage: "[ct,t]", whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnCoach(CCSPlayerController? player, CommandInfo? command)
     {
         if (
@@ -21,12 +28,23 @@ public partial class FiveStackPlugin
             return;
         }
 
-        _coaches[CsTeam.Terrorist] = player;
+        CsTeam team = TeamNumToCSTeam(player.TeamNum);
+        string? _team = command?.ArgByIndex(0);
+
+        if(_team != null) {
+            if(_team == "t") {
+                team = CsTeam.Terrorist;
+            } else if(_team == "ct") {
+                team = CsTeam.CounterTerrorist;
+            }
+        }
+
+        _coaches[team] = player;
 
         ShowCoaches();
     }
 
-    [ConsoleCommand("css_release_coach", "Release Coach Spot")]
+    [ConsoleCommand("css_release-coach", "Release Coach Spot")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnReleaseCoach(CCSPlayerController? player, CommandInfo? command)
     {
@@ -53,22 +71,22 @@ public partial class FiveStackPlugin
 
     public void ShowCoaches()
     {
-        foreach (var pair in _coaches)
-        {
-            CsTeam? team = pair.Key;
+        CsTeam[] teams = { CsTeam.CounterTerrorist, CsTeam.Terrorist };
 
-            if (pair.Value == null)
+        foreach (CsTeam team in teams)
+        {
+            if (_coaches[team] == null)
             {
                 Message(
                     HudDestination.Notify,
-                    $"[{TeamNumToString((int)team)}] {ChatColors.Green}!coach .t or !coach .ct to coach"
+                    $"[{TeamNumToString((int)team)} Coach] {ChatColors.Green}/coach t or /coach ct"
                 );
-                return;
+                continue;
             }
 
             Message(
                 HudDestination.Notify,
-                $"[{TeamNumToString((int)team)}] {(team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{pair.Value.PlayerName}"
+                $"[{TeamNumToString((int)team)} Coach] {(team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{_coaches[team]?.PlayerName}"
             );
         }
     }

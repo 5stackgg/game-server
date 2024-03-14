@@ -37,7 +37,7 @@ public partial class FiveStackPlugin
         SendNotReadyMessage();
     }
 
-    [ConsoleCommand("css_force_ready", "Forces the match to start")]
+    [ConsoleCommand("css_force-ready", "Forces the match to start")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnForceStart(CCSPlayerController? player, CommandInfo? command)
     {
@@ -91,7 +91,7 @@ public partial class FiveStackPlugin
 
                 Message(
                     HudDestination.Notify,
-                    $" Players {ChatColors.Red}Not Ready: {ChatColors.Default}{string.Join(", ", notReadyPlayers)} type {{ChatColors.Green}}!ready"
+                    $" Players {ChatColors.Red}Not Ready: {ChatColors.Default}{string.Join(", ", notReadyPlayers)} type {{ChatColors.Green}}.ready"
                 );
             });
         }

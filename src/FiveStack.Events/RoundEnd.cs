@@ -105,7 +105,7 @@ public partial class FiveStackPlugin
 
         Message(
             HudDestination.Chat,
-            $"As the captain you must select to {ChatColors.Green}!stay {ChatColors.Default} or {ChatColors.Green}!switch",
+            $"As the captain you must select to {ChatColors.Green}.stay {ChatColors.Default} or {ChatColors.Green}.switch",
             _captains[knifeTeam]
         );
         Message(

@@ -65,7 +65,7 @@ public partial class FiveStackPlugin
         UpdateGameState(eGameState.Live);
     }
 
-    [ConsoleCommand("css_skip_knife", "Skips knife round")]
+    [ConsoleCommand("css_skip-knife", "Skips knife round")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnSkipKnife(CCSPlayerController? player, CommandInfo? command)
     {
