@@ -40,7 +40,7 @@ public partial class FiveStackPlugin
         ShowCaptains();
     }
 
-    [ConsoleCommand("css_release_captain", "Release Captain Spot")]
+    [ConsoleCommand("css_release-captain", "Release Captain Spot")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnReleaseCaptain(CCSPlayerController? player, CommandInfo? command)
     {
@@ -66,6 +66,20 @@ public partial class FiveStackPlugin
         _captains[team] = null;
 
         ShowCaptains();
+
+        _redis.PublishMatchEvent(
+            _matchData.id,
+            new Redis.EventData<Dictionary<string, object>>
+            {
+                @event = "captain",
+                data = new Dictionary<string, object>
+                {
+                    { "claim", false },
+                    { "steam_id", player.SteamID.ToString() },
+                    { "player_name", player.PlayerName }
+                }
+            }
+        );
     }
 
     public void ShowCaptains()
@@ -113,9 +127,9 @@ public partial class FiveStackPlugin
                 @event = "captain",
                 data = new Dictionary<string, object>
                 {
-                    { "steam_id", player.SteamID },
-                    { "player_name", player.PlayerName },
-                    { "team", TeamNumToString((int)team) },
+                    { "claim", true },
+                    { "steam_id", player.SteamID.ToString() },
+                    { "player_name", player.PlayerName }
                 }
             }
         );
