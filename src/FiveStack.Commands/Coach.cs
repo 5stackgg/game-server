@@ -31,10 +31,14 @@ public partial class FiveStackPlugin
         CsTeam team = TeamNumToCSTeam(player.TeamNum);
         string? _team = command?.ArgByIndex(0);
 
-        if(_team != null) {
-            if(_team == "t") {
+        if (_team != null)
+        {
+            if (_team == "t")
+            {
                 team = CsTeam.Terrorist;
-            } else if(_team == "ct") {
+            }
+            else if (_team == "ct")
+            {
                 team = CsTeam.CounterTerrorist;
             }
         }

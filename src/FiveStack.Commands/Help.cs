@@ -19,9 +19,7 @@ public partial class FiveStackPlugin
         }
 
         command.ReplyToCommand($"  Available Commands: ");
-        command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Toggle Ready: {ChatColors.Default}.r"
-        );
+        command.ReplyToCommand($" {ChatColors.BlueGrey}Toggle Ready: {ChatColors.Default}.r");
         command.ReplyToCommand(
             $" {ChatColors.BlueGrey}Knife Round: {ChatColors.Default}.stay, .switch"
         );
