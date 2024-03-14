@@ -91,7 +91,7 @@ public partial class FiveStackPlugin
 
                 Message(
                     HudDestination.Notify,
-                    $" Players {ChatColors.Red}Not Ready: {ChatColors.Default}{string.Join(", ", notReadyPlayers)} type {{ChatColors.Green}}.ready"
+                    $" Players {ChatColors.Red}Not Ready: {ChatColors.Default}{string.Join(", ", notReadyPlayers)} type {ChatColors.Green}.ready"
                 );
             });
         }
