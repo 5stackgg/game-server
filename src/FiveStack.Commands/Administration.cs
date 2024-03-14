@@ -4,9 +4,9 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
-using Microsoft.Extensions.Logging;
 using FiveStack.entities;
 using FiveStack.enums;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -180,9 +180,21 @@ public partial class FiveStackPlugin
         }
         Logger.LogInformation($"Setup Match {_matchData.id}");
 
-        if (!IsOnMap(_matchData.map))
+        var currentMap = _matchData.match_maps?.FirstOrDefault(match_map =>
         {
-            ChangeMap(_matchData.map);
+            Logger.LogInformation($"Looking {match_map.id}");
+            return match_map.id == _matchData.current_match_map_id;
+        });
+
+        if (currentMap == null)
+        {
+            Logger.LogWarning("Unable to find map");
+            return;
+        }
+
+        if (!IsOnMap(currentMap.map))
+        {
+            ChangeMap(currentMap.map);
             return;
         }
 

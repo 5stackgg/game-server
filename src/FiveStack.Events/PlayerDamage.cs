@@ -9,12 +9,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnPlayerDamage(EventPlayerHurt @event, GameEventInfo info)
     {
-        if (
-            @event.Userid == null
-            || !@event.Userid.IsValid
-            || _matchData == null
-            || !IsLive()
-        )
+        if (@event.Userid == null || !@event.Userid.IsValid || _matchData == null || !IsLive())
         {
             return HookResult.Continue;
         }
