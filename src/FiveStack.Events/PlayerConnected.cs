@@ -32,6 +32,7 @@ public partial class FiveStackPlugin
                 @event = "player",
                 data = new Dictionary<string, object>
                 {
+                    { "match_map_id", _matchData.current_match_map_id },
                     { "player_name", player.PlayerName },
                     { "steam_id", player.SteamID.ToString() },
                 }
@@ -76,7 +77,7 @@ public partial class FiveStackPlugin
 
         Message(
             HudDestination.Chat,
-            $"type {ChatColors.Green}!help {ChatColors.Default}to view additional commands",
+            $"type {ChatColors.Green}.help {ChatColors.Default}to view additional commands",
             @event.Userid
         );
 

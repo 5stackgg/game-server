@@ -18,7 +18,7 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnPause(CCSPlayerController? player, CommandInfo? command)
     {
-        if (player == null || IsLive())
+        if (player == null)
         {
             return;
         }
@@ -33,7 +33,7 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnResume(CCSPlayerController? player, CommandInfo? command)
     {
-        if (player == null || IsLive())
+        if (player == null)
         {
             return;
         }

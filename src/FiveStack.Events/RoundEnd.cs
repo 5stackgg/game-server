@@ -44,6 +44,7 @@ public partial class FiveStackPlugin
                 @event = "score",
                 data = new Dictionary<string, object>
                 {
+                    { "match_map_id", _matchData.current_match_map_id },
                     { "round", _currentRound + 1 },
                     { "team_1_score", $"{GetTeamScore(_matchData.lineup_1.name)}" },
                     { "team_2_score", $"{GetTeamScore(_matchData.lineup_2.name)}" },
