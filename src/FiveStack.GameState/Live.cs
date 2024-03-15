@@ -91,6 +91,8 @@ public partial class FiveStackPlugin
             return;
         }
 
+        Message(HudDestination.Alert, "Recording Demo");
+
         SendCommands(new[] { $"tv_record /opt/demos/{GetSafeMatchPrefix()}" });
     }
 
