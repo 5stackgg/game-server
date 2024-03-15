@@ -50,7 +50,7 @@ public partial class FiveStackPlugin
             }
         );
 
-        _publishGameState(eGameState.Warmup);
+        _publishGameState(eMapStatus.Warmup);
     }
 
     public bool IsWarmup()

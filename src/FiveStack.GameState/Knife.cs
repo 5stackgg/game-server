@@ -11,7 +11,7 @@ public partial class FiveStackPlugin
 
     public async void StartKnife()
     {
-        if (_currentGameState != eGameState.Warmup)
+        if (_currentMapStatus != eMapStatus.Warmup)
         {
             return;
         }
@@ -52,7 +52,7 @@ public partial class FiveStackPlugin
             }
         );
 
-        _publishGameState(eGameState.Knife);
+        _publishGameState(eMapStatus.Knife);
 
         await Task.Delay(1000);
         Server.NextFrame(() =>

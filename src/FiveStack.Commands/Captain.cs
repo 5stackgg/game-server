@@ -14,10 +14,10 @@ public partial class FiveStackPlugin
     {
         if (
             player == null
-            || _matchData == null
+            || _currentMap == null
             || (
-                GameStateStringToEnum(_matchData.status) != eGameState.Warmup
-                && GameStateStringToEnum(_matchData.status) != eGameState.Knife
+                MapStatusStringToEnum(_currentMap.status) != eMapStatus.Warmup
+                && MapStatusStringToEnum(_currentMap.status) != eMapStatus.Knife
             )
         )
         {
@@ -46,10 +46,10 @@ public partial class FiveStackPlugin
     {
         if (
             player == null
-            || _matchData == null
+            || _currentMap == null
             || (
-                GameStateStringToEnum(_matchData.status) != eGameState.Warmup
-                && GameStateStringToEnum(_matchData.status) != eGameState.Knife
+                MapStatusStringToEnum(_currentMap.status) != eMapStatus.Warmup
+                && MapStatusStringToEnum(_currentMap.status) != eMapStatus.Knife
             )
         )
         {

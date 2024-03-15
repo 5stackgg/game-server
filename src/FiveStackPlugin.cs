@@ -11,8 +11,8 @@ public partial class FiveStackPlugin : BasePlugin
 {
     private int _currentRound = 0;
     private Redis _redis = new Redis();
-    private string _currentMap = Server.MapName;
-    private eGameState _currentGameState = eGameState.Unknown;
+    private string _onMap = Server.MapName;
+    private eMapStatus _currentMapStatus = eMapStatus.Unknown;
 
     private Dictionary<CsTeam, CCSPlayerController?> _captains = new Dictionary<
         CsTeam,

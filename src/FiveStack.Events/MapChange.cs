@@ -12,8 +12,8 @@ public partial class FiveStackPlugin
             async (mapName) =>
             {
                 _currentRound = 0;
-                _currentMap = Server.MapName;
-                _currentGameState = eGameState.Unknown;
+                _onMap = Server.MapName;
+                _currentMapStatus = eMapStatus.Unknown;
 
                 // code smell: we have to wait till server exec's default cfgs
                 await Task.Delay(1000 * 5);

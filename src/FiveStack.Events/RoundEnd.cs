@@ -21,7 +21,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info)
     {
-        if (_matchData == null || _currentGameState == eGameState.Knife)
+        if (_matchData == null || _currentMapStatus == eMapStatus.Knife)
         {
             Logger.LogInformation($"TEAM ASSIGNED {@event.Winner}");
 

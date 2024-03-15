@@ -57,7 +57,7 @@ public partial class FiveStackPlugin
         // require game state coming from Warmup / Knife
         if (!IsKnife() && !IsWarmup())
         {
-            _publishGameState(eGameState.Live);
+            _publishGameState(eMapStatus.Live);
             return;
         }
 
@@ -67,7 +67,7 @@ public partial class FiveStackPlugin
         TeamTimeouts[CsTeam.Terrorist] = 0;
         TeamTimeouts[CsTeam.CounterTerrorist] = 0;
 
-        _publishGameState(eGameState.Live);
+        _publishGameState(eMapStatus.Live);
 
         await Task.Delay(1000);
         Server.NextFrame(() =>
@@ -78,10 +78,9 @@ public partial class FiveStackPlugin
 
     public bool IsLive()
     {
-        return _currentGameState != eGameState.Unknown
-            && _currentGameState != eGameState.Warmup
-            && _currentGameState != eGameState.Knife
-            && _currentGameState != eGameState.Scheduled;
+        return _currentMapStatus != eMapStatus.Unknown
+            && _currentMapStatus != eMapStatus.Warmup
+            && _currentMapStatus != eMapStatus.Knife;
     }
 
     private void _startDemoRecording()
@@ -98,6 +97,6 @@ public partial class FiveStackPlugin
 
     public bool IsKnife()
     {
-        return _currentGameState == eGameState.Knife;
+        return _currentMapStatus == eMapStatus.Knife;
     }
 }
