@@ -13,12 +13,12 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        CCSPlayerController attacker = @event.Attacker;
+        CCSPlayerController? attacker = @event.Attacker.IsValid ? @event.Attacker : null;
         CCSPlayerController attacked = @event.Userid;
 
-        if (attacker.PlayerPawn.Value != null && attacked.PlayerPawn.Value != null)
+        if (attacked.PlayerPawn.Value != null)
         {
-            var attackerLocation = attacker.PlayerPawn.Value.AbsOrigin;
+            var attackerLocation = attacker?.PlayerPawn?.Value?.AbsOrigin;
             var attackedLocation = attacked.PlayerPawn.Value.AbsOrigin;
 
             _redis.PublishMatchEvent(
@@ -36,9 +36,15 @@ public partial class FiveStackPlugin
                         { "thru_wall", @event.Penetrated > 0 },
                         { "headshot", @event.Headshot },
                         { "round", _currentRound },
-                        { "attacker_steam_id", attacker.SteamID.ToString() },
-                        { "attacker_team", $"{TeamNumToString(attacker.TeamNum)}" },
-                        { "attacker_location", $"{attacker.PlayerPawn.Value.LastPlaceName}" },
+                        {
+                            "attacker_steam_id",
+                            attacker != null ? attacker.SteamID.ToString() : ""
+                        },
+                        {
+                            "attacker_team",
+                            attacker != null ? $"{TeamNumToString(attacker.TeamNum)}" : ""
+                        },
+                        { "attacker_location", $"{attacker?.PlayerPawn?.Value?.LastPlaceName}" },
                         {
                             "attacker_location_coordinates",
                             attackerLocation != null
@@ -63,7 +69,7 @@ public partial class FiveStackPlugin
 
         CCSPlayerController? assister = @event.Assister;
 
-        if (assister != null && assister.IsValid)
+        if (attacker != null && assister != null && assister.IsValid)
         {
             if (attacker.TeamNum != attacked.TeamNum)
             {

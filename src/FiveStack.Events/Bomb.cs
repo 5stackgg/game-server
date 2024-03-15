@@ -19,12 +19,12 @@ public partial class FiveStackPlugin
             _matchData.id,
             new Redis.EventData<Dictionary<string, object>>
             {
-                @event = "bomb",
+                @event = "objective",
                 data = new Dictionary<string, object>
                 {
                     { "match_map_id", _matchData.current_match_map_id },
                     { "round", _currentRound + 1 },
-                    { "type", "plant" },
+                    { "type", "Planted" },
                     { "player_steam_id", planter.SteamID.ToString() },
                 }
             }
@@ -47,12 +47,12 @@ public partial class FiveStackPlugin
             _matchData.id,
             new Redis.EventData<Dictionary<string, object>>
             {
-                @event = "bomb",
+                @event = "objective",
                 data = new Dictionary<string, object>
                 {
                     { "match_map_id", _matchData.current_match_map_id },
                     { "round", _currentRound + 1 },
-                    { "type", "plant" },
+                    { "type", "Defused" },
                     { "player_steam_id", defuser.SteamID.ToString() },
                 }
             }
@@ -75,12 +75,12 @@ public partial class FiveStackPlugin
             _matchData.id,
             new Redis.EventData<Dictionary<string, object>>
             {
-                @event = "bomb",
+                @event = "objective",
                 data = new Dictionary<string, object>
                 {
                     { "match_map_id", _matchData.current_match_map_id },
                     { "round", _currentRound + 1 },
-                    { "type", "exploded" },
+                    { "type", "Exploded" },
                     { "player_steam_id", bomber.SteamID.ToString() },
                 }
             }
