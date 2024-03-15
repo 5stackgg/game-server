@@ -8,7 +8,7 @@ namespace FiveStack;
 public partial class FiveStackPlugin
 {
     [GameEventHandler]
-    public HookResult OnPlayerDisconnect(EventPlayerConnect @event, GameEventInfo info)
+    public HookResult OnPlayerDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
     {
         if (@event.Userid == null || !@event.Userid.IsValid || @event.Userid.IsBot)
         {

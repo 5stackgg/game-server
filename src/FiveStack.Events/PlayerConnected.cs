@@ -11,7 +11,7 @@ namespace FiveStack;
 public partial class FiveStackPlugin
 {
     [GameEventHandler]
-    public HookResult OnPlayerConnect(EventPlayerConnect @event, GameEventInfo info)
+    public HookResult OnPlayerConnect(EventPlayerConnectFull @event, GameEventInfo info)
     {
         if (
             @event.Userid == null
