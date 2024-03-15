@@ -15,12 +15,4 @@ public partial class FiveStackPlugin
 
         return HookResult.Continue;
     }
-
-    [GameEventHandler]
-    public HookResult OnGameEndEnd(EventGamePhaseChanged @event, GameEventInfo info)
-    {
-        Console.WriteLine($"WEEE {@event.NewPhase}");
-
-        return HookResult.Continue;
-    }
 }
