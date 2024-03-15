@@ -11,7 +11,7 @@ public partial class FiveStackPlugin
 
     public async void StartKnife()
     {
-        if (_currentMapStatus != eMapStatus.Warmup)
+        if (_matchData == null || IsKnife())
         {
             return;
         }
@@ -29,7 +29,6 @@ public partial class FiveStackPlugin
         SendCommands(
             new[]
             {
-                "bot_kick",
                 "mp_autokick 0",
                 "mp_autoteambalance 0",
                 "mp_warmuptime_all_players_connected 0",

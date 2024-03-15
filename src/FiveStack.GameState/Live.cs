@@ -8,6 +8,11 @@ public partial class FiveStackPlugin
 {
     public async void StartLive()
     {
+        if (_matchData == null || IsLive())
+        {
+            return;
+        }
+
         if (_matchData == null)
         {
             return;
@@ -54,18 +59,17 @@ public partial class FiveStackPlugin
             SendCommands(new[] { "game_type 0; game_mode 1" });
         }
 
-        // require game state coming from Warmup / Knife
-        if (!IsKnife() && !IsWarmup())
-        {
-            _publishGameState(eMapStatus.Live);
-            return;
-        }
-
-        SendCommands(new[] { "bot_kick", "mp_autokick 0", "mp_warmup_end", "mp_restartgame 1" });
-
         // TODO - server crashes , we dont know this info
         TeamTimeouts[CsTeam.Terrorist] = 0;
         TeamTimeouts[CsTeam.CounterTerrorist] = 0;
+
+        // require game state coming from Warmup / Knife
+        if (!IsKnife() && !IsWarmup())
+        {
+            return;
+        }
+
+        SendCommands(new[] { "mp_autokick 0", "mp_warmup_end", "mp_restartgame 1" });
 
         _publishGameState(eMapStatus.Live);
 

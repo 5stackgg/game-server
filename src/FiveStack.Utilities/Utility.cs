@@ -102,6 +102,8 @@ public partial class FiveStackPlugin
     {
         switch (state)
         {
+            case "Scheduled":
+                return eMapStatus.Scheduled;
             case "Finished":
                 return eMapStatus.Finished;
             case "Knife":

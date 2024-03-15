@@ -127,6 +127,7 @@ public partial class FiveStackPlugin
 
         switch (status)
         {
+            case eMapStatus.Scheduled:
             case eMapStatus.Warmup:
                 StartWarmup();
                 break;
@@ -274,12 +275,8 @@ public partial class FiveStackPlugin
 
     public bool IsOnMap(string map)
     {
-        if (_currentMap == null)
-        {
-            return false;
-        }
-        Logger.LogInformation($"Map Check: {_currentMap.map}:{map}");
+        Logger.LogInformation($"Map Check: {_onMap}:{map}");
 
-        return map == _currentMap.map;
+        return map == _onMap;
     }
 }

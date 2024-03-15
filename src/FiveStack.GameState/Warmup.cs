@@ -11,7 +11,7 @@ public partial class FiveStackPlugin
 
     public void StartWarmup()
     {
-        if (_matchData == null || IsLive())
+        if (_matchData == null || IsWarmup())
         {
             return;
         }
@@ -49,6 +49,20 @@ public partial class FiveStackPlugin
                 "mp_warmup_start",
             }
         );
+
+        if (bool.TryParse(Environment.GetEnvironmentVariable("DEV_SERVER"), out var isDev) && isDev)
+        {
+            SendCommands(
+                new[]
+                {
+                    "custom_bot_difficulty 5",
+                    "bot_difficulty 5",
+                    "bot_quota_mode normal",
+                    "bot_add_t",
+                    "bot_add_ct"
+                }
+            );
+        }
 
         _publishGameState(eMapStatus.Warmup);
     }

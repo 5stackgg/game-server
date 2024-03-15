@@ -4,6 +4,9 @@ namespace FiveStack.enums;
 
 public enum eMapStatus
 {
+    [Description("Scheduled")]
+    Scheduled,
+
     [Description("Warmup")]
     Warmup,
 
