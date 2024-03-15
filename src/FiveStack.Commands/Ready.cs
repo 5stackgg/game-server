@@ -38,7 +38,7 @@ public partial class FiveStackPlugin
         SendNotReadyMessage();
     }
 
-    [ConsoleCommand("force-ready", "Forces the match to start")]
+    [ConsoleCommand("force_ready", "Forces the match to start")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnForceStart(CCSPlayerController? player, CommandInfo? command)
     {

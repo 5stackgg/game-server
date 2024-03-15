@@ -14,7 +14,7 @@ public partial class FiveStackPlugin
 {
     private Match? _matchData;
 
-    [ConsoleCommand("get-match-details", "Gets match details")]
+    [ConsoleCommand("get_match_details", "Gets match details")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void get_match_details(CCSPlayerController? player, CommandInfo command)
     {
@@ -80,14 +80,14 @@ public partial class FiveStackPlugin
         }
     }
 
-    [ConsoleCommand("match-state", "Forces a match to update its current state")]
+    [ConsoleCommand("match_state", "Forces a match to update its current state")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void SetMatchState(CCSPlayerController? player, CommandInfo command)
     {
         UpdateGameState(GameStateStringToEnum(command.ArgString));
     }
 
-    [ConsoleCommand("restore-round", "Restores to a previous round")]
+    [ConsoleCommand("restore_round", "Restores to a previous round")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void RestoreRound(CCSPlayerController? player, CommandInfo command)
     {
