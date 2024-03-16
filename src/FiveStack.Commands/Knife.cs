@@ -28,7 +28,7 @@ public partial class FiveStackPlugin
             $"captain picked to {ChatColors.Red}stay {ChatColors.Default}sides"
         );
 
-        UpdateGameState(eGameState.Live);
+        UpdateMapStatus(eMapStatus.Live);
     }
 
     [ConsoleCommand("css_switch", "")]
@@ -62,7 +62,7 @@ public partial class FiveStackPlugin
 
         SendCommands(new[] { "mp_swapteams" });
 
-        UpdateGameState(eGameState.Live);
+        UpdateMapStatus(eMapStatus.Live);
     }
 
     [ConsoleCommand("skip_knife", "Skips knife round")]
@@ -76,6 +76,6 @@ public partial class FiveStackPlugin
 
         Message(HudDestination.Center, $"Skipping Knife.", player);
 
-        UpdateGameState(eGameState.Live);
+        UpdateMapStatus(eMapStatus.Live);
     }
 }

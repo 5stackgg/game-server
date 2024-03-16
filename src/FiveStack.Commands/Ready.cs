@@ -30,7 +30,7 @@ public partial class FiveStackPlugin
 
         if (TotalReady() == _getExpectedPlayerCount())
         {
-            UpdateGameState(eGameState.Knife);
+            UpdateMapStatus(eMapStatus.Knife);
         }
 
         SendReadyMessage(player);
@@ -49,7 +49,7 @@ public partial class FiveStackPlugin
 
         Message(HudDestination.Center, $"Game has been forced to start.", player);
 
-        UpdateGameState(eGameState.Knife);
+        UpdateMapStatus(eMapStatus.Knife);
     }
 
     public void SendReadyMessage(CCSPlayerController player)

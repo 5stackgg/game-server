@@ -8,6 +8,11 @@ public partial class FiveStackPlugin
 {
     public async void StartLive()
     {
+        if (_matchData == null || IsLive())
+        {
+            return;
+        }
+
         if (_matchData == null)
         {
             return;
@@ -54,20 +59,19 @@ public partial class FiveStackPlugin
             SendCommands(new[] { "game_type 0; game_mode 1" });
         }
 
-        // require game state coming from Warmup / Knife
-        if (!IsKnife() && !IsWarmup())
-        {
-            _publishGameState(eGameState.Live);
-            return;
-        }
-
-        SendCommands(new[] { "bot_kick", "mp_autokick 0", "mp_warmup_end", "mp_restartgame 1" });
-
         // TODO - server crashes , we dont know this info
         TeamTimeouts[CsTeam.Terrorist] = 0;
         TeamTimeouts[CsTeam.CounterTerrorist] = 0;
 
-        _publishGameState(eGameState.Live);
+        // require game state coming from Warmup / Knife
+        if (!IsKnife() && !IsWarmup())
+        {
+            return;
+        }
+
+        SendCommands(new[] { "mp_autokick 0", "mp_warmup_end", "mp_restartgame 1" });
+
+        _publishGameState(eMapStatus.Live);
 
         await Task.Delay(1000);
         Server.NextFrame(() =>
@@ -78,10 +82,9 @@ public partial class FiveStackPlugin
 
     public bool IsLive()
     {
-        return _currentGameState != eGameState.Unknown
-            && _currentGameState != eGameState.Warmup
-            && _currentGameState != eGameState.Knife
-            && _currentGameState != eGameState.Scheduled;
+        return _currentMapStatus != eMapStatus.Unknown
+            && _currentMapStatus != eMapStatus.Warmup
+            && _currentMapStatus != eMapStatus.Knife;
     }
 
     private void _startDemoRecording()
@@ -98,6 +101,6 @@ public partial class FiveStackPlugin
 
     public bool IsKnife()
     {
-        return _currentGameState == eGameState.Knife;
+        return _currentMapStatus == eMapStatus.Knife;
     }
 }

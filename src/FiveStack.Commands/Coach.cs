@@ -21,8 +21,8 @@ public partial class FiveStackPlugin
     {
         if (
             player == null
-            || _matchData == null
-            || (GameStateStringToEnum(_matchData.status) != eGameState.Warmup)
+            || _currentMap == null
+            || (MapStatusStringToEnum(_currentMap.status) != eMapStatus.Warmup)
         )
         {
             return;
@@ -54,8 +54,8 @@ public partial class FiveStackPlugin
     {
         if (
             player == null
-            || _matchData == null
-            || (GameStateStringToEnum(_matchData.status) != eGameState.Warmup)
+            || _currentMap == null
+            || (MapStatusStringToEnum(_currentMap.status) != eMapStatus.Warmup)
         )
         {
             return;

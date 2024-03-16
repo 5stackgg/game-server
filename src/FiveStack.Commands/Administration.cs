@@ -13,10 +13,11 @@ namespace FiveStack;
 public partial class FiveStackPlugin
 {
     private Match? _matchData;
+    private MatchMap? _currentMap;
 
-    [ConsoleCommand("get_match_details", "Gets match details")]
+    [ConsoleCommand("get_match", "Gets match information from api")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
-    public void get_match_details(CCSPlayerController? player, CommandInfo command)
+    public void get_match(CCSPlayerController? player, CommandInfo command)
     {
         GetMatch();
     }
@@ -58,7 +59,7 @@ public partial class FiveStackPlugin
                     return;
                 }
 
-                if (!IsLive())
+                if (_currentMapStatus == eMapStatus.Warmup)
                 {
                     Message(HudDestination.Alert, "Received Match Data");
                 }
@@ -84,7 +85,7 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void SetMatchState(CCSPlayerController? player, CommandInfo command)
     {
-        UpdateGameState(GameStateStringToEnum(command.ArgString));
+        UpdateMapStatus(MapStatusStringToEnum(command.ArgString));
     }
 
     [ConsoleCommand("restore_round", "Restores to a previous round")]
@@ -114,47 +115,40 @@ public partial class FiveStackPlugin
         );
     }
 
-    public void UpdateGameState(eGameState gameState)
+    public void UpdateMapStatus(eMapStatus status)
     {
-        Logger.LogInformation($"Update Game State {_currentGameState} -> {gameState}");
+        Logger.LogInformation($"Update Status {_currentMapStatus} -> {status}");
         if (_matchData == null)
         {
             Logger.LogInformation("missing event data");
             return;
         }
-        Logger.LogInformation($"Updating Game State: {gameState}");
+        Logger.LogInformation($"Updating Game Status: {status}");
 
-        switch (gameState)
+        switch (status)
         {
-            case eGameState.Scheduled:
-            case eGameState.PickingPlayers:
-                break;
-            case eGameState.Warmup:
+            case eMapStatus.Scheduled:
+            case eMapStatus.Warmup:
                 StartWarmup();
                 break;
-            case eGameState.Knife:
+            case eMapStatus.Knife:
                 if (!_matchData.knife_round)
                 {
-                    UpdateGameState(eGameState.Live);
+                    UpdateMapStatus(eMapStatus.Live);
                     break;
                 }
                 StartKnife();
                 break;
-            case eGameState.Live:
+            case eMapStatus.Live:
                 StartLive();
-                break;
-            case eGameState.Overtime:
-            case eGameState.Paused:
-            case eGameState.TechTimeout:
-            case eGameState.Finished:
-                _publishGameState(gameState);
                 break;
         }
 
-        _currentGameState = gameState;
+        _currentMapStatus = status;
+        _publishGameState(status);
     }
 
-    private void _publishGameState(eGameState gameState)
+    private void _publishGameState(eMapStatus status)
     {
         if (_matchData == null)
         {
@@ -165,8 +159,8 @@ public partial class FiveStackPlugin
             _matchData.id,
             new Redis.EventData<Dictionary<string, object>>
             {
-                @event = "matchStatus",
-                data = new Dictionary<string, object> { { "status", gameState.ToString() }, }
+                @event = "mapStatus",
+                data = new Dictionary<string, object> { { "status", status.ToString() }, }
             }
         );
     }
@@ -180,17 +174,17 @@ public partial class FiveStackPlugin
         }
         Logger.LogInformation($"Setup Match {_matchData.id}");
 
-        var currentMap = GetCurrentMap();
+        _currentMap = GetCurrentMap();
 
-        if (currentMap == null)
+        if (_currentMap == null)
         {
             Logger.LogWarning("Unable to find map");
             return;
         }
 
-        if (!IsOnMap(currentMap.map))
+        if (!IsOnMap(_currentMap.map))
         {
-            ChangeMap(currentMap.map);
+            ChangeMap(_currentMap.map);
             return;
         }
 
@@ -198,11 +192,13 @@ public partial class FiveStackPlugin
 
         SetupTeamNames();
 
-        Logger.LogInformation($"Current Game State {_currentGameState}");
+        Logger.LogInformation(
+            $"Current Game State {_currentMapStatus}:{_currentMap.status}:{_currentMap.map}"
+        );
 
-        if (GameStateStringToEnum(_matchData.status) != _currentGameState)
+        if (MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
         {
-            UpdateGameState(GameStateStringToEnum(_matchData.status));
+            UpdateMapStatus(MapStatusStringToEnum(_currentMap.status));
         }
     }
 
@@ -260,8 +256,6 @@ public partial class FiveStackPlugin
         {
             if (!_workshopMaps.ContainsKey(map))
             {
-                // dont want to break the server by changing it forever
-                UpdateGameState(eGameState.Scheduled);
                 Logger.LogInformation($"Map not found in the workshop maps: {map}");
                 _matchData = null;
                 return;
@@ -281,8 +275,8 @@ public partial class FiveStackPlugin
 
     public bool IsOnMap(string map)
     {
-        Logger.LogInformation($"Map Check: {_currentMap}:{map}");
+        Logger.LogInformation($"Map Check: {_onMap}:{map}");
 
-        return map == _currentMap;
+        return map == _onMap;
     }
 }

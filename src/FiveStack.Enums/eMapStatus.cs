@@ -2,10 +2,13 @@ using System.ComponentModel;
 
 namespace FiveStack.enums;
 
-public enum eGameState
+public enum eMapStatus
 {
-    [Description("Finished")]
-    Finished,
+    [Description("Scheduled")]
+    Scheduled,
+
+    [Description("Warmup")]
+    Warmup,
 
     [Description("Knife")]
     Knife,
@@ -16,20 +19,14 @@ public enum eGameState
     [Description("Overtime")]
     Overtime,
 
+    [Description("Finished")]
+    Finished,
+
     [Description("Paused")]
     Paused,
 
-    [Description("Scheduled")]
-    Scheduled,
-
     [Description("TechTimeout")]
     TechTimeout,
-
-    [Description("Warmup")]
-    Warmup,
-
-    [Description("PickingPlayers")]
-    PickingPlayers,
 
     [Description("Unknown")]
     Unknown

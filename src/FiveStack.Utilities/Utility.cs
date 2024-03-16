@@ -98,28 +98,28 @@ public partial class FiveStackPlugin
         }
     }
 
-    private eGameState GameStateStringToEnum(string state)
+    private eMapStatus MapStatusStringToEnum(string state)
     {
         switch (state)
         {
-            case "Finished":
-                return eGameState.Finished;
-            case "Knife":
-                return eGameState.Knife;
-            case "Live":
-                return eGameState.Live;
-            case "Overtime":
-                return eGameState.Overtime;
-            case "Paused":
-                return eGameState.Paused;
             case "Scheduled":
-                return eGameState.Scheduled;
+                return eMapStatus.Scheduled;
+            case "Finished":
+                return eMapStatus.Finished;
+            case "Knife":
+                return eMapStatus.Knife;
+            case "Live":
+                return eMapStatus.Live;
+            case "Overtime":
+                return eMapStatus.Overtime;
+            case "Paused":
+                return eMapStatus.Paused;
             case "TechTimeout":
-                return eGameState.TechTimeout;
+                return eMapStatus.TechTimeout;
             case "Warmup":
-                return eGameState.Warmup;
-            case "PickingPlayers":
-                return eGameState.PickingPlayers;
+                return eMapStatus.Warmup;
+            case "Unknown":
+                return eMapStatus.Unknown;
             default:
                 throw new ArgumentException($"Unsupported status string: {state}");
         }

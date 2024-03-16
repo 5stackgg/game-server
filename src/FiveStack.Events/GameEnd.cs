@@ -9,7 +9,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnGameEnd(EventCsWinPanelMatch @event, GameEventInfo info)
     {
-        UpdateGameState(eGameState.Finished);
+        UpdateMapStatus(eMapStatus.Finished);
 
         SendCommands(new[] { "tv_stoprecord" });
 

@@ -1,3 +1,5 @@
+using FiveStack.enums;
+
 namespace FiveStack.entities;
 
 public class Match
@@ -5,7 +7,6 @@ public class Match
     public Guid id { get; set; } = Guid.Empty;
     public int mr { get; set; } = 0;
     public string type { get; set; } = "";
-    public string status { get; set; } = "Unknown";
     public bool overtime { get; set; } = true;
     public string password { get; set; } = "connectme";
     public bool knife_round { get; set; } = true;
