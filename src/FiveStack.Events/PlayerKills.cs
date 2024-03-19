@@ -154,9 +154,14 @@ public partial class FiveStackPlugin
 
             foreach (var weaponHandle in weaponServices.MyWeapons)
             {
+                if (weaponHandle.Value == null)
+                {
+                    continue;
+                }
+
                 int price;
                 var weapon = weaponHandle.Value.As<CCSWeaponBase>();
-                if (weapon != null)
+                if (weapon != null && weapon.VData != null)
                 {
                     price = weapon.VData.Price;
                 }
