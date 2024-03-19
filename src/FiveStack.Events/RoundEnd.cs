@@ -85,22 +85,25 @@ public partial class FiveStackPlugin
             return 0;
         }
 
+        int totalCash = 0;
         var teamManagers = Utilities.FindAllEntitiesByDesignerName<CCSTeam>("cs_team_manager");
 
         foreach (var teamManager in teamManagers)
         {
-            int totalCash = 0;
             if (teamManager.ClanTeamname == teamName)
             {
-                foreach (var player in teamManager.Players)
+                foreach (var player in teamManager.PlayerControllers)
                 {
-                    // var _player = Utilities.GetPlayerFromIndex(player.Value.Index);
-                    // totalCash = totalCash + player.Value.
+                    totalCash += (
+                        Utilities
+                            .GetPlayerFromIndex((int)player.Index)
+                            ?.InGameMoneyServices?.Account ?? 0
+                    );
                 }
             }
         }
 
-        return 0;
+        return totalCash;
     }
 
     public void UpdateCurrentRound()
