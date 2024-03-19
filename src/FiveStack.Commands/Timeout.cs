@@ -8,12 +8,6 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    private Dictionary<CsTeam, int> TeamTimeouts = new Dictionary<CsTeam, int>
-    {
-        { CsTeam.Terrorist, 0 },
-        { CsTeam.CounterTerrorist, 0 }
-    };
-
     [ConsoleCommand("css_pause", "Pauses the match")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnPause(CCSPlayerController? player, CommandInfo? command)

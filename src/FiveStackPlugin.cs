@@ -2,6 +2,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.entities;
 using FiveStack.enums;
 using Microsoft.Extensions.Logging;
 
@@ -9,10 +10,20 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin : BasePlugin
 {
+    private Match? _matchData;
+    private MatchMap? _currentMap;
     private int _currentRound = 0;
     private Redis _redis = new Redis();
     private string _onMap = Server.MapName;
+    public CsTeam? KnifeWinningTeam;
     private eMapStatus _currentMapStatus = eMapStatus.Unknown;
+    private Dictionary<int, bool> _readyPlayers = new Dictionary<int, bool>();
+
+    private Dictionary<CsTeam, int> TeamTimeouts = new Dictionary<CsTeam, int>
+    {
+        { CsTeam.Terrorist, 0 },
+        { CsTeam.CounterTerrorist, 0 }
+    };
 
     private Dictionary<CsTeam, CCSPlayerController?> _captains = new Dictionary<
         CsTeam,

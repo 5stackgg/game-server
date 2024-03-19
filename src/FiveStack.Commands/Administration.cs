@@ -12,9 +12,6 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    private Match? _matchData;
-    private MatchMap? _currentMap;
-
     [ConsoleCommand("get_match", "Gets match information from api")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void get_match(CCSPlayerController? player, CommandInfo command)

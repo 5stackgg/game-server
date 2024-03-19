@@ -11,6 +11,7 @@ public partial class FiveStackPlugin
         RegisterListener<Listeners.OnMapStart>(
             async (mapName) =>
             {
+                _matchData = null;
                 _currentRound = 0;
                 _onMap = Server.MapName;
                 _currentMapStatus = eMapStatus.Unknown;
@@ -19,7 +20,7 @@ public partial class FiveStackPlugin
                 await Task.Delay(1000 * 5);
                 Server.NextFrame(() =>
                 {
-                    SetupMatch();
+                    GetMatch();
                 });
             }
         );
