@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -28,6 +29,7 @@ public partial class FiveStackPlugin
                     @event = "kill",
                     data = new Dictionary<string, object>
                     {
+                        { "time", DateTime.Now },
                         { "match_map_id", _matchData.current_match_map_id },
                         { "no_scope", @event.Noscope },
                         { "blinded", @event.Attackerblind },
@@ -80,6 +82,7 @@ public partial class FiveStackPlugin
                         @event = "assist",
                         data = new Dictionary<string, object>
                         {
+                            { "time", DateTime.Now },
                             { "match_map_id", _matchData.current_match_map_id },
                             { "match_id", _matchData.id },
                             { "round", _currentRound },
@@ -119,6 +122,7 @@ public partial class FiveStackPlugin
                     @event = "kill",
                     data = new Dictionary<string, object>
                     {
+                        { "time", DateTime.Now },
                         { "match_map_id", _matchData.current_match_map_id },
                         { "no_scope", @event.Noscope },
                         { "thru_smoke", @event.Thrusmoke },
@@ -137,6 +141,58 @@ public partial class FiveStackPlugin
                                 ? $"{Convert.ToInt32(attackedLocation.X)} {Convert.ToInt32(attackedLocation.Y)} {Convert.ToInt32(attackedLocation.Z)}"
                                 : ""
                         },
+                    }
+                }
+            );
+
+            var weaponServices = attacked.PlayerPawn.Value.WeaponServices;
+
+            if (weaponServices == null)
+            {
+                return HookResult.Continue;
+            }
+
+            foreach (var weaponHandle in weaponServices.MyWeapons)
+            {
+                if (weaponHandle.Value == null)
+                {
+                    continue;
+                }
+
+                int price;
+                var weapon = weaponHandle.Value.As<CCSWeaponBase>();
+                if (weapon != null && weapon.VData != null)
+                {
+                    price = weapon.VData.Price;
+                }
+
+                if (weapon != null && weapon.IsValid)
+                {
+                    Logger.LogInformation($"HAS {weapon.DesignerName}");
+
+                    switch (weapon.DesignerName)
+                    {
+                        case "weapon_hegrenade":
+
+                            break;
+
+                        default:
+                            // Handle other weapon types if needed
+                            break;
+                    }
+                }
+            }
+
+            _redis.PublishMatchEvent(
+                _matchData.id,
+                new Redis.EventData<Dictionary<string, object>>
+                {
+                    @event = "unusedUtility",
+                    data = new Dictionary<string, object>
+                    {
+                        { "time", DateTime.Now },
+                        { "match_map_id", _matchData.current_match_map_id },
+                        { "attacked_steam_id", attacked.SteamID.ToString() }
                     }
                 }
             );

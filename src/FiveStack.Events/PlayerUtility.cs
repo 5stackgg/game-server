@@ -22,6 +22,7 @@ public partial class FiveStackPlugin
                 @event = "utility",
                 data = new Dictionary<string, object>
                 {
+                    { "time", DateTime.Now },
                     { "match_map_id", _matchData.current_match_map_id },
                     { "round", _currentRound + 1 },
                     { "type", "Decoy" },
@@ -51,6 +52,7 @@ public partial class FiveStackPlugin
                 @event = "utility",
                 data = new Dictionary<string, object>
                 {
+                    { "time", DateTime.Now },
                     { "match_map_id", _matchData.current_match_map_id },
                     { "round", _currentRound + 1 },
                     { "type", "HighExplosive" },
@@ -80,6 +82,7 @@ public partial class FiveStackPlugin
                 @event = "utility",
                 data = new Dictionary<string, object>
                 {
+                    { "time", DateTime.Now },
                     { "match_map_id", _matchData.current_match_map_id },
                     { "round", _currentRound + 1 },
                     { "type", "Flash" },
@@ -109,6 +112,7 @@ public partial class FiveStackPlugin
                 @event = "utility",
                 data = new Dictionary<string, object>
                 {
+                    { "time", DateTime.Now },
                     { "match_map_id", _matchData.current_match_map_id },
                     { "round", _currentRound + 1 },
                     { "type", "Molotov" },
@@ -138,6 +142,7 @@ public partial class FiveStackPlugin
                 @event = "utility",
                 data = new Dictionary<string, object>
                 {
+                    { "time", DateTime.Now },
                     { "match_map_id", _matchData.current_match_map_id },
                     { "round", _currentRound + 1 },
                     { "type", "Smoke" },
@@ -168,6 +173,7 @@ public partial class FiveStackPlugin
                 @event = "flash",
                 data = new Dictionary<string, object>
                 {
+                    { "time", DateTime.Now },
                     { "match_map_id", _matchData.current_match_map_id },
                     { "round", _currentRound + 1 },
                     { "attacker_steam_id", thrower.SteamID.ToString() },

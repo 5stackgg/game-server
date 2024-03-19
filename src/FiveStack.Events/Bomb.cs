@@ -22,6 +22,7 @@ public partial class FiveStackPlugin
                 @event = "objective",
                 data = new Dictionary<string, object>
                 {
+                    { "time", DateTime.Now },
                     { "match_map_id", _matchData.current_match_map_id },
                     { "round", _currentRound + 1 },
                     { "type", "Planted" },
@@ -50,6 +51,7 @@ public partial class FiveStackPlugin
                 @event = "objective",
                 data = new Dictionary<string, object>
                 {
+                    { "time", DateTime.Now },
                     { "match_map_id", _matchData.current_match_map_id },
                     { "round", _currentRound + 1 },
                     { "type", "Defused" },
@@ -78,6 +80,7 @@ public partial class FiveStackPlugin
                 @event = "objective",
                 data = new Dictionary<string, object>
                 {
+                    { "time", DateTime.Now },
                     { "match_map_id", _matchData.current_match_map_id },
                     { "round", _currentRound + 1 },
                     { "type", "Exploded" },

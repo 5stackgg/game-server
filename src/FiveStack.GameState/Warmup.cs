@@ -11,13 +11,11 @@ public partial class FiveStackPlugin
 
     public void StartWarmup()
     {
-        if (_matchData == null || IsWarmup())
+        if (_matchData == null && !IsWarmup())
         {
-            return;
+             _resetCaptains();
+            _resetReadyPlayers();
         }
-
-        _resetCaptains();
-        _resetReadyPlayers();
 
         if (_matchData.type == "Wingman")
         {
