@@ -44,10 +44,13 @@ public partial class FiveStackPlugin
                 @event = "score",
                 data = new Dictionary<string, object>
                 {
+                    { "time", DateTime.Now },
                     { "match_map_id", _matchData.current_match_map_id },
                     { "round", _currentRound + 1 },
                     { "team_1_score", $"{GetTeamScore(_matchData.lineup_1.name)}" },
+                    { "team_1_money", $"{GetTeamMoney(_matchData.lineup_1.name)}" },
                     { "team_2_score", $"{GetTeamScore(_matchData.lineup_2.name)}" },
+                    { "team_2_money", $"{GetTeamMoney(_matchData.lineup_2.name)}" },
                 }
             }
         );
@@ -69,6 +72,30 @@ public partial class FiveStackPlugin
             if (teamManager.ClanTeamname == teamName)
             {
                 return teamManager.Score;
+            }
+        }
+
+        return 0;
+    }
+
+    public int GetTeamMoney(string teamName)
+    {
+        if (_matchData == null)
+        {
+            return 0;
+        }
+
+        var teamManagers = Utilities.FindAllEntitiesByDesignerName<CCSTeam>("cs_team_manager");
+
+        foreach (var teamManager in teamManagers)
+        {
+            int totalCash = 0;
+            if (teamManager.ClanTeamname == teamName)
+            {
+                foreach (var player in teamManager.Players) {
+                    // var _player = Utilities.GetPlayerFromIndex(player.Value.Index);
+                    // totalCash = totalCash + player.Value.
+                }
             }
         }
 

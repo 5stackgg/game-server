@@ -28,6 +28,7 @@ public partial class FiveStackPlugin
                     @event = "kill",
                     data = new Dictionary<string, object>
                     {
+                        { "time", DateTime.Now },
                         { "match_map_id", _matchData.current_match_map_id },
                         { "no_scope", @event.Noscope },
                         { "blinded", @event.Attackerblind },

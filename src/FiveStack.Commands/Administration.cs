@@ -28,6 +28,8 @@ public partial class FiveStackPlugin
 
         string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
 
+        Logger.LogInformation($"Server ID: {serverId}");
+
         if (serverId == null)
         {
             await Task.Delay(1000 * 5);
@@ -137,6 +139,7 @@ public partial class FiveStackPlugin
                     UpdateMapStatus(eMapStatus.Live);
                     break;
                 }
+                // TODO - only start knife if is Bo1 or last map of Box
                 StartKnife();
                 break;
             case eMapStatus.Live:

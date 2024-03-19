@@ -99,21 +99,15 @@ public partial class FiveStackPlugin
             return;
         }
 
-        List<MatchMember> players = _matchData.lineup_1.lineup_players;
-
-        string jsonString = JsonSerializer.Serialize(_matchData.lineup_1);
-
-        Logger.LogInformation($"LINEUP1 {jsonString}");
+        List<MatchMember> players = _matchData.lineup_1.lineup_players.Concat(_matchData.lineup_2.lineup_players).ToList();
 
         MatchMember? foundMatchingMember = players.Find(member =>
         {
-            Logger.LogInformation("I AM A MEMEMBER");
             if (member.steam_id == null)
             {
                 return member.name.StartsWith(player.PlayerName);
             }
 
-            Logger.LogInformation($"STEAM ID {member.steam_id} = {player.SteamID.ToString()}");
             return member.steam_id == player.SteamID.ToString();
         });
 
@@ -123,11 +117,17 @@ public partial class FiveStackPlugin
             return;
         }
 
+
+        Logger.LogInformation($"LineupID {foundMatchingMember.match_lineup_id}");
+
         CsTeam startingSide = TeamStringToCsTeam(
             _matchData.lineup_1_id == foundMatchingMember.match_lineup_id
                 ? currentMap.lineup_1_side
                 : currentMap.lineup_2_side
         );
+
+
+        Logger.LogInformation($"Current Team ${_matchData.lineup_1_id}{currentTeam}:{startingSide}");
         if (currentTeam != startingSide)
         {
             // the server needs some time apparently

@@ -33,6 +33,7 @@ public partial class FiveStackPlugin
                 @event = "damage",
                 data = new Dictionary<string, object>
                 {
+                    { "time", DateTime.Now },
                     { "match_map_id", _matchData.current_match_map_id },
                     { "round", _currentRound },
                     { "attacker_steam_id", attacker != null ? attacker.SteamID.ToString() : "" },
