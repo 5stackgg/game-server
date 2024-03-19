@@ -92,7 +92,8 @@ public partial class FiveStackPlugin
             int totalCash = 0;
             if (teamManager.ClanTeamname == teamName)
             {
-                foreach (var player in teamManager.Players) {
+                foreach (var player in teamManager.Players)
+                {
                     // var _player = Utilities.GetPlayerFromIndex(player.Value.Index);
                     // totalCash = totalCash + player.Value.
                 }

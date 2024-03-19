@@ -81,6 +81,7 @@ public partial class FiveStackPlugin
                         @event = "assist",
                         data = new Dictionary<string, object>
                         {
+                            { "time", DateTime.Now },
                             { "match_map_id", _matchData.current_match_map_id },
                             { "match_id", _matchData.id },
                             { "round", _currentRound },
@@ -120,6 +121,7 @@ public partial class FiveStackPlugin
                     @event = "kill",
                     data = new Dictionary<string, object>
                     {
+                        { "time", DateTime.Now },
                         { "match_map_id", _matchData.current_match_map_id },
                         { "no_scope", @event.Noscope },
                         { "thru_smoke", @event.Thrusmoke },

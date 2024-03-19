@@ -99,7 +99,9 @@ public partial class FiveStackPlugin
             return;
         }
 
-        List<MatchMember> players = _matchData.lineup_1.lineup_players.Concat(_matchData.lineup_2.lineup_players).ToList();
+        List<MatchMember> players = _matchData
+            .lineup_1.lineup_players.Concat(_matchData.lineup_2.lineup_players)
+            .ToList();
 
         MatchMember? foundMatchingMember = players.Find(member =>
         {
@@ -117,7 +119,6 @@ public partial class FiveStackPlugin
             return;
         }
 
-
         Logger.LogInformation($"LineupID {foundMatchingMember.match_lineup_id}");
 
         CsTeam startingSide = TeamStringToCsTeam(
@@ -126,8 +127,9 @@ public partial class FiveStackPlugin
                 : currentMap.lineup_2_side
         );
 
-
-        Logger.LogInformation($"Current Team ${_matchData.lineup_1_id}{currentTeam}:{startingSide}");
+        Logger.LogInformation(
+            $"Current Team ${_matchData.lineup_1_id}{currentTeam}:{startingSide}"
+        );
         if (currentTeam != startingSide)
         {
             // the server needs some time apparently

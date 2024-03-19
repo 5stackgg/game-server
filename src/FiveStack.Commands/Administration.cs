@@ -131,6 +131,7 @@ public partial class FiveStackPlugin
         {
             case eMapStatus.Scheduled:
             case eMapStatus.Warmup:
+                status = eMapStatus.Warmup;
                 StartWarmup();
                 break;
             case eMapStatus.Knife:
