@@ -10,6 +10,7 @@ public class Match
     public bool overtime { get; set; } = true;
     public string password { get; set; } = "connectme";
     public bool knife_round { get; set; } = true;
+    public int best_of { get; set; } = 1;
 
     public Guid current_match_map_id { get; set; } = Guid.Empty;
 

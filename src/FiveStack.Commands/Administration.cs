@@ -137,8 +137,18 @@ public partial class FiveStackPlugin
                     UpdateMapStatus(eMapStatus.Live);
                     break;
                 }
-                // TODO - only start knife if is Bo1 or last map of Box
-                StartKnife();
+
+                var currentMap = GetCurrentMap();
+                if (currentMap == null)
+                {
+                    break;
+                }
+
+                if (currentMap.order == _matchData.best_of && _matchData.knife_round)
+                {
+                    StartKnife();
+                }
+
                 break;
             case eMapStatus.Live:
                 StartLive();
