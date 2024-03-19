@@ -9,7 +9,11 @@ public partial class FiveStackPlugin
 {
     public void StartWarmup()
     {
-        if (_matchData == null && !IsWarmup())
+        if(_matchData == null) {
+            return;
+        }
+
+        if (!IsWarmup())
         {
             _resetCaptains();
             _resetReadyPlayers();
