@@ -116,13 +116,13 @@ public partial class FiveStackPlugin
 
     public void UpdateMapStatus(eMapStatus status)
     {
-        Logger.LogInformation($"Update Status {_currentMapStatus} -> {status}");
         if (_matchData == null)
         {
             Logger.LogInformation("missing event data");
             return;
         }
-        Logger.LogInformation($"Updating Game Status: {status}");
+
+        Logger.LogInformation($"Update Map Status {_currentMapStatus} -> {status}");
 
         switch (status)
         {
@@ -154,9 +154,6 @@ public partial class FiveStackPlugin
                 StartLive();
                 break;
         }
-
-        _currentMapStatus = status;
-        _publishGameState(status);
     }
 
     private void _publishGameState(eMapStatus status)
@@ -165,6 +162,8 @@ public partial class FiveStackPlugin
         {
             return;
         }
+
+        Logger.LogInformation($"SENDING STATUS {status}");
 
         _redis.PublishMatchEvent(
             _matchData.id,
