@@ -163,8 +163,6 @@ public partial class FiveStackPlugin
             return;
         }
 
-        Logger.LogInformation($"SENDING STATUS {status}");
-
         _redis.PublishMatchEvent(
             _matchData.id,
             new Redis.EventData<Dictionary<string, object>>
