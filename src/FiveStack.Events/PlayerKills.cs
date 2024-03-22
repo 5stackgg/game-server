@@ -9,7 +9,6 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnPlayerKill(EventPlayerDeath @event, GameEventInfo info)
     {
-        Logger.LogInformation($"UM WTF {_currentMapStatus}");
         if (@event.Userid == null || !@event.Userid.IsValid || _matchData == null || !IsLive())
         {
             return HookResult.Continue;

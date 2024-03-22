@@ -10,11 +10,10 @@
 - [x] Knife Round (with captains)
   - [x] stay / switch
 - [x] ready system
-  - [ ] hint system https://user-images.githubusercontent.com/32937653/284095437-2122c5f3-3a88-4853-a408-df790bcede85.png
-  - [ ] show ready tag in clan name
+  - [x] hint system https://user-images.githubusercontent.com/32937653/284095437-2122c5f3-3a88-4853-a408-df790bcede85.png
+  - [x] show ready tag in clan name
 - [x] Overtime (infinite)]
 - [x] Workshop Maps
-  - [ ] by config (http)
 - [x] Game Events
     - [x] Report start of match
     - [x] Report round results
@@ -23,6 +22,7 @@
     - [x] Damage
     - [x] Kills
     - [x] Assists
+    - [x] Utility
 - [x] Discord Integration
   - [x] player picks
   - [x] veto system
@@ -36,19 +36,18 @@
 - [x] setup to handle multiple servers natively
 - [x] wingman
 - [ ] coach support
-- [ ] best of x
-- [ ] Configuration via http(s) json / json file
+- [x] best of x
 - [ ] Advanced stats
   - [ ] TradeKill
-  - [ ] Enemies Flash /
-  - [ ] Friendlies Flashed
+  - [x] Enemies Flash /
+  - [x] Friendlies Flashed
   - [ ] MVP
-  - [ ] death by bomb / suicide
-  - [ ] won by plant / defuse (and who)
-- [ ] web ui at 5stack.gg
+  - [x] death by bomb / suicide
+  - [x] won by plant / defuse (and who)
+- [x] web ui at 5stack.gg
   - [x] rcon
   - [ ] permissions
-  - [ ] creation of matches
+  - [x] creation of matches
 - [ ] require steam id
   - [ ] kick if not assigned
   - [ ] discord assign steam id
