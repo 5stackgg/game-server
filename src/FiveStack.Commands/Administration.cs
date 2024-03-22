@@ -12,9 +12,6 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    private Match? _matchData;
-    private MatchMap? _currentMap;
-
     [ConsoleCommand("get_match", "Gets match information from api")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void get_match(CCSPlayerController? player, CommandInfo command)
@@ -119,13 +116,13 @@ public partial class FiveStackPlugin
 
     public void UpdateMapStatus(eMapStatus status)
     {
-        Logger.LogInformation($"Update Status {_currentMapStatus} -> {status}");
         if (_matchData == null)
         {
             Logger.LogInformation("missing event data");
             return;
         }
-        Logger.LogInformation($"Updating Game Status: {status}");
+
+        Logger.LogInformation($"Update Map Status {_currentMapStatus} -> {status}");
 
         switch (status)
         {
@@ -140,16 +137,23 @@ public partial class FiveStackPlugin
                     UpdateMapStatus(eMapStatus.Live);
                     break;
                 }
-                // TODO - only start knife if is Bo1 or last map of Box
-                StartKnife();
+
+                var currentMap = GetCurrentMap();
+                if (currentMap == null)
+                {
+                    break;
+                }
+
+                if (currentMap.order == _matchData.best_of && _matchData.knife_round)
+                {
+                    StartKnife();
+                }
+
                 break;
             case eMapStatus.Live:
                 StartLive();
                 break;
         }
-
-        _currentMapStatus = status;
-        _publishGameState(status);
     }
 
     private void _publishGameState(eMapStatus status)

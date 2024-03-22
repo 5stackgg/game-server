@@ -7,13 +7,16 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    private Dictionary<int, bool> _readyPlayers = new Dictionary<int, bool>();
-
     public void StartWarmup()
     {
-        if (_matchData == null && !IsWarmup())
+        if (_matchData == null)
         {
-             _resetCaptains();
+            return;
+        }
+
+        if (!IsWarmup())
+        {
+            _resetCaptains();
             _resetReadyPlayers();
         }
 

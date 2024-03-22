@@ -7,8 +7,6 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    public CsTeam? KnifeWinningTeam;
-
     public async void StartKnife()
     {
         if (_matchData == null || IsKnife())
