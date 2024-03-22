@@ -25,6 +25,11 @@ public partial class FiveStackPlugin
 
         CCSPlayerController player = @event.Userid;
 
+        if (IsLive())
+        {
+            _enforceMemberTeam(player, CsTeam.Spectator);
+        }
+
         _redis.PublishMatchEvent(
             _matchData.id,
             new Redis.EventData<Dictionary<string, object>>
