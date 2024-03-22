@@ -54,6 +54,7 @@ public partial class FiveStackPlugin : BasePlugin
             DotEnv.Load("/serverdata/serverfiles/.env");
         }
         ListenForMapChange();
+        ListenForReadyStatus();
 
         Message(HudDestination.Alert, "5Stack Loaded");
         GetMatch();

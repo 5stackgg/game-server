@@ -28,7 +28,7 @@ public partial class FiveStackPlugin
             _readyPlayers[player.UserId.Value] = !_readyPlayers[player.UserId.Value];
         }
 
-        if (TotalReady() == _getExpectedPlayerCount())
+        if (TotalReady() == GetExpectedPlayerCount())
         {
             UpdateMapStatus(eMapStatus.Knife);
         }
@@ -59,9 +59,12 @@ public partial class FiveStackPlugin
             return;
         }
 
+        bool isReady = _readyPlayers[player.UserId.Value];
+        player.Clan = isReady ? "[Ready]" : "";
+
         Message(
             HudDestination.Chat,
-            $"You have been marked {(_readyPlayers[player.UserId.Value] ? $"{ChatColors.Green}ready" : $"{ChatColors.Red}not ready")} {ChatColors.Default}({TotalReady()}/{_getExpectedPlayerCount()})",
+            $"You have been marked {(isReady ? $"{ChatColors.Green}ready" : $"{ChatColors.Red}not ready")} {ChatColors.Default}({TotalReady()}/{GetExpectedPlayerCount()})",
             player
         );
     }
@@ -125,7 +128,7 @@ public partial class FiveStackPlugin
         return notReadyPlayers.ToArray();
     }
 
-    private int _getExpectedPlayerCount()
+    private int GetExpectedPlayerCount()
     {
         if (_matchData == null)
         {
