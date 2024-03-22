@@ -23,6 +23,11 @@
     - [x] Kills
     - [x] Assists
     - [x] Utility
+    - [x] Enemies Flash /
+    - [x] Friendlies Flashed
+    - [x] death by suicide
+    - [ ] death by bomb
+    - [x] won by plant / defuse
 - [x] Discord Integration
   - [x] player picks
   - [x] veto system
@@ -37,18 +42,11 @@
 - [x] wingman
 - [ ] coach support
 - [x] best of x
-- [ ] Advanced stats
-  - [ ] TradeKill
-  - [x] Enemies Flash /
-  - [x] Friendlies Flashed
-  - [ ] MVP
-  - [x] death by bomb / suicide
-  - [x] won by plant / defuse (and who)
 - [x] web ui at 5stack.gg
   - [x] rcon
   - [ ] permissions
   - [x] creation of matches
-- [ ] require steam id
+- [x] require steam id
   - [ ] kick if not assigned
   - [ ] discord assign steam id
 - [ ] rules command
