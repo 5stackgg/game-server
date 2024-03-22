@@ -9,6 +9,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnPlayerKill(EventPlayerDeath @event, GameEventInfo info)
     {
+        Logger.LogInformation($"UM WTF {_currentMapStatus}");
         if (@event.Userid == null || !@event.Userid.IsValid || _matchData == null || !IsLive())
         {
             return HookResult.Continue;
@@ -17,13 +18,8 @@ public partial class FiveStackPlugin
         CCSPlayerController attacked = @event.Userid;
         CCSPlayerController? attacker = @event.Attacker.IsValid ? @event.Attacker : null;
 
-        if(attacked == null) {
-            return HookResult.Continue;
-        }
-
-
         var attackerLocation = attacker?.PlayerPawn?.Value?.AbsOrigin;
-        var attackedLocation = attacked.PlayerPawn.Value.AbsOrigin;
+        var attackedLocation = attacked?.PlayerPawn?.Value?.AbsOrigin;
 
         _redis.PublishMatchEvent(
             _matchData.id,
@@ -37,14 +33,10 @@ public partial class FiveStackPlugin
                     { "no_scope", @event.Noscope },
                     { "blinded", @event.Attackerblind },
                     { "thru_smoke", @event.Thrusmoke },
-                    { "assistsed", @event.Assister != null },
                     { "thru_wall", @event.Penetrated > 0 },
                     { "headshot", @event.Headshot },
                     { "round", _currentRound },
-                    {
-                        "attacker_steam_id",
-                        attacker != null ? attacker.SteamID.ToString() : ""
-                    },
+                    { "attacker_steam_id", attacker != null ? attacker.SteamID.ToString() : "" },
                     {
                         "attacker_team",
                         attacker != null ? $"{TeamNumToString(attacker.TeamNum)}" : ""
@@ -58,9 +50,12 @@ public partial class FiveStackPlugin
                     },
                     { "weapon", $"{@event.Weapon}" },
                     { "hitgroup", $"{HitGroupToString(@event.Hitgroup)}" },
-                    { "attacked_steam_id", attacked.SteamID.ToString() },
-                    { "attacked_team", $"{TeamNumToString(attacked.TeamNum)}" },
-                    { "attacked_location", $"{attacked.PlayerPawn.Value.LastPlaceName}" },
+                    { "attacked_steam_id", attacked != null ? attacked.SteamID.ToString() : "" },
+                    {
+                        "attacked_team",
+                        attacked != null ? $"{TeamNumToString(attacked.TeamNum)}" : ""
+                    },
+                    { "attacked_location", $"{attacked?.PlayerPawn?.Value?.LastPlaceName}" },
                     {
                         "attacked_location_coordinates",
                         attackedLocation != null
@@ -73,7 +68,7 @@ public partial class FiveStackPlugin
 
         CCSPlayerController? assister = @event.Assister;
 
-        if (attacker != null && assister != null && assister.IsValid)
+        if (attacker != null && attacked != null && assister != null && assister.IsValid)
         {
             if (attacker.TeamNum != attacked.TeamNum)
             {

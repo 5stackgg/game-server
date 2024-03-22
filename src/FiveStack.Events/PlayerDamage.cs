@@ -24,7 +24,7 @@ public partial class FiveStackPlugin
         }
 
         var attackerLocation = attacker?.PlayerPawn.Value?.AbsOrigin;
-        var attackedLocation = attacked.PlayerPawn.Value.AbsOrigin;
+        var attackedLocation = attacked?.PlayerPawn?.Value?.AbsOrigin;
 
         _redis.PublishMatchEvent(
             _matchData.id,
@@ -54,9 +54,12 @@ public partial class FiveStackPlugin
                     { "hitgroup", $"{HitGroupToString(@event.Hitgroup)}" },
                     { "health", @event.Health },
                     { "armor", @event.Armor },
-                    { "attacked_steam_id", attacked.SteamID.ToString() },
-                    { "attacked_team", $"{TeamNumToString(attacked.TeamNum)}" },
-                    { "attacked_location", $"{attacked.PlayerPawn.Value.LastPlaceName}" },
+                    { "attacked_steam_id", attacked != null ? attacked.SteamID.ToString() : "" },
+                    {
+                        "attacked_team",
+                        attacked != null ? $"{TeamNumToString(attacked.TeamNum)}" : ""
+                    },
+                    { "attacked_location", $"{attacked?.PlayerPawn.Value.LastPlaceName}" },
                     {
                         "attacked_location_coordinates",
                         attackedLocation != null

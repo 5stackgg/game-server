@@ -154,6 +154,8 @@ public partial class FiveStackPlugin
                 StartLive();
                 break;
         }
+
+        _currentMapStatus = status;
     }
 
     private void _publishGameState(eMapStatus status)
