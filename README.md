@@ -10,11 +10,10 @@
 - [x] Knife Round (with captains)
   - [x] stay / switch
 - [x] ready system
-  - [ ] hint system https://user-images.githubusercontent.com/32937653/284095437-2122c5f3-3a88-4853-a408-df790bcede85.png
-  - [ ] show ready tag in clan name
+  - [x] hint system https://user-images.githubusercontent.com/32937653/284095437-2122c5f3-3a88-4853-a408-df790bcede85.png
+  - [x] show ready tag in clan name
 - [x] Overtime (infinite)]
 - [x] Workshop Maps
-  - [ ] by config (http)
 - [x] Game Events
     - [x] Report start of match
     - [x] Report round results
@@ -23,6 +22,7 @@
     - [x] Damage
     - [x] Kills
     - [x] Assists
+    - [x] Utility
 - [x] Discord Integration
   - [x] player picks
   - [x] veto system
