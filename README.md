@@ -36,19 +36,18 @@
 - [x] setup to handle multiple servers natively
 - [x] wingman
 - [ ] coach support
-- [ ] best of x
-- [ ] Configuration via http(s) json / json file
+- [x] best of x
 - [ ] Advanced stats
   - [ ] TradeKill
-  - [ ] Enemies Flash /
-  - [ ] Friendlies Flashed
+  - [x] Enemies Flash /
+  - [x] Friendlies Flashed
   - [ ] MVP
-  - [ ] death by bomb / suicide
-  - [ ] won by plant / defuse (and who)
-- [ ] web ui at 5stack.gg
+  - [x] death by bomb / suicide
+  - [x] won by plant / defuse (and who)
+- [x] web ui at 5stack.gg
   - [x] rcon
   - [ ] permissions
-  - [ ] creation of matches
+  - [x] creation of matches
 - [ ] require steam id
   - [ ] kick if not assigned
   - [ ] discord assign steam id
