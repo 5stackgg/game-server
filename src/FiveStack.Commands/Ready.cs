@@ -64,7 +64,7 @@ public partial class FiveStackPlugin
 
         Message(
             HudDestination.Chat,
-            $"You have been marked {(isReady ? $"{ChatColors.Green}ready" : $"{ChatColors.Red}not ready")} {ChatColors.Default}({TotalReady()}/{GetExpectedPlayerCount()})",
+            $"You have been marked {(isReady ? $"{ChatColors.Green}ready" : $"{ChatColors.Red}not ready")}",
             player
         );
     }
