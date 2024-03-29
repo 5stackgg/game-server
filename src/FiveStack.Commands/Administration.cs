@@ -208,7 +208,7 @@ public partial class FiveStackPlugin
         SetupTeamNames();
 
         Logger.LogInformation(
-            $"Current Game State {_currentMapStatus}:{_currentMap.status}:{_currentMap.map}"
+            $"Current Game State {_currentMapStatus}:{_currentMap.status}:{_currentMap.map.name}"
         );
 
         if (MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
