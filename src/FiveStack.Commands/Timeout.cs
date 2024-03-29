@@ -43,7 +43,7 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnTimeout(CCSPlayerController? player, CommandInfo? command)
     {
-        if (_matchData == null || player == null || _currentMap == null || !IsLive())
+        if (_matchData == null || player == null || _currentMap == null || IsLive())
         {
             return;
         }
