@@ -36,8 +36,7 @@ public partial class FiveStackPlugin
         SendCommands(new[] { "mp_unpause_match" });
         Message(HudDestination.Center, $"{player.PlayerName} {ChatColors.Red}resumed the match");
 
-        // TODO - detect if its in overtime
-        UpdateMapStatus(eMapStatus.Live);
+        UpdateMapStatus(isOverTime() ? eMapStatus.Overtime : eMapStatus.Live);
     }
 
     [ConsoleCommand("css_tac", "Tactical Timeout")]
