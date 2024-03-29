@@ -5,7 +5,6 @@ using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.enums;
 
-
 namespace FiveStack
 {
     public partial class FiveStackPlugin
@@ -21,9 +20,11 @@ namespace FiveStack
 
                 for (var i = 1; i <= Server.MaxPlayers; ++i)
                 {
-                    CCSPlayerController player = new CCSPlayerController(NativeAPI.GetEntityFromIndex(i));
+                    CCSPlayerController player = new CCSPlayerController(
+                        NativeAPI.GetEntityFromIndex(i)
+                    );
 
-                    if (player != null && player.IsValid && !player.IsBot) // Simplified the condition
+                    if (player != null && player.UserId != null && player.IsValid && !player.IsBot)
                     {
                         int totalReady = TotalReady();
                         int expectedReady = GetExpectedPlayerCount();
@@ -37,9 +38,7 @@ namespace FiveStack
                             continue;
                         }
 
-                        player.PrintToCenter(
-                            $"Type .r to ready up!"
-                        );
+                        player.PrintToCenter($"Type .r to ready up!");
                     }
                 }
             });

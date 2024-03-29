@@ -214,7 +214,7 @@ public partial class FiveStackPlugin
 
     public MatchMap? GetCurrentMap()
     {
-        if (_matchData == null)
+        if (_matchData == null || _matchData.current_match_map_id == null)
         {
             return null;
         }

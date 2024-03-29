@@ -12,7 +12,7 @@
 - [x] ready system
   - [x] hint system https://user-images.githubusercontent.com/32937653/284095437-2122c5f3-3a88-4853-a408-df790bcede85.png
   - [x] show ready tag in clan name
-- [x] Overtime (infinite)]
+- [x] Overtime (infinite)
 - [x] Workshop Maps
 - [x] Game Events
     - [x] Report start of match
@@ -50,11 +50,3 @@
   - [ ] kick if not assigned
   - [ ] discord assign steam id
 - [ ] rules command
-
-## Dev TODO
-- [ ] k8s job to update server files 
-  - [ ] updating server files mid match, what happens?
-- [ ] delete backup rounds after done
-- [ ] mid-match server restart = bad news bears
-  - [ ] need to re-ready up 
-  - [ ] need to load last round

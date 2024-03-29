@@ -12,7 +12,7 @@ public class Match
     public bool knife_round { get; set; } = true;
     public int best_of { get; set; } = 1;
 
-    public Guid current_match_map_id { get; set; } = Guid.Empty;
+    public Guid? current_match_map_id { get; set; } = Guid.Empty;
 
     public MatchMap[] match_maps { get; set; } = new MatchMap[0];
 

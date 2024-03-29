@@ -8,7 +8,13 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult BombPlaned(EventBombPlanted @event, GameEventInfo info)
     {
-        if (@event.Userid == null || !@event.Userid.IsValid || _matchData == null || !IsLive())
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || _matchData == null
+            || _matchData.current_match_map_id == null
+            || !IsLive()
+        )
         {
             return HookResult.Continue;
         }
@@ -37,7 +43,13 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult BombPlaned(EventBombDefused @event, GameEventInfo info)
     {
-        if (@event.Userid == null || !@event.Userid.IsValid || _matchData == null || !IsLive())
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || _matchData == null
+            || _matchData.current_match_map_id == null
+            || !IsLive()
+        )
         {
             return HookResult.Continue;
         }
@@ -66,7 +78,13 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult BombExploded(EventBombExploded @event, GameEventInfo info)
     {
-        if (@event.Userid == null || !@event.Userid.IsValid || _matchData == null || !IsLive())
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || _matchData == null
+            || _matchData.current_match_map_id == null
+            || !IsLive()
+        )
         {
             return HookResult.Continue;
         }
