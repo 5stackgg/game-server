@@ -10,10 +10,34 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
+    int timeoutGivenForOvertime = 0;
+
     [GameEventHandler]
     public HookResult OnRoundOfficiallyEnded(EventRoundOfficiallyEnded @event, GameEventInfo info)
     {
         UpdateCurrentRound();
+
+        if (_matchData != null && _currentMap != null && isOverTime())
+        {
+            UpdateMapStatus(eMapStatus.Overtime);
+            if (timeoutGivenForOvertime != getOverTimeNumber())
+            {
+                timeoutGivenForOvertime = getOverTimeNumber();
+                _redis.PublishMatchEvent(
+                    _matchData.id,
+                    new Redis.EventData<Dictionary<string, object>>
+                    {
+                        @event = "techTimeout",
+                        data = new Dictionary<string, object>
+                        {
+                            { "map_id", _currentMap.id },
+                            { "lineup_1_timeouts_available", 1 },
+                            { "lineup_2_timeouts_available", 1 },
+                        }
+                    }
+                );
+            }
+        }
 
         return HookResult.Continue;
     }

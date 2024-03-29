@@ -88,7 +88,6 @@ public partial class FiveStackPlugin
             $"{player.PlayerName} {ChatColors.Red}called a tactical timeout ({timeouts_available} remaining)"
         );
 
-        UpdateMapStatus(eMapStatus.TechTimeout);
         _redis.PublishMatchEvent(
             _matchData.id,
             new Redis.EventData<Dictionary<string, object>>
@@ -96,10 +95,12 @@ public partial class FiveStackPlugin
                 @event = "techTimeout",
                 data = new Dictionary<string, object>
                 {
-                    { "lineup_id", lineup_id },
                     { "map_id", _currentMap.id },
+                    { "lineup_1_timeouts_available", _currentMap.lineup_1_timeouts_available },
+                    { "lineup_2_timeouts_available", _currentMap.lineup_2_timeouts_available },
                 }
             }
         );
+        UpdateMapStatus(eMapStatus.TechTimeout);
     }
 }

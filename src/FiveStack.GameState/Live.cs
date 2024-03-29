@@ -1,4 +1,5 @@
 using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.enums;
 
@@ -81,6 +82,22 @@ public partial class FiveStackPlugin
         return _currentMapStatus != eMapStatus.Unknown
             && _currentMapStatus != eMapStatus.Warmup
             && _currentMapStatus != eMapStatus.Knife;
+    }
+
+    public bool isOverTime()
+    {
+        return getOverTimeNumber() > 0;
+    }
+
+    public int getOverTimeNumber()
+    {
+        CCSGameRules? rules = _gameRules();
+
+        if (rules == null)
+        {
+            return 0;
+        }
+        return rules.OvertimePlaying;
     }
 
     private void _startDemoRecording()
