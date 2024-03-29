@@ -24,11 +24,13 @@ public partial class FiveStackPlugin
         HttpClient httpClient = new HttpClient();
 
         string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
+        string? apiPassword = Environment.GetEnvironmentVariable("SERVER_API_PASSWORD");
 
         Logger.LogInformation($"Server ID: {serverId}");
 
-        if (serverId == null)
+        if (serverId == null || apiPassword == null)
         {
+            Logger.LogWarning("Missing Server ID / API Password");
             await Task.Delay(1000 * 5);
             Server.NextFrame(() =>
             {
@@ -43,6 +45,8 @@ public partial class FiveStackPlugin
             Logger.LogInformation(
                 $"Fetching Match Info: https://api.5stack.gg/server/match/{serverId}"
             );
+
+            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiPassword);
 
             string? response = await httpClient.GetStringAsync(
                 $"https://api.5stack.gg/server/match/{serverId}"
