@@ -40,14 +40,19 @@ public partial class FiveStackPlugin
 
         try
         {
+            Logger.LogInformation(
+                $"Fetching Match Info: https://api.5stack.gg/server/match/{serverId}"
+            );
+
             string? response = await httpClient.GetStringAsync(
                 $"https://api.5stack.gg/server/match/{serverId}"
             );
 
             Server.NextFrame(() =>
             {
-                if (response == null)
+                if (response.Length == 0)
                 {
+                    Logger.LogWarning("currenlty no match assigned to server");
                     return;
                 }
 
