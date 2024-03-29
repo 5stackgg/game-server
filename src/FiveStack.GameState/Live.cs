@@ -59,10 +59,6 @@ public partial class FiveStackPlugin
             SendCommands(new[] { "game_type 0; game_mode 1" });
         }
 
-        // TODO - server crashes , we dont know this info
-        TeamTimeouts[CsTeam.Terrorist] = 0;
-        TeamTimeouts[CsTeam.CounterTerrorist] = 0;
-
         // require game state coming from Warmup / Knife
         if (!IsKnife() && !IsWarmup())
         {

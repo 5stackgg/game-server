@@ -19,12 +19,6 @@ public partial class FiveStackPlugin : BasePlugin
     private eMapStatus _currentMapStatus = eMapStatus.Unknown;
     private Dictionary<int, bool> _readyPlayers = new Dictionary<int, bool>();
 
-    private Dictionary<CsTeam, int> TeamTimeouts = new Dictionary<CsTeam, int>
-    {
-        { CsTeam.Terrorist, 0 },
-        { CsTeam.CounterTerrorist, 0 }
-    };
-
     private Dictionary<CsTeam, CCSPlayerController?> _captains = new Dictionary<
         CsTeam,
         CCSPlayerController?

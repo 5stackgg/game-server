@@ -105,30 +105,16 @@ public partial class FiveStackPlugin
             return;
         }
 
-        List<MatchMember> players = _matchData
-            .lineup_1.lineup_players.Concat(_matchData.lineup_2.lineup_players)
-            .ToList();
+        Guid? lineup_id = GetPlayerLineup(player);
 
-        MatchMember? foundMatchingMember = players.Find(member =>
+        if (lineup_id == null)
         {
-            if (member.steam_id == null)
-            {
-                return member.name.StartsWith(player.PlayerName);
-            }
-
-            return member.steam_id == player.SteamID.ToString();
-        });
-
-        if (foundMatchingMember == null)
-        {
-            Logger.LogInformation($"Unable to find player {player.SteamID.ToString()}");
+            // TODO - KICK
             return;
         }
 
-        Logger.LogInformation($"LineupID {foundMatchingMember.match_lineup_id}");
-
         CsTeam startingSide = TeamStringToCsTeam(
-            _matchData.lineup_1_id == foundMatchingMember.match_lineup_id
+            _matchData.lineup_1_id == lineup_id
                 ? currentMap.lineup_1_side
                 : currentMap.lineup_2_side
         );

@@ -46,7 +46,8 @@ public partial class FiveStackPlugin
                 $"Fetching Match Info: https://api.5stack.gg/server/match/{serverId}"
             );
 
-            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiPassword);
+            httpClient.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiPassword);
 
             string? response = await httpClient.GetStringAsync(
                 $"https://api.5stack.gg/server/match/{serverId}"
@@ -162,6 +163,9 @@ public partial class FiveStackPlugin
             case eMapStatus.Live:
                 StartLive();
                 break;
+            default:
+                _publishGameState(status);
+                break;
         }
 
         _currentMapStatus = status;
@@ -271,5 +275,35 @@ public partial class FiveStackPlugin
         Logger.LogInformation($"Map Check: {_onMap}:{map}");
 
         return map == _onMap;
+    }
+
+    public Guid? GetPlayerLineup(CCSPlayerController player)
+    {
+        if (_matchData == null)
+        {
+            return null;
+        }
+
+        List<MatchMember> players = _matchData
+            .lineup_1.lineup_players.Concat(_matchData.lineup_2.lineup_players)
+            .ToList();
+
+        MatchMember? foundMatchingMember = players.Find(member =>
+        {
+            if (member.steam_id == null)
+            {
+                return member.name.StartsWith(player.PlayerName);
+            }
+
+            return member.steam_id == player.SteamID.ToString();
+        });
+
+        if (foundMatchingMember == null)
+        {
+            Logger.LogInformation($"Unable to find player {player.SteamID.ToString()}");
+            return null;
+        }
+
+        return foundMatchingMember.match_lineup_id;
     }
 }
