@@ -12,7 +12,7 @@
 - [x] ready system
   - [x] hint system https://user-images.githubusercontent.com/32937653/284095437-2122c5f3-3a88-4853-a408-df790bcede85.png
   - [x] show ready tag in clan name
-- [x] Overtime (infinite)]
+- [x] Overtime (infinite)
 - [x] Workshop Maps
 - [x] Game Events
     - [x] Report start of match
@@ -23,6 +23,11 @@
     - [x] Kills
     - [x] Assists
     - [x] Utility
+    - [x] Enemies Flash /
+    - [x] Friendlies Flashed
+    - [x] death by suicide
+    - [ ] death by bomb
+    - [x] won by plant / defuse
 - [x] Discord Integration
   - [x] player picks
   - [x] veto system
@@ -37,26 +42,11 @@
 - [x] wingman
 - [ ] coach support
 - [x] best of x
-- [ ] Advanced stats
-  - [ ] TradeKill
-  - [x] Enemies Flash /
-  - [x] Friendlies Flashed
-  - [ ] MVP
-  - [x] death by bomb / suicide
-  - [x] won by plant / defuse (and who)
 - [x] web ui at 5stack.gg
   - [x] rcon
   - [ ] permissions
   - [x] creation of matches
-- [ ] require steam id
+- [x] require steam id
   - [ ] kick if not assigned
   - [ ] discord assign steam id
 - [ ] rules command
-
-## Dev TODO
-- [ ] k8s job to update server files 
-  - [ ] updating server files mid match, what happens?
-- [ ] delete backup rounds after done
-- [ ] mid-match server restart = bad news bears
-  - [ ] need to re-ready up 
-  - [ ] need to load last round

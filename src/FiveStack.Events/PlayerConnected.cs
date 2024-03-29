@@ -18,6 +18,7 @@ public partial class FiveStackPlugin
             || !@event.Userid.IsValid
             || @event.Userid.IsBot
             || _matchData == null
+            || _matchData.current_match_map_id == null
         )
         {
             return HookResult.Continue;
