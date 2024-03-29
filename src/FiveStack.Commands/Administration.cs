@@ -197,7 +197,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        if (!IsOnMap(_currentMap.map))
+        if (!IsOnMap(_currentMap.map.name))
         {
             ChangeMap(_currentMap.map);
             return;
@@ -248,40 +248,23 @@ public partial class FiveStackPlugin
         }
     }
 
-    private Dictionary<string, string> _workshopMaps = new Dictionary<string, string>
-    {
-        { "de_cache", "3070596702" },
-        { "de_cbble", "3070212801" },
-        { "de_train", "3070284539" },
-        { "de_biome", "3075706807" },
-        { "assembly", "3071005299" },
-        { "de_brewery", "3070290240" },
-        { "drawbridge", "3070192462" }
-    };
-
-    public async void ChangeMap(string map)
+    public async void ChangeMap(Map map)
     {
         Logger.LogInformation($"Changing Map    {map}");
 
-        if (Server.IsMapValid(map) && !_workshopMaps.ContainsKey(map))
+        if (map.workshop_map_id == null && Server.IsMapValid(map.name))
         {
-            SendCommands(new[] { $"changelevel \"{map}\"" });
+            SendCommands(new[] { $"changelevel \"{map.name}\"" });
         }
         else
         {
-            if (!_workshopMaps.ContainsKey(map))
-            {
-                Logger.LogInformation($"Map not found in the workshop maps: {map}");
-                _matchData = null;
-                return;
-            }
-            SendCommands(new[] { $"host_workshop_map {_workshopMaps[map]}" });
+            SendCommands(new[] { $"host_workshop_map {map.workshop_map_id}" });
         }
 
         await Task.Delay(1000 * 5);
         Server.NextFrame(() =>
         {
-            if (!IsOnMap(map))
+            if (!IsOnMap(map.name))
             {
                 ChangeMap(map);
             }
