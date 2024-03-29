@@ -28,6 +28,14 @@ public partial class FiveStackPlugin
 
         if (IsLive())
         {
+            Guid? lineup_id = GetPlayerLineup(player);
+
+            if (lineup_id == null)
+            {
+                Server.ExecuteCommand($"kickid {player.UserId}");
+                return HookResult.Continue;
+            }
+
             _enforceMemberTeam(player, CsTeam.Spectator);
         }
 
@@ -109,7 +117,6 @@ public partial class FiveStackPlugin
 
         if (lineup_id == null)
         {
-            // TODO - KICK
             return;
         }
 
