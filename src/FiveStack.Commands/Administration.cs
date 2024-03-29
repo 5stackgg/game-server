@@ -248,9 +248,9 @@ public partial class FiveStackPlugin
         }
     }
 
-    public async void ChangeMap(Map map)
+    public void ChangeMap(Map map)
     {
-        Logger.LogInformation($"Changing Map    {map}");
+        Logger.LogInformation($"Changing Map {map.name}");
 
         if (map.workshop_map_id == null && Server.IsMapValid(map.name))
         {
@@ -260,15 +260,6 @@ public partial class FiveStackPlugin
         {
             SendCommands(new[] { $"host_workshop_map {map.workshop_map_id}" });
         }
-
-        await Task.Delay(1000 * 5);
-        Server.NextFrame(() =>
-        {
-            if (!IsOnMap(map.name))
-            {
-                ChangeMap(map);
-            }
-        });
     }
 
     public bool IsOnMap(string map)
