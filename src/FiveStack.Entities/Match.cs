@@ -11,6 +11,8 @@ public class Match
     public string password { get; set; } = "connectme";
     public bool knife_round { get; set; } = true;
     public int best_of { get; set; } = 1;
+    public bool coaches { get; set; } = true;
+    public int number_of_substitutes { get; set; } = 0;
 
     public Guid? current_match_map_id { get; set; } = Guid.Empty;
 

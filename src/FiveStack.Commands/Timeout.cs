@@ -23,7 +23,6 @@ public partial class FiveStackPlugin
 
         if (player != null)
         {
-            
             eTimeoutSettings timeoutSetting = TimeoutSettingStringToEnum(
                 _matchData.tech_timeout_setting
             );

@@ -1,3 +1,4 @@
+using System.Text;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.enums;
 
@@ -147,5 +148,25 @@ public partial class FiveStackPlugin
             return "backup";
         }
         return $"{_matchData.id}".Replace("-", "");
+    }
+
+    public static string ConvertCamelToHumanReadable(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+
+        StringBuilder result = new StringBuilder(input.Length + 10);
+        result.Append(char.ToUpper(input[0]));
+
+        for (int i = 1; i < input.Length; i++)
+        {
+            if (char.IsUpper(input[i]) && input[i - 1] != ' ')
+            {
+                result.Append(' ');
+            }
+            result.Append(input[i]);
+        }
+
+        return result.ToString();
     }
 }
