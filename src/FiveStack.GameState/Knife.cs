@@ -27,25 +27,7 @@ public partial class FiveStackPlugin
         SendCommands(
             new[]
             {
-                "mp_autokick 0",
-                "mp_autoteambalance 0",
-                "mp_warmuptime_all_players_connected 0",
-                "sv_disable_teamselect_menu 1",
-                "mp_maxrounds 12",
-                "mp_roundtime 60",
-                "mp_roundtime_defuse 60",
-                "mp_ct_default_secondary ''",
-                "mp_t_default_secondary ''",
-                "mp_free_armor 1",
-                "mp_give_player_c4 0",
-                "mp_maxmoney 0",
-                "mp_freezetime 0",
-                "mp_respawn_immunitytime 0",
-                "mp_respawn_on_death_ct 0",
-                "mp_respawn_on_death_t 0",
-                "mp_team_intro_time 0",
-                "mp_round_restart_delay 0",
-                "mp_warmup_end",
+                "exec knife",
             }
         );
 
