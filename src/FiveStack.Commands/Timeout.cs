@@ -10,37 +10,81 @@ namespace FiveStack;
 public partial class FiveStackPlugin
 {
     [ConsoleCommand("css_pause", "Pauses the match")]
-    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnPause(CCSPlayerController? player, CommandInfo? command)
     {
-        if (player == null || !IsLive())
+        if (_matchData == null || !IsLive())
         {
             return;
         }
 
         SendCommands(new[] { "mp_pause_match" });
-        Message(HudDestination.Center, $"{player.PlayerName} {ChatColors.Red}paused the match");
+
+        string pauseMessage = "Admin Paused the Match";
+
+        if (player != null)
+        {
+            
+            eTimeoutSettings timeoutSetting = TimeoutSettingStringToEnum(
+                _matchData.tech_timeout_setting
+            );
+
+            // TODO - coach support
+            if (timeoutSetting != eTimeoutSettings.CoachAndPlayers)
+            {
+                Message(
+                    HudDestination.Chat,
+                    $" {ChatColors.Red}you are not allowed to pause the match!",
+                    player
+                );
+                return;
+            }
+
+            pauseMessage = $"{player.PlayerName} {ChatColors.Red}paused the match";
+        }
+
+        Message(HudDestination.Alert, pauseMessage);
 
         UpdateMapStatus(eMapStatus.Paused);
     }
 
     [ConsoleCommand("css_resume", "Resumes the match")]
-    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnResume(CCSPlayerController? player, CommandInfo? command)
     {
-        if (player == null || IsLive())
+        if (_matchData == null || IsLive())
         {
             return;
         }
 
         SendCommands(new[] { "mp_unpause_match" });
-        Message(HudDestination.Center, $"{player.PlayerName} {ChatColors.Red}resumed the match");
+
+        string pauseMessage = "Admin Resumed the Match";
+
+        if (player != null)
+        {
+            eTimeoutSettings timeoutSetting = TimeoutSettingStringToEnum(
+                _matchData.tech_timeout_setting
+            );
+
+            // TODO - coach support
+            if (timeoutSetting != eTimeoutSettings.CoachAndPlayers)
+            {
+                Message(
+                    HudDestination.Chat,
+                    $" {ChatColors.Red}you are not allowed to resume the match!",
+                    player
+                );
+                return;
+            }
+
+            pauseMessage = $"{player.PlayerName} {ChatColors.Red}resumed the match";
+        }
+
+        Message(HudDestination.Alert, pauseMessage);
 
         UpdateMapStatus(isOverTime() ? eMapStatus.Overtime : eMapStatus.Live);
     }
 
     [ConsoleCommand("css_tac", "Tactical Timeout")]
-    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnTimeout(CCSPlayerController? player, CommandInfo? command)
     {
         if (_matchData == null || player == null || _currentMap == null || IsLive())
@@ -48,58 +92,82 @@ public partial class FiveStackPlugin
             return;
         }
 
-        Guid? lineup_id = GetPlayerLineup(player);
-
-        if (lineup_id == null)
+        if (player != null)
         {
-            Logger.LogWarning("Unable to find player in lineup");
-            return;
-        }
+            eTimeoutSettings timeoutSetting = TimeoutSettingStringToEnum(
+                _matchData.tech_timeout_setting
+            );
 
-        int timeouts_available =
-            _matchData.lineup_1_id == lineup_id
-                ? _currentMap.lineup_1_timeouts_available
-                : _currentMap.lineup_2_timeouts_available;
+            // TODO - coach support
+            if (timeoutSetting != eTimeoutSettings.CoachAndPlayers)
+            {
+                Message(
+                    HudDestination.Chat,
+                    $" {ChatColors.Red}you are not allowed to call a tech timeout!",
+                    player
+                );
+                return;
+            }
 
-        if (timeouts_available == 0)
-        {
-            Message(HudDestination.Chat, $"Your team has used all its timeouts!", player);
-            return;
-        }
+            Guid? lineup_id = GetPlayerLineup(player);
 
-        if (_matchData.lineup_1_id == lineup_id)
-        {
-            _currentMap.lineup_1_timeouts_available--;
+            if (lineup_id == null)
+            {
+                Logger.LogWarning("Unable to find player in lineup");
+                return;
+            }
+
+            int timeouts_available =
+                _matchData.lineup_1_id == lineup_id
+                    ? _currentMap.lineup_1_timeouts_available
+                    : _currentMap.lineup_2_timeouts_available;
+
+            if (timeouts_available == 0)
+            {
+                Message(HudDestination.Chat, $"Your team has used all its timeouts!", player);
+                return;
+            }
+
+            if (_matchData.lineup_1_id == lineup_id)
+            {
+                _currentMap.lineup_1_timeouts_available--;
+            }
+            else
+            {
+                _currentMap.lineup_2_timeouts_available--;
+            }
+
+            timeouts_available--;
+
+            CsTeam team = TeamNumToCSTeam(player.TeamNum);
+
+            SendCommands(
+                new[] { $"timeout_{(team == CsTeam.Terrorist ? "terrorist" : "ct")}_start" }
+            );
+
+            Message(
+                HudDestination.Alert,
+                $"{player.PlayerName} {ChatColors.Red}called a tactical timeout ({timeouts_available} remaining)"
+            );
+            _redis.PublishMatchEvent(
+                _matchData.id,
+                new Redis.EventData<Dictionary<string, object>>
+                {
+                    @event = "techTimeout",
+                    data = new Dictionary<string, object>
+                    {
+                        { "map_id", _currentMap.id },
+                        { "lineup_1_timeouts_available", _currentMap.lineup_1_timeouts_available },
+                        { "lineup_2_timeouts_available", _currentMap.lineup_2_timeouts_available },
+                    }
+                }
+            );
         }
         else
         {
-            _currentMap.lineup_2_timeouts_available--;
+            Message(HudDestination.Alert, "Tech Timeout Called by Admin");
         }
 
-        timeouts_available--;
-
-        CsTeam team = TeamNumToCSTeam(player.TeamNum);
-
-        SendCommands(new[] { $"timeout_{(team == CsTeam.Terrorist ? "terrorist" : "ct")}_start" });
-
-        Message(
-            HudDestination.Alert,
-            $"{player.PlayerName} {ChatColors.Red}called a tactical timeout ({timeouts_available} remaining)"
-        );
-
-        _redis.PublishMatchEvent(
-            _matchData.id,
-            new Redis.EventData<Dictionary<string, object>>
-            {
-                @event = "techTimeout",
-                data = new Dictionary<string, object>
-                {
-                    { "map_id", _currentMap.id },
-                    { "lineup_1_timeouts_available", _currentMap.lineup_1_timeouts_available },
-                    { "lineup_2_timeouts_available", _currentMap.lineup_2_timeouts_available },
-                }
-            }
-        );
         UpdateMapStatus(eMapStatus.TechTimeout);
     }
 }

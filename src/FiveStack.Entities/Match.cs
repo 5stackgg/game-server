@@ -21,4 +21,7 @@ public class Match
 
     public MatchLineUp lineup_1 { get; set; } = new MatchLineUp();
     public MatchLineUp lineup_2 { get; set; } = new MatchLineUp();
+
+    public string timeout_setting { get; set; } = "CoachAndPlayers";
+    public string tech_timeout_setting { get; set; } = "CoachAndPlayers";
 }

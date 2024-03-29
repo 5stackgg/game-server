@@ -125,6 +125,21 @@ public partial class FiveStackPlugin
         }
     }
 
+    private eTimeoutSettings TimeoutSettingStringToEnum(string state)
+    {
+        switch (state)
+        {
+            case "Coach":
+                return eTimeoutSettings.Coach;
+            case "CoachAndPlayers":
+                return eTimeoutSettings.CoachAndPlayers;
+            case "Admin":
+                return eTimeoutSettings.Admin;
+            default:
+                throw new ArgumentException($"Unsupported timeout setting: {state}");
+        }
+    }
+
     public string GetSafeMatchPrefix()
     {
         if (_matchData == null)
