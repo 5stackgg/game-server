@@ -28,6 +28,8 @@ public partial class FiveStackPlugin
 
         PublishMapStatus(eMapStatus.Knife);
 
+        SendCommands(new[] { "mp_warmup_end", "mp_restartgame 1" });
+        
         await Task.Delay(1000);
         Server.NextFrame(() =>
         {

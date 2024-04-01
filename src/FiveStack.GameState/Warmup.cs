@@ -29,7 +29,7 @@ public partial class FiveStackPlugin
             SendCommands(new[] { "game_type 0; game_mode 1" });
         }
 
-        SendCommands(new[] { "exec warmup" });
+        SendCommands(new[] { "exec warmup", "mp_warmup_start" });
 
         PublishMapStatus(eMapStatus.Warmup);
     }
