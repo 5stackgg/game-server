@@ -77,7 +77,7 @@ public partial class FiveStackPlugin
                     _redis.Connect(serverId, apiPassword);
                 }
 
-                if (_currentMapStatus == eMapStatus.Warmup)
+                if (IsWarmup())
                 {
                     Message(HudDestination.Alert, "Received Match Data");
                 }
@@ -106,31 +106,42 @@ public partial class FiveStackPlugin
         UpdateMapStatus(MapStatusStringToEnum(command.ArgString));
     }
 
-    [ConsoleCommand("restore_round", "Restores to a previous round")]
-    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
+    [ConsoleCommand("css_reset", "Restores to a previous round")]
     public void RestoreRound(CCSPlayerController? player, CommandInfo command)
     {
+        // TODO - THINGS TO THINK ABOUT - timeouts
+        // TODO - stats that were recorded need to be erased
+        // TODO -  so we need an evet when restoring rounds
         if (_matchData == null)
         {
             return;
         }
 
-        string round = command.ArgByIndex(1);
-        string backupRoundFile =
-            $"{GetSafeMatchPrefix()}_round{round.ToString().PadLeft(2, '0')}.txt";
-
-        if (!File.Exists(Path.Join(Server.GameDirectory + "/csgo/", backupRoundFile)))
+        if (_resetRound != null)
         {
-            command.ReplyToCommand($"Unable to restore round, missing file ({backupRoundFile})");
+            if (
+                player != null
+                && player.UserId != null
+                && GetMemberFromLineup(player)?.captain == true
+            )
+            {
+                _restoreRoundVote[player.UserId.Value] = true;
+            }
             return;
         }
 
-        SendCommands(new[] { "mp_pause_match", $"mp_backup_restore_load_file {backupRoundFile}" });
+        string round = command.ArgByIndex(1);
 
-        Message(
-            HudDestination.Alert,
-            $" {ChatColors.Red}Round {round} has been restored (.resume to continue)"
-        );
+        if (RestoreBackupRound(round, player != null) == false)
+        {
+            command.ReplyToCommand($"Unable to restore round, missing file");
+            return;
+        }
+
+        if (player != null && player.UserId != null && GetMemberFromLineup(player)?.captain == true)
+        {
+            _restoreRoundVote[player.UserId.Value] = true;
+        }
     }
 
     public void UpdateMapStatus(eMapStatus status)
@@ -281,6 +292,19 @@ public partial class FiveStackPlugin
 
     public Guid? GetPlayerLineup(CCSPlayerController player)
     {
+        MatchMember? member = GetMemberFromLineup(player);
+
+        if (member == null)
+        {
+            Logger.LogInformation($"Unable to find player {player.SteamID.ToString()}");
+            return null;
+        }
+
+        return member.match_lineup_id;
+    }
+
+    public MatchMember? GetMemberFromLineup(CCSPlayerController player)
+    {
         if (_matchData == null)
         {
             return null;
@@ -290,7 +314,7 @@ public partial class FiveStackPlugin
             .lineup_1.lineup_players.Concat(_matchData.lineup_2.lineup_players)
             .ToList();
 
-        MatchMember? foundMatchingMember = players.Find(member =>
+        return players.Find(member =>
         {
             if (member.steam_id == null)
             {
@@ -299,13 +323,37 @@ public partial class FiveStackPlugin
 
             return member.steam_id == player.SteamID.ToString();
         });
+    }
 
-        if (foundMatchingMember == null)
+    private bool RestoreBackupRound(string round, bool byVote = true)
+    {
+        string backupRoundFile = $"{GetSafeMatchPrefix()}_round{round.PadLeft(2, '0')}.txt";
+
+        if (!File.Exists(Path.Join(Server.GameDirectory + "/csgo/", backupRoundFile)))
         {
-            Logger.LogInformation($"Unable to find player {player.SteamID.ToString()}");
-            return null;
+            return false;
         }
 
-        return foundMatchingMember.match_lineup_id;
+        SendCommands(new[] { "mp_pause_match" });
+
+        if (byVote)
+        {
+            _resetRound = round;
+
+            Message(
+                HudDestination.Alert,
+                $" {ChatColors.Red}Reset round to {round}, captains must accept"
+            );
+            return true;
+        }
+
+        SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFile}" });
+
+        Message(
+            HudDestination.Alert,
+            $" {ChatColors.Red}Round {round} has been restored (.resume to continue)"
+        );
+
+        return true;
     }
 }

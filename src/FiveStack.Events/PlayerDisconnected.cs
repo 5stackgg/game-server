@@ -15,7 +15,7 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        if (_currentMapStatus == eMapStatus.Warmup || _currentMapStatus == eMapStatus.Knife)
+        if (IsWarmup() || IsKnife())
         {
             CsTeam team = TeamNumToCSTeam(@event.Userid.TeamNum);
 

@@ -1,7 +1,9 @@
+using System.Text.RegularExpressions;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.enums;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -9,19 +11,50 @@ public partial class FiveStackPlugin
 {
     public async void StartLive()
     {
-        // if (_matchData == null || IsLive())
-        // {
-        //     return;
-        // }
+        UpdateCurrentRound();
 
-        if (_matchData == null)
+        if (_matchData == null || _matchData == null)
         {
             return;
         }
 
-        _startDemoRecording();
+        if (IsLive())
+        {
+            string directoryPath = Path.Join(Server.GameDirectory + "/csgo/");
 
-        UpdateCurrentRound();
+            string[] files = Directory.GetFiles(directoryPath, GetSafeMatchPrefix() + "*");
+
+            Regex regex = new Regex(@"(\d+)(?!.*\d)");
+
+            int highestNumber = -1;
+
+            foreach (string file in files)
+            {
+                Match match = regex.Match(Path.GetFileNameWithoutExtension(file));
+
+                if (match.Success)
+                {
+                    int number;
+                    if (int.TryParse(match.Value, out number))
+                    {
+                        highestNumber = Math.Max(highestNumber, number);
+                    }
+                }
+            }
+
+            Logger.LogInformation($"Found Backup Round File {highestNumber}");
+
+            if (highestNumber > 0)
+            {
+                RestoreBackupRound(highestNumber.ToString(), true);
+                return;
+            }
+
+            // TODO - look up backup round files, if our current round is behind the newest backup we crahsed...
+            // _startDemoRecording();
+
+            return;
+        }
 
         SendCommands(
             new[]
@@ -59,13 +92,6 @@ public partial class FiveStackPlugin
         });
     }
 
-    public bool IsLive()
-    {
-        return _currentMapStatus != eMapStatus.Unknown
-            && _currentMapStatus != eMapStatus.Warmup
-            && _currentMapStatus != eMapStatus.Knife;
-    }
-
     public bool isOverTime()
     {
         return getOverTimeNumber() > 0;
@@ -88,14 +114,10 @@ public partial class FiveStackPlugin
         {
             return;
         }
+        // TODO - check if we are already recording
 
         Message(HudDestination.Alert, "Recording Demo");
 
         SendCommands(new[] { $"tv_record /opt/demos/{GetSafeMatchPrefix()}" });
-    }
-
-    public bool IsKnife()
-    {
-        return _currentMapStatus == eMapStatus.Knife;
     }
 }

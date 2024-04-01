@@ -14,11 +14,8 @@ public partial class FiveStackPlugin
             return;
         }
 
-        if (!IsWarmup())
-        {
-            _resetCaptains();
-            _resetReadyPlayers();
-        }
+        _resetCaptains();
+        _resetReadyPlayers();
 
         if (_matchData.type == "Wingman")
         {
@@ -32,18 +29,6 @@ public partial class FiveStackPlugin
         SendCommands(new[] { "exec warmup", "mp_warmup_start" });
 
         PublishMapStatus(eMapStatus.Warmup);
-    }
-
-    public bool IsWarmup()
-    {
-        CCSGameRules? rules = _gameRules();
-
-        if (rules == null)
-        {
-            return false;
-        }
-
-        return rules.WarmupPeriod;
     }
 
     private void _resetReadyPlayers()

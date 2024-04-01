@@ -19,6 +19,8 @@ public partial class FiveStackPlugin : BasePlugin
     public CsTeam? KnifeWinningTeam;
     private eMapStatus _currentMapStatus = eMapStatus.Unknown;
     private Dictionary<int, bool> _readyPlayers = new Dictionary<int, bool>();
+    private string? _resetRound;
+    private Dictionary<int, bool> _restoreRoundVote = new Dictionary<int, bool>();
 
     private Dictionary<CsTeam, CCSPlayerController?> _captains = new Dictionary<
         CsTeam,
@@ -69,6 +71,33 @@ public partial class FiveStackPlugin : BasePlugin
             $"matches:{_matchData.id}",
             new Redis.EventData<Dictionary<string, object>> { @event = Event, data = Data }
         );
+    }
+
+    public bool IsWarmup()
+    {
+        if (_currentMap == null)
+        {
+            return false;
+        }
+        return MapStatusStringToEnum(_currentMap.status) == eMapStatus.Warmup;
+    }
+
+    public bool IsLive()
+    {
+        if (_currentMap == null)
+        {
+            return false;
+        }
+        return MapStatusStringToEnum(_currentMap.status) == eMapStatus.Live;
+    }
+
+    public bool IsKnife()
+    {
+        if (_currentMap == null)
+        {
+            return false;
+        }
+        return MapStatusStringToEnum(_currentMap.status) == eMapStatus.Knife;
     }
 
     public void Message(
