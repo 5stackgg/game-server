@@ -29,22 +29,7 @@ public partial class FiveStackPlugin
             SendCommands(new[] { "game_type 0; game_mode 1" });
         }
 
-        // SendCommands(new[] { "exec warmup" });
-
-        // if (bool.TryParse(Environment.GetEnvironmentVariable("DEV_SERVER"), out var isDev) && isDev)
-        // {
-            SendCommands(
-                new[]
-                {
-                    "custom_bot_difficulty 20",
-                    "bot_difficulty 20",
-                    "bot_quota_mode normal",
-                    "bot_add_t",
-                    "bot_add_ct"
-                }
-            );
-        // }
-
+        SendCommands(new[] { "exec warmup" });
 
         PublishMapStatus(eMapStatus.Warmup);
     }

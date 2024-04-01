@@ -48,7 +48,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        SendCommands(new[] { "mp_autokick 0", "mp_warmup_end", "mp_restartgame 1" });
+        SendCommands(new[] { "mp_warmup_end", "mp_restartgame 1" });
 
         PublishMapStatus(eMapStatus.Live);
 

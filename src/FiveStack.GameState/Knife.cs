@@ -24,7 +24,7 @@ public partial class FiveStackPlugin
             _autoSelectCaptain(CsTeam.CounterTerrorist);
         }
 
-        SendCommands(new[] { "exec knife", });
+        SendCommands(new[] { "exec knife" });
 
         PublishMapStatus(eMapStatus.Knife);
 
