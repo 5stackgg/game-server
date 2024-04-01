@@ -21,19 +21,15 @@ public partial class FiveStackPlugin
 
         CCSPlayerController planter = @event.Userid;
 
-        _redis.PublishMatchEvent(
-            _matchData.id,
-            new Redis.EventData<Dictionary<string, object>>
+        PublishGameEvent(
+            "objective",
+            new Dictionary<string, object>
             {
-                @event = "objective",
-                data = new Dictionary<string, object>
-                {
-                    { "time", DateTime.Now },
-                    { "match_map_id", _matchData.current_match_map_id },
-                    { "round", _currentRound + 1 },
-                    { "type", "Planted" },
-                    { "player_steam_id", planter.SteamID.ToString() },
-                }
+                { "time", DateTime.Now },
+                { "match_map_id", _matchData.current_match_map_id },
+                { "round", _currentRound + 1 },
+                { "type", "Planted" },
+                { "player_steam_id", planter.SteamID.ToString() },
             }
         );
 
@@ -56,19 +52,15 @@ public partial class FiveStackPlugin
 
         CCSPlayerController defuser = @event.Userid;
 
-        _redis.PublishMatchEvent(
-            _matchData.id,
-            new Redis.EventData<Dictionary<string, object>>
+        PublishGameEvent(
+            "objective",
+            new Dictionary<string, object>
             {
-                @event = "objective",
-                data = new Dictionary<string, object>
-                {
-                    { "time", DateTime.Now },
-                    { "match_map_id", _matchData.current_match_map_id },
-                    { "round", _currentRound + 1 },
-                    { "type", "Defused" },
-                    { "player_steam_id", defuser.SteamID.ToString() },
-                }
+                { "time", DateTime.Now },
+                { "match_map_id", _matchData.current_match_map_id },
+                { "round", _currentRound + 1 },
+                { "type", "Defused" },
+                { "player_steam_id", defuser.SteamID.ToString() },
             }
         );
 
@@ -91,19 +83,15 @@ public partial class FiveStackPlugin
 
         CCSPlayerController bomber = @event.Userid;
 
-        _redis.PublishMatchEvent(
-            _matchData.id,
-            new Redis.EventData<Dictionary<string, object>>
+        PublishGameEvent(
+            "objective",
+            new Dictionary<string, object>
             {
-                @event = "objective",
-                data = new Dictionary<string, object>
-                {
-                    { "time", DateTime.Now },
-                    { "match_map_id", _matchData.current_match_map_id },
-                    { "round", _currentRound + 1 },
-                    { "type", "Exploded" },
-                    { "player_steam_id", bomber.SteamID.ToString() },
-                }
+                { "time", DateTime.Now },
+                { "match_map_id", _matchData.current_match_map_id },
+                { "round", _currentRound + 1 },
+                { "type", "Exploded" },
+                { "player_steam_id", bomber.SteamID.ToString() },
             }
         );
 

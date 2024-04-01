@@ -29,12 +29,7 @@ public partial class FiveStackPlugin
             SendCommands(new[] { "game_type 0; game_mode 1" });
         }
 
-        SendCommands(
-            new[]
-            {
-                "exec warmup",
-            }
-        );
+        SendCommands(new[] { "exec warmup", });
 
         if (bool.TryParse(Environment.GetEnvironmentVariable("DEV_SERVER"), out var isDev) && isDev)
         {
@@ -50,7 +45,7 @@ public partial class FiveStackPlugin
             );
         }
 
-        _publishGameState(eMapStatus.Warmup);
+        PublishMapStatus(eMapStatus.Warmup);
     }
 
     public bool IsWarmup()

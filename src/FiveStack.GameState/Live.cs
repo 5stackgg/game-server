@@ -50,7 +50,7 @@ public partial class FiveStackPlugin
 
         SendCommands(new[] { "mp_autokick 0", "mp_warmup_end", "mp_restartgame 1" });
 
-        _publishGameState(eMapStatus.Live);
+        PublishMapStatus(eMapStatus.Live);
 
         await Task.Delay(1000);
         Server.NextFrame(() =>

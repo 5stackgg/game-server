@@ -1,55 +1,77 @@
 using System.Text.Json;
+using System.Threading.Channels;
+using CounterStrikeSharp.API.Core;
 using StackExchange.Redis;
 
 namespace FiveStack;
 
 public class Redis
 {
-    private readonly IDatabase _cache;
-    private readonly IDatabase _pubsub;
+    private IDatabase? _pubsub;
 
     public Redis()
     {
-        ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("redis");
-        _cache = redis.GetDatabase(1);
+        _pubsub = null;
+    }
+
+    public void Connect(string username, string password)
+    {
+        if (_pubsub != null)
+        {
+            Disconnect();
+        }
+
+        ConfigurationOptions options = new ConfigurationOptions
+        {
+            EndPoints = { { "redis", 6379 }, },
+            User = username,
+            Password = password,
+            SyncTimeout = 5000,
+            ConnectTimeout = 5000
+        };
+
+        ConnectionMultiplexer redis = ConnectionMultiplexer.Connect(options);
         _pubsub = redis.GetDatabase(0);
     }
 
-    /**
-     * Annoyingly , since guid can be null other places, i have to make it not null here? seems wrong;
-     * code smell
-     */
-    public void PublishMatchEvent<T>(Guid? matchId, EventData<T> eventData)
+    public Boolean IsConnected()
     {
-        if (matchId == null)
+        if (_pubsub == null)
         {
-            return;
+            return false;
         }
 
-        try
-        {
-            RedisChannel channel = RedisChannel.Literal($"match:{matchId}");
+        return _pubsub.Multiplexer.IsConnected;
+    }
 
-            _pubsub.Publish(channel, JsonSerializer.Serialize(eventData));
-        }
-        catch (ArgumentException error)
+    public void Disconnect()
+    {
+        if (_pubsub != null)
         {
-            Console.WriteLine($"Error: {error.Message}");
+            _pubsub.Multiplexer.Close();
+            _pubsub = null;
         }
     }
 
-    public void PublishServerEvent<T>(string serverId, EventData<T> eventData)
+    public Boolean publish<T>(string channel, EventData<T> data)
     {
+        if (_pubsub == null || IsConnected() == false)
+        {
+            Console.WriteLine("reid is not connected!");
+            return false;
+        }
+
         try
         {
-            RedisChannel channel = RedisChannel.Literal($"server:{serverId}");
-
-            _pubsub.Publish(channel, JsonSerializer.Serialize(eventData));
+            _pubsub.Publish(RedisChannel.Literal(channel), JsonSerializer.Serialize(data));
+            return true;
         }
         catch (ArgumentException error)
         {
             Console.WriteLine($"Error: {error.Message}");
         }
+
+        return false;
     }
 
     public class EventData<T>

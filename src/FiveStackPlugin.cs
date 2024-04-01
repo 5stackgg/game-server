@@ -11,6 +11,7 @@ namespace FiveStack;
 public partial class FiveStackPlugin : BasePlugin
 {
     private Match? _matchData;
+    private Guid? _currentMatchId;
     private MatchMap? _currentMap;
     private int _currentRound = 0;
     private Redis _redis = new Redis();
@@ -47,11 +48,27 @@ public partial class FiveStackPlugin : BasePlugin
         {
             DotEnv.Load("/serverdata/serverfiles/.env");
         }
+
+        string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
+        string? apiPassword = Environment.GetEnvironmentVariable("SERVER_API_PASSWORD");
+
         ListenForMapChange();
         ListenForReadyStatus();
 
         Message(HudDestination.Alert, "5Stack Loaded");
         GetMatch();
+    }
+
+    private void PublishGameEvent(string Event, Dictionary<string, object> Data)
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+        _redis.publish(
+            $"matches:{_matchData.id}",
+            new Redis.EventData<Dictionary<string, object>> { @event = Event, data = Data }
+        );
     }
 
     public void Message(

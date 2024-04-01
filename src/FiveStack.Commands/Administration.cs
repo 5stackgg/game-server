@@ -68,6 +68,15 @@ public partial class FiveStackPlugin
                     return;
                 }
 
+                if (
+                    serverId != null
+                    && apiPassword != null
+                    && (_redis.IsConnected() == false || _currentMatchId != _matchData.id)
+                )
+                {
+                    _redis.Connect(serverId, apiPassword);
+                }
+
                 if (_currentMapStatus == eMapStatus.Warmup)
                 {
                     Message(HudDestination.Alert, "Received Match Data");
@@ -164,27 +173,18 @@ public partial class FiveStackPlugin
                 StartLive();
                 break;
             default:
-                _publishGameState(status);
+                PublishMapStatus(status);
                 break;
         }
 
         _currentMapStatus = status;
     }
 
-    private void _publishGameState(eMapStatus status)
+    public void PublishMapStatus(eMapStatus status)
     {
-        if (_matchData == null)
-        {
-            return;
-        }
-
-        _redis.PublishMatchEvent(
-            _matchData.id,
-            new Redis.EventData<Dictionary<string, object>>
-            {
-                @event = "mapStatus",
-                data = new Dictionary<string, object> { { "status", status.ToString() }, }
-            }
+        PublishGameEvent(
+            "mapStatus",
+            new Dictionary<string, object> { { "status", status.ToString() }, }
         );
     }
 
@@ -196,6 +196,8 @@ public partial class FiveStackPlugin
             return;
         }
         Logger.LogInformation($"Setup Match {_matchData.id}");
+
+        _currentMatchId = _matchData.id;
 
         _currentMap = GetCurrentMap();
 

@@ -23,17 +23,14 @@ public partial class FiveStackPlugin
             if (timeoutGivenForOvertime != getOverTimeNumber())
             {
                 timeoutGivenForOvertime = getOverTimeNumber();
-                _redis.PublishMatchEvent(
-                    _matchData.id,
-                    new Redis.EventData<Dictionary<string, object>>
+
+                PublishGameEvent(
+                    "techTimeout",
+                    new Dictionary<string, object>
                     {
-                        @event = "techTimeout",
-                        data = new Dictionary<string, object>
-                        {
-                            { "map_id", _currentMap.id },
-                            { "lineup_1_timeouts_available", 1 },
-                            { "lineup_2_timeouts_available", 1 },
-                        }
+                        { "map_id", _currentMap.id },
+                        { "lineup_1_timeouts_available", 1 },
+                        { "lineup_2_timeouts_available", 1 },
                     }
                 );
             }
@@ -65,21 +62,17 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        _redis.PublishMatchEvent(
-            _matchData.id,
-            new Redis.EventData<Dictionary<string, object>>
+        PublishGameEvent(
+            "score",
+            new Dictionary<string, object>
             {
-                @event = "score",
-                data = new Dictionary<string, object>
-                {
-                    { "time", DateTime.Now },
-                    { "match_map_id", _matchData.current_match_map_id },
-                    { "round", _currentRound + 1 },
-                    { "team_1_score", $"{GetTeamScore(_matchData.lineup_1.name)}" },
-                    { "team_1_money", $"{GetTeamMoney(_matchData.lineup_1.name)}" },
-                    { "team_2_score", $"{GetTeamScore(_matchData.lineup_2.name)}" },
-                    { "team_2_money", $"{GetTeamMoney(_matchData.lineup_2.name)}" },
-                }
+                { "time", DateTime.Now },
+                { "match_map_id", _matchData.current_match_map_id },
+                { "round", _currentRound + 1 },
+                { "team_1_score", $"{GetTeamScore(_matchData.lineup_1.name)}" },
+                { "team_1_money", $"{GetTeamMoney(_matchData.lineup_1.name)}" },
+                { "team_2_score", $"{GetTeamScore(_matchData.lineup_2.name)}" },
+                { "team_2_money", $"{GetTeamMoney(_matchData.lineup_2.name)}" },
             }
         );
 

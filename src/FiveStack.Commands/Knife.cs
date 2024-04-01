@@ -51,14 +51,7 @@ public partial class FiveStackPlugin
             $"captain picked to {ChatColors.Red}swap {ChatColors.Default}sides"
         );
 
-        _redis.PublishMatchEvent(
-            _matchData.id,
-            new Redis.EventData<Dictionary<string, object>>
-            {
-                @event = "switch",
-                data = new Dictionary<string, object>()
-            }
-        );
+        PublishGameEvent("switch", new Dictionary<string, object>());
 
         SendCommands(new[] { "mp_swapteams" });
 

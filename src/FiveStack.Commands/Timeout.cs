@@ -148,17 +148,14 @@ public partial class FiveStackPlugin
                 HudDestination.Alert,
                 $"{player.PlayerName} {ChatColors.Red}called a tactical timeout ({timeouts_available} remaining)"
             );
-            _redis.PublishMatchEvent(
-                _matchData.id,
-                new Redis.EventData<Dictionary<string, object>>
+
+            PublishGameEvent(
+                "techTimeout",
+                new Dictionary<string, object>
                 {
-                    @event = "techTimeout",
-                    data = new Dictionary<string, object>
-                    {
-                        { "map_id", _currentMap.id },
-                        { "lineup_1_timeouts_available", _currentMap.lineup_1_timeouts_available },
-                        { "lineup_2_timeouts_available", _currentMap.lineup_2_timeouts_available },
-                    }
+                    { "map_id", _currentMap.id },
+                    { "lineup_1_timeouts_available", _currentMap.lineup_1_timeouts_available },
+                    { "lineup_2_timeouts_available", _currentMap.lineup_2_timeouts_available },
                 }
             );
         }

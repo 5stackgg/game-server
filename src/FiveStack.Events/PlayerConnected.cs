@@ -39,17 +39,13 @@ public partial class FiveStackPlugin
             _enforceMemberTeam(player, CsTeam.Spectator);
         }
 
-        _redis.PublishMatchEvent(
-            _matchData.id,
-            new Redis.EventData<Dictionary<string, object>>
+        PublishGameEvent(
+            "player",
+            new Dictionary<string, object>
             {
-                @event = "player",
-                data = new Dictionary<string, object>
-                {
-                    { "match_map_id", _matchData.current_match_map_id },
-                    { "player_name", player.PlayerName },
-                    { "steam_id", player.SteamID.ToString() },
-                }
+                { "match_map_id", _matchData.current_match_map_id },
+                { "player_name", player.PlayerName },
+                { "steam_id", player.SteamID.ToString() },
             }
         );
 
