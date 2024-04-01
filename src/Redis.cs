@@ -57,7 +57,7 @@ public class Redis
     {
         if (_pubsub == null || IsConnected() == false)
         {
-            Console.WriteLine("reid is not connected!");
+            Console.WriteLine("redis is not connected!");
             return false;
         }
 
