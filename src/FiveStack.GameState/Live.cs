@@ -9,10 +9,10 @@ public partial class FiveStackPlugin
 {
     public async void StartLive()
     {
-        if (_matchData == null || IsLive())
-        {
-            return;
-        }
+        // if (_matchData == null || IsLive())
+        // {
+        //     return;
+        // }
 
         if (_matchData == null)
         {
@@ -48,7 +48,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        SendCommands(new[] { "mp_warmup_end", "mp_restartgame 1" });
+        SendCommands(new[] { "mp_warmup_end", "mp_restartgame 0" });
 
         PublishMapStatus(eMapStatus.Live);
 

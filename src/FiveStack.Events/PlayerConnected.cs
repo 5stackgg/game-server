@@ -1,9 +1,7 @@
-using System.Text.Json;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Utils;
-using FiveStack.entities;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -32,11 +30,9 @@ public partial class FiveStackPlugin
 
             if (lineup_id == null)
             {
-                Server.ExecuteCommand($"kickid {player.UserId}");
+                Server.ExecuteCommand($"kick player {player.UserId}");
                 return HookResult.Continue;
             }
-
-            _enforceMemberTeam(player, CsTeam.Spectator);
         }
 
         PublishGameEvent(
