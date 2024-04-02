@@ -29,8 +29,26 @@ public partial class FiveStackPlugin
                 && GetMemberFromLineup(player)?.captain == true
             )
             {
+                string vote = command.ArgByIndex(1);
+
+                if(vote != null) {
+                    ResetRestoreBackupRound();
+                    
+                    Message(
+                        HudDestination.Alert,
+                        $" {ChatColors.Red}Captain denied request to reset round to {_resetRound}"
+                    );
+                    
+                    return;
+                }
+
                 _restoreRoundVote[player.UserId.Value] = true;
             }
+
+            if(_restoreRoundVote.Count(pair => pair.Value) == 2) {
+                LoadRound(_resetRound);
+            }
+
             return;
         }
 
@@ -47,5 +65,4 @@ public partial class FiveStackPlugin
             _restoreRoundVote[player.UserId.Value] = true;
         }
     }
-
 }

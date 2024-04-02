@@ -42,6 +42,12 @@ public partial class FiveStackPlugin
         return MapStatusStringToEnum(_currentMap.status) == eMapStatus.Live;
     }
 
+    private bool IsResetingRound()
+    {
+        return _resetRound != null;
+    }
+
+
     private bool isOverTime()
     {
         return GetOverTimeNumber() > 0;
@@ -339,6 +345,14 @@ public partial class FiveStackPlugin
             return true;
         }
 
+        LoadRound(round);
+
+        return true;
+    }
+
+    private void LoadRound(string round) {
+        string backupRoundFile = $"{GetSafeMatchPrefix()}_round{round.PadLeft(2, '0')}.txt";
+
         SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFile}" });
 
         Message(
@@ -346,7 +360,20 @@ public partial class FiveStackPlugin
             $" {ChatColors.Red}Round {round} has been restored (.resume to continue)"
         );
 
-        return true;
+          PublishGameEvent(
+            "restoreRound",
+            new Dictionary<string, object>
+            {
+                { "round", round + 1},
+            }
+        );
+
+        ResetRestoreBackupRound();
+    }
+
+    private void ResetRestoreBackupRound() {
+        _resetRound = null;
+        _restoreRoundVote = new Dictionary<int, bool>();
     }
 
     private void UpdateCurrentRound()
