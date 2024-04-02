@@ -166,46 +166,48 @@ public partial class FiveStackPlugin
     }
 
     private async Task UploadDemo(string filePath)
+{
+    // TODO - should be done differently
+    string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
+    string? apiPassword = Environment.GetEnvironmentVariable("SERVER_API_PASSWORD");
+
+    if (_matchData == null || serverId == null || apiPassword == null)
     {
-        // TODO - should be done differently
-        string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
-        string? apiPassword = Environment.GetEnvironmentVariable("SERVER_API_PASSWORD");
+        return;
+    }
 
-        if (_matchData == null || serverId == null || apiPassword == null)
+    string endpoint =
+        $"https://api.5stack.gg/server/{serverId}/match/{_matchData.id}/{_matchData.current_match_map_id}/demo";
+
+    Logger.LogInformation($"Uploading Demo {endpoint}");
+
+    using (var httpClient = new HttpClient())
+    {
+        using (var formData = new MultipartFormDataContent())
         {
-            return;
-        }
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                "Bearer",
+                apiPassword
+            );
 
-        string endpoint =
-            $"https://api.5stack.gg/{serverId}/match/{_matchData.id}/{_matchData.current_match_map_id}/demo";
-
-        Logger.LogInformation($"Uploading Demo {endpoint}");
-
-        using (var httpClient = new HttpClient())
-        {
-            using (var formData = new MultipartFormDataContent())
+            using (var fileStream = File.OpenRead(filePath))
+            using (var streamContent = new StreamContent(fileStream))
             {
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-                    "Bearer",
-                    apiPassword
-                );
+                streamContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                formData.Add(streamContent, "file", Path.GetFileName(filePath));
 
-                using (var fileStream = File.OpenRead(filePath))
+                var response = await httpClient.PostAsync(endpoint, formData);
+                if (response.IsSuccessStatusCode)
                 {
-                    var fileInfo = new FileInfo(filePath);
-                    formData.Add(new StreamContent(fileStream), "file", fileInfo.Name);
-
-                    var response = await httpClient.PostAsync(endpoint, formData);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        Logger.LogInformation("File uploaded successfully.");
-                    }
-                    else
-                    {
-                        Logger.LogError($"File upload failed. Status code: {response.StatusCode}");
-                    }
+                    Logger.LogInformation("File uploaded successfully.");
+                }
+                else
+                {
+                    Logger.LogError($"File upload failed. Status code: {response.StatusCode}");
                 }
             }
         }
     }
+}
+
 }
