@@ -1,5 +1,5 @@
 # Use the official .NET SDK 7.0 image on Alpine Linux
-FROM mcr.microsoft.com/dotnet/sdk:7.0-alpine AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm AS build
 
 # Set the working directory
 WORKDIR /mod
@@ -72,7 +72,7 @@ ADD https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1284-linux.tar.gz /
 RUN tar -xz -C /opt/metamod -f /tmp/metamod.tar.gz && rm /tmp/metamod.tar.gz
 
 RUN mkdir /opt/counterstrikesharp
-ADD https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v190/counterstrikesharp-with-runtime-build-190-linux-0de951c.zip /tmp/counterstrikesharp.zip
+ADD https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v203/counterstrikesharp-with-runtime-build-203-linux-211516c.zip /tmp/counterstrikesharp.zip
 RUN unzip /tmp/counterstrikesharp.zip -d /opt/counterstrikesharp && rm /tmp/counterstrikesharp.zip
 
 COPY /cfg /opt/server-cfg

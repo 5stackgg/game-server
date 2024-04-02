@@ -1,5 +1,5 @@
 namespaces: [5stack]
-image: mcr.microsoft.com/dotnet/sdk:7.0-alpine
+image: mcr.microsoft.com/dotnet/sdk:8.0-bookworm
 container: dev
 deployment: dev-cs-server
 supplemental: true

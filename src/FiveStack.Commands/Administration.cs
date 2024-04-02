@@ -39,18 +39,18 @@ public partial class FiveStackPlugin
 
             return;
         }
-
+        
         try
         {
             Logger.LogInformation(
-                $"Fetching Match Info: https://api.5stack.gg/server/match/{serverId}"
+                $"Fetching Match Info: https://api.5stack.gg/server/{serverId}/match"
             );
 
             httpClient.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiPassword);
 
             string? response = await httpClient.GetStringAsync(
-                $"https://api.5stack.gg/server/match/{serverId}"
+                $"https://api.5stack.gg/server/{serverId}/match"
             );
 
             Server.NextFrame(() =>
