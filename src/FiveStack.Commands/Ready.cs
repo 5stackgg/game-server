@@ -87,7 +87,7 @@ public partial class FiveStackPlugin
                     return;
                 }
 
-                string[] notReadyPlayers = _getNotReadyPlayers();
+                string[] notReadyPlayers = GetNotReadyPlayers();
                 if (notReadyPlayers.Length == 0)
                 {
                     return;
@@ -105,7 +105,7 @@ public partial class FiveStackPlugin
         }
     }
 
-    private string[] _getNotReadyPlayers()
+    private string[] GetNotReadyPlayers()
     {
         List<string> notReadyPlayers = new List<string>();
 

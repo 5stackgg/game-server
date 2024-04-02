@@ -1,14 +1,161 @@
 using System.Text;
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.entities;
 using FiveStack.enums;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
-/**
- * i dont think these need to be in a class, move out later
- */
+// TODO - after setting up DI move these into their proper services
 public partial class FiveStackPlugin
 {
+    private void PublishGameEvent(string Event, Dictionary<string, object> Data)
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+        _redis.publish(
+            $"matches:{_matchData.id}",
+            new Redis.EventData<Dictionary<string, object>> { @event = Event, data = Data }
+        );
+    }
+
+    private bool IsWarmup()
+    {
+        if (_currentMap == null)
+        {
+            return false;
+        }
+        return MapStatusStringToEnum(_currentMap.status) == eMapStatus.Warmup;
+    }
+
+    private bool IsLive()
+    {
+        if (_currentMap == null)
+        {
+            return false;
+        }
+        return MapStatusStringToEnum(_currentMap.status) == eMapStatus.Live;
+    }
+
+    private bool isOverTime()
+    {
+        return GetOverTimeNumber() > 0;
+    }
+
+  public int GetOverTimeNumber()
+    {
+        CCSGameRules? rules = _gameRules();
+
+        if (rules == null)
+        {
+            return 0;
+        }
+        return rules.OvertimePlaying;
+    }
+
+    private bool IsKnife()
+    {
+        if (_currentMap == null)
+        {
+            return false;
+        }
+        return MapStatusStringToEnum(_currentMap.status) == eMapStatus.Knife;
+    }
+
+    private void Message(
+        HudDestination destination,
+        string message,
+        CCSPlayerController? player = null
+    )
+    {
+        if (player != null)
+        {
+            var parts = message.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            foreach (var part in parts)
+            {
+                player.PrintToChat($"{part}");
+            }
+        }
+        else if (destination == HudDestination.Console)
+        {
+            Server.PrintToConsole(message);
+        }
+        else if (destination == HudDestination.Alert || destination == HudDestination.Center)
+        {
+            VirtualFunctions.ClientPrintAll(destination, $" {message}", 0, 0, 0, 0);
+        }
+        else
+        {
+            var parts = message.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            foreach (var part in parts)
+            {
+                Server.PrintToChatAll($"{part}");
+            }
+        }
+    }
+
+    private void SendCommands(string[] commands)
+    {
+        foreach (var command in commands)
+        {
+            Server.ExecuteCommand(command);
+        }
+    }
+
+    private Guid? GetPlayerLineup(CCSPlayerController player)
+    {
+        MatchMember? member = GetMemberFromLineup(player);
+
+        if (member == null)
+        {
+            Logger.LogInformation($"Unable to find player {player.SteamID.ToString()}");
+            return null;
+        }
+
+        return member.match_lineup_id;
+    }
+
+     private MatchMember? GetMemberFromLineup(CCSPlayerController player)
+    {
+        if (_matchData == null)
+        {
+            return null;
+        }
+
+        List<MatchMember> players = _matchData
+            .lineup_1.lineup_players.Concat(_matchData.lineup_2.lineup_players)
+            .ToList();
+
+        return players.Find(member =>
+        {
+            if (member.steam_id == null)
+            {
+                return member.name.StartsWith(player.PlayerName);
+            }
+
+            return member.steam_id == player.SteamID.ToString();
+        });
+    }
+
+
+    private MatchMap? GetCurrentMap()
+    {
+        if (_matchData == null || _matchData.current_match_map_id == null)
+        {
+            return null;
+        }
+
+        return _matchData?.match_maps.FirstOrDefault(match_map =>
+        {
+            return match_map.id == _matchData.current_match_map_id;
+        });
+    }
+
     private CsTeam TeamNumToCSTeam(int teamNum)
     {
         switch (teamNum)
@@ -141,7 +288,7 @@ public partial class FiveStackPlugin
         }
     }
 
-    public string GetSafeMatchPrefix()
+    private string GetSafeMatchPrefix()
     {
         if (_matchData == null)
         {
@@ -150,7 +297,7 @@ public partial class FiveStackPlugin
         return $"{_matchData.id}".Replace("-", "");
     }
 
-    public static string ConvertCamelToHumanReadable(string input)
+    private static string ConvertCamelToHumanReadable(string input)
     {
         if (string.IsNullOrEmpty(input))
             return input;
@@ -168,5 +315,77 @@ public partial class FiveStackPlugin
         }
 
         return result.ToString();
+    }
+
+    private bool RestoreBackupRound(string round, bool byVote = true)
+    {
+        string backupRoundFile = $"{GetSafeMatchPrefix()}_round{round.PadLeft(2, '0')}.txt";
+
+        if (!File.Exists(Path.Join(Server.GameDirectory + "/csgo/", backupRoundFile)))
+        {
+            return false;
+        }
+
+        SendCommands(new[] { "mp_pause_match" });
+
+        if (byVote)
+        {
+            _resetRound = round;
+
+            Message(
+                HudDestination.Alert,
+                $" {ChatColors.Red}Reset round to {round}, captains must accept"
+            );
+            return true;
+        }
+
+        SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFile}" });
+
+        Message(
+            HudDestination.Alert,
+            $" {ChatColors.Red}Round {round} has been restored (.resume to continue)"
+        );
+
+        return true;
+    }
+
+    private void UpdateCurrentRound()
+    {
+        int roundsPlayed = 0;
+        var teamManagers = Utilities.FindAllEntitiesByDesignerName<CCSTeam>("cs_team_manager");
+
+        foreach (var teamManager in teamManagers)
+        {
+            if (
+                teamManager.TeamNum == (int)CsTeam.Terrorist
+                || teamManager.TeamNum == (int)CsTeam.CounterTerrorist
+            )
+            {
+                roundsPlayed += teamManager.Score;
+            }
+        }
+
+        _currentRound = roundsPlayed;
+    }
+
+     private CCSGameRules? _gameRules()
+    {
+        try
+        {
+            return Utilities
+                .FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+                .First()
+                .GameRules;
+        }
+        catch
+        {
+            // do nothing
+        }
+        return null;
+    }
+
+    private int TotalReady()
+    {
+        return _readyPlayers.Count(pair => pair.Value);
     }
 }

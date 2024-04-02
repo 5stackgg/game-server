@@ -16,12 +16,12 @@ public partial class FiveStackPlugin
 
         if (_captains[CsTeam.Terrorist] == null)
         {
-            _autoSelectCaptain(CsTeam.Terrorist);
+            AutoSelectCaptain(CsTeam.Terrorist);
         }
 
         if (_captains[CsTeam.CounterTerrorist] == null)
         {
-            _autoSelectCaptain(CsTeam.CounterTerrorist);
+            AutoSelectCaptain(CsTeam.CounterTerrorist);
         }
 
         SendCommands(new[] { "exec knife" });
@@ -37,7 +37,7 @@ public partial class FiveStackPlugin
         });
     }
 
-    private void _autoSelectCaptain(CsTeam team)
+    private void AutoSelectCaptain(CsTeam team)
     {
         List<CCSPlayerController> players = Utilities
             .GetPlayers()

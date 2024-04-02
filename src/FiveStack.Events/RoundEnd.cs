@@ -20,9 +20,9 @@ public partial class FiveStackPlugin
         if (_matchData != null && _currentMap != null && isOverTime())
         {
             UpdateMapStatus(eMapStatus.Overtime);
-            if (timeoutGivenForOvertime != getOverTimeNumber())
+            if (timeoutGivenForOvertime != GetOverTimeNumber())
             {
-                timeoutGivenForOvertime = getOverTimeNumber();
+                timeoutGivenForOvertime = GetOverTimeNumber();
 
                 PublishGameEvent(
                     "techTimeout",
@@ -48,7 +48,7 @@ public partial class FiveStackPlugin
 
             KnifeWinningTeam = TeamNumToCSTeam(@event.Winner);
 
-            _NotifyCaptainSideSelection();
+            NotifyCaptainSideSelection();
 
             return HookResult.Continue;
         }
@@ -75,7 +75,7 @@ public partial class FiveStackPlugin
         return HookResult.Continue;
     }
 
-    public int GetTeamScore(string teamName)
+    private int GetTeamScore(string teamName)
     {
         if (_matchData == null)
         {
@@ -95,7 +95,7 @@ public partial class FiveStackPlugin
         return 0;
     }
 
-    public int GetTeamMoney(string teamName)
+    private int GetTeamMoney(string teamName)
     {
         if (_matchData == null)
         {
@@ -123,26 +123,7 @@ public partial class FiveStackPlugin
         return totalCash;
     }
 
-    public void UpdateCurrentRound()
-    {
-        int roundsPlayed = 0;
-        var teamManagers = Utilities.FindAllEntitiesByDesignerName<CCSTeam>("cs_team_manager");
-
-        foreach (var teamManager in teamManagers)
-        {
-            if (
-                teamManager.TeamNum == (int)CsTeam.Terrorist
-                || teamManager.TeamNum == (int)CsTeam.CounterTerrorist
-            )
-            {
-                roundsPlayed += teamManager.Score;
-            }
-        }
-
-        _currentRound = roundsPlayed;
-    }
-
-    public void _NotifyCaptainSideSelection()
+    private void NotifyCaptainSideSelection()
     {
         if (KnifeWinningTeam == null)
         {

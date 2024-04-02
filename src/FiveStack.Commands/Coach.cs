@@ -73,7 +73,7 @@ public partial class FiveStackPlugin
         ShowCoaches();
     }
 
-    public void ShowCoaches()
+    private void ShowCoaches()
     {
         CsTeam[] teams = { CsTeam.CounterTerrorist, CsTeam.Terrorist };
 

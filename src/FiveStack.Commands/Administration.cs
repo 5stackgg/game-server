@@ -106,44 +106,6 @@ public partial class FiveStackPlugin
         UpdateMapStatus(MapStatusStringToEnum(command.ArgString));
     }
 
-    [ConsoleCommand("css_reset", "Restores to a previous round")]
-    public void RestoreRound(CCSPlayerController? player, CommandInfo command)
-    {
-        // TODO - THINGS TO THINK ABOUT - timeouts
-        // TODO - stats that were recorded need to be erased
-        // TODO -  so we need an evet when restoring rounds
-        if (_matchData == null)
-        {
-            return;
-        }
-
-        if (_resetRound != null)
-        {
-            if (
-                player != null
-                && player.UserId != null
-                && GetMemberFromLineup(player)?.captain == true
-            )
-            {
-                _restoreRoundVote[player.UserId.Value] = true;
-            }
-            return;
-        }
-
-        string round = command.ArgByIndex(1);
-
-        if (RestoreBackupRound(round, player != null) == false)
-        {
-            command.ReplyToCommand($"Unable to restore round, missing file");
-            return;
-        }
-
-        if (player != null && player.UserId != null && GetMemberFromLineup(player)?.captain == true)
-        {
-            _restoreRoundVote[player.UserId.Value] = true;
-        }
-    }
-
     public void UpdateMapStatus(eMapStatus status)
     {
         if (_matchData == null)
@@ -218,7 +180,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        if (!IsOnMap(_currentMap.map.name))
+        if (_currentMap.map.name != _onMap)
         {
             ChangeMap(_currentMap.map);
             return;
@@ -238,20 +200,7 @@ public partial class FiveStackPlugin
         }
     }
 
-    public MatchMap? GetCurrentMap()
-    {
-        if (_matchData == null || _matchData.current_match_map_id == null)
-        {
-            return null;
-        }
-
-        return _matchData?.match_maps.FirstOrDefault(match_map =>
-        {
-            return match_map.id == _matchData.current_match_map_id;
-        });
-    }
-
-    public void SetupTeamNames()
+    private void SetupTeamNames()
     {
         if (_matchData == null)
         {
@@ -269,7 +218,7 @@ public partial class FiveStackPlugin
         }
     }
 
-    public void ChangeMap(Map map)
+    private void ChangeMap(Map map)
     {
         Logger.LogInformation($"Changing Map {map.name}");
 
@@ -281,79 +230,5 @@ public partial class FiveStackPlugin
         {
             SendCommands(new[] { $"host_workshop_map {map.workshop_map_id}" });
         }
-    }
-
-    public bool IsOnMap(string map)
-    {
-        Logger.LogInformation($"Map Check: {_onMap}:{map}");
-
-        return map == _onMap;
-    }
-
-    public Guid? GetPlayerLineup(CCSPlayerController player)
-    {
-        MatchMember? member = GetMemberFromLineup(player);
-
-        if (member == null)
-        {
-            Logger.LogInformation($"Unable to find player {player.SteamID.ToString()}");
-            return null;
-        }
-
-        return member.match_lineup_id;
-    }
-
-    public MatchMember? GetMemberFromLineup(CCSPlayerController player)
-    {
-        if (_matchData == null)
-        {
-            return null;
-        }
-
-        List<MatchMember> players = _matchData
-            .lineup_1.lineup_players.Concat(_matchData.lineup_2.lineup_players)
-            .ToList();
-
-        return players.Find(member =>
-        {
-            if (member.steam_id == null)
-            {
-                return member.name.StartsWith(player.PlayerName);
-            }
-
-            return member.steam_id == player.SteamID.ToString();
-        });
-    }
-
-    private bool RestoreBackupRound(string round, bool byVote = true)
-    {
-        string backupRoundFile = $"{GetSafeMatchPrefix()}_round{round.PadLeft(2, '0')}.txt";
-
-        if (!File.Exists(Path.Join(Server.GameDirectory + "/csgo/", backupRoundFile)))
-        {
-            return false;
-        }
-
-        SendCommands(new[] { "mp_pause_match" });
-
-        if (byVote)
-        {
-            _resetRound = round;
-
-            Message(
-                HudDestination.Alert,
-                $" {ChatColors.Red}Reset round to {round}, captains must accept"
-            );
-            return true;
-        }
-
-        SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFile}" });
-
-        Message(
-            HudDestination.Alert,
-            $" {ChatColors.Red}Round {round} has been restored (.resume to continue)"
-        );
-
-        return true;
     }
 }
