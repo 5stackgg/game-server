@@ -1,4 +1,5 @@
-apk add inotify-tools
+apt update
+apt-get install inotify-tools -y
 
 # Variable to store the PID of dotnet watch process
 dotnet_watch_pid=""

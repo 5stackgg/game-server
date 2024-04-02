@@ -1,12 +1,12 @@
 namespaces: [5stack]
-image: mcr.microsoft.com/dotnet/sdk:8.0-bookworm
+image: mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim
 container: dev
 deployment: dev-cs-server
 supplemental: true
 sync:
   - .:/opt/5stack
 ignore:
-  - "bin"
-  - "obj"
+  - "src/bin"
+  - "src/obj"
   - "Folder.DotSettings.user"
   - "src/src.sln"

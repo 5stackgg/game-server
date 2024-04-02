@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Modules.Utils;
@@ -54,11 +55,14 @@ public partial class FiveStackPlugin
             }
         }
 
-        Logger.LogInformation(
-            $"Found Backup Round File {highestNumber} and were on {_currentRound}"
-        );
+        if (highestNumber != -1)
+        {
+            Logger.LogInformation(
+                $"Found Backup Round File {highestNumber} and were on {_currentRound}"
+            );
+        }
 
-        if (_currentRound > 0 && _currentRound >= highestNumber)
+        if (highestNumber != -1 && _currentRound > 0 && _currentRound >= highestNumber)
         {
             // we are already live, do not restart the match accidently
             return;
@@ -115,12 +119,24 @@ public partial class FiveStackPlugin
 
         Message(HudDestination.Alert, "Recording Demo");
 
+        Directory.CreateDirectory(GetMatchDemoPath());
+
         SendCommands(
             new[]
             {
-                $"tv_record /opt/demos/{GetSafeMatchPrefix()}-{DateTime.Now.ToString("yyyyMMdd-HHmm")}-{_currentMap.map.name}"
+                $"tv_record /opt/demos/{GetMatchDemoPath()}/{GetSafeMatchPrefix()}_{DateTime.Now.ToString("yyyyMMdd-HHmm")}-{_currentMap.map.name}"
             }
         );
+    }
+
+    private string GetMatchDemoPath()
+    {
+        if (_matchData == null || _matchData.current_match_map_id == null)
+        {
+            return "/opt/demos";
+        }
+
+        return $"/opt/demos/{_matchData.id}/{_matchData.current_match_map_id}";
     }
 
     private void StopDemoRecording()
@@ -132,6 +148,64 @@ public partial class FiveStackPlugin
     private string GetLockFilePath()
     {
         return "/opt/.recording-demo";
-        ;
+    }
+
+    private async Task UploadDemos()
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        string[] files = Directory.GetFiles(GetMatchDemoPath(), "*");
+
+        foreach (string file in files)
+        {
+            await UploadDemo(file);
+        }
+    }
+
+    private async Task UploadDemo(string filePath)
+    {
+        // TODO - should be done differently
+        string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
+        string? apiPassword = Environment.GetEnvironmentVariable("SERVER_API_PASSWORD");
+
+        if (_matchData == null || serverId == null || apiPassword == null)
+        {
+            return;
+        }
+
+        string endpoint =
+            $"https://api.5stack.gg/{serverId}/match/{_matchData.id}/{_matchData.current_match_map_id}/demo";
+
+        Logger.LogInformation($"Uploading Demo {endpoint}");
+
+        using (var httpClient = new HttpClient())
+        {
+            using (var formData = new MultipartFormDataContent())
+            {
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                    "Bearer",
+                    apiPassword
+                );
+
+                using (var fileStream = File.OpenRead(filePath))
+                {
+                    var fileInfo = new FileInfo(filePath);
+                    formData.Add(new StreamContent(fileStream), "file", fileInfo.Name);
+
+                    var response = await httpClient.PostAsync(endpoint, formData);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Logger.LogInformation("File uploaded successfully.");
+                    }
+                    else
+                    {
+                        Logger.LogError($"File upload failed. Status code: {response.StatusCode}");
+                    }
+                }
+            }
+        }
     }
 }

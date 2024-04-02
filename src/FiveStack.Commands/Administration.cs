@@ -19,10 +19,18 @@ public partial class FiveStackPlugin
         GetMatch();
     }
 
+    [ConsoleCommand("upload_demos", "upload demos")]
+    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public async void upload_demos(CCSPlayerController? player, CommandInfo command)
+    {
+        await UploadDemos();
+    }
+
     private async void GetMatch()
     {
         HttpClient httpClient = new HttpClient();
 
+        // TODO - should be done differently
         string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
         string? apiPassword = Environment.GetEnvironmentVariable("SERVER_API_PASSWORD");
 
@@ -39,7 +47,7 @@ public partial class FiveStackPlugin
 
             return;
         }
-        
+
         try
         {
             Logger.LogInformation(

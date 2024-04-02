@@ -294,11 +294,11 @@ public partial class FiveStackPlugin
 
     private string GetSafeMatchPrefix()
     {
-        if (_matchData == null)
+        if (_matchData == null || _matchData.current_match_map_id == null)
         {
             return "backup";
         }
-        return $"{_matchData.id}".Replace("-", "");
+        return $"{_matchData.id}_{_matchData.current_match_map_id}".Replace("-", "");
     }
 
     private static string ConvertCamelToHumanReadable(string input)

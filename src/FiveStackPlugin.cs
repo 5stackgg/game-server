@@ -3,6 +3,7 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.entities;
 using FiveStack.enums;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -41,7 +42,7 @@ public partial class FiveStackPlugin : BasePlugin
 
     public override string ModuleName => "5Stack Mod";
 
-    public override string ModuleVersion => "0.0.1";
+    public override string ModuleVersion => "0.0.3";
 
     public override void Load(bool hotReload)
     {
@@ -58,5 +59,10 @@ public partial class FiveStackPlugin : BasePlugin
 
         Message(HudDestination.Alert, "5Stack Loaded");
         GetMatch();
+    }
+
+    public override void Unload(bool hotReload)
+    {
+        Logger.LogInformation("Hello World! We are unloading!");
     }
 }
