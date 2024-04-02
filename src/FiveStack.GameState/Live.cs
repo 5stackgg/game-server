@@ -54,7 +54,9 @@ public partial class FiveStackPlugin
             }
         }
 
-        Logger.LogInformation($"Found Backup Round File {highestNumber} and were on {_currentRound}");
+        Logger.LogInformation(
+            $"Found Backup Round File {highestNumber} and were on {_currentRound}"
+        );
 
         if (_currentRound > 0 && _currentRound >= highestNumber)
         {
@@ -113,15 +115,23 @@ public partial class FiveStackPlugin
 
         Message(HudDestination.Alert, "Recording Demo");
 
-        SendCommands(new[] { $"tv_record /opt/demos/{GetSafeMatchPrefix()}-{DateTime.Now.ToString("yyyyMMdd-HHmm")}-{_currentMap.map.name}" });
+        SendCommands(
+            new[]
+            {
+                $"tv_record /opt/demos/{GetSafeMatchPrefix()}-{DateTime.Now.ToString("yyyyMMdd-HHmm")}-{_currentMap.map.name}"
+            }
+        );
     }
 
-    private void StopDemoRecording() {
+    private void StopDemoRecording()
+    {
         File.Delete(GetLockFilePath());
         SendCommands(new[] { "tv_stoprecord" });
     }
 
-    private string GetLockFilePath() {
-        return   "/opt/.recording-demo";;
+    private string GetLockFilePath()
+    {
+        return "/opt/.recording-demo";
+        ;
     }
 }
