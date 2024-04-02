@@ -11,7 +11,7 @@ public partial class FiveStackPlugin
     {
         UpdateMapStatus(eMapStatus.Finished);
 
-        SendCommands(new[] { "tv_stoprecord" });
+        StopDemoRecording();
 
         return HookResult.Continue;
     }

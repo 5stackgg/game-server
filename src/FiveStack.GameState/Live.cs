@@ -98,14 +98,30 @@ public partial class FiveStackPlugin
 
     private void StartDemoRecording()
     {
-        // TODO - check if we are already recording
-        if (_matchData == null)
+        if (_matchData == null || _currentMap == null)
         {
             return;
         }
 
+        string lockFilePath = GetLockFilePath();
+        if (File.Exists(lockFilePath))
+        {
+            return;
+        }
+
+        File.Create(lockFilePath).Dispose();
+
         Message(HudDestination.Alert, "Recording Demo");
 
-        SendCommands(new[] { $"tv_record /opt/demos/{GetSafeMatchPrefix()}" });
+        SendCommands(new[] { $"tv_record /opt/demos/{GetSafeMatchPrefix()}-{DateTime.Now.ToString("yyyyMMdd-HHmm")}-{_currentMap.map.name}" });
+    }
+
+    private void StopDemoRecording() {
+        File.Delete(GetLockFilePath());
+        SendCommands(new[] { "tv_stoprecord" });
+    }
+
+    private string GetLockFilePath() {
+        return   "/opt/.recording-demo";;
     }
 }
