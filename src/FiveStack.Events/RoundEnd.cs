@@ -15,6 +15,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnRoundOfficiallyEnded(EventRoundOfficiallyEnded @event, GameEventInfo info)
     {
+        _ = UploadBackupRound(_currentRound.ToString());
         UpdateCurrentRound();
 
         if (_matchData != null && _currentMap != null && isOverTime())

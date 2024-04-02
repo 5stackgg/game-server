@@ -13,7 +13,8 @@ public partial class FiveStackPlugin
     {
         string round = command.ArgByIndex(1);
 
-        if(round == null) {
+        if (round == null)
+        {
             return;
         }
 
@@ -67,7 +68,8 @@ public partial class FiveStackPlugin
 
         string round = command.ArgByIndex(1);
 
-        if(round == null) {
+        if (round == null)
+        {
             return;
         }
 

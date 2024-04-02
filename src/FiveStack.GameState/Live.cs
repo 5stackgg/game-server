@@ -165,8 +165,6 @@ public partial class FiveStackPlugin
         }
     }
 
-
-
     private async Task UploadDemo(string filePath)
     {
         // TODO - should be done differently
@@ -195,7 +193,9 @@ public partial class FiveStackPlugin
                 using (var fileStream = File.OpenRead(filePath))
                 using (var streamContent = new StreamContent(fileStream))
                 {
-                    streamContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                    streamContent.Headers.ContentType = new MediaTypeHeaderValue(
+                        "application/octet-stream"
+                    );
                     formData.Add(streamContent, "file", Path.GetFileName(filePath));
 
                     var response = await httpClient.PostAsync(endpoint, formData);
@@ -224,9 +224,12 @@ public partial class FiveStackPlugin
             return;
         }
 
-        string backupRoundFile = $"{GetSafeMatchPrefix()}_round{round.PadLeft(2, '0')}.txt";
+        string backupRoundFilePath = Path.Join(
+            Server.GameDirectory + "/csgo/",
+            $"{GetSafeMatchPrefix()}_round{round.PadLeft(2, '0')}.txt"
+        );
 
-        if (!File.Exists(Path.Join(Server.GameDirectory + "/csgo/", backupRoundFile)))
+        if (!File.Exists(backupRoundFilePath))
         {
             return;
         }
@@ -245,11 +248,13 @@ public partial class FiveStackPlugin
                     apiPassword
                 );
 
-                using (var fileStream = File.OpenRead(backupRoundFile))
+                using (var fileStream = File.OpenRead(backupRoundFilePath))
                 using (var streamContent = new StreamContent(fileStream))
                 {
-                    streamContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-                    formData.Add(streamContent, "file", Path.GetFileName(backupRoundFile));
+                    streamContent.Headers.ContentType = new MediaTypeHeaderValue(
+                        "application/octet-stream"
+                    );
+                    formData.Add(streamContent, "file", Path.GetFileName(backupRoundFilePath));
 
                     var response = await httpClient.PostAsync(endpoint, formData);
                     if (response.IsSuccessStatusCode)
@@ -264,5 +269,4 @@ public partial class FiveStackPlugin
             }
         }
     }
-
 }
