@@ -65,10 +65,12 @@ public partial class FiveStackPlugin
                 { "time", DateTime.Now },
                 { "match_map_id", _matchData.current_match_map_id },
                 { "round", _currentRound + 1 },
-                { "team_1_score", $"{GetTeamScore(_matchData.lineup_1.name)}" },
-                { "team_1_money", $"{GetTeamMoney(_matchData.lineup_1.name)}" },
-                { "team_2_score", $"{GetTeamScore(_matchData.lineup_2.name)}" },
-                { "team_2_money", $"{GetTeamMoney(_matchData.lineup_2.name)}" },
+                { "lineup_1_score", $"{GetTeamScore(_matchData.lineup_1.name)}" },
+                { "lineup_1_money", $"{GetTeamMoney(_matchData.lineup_1.name)}" },
+                { "lineup_1_timeouts_available", $"{_currentMap?.lineup_1_timeouts_available ?? 0}" },
+                { "lineup_2_score", $"{GetTeamScore(_matchData.lineup_2.name)}" },
+                { "lineup_2_money", $"{GetTeamMoney(_matchData.lineup_2.name)}" },
+                { "lineup_2_timeouts_available", $"{_currentMap?.lineup_2_timeouts_available ?? 0}" },
             }
         );
 

@@ -321,6 +321,7 @@ public partial class FiveStackPlugin
         return result.ToString();
     }
 
+
     private bool RestoreBackupRound(string round, bool byVote = true)
     {
         string backupRoundFile = $"{GetSafeMatchPrefix()}_round{round.PadLeft(2, '0')}.txt";
@@ -350,21 +351,17 @@ public partial class FiveStackPlugin
 
     private void LoadRound(string round)
     {
-        string backupRoundFile = $"{GetSafeMatchPrefix()}_round{round.PadLeft(2, '0')}.txt";
-
-        SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFile}" });
-
-        Message(
-            HudDestination.Alert,
-            $" {ChatColors.Red}Round {round} has been restored (.resume to continue)"
-        );
+        if(_matchData == null || _matchData.current_match_map_id == null) {
+            return;
+        }
 
         PublishGameEvent(
             "restoreRound",
-            new Dictionary<string, object> { { "round", round + 1 }, }
+            new Dictionary<string, object> {
+                 { "round", round },
+                   { "match_map_id", _matchData.current_match_map_id },
+            }
         );
-
-        ResetRestoreBackupRound();
     }
 
     private void ResetRestoreBackupRound()

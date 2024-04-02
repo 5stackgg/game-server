@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using CounterStrikeSharp.API;
-using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.enums;
 using Microsoft.Extensions.Logging;
@@ -27,7 +26,6 @@ public partial class FiveStackPlugin
             SendCommands(new[] { "game_type 0; game_mode 1" });
         }
 
-        // TODO - verify we dont accidently remove backup files
         SetupBackup();
 
         SendCommands(new[] { "mp_warmup_end", "exec live" });
@@ -56,9 +54,9 @@ public partial class FiveStackPlugin
             }
         }
 
-        Logger.LogInformation($"Found Backup Round File {highestNumber}");
+        Logger.LogInformation($"Found Backup Round File {highestNumber} and were on {_currentRound}");
 
-        if (_currentRound > 0 && _currentRound > highestNumber)
+        if (_currentRound > 0 && _currentRound >= highestNumber)
         {
             // we are already live, do not restart the match accidently
             return;

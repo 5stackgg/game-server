@@ -7,6 +7,22 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
+
+    [ConsoleCommand("restore_round", "Restores to a previous round")]
+    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public void ResetRound(CCSPlayerController? player, CommandInfo command){
+       string round = command.ArgByIndex(1);
+       string backupRoundFile = $"{GetSafeMatchPrefix()}_round{round.PadLeft(2, '0')}.txt";
+       
+        SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFile}" });
+
+        Message(
+            HudDestination.Alert,
+            $" {ChatColors.Red}Round {round} has been restored (.resume to continue)"
+        );
+        ResetRestoreBackupRound();
+    }
+
     [ConsoleCommand("css_reset", "Restores to a previous round")]
     public void RestoreRound(CCSPlayerController? player, CommandInfo command)
     {
