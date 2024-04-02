@@ -200,6 +200,7 @@ public partial class FiveStackPlugin
                 if (response.IsSuccessStatusCode)
                 {
                     Logger.LogInformation("File uploaded successfully.");
+                    File.Delete(filePath);
                 }
                 else
                 {
