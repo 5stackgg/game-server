@@ -17,7 +17,7 @@ dotnet_watch_pid=$!
 # Set up trap to kill dotnet watch process on script exit
 trap kill_dotnet_watch EXIT
 
-directory_to_watch="/opt/5stack/src/bin/Debug/net7.0"
+directory_to_watch="/opt/5stack/src/bin/Debug/net8.0"
 
 while true; do
   inotifywait -r -e modify,create,delete,move "$directory_to_watch"

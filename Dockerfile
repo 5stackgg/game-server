@@ -1,18 +1,13 @@
-# Use the official .NET SDK 7.0 image on Alpine Linux
-FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS build
 
-# Set the working directory
 WORKDIR /mod
 
-# Copy the .csproj file to the container
 COPY src/*.csproj .
 
 RUN dotnet restore
 
-# Copy the remaining files to the container
 COPY . .
 
-# Build the application
 RUN dotnet build -c Release -o release
 
 RUN rm /mod/release/CounterStrikeSharp.API.dll
