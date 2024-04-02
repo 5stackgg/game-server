@@ -79,7 +79,7 @@ public partial class FiveStackPlugin
         );
     }
 
-    public void ShowCaptains()
+    private void ShowCaptains()
     {
         foreach (var pair in _captains)
         {
@@ -101,7 +101,7 @@ public partial class FiveStackPlugin
         }
     }
 
-    public void ClaimCaptain(CsTeam team, CCSPlayerController player, string? message = null)
+    private void ClaimCaptain(CsTeam team, CCSPlayerController player, string? message = null)
     {
         if (player == null || _matchData == null)
         {

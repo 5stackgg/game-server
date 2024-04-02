@@ -73,7 +73,7 @@ public partial class FiveStackPlugin
 
         CCSPlayerController player = @event.Userid;
 
-        _enforceMemberTeam(player, TeamNumToCSTeam(@event.Team));
+        EnforceMemberTeam(player, TeamNumToCSTeam(@event.Team));
 
         Message(
             HudDestination.Chat,
@@ -90,7 +90,7 @@ public partial class FiveStackPlugin
         return HookResult.Continue;
     }
 
-    private async void _enforceMemberTeam(CCSPlayerController player, CsTeam currentTeam)
+    private async void EnforceMemberTeam(CCSPlayerController player, CsTeam currentTeam)
     {
         if (_matchData == null || IsLive())
         {

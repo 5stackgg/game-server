@@ -1,7 +1,8 @@
+using System.Text.RegularExpressions;
 using CounterStrikeSharp.API;
-using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.enums;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -9,29 +10,12 @@ public partial class FiveStackPlugin
 {
     public async void StartLive()
     {
-        // if (_matchData == null || IsLive())
-        // {
-        //     return;
-        // }
+        UpdateCurrentRound();
 
-        if (_matchData == null)
+        if (_matchData == null || _matchData == null)
         {
             return;
         }
-
-        _startDemoRecording();
-
-        UpdateCurrentRound();
-
-        SendCommands(
-            new[]
-            {
-                $"mp_maxrounds {_matchData.mr * 2}",
-                $"mp_overtime_enable {_matchData.overtime}",
-                $"mp_backup_round_file {GetSafeMatchPrefix()}",
-                $"exec live",
-            }
-        );
 
         if (_matchData.type == "Wingman")
         {
@@ -42,13 +26,51 @@ public partial class FiveStackPlugin
             SendCommands(new[] { "game_type 0; game_mode 1" });
         }
 
-        // require game state coming from Warmup / Knife
-        if (!IsKnife() && !IsWarmup())
+        SetupBackup();
+
+        SendCommands(new[] { "mp_warmup_end", "exec live" });
+
+        StartDemoRecording();
+
+        string directoryPath = Path.Join(Server.GameDirectory + "/csgo/");
+
+        string[] files = Directory.GetFiles(directoryPath, GetSafeMatchPrefix() + "*");
+
+        Regex regex = new Regex(@"(\d+)(?!.*\d)");
+
+        int highestNumber = -1;
+
+        foreach (string file in files)
         {
+            Match match = regex.Match(Path.GetFileNameWithoutExtension(file));
+
+            if (match.Success)
+            {
+                int number;
+                if (int.TryParse(match.Value, out number))
+                {
+                    highestNumber = Math.Max(highestNumber, number);
+                }
+            }
+        }
+
+        Logger.LogInformation(
+            $"Found Backup Round File {highestNumber} and were on {_currentRound}"
+        );
+
+        if (_currentRound > 0 && _currentRound >= highestNumber)
+        {
+            // we are already live, do not restart the match accidently
             return;
         }
 
-        SendCommands(new[] { "mp_warmup_end", "mp_restartgame 0" });
+        if (highestNumber > _currentRound)
+        {
+            RestoreBackupRound(highestNumber.ToString(), true);
+            return;
+        }
+
+        SendCommands(new[] { "mp_restartgame" });
 
         PublishMapStatus(eMapStatus.Live);
 
@@ -59,43 +81,57 @@ public partial class FiveStackPlugin
         });
     }
 
-    public bool IsLive()
-    {
-        return _currentMapStatus != eMapStatus.Unknown
-            && _currentMapStatus != eMapStatus.Warmup
-            && _currentMapStatus != eMapStatus.Knife;
-    }
-
-    public bool isOverTime()
-    {
-        return getOverTimeNumber() > 0;
-    }
-
-    public int getOverTimeNumber()
-    {
-        CCSGameRules? rules = _gameRules();
-
-        if (rules == null)
-        {
-            return 0;
-        }
-        return rules.OvertimePlaying;
-    }
-
-    private void _startDemoRecording()
+    private void SetupBackup()
     {
         if (_matchData == null)
         {
             return;
         }
 
-        Message(HudDestination.Alert, "Recording Demo");
-
-        SendCommands(new[] { $"tv_record /opt/demos/{GetSafeMatchPrefix()}" });
+        SendCommands(
+            new[]
+            {
+                $"mp_maxrounds {_matchData.mr * 2}",
+                $"mp_overtime_enable {_matchData.overtime}",
+                $"mp_backup_round_file {GetSafeMatchPrefix()}",
+            }
+        );
     }
 
-    public bool IsKnife()
+    private void StartDemoRecording()
     {
-        return _currentMapStatus == eMapStatus.Knife;
+        if (_matchData == null || _currentMap == null)
+        {
+            return;
+        }
+
+        string lockFilePath = GetLockFilePath();
+        if (File.Exists(lockFilePath))
+        {
+            return;
+        }
+
+        File.Create(lockFilePath).Dispose();
+
+        Message(HudDestination.Alert, "Recording Demo");
+
+        SendCommands(
+            new[]
+            {
+                $"tv_record /opt/demos/{GetSafeMatchPrefix()}-{DateTime.Now.ToString("yyyyMMdd-HHmm")}-{_currentMap.map.name}"
+            }
+        );
+    }
+
+    private void StopDemoRecording()
+    {
+        File.Delete(GetLockFilePath());
+        SendCommands(new[] { "tv_stoprecord" });
+    }
+
+    private string GetLockFilePath()
+    {
+        return "/opt/.recording-demo";
+        ;
     }
 }

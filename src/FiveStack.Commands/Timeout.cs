@@ -12,7 +12,7 @@ public partial class FiveStackPlugin
     [ConsoleCommand("css_pause", "Pauses the match")]
     public void OnPause(CCSPlayerController? player, CommandInfo? command)
     {
-        if (_matchData == null || !IsLive())
+        if (_matchData == null || !IsLive() || IsResetingRound())
         {
             return;
         }
@@ -49,7 +49,7 @@ public partial class FiveStackPlugin
     [ConsoleCommand("css_resume", "Resumes the match")]
     public void OnResume(CCSPlayerController? player, CommandInfo? command)
     {
-        if (_matchData == null || IsLive())
+        if (_matchData == null || IsLive() || IsResetingRound())
         {
             return;
         }
@@ -86,7 +86,13 @@ public partial class FiveStackPlugin
     [ConsoleCommand("css_tac", "Tactical Timeout")]
     public void OnTimeout(CCSPlayerController? player, CommandInfo? command)
     {
-        if (_matchData == null || player == null || _currentMap == null || IsLive())
+        if (
+            _matchData == null
+            || player == null
+            || _currentMap == null
+            || IsLive()
+            || IsResetingRound()
+        )
         {
             return;
         }

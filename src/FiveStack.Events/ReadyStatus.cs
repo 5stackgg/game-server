@@ -1,9 +1,5 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Core.Attributes.Registration;
-using CounterStrikeSharp.API.Modules.Commands;
-using CounterStrikeSharp.API.Modules.Utils;
-using FiveStack.enums;
 
 namespace FiveStack
 {
@@ -13,7 +9,7 @@ namespace FiveStack
         {
             RegisterListener<Listeners.OnTick>(() =>
             {
-                if (_currentMapStatus != enums.eMapStatus.Warmup)
+                if (!IsWarmup() && _resetRound == null)
                 {
                     return;
                 }
@@ -26,22 +22,59 @@ namespace FiveStack
 
                     if (player != null && player.UserId != null && player.IsValid && !player.IsBot)
                     {
-                        int totalReady = TotalReady();
-                        int expectedReady = GetExpectedPlayerCount();
-
-                        int playerId = player.UserId.Value;
-                        if (_readyPlayers.ContainsKey(playerId) && _readyPlayers[playerId])
+                        if (IsWarmup())
                         {
-                            player.PrintToCenter(
-                                $"Waiting for players [{totalReady}/{expectedReady}]"
-                            );
+                            SetupReadyMessage(player);
                             continue;
                         }
 
-                        player.PrintToCenter($"Type .r to ready up!");
+                        SetupResetMessage(player);
                     }
                 }
             });
+        }
+
+        private void SetupReadyMessage(CCSPlayerController player)
+        {
+            if (player.UserId == null)
+            {
+                return;
+            }
+
+            int totalReady = TotalReady();
+            int expectedReady = GetExpectedPlayerCount();
+
+            int playerId = player.UserId.Value;
+            if (_readyPlayers.ContainsKey(playerId) && _readyPlayers[playerId])
+            {
+                player.PrintToCenter($"Waiting for players [{totalReady}/{expectedReady}]");
+                return;
+            }
+            player.PrintToCenter($"Type .r to ready up!");
+        }
+
+        private void SetupResetMessage(CCSPlayerController player)
+        {
+            if (player.UserId == null)
+            {
+                return;
+            }
+
+            int totalVoted = _restoreRoundVote.Count(pair => pair.Value);
+
+            int playerId = player.UserId.Value;
+            bool isCaptain = GetMemberFromLineup(player)?.captain ?? false;
+
+            if (
+                isCaptain == false
+                || _restoreRoundVote.ContainsKey(playerId) && _restoreRoundVote[playerId]
+            )
+            {
+                player.PrintToCenter($"Waiting for captin [{totalVoted}/2]");
+                return;
+            }
+
+            player.PrintToCenter($"Type .reset reset the round to round {_resetRound}");
         }
     }
 }

@@ -1,13 +1,12 @@
 ﻿using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.entities;
 using FiveStack.enums;
-using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
+// TODO - DI
 public partial class FiveStackPlugin : BasePlugin
 {
     private Match? _matchData;
@@ -19,6 +18,8 @@ public partial class FiveStackPlugin : BasePlugin
     public CsTeam? KnifeWinningTeam;
     private eMapStatus _currentMapStatus = eMapStatus.Unknown;
     private Dictionary<int, bool> _readyPlayers = new Dictionary<int, bool>();
+    private string? _resetRound;
+    private Dictionary<int, bool> _restoreRoundVote = new Dictionary<int, bool>();
 
     private Dictionary<CsTeam, CCSPlayerController?> _captains = new Dictionary<
         CsTeam,
@@ -57,57 +58,5 @@ public partial class FiveStackPlugin : BasePlugin
 
         Message(HudDestination.Alert, "5Stack Loaded");
         GetMatch();
-    }
-
-    private void PublishGameEvent(string Event, Dictionary<string, object> Data)
-    {
-        if (_matchData == null)
-        {
-            return;
-        }
-        _redis.publish(
-            $"matches:{_matchData.id}",
-            new Redis.EventData<Dictionary<string, object>> { @event = Event, data = Data }
-        );
-    }
-
-    public void Message(
-        HudDestination destination,
-        string message,
-        CCSPlayerController? player = null
-    )
-    {
-        if (player != null)
-        {
-            var parts = message.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-            foreach (var part in parts)
-            {
-                player.PrintToChat($"{part}");
-            }
-        }
-        else if (destination == HudDestination.Console)
-        {
-            Server.PrintToConsole(message);
-        }
-        else if (destination == HudDestination.Alert || destination == HudDestination.Center)
-        {
-            VirtualFunctions.ClientPrintAll(destination, $" {message}", 0, 0, 0, 0);
-        }
-        else
-        {
-            var parts = message.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-            foreach (var part in parts)
-            {
-                Server.PrintToChatAll($"{part}");
-            }
-        }
-    }
-
-    public void SendCommands(string[] commands)
-    {
-        foreach (var command in commands)
-        {
-            Server.ExecuteCommand(command);
-        }
     }
 }

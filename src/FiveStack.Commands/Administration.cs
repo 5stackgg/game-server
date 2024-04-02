@@ -77,7 +77,7 @@ public partial class FiveStackPlugin
                     _redis.Connect(serverId, apiPassword);
                 }
 
-                if (_currentMapStatus == eMapStatus.Warmup)
+                if (IsWarmup())
                 {
                     Message(HudDestination.Alert, "Received Match Data");
                 }
@@ -104,33 +104,6 @@ public partial class FiveStackPlugin
     public void SetMatchState(CCSPlayerController? player, CommandInfo command)
     {
         UpdateMapStatus(MapStatusStringToEnum(command.ArgString));
-    }
-
-    [ConsoleCommand("restore_round", "Restores to a previous round")]
-    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
-    public void RestoreRound(CCSPlayerController? player, CommandInfo command)
-    {
-        if (_matchData == null)
-        {
-            return;
-        }
-
-        string round = command.ArgByIndex(1);
-        string backupRoundFile =
-            $"{GetSafeMatchPrefix()}_round{round.ToString().PadLeft(2, '0')}.txt";
-
-        if (!File.Exists(Path.Join(Server.GameDirectory + "/csgo/", backupRoundFile)))
-        {
-            command.ReplyToCommand($"Unable to restore round, missing file ({backupRoundFile})");
-            return;
-        }
-
-        SendCommands(new[] { "mp_pause_match", $"mp_backup_restore_load_file {backupRoundFile}" });
-
-        Message(
-            HudDestination.Alert,
-            $" {ChatColors.Red}Round {round} has been restored (.resume to continue)"
-        );
     }
 
     public void UpdateMapStatus(eMapStatus status)
@@ -207,7 +180,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        if (!IsOnMap(_currentMap.map.name))
+        if (_currentMap.map.name != _onMap)
         {
             ChangeMap(_currentMap.map);
             return;
@@ -227,20 +200,7 @@ public partial class FiveStackPlugin
         }
     }
 
-    public MatchMap? GetCurrentMap()
-    {
-        if (_matchData == null || _matchData.current_match_map_id == null)
-        {
-            return null;
-        }
-
-        return _matchData?.match_maps.FirstOrDefault(match_map =>
-        {
-            return match_map.id == _matchData.current_match_map_id;
-        });
-    }
-
-    public void SetupTeamNames()
+    private void SetupTeamNames()
     {
         if (_matchData == null)
         {
@@ -258,7 +218,7 @@ public partial class FiveStackPlugin
         }
     }
 
-    public void ChangeMap(Map map)
+    private void ChangeMap(Map map)
     {
         Logger.LogInformation($"Changing Map {map.name}");
 
@@ -270,42 +230,5 @@ public partial class FiveStackPlugin
         {
             SendCommands(new[] { $"host_workshop_map {map.workshop_map_id}" });
         }
-    }
-
-    public bool IsOnMap(string map)
-    {
-        Logger.LogInformation($"Map Check: {_onMap}:{map}");
-
-        return map == _onMap;
-    }
-
-    public Guid? GetPlayerLineup(CCSPlayerController player)
-    {
-        if (_matchData == null)
-        {
-            return null;
-        }
-
-        List<MatchMember> players = _matchData
-            .lineup_1.lineup_players.Concat(_matchData.lineup_2.lineup_players)
-            .ToList();
-
-        MatchMember? foundMatchingMember = players.Find(member =>
-        {
-            if (member.steam_id == null)
-            {
-                return member.name.StartsWith(player.PlayerName);
-            }
-
-            return member.steam_id == player.SteamID.ToString();
-        });
-
-        if (foundMatchingMember == null)
-        {
-            Logger.LogInformation($"Unable to find player {player.SteamID.ToString()}");
-            return null;
-        }
-
-        return foundMatchingMember.match_lineup_id;
     }
 }

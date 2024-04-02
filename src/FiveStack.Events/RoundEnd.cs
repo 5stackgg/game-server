@@ -20,9 +20,9 @@ public partial class FiveStackPlugin
         if (_matchData != null && _currentMap != null && isOverTime())
         {
             UpdateMapStatus(eMapStatus.Overtime);
-            if (timeoutGivenForOvertime != getOverTimeNumber())
+            if (timeoutGivenForOvertime != GetOverTimeNumber())
             {
-                timeoutGivenForOvertime = getOverTimeNumber();
+                timeoutGivenForOvertime = GetOverTimeNumber();
 
                 PublishGameEvent(
                     "techTimeout",
@@ -42,17 +42,13 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info)
     {
-        if (
-            _matchData == null
-            || _matchData.current_match_map_id == null
-            || _currentMapStatus == eMapStatus.Knife
-        )
+        if (_matchData == null || _matchData.current_match_map_id == null || IsKnife())
         {
             Logger.LogInformation($"TEAM ASSIGNED {@event.Winner}");
 
             KnifeWinningTeam = TeamNumToCSTeam(@event.Winner);
 
-            _NotifyCaptainSideSelection();
+            NotifyCaptainSideSelection();
 
             return HookResult.Continue;
         }
@@ -69,17 +65,25 @@ public partial class FiveStackPlugin
                 { "time", DateTime.Now },
                 { "match_map_id", _matchData.current_match_map_id },
                 { "round", _currentRound + 1 },
-                { "team_1_score", $"{GetTeamScore(_matchData.lineup_1.name)}" },
-                { "team_1_money", $"{GetTeamMoney(_matchData.lineup_1.name)}" },
-                { "team_2_score", $"{GetTeamScore(_matchData.lineup_2.name)}" },
-                { "team_2_money", $"{GetTeamMoney(_matchData.lineup_2.name)}" },
+                { "lineup_1_score", $"{GetTeamScore(_matchData.lineup_1.name)}" },
+                { "lineup_1_money", $"{GetTeamMoney(_matchData.lineup_1.name)}" },
+                {
+                    "lineup_1_timeouts_available",
+                    $"{_currentMap?.lineup_1_timeouts_available ?? 0}"
+                },
+                { "lineup_2_score", $"{GetTeamScore(_matchData.lineup_2.name)}" },
+                { "lineup_2_money", $"{GetTeamMoney(_matchData.lineup_2.name)}" },
+                {
+                    "lineup_2_timeouts_available",
+                    $"{_currentMap?.lineup_2_timeouts_available ?? 0}"
+                },
             }
         );
 
         return HookResult.Continue;
     }
 
-    public int GetTeamScore(string teamName)
+    private int GetTeamScore(string teamName)
     {
         if (_matchData == null)
         {
@@ -99,7 +103,7 @@ public partial class FiveStackPlugin
         return 0;
     }
 
-    public int GetTeamMoney(string teamName)
+    private int GetTeamMoney(string teamName)
     {
         if (_matchData == null)
         {
@@ -127,26 +131,7 @@ public partial class FiveStackPlugin
         return totalCash;
     }
 
-    public void UpdateCurrentRound()
-    {
-        int roundsPlayed = 0;
-        var teamManagers = Utilities.FindAllEntitiesByDesignerName<CCSTeam>("cs_team_manager");
-
-        foreach (var teamManager in teamManagers)
-        {
-            if (
-                teamManager.TeamNum == (int)CsTeam.Terrorist
-                || teamManager.TeamNum == (int)CsTeam.CounterTerrorist
-            )
-            {
-                roundsPlayed += teamManager.Score;
-            }
-        }
-
-        _currentRound = roundsPlayed;
-    }
-
-    public void _NotifyCaptainSideSelection()
+    private void NotifyCaptainSideSelection()
     {
         if (KnifeWinningTeam == null)
         {
