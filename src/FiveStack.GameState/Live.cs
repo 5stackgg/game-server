@@ -30,10 +30,7 @@ public partial class FiveStackPlugin
         // TODO - verify we dont accidently remove backup files
         SetupBackup();
 
-        SendCommands(new[] { 
-            "mp_warmup_end", 
-            "exec live"
-        });
+        SendCommands(new[] { "mp_warmup_end", "exec live" });
 
         StartDemoRecording();
 
@@ -61,7 +58,8 @@ public partial class FiveStackPlugin
 
         Logger.LogInformation($"Found Backup Round File {highestNumber}");
 
-        if(_currentRound > 0 && _currentRound > highestNumber) {
+        if (_currentRound > 0 && _currentRound > highestNumber)
+        {
             // we are already live, do not restart the match accidently
             return;
         }
@@ -70,14 +68,9 @@ public partial class FiveStackPlugin
         {
             RestoreBackupRound(highestNumber.ToString(), true);
             return;
-        } 
+        }
 
-        SendCommands(
-            new[]
-            {
-                "mp_restartgame"
-            }
-        );
+        SendCommands(new[] { "mp_restartgame" });
 
         PublishMapStatus(eMapStatus.Live);
 
@@ -87,8 +80,11 @@ public partial class FiveStackPlugin
             Message(HudDestination.Alert, "LIVE LIVE LIVE!");
         });
     }
-    private void SetupBackup() {
-        if(_matchData == null) {
+
+    private void SetupBackup()
+    {
+        if (_matchData == null)
+        {
             return;
         }
 

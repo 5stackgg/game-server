@@ -47,13 +47,12 @@ public partial class FiveStackPlugin
         return _resetRound != null;
     }
 
-
     private bool isOverTime()
     {
         return GetOverTimeNumber() > 0;
     }
 
-  public int GetOverTimeNumber()
+    public int GetOverTimeNumber()
     {
         CCSGameRules? rules = _gameRules();
 
@@ -126,7 +125,7 @@ public partial class FiveStackPlugin
         return member.match_lineup_id;
     }
 
-     private MatchMember? GetMemberFromLineup(CCSPlayerController player)
+    private MatchMember? GetMemberFromLineup(CCSPlayerController player)
     {
         if (_matchData == null)
         {
@@ -147,7 +146,6 @@ public partial class FiveStackPlugin
             return member.steam_id == player.SteamID.ToString();
         });
     }
-
 
     private MatchMap? GetCurrentMap()
     {
@@ -350,7 +348,8 @@ public partial class FiveStackPlugin
         return true;
     }
 
-    private void LoadRound(string round) {
+    private void LoadRound(string round)
+    {
         string backupRoundFile = $"{GetSafeMatchPrefix()}_round{round.PadLeft(2, '0')}.txt";
 
         SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFile}" });
@@ -360,18 +359,16 @@ public partial class FiveStackPlugin
             $" {ChatColors.Red}Round {round} has been restored (.resume to continue)"
         );
 
-          PublishGameEvent(
+        PublishGameEvent(
             "restoreRound",
-            new Dictionary<string, object>
-            {
-                { "round", round + 1},
-            }
+            new Dictionary<string, object> { { "round", round + 1 }, }
         );
 
         ResetRestoreBackupRound();
     }
 
-    private void ResetRestoreBackupRound() {
+    private void ResetRestoreBackupRound()
+    {
         _resetRound = null;
         _restoreRoundVote = new Dictionary<int, bool>();
     }
@@ -395,7 +392,7 @@ public partial class FiveStackPlugin
         _currentRound = roundsPlayed;
     }
 
-     private CCSGameRules? _gameRules()
+    private CCSGameRules? _gameRules()
     {
         try
         {

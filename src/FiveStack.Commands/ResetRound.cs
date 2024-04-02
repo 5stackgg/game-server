@@ -17,28 +17,27 @@ public partial class FiveStackPlugin
 
         if (player != null && _resetRound != null)
         {
-            if (
-                player.UserId != null
-                && GetMemberFromLineup(player)?.captain == true
-            )
+            if (player.UserId != null && GetMemberFromLineup(player)?.captain == true)
             {
                 string vote = command.ArgByIndex(1);
 
-                if(vote != null) {
+                if (vote != null)
+                {
                     ResetRestoreBackupRound();
-                    
+
                     Message(
                         HudDestination.Alert,
                         $" {ChatColors.Red}Captain denied request to reset round to {_resetRound}"
                     );
-                    
+
                     return;
                 }
 
                 _restoreRoundVote[player.UserId.Value] = true;
             }
 
-            if(_restoreRoundVote.Count(pair => pair.Value) == 2) {
+            if (_restoreRoundVote.Count(pair => pair.Value) == 2)
+            {
                 LoadRound(_resetRound);
             }
 

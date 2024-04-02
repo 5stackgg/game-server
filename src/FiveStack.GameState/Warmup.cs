@@ -40,5 +40,5 @@ public partial class FiveStackPlugin
     {
         _captains[CsTeam.Terrorist] = null;
         _captains[CsTeam.CounterTerrorist] = null;
-    }   
+    }
 }

@@ -86,7 +86,13 @@ public partial class FiveStackPlugin
     [ConsoleCommand("css_tac", "Tactical Timeout")]
     public void OnTimeout(CCSPlayerController? player, CommandInfo? command)
     {
-        if (_matchData == null || player == null || _currentMap == null || IsLive() || IsResetingRound())
+        if (
+            _matchData == null
+            || player == null
+            || _currentMap == null
+            || IsLive()
+            || IsResetingRound()
+        )
         {
             return;
         }
