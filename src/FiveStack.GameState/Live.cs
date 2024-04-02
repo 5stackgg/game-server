@@ -165,50 +165,104 @@ public partial class FiveStackPlugin
         }
     }
 
+
+
     private async Task UploadDemo(string filePath)
-{
-    // TODO - should be done differently
-    string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
-    string? apiPassword = Environment.GetEnvironmentVariable("SERVER_API_PASSWORD");
-
-    if (_matchData == null || serverId == null || apiPassword == null)
     {
-        return;
-    }
+        // TODO - should be done differently
+        string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
+        string? apiPassword = Environment.GetEnvironmentVariable("SERVER_API_PASSWORD");
 
-    string endpoint =
-        $"https://api.5stack.gg/server/{serverId}/match/{_matchData.id}/{_matchData.current_match_map_id}/demo";
-
-    Logger.LogInformation($"Uploading Demo {endpoint}");
-
-    using (var httpClient = new HttpClient())
-    {
-        using (var formData = new MultipartFormDataContent())
+        if (_matchData == null || serverId == null || apiPassword == null)
         {
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-                "Bearer",
-                apiPassword
-            );
+            return;
+        }
 
-            using (var fileStream = File.OpenRead(filePath))
-            using (var streamContent = new StreamContent(fileStream))
+        string endpoint =
+            $"https://api.5stack.gg/server/{serverId}/match/{_matchData.id}/{_matchData.current_match_map_id}/demo";
+
+        Logger.LogInformation($"Uploading Demo {endpoint}");
+
+        using (var httpClient = new HttpClient())
+        {
+            using (var formData = new MultipartFormDataContent())
             {
-                streamContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-                formData.Add(streamContent, "file", Path.GetFileName(filePath));
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                    "Bearer",
+                    apiPassword
+                );
 
-                var response = await httpClient.PostAsync(endpoint, formData);
-                if (response.IsSuccessStatusCode)
+                using (var fileStream = File.OpenRead(filePath))
+                using (var streamContent = new StreamContent(fileStream))
                 {
-                    Logger.LogInformation("File uploaded successfully.");
-                    File.Delete(filePath);
-                }
-                else
-                {
-                    Logger.LogError($"File upload failed. Status code: {response.StatusCode}");
+                    streamContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                    formData.Add(streamContent, "file", Path.GetFileName(filePath));
+
+                    var response = await httpClient.PostAsync(endpoint, formData);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Logger.LogInformation("File uploaded successfully.");
+                        File.Delete(filePath);
+                    }
+                    else
+                    {
+                        Logger.LogError($"File upload failed. Status code: {response.StatusCode}");
+                    }
                 }
             }
         }
     }
-}
+
+    private async Task UploadBackupRound(string round)
+    {
+        // TODO - should be done differently
+        string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
+        string? apiPassword = Environment.GetEnvironmentVariable("SERVER_API_PASSWORD");
+
+        if (_matchData == null || serverId == null || apiPassword == null)
+        {
+            return;
+        }
+
+        string backupRoundFile = $"{GetSafeMatchPrefix()}_round{round.PadLeft(2, '0')}.txt";
+
+        if (!File.Exists(Path.Join(Server.GameDirectory + "/csgo/", backupRoundFile)))
+        {
+            return;
+        }
+
+        string endpoint =
+            $"https://api.5stack.gg/server/{serverId}/match/{_matchData.id}/{_matchData.current_match_map_id}/backup-round/{round}";
+
+        Logger.LogInformation($"Uploading Backup Round {endpoint}");
+
+        using (var httpClient = new HttpClient())
+        {
+            using (var formData = new MultipartFormDataContent())
+            {
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                    "Bearer",
+                    apiPassword
+                );
+
+                using (var fileStream = File.OpenRead(backupRoundFile))
+                using (var streamContent = new StreamContent(fileStream))
+                {
+                    streamContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                    formData.Add(streamContent, "file", Path.GetFileName(backupRoundFile));
+
+                    var response = await httpClient.PostAsync(endpoint, formData);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Logger.LogInformation("File uploaded successfully.");
+                    }
+                    else
+                    {
+                        Logger.LogError($"File upload failed. Status code: {response.StatusCode}");
+                    }
+                }
+            }
+        }
+    }
 
 }

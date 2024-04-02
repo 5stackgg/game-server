@@ -12,6 +12,11 @@ public partial class FiveStackPlugin
     public void ResetRound(CCSPlayerController? player, CommandInfo command)
     {
         string round = command.ArgByIndex(1);
+
+        if(round == null) {
+            return;
+        }
+
         string backupRoundFile = $"{GetSafeMatchPrefix()}_round{round.PadLeft(2, '0')}.txt";
 
         SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFile}" });
@@ -61,6 +66,10 @@ public partial class FiveStackPlugin
         }
 
         string round = command.ArgByIndex(1);
+
+        if(round == null) {
+            return;
+        }
 
         if (RestoreBackupRound(round, player != null) == false)
         {
