@@ -49,15 +49,9 @@ public class CaptainSystem
 
     public void RemoveTeamCaptain(CCSPlayerController player, CsTeam team)
     {
-        Guid matchId = _matchService.GetCurrentMatch()?.GetMatchData()?.id ?? Guid.Empty;
-        if (matchId == Guid.Empty)
-        {
-            return;
-        }
         _captains[team] = null;
 
         _gameEvents.PublishGameEvent(
-            matchId,
             "captain",
             new Dictionary<string, object>
             {
@@ -97,12 +91,6 @@ public class CaptainSystem
 
     public void ClaimCaptain(CsTeam team, CCSPlayerController player, string? message = null)
     {
-        Guid matchId = _matchService.GetCurrentMatch()?.GetMatchData()?.id ?? Guid.Empty;
-        if (player == null || matchId == Guid.Empty)
-        {
-            return;
-        }
-
         _captains[team] = player;
         if (message == null)
         {
@@ -113,7 +101,6 @@ public class CaptainSystem
         }
 
         _gameEvents.PublishGameEvent(
-            matchId,
             "captain",
             new Dictionary<string, object>
             {

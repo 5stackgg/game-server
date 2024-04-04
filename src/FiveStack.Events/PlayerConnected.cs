@@ -1,140 +1,143 @@
-// using CounterStrikeSharp.API;
-// using CounterStrikeSharp.API.Core;
-// using CounterStrikeSharp.API.Core.Attributes.Registration;
-// using CounterStrikeSharp.API.Modules.Utils;
-// using Microsoft.Extensions.Logging;
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.Entities;
+using FiveStack.Utilities;
+using Microsoft.Extensions.Logging;
 
-// namespace FiveStack;
+namespace FiveStack;
 
-// public partial class FiveStackPlugin
-// {
-//     [GameEventHandler]
-//     public HookResult OnPlayerConnect(EventPlayerConnectFull @event, GameEventInfo info)
-//     {
-//         if (
-//             @event.Userid == null
-//             || !@event.Userid.IsValid
-//             || @event.Userid.IsBot
-//             || _matchData == null
-//             || _matchData.current_match_map_id == null
-//         )
-//         {
-//             return HookResult.Continue;
-//         }
+public partial class FiveStackPlugin
+{
+    [GameEventHandler]
+    public HookResult OnPlayerConnect(EventPlayerConnectFull @event, GameEventInfo info)
+    {
+        MatchManager? match = CurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
+        FiveStackMatch? matchData = match?.GetMatchData();
 
-//         CCSPlayerController player = @event.Userid;
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || @event.Userid.IsBot
+            || match == null
+            || matchData == null
+            || currentMap == null
+        )
+        {
+            return HookResult.Continue;
+        }
 
-//         if (IsLive())
-//         {
-//             Guid? lineup_id = GetPlayerLineup(player);
+        CCSPlayerController player = @event.Userid;
 
-//             if (lineup_id == null)
-//             {
-//                 Server.ExecuteCommand($"kick player {player.UserId}");
-//                 return HookResult.Continue;
-//             }
-//         }
+        if (match.IsLive())
+        {
+            Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
 
-//         PublishGameEvent(
-//             "player",
-//             new Dictionary<string, object>
-//             {
-//                 { "match_map_id", _matchData.current_match_map_id },
-//                 { "player_name", player.PlayerName },
-//                 { "steam_id", player.SteamID.ToString() },
-//             }
-//         );
+            if (lineup_id == null)
+            {
+                Server.ExecuteCommand($"kick player {player.UserId}");
+                return HookResult.Continue;
+            }
+        }
 
-//         return HookResult.Continue;
-//     }
+        _matchEvents.PublishGameEvent(
+            "player",
+            new Dictionary<string, object>
+            {
+                { "match_map_id", currentMap.id },
+                { "player_name", player.PlayerName },
+                { "steam_id", player.SteamID.ToString() },
+            }
+        );
 
-//     [GameEventHandler]
-//     public HookResult OnPlayerJoinTeam(EventPlayerTeam @event, GameEventInfo info)
-//     {
-//         if (
-//             @event.Userid == null
-//             || !@event.Userid.IsValid
-//             || @event.Userid.IsBot
-//             || _matchData == null
-//         )
-//         {
-//             return HookResult.Continue;
-//         }
+        return HookResult.Continue;
+    }
 
-//         // dont allow them to join a team
-//         if (
-//             _coaches[CsTeam.Terrorist] == @event.Userid
-//             || _coaches[CsTeam.CounterTerrorist] == @event.Userid
-//         )
-//         {
-//             @event.Silent = true;
-//             return HookResult.Changed;
-//         }
+    [GameEventHandler]
+    public HookResult OnPlayerJoinTeam(EventPlayerTeam @event, GameEventInfo info)
+    {
+        MatchManager? match = CurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
+        FiveStackMatch? matchData = match?.GetMatchData();
 
-//         CCSPlayerController player = @event.Userid;
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || @event.Userid.IsBot
+            || match == null
+            || matchData == null
+            || currentMap == null
+        )
+        {
+            return HookResult.Continue;
+        }
 
-//         EnforceMemberTeam(player, TeamNumToCSTeam(@event.Team));
+        // TODO - coaches
+        // dont allow them to join a team
+        // if (
+        //     _coaches[CsTeam.Terrorist] == @event.Userid
+        //     || _coaches[CsTeam.CounterTerrorist] == @event.Userid
+        // )
+        // {
+        //     @event.Silent = true;
+        //     return HookResult.Changed;
+        // }
 
-//         Message(
-//             HudDestination.Chat,
-//             $"{ChatColors.Default}type {ChatColors.Green}.ready {ChatColors.Default}to be marked as ready for the match",
-//             @event.Userid
-//         );
+        CCSPlayerController player = @event.Userid;
 
-//         Message(
-//             HudDestination.Chat,
-//             $"type {ChatColors.Green}.help {ChatColors.Default}to view additional commands",
-//             @event.Userid
-//         );
+        _gameServer.Message(
+            HudDestination.Chat,
+            $"{ChatColors.Default}type {ChatColors.Green}.ready {ChatColors.Default}to be marked as ready for the match",
+            @event.Userid
+        );
 
-//         return HookResult.Continue;
-//     }
+        _gameServer.Message(
+            HudDestination.Chat,
+            $"type {ChatColors.Green}.help {ChatColors.Default}to view additional commands",
+            @event.Userid
+        );
 
-//     public async void EnforceMemberTeam(CCSPlayerController player, CsTeam currentTeam)
-//     {
-//         if (_matchData == null || IsLive())
-//         {
-//             return;
-//         }
+        // TODO - if enforced, do we do silent?
+        EnforceMemberTeam(matchData, currentMap, player, TeamUtility.TeamNumToCSTeam(@event.Team));
 
-//         var currentMap = GetCurrentMap();
+        return HookResult.Continue;
+    }
 
-//         if (currentMap == null)
-//         {
-//             Logger.LogWarning("Unable to find map");
-//             return;
-//         }
+    private async void EnforceMemberTeam(
+        FiveStackMatch matchData,
+        MatchMap currentMap,
+        CCSPlayerController player,
+        CsTeam currentTeam
+    )
+    {
+        Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
 
-//         Guid? lineup_id = GetPlayerLineup(player);
+        if (lineup_id == null)
+        {
+            return;
+        }
 
-//         if (lineup_id == null)
-//         {
-//             return;
-//         }
+        CsTeam startingSide = TeamUtility.TeamStringToCsTeam(
+            matchData.lineup_1_id == lineup_id ? currentMap.lineup_1_side : currentMap.lineup_2_side
+        );
 
-//         CsTeam startingSide = TeamStringToCsTeam(
-//             _matchData.lineup_1_id == lineup_id
-//                 ? currentMap.lineup_1_side
-//                 : currentMap.lineup_2_side
-//         );
+        Logger.LogInformation($"Current Team ${matchData.lineup_1_id}{currentTeam}:{startingSide}");
+        if (currentTeam != startingSide)
+        {
+            // the server needs some time apparently
+            await Task.Delay(1000 * 1);
 
-//         Logger.LogInformation(
-//             $"Current Team ${_matchData.lineup_1_id}{currentTeam}:{startingSide}"
-//         );
-//         if (currentTeam != startingSide)
-//         {
-//             // the server needs some time apparently
-//             await Task.Delay(1000 * 1);
-
-//             Server.NextFrame(() =>
-//             {
-//                 player.ChangeTeam(startingSide);
-//                 Message(
-//                     HudDestination.Chat,
-//                     $" You've been assigned to {(startingSide == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{CSTeamToString(startingSide)}.",
-//                     player
-//                 );
-//             });
-//         }
-//     }
-// }
+            Server.NextFrame(() =>
+            {
+                player.ChangeTeam(startingSide);
+                _gameServer.Message(
+                    HudDestination.Chat,
+                    $" You've been assigned to {(startingSide == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{TeamUtility.CSTeamToString(startingSide)}.",
+                    player
+                );
+            });
+        }
+    }
+}

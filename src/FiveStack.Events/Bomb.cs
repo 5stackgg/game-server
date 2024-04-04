@@ -1,100 +1,110 @@
-// using CounterStrikeSharp.API.Core;
-// using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Attributes.Registration;
+using FiveStack.Entities;
 
-// namespace FiveStack;
+namespace FiveStack;
 
-// public partial class FiveStackPlugin
-// {
-//     [GameEventHandler]
-//     public HookResult BombPlaned(EventBombPlanted @event, GameEventInfo info)
-//     {
-//         if (
-//             @event.Userid == null
-//             || !@event.Userid.IsValid
-//             || _matchData == null
-//             || _matchData.current_match_map_id == null
-//             || !IsLive()
-//         )
-//         {
-//             return HookResult.Continue;
-//         }
+public partial class FiveStackPlugin
+{
+    [GameEventHandler]
+    public HookResult BombPlaned(EventBombPlanted @event, GameEventInfo info)
+    {
+        MatchManager? match = CurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
 
-//         CCSPlayerController planter = @event.Userid;
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || match == null
+            || currentMap == null
+            || !match.IsLive()
+        )
+        {
+            return HookResult.Continue;
+        }
 
-//         PublishGameEvent(
-//             "objective",
-//             new Dictionary<string, object>
-//             {
-//                 { "time", DateTime.Now },
-//                 { "match_map_id", _matchData.current_match_map_id },
-//                 { "round", _currentRound + 1 },
-//                 { "type", "Planted" },
-//                 { "player_steam_id", planter.SteamID.ToString() },
-//             }
-//         );
+        CCSPlayerController planter = @event.Userid;
 
-//         return HookResult.Continue;
-//     }
+        _matchEvents.PublishGameEvent(
+            "objective",
+            new Dictionary<string, object>
+            {
+                { "time", DateTime.Now },
+                { "match_map_id", currentMap.id },
+                { "round", _gameServer.GetCurrentRound() },
+                { "type", "Planted" },
+                { "player_steam_id", planter.SteamID.ToString() },
+            }
+        );
 
-//     [GameEventHandler]
-//     public HookResult BombPlaned(EventBombDefused @event, GameEventInfo info)
-//     {
-//         if (
-//             @event.Userid == null
-//             || !@event.Userid.IsValid
-//             || _matchData == null
-//             || _matchData.current_match_map_id == null
-//             || !IsLive()
-//         )
-//         {
-//             return HookResult.Continue;
-//         }
+        return HookResult.Continue;
+    }
 
-//         CCSPlayerController defuser = @event.Userid;
+    [GameEventHandler]
+    public HookResult BombPlaned(EventBombDefused @event, GameEventInfo info)
+    {
+        MatchManager? match = CurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
 
-//         PublishGameEvent(
-//             "objective",
-//             new Dictionary<string, object>
-//             {
-//                 { "time", DateTime.Now },
-//                 { "match_map_id", _matchData.current_match_map_id },
-//                 { "round", _currentRound + 1 },
-//                 { "type", "Defused" },
-//                 { "player_steam_id", defuser.SteamID.ToString() },
-//             }
-//         );
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || match == null
+            || currentMap == null
+            || !match.IsLive()
+        )
+        {
+            return HookResult.Continue;
+        }
 
-//         return HookResult.Continue;
-//     }
+        CCSPlayerController defuser = @event.Userid;
 
-//     [GameEventHandler]
-//     public HookResult BombExploded(EventBombExploded @event, GameEventInfo info)
-//     {
-//         if (
-//             @event.Userid == null
-//             || !@event.Userid.IsValid
-//             || _matchData == null
-//             || _matchData.current_match_map_id == null
-//             || !IsLive()
-//         )
-//         {
-//             return HookResult.Continue;
-//         }
+        _matchEvents.PublishGameEvent(
+            "objective",
+            new Dictionary<string, object>
+            {
+                { "time", DateTime.Now },
+                { "match_map_id", currentMap.id },
+                { "round", _gameServer.GetCurrentRound() },
+                { "type", "Defused" },
+                { "player_steam_id", defuser.SteamID.ToString() },
+            }
+        );
 
-//         CCSPlayerController bomber = @event.Userid;
+        return HookResult.Continue;
+    }
 
-//         PublishGameEvent(
-//             "objective",
-//             new Dictionary<string, object>
-//             {
-//                 { "time", DateTime.Now },
-//                 { "match_map_id", _matchData.current_match_map_id },
-//                 { "round", _currentRound + 1 },
-//                 { "type", "Exploded" },
-//                 { "player_steam_id", bomber.SteamID.ToString() },
-//             }
-//         );
+    [GameEventHandler]
+    public HookResult BombExploded(EventBombExploded @event, GameEventInfo info)
+    {
+        MatchManager? match = CurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
 
-//         return HookResult.Continue;
-//     }
-// }
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || match == null
+            || currentMap == null
+            || !match.IsLive()
+        )
+        {
+            return HookResult.Continue;
+        }
+
+        CCSPlayerController bomber = @event.Userid;
+
+        _matchEvents.PublishGameEvent(
+            "objective",
+            new Dictionary<string, object>
+            {
+                { "time", DateTime.Now },
+                { "match_map_id", currentMap.id },
+                { "round", _gameServer.GetCurrentRound() },
+                { "type", "Exploded" },
+                { "player_steam_id", bomber.SteamID.ToString() },
+            }
+        );
+
+        return HookResult.Continue;
+    }
+}

@@ -36,25 +36,24 @@ public class MatchEvents
 
     public void PublishMapStatus(eMapStatus status)
     {
-        Guid matchId = _matchService.GetCurrentMatch()?.GetMatchData()?.id ?? Guid.Empty;
-        if (matchId == Guid.Empty)
-        {
-            _logger.LogWarning("match data missing");
-            return;
-        }
-
         PublishGameEvent(
-            matchId,
             "mapStatus",
             new Dictionary<string, object> { { "status", status.ToString() }, }
         );
     }
 
-    public void PublishGameEvent(Guid matchId, string Event, Dictionary<string, object> Data)
+    public void PublishGameEvent(string Event, Dictionary<string, object> Data)
     {
         if (IsConnected() == false)
         {
             _logger.LogWarning("not connected to redis");
+        }
+
+        Guid matchId = _matchService.GetCurrentMatch()?.GetMatchData()?.id ?? Guid.Empty;
+        if (matchId == Guid.Empty)
+        {
+            _logger.LogWarning("match data missing");
+            return;
         }
 
         Publish(

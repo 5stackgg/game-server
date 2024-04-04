@@ -32,14 +32,8 @@ public class KnifeSystem
 
     public void Switch()
     {
-        Guid matchId = _matchService.GetCurrentMatch()?.GetMatchData()?.id ?? Guid.Empty;
-        if (matchId == Guid.Empty)
-        {
-            return;
-        }
-
         _gameServer.SendCommands(new[] { "mp_swapteams" });
-        _gameEvents.PublishGameEvent(matchId, "switch", new Dictionary<string, object>());
+        _gameEvents.PublishGameEvent("switch", new Dictionary<string, object>());
     }
 
     public CsTeam? GetWinningTeam()

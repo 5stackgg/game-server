@@ -67,6 +67,6 @@ public class GameServer
             }
         }
 
-        return roundsPlayed;
+        return roundsPlayed + 1;
     }
 }

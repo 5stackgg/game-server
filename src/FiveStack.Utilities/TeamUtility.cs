@@ -48,5 +48,20 @@ namespace FiveStack.Utilities
                     return CsTeam.None;
             }
         }
+
+        public static string CSTeamToString(CsTeam team)
+        {
+            switch (team)
+            {
+                case CsTeam.Spectator:
+                    return "Spectator";
+                case CsTeam.Terrorist:
+                    return "TERRORIST";
+                case CsTeam.CounterTerrorist:
+                    return "CT";
+                default:
+                    return "None";
+            }
+        }
     }
 }

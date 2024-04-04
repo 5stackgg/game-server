@@ -288,7 +288,6 @@ public class GameBackUpRounds
         );
 
         _gameEvents.PublishGameEvent(
-            match.id,
             "restoreRound",
             new Dictionary<string, object>
             {

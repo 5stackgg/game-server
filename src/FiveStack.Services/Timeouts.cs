@@ -198,7 +198,6 @@ public class Timeouts
             );
 
             _gameEvents.PublishGameEvent(
-                matchData.id,
                 "techTimeout",
                 new Dictionary<string, object>
                 {
