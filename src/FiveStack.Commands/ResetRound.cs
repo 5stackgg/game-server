@@ -13,14 +13,7 @@ public partial class FiveStackPlugin
     public void ResetRound(CCSPlayerController? player, CommandInfo command)
     {
         string round = command.ArgByIndex(1);
-        FiveStackMatch? match = _matchService.GetCurrentMatchData();
-
-        if (match == null || round == null)
-        {
-            return;
-        }
-
-        _backUpManagement.LoadRound(match, round);
+        _gameBackupRounds.LoadRound(round);
     }
 
     [ConsoleCommand("css_reset", "Restores to a previous round")]
@@ -28,19 +21,19 @@ public partial class FiveStackPlugin
     {
         // TODO - round can be null, reset to -1 round
         string round = command.ArgByIndex(1);
-        FiveStackMatch? match = _matchService.GetCurrentMatchData();
+        FiveStackMatch? matchData = CurrentMatch()?.GetMatchData();
 
-        if (match == null || round == null)
+        if (matchData == null || round == null)
         {
             return;
         }
 
-        bool isResttingRound = _backUpManagement.IsResttingRound();
+        bool isResttingRound = _gameBackupRounds.IsResttingRound();
         if (player != null && isResttingRound)
         {
             if (
                 player.UserId != null
-                && MatchUtility.GetMemberFromLineup(match, player)?.captain == true
+                && MatchUtility.GetMemberFromLineup(matchData, player)?.captain == true
             )
             {
                 string vote = command.ArgByIndex(1);
@@ -49,16 +42,16 @@ public partial class FiveStackPlugin
                 // mabye just a .y / .n
                 if (vote != null)
                 {
-                    _backUpManagement.VoteFailed();
+                    _gameBackupRounds.VoteFailed();
                     return;
                 }
 
-                _backUpManagement.Vote(match, player);
+                _gameBackupRounds.Vote(player);
             }
 
             return;
         }
 
-        _backUpManagement.RestoreBackupRound(match, round, player);
+        _gameBackupRounds.RestoreBackupRound(round, player);
     }
 }

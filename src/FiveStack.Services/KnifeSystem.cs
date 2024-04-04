@@ -1,29 +1,28 @@
-using System.Text.RegularExpressions;
 using CounterStrikeSharp.API.Modules.Utils;
-using FiveStack.Entities;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
 public class KnifeSystem
 {
-    private FiveStackMatch? _match;
-    private readonly GameEvents _gameEvents;
+    private readonly MatchEvents _gameEvents;
     private readonly GameServer _gameServer;
+    private readonly MatchService _matchService;
     private readonly ILogger<KnifeSystem> _logger;
 
     private CsTeam? _winningTeam;
 
-    public KnifeSystem(ILogger<KnifeSystem> logger, GameServer gameServer, GameEvents gameEvents)
+    public KnifeSystem(
+        ILogger<KnifeSystem> logger,
+        GameServer gameServer,
+        MatchEvents gameEvents,
+        MatchService matchService
+    )
     {
         _logger = logger;
+        _matchService = matchService;
         _gameEvents = gameEvents;
         _gameServer = gameServer;
-    }
-
-    public void Setup(FiveStackMatch match)
-    {
-        _match = match;
     }
 
     public void SetWinningTeam(CsTeam team)
@@ -33,13 +32,14 @@ public class KnifeSystem
 
     public void Switch()
     {
-        if (_match == null)
+        Guid matchId = _matchService.GetCurrentMatch()?.GetMatchData()?.id ?? Guid.Empty;
+        if (matchId == Guid.Empty)
         {
             return;
         }
 
         _gameServer.SendCommands(new[] { "mp_swapteams" });
-        _gameEvents.PublishGameEvent(_match.id, "switch", new Dictionary<string, object>());
+        _gameEvents.PublishGameEvent(matchId, "switch", new Dictionary<string, object>());
     }
 
     public CsTeam? GetWinningTeam()

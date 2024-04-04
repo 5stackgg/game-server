@@ -1,18 +1,16 @@
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Entities;
 using CounterStrikeSharp.API.Modules.Utils;
-using FiveStack.Entities;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
-public class MatchCaptainSystem
+public class CaptainSystem
 {
-    private FiveStackMatch? _match;
-    private readonly GameEvents _gameEvents;
+    private readonly MatchEvents _gameEvents;
     private readonly GameServer _gameServer;
-    private readonly ILogger<MatchCaptainSystem> _logger;
+    private readonly MatchService _matchService;
+    private readonly ILogger<CaptainSystem> _logger;
 
     public Dictionary<CsTeam, CCSPlayerController?> _captains = new Dictionary<
         CsTeam,
@@ -23,41 +21,43 @@ public class MatchCaptainSystem
         { CsTeam.CounterTerrorist, null }
     };
 
-    public MatchCaptainSystem(
-        ILogger<MatchCaptainSystem> logger,
-        GameEvents gameEvents,
-        GameServer gameServer
+    public CaptainSystem(
+        ILogger<CaptainSystem> logger,
+        MatchEvents gameEvents,
+        GameServer gameServer,
+        MatchService matchService
     )
     {
         _logger = logger;
         _gameEvents = gameEvents;
         _gameServer = gameServer;
+        _matchService = matchService;
     }
 
-    public void Setup(FiveStackMatch match)
-    {
-        _match = match;
-    }
-
-    public void AutoSelectCaptains(FiveStackMatch match)
+    public void AutoSelectCaptains()
     {
         if (_captains[CsTeam.Terrorist] == null)
         {
-            AutoSelectCaptain(match, CsTeam.Terrorist);
+            AutoSelectCaptain(CsTeam.Terrorist);
         }
 
         if (_captains[CsTeam.CounterTerrorist] == null)
         {
-            AutoSelectCaptain(match, CsTeam.CounterTerrorist);
+            AutoSelectCaptain(CsTeam.CounterTerrorist);
         }
     }
 
-    public void RemoveTeamCaptain(FiveStackMatch match, CCSPlayerController player, CsTeam team)
+    public void RemoveTeamCaptain(CCSPlayerController player, CsTeam team)
     {
+        Guid matchId = _matchService.GetCurrentMatch()?.GetMatchData()?.id ?? Guid.Empty;
+        if (matchId == Guid.Empty)
+        {
+            return;
+        }
         _captains[team] = null;
 
         _gameEvents.PublishGameEvent(
-            match.id,
+            matchId,
             "captain",
             new Dictionary<string, object>
             {
@@ -95,14 +95,10 @@ public class MatchCaptainSystem
         }
     }
 
-    public void ClaimCaptain(
-        FiveStackMatch match,
-        CsTeam team,
-        CCSPlayerController player,
-        string? message = null
-    )
+    public void ClaimCaptain(CsTeam team, CCSPlayerController player, string? message = null)
     {
-        if (player == null)
+        Guid matchId = _matchService.GetCurrentMatch()?.GetMatchData()?.id ?? Guid.Empty;
+        if (player == null || matchId == Guid.Empty)
         {
             return;
         }
@@ -117,7 +113,7 @@ public class MatchCaptainSystem
         }
 
         _gameEvents.PublishGameEvent(
-            match.id,
+            matchId,
             "captain",
             new Dictionary<string, object>
             {
@@ -145,7 +141,7 @@ public class MatchCaptainSystem
         _captains[CsTeam.CounterTerrorist] = null;
     }
 
-    private void AutoSelectCaptain(FiveStackMatch match, CsTeam team)
+    private void AutoSelectCaptain(CsTeam team)
     {
         List<CCSPlayerController> players = CounterStrikeSharp
             .API.Utilities.GetPlayers()
@@ -162,7 +158,6 @@ public class MatchCaptainSystem
         CCSPlayerController player = players[Random.Shared.Next(players.Count)];
 
         ClaimCaptain(
-            match,
             team,
             player,
             $" {(team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{TeamUtility.TeamNumToString((int)team)}'s {ChatColors.Default}captain was auto selected to be {ChatColors.Red}{player.PlayerName}"

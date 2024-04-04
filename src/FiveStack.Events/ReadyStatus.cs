@@ -10,14 +10,14 @@ namespace FiveStack
         {
             RegisterListener<Listeners.OnTick>(() =>
             {
-                FiveStackMatch? match = _matchService.GetCurrentMatchData();
+                MatchManager? match = CurrentMatch();
 
                 if (match == null)
                 {
                     return;
                 }
 
-                if (!_matchService.IsWarmup() && !_backUpManagement.IsResttingRound())
+                if (!match.IsWarmup() && !_gameBackupRounds.IsResttingRound())
                 {
                     return;
                 }
@@ -30,13 +30,13 @@ namespace FiveStack
 
                     if (player != null && player.UserId != null && player.IsValid && !player.IsBot)
                     {
-                        if (_matchService.IsWarmup())
+                        if (match.IsWarmup())
                         {
-                            _matchService.readySystem?.SetupReadyMessage(player);
+                            match.readySystem.SetupReadyMessage(player);
                             continue;
                         }
 
-                        _backUpManagement.SetupResetMessage(match, player);
+                        _gameBackupRounds.SetupResetMessage(player);
                     }
                 }
             });

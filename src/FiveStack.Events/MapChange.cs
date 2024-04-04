@@ -14,7 +14,7 @@ public partial class FiveStackPlugin
                 await Task.Delay(1000 * 5);
                 Server.NextFrame(() =>
                 {
-                    _matchService.GetMatch();
+                    _matchService.GetMatchFromApi();
                 });
             }
         );

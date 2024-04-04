@@ -7,13 +7,11 @@ namespace FiveStack;
 [MinimumApiVersion(80)]
 public partial class FiveStackPlugin : BasePlugin
 {
-    private readonly MatchService _matchService;
+    private readonly GameDemos _gameDemos;
     private readonly GameServer _gameServer;
-    private readonly BackUpManagement _backUpManagement;
-    private readonly MatchDemos _matchDemos;
-    private readonly MatchTimeoutSystem _matchTimeoutSystem;
-
-    // private readonly GameEvents _gameEvents;
+    private readonly Timeouts _matchTimeouts;
+    private readonly MatchService _matchService;
+    private readonly GameBackUpRounds _gameBackupRounds;
 
     public override string ModuleName => "FiveStack";
     public override string ModuleVersion => "0.0.1";
@@ -21,20 +19,18 @@ public partial class FiveStackPlugin : BasePlugin
     public override string ModuleDescription => "5Stack creates and managements custom matches";
 
     public FiveStackPlugin(
+        GameDemos matchDemos,
         GameServer gameServer,
         MatchService matchService,
-        BackUpManagement backUpManagement,
-        MatchTimeoutSystem matchTimeoutSystem,
-        MatchDemos matchDemos,
-        GameEvents gameEvents
+        Timeouts matchTimeoutSystem,
+        GameBackUpRounds backUpManagement
     )
     {
-        _matchDemos = matchDemos;
-        // _gameEvents = gameEvents;
+        _gameDemos = matchDemos;
         _gameServer = gameServer;
         _matchService = matchService;
-        _backUpManagement = backUpManagement;
-        _matchTimeoutSystem = matchTimeoutSystem;
+        _gameBackupRounds = backUpManagement;
+        _matchTimeouts = matchTimeoutSystem;
     }
 
     public override void Load(bool hotReload)
@@ -44,6 +40,11 @@ public partial class FiveStackPlugin : BasePlugin
         ListenForMapChange();
         ListenForReadyStatus();
 
-        _matchService.GetMatch();
+        _matchService.GetMatchFromApi();
+    }
+
+    public MatchManager? CurrentMatch()
+    {
+        return _matchService.GetCurrentMatch();
     }
 }

@@ -12,23 +12,29 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnReady(CCSPlayerController? player, CommandInfo? command)
     {
-        if (!_matchService.IsWarmup() || player == null)
+        MatchManager? match = CurrentMatch();
+
+        if (player == null || match == null || !match.IsWarmup())
         {
             return;
         }
+
+        // TODO - somethigns missing here
     }
 
     [ConsoleCommand("force_ready", "Forces the match to start")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnForceStart(CCSPlayerController? player, CommandInfo? command)
     {
-        if (!_matchService.IsWarmup())
+        MatchManager? match = CurrentMatch();
+
+        if (match == null || !match.IsKnife())
         {
             return;
         }
 
         _gameServer.Message(HudDestination.Center, $"Game has been forced to start.", player);
 
-        _matchService.UpdateMapStatus(eMapStatus.Knife);
+        match.UpdateMapStatus(eMapStatus.Knife);
     }
 }

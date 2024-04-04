@@ -7,25 +7,35 @@ using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
-public class MatchDemos
+public class GameDemos
 {
     private readonly GameServer _gameServer;
+    private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
-    private readonly ILogger<MatchDemos> _logger;
+    private readonly ILogger<GameDemos> _logger;
 
-    public MatchDemos(
-        ILogger<MatchDemos> logger,
+    public GameDemos(
+        ILogger<GameDemos> logger,
         GameServer gameServer,
+        MatchService matchService,
         EnvironmentService environmentService
     )
     {
         _logger = logger;
         _gameServer = gameServer;
+        _matchService = matchService;
         _environmentService = environmentService;
     }
 
-    public void Start(FiveStackMatch match)
+    public void Start()
     {
+        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (match == null)
+        {
+            return;
+        }
+
         string lockFilePath = GetLockFilePath();
         if (File.Exists(lockFilePath))
         {
@@ -36,12 +46,12 @@ public class MatchDemos
 
         _gameServer.Message(HudDestination.Alert, "Recording Demo");
 
-        Directory.CreateDirectory(GetMatchDemoPath(match));
+        Directory.CreateDirectory(GetMatchDemoPath());
 
         _gameServer.SendCommands(
             new[]
             {
-                $"tv_record /opt/demos/{GetMatchDemoPath(match)}/{MatchUtility.GetSafeMatchPrefix(match)}_{DateTime.Now.ToString("yyyyMMdd-HHmm")}-{Server.MapName}"
+                $"tv_record /opt/demos/{GetMatchDemoPath()}/{MatchUtility.GetSafeMatchPrefix(match)}_{DateTime.Now.ToString("yyyyMMdd-HHmm")}-{Server.MapName}"
             }
         );
     }
@@ -52,22 +62,24 @@ public class MatchDemos
         _gameServer.SendCommands(new[] { "tv_stoprecord" });
     }
 
-    public async Task UploadDemos(FiveStackMatch match)
+    public async Task UploadDemos()
     {
-        string[] files = Directory.GetFiles(GetMatchDemoPath(match), "*");
+        string[] files = Directory.GetFiles(GetMatchDemoPath(), "*");
 
         foreach (string file in files)
         {
-            await UploadDemo(match, file);
+            await UploadDemo(file);
         }
     }
 
-    public async Task UploadDemo(FiveStackMatch match, string filePath)
+    public async Task UploadDemo(string filePath)
     {
+        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+
         string? serverId = _environmentService.GetServerId();
         string? apiPassword = _environmentService.GetServerApiPassword();
 
-        if (serverId == null || apiPassword == null)
+        if (serverId == null || apiPassword == null || match == null)
         {
             return;
         }
@@ -109,8 +121,9 @@ public class MatchDemos
         }
     }
 
-    private string GetMatchDemoPath(FiveStackMatch match)
+    private string GetMatchDemoPath()
     {
+        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
         if (match == null || match.current_match_map_id == null)
         {
             return "/opt/demos";

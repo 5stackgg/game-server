@@ -12,19 +12,21 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnStay(CCSPlayerController? player, CommandInfo? command)
     {
-        if (player == null || !_matchService.IsKnife())
+        MatchManager? match = CurrentMatch();
+
+        if (player == null || match == null || !match.IsKnife())
         {
             return;
         }
 
-        CsTeam? winningTeam = _matchService?.knifeSystem?.GetWinningTeam();
+        CsTeam? winningTeam = match.knifeSystem.GetWinningTeam();
 
         if (winningTeam == null)
         {
             return;
         }
 
-        if (_matchService?.captainSystem?.IsCaptain(player, winningTeam) == false)
+        if (match.captainSystem.IsCaptain(player, winningTeam) == false)
         {
             _gameServer.Message(
                 HudDestination.Chat,
@@ -39,26 +41,28 @@ public partial class FiveStackPlugin
             $"captain picked to {ChatColors.Red}stay {ChatColors.Default}sides"
         );
 
-        _matchService?.UpdateMapStatus(eMapStatus.Live);
+        match.UpdateMapStatus(eMapStatus.Live);
     }
 
     [ConsoleCommand("css_switch", "")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnSwitch(CCSPlayerController? player, CommandInfo? command)
     {
-        if (player == null || !_matchService.IsKnife())
+        MatchManager? match = CurrentMatch();
+
+        if (player == null || match == null || !match.IsKnife())
         {
             return;
         }
 
-        CsTeam? winningTeam = _matchService?.knifeSystem?.GetWinningTeam();
+        CsTeam? winningTeam = match.knifeSystem?.GetWinningTeam();
 
         if (winningTeam == null)
         {
             return;
         }
 
-        if (_matchService?.captainSystem?.IsCaptain(player, winningTeam) == false)
+        if (match.captainSystem.IsCaptain(player, winningTeam) == false)
         {
             _gameServer.Message(
                 HudDestination.Chat,
@@ -73,22 +77,24 @@ public partial class FiveStackPlugin
             $"captain picked to {ChatColors.Red}swap {ChatColors.Default}sides"
         );
 
-        _matchService?.knifeSystem?.Switch();
+        match.knifeSystem?.Switch();
 
-        _matchService?.UpdateMapStatus(eMapStatus.Live);
+        match.UpdateMapStatus(eMapStatus.Live);
     }
 
     [ConsoleCommand("skip_knife", "Skips knife round")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnSkipKnife(CCSPlayerController? player, CommandInfo? command)
     {
-        if (player == null || !_matchService.IsKnife())
+        MatchManager? match = CurrentMatch();
+
+        if (player == null || match == null || !match.IsKnife())
         {
             return;
         }
 
         _gameServer.Message(HudDestination.Center, $"Skipping Knife.", player);
 
-        _matchService.UpdateMapStatus(eMapStatus.Live);
+        match.UpdateMapStatus(eMapStatus.Live);
     }
 }

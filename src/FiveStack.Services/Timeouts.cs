@@ -7,20 +7,20 @@ using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
-public class MatchTimeoutSystem
+public class Timeouts
 {
-    private readonly GameEvents _gameEvents;
+    private readonly MatchEvents _gameEvents;
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
-    private readonly BackUpManagement _backUpManagement;
-    private readonly ILogger<MatchTimeoutSystem> _logger;
+    private readonly GameBackUpRounds _backUpManagement;
+    private readonly ILogger<Timeouts> _logger;
 
-    public MatchTimeoutSystem(
-        ILogger<MatchTimeoutSystem> logger,
-        GameEvents gameEvents,
+    public Timeouts(
+        ILogger<Timeouts> logger,
+        MatchEvents gameEvents,
         GameServer gameServer,
         MatchService matchService,
-        BackUpManagement backUpManagement
+        GameBackUpRounds backUpManagement
     )
     {
         _logger = logger;
@@ -32,9 +32,16 @@ public class MatchTimeoutSystem
 
     public void CallTimeout(CCSPlayerController? player)
     {
-        FiveStackMatch? match = _matchService.GetCurrentMatchData();
+        MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (match == null || _matchService.IsLive() && _backUpManagement.IsResttingRound() == false)
+        if (match == null || match.IsLive() && _backUpManagement.IsResttingRound() == false)
+        {
+            return;
+        }
+
+        FiveStackMatch? matchData = match.GetMatchData();
+
+        if (matchData == null)
         {
             return;
         }
@@ -46,7 +53,7 @@ public class MatchTimeoutSystem
         if (player != null)
         {
             eTimeoutSettings timeoutSetting = TimeoutUtility.TimeoutSettingStringToEnum(
-                match.tech_timeout_setting
+                matchData.tech_timeout_setting
             );
 
             // TODO - coach support
@@ -65,13 +72,20 @@ public class MatchTimeoutSystem
 
         _gameServer.Message(HudDestination.Alert, pauseMessage);
 
-        _matchService.UpdateMapStatus(eMapStatus.Paused);
+        match.UpdateMapStatus(eMapStatus.Paused);
     }
 
     public void Resume(CCSPlayerController? player)
     {
-        FiveStackMatch? match = _matchService.GetCurrentMatchData();
-        if (match == null || _matchService.IsLive() || _backUpManagement.IsResttingRound())
+        MatchManager? match = _matchService.GetCurrentMatch();
+        if (match == null || match.IsLive() || _backUpManagement.IsResttingRound())
+        {
+            return;
+        }
+
+        FiveStackMatch? matchData = match.GetMatchData();
+
+        if (matchData == null)
         {
             return;
         }
@@ -83,7 +97,7 @@ public class MatchTimeoutSystem
         if (player != null)
         {
             eTimeoutSettings timeoutSetting = TimeoutUtility.TimeoutSettingStringToEnum(
-                match.tech_timeout_setting
+                matchData.tech_timeout_setting
             );
 
             // TODO - coach support
@@ -102,21 +116,21 @@ public class MatchTimeoutSystem
 
         _gameServer.Message(HudDestination.Alert, pauseMessage);
 
-        _matchService.UpdateMapStatus(
-            _matchService.isOverTime() ? eMapStatus.Overtime : eMapStatus.Live
-        );
+        match.UpdateMapStatus(match.isOverTime() ? eMapStatus.Overtime : eMapStatus.Live);
     }
 
     public void CallTacTimeout(CCSPlayerController? player)
     {
-        MatchMap? currentMap = _matchService.GetCurrentMap();
-        FiveStackMatch? match = _matchService.GetCurrentMatchData();
+        MatchManager? match = _matchService.GetCurrentMatch();
+        if (match == null || match.IsLive() || _backUpManagement.IsResttingRound())
+        {
+            return;
+        }
 
-        if (
-            match == null
-            || currentMap == null
-            || _matchService.IsLive() && _backUpManagement.IsResttingRound() == false
-        )
+        MatchMap? currentMap = match.GetCurrentMap();
+        FiveStackMatch? matchData = match.GetMatchData();
+
+        if (matchData == null || currentMap == null)
         {
             return;
         }
@@ -124,7 +138,7 @@ public class MatchTimeoutSystem
         if (player != null)
         {
             eTimeoutSettings timeoutSetting = TimeoutUtility.TimeoutSettingStringToEnum(
-                match.tech_timeout_setting
+                matchData.tech_timeout_setting
             );
 
             // TODO - coach support
@@ -138,7 +152,7 @@ public class MatchTimeoutSystem
                 return;
             }
 
-            Guid? lineup_id = MatchUtility.GetPlayerLineup(match, player);
+            Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
 
             if (lineup_id == null)
             {
@@ -147,7 +161,7 @@ public class MatchTimeoutSystem
             }
 
             int timeouts_available =
-                match.lineup_1_id == lineup_id
+                matchData.lineup_1_id == lineup_id
                     ? currentMap.lineup_1_timeouts_available
                     : currentMap.lineup_2_timeouts_available;
 
@@ -161,7 +175,7 @@ public class MatchTimeoutSystem
                 return;
             }
 
-            if (match.lineup_1_id == lineup_id)
+            if (matchData.lineup_1_id == lineup_id)
             {
                 currentMap.lineup_1_timeouts_available--;
             }
@@ -184,7 +198,7 @@ public class MatchTimeoutSystem
             );
 
             _gameEvents.PublishGameEvent(
-                match.id,
+                matchData.id,
                 "techTimeout",
                 new Dictionary<string, object>
                 {
@@ -199,6 +213,6 @@ public class MatchTimeoutSystem
             _gameServer.Message(HudDestination.Alert, "Tech Timeout Called by Admin");
         }
 
-        _matchService.UpdateMapStatus(eMapStatus.TechTimeout);
+        match.UpdateMapStatus(eMapStatus.TechTimeout);
     }
 }

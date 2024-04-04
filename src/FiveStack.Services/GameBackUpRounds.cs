@@ -9,37 +9,47 @@ using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
-public class BackUpManagement
+public class GameBackUpRounds
 {
     private string? _resetRound;
     private Dictionary<ulong, bool> _restoreRoundVote = new Dictionary<ulong, bool>();
 
-    private readonly GameEvents _gameEvents;
+    private readonly MatchEvents _gameEvents;
     private readonly GameServer _gameServer;
+    private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
-    private readonly ILogger<BackUpManagement> _logger;
+    private readonly ILogger<GameBackUpRounds> _logger;
 
-    public BackUpManagement(
-        ILogger<BackUpManagement> logger,
-        GameEvents gameEvents,
+    public GameBackUpRounds(
+        ILogger<GameBackUpRounds> logger,
+        MatchEvents gameEvents,
         GameServer gameServer,
+        MatchService matchService,
         EnvironmentService environmentService
     )
     {
         _logger = logger;
         _gameEvents = gameEvents;
         _gameServer = gameServer;
+        _matchService = matchService;
         _environmentService = environmentService;
     }
 
-    public void Setup(FiveStackMatch fiveStackMatch)
+    public void Setup()
     {
+        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (match == null)
+        {
+            return;
+        }
+
         _gameServer.SendCommands(
             new[]
             {
-                $"mp_maxrounds {fiveStackMatch.mr * 2}",
-                $"mp_overtime_enable {fiveStackMatch.overtime}",
-                $"mp_backup_round_file {MatchUtility.GetSafeMatchPrefix(fiveStackMatch)}",
+                $"mp_maxrounds {match.mr * 2}",
+                $"mp_overtime_enable {match.overtime}",
+                $"mp_backup_round_file {MatchUtility.GetSafeMatchPrefix(match)}",
             }
         );
     }
@@ -49,13 +59,20 @@ public class BackUpManagement
         return _resetRound != null;
     }
 
-    public bool CheckForBackupRestore(FiveStackMatch fiveStackMatch)
+    public bool CheckForBackupRestore()
     {
+        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (match == null)
+        {
+            return false;
+        }
+
         string directoryPath = Path.Join(Server.GameDirectory + "/csgo/");
 
         string[] files = Directory.GetFiles(
             directoryPath,
-            MatchUtility.GetSafeMatchPrefix(fiveStackMatch) + "*"
+            MatchUtility.GetSafeMatchPrefix(match) + "*"
         );
 
         Regex regex = new Regex(@"(\d+)(?!.*\d)");
@@ -64,12 +81,12 @@ public class BackUpManagement
 
         foreach (string file in files)
         {
-            Match match = regex.Match(Path.GetFileNameWithoutExtension(file));
+            Match isMatched = regex.Match(Path.GetFileNameWithoutExtension(file));
 
-            if (match.Success)
+            if (isMatched.Success)
             {
                 int number;
-                if (int.TryParse(match.Value, out number))
+                if (int.TryParse(isMatched.Value, out number))
                 {
                     highestNumber = Math.Max(highestNumber, number);
                 }
@@ -93,16 +110,18 @@ public class BackUpManagement
         if (highestNumber > currentRound)
         {
             _logger.LogInformation("Server restarted, requires a vote to restore round");
-            RestoreBackupRound(fiveStackMatch, highestNumber.ToString());
+            RestoreBackupRound(highestNumber.ToString());
             return true;
         }
 
         return false;
     }
 
-    public void SetupResetMessage(FiveStackMatch match, CCSPlayerController player)
+    public void SetupResetMessage(CCSPlayerController player)
     {
-        if (player.UserId == null)
+        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (match == null || player.UserId == null)
         {
             return;
         }
@@ -124,14 +143,17 @@ public class BackUpManagement
         player.PrintToCenter($"Type .reset reset the round to round {_resetRound}");
     }
 
-    public bool RestoreBackupRound(
-        FiveStackMatch fiveStackMatch,
-        string round,
-        CCSPlayerController? player = null
-    )
+    public bool RestoreBackupRound(string round, CCSPlayerController? player = null)
     {
+        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (match == null)
+        {
+            return false;
+        }
+
         string backupRoundFile =
-            $"{MatchUtility.GetSafeMatchPrefix(fiveStackMatch)}_round{round.PadLeft(2, '0')}.txt";
+            $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.PadLeft(2, '0')}.txt";
 
         if (!File.Exists(Path.Join(Server.GameDirectory + "/csgo/", backupRoundFile)))
         {
@@ -155,23 +177,22 @@ public class BackUpManagement
             return true;
         }
 
-        LoadRound(fiveStackMatch, round);
+        LoadRound(round);
 
         return true;
     }
 
-    public void Vote(FiveStackMatch match, CCSPlayerController player)
+    public void Vote(CCSPlayerController player)
     {
         if (_resetRound == null)
         {
             return;
         }
-
         _restoreRoundVote[player.SteamID] = true;
 
         if (_restoreRoundVote.Count(pair => pair.Value) == 2)
         {
-            LoadRound(match, _resetRound);
+            LoadRound(_resetRound);
         }
     }
 
@@ -184,8 +205,14 @@ public class BackUpManagement
         ResetRestoreBackupRound();
     }
 
-    public async Task UploadBackupRound(FiveStackMatch match, string round)
+    public async Task UploadBackupRound(string round)
     {
+        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        if (match == null)
+        {
+            return;
+        }
+
         string? serverId = _environmentService.GetServerId();
         string? apiPassword = _environmentService.GetServerApiPassword();
 
@@ -240,9 +267,11 @@ public class BackUpManagement
         }
     }
 
-    public void LoadRound(FiveStackMatch match, string round)
+    public void LoadRound(string round)
     {
-        if (match.current_match_map_id == null)
+        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (match?.current_match_map_id == null)
         {
             _logger.LogWarning("unable to load road because we dont have the current map");
             return;

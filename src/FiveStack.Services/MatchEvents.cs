@@ -1,19 +1,26 @@
+using FiveStack.Enums;
 using Microsoft.Extensions.Logging;
 
 // using StackExchange.Redis;
 
 namespace FiveStack;
 
-public class GameEvents
+public class MatchEvents
 {
     // private IDatabase? _pubsub;
+    private readonly ILogger<MatchEvents> _logger;
+    private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
-    private readonly ILogger<GameEvents> _logger;
 
-    public GameEvents(ILogger<GameEvents> logger, EnvironmentService environmentService)
+    public MatchEvents(
+        ILogger<MatchEvents> logger,
+        EnvironmentService environmentService,
+        MatchService matchService
+    )
     {
         //    _pubsub = null;
         _logger = logger;
+        _matchService = matchService;
         _environmentService = environmentService;
     }
 
@@ -21,6 +28,22 @@ public class GameEvents
     {
         public string @event { get; set; } = "";
         public T? data { get; set; }
+    }
+
+    public void PublishMapStatus(eMapStatus status)
+    {
+        Guid matchId = _matchService.GetCurrentMatch()?.GetMatchData()?.id ?? Guid.Empty;
+        if (matchId == Guid.Empty)
+        {
+            _logger.LogWarning("match data missing");
+            return;
+        }
+
+        PublishGameEvent(
+            matchId,
+            "mapStatus",
+            new Dictionary<string, object> { { "status", status.ToString() }, }
+        );
     }
 
     public void PublishGameEvent(Guid matchId, string Event, Dictionary<string, object> Data)
@@ -32,7 +55,7 @@ public class GameEvents
 
         Publish(
             $"matches:{matchId}",
-            new GameEvents.EventData<Dictionary<string, object>> { @event = Event, data = Data }
+            new MatchEvents.EventData<Dictionary<string, object>> { @event = Event, data = Data }
         );
     }
 

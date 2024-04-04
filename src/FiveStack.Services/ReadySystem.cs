@@ -2,27 +2,28 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
+using FiveStack.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
-public class MatchReadySystem
+public class ReadySystem
 {
-    private FiveStackMatch? _match;
     private readonly GameServer _gameServer;
-    private readonly ILogger<MatchReadySystem> _logger;
+    private readonly MatchService _matchService;
+    private readonly ILogger<ReadySystem> _logger;
 
     private Dictionary<int, bool> _readyPlayers = new Dictionary<int, bool>();
 
-    public MatchReadySystem(ILogger<MatchReadySystem> logger, GameServer gameServer)
+    public ReadySystem(
+        ILogger<ReadySystem> logger,
+        GameServer gameServer,
+        MatchService matchService
+    )
     {
         _logger = logger;
         _gameServer = gameServer;
-    }
-
-    public void Setup(FiveStackMatch match)
-    {
-        _match = match;
+        _matchService = matchService;
     }
 
     public void ToggleReady(CCSPlayerController player)
@@ -41,8 +42,7 @@ public class MatchReadySystem
     {
         if (TotalReady() == GetExpectedPlayerCount())
         {
-            // TODO - not sure how to trigger this without really bad DI loop
-            // UpdateMapStatus(eMapStatus.Knife);
+            _matchService.GetCurrentMatch()?.UpdateMapStatus(eMapStatus.Knife);
         }
 
         SendReadyMessage(player);
@@ -76,7 +76,14 @@ public class MatchReadySystem
 
     private int GetExpectedPlayerCount()
     {
-        return _match?.type == "Wingman" ? 4 : 10;
+        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (match == null)
+        {
+            return 10;
+        }
+
+        return match.type == "Wingman" ? 4 : 10;
     }
 
     private void ResetReadyPlayers()

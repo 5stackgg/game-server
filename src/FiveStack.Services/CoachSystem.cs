@@ -4,9 +4,9 @@ using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
-public class MatchCoachSystem
+public class CoachSystem
 {
-    private readonly ILogger<MatchCoachSystem> _logger;
+    private readonly ILogger<CoachSystem> _logger;
 
     private Dictionary<CsTeam, CCSPlayerController?> _coaches = new Dictionary<
         CsTeam,
@@ -17,7 +17,7 @@ public class MatchCoachSystem
         { CsTeam.CounterTerrorist, null }
     };
 
-    public MatchCoachSystem(ILogger<MatchCoachSystem> logger)
+    public CoachSystem(ILogger<CoachSystem> logger)
     {
         _logger = logger;
     }
