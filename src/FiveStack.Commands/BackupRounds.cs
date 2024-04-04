@@ -23,32 +23,10 @@ public partial class FiveStackPlugin
         string round = command.ArgByIndex(1);
         FiveStackMatch? matchData = CurrentMatch()?.GetMatchData();
 
-        if (matchData == null || round == null)
-        {
-            return;
-        }
-
         bool isResttingRound = _gameBackupRounds.IsResttingRound();
         if (player != null && isResttingRound)
         {
-            if (
-                player.UserId != null
-                && MatchUtility.GetMemberFromLineup(matchData, player)?.captain == true
-            )
-            {
-                string vote = command.ArgByIndex(1);
-
-                // TODO - different command to progress failure?
-                // mabye just a .y / .n
-                if (vote != null)
-                {
-                    _gameBackupRounds.VoteFailed();
-                    return;
-                }
-
-                _gameBackupRounds.Vote(player);
-            }
-
+            _gameBackupRounds.CastVote(player, command.ArgByIndex(1));
             return;
         }
 

@@ -143,6 +143,39 @@ public class GameBackUpRounds
         player.PrintToCenter($"Type .reset reset the round to round {_resetRound}");
     }
 
+    public void CastVote(CCSPlayerController player, string? vote)
+    {
+        if (_resetRound == null)
+        {
+            return;
+        }
+
+        FiveStackMatch? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (matchData == null)
+        {
+            return;
+        }
+
+        if (MatchUtility.GetMemberFromLineup(matchData, player)?.captain == true)
+        {
+            // TODO - different command to progress failure?
+            // mabye just a .y / .n
+            if (vote != null)
+            {
+                VoteFailed();
+                return;
+            }
+
+            _restoreRoundVote[player.SteamID] = true;
+
+            if (_restoreRoundVote.Count(pair => pair.Value) == 2)
+            {
+                LoadRound(_resetRound);
+            }
+        }
+    }
+
     public bool RestoreBackupRound(string round, CCSPlayerController? player = null)
     {
         FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
@@ -180,20 +213,6 @@ public class GameBackUpRounds
         LoadRound(round);
 
         return true;
-    }
-
-    public void Vote(CCSPlayerController player)
-    {
-        if (_resetRound == null)
-        {
-            return;
-        }
-        _restoreRoundVote[player.SteamID] = true;
-
-        if (_restoreRoundVote.Count(pair => pair.Value) == 2)
-        {
-            LoadRound(_resetRound);
-        }
     }
 
     public void VoteFailed()
