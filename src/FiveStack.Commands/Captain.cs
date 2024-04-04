@@ -2,7 +2,8 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
-using FiveStack.enums;
+using FiveStack.Entities;
+using FiveStack.Utilities;
 
 namespace FiveStack;
 
@@ -12,119 +13,49 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnCaptain(CCSPlayerController? player, CommandInfo? command)
     {
-        if (
-            player == null
-            || _currentMap == null
-            || (
-                MapStatusStringToEnum(_currentMap.status) != eMapStatus.Warmup
-                && MapStatusStringToEnum(_currentMap.status) != eMapStatus.Knife
-            )
-        )
+        if (player == null || (_matchService.IsWarmup()))
         {
             return;
         }
 
-        CsTeam team = TeamNumToCSTeam(player.TeamNum);
+        CsTeam team = TeamUtility.TeamStringToCsTeam(player.TeamNum.ToString());
 
         if (team == CsTeam.None || team == CsTeam.Spectator)
         {
             return;
         }
 
+        FiveStackMatch match = _matchService.GetMatchData()!;
+
         // autoclaim captain
-        if (_captains[team] == null)
+        if (_matchService?.captainSystem?.TeamHasCaptain(team) == false)
         {
-            ClaimCaptain(team, player);
+            _matchService.captainSystem?.ClaimCaptain(match, team, player);
         }
 
-        ShowCaptains();
+        _matchService?.captainSystem?.ShowCaptains();
     }
 
     [ConsoleCommand("css_release-captain", "Release Captain Spot")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnReleaseCaptain(CCSPlayerController? player, CommandInfo? command)
     {
-        if (
-            player == null
-            || _matchData == null
-            || _currentMap == null
-            || (
-                MapStatusStringToEnum(_currentMap.status) != eMapStatus.Warmup
-                && MapStatusStringToEnum(_currentMap.status) != eMapStatus.Knife
-            )
-        )
+        if (player == null || (_matchService.IsWarmup()))
         {
             return;
         }
 
-        CsTeam team = TeamNumToCSTeam(player.TeamNum);
+        CsTeam team = TeamUtility.TeamStringToCsTeam(player.TeamNum.ToString());
 
         if (team == CsTeam.None || team == CsTeam.Spectator)
         {
             return;
         }
 
-        _captains[team] = null;
+        FiveStackMatch match = _matchService.GetMatchData()!;
 
-        ShowCaptains();
+        _matchService?.captainSystem?.RemoveTeamCaptain(match, player, team);
 
-        PublishGameEvent(
-            "captain",
-            new Dictionary<string, object>
-            {
-                { "claim", false },
-                { "steam_id", player.SteamID.ToString() },
-                { "player_name", player.PlayerName }
-            }
-        );
-    }
-
-    private void ShowCaptains()
-    {
-        foreach (var pair in _captains)
-        {
-            CsTeam? team = pair.Key;
-
-            if (pair.Value == null)
-            {
-                Message(
-                    HudDestination.Notify,
-                    $"[{TeamNumToString((int)team)}] {ChatColors.Green}.captain to claim"
-                );
-                return;
-            }
-
-            Message(
-                HudDestination.Notify,
-                $"[{TeamNumToString((int)team)} Captain] {(team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{pair.Value.PlayerName}"
-            );
-        }
-    }
-
-    private void ClaimCaptain(CsTeam team, CCSPlayerController player, string? message = null)
-    {
-        if (player == null || _matchData == null)
-        {
-            return;
-        }
-
-        _captains[team] = player;
-        if (message == null)
-        {
-            Message(
-                HudDestination.Alert,
-                $"{player.PlayerName} was assigned captain for the {TeamNumToString((int)team)}"
-            );
-        }
-
-        PublishGameEvent(
-            "captain",
-            new Dictionary<string, object>
-            {
-                { "claim", true },
-                { "steam_id", player.SteamID.ToString() },
-                { "player_name", player.PlayerName }
-            }
-        );
+        _matchService?.captainSystem?.ShowCaptains();
     }
 }

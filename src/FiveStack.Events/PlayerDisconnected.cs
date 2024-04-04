@@ -1,33 +1,33 @@
-using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Core.Attributes.Registration;
-using CounterStrikeSharp.API.Modules.Utils;
-using FiveStack.enums;
+// using CounterStrikeSharp.API.Core;
+// using CounterStrikeSharp.API.Core.Attributes.Registration;
+// using CounterStrikeSharp.API.Modules.Utils;
+// using FiveStack.enums;
 
-namespace FiveStack;
+// namespace FiveStack;
 
-public partial class FiveStackPlugin
-{
-    [GameEventHandler]
-    public HookResult OnPlayerDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
-    {
-        if (@event.Userid == null || !@event.Userid.IsValid || @event.Userid.IsBot)
-        {
-            return HookResult.Continue;
-        }
+// public partial class FiveStackPlugin
+// {
+//     [GameEventHandler]
+//     public HookResult OnPlayerDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
+//     {
+//         if (@event.Userid == null || !@event.Userid.IsValid || @event.Userid.IsBot)
+//         {
+//             return HookResult.Continue;
+//         }
 
-        if (IsWarmup() || IsKnife())
-        {
-            CsTeam team = TeamNumToCSTeam(@event.Userid.TeamNum);
+//         if (IsWarmup() || IsKnife())
+//         {
+//             CsTeam team = TeamNumToCSTeam(@event.Userid.TeamNum);
 
-            _captains[team] = null;
-        }
+//             _captains[team] = null;
+//         }
 
-        if (IsLive())
-        {
-            SendCommands(new[] { "mp_pause_match" });
-            Message(HudDestination.Center, $" {ChatColors.Red}Match Paused");
-        }
+//         if (IsLive())
+//         {
+//             SendCommands(new[] { "mp_pause_match" });
+//             Message(HudDestination.Center, $" {ChatColors.Red}Match Paused");
+//         }
 
-        return HookResult.Continue;
-    }
-}
+//         return HookResult.Continue;
+//     }
+// }

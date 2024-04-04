@@ -1,7 +1,8 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
-using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.Entities;
+using FiveStack.Utilities;
 
 namespace FiveStack;
 
@@ -12,76 +13,52 @@ public partial class FiveStackPlugin
     public void ResetRound(CCSPlayerController? player, CommandInfo command)
     {
         string round = command.ArgByIndex(1);
+        FiveStackMatch? match = _matchService.GetMatchData();
 
-        if (round == null)
+        if (match == null || round == null)
         {
             return;
         }
 
-        string backupRoundFile = $"{GetSafeMatchPrefix()}_round{round.PadLeft(2, '0')}.txt";
-
-        SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFile}" });
-
-        Message(
-            HudDestination.Alert,
-            $" {ChatColors.Red}Round {round} has been restored (.resume to continue)"
-        );
-        ResetRestoreBackupRound();
+        _backUpManagement.LoadRound(match, round);
     }
 
     [ConsoleCommand("css_reset", "Restores to a previous round")]
     public void RestoreRound(CCSPlayerController? player, CommandInfo command)
     {
-        if (_matchData == null)
+        // TODO - round can be null, reset to -1 round
+        string round = command.ArgByIndex(1);
+        FiveStackMatch? match = _matchService.GetMatchData();
+
+        if (match == null || round == null)
         {
             return;
         }
 
-        if (player != null && _resetRound != null)
+        bool isResttingRound = _backUpManagement.IsResttingRound();
+        if (player != null && isResttingRound)
         {
-            if (player.UserId != null && GetMemberFromLineup(player)?.captain == true)
+            if (
+                player.UserId != null
+                && MatchUtility.GetMemberFromLineup(match, player)?.captain == true
+            )
             {
                 string vote = command.ArgByIndex(1);
 
+                // TODO - different command to progress failure?
+                // mabye just a .y / .n
                 if (vote != null)
                 {
-                    ResetRestoreBackupRound();
-
-                    Message(
-                        HudDestination.Alert,
-                        $" {ChatColors.Red}Captain denied request to reset round to {_resetRound}"
-                    );
-
+                    _backUpManagement.VoteFailed();
                     return;
                 }
 
-                _restoreRoundVote[player.UserId.Value] = true;
-            }
-
-            if (_restoreRoundVote.Count(pair => pair.Value) == 2)
-            {
-                LoadRound(_resetRound);
+                _backUpManagement.Vote(match, player);
             }
 
             return;
         }
 
-        string round = command.ArgByIndex(1);
-
-        if (round == null)
-        {
-            return;
-        }
-
-        if (RestoreBackupRound(round, player != null) == false)
-        {
-            command.ReplyToCommand($"Unable to restore round, missing file");
-            return;
-        }
-
-        if (player != null && player.UserId != null && GetMemberFromLineup(player)?.captain == true)
-        {
-            _restoreRoundVote[player.UserId.Value] = true;
-        }
+        _backUpManagement.RestoreBackupRound(match, round, player);
     }
 }

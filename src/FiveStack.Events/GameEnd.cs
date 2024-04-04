@@ -1,7 +1,8 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
-using FiveStack.enums;
+using FiveStack.Entities;
+using FiveStack.Enums;
 
 namespace FiveStack;
 
@@ -10,12 +11,18 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnGameEnd(EventCsWinPanelMatch @event, GameEventInfo info)
     {
-        StopDemoRecording();
+        _matchDemos.StopDemoRecording();
+
+        FiveStackMatch? match = _matchService.GetMatchData();
+        if (match == null)
+        {
+            return HookResult.Continue;
+        }
 
         Server.NextFrame(async () =>
         {
-            await UploadDemos();
-            UpdateMapStatus(eMapStatus.Finished);
+            await _matchDemos.UploadDemos(match);
+            _matchService.UpdateMapStatus(eMapStatus.Finished);
         });
 
         return HookResult.Continue;

@@ -2,13 +2,14 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.Entities;
+using FiveStack.Utilities;
 
 namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
     [ConsoleCommand("css_help", "Shows Available Commands")]
-    [ConsoleCommand("css_5stack", "Shows Available Commands")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnHelp(CCSPlayerController? player, CommandInfo command)
     {
@@ -38,24 +39,24 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnRules(CCSPlayerController? player, CommandInfo command)
     {
-        if (player == null || _matchData == null)
+        FiveStackMatch? match = _matchService.GetMatchData();
+        if (player == null || match == null)
         {
             return;
         }
 
         command.ReplyToCommand($"  Rules: ");
-        string matchDetails =
-            $"{_matchData.type} (MR:{_matchData.mr}), Best of {_matchData.best_of}";
+        string matchDetails = $"{match.type} (MR:{match.mr}), Best of {match.best_of}";
 
         bool hasDetails = false; // Flag to track if any details were added
 
-        if (_matchData.overtime)
+        if (match.overtime)
         {
             hasDetails = true;
             matchDetails += $" with Overtime";
         }
 
-        if (_matchData.knife_round)
+        if (match.knife_round)
         {
             matchDetails += $"{(hasDetails ? " with" : " and")} knife round";
         }
@@ -65,16 +66,16 @@ public partial class FiveStackPlugin
         hasDetails = false;
         string additionalDetails = "";
 
-        if (_matchData.coaches)
+        if (match.coaches)
         {
             hasDetails = true;
             additionalDetails += $"Coach Support";
         }
 
-        if (_matchData.number_of_substitutes > 0)
+        if (match.number_of_substitutes > 0)
         {
             additionalDetails +=
-                $"{(hasDetails ? " with" : " and")} Maximum Number of Substitutes: {_matchData.number_of_substitutes}";
+                $"{(hasDetails ? " with" : " and")} Maximum Number of Substitutes: {match.number_of_substitutes}";
         }
 
         if (additionalDetails != "")
@@ -83,10 +84,10 @@ public partial class FiveStackPlugin
         }
 
         command.ReplyToCommand(
-            $"Allow Timeouts {ConvertCamelToHumanReadable(_matchData.timeout_setting)}"
+            $"Allow Timeouts {StringUtility.ConvertCamelToHumanReadable(match.timeout_setting)}"
         );
         command.ReplyToCommand(
-            $"Tech Timeouts {ConvertCamelToHumanReadable(_matchData.tech_timeout_setting)}"
+            $"Tech Timeouts {StringUtility.ConvertCamelToHumanReadable(match.tech_timeout_setting)}"
         );
     }
 }
