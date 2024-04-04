@@ -11,6 +11,7 @@ kill_dotnet_watch() {
     exit
   fi
 }
+dotnet build src
 
 dotnet watch build --project src &
 dotnet_watch_pid=$!
@@ -21,9 +22,7 @@ trap kill_dotnet_watch EXIT
 directory_to_watch="/opt/5stack/src/bin/Debug/net8.0"
 
 while true; do
-  inotifywait -r -e modify,create,delete,move "$directory_to_watch"
-
   rm "$directory_to_watch/CounterStrikeSharp.API.dll"
-
-  cp "$directory_to_watch"/* "/opt/dev"
+  inotifywait -r -e modify,create,delete,move "$directory_to_watch"
+  cp -r "$directory_to_watch"/* "/opt/dev"
 done

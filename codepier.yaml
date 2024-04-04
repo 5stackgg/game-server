@@ -6,7 +6,7 @@ supplemental: true
 sync:
   - .:/opt/5stack
 ignore:
-  - "src/bin"
-  - "src/obj"
+  - "src/bin/"
+  - "src/obj/"
   - "Folder.DotSettings.user"
   - "src/src.sln"
