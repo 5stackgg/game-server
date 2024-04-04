@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes;
 using CounterStrikeSharp.API.Modules.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -9,10 +10,11 @@ public partial class FiveStackPlugin : BasePlugin
 {
     private readonly GameDemos _gameDemos;
     private readonly GameServer _gameServer;
-    private readonly MatchEvents _matchEvents;
     private readonly Timeouts _matchTimeouts;
+    private readonly MatchEvents _matchEvents;
     private readonly MatchService _matchService;
     private readonly GameBackUpRounds _gameBackupRounds;
+    private readonly ILogger<FiveStackPlugin> _logger;
 
     public override string ModuleName => "FiveStack";
     public override string ModuleVersion => "0.0.1";
@@ -25,15 +27,17 @@ public partial class FiveStackPlugin : BasePlugin
         MatchEvents matchEvents,
         MatchService matchService,
         Timeouts matchTimeoutSystem,
-        GameBackUpRounds backUpManagement
+        GameBackUpRounds backUpManagement,
+        ILogger<FiveStackPlugin> logger
     )
     {
+        _logger = logger;
         _gameDemos = matchDemos;
         _gameServer = gameServer;
         _matchEvents = matchEvents;
         _matchService = matchService;
-        _gameBackupRounds = backUpManagement;
         _matchTimeouts = matchTimeoutSystem;
+        _gameBackupRounds = backUpManagement;
     }
 
     public override void Load(bool hotReload)
