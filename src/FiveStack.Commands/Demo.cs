@@ -8,7 +8,7 @@ public partial class FiveStackPlugin
 {
     [ConsoleCommand("upload_demos", "upload demos")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
-    public async void upload_demos(CCSPlayerController? player, CommandInfo command)
+    public async void OnUploadDemo(CCSPlayerController? player, CommandInfo command)
     {
         await _gameDemos.UploadDemos();
     }

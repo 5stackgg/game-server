@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -51,10 +52,76 @@ public class KnifeSystem
         );
     }
 
-    public void Switch()
+    public void Stay(CCSPlayerController player)
     {
+        CsTeam? winningTeam = GetWinningTeam();
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (match == null || winningTeam == null || !match.IsKnife())
+        {
+            return;
+        }
+
+        if (match.captainSystem.IsCaptain(player, winningTeam) == false)
+        {
+            _gameServer.Message(
+                HudDestination.Chat,
+                $" {ChatColors.Red}You are not the captain!",
+                player
+            );
+            return;
+        }
+
+        _gameServer.Message(
+            HudDestination.Alert,
+            $"captain picked to {ChatColors.Red}stay {ChatColors.Default}sides"
+        );
+
+        match.UpdateMapStatus(eMapStatus.Live);
+    }
+
+    public void Switch(CCSPlayerController player)
+    {
+        CsTeam? winningTeam = GetWinningTeam();
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (match == null || winningTeam == null || !match.IsKnife())
+        {
+            return;
+        }
+
+        if (match.captainSystem.IsCaptain(player, winningTeam) == false)
+        {
+            _gameServer.Message(
+                HudDestination.Chat,
+                $" {ChatColors.Red}You are not the captain!",
+                player
+            );
+            return;
+        }
+
+        _gameServer.Message(
+            HudDestination.Alert,
+            $"captain picked to {ChatColors.Red}swap {ChatColors.Default}sides"
+        );
+
         _gameServer.SendCommands(new[] { "mp_swapteams" });
         _matchEvents.PublishGameEvent("switch", new Dictionary<string, object>());
+        match.UpdateMapStatus(eMapStatus.Live);
+    }
+
+    public void Skip()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (match == null || !match.IsKnife())
+        {
+            return;
+        }
+
+        _gameServer.Message(HudDestination.Center, $"Skipping Knife.");
+
+        match.UpdateMapStatus(eMapStatus.Live);
     }
 
     public CsTeam? GetWinningTeam()

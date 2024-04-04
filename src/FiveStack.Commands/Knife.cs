@@ -1,8 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
-using CounterStrikeSharp.API.Modules.Utils;
-using FiveStack.Enums;
 
 namespace FiveStack;
 
@@ -19,29 +17,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        CsTeam? winningTeam = match.knifeSystem.GetWinningTeam();
-
-        if (winningTeam == null)
-        {
-            return;
-        }
-
-        if (match.captainSystem.IsCaptain(player, winningTeam) == false)
-        {
-            _gameServer.Message(
-                HudDestination.Chat,
-                $" {ChatColors.Red}You are not the captain!",
-                player
-            );
-            return;
-        }
-
-        _gameServer.Message(
-            HudDestination.Alert,
-            $"captain picked to {ChatColors.Red}stay {ChatColors.Default}sides"
-        );
-
-        match.UpdateMapStatus(eMapStatus.Live);
+        match.knifeSystem.Stay(player);
     }
 
     [ConsoleCommand("css_switch", "")]
@@ -55,31 +31,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        CsTeam? winningTeam = match.knifeSystem?.GetWinningTeam();
-
-        if (winningTeam == null)
-        {
-            return;
-        }
-
-        if (match.captainSystem.IsCaptain(player, winningTeam) == false)
-        {
-            _gameServer.Message(
-                HudDestination.Chat,
-                $" {ChatColors.Red}You are not the captain!",
-                player
-            );
-            return;
-        }
-
-        _gameServer.Message(
-            HudDestination.Alert,
-            $"captain picked to {ChatColors.Red}swap {ChatColors.Default}sides"
-        );
-
-        match.knifeSystem?.Switch();
-
-        match.UpdateMapStatus(eMapStatus.Live);
+        match.knifeSystem.Switch(player);
     }
 
     [ConsoleCommand("skip_knife", "Skips knife round")]
@@ -93,8 +45,6 @@ public partial class FiveStackPlugin
             return;
         }
 
-        _gameServer.Message(HudDestination.Center, $"Skipping Knife.", player);
-
-        match.UpdateMapStatus(eMapStatus.Live);
+        match.knifeSystem.Skip();
     }
 }

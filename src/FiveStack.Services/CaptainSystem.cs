@@ -111,7 +111,13 @@ public class CaptainSystem
         CsTeam team = TeamUtility.TeamStringToCsTeam(player.TeamNum.ToString());
         MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (team == CsTeam.None || team == CsTeam.Spectator || match == null || !match.IsWarmup())
+        if (
+            team == CsTeam.None
+            || team == CsTeam.Spectator
+            || match == null
+            || !match.IsWarmup()
+            || !match.IsKnife()
+        )
         {
             return;
         }

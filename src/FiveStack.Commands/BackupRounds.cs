@@ -8,7 +8,7 @@ public partial class FiveStackPlugin
 {
     [ConsoleCommand("restore_round", "Restores to a previous round")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
-    public void ResetRound(CCSPlayerController? player, CommandInfo command)
+    public void OnResetRound(CCSPlayerController? player, CommandInfo command)
     {
         string round = command.ArgByIndex(1);
 
@@ -21,7 +21,7 @@ public partial class FiveStackPlugin
     }
 
     [ConsoleCommand("css_reset", "Restores to a previous round")]
-    public void RestoreRound(CCSPlayerController? player, CommandInfo command)
+    public void OnRestoreRound(CCSPlayerController? player, CommandInfo command)
     {
         string round = command.ArgByIndex(1);
 
@@ -43,7 +43,7 @@ public partial class FiveStackPlugin
 
     [ConsoleCommand("upload_backup_round", "upload backup round")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
-    public async void upload_backup_round(CCSPlayerController? player, CommandInfo command)
+    public async void OnUploadBackupRound(CCSPlayerController? player, CommandInfo command)
     {
         string round = command.ArgByIndex(1);
 
