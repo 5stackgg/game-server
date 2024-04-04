@@ -85,7 +85,7 @@ public class GameDemos
         }
 
         string endpoint =
-            $"https://api.5stack.gg/server/{serverId}/match/{match.id}/{match.current_match_map_id}/demo";
+            $"{_environmentService.GetBaseUri()}/server/{serverId}/match/{match.id}/{match.current_match_map_id}/demo";
 
         _logger.LogInformation($"Uploading Demo {endpoint}");
 

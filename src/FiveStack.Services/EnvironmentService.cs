@@ -18,6 +18,7 @@ public class EnvironmentService
 
     public string GetBaseUri()
     {
+        // TODO - env variable
         return "https://api.5stack.gg";
     }
 

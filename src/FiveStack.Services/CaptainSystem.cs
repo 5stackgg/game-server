@@ -62,9 +62,9 @@ public class CaptainSystem
         );
     }
 
-    public bool TeamHasCaptain(CsTeam team)
+    public CCSPlayerController? GetTeamCaptain(CsTeam team)
     {
-        return _captains[team] == null;
+        return _captains[team];
     }
 
     public void ShowCaptains()

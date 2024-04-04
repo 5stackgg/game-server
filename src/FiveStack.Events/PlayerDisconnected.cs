@@ -28,8 +28,7 @@ public partial class FiveStackPlugin
         if (match.IsWarmup() || match.IsKnife())
         {
             CsTeam team = TeamUtility.TeamNumToCSTeam(@event.Userid.TeamNum);
-            // TODO - captain reset
-            // _captains[team] = null;
+            match.captainSystem.RemoveTeamCaptain(@event.Userid, team);
         }
 
         if (match.IsLive())

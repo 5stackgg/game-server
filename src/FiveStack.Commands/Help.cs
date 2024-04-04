@@ -48,7 +48,7 @@ public partial class FiveStackPlugin
         command.ReplyToCommand($"  Rules: ");
         string matchDetails = $"{match.type} (MR:{match.mr}), Best of {match.best_of}";
 
-        bool hasDetails = false; // Flag to track if any details were added
+        bool hasDetails = false;
 
         if (match.overtime)
         {

@@ -98,7 +98,7 @@ public class MatchManager
         return GetOverTimeNumber() > 0;
     }
 
-    private int GetOverTimeNumber()
+    public int GetOverTimeNumber()
     {
         CCSGameRules? rules = CounterStrikeSharp
             .API.Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
@@ -199,6 +199,7 @@ public class MatchManager
 
         if (_currentMap.map.name != Server.MapName)
         {
+            // TODO - map wont change to brewery
             // ChangeMap(_currentMap.map);
             // return;
         }
@@ -275,7 +276,7 @@ public class MatchManager
             return;
         }
 
-        // _captainSystem!.AutoSelectCaptains(_matchData);
+        captainSystem.AutoSelectCaptains();
 
         _gameServer.SendCommands(new[] { "exec knife" });
 

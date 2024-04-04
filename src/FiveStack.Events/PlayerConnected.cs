@@ -126,7 +126,7 @@ public partial class FiveStackPlugin
         Logger.LogInformation($"Current Team ${matchData.lineup_1_id}{currentTeam}:{startingSide}");
         if (currentTeam != startingSide)
         {
-            // the server needs some time apparently
+            // code smell: the server needs some time apparently
             await Task.Delay(1000 * 1);
 
             Server.NextFrame(() =>

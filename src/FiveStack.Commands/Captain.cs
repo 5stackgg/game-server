@@ -26,7 +26,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        if (match.captainSystem.TeamHasCaptain(team) == false)
+        if (match.captainSystem.GetTeamCaptain(team) == null)
         {
             match.captainSystem.ClaimCaptain(team, player);
         }

@@ -232,7 +232,7 @@ public class GameBackUpRounds
         }
 
         string endpoint =
-            $"https://api.5stack.gg/server/{serverId}/match/{match.id}/{match.current_match_map_id}/backup-round/{round}";
+            $"{_environmentService.GetBaseUri()}/server/{serverId}/match/{match.id}/{match.current_match_map_id}/backup-round/{round}";
 
         _logger.LogInformation($"Uploading Backup Round {endpoint}");
 
