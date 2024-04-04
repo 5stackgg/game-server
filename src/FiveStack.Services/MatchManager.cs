@@ -171,8 +171,7 @@ public class MatchManager
         _currentMapStatus = status;
     }
 
-    // TODO - create disposable match?
-    private void SetupMatch(FiveStackMatch match)
+    public void SetupMatch(FiveStackMatch match)
     {
         _matchData = match;
 

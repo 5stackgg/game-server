@@ -73,11 +73,14 @@ public class MatchService
 
                 if (_currentMatch?.GetMatchData()?.id == matchData.id)
                 {
+                    _currentMatch.SetupMatch(matchData);
                     return;
                 }
 
                 _currentMatch =
                     _serviceProvider.GetRequiredService(typeof(MatchManager)) as MatchManager;
+
+                _currentMatch!.SetupMatch(matchData);
             });
         }
         catch (HttpRequestException ex)
