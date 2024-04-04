@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace FiveStack.enums;
+namespace FiveStack.Enums;
 
 public enum eTimeoutSettings
 {

@@ -1,6 +1,6 @@
-using FiveStack.enums;
+using FiveStack.Enums;
 
-namespace FiveStack.entities;
+namespace FiveStack.Entities;
 
 public class MatchMap
 {

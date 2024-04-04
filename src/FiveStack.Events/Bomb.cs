@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
+using FiveStack.Entities;
 
 namespace FiveStack;
 
@@ -8,12 +9,15 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult BombPlaned(EventBombPlanted @event, GameEventInfo info)
     {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
+
         if (
             @event.Userid == null
             || !@event.Userid.IsValid
-            || _matchData == null
-            || _matchData.current_match_map_id == null
-            || !IsLive()
+            || match == null
+            || currentMap == null
+            || !match.IsLive()
         )
         {
             return HookResult.Continue;
@@ -21,13 +25,13 @@ public partial class FiveStackPlugin
 
         CCSPlayerController planter = @event.Userid;
 
-        PublishGameEvent(
+        _matchEvents.PublishGameEvent(
             "objective",
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", _matchData.current_match_map_id },
-                { "round", _currentRound + 1 },
+                { "match_map_id", currentMap.id },
+                { "round", _gameServer.GetCurrentRound() },
                 { "type", "Planted" },
                 { "player_steam_id", planter.SteamID.ToString() },
             }
@@ -39,12 +43,15 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult BombPlaned(EventBombDefused @event, GameEventInfo info)
     {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
+
         if (
             @event.Userid == null
             || !@event.Userid.IsValid
-            || _matchData == null
-            || _matchData.current_match_map_id == null
-            || !IsLive()
+            || match == null
+            || currentMap == null
+            || !match.IsLive()
         )
         {
             return HookResult.Continue;
@@ -52,13 +59,13 @@ public partial class FiveStackPlugin
 
         CCSPlayerController defuser = @event.Userid;
 
-        PublishGameEvent(
+        _matchEvents.PublishGameEvent(
             "objective",
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", _matchData.current_match_map_id },
-                { "round", _currentRound + 1 },
+                { "match_map_id", currentMap.id },
+                { "round", _gameServer.GetCurrentRound() },
                 { "type", "Defused" },
                 { "player_steam_id", defuser.SteamID.ToString() },
             }
@@ -70,12 +77,15 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult BombExploded(EventBombExploded @event, GameEventInfo info)
     {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
+
         if (
             @event.Userid == null
             || !@event.Userid.IsValid
-            || _matchData == null
-            || _matchData.current_match_map_id == null
-            || !IsLive()
+            || match == null
+            || currentMap == null
+            || !match.IsLive()
         )
         {
             return HookResult.Continue;
@@ -83,13 +93,13 @@ public partial class FiveStackPlugin
 
         CCSPlayerController bomber = @event.Userid;
 
-        PublishGameEvent(
+        _matchEvents.PublishGameEvent(
             "objective",
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", _matchData.current_match_map_id },
-                { "round", _currentRound + 1 },
+                { "match_map_id", currentMap.id },
+                { "round", _gameServer.GetCurrentRound() },
                 { "type", "Exploded" },
                 { "player_steam_id", bomber.SteamID.ToString() },
             }

@@ -1,35 +1,39 @@
-using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
-using CounterStrikeSharp.API.Modules.Utils;
-using FiveStack.entities;
-using FiveStack.enums;
-using Microsoft.Extensions.Logging;
+using FiveStack.Entities;
+using FiveStack.Enums;
+using FiveStack.Utilities;
 
 namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    int timeoutGivenForOvertime = 0;
+    int timeoutGivenForOvertime;
 
     [GameEventHandler]
     public HookResult OnRoundOfficiallyEnded(EventRoundOfficiallyEnded @event, GameEventInfo info)
     {
-        _ = UploadBackupRound(_currentRound.ToString());
-        UpdateCurrentRound();
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
 
-        if (_matchData != null && _currentMap != null && isOverTime())
+        if (match == null)
         {
-            UpdateMapStatus(eMapStatus.Overtime);
-            if (timeoutGivenForOvertime != GetOverTimeNumber())
-            {
-                timeoutGivenForOvertime = GetOverTimeNumber();
+            return HookResult.Continue;
+        }
 
-                PublishGameEvent(
+        _ = _gameBackupRounds.UploadBackupRound((_gameServer.GetCurrentRound() - 1).ToString());
+        if (match != null && currentMap != null && match.isOverTime())
+        {
+            match.UpdateMapStatus(eMapStatus.Overtime);
+            if (timeoutGivenForOvertime != match.GetOverTimeNumber())
+            {
+                timeoutGivenForOvertime = match.GetOverTimeNumber();
+
+                _matchEvents.PublishGameEvent(
                     "techTimeout",
                     new Dictionary<string, object>
                     {
-                        { "map_id", _currentMap.id },
+                        { "map_id", currentMap.id },
                         { "lineup_1_timeouts_available", 1 },
                         { "lineup_2_timeouts_available", 1 },
                     }
@@ -43,40 +47,45 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info)
     {
-        if (_matchData == null || _matchData.current_match_map_id == null || IsKnife())
-        {
-            Logger.LogInformation($"TEAM ASSIGNED {@event.Winner}");
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
+        FiveStackMatch? matchData = match?.GetMatchData();
 
-            KnifeWinningTeam = TeamNumToCSTeam(@event.Winner);
-
-            NotifyCaptainSideSelection();
-
-            return HookResult.Continue;
-        }
-
-        if (!IsLive())
+        if (match == null || matchData == null || currentMap == null)
         {
             return HookResult.Continue;
         }
 
-        PublishGameEvent(
+        if (match.IsKnife())
+        {
+            match.knifeSystem.SetWinningTeam(TeamUtility.TeamNumToCSTeam(@event.Winner));
+
+            return HookResult.Continue;
+        }
+
+        if (!match.IsLive())
+        {
+            return HookResult.Continue;
+        }
+
+        _matchEvents.PublishGameEvent(
             "score",
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", _matchData.current_match_map_id },
-                { "round", _currentRound + 1 },
-                { "lineup_1_score", $"{GetTeamScore(_matchData.lineup_1.name)}" },
-                { "lineup_1_money", $"{GetTeamMoney(_matchData.lineup_1.name)}" },
+                { "match_map_id", currentMap.id },
+                { "round", _gameServer.GetCurrentRound() },
+                { "lineup_1_score", $"{GetTeamScore(matchData.lineup_1.name)}" },
+                { "lineup_1_money", $"{GetTeamMoney(matchData.lineup_1.name)}" },
                 {
                     "lineup_1_timeouts_available",
-                    $"{_currentMap?.lineup_1_timeouts_available ?? 0}"
+                    $"{currentMap?.lineup_1_timeouts_available ?? 0}"
                 },
-                { "lineup_2_score", $"{GetTeamScore(_matchData.lineup_2.name)}" },
-                { "lineup_2_money", $"{GetTeamMoney(_matchData.lineup_2.name)}" },
+                { "lineup_2_score", $"{GetTeamScore(matchData.lineup_2.name)}" },
+                { "lineup_2_money", $"{GetTeamMoney(matchData.lineup_2.name)}" },
                 {
                     "lineup_2_timeouts_available",
-                    $"{_currentMap?.lineup_2_timeouts_available ?? 0}"
+                    $"{currentMap?.lineup_2_timeouts_available ?? 0}"
                 },
             }
         );
@@ -84,14 +93,11 @@ public partial class FiveStackPlugin
         return HookResult.Continue;
     }
 
-    private int GetTeamScore(string teamName)
+    public int GetTeamScore(string teamName)
     {
-        if (_matchData == null)
-        {
-            return 0;
-        }
-
-        var teamManagers = Utilities.FindAllEntitiesByDesignerName<CCSTeam>("cs_team_manager");
+        var teamManagers = CounterStrikeSharp.API.Utilities.FindAllEntitiesByDesignerName<CCSTeam>(
+            "cs_team_manager"
+        );
 
         foreach (var teamManager in teamManagers)
         {
@@ -104,15 +110,12 @@ public partial class FiveStackPlugin
         return 0;
     }
 
-    private int GetTeamMoney(string teamName)
+    public int GetTeamMoney(string teamName)
     {
-        if (_matchData == null)
-        {
-            return 0;
-        }
-
         int totalCash = 0;
-        var teamManagers = Utilities.FindAllEntitiesByDesignerName<CCSTeam>("cs_team_manager");
+        var teamManagers = CounterStrikeSharp.API.Utilities.FindAllEntitiesByDesignerName<CCSTeam>(
+            "cs_team_manager"
+        );
 
         foreach (var teamManager in teamManagers)
         {
@@ -121,8 +124,8 @@ public partial class FiveStackPlugin
                 foreach (var player in teamManager.PlayerControllers)
                 {
                     totalCash += (
-                        Utilities
-                            .GetPlayerFromIndex((int)player.Index)
+                        CounterStrikeSharp
+                            .API.Utilities.GetPlayerFromIndex((int)player.Index)
                             ?.InGameMoneyServices?.Account ?? 0
                     );
                 }
@@ -130,26 +133,5 @@ public partial class FiveStackPlugin
         }
 
         return totalCash;
-    }
-
-    private void NotifyCaptainSideSelection()
-    {
-        if (KnifeWinningTeam == null)
-        {
-            return;
-        }
-
-        CsTeam knifeTeam =
-            KnifeWinningTeam == CsTeam.Terrorist ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
-
-        Message(
-            HudDestination.Chat,
-            $"As the captain you must select to {ChatColors.Green}.stay {ChatColors.Default} or {ChatColors.Green}.switch",
-            _captains[knifeTeam]
-        );
-        Message(
-            HudDestination.Alert,
-            $"{(KnifeWinningTeam == CsTeam.Terrorist ? "Terrorist" : "CT")} - Captain is Picking Sides!"
-        );
     }
 }

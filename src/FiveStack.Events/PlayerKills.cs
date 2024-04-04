@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
-using Microsoft.Extensions.Logging;
+using FiveStack.Entities;
+using FiveStack.Utilities;
 
 namespace FiveStack;
 
@@ -9,12 +10,16 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnPlayerKill(EventPlayerDeath @event, GameEventInfo info)
     {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
+
         if (
             @event.Userid == null
             || !@event.Userid.IsValid
-            || _matchData == null
-            || _matchData.current_match_map_id == null
-            || !IsLive()
+            || @event.Userid.IsBot
+            || match == null
+            || currentMap == null
+            || match.IsLive() == false
         )
         {
             return HookResult.Continue;
@@ -26,20 +31,23 @@ public partial class FiveStackPlugin
         var attackerLocation = attacker?.PlayerPawn?.Value?.AbsOrigin;
         var attackedLocation = attacked?.PlayerPawn?.Value?.AbsOrigin;
 
-        PublishGameEvent(
+        _matchEvents.PublishGameEvent(
             "kill",
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", _matchData.current_match_map_id },
+                { "match_map_id", currentMap.id },
                 { "no_scope", @event.Noscope },
                 { "blinded", @event.Attackerblind },
                 { "thru_smoke", @event.Thrusmoke },
                 { "thru_wall", @event.Penetrated > 0 },
                 { "headshot", @event.Headshot },
-                { "round", _currentRound },
+                { "round", _gameServer.GetCurrentRound() },
                 { "attacker_steam_id", attacker != null ? attacker.SteamID.ToString() : "" },
-                { "attacker_team", attacker != null ? $"{TeamNumToString(attacker.TeamNum)}" : "" },
+                {
+                    "attacker_team",
+                    attacker != null ? $"{TeamUtility.TeamNumToString(attacker.TeamNum)}" : ""
+                },
                 { "attacker_location", $"{attacker?.PlayerPawn?.Value?.LastPlaceName}" },
                 {
                     "attacker_location_coordinates",
@@ -48,9 +56,12 @@ public partial class FiveStackPlugin
                         : ""
                 },
                 { "weapon", $"{@event.Weapon}" },
-                { "hitgroup", $"{HitGroupToString(@event.Hitgroup)}" },
+                { "hitgroup", $"{DamageUtility.HitGroupToString(@event.Hitgroup)}" },
                 { "attacked_steam_id", attacked != null ? attacked.SteamID.ToString() : "" },
-                { "attacked_team", attacked != null ? $"{TeamNumToString(attacked.TeamNum)}" : "" },
+                {
+                    "attacked_team",
+                    attacked != null ? $"{TeamUtility.TeamNumToString(attacked.TeamNum)}" : ""
+                },
                 { "attacked_location", $"{attacked?.PlayerPawn?.Value?.LastPlaceName}" },
                 {
                     "attacked_location_coordinates",
@@ -67,18 +78,17 @@ public partial class FiveStackPlugin
         {
             if (attacker.TeamNum != attacked.TeamNum)
             {
-                PublishGameEvent(
+                _matchEvents.PublishGameEvent(
                     "assist",
                     new Dictionary<string, object>
                     {
                         { "time", DateTime.Now },
-                        { "match_map_id", _matchData.current_match_map_id },
-                        { "match_id", _matchData.id },
-                        { "round", _currentRound },
+                        { "match_map_id", currentMap.id },
+                        { "round", _gameServer.GetCurrentRound() },
                         { "attacker_steam_id", assister.SteamID.ToString() },
-                        { "attacker_team", $"{TeamNumToString(attacker.TeamNum)}" },
+                        { "attacker_team", $"{TeamUtility.TeamNumToString(attacker.TeamNum)}" },
                         { "attacked_steam_id", attacked.SteamID.ToString() },
-                        { "attacked_team", $"{TeamNumToString(attacked.TeamNum)}" },
+                        { "attacked_team", $"{TeamUtility.TeamNumToString(attacked.TeamNum)}" },
                         { "flash", @event.Assistedflash },
                     }
                 );

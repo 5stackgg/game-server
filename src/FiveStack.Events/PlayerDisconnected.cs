@@ -1,7 +1,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Utils;
-using FiveStack.enums;
+using FiveStack.Entities;
 
 namespace FiveStack;
 
@@ -10,22 +10,29 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnPlayerDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
     {
-        if (@event.Userid == null || !@event.Userid.IsValid || @event.Userid.IsBot)
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
+
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || @event.Userid.IsBot
+            || match == null
+            || currentMap == null
+        )
         {
             return HookResult.Continue;
         }
 
-        if (IsWarmup() || IsKnife())
+        if (match.IsWarmup() || match.IsKnife())
         {
-            CsTeam team = TeamNumToCSTeam(@event.Userid.TeamNum);
-
-            _captains[team] = null;
+            match.captainSystem.RemoveCaptain(@event.Userid);
         }
 
-        if (IsLive())
+        if (match.IsLive())
         {
-            SendCommands(new[] { "mp_pause_match" });
-            Message(HudDestination.Center, $" {ChatColors.Red}Match Paused");
+            _gameServer.SendCommands(new[] { "mp_pause_match" });
+            _gameServer.Message(HudDestination.Center, $" {ChatColors.Red}Match Paused");
         }
 
         return HookResult.Continue;

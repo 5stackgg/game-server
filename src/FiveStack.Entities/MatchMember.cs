@@ -1,4 +1,4 @@
-namespace FiveStack.entities;
+namespace FiveStack.Entities;
 
 public class MatchMember
 {

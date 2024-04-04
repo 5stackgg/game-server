@@ -1,8 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
-using CounterStrikeSharp.API.Modules.Utils;
-using FiveStack.enums;
 
 namespace FiveStack;
 
@@ -12,63 +10,41 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnStay(CCSPlayerController? player, CommandInfo? command)
     {
-        if (player == null || KnifeWinningTeam == null || !IsKnife())
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (player == null || match == null || !match.IsKnife())
         {
             return;
         }
 
-        if (_captains[(CsTeam)KnifeWinningTeam]?.SteamID != player.SteamID)
-        {
-            Message(HudDestination.Chat, $" {ChatColors.Red}You are not the captain!", player);
-            return;
-        }
-
-        Message(
-            HudDestination.Alert,
-            $"captain picked to {ChatColors.Red}stay {ChatColors.Default}sides"
-        );
-
-        UpdateMapStatus(eMapStatus.Live);
+        match.knifeSystem.Stay(player);
     }
 
     [ConsoleCommand("css_switch", "")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnSwitch(CCSPlayerController? player, CommandInfo? command)
     {
-        if (player == null || _matchData == null || KnifeWinningTeam == null || !IsKnife())
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (player == null || match == null || !match.IsKnife())
         {
             return;
         }
 
-        if (_captains[(CsTeam)KnifeWinningTeam]?.SteamID != player.SteamID)
-        {
-            Message(HudDestination.Chat, $" {ChatColors.Red}You are not the captain!", player);
-            return;
-        }
-
-        Message(
-            HudDestination.Alert,
-            $"captain picked to {ChatColors.Red}swap {ChatColors.Default}sides"
-        );
-
-        PublishGameEvent("switch", new Dictionary<string, object>());
-
-        SendCommands(new[] { "mp_swapteams" });
-
-        UpdateMapStatus(eMapStatus.Live);
+        match.knifeSystem.Switch(player);
     }
 
     [ConsoleCommand("skip_knife", "Skips knife round")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnSkipKnife(CCSPlayerController? player, CommandInfo? command)
     {
-        if (!IsKnife())
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (player == null || match == null || !match.IsKnife())
         {
             return;
         }
 
-        Message(HudDestination.Center, $"Skipping Knife.", player);
-
-        UpdateMapStatus(eMapStatus.Live);
+        match.knifeSystem.Skip();
     }
 }

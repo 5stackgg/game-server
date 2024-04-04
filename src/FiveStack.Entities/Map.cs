@@ -1,6 +1,4 @@
-using FiveStack.enums;
-
-namespace FiveStack.entities;
+namespace FiveStack.Entities;
 
 public class Map
 {

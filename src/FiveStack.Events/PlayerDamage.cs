@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
-using Microsoft.Extensions.Logging;
+using FiveStack.Entities;
+using FiveStack.Utilities;
 
 namespace FiveStack;
 
@@ -9,12 +10,16 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnPlayerDamage(EventPlayerHurt @event, GameEventInfo info)
     {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
+
         if (
             @event.Userid == null
             || !@event.Userid.IsValid
-            || _matchData == null
-            || _matchData.current_match_map_id == null
-            || !IsLive()
+            || @event.Userid.IsBot
+            || match == null
+            || currentMap == null
+            || match.IsLive() == false
         )
         {
             return HookResult.Continue;
@@ -32,15 +37,18 @@ public partial class FiveStackPlugin
         var attackerLocation = attacker?.PlayerPawn.Value?.AbsOrigin;
         var attackedLocation = attacked?.PlayerPawn?.Value?.AbsOrigin;
 
-        PublishGameEvent(
+        _matchEvents.PublishGameEvent(
             "damage",
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", _matchData.current_match_map_id },
-                { "round", _currentRound },
+                { "match_map_id", currentMap.id },
+                { "round", _gameServer.GetCurrentRound() },
                 { "attacker_steam_id", attacker != null ? attacker.SteamID.ToString() : "" },
-                { "attacker_team", attacker != null ? $"{TeamNumToString(attacker.TeamNum)}" : "" },
+                {
+                    "attacker_team",
+                    attacker != null ? $"{TeamUtility.TeamNumToString(attacker.TeamNum)}" : ""
+                },
                 { "attacker_location", $"{attacker?.PlayerPawn?.Value?.LastPlaceName}" },
                 {
                     "attacker_location_coordinates",
@@ -51,11 +59,14 @@ public partial class FiveStackPlugin
                 { "weapon", $"{@event.Weapon}" },
                 { "damage", @event.DmgHealth },
                 { "damage_armor", @event.DmgArmor },
-                { "hitgroup", $"{HitGroupToString(@event.Hitgroup)}" },
+                { "hitgroup", $"{DamageUtility.HitGroupToString(@event.Hitgroup)}" },
                 { "health", @event.Health },
                 { "armor", @event.Armor },
                 { "attacked_steam_id", attacked != null ? attacked.SteamID.ToString() : "" },
-                { "attacked_team", attacked != null ? $"{TeamNumToString(attacked.TeamNum)}" : "" },
+                {
+                    "attacked_team",
+                    attacked != null ? $"{TeamUtility.TeamNumToString(attacked.TeamNum)}" : ""
+                },
                 { "attacked_location", $"{attacked?.PlayerPawn.Value.LastPlaceName}" },
                 {
                     "attacked_location_coordinates",

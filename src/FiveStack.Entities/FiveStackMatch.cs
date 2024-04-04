@@ -1,8 +1,6 @@
-using FiveStack.enums;
+namespace FiveStack.Entities;
 
-namespace FiveStack.entities;
-
-public class Match
+public class FiveStackMatch
 {
     public Guid id { get; set; } = Guid.Empty;
     public int mr { get; set; } = 0;

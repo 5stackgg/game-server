@@ -1,68 +1,57 @@
-﻿using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Attributes;
 using CounterStrikeSharp.API.Modules.Utils;
-using FiveStack.entities;
-using FiveStack.enums;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
-// TODO - DI
+[MinimumApiVersion(80)]
 public partial class FiveStackPlugin : BasePlugin
 {
-    private Match? _matchData;
-    private Guid? _currentMatchId;
-    private MatchMap? _currentMap;
-    private int _currentRound = 0;
-    private Redis _redis = new Redis();
-    private string _onMap = Server.MapName;
-    public CsTeam? KnifeWinningTeam;
-    private eMapStatus _currentMapStatus = eMapStatus.Unknown;
-    private Dictionary<int, bool> _readyPlayers = new Dictionary<int, bool>();
-    private string? _resetRound;
-    private Dictionary<int, bool> _restoreRoundVote = new Dictionary<int, bool>();
+    private readonly GameDemos _gameDemos;
+    private readonly GameServer _gameServer;
+    private readonly Timeouts _matchTimeouts;
+    private readonly MatchEvents _matchEvents;
+    private readonly MatchService _matchService;
+    private readonly GameBackUpRounds _gameBackupRounds;
+    private readonly ILogger<FiveStackPlugin> _logger;
 
-    private Dictionary<CsTeam, CCSPlayerController?> _captains = new Dictionary<
-        CsTeam,
-        CCSPlayerController?
-    >
+    public override string ModuleName => "FiveStack";
+    public override string ModuleVersion => "0.0.1";
+    public override string ModuleAuthor => "5Stack.gg";
+    public override string ModuleDescription => "5Stack creates and managements custom matches";
+
+    public FiveStackPlugin(
+        GameDemos matchDemos,
+        GameServer gameServer,
+        MatchEvents matchEvents,
+        MatchService matchService,
+        Timeouts matchTimeoutSystem,
+        GameBackUpRounds backUpManagement,
+        ILogger<FiveStackPlugin> logger
+    )
     {
-        { CsTeam.Terrorist, null },
-        { CsTeam.CounterTerrorist, null }
-    };
-
-    private Dictionary<CsTeam, CCSPlayerController?> _coaches = new Dictionary<
-        CsTeam,
-        CCSPlayerController?
-    >
-    {
-        { CsTeam.Terrorist, null },
-        { CsTeam.CounterTerrorist, null }
-    };
-
-    public override string ModuleName => "5Stack Mod";
-
-    public override string ModuleVersion => "0.0.3";
+        _logger = logger;
+        _gameDemos = matchDemos;
+        _gameServer = gameServer;
+        _matchEvents = matchEvents;
+        _matchService = matchService;
+        _matchTimeouts = matchTimeoutSystem;
+        _gameBackupRounds = backUpManagement;
+    }
 
     public override void Load(bool hotReload)
     {
-        if (bool.TryParse(Environment.GetEnvironmentVariable("DEV_SERVER"), out var isDev) && isDev)
-        {
-            DotEnv.Load("/serverdata/serverfiles/.env");
-        }
-
-        string? serverId = Environment.GetEnvironmentVariable("SERVER_ID");
-        string? apiPassword = Environment.GetEnvironmentVariable("SERVER_API_PASSWORD");
+        _gameServer.Message(HudDestination.Alert, "5Stack Loaded");
 
         ListenForMapChange();
         ListenForReadyStatus();
 
-        Message(HudDestination.Alert, "5Stack Loaded");
-        GetMatch();
+        _matchService.GetMatchFromApi();
     }
 
     public override void Unload(bool hotReload)
     {
-        Logger.LogInformation("Hello World! We are unloading!");
+        // _matchEvents.Disconnect();
     }
 }
