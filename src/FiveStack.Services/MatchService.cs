@@ -4,6 +4,7 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
+using FiveStack.Utilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -156,7 +157,7 @@ public class MatchService
         {
             return false;
         }
-        return MapStatusStringToEnum(_currentMap.status) == eMapStatus.Warmup;
+        return MatchUtility.MapStatusStringToEnum(_currentMap.status) == eMapStatus.Warmup;
     }
 
     public bool IsLive()
@@ -166,7 +167,7 @@ public class MatchService
         {
             return false;
         }
-        return MapStatusStringToEnum(_currentMap.status) == eMapStatus.Live;
+        return MatchUtility.MapStatusStringToEnum(_currentMap.status) == eMapStatus.Live;
     }
 
     public bool isOverTime()
@@ -174,7 +175,7 @@ public class MatchService
         return GetOverTimeNumber() > 0;
     }
 
-    public int GetOverTimeNumber()
+    private int GetOverTimeNumber()
     {
         CCSGameRules? rules = CounterStrikeSharp
             .API.Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
@@ -201,101 +202,7 @@ public class MatchService
 
         knifeSystem!.Setup(_matchData!);
 
-        return MapStatusStringToEnum(_currentMap.status) == eMapStatus.Knife;
-    }
-
-    public eMapStatus MapStatusStringToEnum(string state)
-    {
-        switch (state)
-        {
-            case "Scheduled":
-                return eMapStatus.Scheduled;
-            case "Finished":
-                return eMapStatus.Finished;
-            case "Knife":
-                return eMapStatus.Knife;
-            case "Live":
-                return eMapStatus.Live;
-            case "Overtime":
-                return eMapStatus.Overtime;
-            case "Paused":
-                return eMapStatus.Paused;
-            case "TechTimeout":
-                return eMapStatus.TechTimeout;
-            case "Warmup":
-                return eMapStatus.Warmup;
-            case "Unknown":
-                return eMapStatus.Unknown;
-            default:
-                throw new ArgumentException($"Unsupported status string: {state}");
-        }
-    }
-
-    private void SetupMatch()
-    {
-        if (_matchData == null)
-        {
-            _logger.LogInformation("Missing Match Data");
-            return;
-        }
-        _logger.LogInformation($"Setup Match {_matchData.id}");
-
-        MatchMap? _currentMap = GetCurrentMap();
-
-        if (_currentMap == null)
-        {
-            _logger.LogWarning("match does not have a current map");
-            return;
-        }
-
-        if (_currentMap.map.name != Server.MapName)
-        {
-            ChangeMap(_currentMap.map);
-            return;
-        }
-
-        _gameServer.SendCommands(new[] { $"sv_password \"{_matchData.password}\"" });
-
-        SetupTeamNames();
-
-        _logger.LogInformation($"Current Game State {_currentMap.status}:{_currentMap.map.name}");
-
-        if (MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
-        {
-            UpdateMapStatus(MapStatusStringToEnum(_currentMap.status));
-        }
-    }
-
-    private void SetupTeamNames()
-    {
-        if (_matchData == null)
-        {
-            return;
-        }
-
-        if (_matchData.lineup_1.name != null)
-        {
-            _gameServer.SendCommands(new[] { $"mp_teamname_1 {_matchData.lineup_1.name}" });
-        }
-
-        if (_matchData.lineup_2.name != null)
-        {
-            _gameServer.SendCommands(new[] { $"mp_teamname_2 {_matchData.lineup_2.name}" });
-        }
-    }
-
-    private void ChangeMap(Map map)
-    {
-        _logger.LogInformation($"Changing Map {map.name}");
-
-        if (map.workshop_map_id == null && Server.IsMapValid(map.name))
-        {
-            _gameServer.SendCommands(new[] { $"changelevel \"{map.name}\"" });
-        }
-        else
-        {
-            _gameServer.SendCommands(new[] { $"host_workshop_map {map.workshop_map_id}" });
-        }
+        return MatchUtility.MapStatusStringToEnum(_currentMap.status) == eMapStatus.Knife;
     }
 
     public void UpdateMapStatus(eMapStatus status)
@@ -360,7 +267,74 @@ public class MatchService
         );
     }
 
-    public void StartWarmup()
+    private void SetupMatch()
+    {
+        if (_matchData == null)
+        {
+            _logger.LogInformation("Missing Match Data");
+            return;
+        }
+        _logger.LogInformation($"Setup Match {_matchData.id}");
+
+        MatchMap? _currentMap = GetCurrentMap();
+
+        if (_currentMap == null)
+        {
+            _logger.LogWarning("match does not have a current map");
+            return;
+        }
+
+        if (_currentMap.map.name != Server.MapName)
+        {
+            ChangeMap(_currentMap.map);
+            return;
+        }
+
+        _gameServer.SendCommands(new[] { $"sv_password \"{_matchData.password}\"" });
+
+        SetupTeamNames();
+
+        _logger.LogInformation($"Current Game State {_currentMap.status}:{_currentMap.map.name}");
+
+        if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
+        {
+            UpdateMapStatus(MatchUtility.MapStatusStringToEnum(_currentMap.status));
+        }
+    }
+
+    private void SetupTeamNames()
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        if (_matchData.lineup_1.name != null)
+        {
+            _gameServer.SendCommands(new[] { $"mp_teamname_1 {_matchData.lineup_1.name}" });
+        }
+
+        if (_matchData.lineup_2.name != null)
+        {
+            _gameServer.SendCommands(new[] { $"mp_teamname_2 {_matchData.lineup_2.name}" });
+        }
+    }
+
+    private void ChangeMap(Map map)
+    {
+        _logger.LogInformation($"Changing Map {map.name}");
+
+        if (map.workshop_map_id == null && Server.IsMapValid(map.name))
+        {
+            _gameServer.SendCommands(new[] { $"changelevel \"{map.name}\"" });
+        }
+        else
+        {
+            _gameServer.SendCommands(new[] { $"host_workshop_map {map.workshop_map_id}" });
+        }
+    }
+
+    private void StartWarmup()
     {
         if (_matchData == null)
         {
@@ -386,7 +360,7 @@ public class MatchService
         PublishMapStatus(eMapStatus.Warmup);
     }
 
-    public async void StartKnife()
+    private async void StartKnife()
     {
         if (_matchData == null || IsKnife())
         {
@@ -408,7 +382,7 @@ public class MatchService
         });
     }
 
-    public async void StartLive()
+    private async void StartLive()
     {
         if (_matchData == null || _matchData == null)
         {
