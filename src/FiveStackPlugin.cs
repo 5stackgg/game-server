@@ -9,6 +9,7 @@ public partial class FiveStackPlugin : BasePlugin
 {
     private readonly GameDemos _gameDemos;
     private readonly GameServer _gameServer;
+    private readonly MatchEvents _matchEvents;
     private readonly Timeouts _matchTimeouts;
     private readonly MatchService _matchService;
     private readonly GameBackUpRounds _gameBackupRounds;
@@ -21,6 +22,7 @@ public partial class FiveStackPlugin : BasePlugin
     public FiveStackPlugin(
         GameDemos matchDemos,
         GameServer gameServer,
+        MatchEvents matchEvents,
         MatchService matchService,
         Timeouts matchTimeoutSystem,
         GameBackUpRounds backUpManagement
@@ -28,6 +30,7 @@ public partial class FiveStackPlugin : BasePlugin
     {
         _gameDemos = matchDemos;
         _gameServer = gameServer;
+        _matchEvents = matchEvents;
         _matchService = matchService;
         _gameBackupRounds = backUpManagement;
         _matchTimeouts = matchTimeoutSystem;
@@ -46,5 +49,10 @@ public partial class FiveStackPlugin : BasePlugin
     public MatchManager? CurrentMatch()
     {
         return _matchService.GetCurrentMatch();
+    }
+
+    public override void Unload(bool hotReload)
+    {
+        // _matchEvents.Disconnect();
     }
 }

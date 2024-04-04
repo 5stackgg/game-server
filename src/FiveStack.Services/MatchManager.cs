@@ -195,10 +195,12 @@ public class MatchManager
             return;
         }
 
+        _logger.LogInformation($"CURRENT MAP {Server.MapName}");
+
         if (_currentMap.map.name != Server.MapName)
         {
-            ChangeMap(_currentMap.map);
-            return;
+            // ChangeMap(_currentMap.map);
+            // return;
         }
 
         _gameServer.SendCommands(new[] { $"sv_password \"{_matchData.password}\"" });
