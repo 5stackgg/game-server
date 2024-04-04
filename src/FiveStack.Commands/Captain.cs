@@ -1,8 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
-using CounterStrikeSharp.API.Modules.Utils;
-using FiveStack.Utilities;
 
 namespace FiveStack;
 
@@ -19,19 +17,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        CsTeam team = TeamUtility.TeamStringToCsTeam(player.TeamNum.ToString());
-
-        if (team == CsTeam.None || team == CsTeam.Spectator)
-        {
-            return;
-        }
-
-        if (match.captainSystem.GetTeamCaptain(team) == null)
-        {
-            match.captainSystem.ClaimCaptain(team, player);
-        }
-
-        match.captainSystem.ShowCaptains();
+        match.captainSystem.ClaimCaptain(player);
     }
 
     [ConsoleCommand("css_release-captain", "Release Captain Spot")]
@@ -44,16 +30,6 @@ public partial class FiveStackPlugin
         {
             return;
         }
-
-        CsTeam team = TeamUtility.TeamStringToCsTeam(player.TeamNum.ToString());
-
-        if (team == CsTeam.None || team == CsTeam.Spectator)
-        {
-            return;
-        }
-
-        match.captainSystem.RemoveTeamCaptain(player, team);
-
-        match.captainSystem.ShowCaptains();
+        match.captainSystem.RemoveCaptain(player);
     }
 }

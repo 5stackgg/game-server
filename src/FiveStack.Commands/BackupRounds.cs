@@ -1,7 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
-using FiveStack.Entities;
 
 namespace FiveStack;
 
@@ -12,15 +11,25 @@ public partial class FiveStackPlugin
     public void ResetRound(CCSPlayerController? player, CommandInfo command)
     {
         string round = command.ArgByIndex(1);
+
+        if (round == null)
+        {
+            return;
+        }
+
         _gameBackupRounds.LoadRound(round);
     }
 
     [ConsoleCommand("css_reset", "Restores to a previous round")]
     public void RestoreRound(CCSPlayerController? player, CommandInfo command)
     {
-        // TODO - round can be null, reset to -1 round
         string round = command.ArgByIndex(1);
-        FiveStackMatch? matchData = CurrentMatch()?.GetMatchData();
+
+        // TODO - round can be null, reset to -1 round
+        if (round == null)
+        {
+            return;
+        }
 
         bool isResttingRound = _gameBackupRounds.IsResttingRound();
         if (player != null && isResttingRound)

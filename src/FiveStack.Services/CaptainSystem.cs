@@ -47,8 +47,23 @@ public class CaptainSystem
         }
     }
 
-    public void RemoveTeamCaptain(CCSPlayerController player, CsTeam team)
+    public void RemoveCaptain(CCSPlayerController player)
     {
+        CsTeam team = TeamUtility.TeamStringToCsTeam(player.TeamNum.ToString());
+
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (
+            team == CsTeam.None
+            || team == CsTeam.Spectator
+            || _captains[team] != player
+            || match == null
+            || !match.IsWarmup()
+        )
+        {
+            return;
+        }
+
         _captains[team] = null;
 
         _gameEvents.PublishGameEvent(
@@ -60,6 +75,8 @@ public class CaptainSystem
                 { "player_name", player.PlayerName }
             }
         );
+
+        ShowCaptains();
     }
 
     public CCSPlayerController? GetTeamCaptain(CsTeam team)
@@ -89,26 +106,37 @@ public class CaptainSystem
         }
     }
 
-    public void ClaimCaptain(CsTeam team, CCSPlayerController player, string? message = null)
+    public void ClaimCaptain(CCSPlayerController player)
     {
-        _captains[team] = player;
-        if (message == null)
+        CsTeam team = TeamUtility.TeamStringToCsTeam(player.TeamNum.ToString());
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (team == CsTeam.None || team == CsTeam.Spectator || match == null || !match.IsWarmup())
         {
+            return;
+        }
+
+        if (_captains[team] == null)
+        {
+            _captains[team] = player;
+
             _gameServer.Message(
                 HudDestination.Alert,
                 $"{player.PlayerName} was assigned captain for the {TeamUtility.TeamNumToString((int)team)}"
             );
+
+            _gameEvents.PublishGameEvent(
+                "captain",
+                new Dictionary<string, object>
+                {
+                    { "claim", true },
+                    { "steam_id", player.SteamID.ToString() },
+                    { "player_name", player.PlayerName }
+                }
+            );
         }
 
-        _gameEvents.PublishGameEvent(
-            "captain",
-            new Dictionary<string, object>
-            {
-                { "claim", true },
-                { "steam_id", player.SteamID.ToString() },
-                { "player_name", player.PlayerName }
-            }
-        );
+        ShowCaptains();
     }
 
     public bool IsCaptain(CCSPlayerController player, CsTeam? team)
@@ -144,10 +172,6 @@ public class CaptainSystem
 
         CCSPlayerController player = players[Random.Shared.Next(players.Count)];
 
-        ClaimCaptain(
-            team,
-            player,
-            $" {(team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{TeamUtility.TeamNumToString((int)team)}'s {ChatColors.Default}captain was auto selected to be {ChatColors.Red}{player.PlayerName}"
-        );
+        ClaimCaptain(player);
     }
 }

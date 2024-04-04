@@ -2,7 +2,6 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
-using FiveStack.Utilities;
 
 namespace FiveStack;
 
@@ -27,8 +26,7 @@ public partial class FiveStackPlugin
 
         if (match.IsWarmup() || match.IsKnife())
         {
-            CsTeam team = TeamUtility.TeamNumToCSTeam(@event.Userid.TeamNum);
-            match.captainSystem.RemoveTeamCaptain(@event.Userid, team);
+            match.captainSystem.RemoveCaptain(@event.Userid);
         }
 
         if (match.IsLive())
