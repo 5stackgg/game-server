@@ -1,5 +1,3 @@
-using FiveStack.Enums;
-
 namespace FiveStack.Entities;
 
 public class Map
