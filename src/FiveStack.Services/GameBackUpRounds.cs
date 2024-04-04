@@ -237,6 +237,7 @@ public class GameBackUpRounds
 
         if (serverId == null || apiPassword == null)
         {
+            _logger.LogInformation($"unable to upload backup round because were missing server id / api password");
             return;
         }
 
@@ -247,11 +248,12 @@ public class GameBackUpRounds
 
         if (!File.Exists(backupRoundFilePath))
         {
+            _logger.LogInformation($"unable to upload backup round because its missing {backupRoundFilePath}");
             return;
         }
 
         string endpoint =
-            $"{_environmentService.GetBaseUri()}/server/{serverId}/match/{match.id}/{match.current_match_map_id}/backup-round/{round}";
+            $"{_environmentService.GetBaseUri()}/matches/{match.id}/backup-rounds/map/{match.current_match_map_id}/round/{round}";
 
         _logger.LogInformation($"Uploading Backup Round {endpoint}");
 

@@ -195,8 +195,6 @@ public class MatchManager
             return;
         }
 
-        _logger.LogInformation($"CURRENT MAP {Server.MapName}");
-
         if (_currentMap.map.name != Server.MapName)
         {
             ChangeMap(_currentMap.map);

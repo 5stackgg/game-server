@@ -64,6 +64,7 @@ public class GameDemos
 
     public async Task UploadDemos()
     {
+        _logger.LogInformation($"Uploading demos from {GetMatchDemoPath()}");
         string[] files = Directory.GetFiles(GetMatchDemoPath(), "*");
 
         foreach (string file in files)
@@ -85,7 +86,7 @@ public class GameDemos
         }
 
         string endpoint =
-            $"{_environmentService.GetBaseUri()}/server/{serverId}/match/{match.id}/{match.current_match_map_id}/demo";
+            $"{_environmentService.GetBaseUri()}/matches/{match.id}/demos/map/{match.current_match_map_id}";
 
         _logger.LogInformation($"Uploading Demo {endpoint}");
 
