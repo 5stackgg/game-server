@@ -14,27 +14,6 @@ public partial class FiveStackPlugin
         _matchService.GetMatchFromApi();
     }
 
-    [ConsoleCommand("upload_demos", "upload demos")]
-    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
-    public async void upload_demos(CCSPlayerController? player, CommandInfo command)
-    {
-        await _gameDemos.UploadDemos();
-    }
-
-    [ConsoleCommand("upload_backup_round", "upload backup round")]
-    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
-    public async void upload_backup_round(CCSPlayerController? player, CommandInfo command)
-    {
-        string round = command.ArgByIndex(1);
-
-        if (round == null)
-        {
-            return;
-        }
-
-        await _gameBackupRounds.UploadBackupRound(round);
-    }
-
     [ConsoleCommand("match_state", "Forces a match to update its current state")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void SetMatchState(CCSPlayerController? player, CommandInfo command)

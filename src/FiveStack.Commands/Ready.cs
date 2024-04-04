@@ -19,25 +19,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        // if (!_readyPlayers.ContainsKey(player.UserId!.Value))
-        //         {
-        //             _readyPlayers[player.UserId.Value] = true;
-        //         }
-        //         else
-        //         {
-        //             _readyPlayers[player.UserId.Value] = !_readyPlayers[player.UserId.Value];
-        //         }
-
-        //         if (TotalReady() == GetExpectedPlayerCount())
-        //         {
-        //             UpdateMapStatus(eMapStatus.Knife);
-        //         }
-
-        //         SendReadyMessage(player);
-
-        //         SendNotReadyMessage();
-
-        // TODO - somethigns missing here
+        match.readySystem.ToggleReady(player);
     }
 
     [ConsoleCommand("force_ready", "Forces the match to start")]

@@ -54,4 +54,18 @@ public partial class FiveStackPlugin
 
         _gameBackupRounds.RestoreBackupRound(round, player);
     }
+
+    [ConsoleCommand("upload_backup_round", "upload backup round")]
+    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public async void upload_backup_round(CCSPlayerController? player, CommandInfo command)
+    {
+        string round = command.ArgByIndex(1);
+
+        if (round == null)
+        {
+            return;
+        }
+
+        await _gameBackupRounds.UploadBackupRound(round);
+    }
 }
