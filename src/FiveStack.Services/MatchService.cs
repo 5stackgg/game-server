@@ -91,31 +91,14 @@ public class MatchService
 
                 var previousMatchId = _matchData?.id;
 
-                _matchData = JsonSerializer.Deserialize<FiveStackMatch>(response);
+                FiveStackMatch? matchData = JsonSerializer.Deserialize<FiveStackMatch>(response);
 
-                if (_matchData == null)
+                if (matchData == null)
                 {
                     return;
                 }
 
-                if (previousMatchId != _matchData.id)
-                {
-                    coachSystem =
-                        _serviceProvider.GetRequiredService(typeof(MatchCoachSystem))
-                        as MatchCoachSystem;
-                    captainSystem =
-                        _serviceProvider.GetRequiredService(typeof(MatchCaptainSystem))
-                        as MatchCaptainSystem;
-
-                    captainSystem!.Setup(_matchData);
-                }
-
-                if (IsWarmup())
-                {
-                    _gameServer.Message(HudDestination.Alert, "Received Match Data");
-                }
-
-                SetupMatch();
+                SetupMatch(matchData);
             });
         }
         catch (HttpRequestException ex)
@@ -132,7 +115,7 @@ public class MatchService
         }
     }
 
-    public FiveStackMatch? GetMatchData()
+    public FiveStackMatch? GetCurrentMatchData()
     {
         return _matchData;
     }
@@ -267,8 +250,26 @@ public class MatchService
         );
     }
 
-    private void SetupMatch()
+    private void SetupMatch(FiveStackMatch match)
     {
+        if (_matchData == null || match.id != _matchData.id)
+        {
+            coachSystem =
+                _serviceProvider.GetRequiredService(typeof(MatchCoachSystem)) as MatchCoachSystem;
+            captainSystem =
+                _serviceProvider.GetRequiredService(typeof(MatchCaptainSystem))
+                as MatchCaptainSystem;
+
+            captainSystem!.Setup(match);
+        }
+
+        _matchData = match;
+
+        if (IsWarmup())
+        {
+            _gameServer.Message(HudDestination.Alert, "Received Match Data");
+        }
+
         if (_matchData == null)
         {
             _logger.LogInformation("Missing Match Data");

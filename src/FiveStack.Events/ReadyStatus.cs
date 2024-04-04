@@ -10,7 +10,7 @@ namespace FiveStack
         {
             RegisterListener<Listeners.OnTick>(() =>
             {
-                FiveStackMatch? match = _matchService.GetMatchData();
+                FiveStackMatch? match = _matchService.GetCurrentMatchData();
 
                 if (match == null)
                 {

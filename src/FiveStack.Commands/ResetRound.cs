@@ -13,7 +13,7 @@ public partial class FiveStackPlugin
     public void ResetRound(CCSPlayerController? player, CommandInfo command)
     {
         string round = command.ArgByIndex(1);
-        FiveStackMatch? match = _matchService.GetMatchData();
+        FiveStackMatch? match = _matchService.GetCurrentMatchData();
 
         if (match == null || round == null)
         {
@@ -28,7 +28,7 @@ public partial class FiveStackPlugin
     {
         // TODO - round can be null, reset to -1 round
         string round = command.ArgByIndex(1);
-        FiveStackMatch? match = _matchService.GetMatchData();
+        FiveStackMatch? match = _matchService.GetCurrentMatchData();
 
         if (match == null || round == null)
         {

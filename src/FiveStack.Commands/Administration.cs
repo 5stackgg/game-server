@@ -19,7 +19,7 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public async void upload_demos(CCSPlayerController? player, CommandInfo command)
     {
-        FiveStackMatch? match = _matchService.GetMatchData();
+        FiveStackMatch? match = _matchService.GetCurrentMatchData();
         if (match == null)
         {
             return;
@@ -31,7 +31,7 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public async void upload_backup_round(CCSPlayerController? player, CommandInfo command)
     {
-        FiveStackMatch? match = _matchService.GetMatchData();
+        FiveStackMatch? match = _matchService.GetCurrentMatchData();
         if (match == null)
         {
             return;
@@ -51,7 +51,7 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void SetMatchState(CCSPlayerController? player, CommandInfo command)
     {
-        FiveStackMatch? match = _matchService.GetMatchData();
+        FiveStackMatch? match = _matchService.GetCurrentMatchData();
         if (match == null)
         {
             return;

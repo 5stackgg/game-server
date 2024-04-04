@@ -25,7 +25,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        FiveStackMatch match = _matchService.GetMatchData()!;
+        FiveStackMatch match = _matchService.GetCurrentMatchData()!;
 
         // autoclaim captain
         if (_matchService?.captainSystem?.TeamHasCaptain(team) == false)
@@ -52,7 +52,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        FiveStackMatch match = _matchService.GetMatchData()!;
+        FiveStackMatch match = _matchService.GetCurrentMatchData()!;
 
         _matchService?.captainSystem?.RemoveTeamCaptain(match, player, team);
 

@@ -32,7 +32,7 @@ public class MatchTimeoutSystem
 
     public void CallTimeout(CCSPlayerController? player)
     {
-        FiveStackMatch? match = _matchService.GetMatchData();
+        FiveStackMatch? match = _matchService.GetCurrentMatchData();
 
         if (match == null || _matchService.IsLive() && _backUpManagement.IsResttingRound() == false)
         {
@@ -70,7 +70,7 @@ public class MatchTimeoutSystem
 
     public void Resume(CCSPlayerController? player)
     {
-        FiveStackMatch? match = _matchService.GetMatchData();
+        FiveStackMatch? match = _matchService.GetCurrentMatchData();
         if (match == null || _matchService.IsLive() || _backUpManagement.IsResttingRound())
         {
             return;
@@ -110,7 +110,7 @@ public class MatchTimeoutSystem
     public void CallTacTimeout(CCSPlayerController? player)
     {
         MatchMap? currentMap = _matchService.GetCurrentMap();
-        FiveStackMatch? match = _matchService.GetMatchData();
+        FiveStackMatch? match = _matchService.GetCurrentMatchData();
 
         if (
             match == null

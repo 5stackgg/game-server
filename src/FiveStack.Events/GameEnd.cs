@@ -13,7 +13,7 @@ public partial class FiveStackPlugin
     {
         _matchDemos.StopDemoRecording();
 
-        FiveStackMatch? match = _matchService.GetMatchData();
+        FiveStackMatch? match = _matchService.GetCurrentMatchData();
         if (match == null)
         {
             return HookResult.Continue;
