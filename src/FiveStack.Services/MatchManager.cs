@@ -199,9 +199,8 @@ public class MatchManager
 
         if (_currentMap.map.name != Server.MapName)
         {
-            // TODO - map wont change to brewery
-            // ChangeMap(_currentMap.map);
-            // return;
+            ChangeMap(_currentMap.map);
+            return;
         }
 
         _gameServer.SendCommands(new[] { $"sv_password \"{_matchData.password}\"" });
