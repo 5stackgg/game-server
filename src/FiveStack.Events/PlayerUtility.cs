@@ -1,201 +1,226 @@
-// using CounterStrikeSharp.API.Core;
-// using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Attributes.Registration;
+using FiveStack.Entities;
 
-// namespace FiveStack;
+namespace FiveStack;
 
-// public partial class FiveStackPlugin
-// {
-//     [GameEventHandler]
-//     public HookResult DecoyThrown(EventDecoyStarted @event, GameEventInfo info)
-//     {
-//         if (
-//             @event.Userid == null
-//             || !@event.Userid.IsValid
-//             || _matchData == null
-//             || _matchData.current_match_map_id == null
-//             || !IsLive()
-//         )
-//         {
-//             return HookResult.Continue;
-//         }
+public partial class FiveStackPlugin
+{
+    [GameEventHandler]
+    public HookResult DecoyThrown(EventDecoyStarted @event, GameEventInfo info)
+    {
+        MatchManager? match = CurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
 
-//         CCSPlayerController thrower = @event.Userid;
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || @event.Userid.IsBot
+            || match == null
+            || currentMap == null
+            || match.IsLive() == false
+        )
+        {
+            return HookResult.Continue;
+        }
 
-//         PublishGameEvent(
-//             "utility",
-//             new Dictionary<string, object>
-//             {
-//                 { "time", DateTime.Now },
-//                 { "match_map_id", _matchData.current_match_map_id },
-//                 { "round", _currentRound + 1 },
-//                 { "type", "Decoy" },
-//                 { "attacker_steam_id", thrower.SteamID.ToString() },
-//                 { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" }
-//             }
-//         );
+        CCSPlayerController thrower = @event.Userid;
 
-//         return HookResult.Continue;
-//     }
+        _matchEvents.PublishGameEvent(
+            "utility",
+            new Dictionary<string, object>
+            {
+                { "time", DateTime.Now },
+                { "match_map_id", currentMap.id },
+                { "round", _gameServer.GetCurrentRound() },
+                { "type", "Decoy" },
+                { "attacker_steam_id", thrower.SteamID.ToString() },
+                { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" }
+            }
+        );
 
-//     [GameEventHandler]
-//     public HookResult GrenadeThrown(EventHegrenadeDetonate @event, GameEventInfo info)
-//     {
-//         if (
-//             @event.Userid == null
-//             || !@event.Userid.IsValid
-//             || _matchData == null
-//             || _matchData.current_match_map_id == null
-//             || !IsLive()
-//         )
-//         {
-//             return HookResult.Continue;
-//         }
+        return HookResult.Continue;
+    }
 
-//         CCSPlayerController thrower = @event.Userid;
+    [GameEventHandler]
+    public HookResult GrenadeThrown(EventHegrenadeDetonate @event, GameEventInfo info)
+    {
+        MatchManager? match = CurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
 
-//         PublishGameEvent(
-//             "utility",
-//             new Dictionary<string, object>
-//             {
-//                 { "time", DateTime.Now },
-//                 { "match_map_id", _matchData.current_match_map_id },
-//                 { "round", _currentRound + 1 },
-//                 { "type", "HighExplosive" },
-//                 { "attacker_steam_id", thrower.SteamID.ToString() },
-//                 { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" }
-//             }
-//         );
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || @event.Userid.IsBot
+            || match == null
+            || currentMap == null
+            || match.IsLive() == false
+        )
+        {
+            return HookResult.Continue;
+        }
 
-//         return HookResult.Continue;
-//     }
+        CCSPlayerController thrower = @event.Userid;
 
-//     [GameEventHandler]
-//     public HookResult FlashBangThrown(EventFlashbangDetonate @event, GameEventInfo info)
-//     {
-//         if (
-//             @event.Userid == null
-//             || !@event.Userid.IsValid
-//             || _matchData == null
-//             || _matchData.current_match_map_id == null
-//             || !IsLive()
-//         )
-//         {
-//             return HookResult.Continue;
-//         }
+        _matchEvents.PublishGameEvent(
+            "utility",
+            new Dictionary<string, object>
+            {
+                { "time", DateTime.Now },
+                { "match_map_id", currentMap.id },
+                { "round", _gameServer.GetCurrentRound() },
+                { "type", "HighExplosive" },
+                { "attacker_steam_id", thrower.SteamID.ToString() },
+                { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" }
+            }
+        );
 
-//         CCSPlayerController thrower = @event.Userid;
+        return HookResult.Continue;
+    }
 
-//         PublishGameEvent(
-//             "utility",
-//             new Dictionary<string, object>
-//             {
-//                 { "time", DateTime.Now },
-//                 { "match_map_id", _matchData.current_match_map_id },
-//                 { "round", _currentRound + 1 },
-//                 { "type", "Flash" },
-//                 { "attacker_steam_id", thrower.SteamID.ToString() },
-//                 { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" }
-//             }
-//         );
+    [GameEventHandler]
+    public HookResult FlashBangThrown(EventFlashbangDetonate @event, GameEventInfo info)
+    {
+        MatchManager? match = CurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
 
-//         return HookResult.Continue;
-//     }
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || @event.Userid.IsBot
+            || match == null
+            || currentMap == null
+            || match.IsLive() == false
+        )
+        {
+            return HookResult.Continue;
+        }
 
-//     [GameEventHandler]
-//     public HookResult MolotovThrown(EventMolotovDetonate @event, GameEventInfo info)
-//     {
-//         if (
-//             @event.Userid == null
-//             || !@event.Userid.IsValid
-//             || _matchData == null
-//             || _matchData.current_match_map_id == null
-//             || !IsLive()
-//         )
-//         {
-//             return HookResult.Continue;
-//         }
+        CCSPlayerController thrower = @event.Userid;
 
-//         CCSPlayerController thrower = @event.Userid;
+        _matchEvents.PublishGameEvent(
+            "utility",
+            new Dictionary<string, object>
+            {
+                { "time", DateTime.Now },
+                { "match_map_id", currentMap.id },
+                { "round", _gameServer.GetCurrentRound() },
+                { "type", "Flash" },
+                { "attacker_steam_id", thrower.SteamID.ToString() },
+                { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" }
+            }
+        );
 
-//         PublishGameEvent(
-//             "utility",
-//             new Dictionary<string, object>
-//             {
-//                 { "time", DateTime.Now },
-//                 { "match_map_id", _matchData.current_match_map_id },
-//                 { "round", _currentRound + 1 },
-//                 { "type", "Molotov" },
-//                 { "attacker_steam_id", thrower.SteamID.ToString() },
-//                 { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" }
-//             }
-//         );
+        return HookResult.Continue;
+    }
 
-//         return HookResult.Continue;
-//     }
+    [GameEventHandler]
+    public HookResult MolotovThrown(EventMolotovDetonate @event, GameEventInfo info)
+    {
+        MatchManager? match = CurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
 
-//     [GameEventHandler]
-//     public HookResult SmokeThrown(EventSmokegrenadeDetonate @event, GameEventInfo info)
-//     {
-//         if (
-//             @event.Userid == null
-//             || !@event.Userid.IsValid
-//             || _matchData == null
-//             || _matchData.current_match_map_id == null
-//             || !IsLive()
-//         )
-//         {
-//             return HookResult.Continue;
-//         }
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || @event.Userid.IsBot
+            || match == null
+            || currentMap == null
+            || match.IsLive() == false
+        )
+        {
+            return HookResult.Continue;
+        }
 
-//         CCSPlayerController thrower = @event.Userid;
+        CCSPlayerController thrower = @event.Userid;
 
-//         PublishGameEvent(
-//             "utility",
-//             new Dictionary<string, object>
-//             {
-//                 { "time", DateTime.Now },
-//                 { "match_map_id", _matchData.current_match_map_id },
-//                 { "round", _currentRound + 1 },
-//                 { "type", "Smoke" },
-//                 { "attacker_steam_id", thrower.SteamID.ToString() },
-//                 { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" }
-//             }
-//         );
+        _matchEvents.PublishGameEvent(
+            "utility",
+            new Dictionary<string, object>
+            {
+                { "time", DateTime.Now },
+                { "match_map_id", currentMap.id },
+                { "round", _gameServer.GetCurrentRound() },
+                { "type", "Molotov" },
+                { "attacker_steam_id", thrower.SteamID.ToString() },
+                { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" }
+            }
+        );
 
-//         return HookResult.Continue;
-//     }
+        return HookResult.Continue;
+    }
 
-//     [GameEventHandler]
-//     public HookResult PlayerBlinded(EventPlayerBlind @event, GameEventInfo info)
-//     {
-//         if (
-//             @event.Userid == null
-//             || !@event.Userid.IsValid
-//             || _matchData == null
-//             || _matchData.current_match_map_id == null
-//             || !IsLive()
-//         )
-//         {
-//             return HookResult.Continue;
-//         }
+    [GameEventHandler]
+    public HookResult SmokeThrown(EventSmokegrenadeDetonate @event, GameEventInfo info)
+    {
+        MatchManager? match = CurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
 
-//         CCSPlayerController thrower = @event.Userid;
-//         CCSPlayerController attacked = @event.Attacker;
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || @event.Userid.IsBot
+            || match == null
+            || currentMap == null
+            || match.IsLive() == false
+        )
+        {
+            return HookResult.Continue;
+        }
 
-//         PublishGameEvent(
-//             "flash",
-//             new Dictionary<string, object>
-//             {
-//                 { "time", DateTime.Now },
-//                 { "match_map_id", _matchData.current_match_map_id },
-//                 { "round", _currentRound + 1 },
-//                 { "attacker_steam_id", thrower.SteamID.ToString() },
-//                 { "attacked_steam_id", attacked.SteamID.ToString() },
-//                 { "duration", @event.BlindDuration },
-//                 { "team_flash", thrower.TeamNum == attacked.TeamNum }
-//             }
-//         );
+        CCSPlayerController thrower = @event.Userid;
 
-//         return HookResult.Continue;
-//     }
-// }
+        _matchEvents.PublishGameEvent(
+            "utility",
+            new Dictionary<string, object>
+            {
+                { "time", DateTime.Now },
+                { "match_map_id", currentMap.id },
+                { "round", _gameServer.GetCurrentRound() },
+                { "type", "Smoke" },
+                { "attacker_steam_id", thrower.SteamID.ToString() },
+                { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" }
+            }
+        );
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult PlayerBlinded(EventPlayerBlind @event, GameEventInfo info)
+    {
+        MatchManager? match = CurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
+
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || @event.Userid.IsBot
+            || match == null
+            || currentMap == null
+            || match.IsLive() == false
+        )
+        {
+            return HookResult.Continue;
+        }
+
+        CCSPlayerController thrower = @event.Userid;
+        CCSPlayerController attacked = @event.Attacker;
+
+        _matchEvents.PublishGameEvent(
+            "flash",
+            new Dictionary<string, object>
+            {
+                { "time", DateTime.Now },
+                { "match_map_id", currentMap.id },
+                { "round", _gameServer.GetCurrentRound() },
+                { "attacker_steam_id", thrower.SteamID.ToString() },
+                { "attacked_steam_id", attacked.SteamID.ToString() },
+                { "duration", @event.BlindDuration },
+                { "team_flash", thrower.TeamNum == attacked.TeamNum }
+            }
+        );
+
+        return HookResult.Continue;
+    }
+}

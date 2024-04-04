@@ -1,15 +1,10 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
-using CounterStrikeSharp.API.Modules.Utils;
-using FiveStack.Entities;
-using FiveStack.Enums;
 
 namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    // int timeoutGivenForOvertime = 0;
-
     [GameEventHandler]
     public HookResult OnRoundOfficiallyEnded(EventRoundOfficiallyEnded @event, GameEventInfo info)
     {

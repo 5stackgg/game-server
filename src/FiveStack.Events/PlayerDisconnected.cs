@@ -1,33 +1,43 @@
-// using CounterStrikeSharp.API.Core;
-// using CounterStrikeSharp.API.Core.Attributes.Registration;
-// using CounterStrikeSharp.API.Modules.Utils;
-// using FiveStack.enums;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.Entities;
+using FiveStack.Utilities;
 
-// namespace FiveStack;
+namespace FiveStack;
 
-// public partial class FiveStackPlugin
-// {
-//     [GameEventHandler]
-//     public HookResult OnPlayerDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
-//     {
-//         if (@event.Userid == null || !@event.Userid.IsValid || @event.Userid.IsBot)
-//         {
-//             return HookResult.Continue;
-//         }
+public partial class FiveStackPlugin
+{
+    [GameEventHandler]
+    public HookResult OnPlayerDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
+    {
+        MatchManager? match = CurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
 
-//         if (IsWarmup() || IsKnife())
-//         {
-//             CsTeam team = TeamNumToCSTeam(@event.Userid.TeamNum);
+        if (
+            @event.Userid == null
+            || !@event.Userid.IsValid
+            || @event.Userid.IsBot
+            || match == null
+            || currentMap == null
+        )
+        {
+            return HookResult.Continue;
+        }
 
-//             _captains[team] = null;
-//         }
+        if (match.IsWarmup() || match.IsKnife())
+        {
+            CsTeam team = TeamUtility.TeamNumToCSTeam(@event.Userid.TeamNum);
+            // TODO - captain reset
+            // _captains[team] = null;
+        }
 
-//         if (IsLive())
-//         {
-//             SendCommands(new[] { "mp_pause_match" });
-//             Message(HudDestination.Center, $" {ChatColors.Red}Match Paused");
-//         }
+        if (match.IsLive())
+        {
+            _gameServer.SendCommands(new[] { "mp_pause_match" });
+            _gameServer.Message(HudDestination.Center, $" {ChatColors.Red}Match Paused");
+        }
 
-//         return HookResult.Continue;
-//     }
-// }
+        return HookResult.Continue;
+    }
+}
