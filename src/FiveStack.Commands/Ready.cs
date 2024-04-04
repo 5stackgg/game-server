@@ -1,8 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
-using CounterStrikeSharp.API.Modules.Utils;
-using FiveStack.Enums;
 
 namespace FiveStack;
 
@@ -33,8 +31,6 @@ public partial class FiveStackPlugin
             return;
         }
 
-        _gameServer.Message(HudDestination.Center, $"Game has been forced to start.", player);
-
-        match.UpdateMapStatus(eMapStatus.Knife);
+        match.readySystem.Skip();
     }
 }

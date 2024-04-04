@@ -144,6 +144,20 @@ public class ReadySystem
         }
     }
 
+    public void Skip()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (match == null || !match.IsWarmup())
+        {
+            return;
+        }
+
+        _gameServer.Message(HudDestination.Center, $"Game has been forced to start.");
+
+        match.UpdateMapStatus(eMapStatus.Knife);
+    }
+
     private string[] GetNotReadyPlayers()
     {
         List<string> notReadyPlayers = new List<string>();
