@@ -9,7 +9,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult BombPlaned(EventBombPlanted @event, GameEventInfo info)
     {
-        MatchManager? match = CurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();
 
         if (
@@ -43,7 +43,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult BombPlaned(EventBombDefused @event, GameEventInfo info)
     {
-        MatchManager? match = CurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();
 
         if (
@@ -77,7 +77,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult BombExploded(EventBombExploded @event, GameEventInfo info)
     {
-        MatchManager? match = CurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();
 
         if (

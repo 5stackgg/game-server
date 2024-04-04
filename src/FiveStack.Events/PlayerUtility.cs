@@ -9,7 +9,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult DecoyThrown(EventDecoyStarted @event, GameEventInfo info)
     {
-        MatchManager? match = CurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();
 
         if (
@@ -45,7 +45,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult GrenadeThrown(EventHegrenadeDetonate @event, GameEventInfo info)
     {
-        MatchManager? match = CurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();
 
         if (
@@ -81,7 +81,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult FlashBangThrown(EventFlashbangDetonate @event, GameEventInfo info)
     {
-        MatchManager? match = CurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();
 
         if (
@@ -117,7 +117,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult MolotovThrown(EventMolotovDetonate @event, GameEventInfo info)
     {
-        MatchManager? match = CurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();
 
         if (
@@ -153,7 +153,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult SmokeThrown(EventSmokegrenadeDetonate @event, GameEventInfo info)
     {
-        MatchManager? match = CurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();
 
         if (
@@ -189,7 +189,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult PlayerBlinded(EventPlayerBlind @event, GameEventInfo info)
     {
-        MatchManager? match = CurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();
 
         if (

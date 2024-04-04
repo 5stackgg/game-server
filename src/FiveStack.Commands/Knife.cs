@@ -10,7 +10,7 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnStay(CCSPlayerController? player, CommandInfo? command)
     {
-        MatchManager? match = CurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
 
         if (player == null || match == null || !match.IsKnife())
         {
@@ -24,7 +24,7 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnSwitch(CCSPlayerController? player, CommandInfo? command)
     {
-        MatchManager? match = CurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
 
         if (player == null || match == null || !match.IsKnife())
         {
@@ -38,7 +38,7 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnSkipKnife(CCSPlayerController? player, CommandInfo? command)
     {
-        MatchManager? match = CurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
 
         if (player == null || match == null || !match.IsKnife())
         {

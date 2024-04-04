@@ -10,7 +10,7 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnCaptain(CCSPlayerController? player, CommandInfo? command)
     {
-        MatchManager? match = CurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
 
         if (player == null || match == null || match.IsWarmup())
         {
@@ -24,7 +24,7 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnReleaseCaptain(CCSPlayerController? player, CommandInfo? command)
     {
-        MatchManager? match = CurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
 
         if (player == null || match == null || match.IsWarmup())
         {

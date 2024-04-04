@@ -13,7 +13,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnPlayerConnect(EventPlayerConnectFull @event, GameEventInfo info)
     {
-        MatchManager? match = CurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();
         FiveStackMatch? matchData = match?.GetMatchData();
 
@@ -58,7 +58,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnPlayerJoinTeam(EventPlayerTeam @event, GameEventInfo info)
     {
-        MatchManager? match = CurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();
         FiveStackMatch? matchData = match?.GetMatchData();
 

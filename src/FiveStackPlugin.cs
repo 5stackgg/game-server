@@ -47,11 +47,6 @@ public partial class FiveStackPlugin : BasePlugin
         _matchService.GetMatchFromApi();
     }
 
-    public MatchManager? CurrentMatch()
-    {
-        return _matchService.GetCurrentMatch();
-    }
-
     public override void Unload(bool hotReload)
     {
         // _matchEvents.Disconnect();

@@ -18,6 +18,8 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void SetMatchState(CCSPlayerController? player, CommandInfo command)
     {
-        CurrentMatch()?.UpdateMapStatus(MatchUtility.MapStatusStringToEnum(command.ArgString));
+        _matchService
+            .GetCurrentMatch()
+            ?.UpdateMapStatus(MatchUtility.MapStatusStringToEnum(command.ArgString));
     }
 }

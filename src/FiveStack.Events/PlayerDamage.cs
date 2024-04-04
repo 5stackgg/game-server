@@ -10,7 +10,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnPlayerDamage(EventPlayerHurt @event, GameEventInfo info)
     {
-        MatchManager? match = CurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();
 
         if (

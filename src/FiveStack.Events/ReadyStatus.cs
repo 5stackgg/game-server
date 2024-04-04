@@ -9,7 +9,7 @@ namespace FiveStack
         {
             RegisterListener<Listeners.OnTick>(() =>
             {
-                MatchManager? match = CurrentMatch();
+                MatchManager? match = _matchService.GetCurrentMatch();
 
                 if (match == null)
                 {
