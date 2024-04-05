@@ -1,10 +1,12 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack
 {
     public partial class FiveStackPlugin
     {
+        // TODO - this is bad , it takes WAY too long
         public void ListenForReadyStatus()
         {
             RegisterListener<Listeners.OnTick>(() =>
@@ -16,12 +18,14 @@ namespace FiveStack
                     return;
                 }
 
-                if (!match.IsWarmup() && !_gameBackupRounds.IsResttingRound())
+                // _logger.LogInformation($"{match.IsWarmup()}:{_gameBackupRounds.IsResttingRound()}");
+
+                if (!match.IsWarmup() && _gameBackupRounds.IsResttingRound())
                 {
                     return;
                 }
 
-                for (var i = 1; i <= Server.MaxPlayers; ++i)
+                for (var i = 1; i <= 10; ++i)
                 {
                     CCSPlayerController player = new CCSPlayerController(
                         NativeAPI.GetEntityFromIndex(i)

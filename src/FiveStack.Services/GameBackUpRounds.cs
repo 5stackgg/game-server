@@ -293,7 +293,7 @@ public class GameBackUpRounds
 
         if (player != null || vote == true)
         {
-            _resetRound = round;
+            _resetRound = round.ToString();
 
             ResetRestoreBackupRound();
 

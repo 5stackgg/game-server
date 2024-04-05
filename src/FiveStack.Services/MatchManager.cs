@@ -207,7 +207,7 @@ public class MatchManager
             UpdateMapStatus(MatchUtility.MapStatusStringToEnum(_currentMap.status));
         }
 
-        for (var i = 1; i <= Server.MaxPlayers; ++i)
+        for (var i = 1; i <= 10; ++i)
         {
             CCSPlayerController player = new CCSPlayerController(NativeAPI.GetEntityFromIndex(i));
 
