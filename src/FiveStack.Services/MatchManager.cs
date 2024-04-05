@@ -269,9 +269,10 @@ public class MatchManager
             Server.NextFrame(() =>
             {
                 _gameServer.SendCommands(new[] { "mp_warmup_start" });
-                _gameEvents.PublishMapStatus(eMapStatus.Warmup);
             });
         }
+
+        _gameEvents.PublishMapStatus(eMapStatus.Warmup);
     }
 
     private void StartKnife()
@@ -322,6 +323,7 @@ public class MatchManager
             {
                 _gameServer.SendCommands(new[] { "mp_warmup_end" });
             }
+            _gameEvents.PublishMapStatus(eMapStatus.Live);
             return;
         }
 
