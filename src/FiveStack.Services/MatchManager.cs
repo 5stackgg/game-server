@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Entities;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
@@ -204,6 +205,18 @@ public class MatchManager
         if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
         {
             UpdateMapStatus(MatchUtility.MapStatusStringToEnum(_currentMap.status));
+        }
+
+        for (var i = 1; i <= Server.MaxPlayers; ++i)
+        {
+            CCSPlayerController player = new CCSPlayerController(NativeAPI.GetEntityFromIndex(i));
+
+            if (player != null && player.UserId != null && player.IsValid && !player.IsBot)
+            {
+                // TODO
+                // 1 - enforce team
+                // 2 - select as captain
+            }
         }
     }
 
