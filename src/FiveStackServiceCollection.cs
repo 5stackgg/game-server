@@ -7,13 +7,13 @@ public class FiveStackServiceCollection : IPluginServiceCollection<FiveStackPlug
 {
     public void ConfigureServices(IServiceCollection serviceCollection)
     {
-        serviceCollection.AddScoped<MatchService>();
+        serviceCollection.AddSingleton<MatchService>();
 
-        serviceCollection.AddScoped<MatchEvents>();
-        serviceCollection.AddScoped<GameServer>();
-        serviceCollection.AddScoped<GameDemos>();
-        serviceCollection.AddScoped<GameBackUpRounds>();
-        serviceCollection.AddScoped<EnvironmentService>();
+        serviceCollection.AddSingleton<MatchEvents>();
+        serviceCollection.AddSingleton<GameServer>();
+        serviceCollection.AddSingleton<GameDemos>();
+        serviceCollection.AddSingleton<GameBackUpRounds>();
+        serviceCollection.AddSingleton<EnvironmentService>();
 
         serviceCollection.AddTransient<MatchManager>();
         serviceCollection.AddTransient<KnifeSystem>();

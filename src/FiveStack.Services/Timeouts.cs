@@ -77,6 +77,11 @@ public class Timeouts
 
     public void Resume(CCSPlayerController? player)
     {
+        if (player == null)
+        {
+            _backUpManagement.VoteFailed();
+        }
+
         MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null || !match.IsLive() || _backUpManagement.IsResttingRound())
         {
@@ -115,8 +120,6 @@ public class Timeouts
         }
 
         _gameServer.Message(HudDestination.Alert, pauseMessage);
-
-        match.UpdateMapStatus(match.isOverTime() ? eMapStatus.Overtime : eMapStatus.Live);
     }
 
     public void CallTacTimeout(CCSPlayerController? player)

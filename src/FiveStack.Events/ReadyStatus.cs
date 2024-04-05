@@ -18,9 +18,7 @@ namespace FiveStack
                     return;
                 }
 
-                // _logger.LogInformation($"{match.IsWarmup()}:{_gameBackupRounds.IsResttingRound()}");
-
-                if (!match.IsWarmup() && _gameBackupRounds.IsResttingRound())
+                if (!match.IsWarmup() && !_gameBackupRounds.IsResttingRound())
                 {
                     return;
                 }
