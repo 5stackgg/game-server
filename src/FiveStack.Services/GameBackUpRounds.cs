@@ -114,7 +114,7 @@ public class GameBackUpRounds
         if (highestNumber > currentRound)
         {
             _logger.LogInformation("Server restarted, requires a vote to restore round");
-            RestoreBackupRound(highestNumber.ToString());
+            RestoreBackupRound(highestNumber.ToString(), null, true);
             return true;
         }
 
@@ -175,12 +175,16 @@ public class GameBackUpRounds
 
             if (_restoreRoundVote.Count(pair => pair.Value) == 2)
             {
-                LoadRound(_resetRound);
+                RestoreRound(_resetRound);
             }
         }
     }
 
-    public bool RestoreBackupRound(string round, CCSPlayerController? player = null)
+    public bool RestoreBackupRound(
+        string round,
+        CCSPlayerController? player = null,
+        bool vote = false
+    )
     {
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
@@ -197,15 +201,21 @@ public class GameBackUpRounds
             return false;
         }
 
-        _gameServer.SendCommands(new[] { "mp_pause_match" });
+        Server.NextFrame(() =>
+        {
+            _gameServer.SendCommands(new[] { "mp_pause_match" });
+        });
 
-        if (player != null)
+        if (player != null || vote == true)
         {
             _resetRound = round;
 
             ResetRestoreBackupRound();
 
-            _restoreRoundVote[player.SteamID] = true;
+            if (player != null)
+            {
+                _restoreRoundVote[player.SteamID] = true;
+            }
 
             _gameServer.Message(
                 HudDestination.Alert,
@@ -213,8 +223,7 @@ public class GameBackUpRounds
             );
             return true;
         }
-
-        LoadRound(round);
+        RestoreRound(round);
 
         return true;
     }
@@ -381,25 +390,13 @@ public class GameBackUpRounds
         }
     }
 
-    public void LoadRound(string round)
+    public void RestoreRound(string round)
     {
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
-
         if (match?.current_match_map_id == null)
         {
-            _logger.LogWarning("unable to load road because we dont have the current map");
             return;
         }
-
-        string backupRoundFile =
-            $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.PadLeft(2, '0')}.txt";
-
-        _gameServer.SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFile}" });
-
-        _gameServer.Message(
-            HudDestination.Alert,
-            $" {ChatColors.Red}Round {round} has been restored (.resume to continue)"
-        );
 
         _gameEvents.PublishGameEvent(
             "restoreRound",

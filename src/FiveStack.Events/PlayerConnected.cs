@@ -89,7 +89,10 @@ public partial class FiveStackPlugin
         );
 
         // TODO - if enforced, do we do silent?
-        EnforceMemberTeam(player, TeamUtility.TeamNumToCSTeam(@event.Team));
+        if (match.IsLive())
+        {
+            EnforceMemberTeam(player, TeamUtility.TeamNumToCSTeam(@event.Team));
+        }
 
         return HookResult.Continue;
     }

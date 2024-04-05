@@ -257,7 +257,21 @@ public class MatchManager
 
         _gameServer.SendCommands(new[] { "exec warmup" });
 
-        _gameEvents.PublishMapStatus(eMapStatus.Warmup);
+        CCSGameRules? rules = CounterStrikeSharp
+            .API.Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+            .First()
+            .GameRules;
+
+        bool isINWarmup = rules?.WarmupPeriod ?? false;
+
+        if (isINWarmup == false)
+        {
+            Server.NextFrame(() =>
+            {
+                _gameServer.SendCommands(new[] { "mp_warmup_start" });
+                _gameEvents.PublishMapStatus(eMapStatus.Warmup);
+            });
+        }
     }
 
     private void StartKnife()
@@ -304,6 +318,10 @@ public class MatchManager
         // most likely this happeend because of a server crash
         if (_backUpManagement.CheckForBackupRestore())
         {
+            if (IsWarmup())
+            {
+                _gameServer.SendCommands(new[] { "mp_warmup_end" });
+            }
             return;
         }
 
