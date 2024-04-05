@@ -261,7 +261,17 @@ public class MatchManager
             _gameServer.SendCommands(new[] { "game_type 0; game_mode 1" });
         }
 
-        _gameServer.SendCommands(new[] { "exec warmup", "mp_warmup_start" });
+        _gameServer.SendCommands(new[] { "exec warmup" });
+
+        CCSGameRules? rules = CounterStrikeSharp
+            .API.Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+            .First()
+            .GameRules;
+
+        if (rules == null || !rules.WarmupPeriod)
+        {
+            _gameServer.SendCommands(new[] { "mp_warmup_start" });
+        }
 
         _gameEvents.PublishMapStatus(eMapStatus.Warmup);
     }
