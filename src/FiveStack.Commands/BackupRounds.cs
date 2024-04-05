@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -39,6 +40,13 @@ public partial class FiveStackPlugin
         }
 
         _gameBackupRounds.RestoreBackupRound(round, player);
+    }
+
+    [ConsoleCommand("download_backup_rounds", "downloads the backup rounds from the api")]
+    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public void OnDownloadBackupRounds(CCSPlayerController? player, CommandInfo command)
+    {
+        _gameBackupRounds.DownloadBackupRounds();
     }
 
     [ConsoleCommand("upload_backup_round", "upload backup round")]

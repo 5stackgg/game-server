@@ -315,6 +315,8 @@ public class MatchManager
             return;
         }
 
+        _backUpManagement.Setup();
+
         _gameServer.SendCommands(new[] { "mp_restartgame" });
 
         _gameEvents.PublishMapStatus(eMapStatus.Live);
