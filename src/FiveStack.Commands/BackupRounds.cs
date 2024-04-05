@@ -80,9 +80,9 @@ public partial class FiveStackPlugin
 
     [ConsoleCommand("download_backup_rounds", "downloads the backup rounds from the api")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
-    public void OnDownloadBackupRounds(CCSPlayerController? player, CommandInfo command)
+    public async void OnDownloadBackupRounds(CCSPlayerController? player, CommandInfo command)
     {
-        _gameBackupRounds.DownloadBackupRounds();
+        await _gameBackupRounds.DownloadBackupRounds();
     }
 
     [ConsoleCommand("upload_backup_round", "upload backup round")]

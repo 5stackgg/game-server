@@ -306,7 +306,7 @@ public class MatchManager
         });
     }
 
-    private void StartLive()
+    private async void StartLive()
     {
         if (_matchData == null || _matchData == null)
         {
@@ -326,22 +326,24 @@ public class MatchManager
 
         _matchDemos.Start();
 
-        // if we can restore from backup we will prompt the for a vote to restore
-        // most likely this happeend because of a server crash
-        if (_backUpManagement.CheckForBackupRestore())
-        {
-            if (IsWarmup())
-            {
-                _gameServer.SendCommands(new[] { "mp_warmup_end" });
-            }
-            _gameEvents.PublishMapStatus(eMapStatus.Live);
-            return;
-        }
-
-        _backUpManagement.Setup();
+        await _backUpManagement.DownloadBackupRounds();
 
         Server.NextFrame(() =>
         {
+            // if we can restore from backup we will prompt the for a vote to restore
+            // most likely this happeend because of a server crash
+            if (_backUpManagement.CheckForBackupRestore())
+            {
+                if (IsWarmup())
+                {
+                    _gameServer.SendCommands(new[] { "mp_warmup_end" });
+                }
+                _gameEvents.PublishMapStatus(eMapStatus.Live);
+                return;
+            }
+
+            _backUpManagement.Setup();
+
             if (IsWarmup())
             {
                 _gameServer.SendCommands(new[] { "mp_warmup_end" });

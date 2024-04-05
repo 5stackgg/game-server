@@ -63,8 +63,6 @@ public class GameBackUpRounds
 
     public bool CheckForBackupRestore()
     {
-        DownloadBackupRounds();
-
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
         if (match == null)
@@ -119,6 +117,90 @@ public class GameBackUpRounds
         }
 
         return false;
+    }
+
+    public async Task DownloadBackupRounds()
+    {
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        if (match == null)
+        {
+            return;
+        }
+
+        string? serverId = _environmentService.GetServerId();
+        string? apiPassword = _environmentService.GetServerApiPassword();
+
+        string endpoint =
+            $"https://api.5stack.gg/matches/{match.id}/backup-rounds/map/{match.current_match_map_id}";
+
+        string downloadDirectory = "/opt";
+        Directory.CreateDirectory(downloadDirectory);
+
+        string zipFilePath = Path.Combine(downloadDirectory, "backup-rounds.zip");
+
+        if (File.Exists(zipFilePath))
+        {
+            return;
+        }
+
+        _logger.LogInformation($"Downloading Backup Rounds {endpoint}");
+
+        using (HttpClient httpClient = new HttpClient())
+        {
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                "Bearer",
+                apiPassword
+            );
+
+            try
+            {
+                HttpResponseMessage response = await httpClient.GetAsync(endpoint);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    using (Stream contentStream = await response.Content.ReadAsStreamAsync())
+                    {
+                        using (
+                            FileStream fileStream = new FileStream(
+                                zipFilePath,
+                                FileMode.Create,
+                                FileAccess.Write,
+                                FileShare.None
+                            )
+                        )
+                        {
+                            await contentStream.CopyToAsync(fileStream);
+                        }
+                    }
+                    _logger.LogTrace($"backup rounds downloaded: {zipFilePath}");
+
+                    string extractPath = Path.Join(Server.GameDirectory + "/csgo/");
+                    try
+                    {
+                        ZipFile.ExtractToDirectory(zipFilePath, extractPath, true);
+                        _logger.LogInformation($"backup rounds downloaded");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError($"Error extracting backup rounds zip: {ex.Message}");
+                    }
+                }
+                else if (response.StatusCode == HttpStatusCode.NotFound)
+                {
+                    return;
+                }
+                else
+                {
+                    _logger.LogError($"backup rounds failed to download: {response.StatusCode}");
+                    return;
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError($"backup rounds failed to download: {ex.Message}");
+                return;
+            }
+        }
     }
 
     public void SetupResetMessage(CCSPlayerController player)
@@ -302,91 +384,6 @@ public class GameBackUpRounds
                     }
                 }
             }
-        }
-    }
-
-    public void DownloadBackupRounds()
-    {
-        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
-        if (match == null)
-        {
-            return;
-        }
-
-        string? serverId = _environmentService.GetServerId();
-        string? apiPassword = _environmentService.GetServerApiPassword();
-
-        string endpoint =
-            $"https://api.5stack.gg/matches/{match.id}/backup-rounds/map/{match.current_match_map_id}";
-
-        string downloadDirectory = "/opt";
-        Directory.CreateDirectory(downloadDirectory);
-
-        string zipFilePath = Path.Combine(downloadDirectory, "backup-rounds.zip");
-
-        if (File.Exists(zipFilePath))
-        {
-            return;
-            ;
-        }
-
-        _logger.LogInformation($"Downloading Backup Rounds {endpoint}");
-
-        using (HttpClient httpClient = new HttpClient())
-        {
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-                "Bearer",
-                apiPassword
-            );
-
-            try
-            {
-                HttpResponseMessage response = httpClient.GetAsync(endpoint).Result;
-
-                if (response.IsSuccessStatusCode)
-                {
-                    using (Stream contentStream = response.Content.ReadAsStreamAsync().Result)
-                    {
-                        using (
-                            FileStream fileStream = new FileStream(
-                                zipFilePath,
-                                FileMode.Create,
-                                FileAccess.Write,
-                                FileShare.None
-                            )
-                        )
-                        {
-                            contentStream.CopyTo(fileStream);
-                        }
-                    }
-                    _logger.LogTrace($"backup rounds downloaded: {zipFilePath}");
-                }
-                else if (response.StatusCode == HttpStatusCode.NotFound)
-                {
-                    return;
-                }
-                else
-                {
-                    _logger.LogError($"backup rounds failed to download: {response.StatusCode}");
-                    return;
-                }
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogError($"backup rounds failed to download: {ex.Message}");
-                return;
-            }
-        }
-
-        string extractPath = Path.Join(Server.GameDirectory + "/csgo/");
-        try
-        {
-            ZipFile.ExtractToDirectory(zipFilePath, extractPath, true);
-            _logger.LogInformation($"backup rounds downloaded");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Error extracting backup rounds zip: {ex.Message}");
         }
     }
 
