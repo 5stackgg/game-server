@@ -13,19 +13,24 @@ public partial class FiveStackPlugin
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchData? matchData = match?.GetMatchData();
 
-        if (
-            @event.Userid == null
-            || !@event.Userid.IsValid
-            || @event.Userid.IsBot
-            || match == null
-            || matchData?.current_match_map_id == null
-            || match.IsLive() == false
-        )
+        if (@event.Userid == null || match == null || !@event.Userid.IsValid || @event.Userid.IsBot)
         {
             return HookResult.Continue;
         }
 
         CCSPlayerController attacked = @event.Userid;
+
+        if (match.IsWarmup() && attacked.InGameMoneyServices != null)
+        {
+            attacked.InGameMoneyServices.Account = 60000;
+            return HookResult.Continue;
+        }
+
+        if (matchData?.current_match_map_id == null || match.IsLive() == false)
+        {
+            return HookResult.Continue;
+        }
+
         CCSPlayerController? attacker = @event.Attacker.IsValid ? @event.Attacker : null;
 
         var attackerLocation = attacker?.PlayerPawn?.Value?.AbsOrigin;
