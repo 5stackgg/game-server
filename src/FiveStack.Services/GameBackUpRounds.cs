@@ -315,6 +315,12 @@ public class GameBackUpRounds
 
         string zipFilePath = Path.Combine(downloadDirectory, "backup-rounds.zip");
 
+        if (File.Exists(zipFilePath))
+        {
+            return;
+            ;
+        }
+
         _logger.LogInformation($"Downloading Backup Rounds {endpoint}");
 
         using (HttpClient httpClient = new HttpClient())
@@ -367,10 +373,6 @@ public class GameBackUpRounds
         try
         {
             ZipFile.ExtractToDirectory(zipFilePath, extractPath, true);
-            _logger.LogTrace($"backup rounds extracted");
-
-            File.Delete(zipFilePath);
-            _logger.LogTrace($"backup rounds zip deleted");
             _logger.LogInformation($"backup rounds downloaded");
         }
         catch (Exception ex)

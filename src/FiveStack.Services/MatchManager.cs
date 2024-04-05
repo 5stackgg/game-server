@@ -289,11 +289,9 @@ public class MatchManager
 
         _gameEvents.PublishMapStatus(eMapStatus.Knife);
 
-        _gameServer.SendCommands(new[] { "mp_warmup_end", "mp_restartgame 0" });
-
-        await Task.Delay(1000);
         Server.NextFrame(() =>
         {
+            _gameServer.SendCommands(new[] { "mp_warmup_end" });
             _gameServer.Message(HudDestination.Alert, "KNIFE KNIFE KNIFE!");
         });
     }
@@ -314,7 +312,7 @@ public class MatchManager
             _gameServer.SendCommands(new[] { "game_type 0; game_mode 1" });
         }
 
-        _gameServer.SendCommands(new[] { "mp_warmup_end", "exec live" });
+        _gameServer.SendCommands(new[] { "exec live" });
 
         _matchDemos.Start();
 
@@ -327,13 +325,11 @@ public class MatchManager
 
         _backUpManagement.Setup();
 
-        _gameServer.SendCommands(new[] { "mp_restartgame" });
-
         _gameEvents.PublishMapStatus(eMapStatus.Live);
 
-        await Task.Delay(1000);
         Server.NextFrame(() =>
         {
+            _gameServer.SendCommands(new[] { "mp_warmup_end" });
             _gameServer.Message(HudDestination.Alert, "LIVE LIVE LIVE!");
         });
     }
