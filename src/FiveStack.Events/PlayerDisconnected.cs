@@ -31,7 +31,7 @@ public partial class FiveStackPlugin
 
         if (match.IsLive())
         {
-            _gameServer.SendCommands(new[] { "mp_pause_match" });
+         
             _gameServer.Message(HudDestination.Center, $" {ChatColors.Red}Match Paused");
         }
 

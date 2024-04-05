@@ -46,7 +46,7 @@ public class Timeouts
             return;
         }
 
-        _gameServer.SendCommands(new[] { "mp_pause_match" });
+    
 
         string pauseMessage = "Admin Paused the Match";
 
@@ -70,20 +70,21 @@ public class Timeouts
             pauseMessage = $"{player.PlayerName} {ChatColors.Red}paused the match";
         }
 
-        _gameServer.Message(HudDestination.Alert, pauseMessage);
-
-        match.UpdateMapStatus(eMapStatus.Paused);
+        match.PauseMatch(pauseMessage);
     }
 
     public void Resume(CCSPlayerController? player)
     {
-        if (player == null)
+        if (player == null && _backUpManagement.IsResttingRound())
         {
             _backUpManagement.VoteFailed();
         }
 
-        MatchManager? match = _matchService.GetCurrentMatch();
-        if (match == null || !match.IsLive() || _backUpManagement.IsResttingRound())
+        MatchManager? match = _matchService.GetCurrentMatch(); 
+        _logger.LogInformation($"TRY TO RESUME {match.IsPaused()}:{_backUpManagement.IsResttingRound()}");
+        
+        
+        if (match == null || !match.IsPaused() || _backUpManagement.IsResttingRound())
         {
             return;
         }
@@ -120,6 +121,7 @@ public class Timeouts
         }
 
         _gameServer.Message(HudDestination.Alert, pauseMessage);
+        match.UpdateMapStatus(match.isOverTime() ? eMapStatus.Overtime : eMapStatus.Live);
     }
 
     public void CallTacTimeout(CCSPlayerController? player)

@@ -271,15 +271,16 @@ public class GameBackUpRounds
         bool vote = false
     )
     {
-        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
 
-        if (match == null)
+        if (match == null || matchData == null)
         {
             return false;
         }
 
         string backupRoundFile =
-            $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.PadLeft(2, '0')}.txt";
+            $"{MatchUtility.GetSafeMatchPrefix(matchData)}_round{round.PadLeft(2, '0')}.txt";
 
         if (!File.Exists(Path.Join(Server.GameDirectory + "/csgo/", backupRoundFile)))
         {
@@ -288,7 +289,7 @@ public class GameBackUpRounds
 
         Server.NextFrame(() =>
         {
-            _gameServer.SendCommands(new[] { "mp_pause_match" });
+            match.PauseMatch();
         });
 
         if (player != null || vote == true)
