@@ -39,7 +39,7 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnRules(CCSPlayerController? player, CommandInfo command)
     {
-        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
         if (player == null || match == null)
         {
             return;

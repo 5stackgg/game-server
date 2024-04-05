@@ -29,7 +29,7 @@ public class GameDemos
 
     public void Start()
     {
-        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
         if (match == null)
         {
@@ -75,7 +75,7 @@ public class GameDemos
 
     public async Task UploadDemo(string filePath)
     {
-        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
         string? serverId = _environmentService.GetServerId();
         string? apiPassword = _environmentService.GetServerApiPassword();
@@ -124,7 +124,7 @@ public class GameDemos
 
     private string GetMatchDemoPath()
     {
-        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
         if (match == null || match.current_match_map_id == null)
         {
             return "/opt/demos";

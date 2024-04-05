@@ -11,14 +11,14 @@ public partial class FiveStackPlugin
     public HookResult OnPlayerKill(EventPlayerDeath @event, GameEventInfo info)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
-        MatchMap? currentMap = match?.GetCurrentMap();
+        MatchData? matchData = match?.GetMatchData();
 
         if (
             @event.Userid == null
             || !@event.Userid.IsValid
             || @event.Userid.IsBot
             || match == null
-            || currentMap == null
+            || matchData?.current_match_map_id == null
             || match.IsLive() == false
         )
         {
@@ -36,7 +36,7 @@ public partial class FiveStackPlugin
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", currentMap.id },
+                { "match_map_id", matchData.current_match_map_id },
                 { "no_scope", @event.Noscope },
                 { "blinded", @event.Attackerblind },
                 { "thru_smoke", @event.Thrusmoke },
@@ -83,7 +83,7 @@ public partial class FiveStackPlugin
                     new Dictionary<string, object>
                     {
                         { "time", DateTime.Now },
-                        { "match_map_id", currentMap.id },
+                        { "match_map_id", matchData.current_match_map_id },
                         { "round", _gameServer.GetCurrentRound() },
                         { "attacker_steam_id", assister.SteamID.ToString() },
                         { "attacker_team", $"{TeamUtility.TeamNumToString(attacker.TeamNum)}" },

@@ -14,16 +14,14 @@ public partial class FiveStackPlugin
     public HookResult OnPlayerConnect(EventPlayerConnectFull @event, GameEventInfo info)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
-        MatchMap? currentMap = match?.GetCurrentMap();
-        FiveStackMatch? matchData = match?.GetMatchData();
+        MatchData? matchData = match?.GetMatchData();
 
         if (
             @event.Userid == null
             || !@event.Userid.IsValid
             || @event.Userid.IsBot
             || match == null
-            || matchData == null
-            || currentMap == null
+            || matchData?.current_match_map_id == null
         )
         {
             return HookResult.Continue;
@@ -46,7 +44,7 @@ public partial class FiveStackPlugin
             "player",
             new Dictionary<string, object>
             {
-                { "match_map_id", currentMap.id },
+                { "match_map_id", matchData.current_match_map_id },
                 { "player_name", player.PlayerName },
                 { "steam_id", player.SteamID.ToString() },
             }
@@ -59,17 +57,8 @@ public partial class FiveStackPlugin
     public HookResult OnPlayerJoinTeam(EventPlayerTeam @event, GameEventInfo info)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
-        MatchMap? currentMap = match?.GetCurrentMap();
-        FiveStackMatch? matchData = match?.GetMatchData();
 
-        if (
-            @event.Userid == null
-            || !@event.Userid.IsValid
-            || @event.Userid.IsBot
-            || match == null
-            || matchData == null
-            || currentMap == null
-        )
+        if (@event.Userid == null || !@event.Userid.IsValid || @event.Userid.IsBot || match == null)
         {
             return HookResult.Continue;
         }
@@ -100,18 +89,22 @@ public partial class FiveStackPlugin
         );
 
         // TODO - if enforced, do we do silent?
-        EnforceMemberTeam(matchData, currentMap, player, TeamUtility.TeamNumToCSTeam(@event.Team));
+        EnforceMemberTeam(player, TeamUtility.TeamNumToCSTeam(@event.Team));
 
         return HookResult.Continue;
     }
 
-    private async void EnforceMemberTeam(
-        FiveStackMatch matchData,
-        MatchMap currentMap,
-        CCSPlayerController player,
-        CsTeam currentTeam
-    )
+    private async void EnforceMemberTeam(CCSPlayerController player, CsTeam currentTeam)
     {
+        MatchManager? match = _matchService?.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+        MatchMap? currentMap = match?.GetCurrentMap();
+
+        if (match == null || matchData == null || currentMap == null)
+        {
+            return;
+        }
+
         Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
 
         if (lineup_id == null)

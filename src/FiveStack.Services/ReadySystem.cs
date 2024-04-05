@@ -76,7 +76,7 @@ public class ReadySystem
 
     private int GetExpectedPlayerCount()
     {
-        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
         if (match == null)
         {

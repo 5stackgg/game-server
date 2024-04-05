@@ -10,13 +10,13 @@ public partial class FiveStackPlugin
     public HookResult BombPlaned(EventBombPlanted @event, GameEventInfo info)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
-        MatchMap? currentMap = match?.GetCurrentMap();
+        MatchData? matchData = match?.GetMatchData();
 
         if (
             @event.Userid == null
             || !@event.Userid.IsValid
             || match == null
-            || currentMap == null
+            || matchData?.current_match_map_id == null
             || !match.IsLive()
         )
         {
@@ -30,7 +30,7 @@ public partial class FiveStackPlugin
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", currentMap.id },
+                { "match_map_id", matchData.current_match_map_id },
                 { "round", _gameServer.GetCurrentRound() },
                 { "type", "Planted" },
                 { "player_steam_id", planter.SteamID.ToString() },
@@ -44,13 +44,13 @@ public partial class FiveStackPlugin
     public HookResult BombPlaned(EventBombDefused @event, GameEventInfo info)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
-        MatchMap? currentMap = match?.GetCurrentMap();
+        MatchData? matchData = match?.GetMatchData();
 
         if (
             @event.Userid == null
             || !@event.Userid.IsValid
             || match == null
-            || currentMap == null
+            || matchData?.current_match_map_id == null
             || !match.IsLive()
         )
         {
@@ -64,7 +64,7 @@ public partial class FiveStackPlugin
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", currentMap.id },
+                { "match_map_id", matchData.current_match_map_id },
                 { "round", _gameServer.GetCurrentRound() },
                 { "type", "Defused" },
                 { "player_steam_id", defuser.SteamID.ToString() },
@@ -78,13 +78,13 @@ public partial class FiveStackPlugin
     public HookResult BombExploded(EventBombExploded @event, GameEventInfo info)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
-        MatchMap? currentMap = match?.GetCurrentMap();
+        MatchData? matchData = match?.GetMatchData();
 
         if (
             @event.Userid == null
             || !@event.Userid.IsValid
             || match == null
-            || currentMap == null
+            || matchData?.current_match_map_id == null
             || !match.IsLive()
         )
         {
@@ -98,7 +98,7 @@ public partial class FiveStackPlugin
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", currentMap.id },
+                { "match_map_id", matchData.current_match_map_id },
                 { "round", _gameServer.GetCurrentRound() },
                 { "type", "Exploded" },
                 { "player_steam_id", bomber.SteamID.ToString() },

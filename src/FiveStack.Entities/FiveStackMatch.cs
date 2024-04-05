@@ -1,6 +1,6 @@
 namespace FiveStack.Entities;
 
-public class FiveStackMatch
+public class MatchData
 {
     public Guid id { get; set; } = Guid.Empty;
     public int mr { get; set; } = 0;

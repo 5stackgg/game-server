@@ -39,7 +39,7 @@ public class GameBackUpRounds
 
     public void Setup()
     {
-        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
         if (match == null)
         {
@@ -65,7 +65,7 @@ public class GameBackUpRounds
     {
         DownloadBackupRounds();
 
-        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
         if (match == null)
         {
@@ -123,7 +123,7 @@ public class GameBackUpRounds
 
     public void SetupResetMessage(CCSPlayerController player)
     {
-        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
         if (match == null || player.UserId == null)
         {
@@ -154,7 +154,7 @@ public class GameBackUpRounds
             return;
         }
 
-        FiveStackMatch? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
 
         if (matchData == null)
         {
@@ -182,7 +182,7 @@ public class GameBackUpRounds
 
     public bool RestoreBackupRound(string round, CCSPlayerController? player = null)
     {
-        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
         if (match == null)
         {
@@ -230,7 +230,7 @@ public class GameBackUpRounds
 
     public async Task UploadBackupRound(string round)
     {
-        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
         if (match == null)
         {
             return;
@@ -298,7 +298,7 @@ public class GameBackUpRounds
 
     public void DownloadBackupRounds()
     {
-        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
         if (match == null)
         {
             return;
@@ -383,7 +383,7 @@ public class GameBackUpRounds
 
     public void LoadRound(string round)
     {
-        FiveStackMatch? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
         if (match?.current_match_map_id == null)
         {

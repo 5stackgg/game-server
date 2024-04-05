@@ -39,7 +39,7 @@ public class Timeouts
             return;
         }
 
-        FiveStackMatch? matchData = match.GetMatchData();
+        MatchData? matchData = match.GetMatchData();
 
         if (matchData == null)
         {
@@ -83,7 +83,7 @@ public class Timeouts
             return;
         }
 
-        FiveStackMatch? matchData = match.GetMatchData();
+        MatchData? matchData = match.GetMatchData();
 
         if (matchData == null)
         {
@@ -128,7 +128,7 @@ public class Timeouts
         }
 
         MatchMap? currentMap = match.GetCurrentMap();
-        FiveStackMatch? matchData = match.GetMatchData();
+        MatchData? matchData = match.GetMatchData();
 
         if (matchData == null || currentMap == null)
         {

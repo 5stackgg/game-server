@@ -64,7 +64,7 @@ public class MatchService
                     return;
                 }
 
-                FiveStackMatch? matchData = JsonSerializer.Deserialize<FiveStackMatch>(response);
+                MatchData? matchData = JsonSerializer.Deserialize<MatchData>(response);
 
                 if (matchData == null)
                 {

@@ -14,15 +14,15 @@ public partial class FiveStackPlugin
     public HookResult OnRoundOfficiallyEnded(EventRoundOfficiallyEnded @event, GameEventInfo info)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
-        MatchMap? currentMap = match?.GetCurrentMap();
+        MatchData? matchData = match?.GetMatchData();
 
-        if (match == null)
+        if (match == null || matchData?.current_match_map_id == null)
         {
             return HookResult.Continue;
         }
 
         _ = _gameBackupRounds.UploadBackupRound((_gameServer.GetCurrentRound() - 1).ToString());
-        if (match != null && currentMap != null && match.isOverTime())
+        if (match != null && match.isOverTime())
         {
             match.UpdateMapStatus(eMapStatus.Overtime);
             if (timeoutGivenForOvertime != match.GetOverTimeNumber())
@@ -33,7 +33,7 @@ public partial class FiveStackPlugin
                     "techTimeout",
                     new Dictionary<string, object>
                     {
-                        { "map_id", currentMap.id },
+                        { "map_id", matchData.current_match_map_id },
                         { "lineup_1_timeouts_available", 1 },
                         { "lineup_2_timeouts_available", 1 },
                     }
@@ -49,7 +49,7 @@ public partial class FiveStackPlugin
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();
-        FiveStackMatch? matchData = match?.GetMatchData();
+        MatchData? matchData = match?.GetMatchData();
 
         if (match == null || matchData == null || currentMap == null)
         {

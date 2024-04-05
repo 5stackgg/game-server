@@ -10,7 +10,7 @@ namespace FiveStack;
 
 public class MatchManager
 {
-    private FiveStackMatch? _matchData;
+    private MatchData? _matchData;
     private eMapStatus _currentMapStatus = eMapStatus.Unknown;
 
     private readonly MatchEvents _gameEvents;
@@ -50,12 +50,12 @@ public class MatchManager
         _environmentService = environmentService;
     }
 
-    public void Init(FiveStackMatch match)
+    public void Init(MatchData match)
     {
         _matchData = match;
     }
 
-    public FiveStackMatch? GetMatchData()
+    public MatchData? GetMatchData()
     {
         return _matchData;
     }
@@ -75,22 +75,22 @@ public class MatchManager
 
     public bool IsWarmup()
     {
-        MatchMap? _currentMap = GetCurrentMap();
-        if (_currentMap == null)
+        if (_currentMapStatus == eMapStatus.Warmup)
         {
-            return false;
+            return true;
         }
-        return MatchUtility.MapStatusStringToEnum(_currentMap.status) == eMapStatus.Warmup;
+
+        CCSGameRules? rules = CounterStrikeSharp
+            .API.Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+            .First()
+            .GameRules;
+
+        return rules?.WarmupPeriod ?? false;
     }
 
     public bool IsLive()
     {
-        MatchMap? _currentMap = GetCurrentMap();
-        if (_currentMap == null)
-        {
-            return false;
-        }
-        return MatchUtility.MapStatusStringToEnum(_currentMap.status) == eMapStatus.Live;
+        return _currentMapStatus == eMapStatus.Live;
     }
 
     public bool isOverTime()
@@ -115,13 +115,7 @@ public class MatchManager
 
     public bool IsKnife()
     {
-        MatchMap? _currentMap = GetCurrentMap();
-        if (_currentMap == null)
-        {
-            return false;
-        }
-
-        return MatchUtility.MapStatusStringToEnum(_currentMap.status) == eMapStatus.Knife;
+        return _currentMapStatus == eMapStatus.Knife;
     }
 
     public void UpdateMapStatus(eMapStatus status)
@@ -171,7 +165,7 @@ public class MatchManager
         _currentMapStatus = status;
     }
 
-    public void SetupMatch(FiveStackMatch match)
+    public void SetupMatch(MatchData match)
     {
         _matchData = match;
 
@@ -263,20 +257,10 @@ public class MatchManager
 
         _gameServer.SendCommands(new[] { "exec warmup" });
 
-        CCSGameRules? rules = CounterStrikeSharp
-            .API.Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
-            .First()
-            .GameRules;
-
-        if (rules == null || !rules.WarmupPeriod)
-        {
-            _gameServer.SendCommands(new[] { "mp_warmup_start" });
-        }
-
         _gameEvents.PublishMapStatus(eMapStatus.Warmup);
     }
 
-    private async void StartKnife()
+    private void StartKnife()
     {
         if (_matchData == null || IsKnife())
         {
@@ -296,7 +280,7 @@ public class MatchManager
         });
     }
 
-    private async void StartLive()
+    private void StartLive()
     {
         if (_matchData == null || _matchData == null)
         {
@@ -325,12 +309,19 @@ public class MatchManager
 
         _backUpManagement.Setup();
 
-        _gameEvents.PublishMapStatus(eMapStatus.Live);
-
         Server.NextFrame(() =>
         {
-            _gameServer.SendCommands(new[] { "mp_warmup_end" });
-            _gameServer.Message(HudDestination.Alert, "LIVE LIVE LIVE!");
+            if (IsWarmup())
+            {
+                _gameServer.SendCommands(new[] { "mp_warmup_end" });
+            }
+
+            if (IsWarmup() || IsKnife())
+            {
+                _gameServer.Message(HudDestination.Alert, "LIVE LIVE LIVE!");
+            }
+
+            _gameEvents.PublishMapStatus(eMapStatus.Live);
         });
     }
 }

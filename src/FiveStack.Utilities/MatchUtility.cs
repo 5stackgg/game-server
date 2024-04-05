@@ -6,15 +6,12 @@ namespace FiveStack.Utilities
 {
     public static class MatchUtility
     {
-        public static string GetSafeMatchPrefix(FiveStackMatch match)
+        public static string GetSafeMatchPrefix(MatchData match)
         {
             return $"{match.id}_{match.current_match_map_id}".Replace("-", "");
         }
 
-        public static MatchMember? GetMemberFromLineup(
-            FiveStackMatch match,
-            CCSPlayerController player
-        )
+        public static MatchMember? GetMemberFromLineup(MatchData match, CCSPlayerController player)
         {
             List<MatchMember> players = match
                 .lineup_1.lineup_players.Concat(match.lineup_2.lineup_players)
@@ -31,7 +28,7 @@ namespace FiveStack.Utilities
             });
         }
 
-        public static Guid? GetPlayerLineup(FiveStackMatch match, CCSPlayerController player)
+        public static Guid? GetPlayerLineup(MatchData match, CCSPlayerController player)
         {
             MatchMember? member = MatchUtility.GetMemberFromLineup(match, player);
 
