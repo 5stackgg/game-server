@@ -75,50 +75,57 @@ public class GameDemos
 
     public async Task UploadDemo(string filePath)
     {
-        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
-
-        string? serverId = _environmentService.GetServerId();
-        string? apiPassword = _environmentService.GetServerApiPassword();
-
-        if (serverId == null || apiPassword == null || match == null)
+        try
         {
-            return;
-        }
+            MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
-        string endpoint =
-            $"{_environmentService.GetBaseUri()}/matches/{match.id}/demos/map/{match.current_match_map_id}";
+            string? serverId = _environmentService.GetServerId();
+            string? apiPassword = _environmentService.GetServerApiPassword();
 
-        _logger.LogInformation($"Uploading Demo {endpoint}");
-
-        using (var httpClient = new HttpClient())
-        {
-            using (var formData = new MultipartFormDataContent())
+            if (serverId == null || apiPassword == null || match == null)
             {
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-                    "Bearer",
-                    apiPassword
-                );
+                return;
+            }
 
-                using (var fileStream = File.OpenRead(filePath))
-                using (var streamContent = new StreamContent(fileStream))
+            string endpoint =
+                $"{_environmentService.GetBaseUri()}/matches/{match.id}/demos/map/{match.current_match_map_id}";
+
+            _logger.LogInformation($"Uploading Demo {endpoint}");
+
+            using (var httpClient = new HttpClient())
+            {
+                using (var formData = new MultipartFormDataContent())
                 {
-                    streamContent.Headers.ContentType = new MediaTypeHeaderValue(
-                        "application/octet-stream"
+                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                        "Bearer",
+                        apiPassword
                     );
-                    formData.Add(streamContent, "file", Path.GetFileName(filePath));
 
-                    var response = await httpClient.PostAsync(endpoint, formData);
-                    if (response.IsSuccessStatusCode)
+                    using (var fileStream = File.OpenRead(filePath))
+                    using (var streamContent = new StreamContent(fileStream))
                     {
-                        _logger.LogInformation("File uploaded successfully.");
-                        File.Delete(filePath);
-                    }
-                    else
-                    {
-                        _logger.LogError($"File upload failed. Status code: {response.StatusCode}");
+                        streamContent.Headers.ContentType = new MediaTypeHeaderValue(
+                            "application/octet-stream"
+                        );
+                        formData.Add(streamContent, "file", Path.GetFileName(filePath));
+
+                        var response = await httpClient.PostAsync(endpoint, formData);
+                        if (response.IsSuccessStatusCode)
+                        {
+                            _logger.LogInformation("demo uploaded");
+                            File.Delete(filePath);
+                        }
+                        else
+                        {
+                            _logger.LogError($"unable to upload demo {response.StatusCode}");
+                        }
                     }
                 }
             }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"An error occurred during file upload: {ex.Message}");
         }
     }
 

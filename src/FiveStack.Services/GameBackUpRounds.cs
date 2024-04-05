@@ -324,69 +324,78 @@ public class GameBackUpRounds
 
     public async Task UploadBackupRound(string round)
     {
-        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
-        if (match == null)
+        try
         {
-            return;
-        }
-
-        string? serverId = _environmentService.GetServerId();
-        string? apiPassword = _environmentService.GetServerApiPassword();
-
-        if (serverId == null || apiPassword == null)
-        {
-            _logger.LogInformation(
-                $"unable to upload backup round because were missing server id / api password"
-            );
-            return;
-        }
-
-        string backupRoundFilePath = Path.Join(
-            Server.GameDirectory + "/csgo/",
-            $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.PadLeft(2, '0')}.txt"
-        );
-
-        if (!File.Exists(backupRoundFilePath))
-        {
-            _logger.LogInformation(
-                $"unable to upload backup round because its missing {backupRoundFilePath}"
-            );
-            return;
-        }
-
-        string endpoint =
-            $"{_environmentService.GetBaseUri()}/matches/{match.id}/backup-rounds/map/{match.current_match_map_id}/round/{round}";
-
-        _logger.LogInformation($"Uploading Backup Round {endpoint}");
-
-        using (var httpClient = new HttpClient())
-        {
-            using (var formData = new MultipartFormDataContent())
+            MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+            if (match == null)
             {
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-                    "Bearer",
-                    apiPassword
+                return;
+            }
+
+            string? serverId = _environmentService.GetServerId();
+            string? apiPassword = _environmentService.GetServerApiPassword();
+
+            if (serverId == null || apiPassword == null)
+            {
+                _logger.LogInformation(
+                    $"Unable to upload backup round because we're missing server id / api password"
                 );
+                return;
+            }
 
-                using (var fileStream = File.OpenRead(backupRoundFilePath))
-                using (var streamContent = new StreamContent(fileStream))
+            string backupRoundFilePath = Path.Join(
+                Server.GameDirectory + "/csgo/",
+                $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.PadLeft(2, '0')}.txt"
+            );
+
+            if (!File.Exists(backupRoundFilePath))
+            {
+                _logger.LogInformation(
+                    $"Unable to upload backup round because it's missing {backupRoundFilePath}"
+                );
+                return;
+            }
+
+            string endpoint =
+                $"{_environmentService.GetBaseUri()}/matches/{match.id}/backup-rounds/map/{match.current_match_map_id}/round/{round}";
+
+            _logger.LogInformation($"Uploading Backup Round {endpoint}");
+
+            using (var httpClient = new HttpClient())
+            {
+                using (var formData = new MultipartFormDataContent())
                 {
-                    streamContent.Headers.ContentType = new MediaTypeHeaderValue(
-                        "application/octet-stream"
+                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                        "Bearer",
+                        apiPassword
                     );
-                    formData.Add(streamContent, "file", Path.GetFileName(backupRoundFilePath));
 
-                    var response = await httpClient.PostAsync(endpoint, formData);
-                    if (response.IsSuccessStatusCode)
+                    using (var fileStream = File.OpenRead(backupRoundFilePath))
+                    using (var streamContent = new StreamContent(fileStream))
                     {
-                        _logger.LogInformation("File uploaded successfully.");
-                    }
-                    else
-                    {
-                        _logger.LogError($"File upload failed. Status code: {response.StatusCode}");
+                        streamContent.Headers.ContentType = new MediaTypeHeaderValue(
+                            "application/octet-stream"
+                        );
+                        formData.Add(streamContent, "file", Path.GetFileName(backupRoundFilePath));
+
+                        var response = await httpClient.PostAsync(endpoint, formData);
+                        if (response.IsSuccessStatusCode)
+                        {
+                            _logger.LogInformation("backup round uploaded");
+                        }
+                        else
+                        {
+                            _logger.LogError(
+                                $"unable to upload backup round {response.StatusCode}"
+                            );
+                        }
                     }
                 }
             }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"An error occurred during backup round upload: {ex.Message}");
         }
     }
 

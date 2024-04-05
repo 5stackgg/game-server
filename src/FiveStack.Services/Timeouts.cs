@@ -34,7 +34,7 @@ public class Timeouts
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (match == null || match.IsLive() && _backUpManagement.IsResttingRound() == false)
+        if (match == null || !match.IsLive() && _backUpManagement.IsResttingRound() == false)
         {
             return;
         }
@@ -78,7 +78,7 @@ public class Timeouts
     public void Resume(CCSPlayerController? player)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
-        if (match == null || match.IsLive() || _backUpManagement.IsResttingRound())
+        if (match == null || !match.IsLive() || _backUpManagement.IsResttingRound())
         {
             return;
         }
@@ -122,7 +122,7 @@ public class Timeouts
     public void CallTacTimeout(CCSPlayerController? player)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
-        if (match == null || match.IsLive() || _backUpManagement.IsResttingRound())
+        if (match == null || !match.IsLive() || _backUpManagement.IsResttingRound())
         {
             return;
         }
