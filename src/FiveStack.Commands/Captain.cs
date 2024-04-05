@@ -12,7 +12,7 @@ public partial class FiveStackPlugin
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (player == null || match == null || match.IsWarmup())
+        if (player == null || match == null)
         {
             return;
         }
@@ -26,10 +26,11 @@ public partial class FiveStackPlugin
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (player == null || match == null || match.IsWarmup())
+        if (player == null || match == null)
         {
             return;
         }
+
         match.captainSystem.RemoveCaptain(player);
     }
 }

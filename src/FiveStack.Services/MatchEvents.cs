@@ -36,7 +36,6 @@ public class MatchEvents
 
     public void PublishMapStatus(eMapStatus status)
     {
-        _logger.LogInformation($"OK PUBLISH IT {status}");
         PublishGameEvent(
             "mapStatus",
             new Dictionary<string, object> { { "status", status.ToString() }, }

@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.Entities;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
@@ -49,7 +50,7 @@ public class CaptainSystem
 
     public void RemoveCaptain(CCSPlayerController player)
     {
-        CsTeam team = TeamUtility.TeamStringToCsTeam(player.TeamNum.ToString());
+        CsTeam team = TeamUtility.TeamNumToCSTeam(player.TeamNum);
 
         MatchManager? match = _matchService.GetCurrentMatch();
 
@@ -96,7 +97,7 @@ public class CaptainSystem
                     HudDestination.Notify,
                     $"[{TeamUtility.TeamNumToString((int)team)}] {ChatColors.Green}.captain to claim"
                 );
-                return;
+                continue;
             }
 
             _gameServer.Message(
@@ -108,15 +109,14 @@ public class CaptainSystem
 
     public void ClaimCaptain(CCSPlayerController player)
     {
-        CsTeam team = TeamUtility.TeamStringToCsTeam(player.TeamNum.ToString());
+        CsTeam team = TeamUtility.TeamNumToCSTeam(player.TeamNum);
         MatchManager? match = _matchService.GetCurrentMatch();
 
         if (
             team == CsTeam.None
             || team == CsTeam.Spectator
             || match == null
-            || !match.IsWarmup()
-            || !match.IsKnife()
+            || (match.IsWarmup() == false && match.IsKnife() == false)
         )
         {
             return;
@@ -145,21 +145,28 @@ public class CaptainSystem
         ShowCaptains();
     }
 
-    public bool IsCaptain(CCSPlayerController player, CsTeam? team)
+    public bool IsCaptain(CCSPlayerController player, CsTeam? team = null)
     {
         if (team != null)
         {
             return _captains[team ?? CsTeam.None]?.SteamID == player.SteamID;
         }
 
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+        ;
+
+        if (matchData != null)
+        {
+            MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, player);
+            _logger.LogInformation("I AM CAP!");
+            if (member?.captain == true)
+            {
+                ClaimCaptain(player);
+            }
+        }
+
         return _captains[CsTeam.CounterTerrorist]?.SteamID == player.SteamID
             || _captains[CsTeam.Terrorist]?.SteamID == player.SteamID;
-    }
-
-    private void ResetCaptains()
-    {
-        _captains[CsTeam.Terrorist] = null;
-        _captains[CsTeam.CounterTerrorist] = null;
     }
 
     private void AutoSelectCaptain(CsTeam team)

@@ -88,11 +88,13 @@ public partial class FiveStackPlugin
             @event.Userid
         );
 
-        // TODO - if enforced, do we do silent?
-        if (match.IsLive())
+        if (!match.IsLive())
         {
             EnforceMemberTeam(player, TeamUtility.TeamNumToCSTeam(@event.Team));
+            return HookResult.Continue;
         }
+
+        match.captainSystem.IsCaptain(@event.Userid);
 
         return HookResult.Continue;
     }
@@ -122,8 +124,8 @@ public partial class FiveStackPlugin
         Logger.LogInformation($"Current Team ${matchData.lineup_1_id}{currentTeam}:{startingSide}");
         if (currentTeam != startingSide)
         {
-            // code smell: the server needs some time apparently
-            await Task.Delay(1000 * 1);
+            // allow them to click the menu , they jsut get switched really quick
+            await Task.Delay(100);
 
             Server.NextFrame(() =>
             {
@@ -133,6 +135,7 @@ public partial class FiveStackPlugin
                     $" You've been assigned to {(startingSide == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{TeamUtility.CSTeamToString(startingSide)}.",
                     player
                 );
+                match.captainSystem.IsCaptain(player);
             });
         }
     }
