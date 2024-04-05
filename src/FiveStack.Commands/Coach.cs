@@ -28,7 +28,7 @@
 //             return;
 //         }
 
-//         CsTeam team = TeamNumToCSTeam(player.TeamNum);
+//         CsTeam team = player.Team;
 //         string? _team = command?.ArgByIndex(0);
 
 //         if (_team != null)
@@ -61,7 +61,7 @@
 //             return;
 //         }
 
-//         CsTeam team = TeamNumToCSTeam(player.TeamNum);
+//         CsTeam team = player.Team;
 
 //         if (team == CsTeam.None || team == CsTeam.Spectator)
 //         {

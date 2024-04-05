@@ -4,7 +4,6 @@ using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
-using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -90,53 +89,9 @@ public partial class FiveStackPlugin
 
         if (!match.IsLive())
         {
-            EnforceMemberTeam(player, TeamUtility.TeamNumToCSTeam(@event.Team));
-            return HookResult.Continue;
+            match.EnforceMemberTeam(player, TeamUtility.TeamNumToCSTeam(@event.Team));
         }
-
-        match.captainSystem.IsCaptain(@event.Userid);
 
         return HookResult.Continue;
-    }
-
-    private async void EnforceMemberTeam(CCSPlayerController player, CsTeam currentTeam)
-    {
-        MatchManager? match = _matchService?.GetCurrentMatch();
-        MatchData? matchData = match?.GetMatchData();
-        MatchMap? currentMap = match?.GetCurrentMap();
-
-        if (match == null || matchData == null || currentMap == null)
-        {
-            return;
-        }
-
-        Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
-
-        if (lineup_id == null)
-        {
-            return;
-        }
-
-        CsTeam startingSide = TeamUtility.TeamStringToCsTeam(
-            matchData.lineup_1_id == lineup_id ? currentMap.lineup_1_side : currentMap.lineup_2_side
-        );
-
-        Logger.LogInformation($"Current Team ${matchData.lineup_1_id}{currentTeam}:{startingSide}");
-        if (currentTeam != startingSide)
-        {
-            // allow them to click the menu , they jsut get switched really quick
-            await Task.Delay(100);
-
-            Server.NextFrame(() =>
-            {
-                player.ChangeTeam(startingSide);
-                _gameServer.Message(
-                    HudDestination.Chat,
-                    $" You've been assigned to {(startingSide == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{TeamUtility.CSTeamToString(startingSide)}.",
-                    player
-                );
-                match.captainSystem.IsCaptain(player);
-            });
-        }
     }
 }

@@ -213,9 +213,7 @@ public class MatchManager
 
             if (player != null && player.UserId != null && player.IsValid && !player.IsBot)
             {
-                // TODO
-                // 1 - enforce team
-                // 2 - select as captain
+                EnforceMemberTeam(player);
             }
         }
     }
@@ -356,5 +354,55 @@ public class MatchManager
 
             _gameEvents.PublishMapStatus(eMapStatus.Live);
         });
+    }
+
+    public async void EnforceMemberTeam(CCSPlayerController player, CsTeam? currentTeam = null)
+    {
+        MatchData? matchData = GetMatchData();
+        MatchMap? currentMap = GetCurrentMap();
+
+        if (matchData == null || currentMap == null)
+        {
+            return;
+        }
+
+        Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
+
+        if (lineup_id == null)
+        {
+            return;
+        }
+
+        CsTeam startingSide = TeamUtility.TeamStringToCsTeam(
+            matchData.lineup_1_id == lineup_id ? currentMap.lineup_1_side : currentMap.lineup_2_side
+        );
+
+        if (currentTeam == null)
+        {
+            currentTeam = player.Team;
+        }
+
+        _logger.LogInformation(
+            $"Current Team ${matchData.lineup_1_id}{currentTeam}:{startingSide}"
+        );
+        if (currentTeam != startingSide)
+        {
+            // allow them to click the menu , they jsut get switched really quick
+            await Task.Delay(100);
+
+            Server.NextFrame(() =>
+            {
+                player.ChangeTeam(startingSide);
+                _gameServer.Message(
+                    HudDestination.Chat,
+                    $" You've been assigned to {(startingSide == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{TeamUtility.CSTeamToString(startingSide)}.",
+                    player
+                );
+                captainSystem.IsCaptain(player, startingSide);
+            });
+            return;
+        }
+
+        captainSystem.IsCaptain(player, startingSide);
     }
 }

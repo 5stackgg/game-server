@@ -186,10 +186,8 @@ public class Timeouts
 
             timeouts_available--;
 
-            CsTeam team = TeamUtility.TeamNumToCSTeam(player.TeamNum);
-
             _gameServer.SendCommands(
-                new[] { $"timeout_{(team == CsTeam.Terrorist ? "terrorist" : "ct")}_start" }
+                new[] { $"timeout_{(player.Team == CsTeam.Terrorist ? "terrorist" : "ct")}_start" }
             );
 
             _gameServer.Message(

@@ -54,10 +54,10 @@ public class KnifeSystem
 
     public void Stay(CCSPlayerController player)
     {
-        CsTeam? winningTeam = GetWinningTeam();
+        CsTeam winningTeam = GetWinningTeam() ?? CsTeam.None;
         MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (match == null || winningTeam == null || !match.IsKnife())
+        if (match == null || winningTeam == CsTeam.None || !match.IsKnife())
         {
             return;
         }
@@ -82,10 +82,10 @@ public class KnifeSystem
 
     public void Switch(CCSPlayerController player)
     {
-        CsTeam? winningTeam = GetWinningTeam();
+        CsTeam winningTeam = GetWinningTeam() ?? CsTeam.None;
         MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (match == null || winningTeam == null || !match.IsKnife())
+        if (match == null || winningTeam == CsTeam.None || !match.IsKnife())
         {
             return;
         }

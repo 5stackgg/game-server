@@ -50,7 +50,7 @@ public class CaptainSystem
 
     public void RemoveCaptain(CCSPlayerController player)
     {
-        CsTeam team = TeamUtility.TeamNumToCSTeam(player.TeamNum);
+        CsTeam team = player.Team;
 
         MatchManager? match = _matchService.GetCurrentMatch();
 
@@ -107,9 +107,8 @@ public class CaptainSystem
         }
     }
 
-    public void ClaimCaptain(CCSPlayerController player)
+    public void ClaimCaptain(CCSPlayerController player, CsTeam team)
     {
-        CsTeam team = TeamUtility.TeamNumToCSTeam(player.TeamNum);
         MatchManager? match = _matchService.GetCurrentMatch();
 
         if (
@@ -145,28 +144,19 @@ public class CaptainSystem
         ShowCaptains();
     }
 
-    public bool IsCaptain(CCSPlayerController player, CsTeam? team = null)
+    public bool IsCaptain(CCSPlayerController player, CsTeam team)
     {
-        if (team != null)
-        {
-            return _captains[team ?? CsTeam.None]?.SteamID == player.SteamID;
-        }
-
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
-        ;
-
         if (matchData != null)
         {
             MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, player);
-            _logger.LogInformation("I AM CAP!");
             if (member?.captain == true)
             {
-                ClaimCaptain(player);
+                ClaimCaptain(player, team);
             }
         }
 
-        return _captains[CsTeam.CounterTerrorist]?.SteamID == player.SteamID
-            || _captains[CsTeam.Terrorist]?.SteamID == player.SteamID;
+        return _captains[team]?.SteamID == player.SteamID;
     }
 
     private void AutoSelectCaptain(CsTeam team)
@@ -175,7 +165,7 @@ public class CaptainSystem
             .API.Utilities.GetPlayers()
             .FindAll(player =>
             {
-                return player.TeamNum == (int)team && player.SteamID != 0;
+                return player.Team == team && player.SteamID != 0;
             });
 
         if (players.Count == 0)
@@ -185,6 +175,6 @@ public class CaptainSystem
 
         CCSPlayerController player = players[Random.Shared.Next(players.Count)];
 
-        ClaimCaptain(player);
+        ClaimCaptain(player, player.Team);
     }
 }

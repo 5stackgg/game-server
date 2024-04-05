@@ -18,7 +18,7 @@ public partial class FiveStackPlugin
         }
 
         match.captainSystem.ShowCaptains();
-        // match.captainSystem.ClaimCaptain(player);
+        // match.captainSystem.ClaimCaptain(player, player.Team);
     }
 
     [ConsoleCommand("css_release-captain", "Release Captain Spot")]
