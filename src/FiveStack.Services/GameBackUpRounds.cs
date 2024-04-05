@@ -173,17 +173,6 @@ public class GameBackUpRounds
                         }
                     }
                     _logger.LogTrace($"backup rounds downloaded: {zipFilePath}");
-
-                    string extractPath = Path.Join(Server.GameDirectory + "/csgo/");
-                    try
-                    {
-                        ZipFile.ExtractToDirectory(zipFilePath, extractPath, true);
-                        _logger.LogInformation($"backup rounds downloaded");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError($"Error extracting backup rounds zip: {ex.Message}");
-                    }
                 }
                 else if (response.StatusCode == HttpStatusCode.NotFound)
                 {
@@ -201,6 +190,20 @@ public class GameBackUpRounds
                 return;
             }
         }
+
+        await Server.NextFrameAsync(() =>
+        {
+            string extractPath = Path.Join(Server.GameDirectory + "/csgo/");
+            try
+            {
+                ZipFile.ExtractToDirectory(zipFilePath, extractPath, true);
+                _logger.LogInformation($"backup rounds downloaded");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error extracting backup rounds zip: {ex.Message}");
+            }
+        });
     }
 
     public void SetupResetMessage(CCSPlayerController player)

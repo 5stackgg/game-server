@@ -140,7 +140,7 @@ public class MatchManager
                 if (!_matchData.knife_round)
                 {
                     UpdateMapStatus(eMapStatus.Live);
-                    break;
+                    return;
                 }
 
                 var currentMap = GetCurrentMap();
@@ -149,7 +149,7 @@ public class MatchManager
                     break;
                 }
 
-                if (currentMap.order == _matchData.best_of && _matchData.knife_round)
+                if (currentMap.order == _matchData.best_of)
                 {
                     StartKnife();
                 }
@@ -384,9 +384,6 @@ public class MatchManager
             currentTeam = player.Team;
         }
 
-        _logger.LogInformation(
-            $"Current Team ${matchData.lineup_1_id}{currentTeam}:{startingSide}"
-        );
         if (currentTeam != startingSide)
         {
             // allow them to click the menu , they jsut get switched really quick
