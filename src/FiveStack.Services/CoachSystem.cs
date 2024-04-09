@@ -6,8 +6,8 @@ using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
-public class CoachSystem {
-
+public class CoachSystem
+{
     private readonly MatchEvents _gameEvents;
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
@@ -35,17 +35,20 @@ public class CoachSystem {
         _matchService = matchService;
     }
 
-  
     public bool IsCoach(CCSPlayerController player, CsTeam team)
     {
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
         if (matchData != null && matchData.coaches)
         {
-            if(player.SteamID.ToString() == matchData.lineup_1.coach_steam_id || player.SteamID.ToString() == matchData.lineup_1.coach_steam_id) {
+            if (
+                player.SteamID.ToString() == matchData.lineup_1.coach_steam_id
+                || player.SteamID.ToString() == matchData.lineup_1.coach_steam_id
+            )
+            {
                 return true;
             }
         }
 
-        return true;   
+        return true;
     }
 }
