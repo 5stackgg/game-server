@@ -56,8 +56,6 @@ namespace FiveStack.Utilities
                     return eMapStatus.Overtime;
                 case "Paused":
                     return eMapStatus.Paused;
-                case "TechTimeout":
-                    return eMapStatus.TechTimeout;
                 case "Warmup":
                     return eMapStatus.Warmup;
                 case "Unknown":

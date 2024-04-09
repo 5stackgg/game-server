@@ -25,9 +25,6 @@ public enum eMapStatus
     [Description("Paused")]
     Paused,
 
-    [Description("TechTimeout")]
-    TechTimeout,
-
     [Description("Unknown")]
     Unknown
 }

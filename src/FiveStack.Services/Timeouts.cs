@@ -211,7 +211,5 @@ public class Timeouts
         {
             _gameServer.Message(HudDestination.Alert, "Tech Timeout Called by Admin");
         }
-
-        match.UpdateMapStatus(eMapStatus.TechTimeout);
     }
 }
