@@ -32,6 +32,10 @@ public class EnvironmentService
         return Environment.GetEnvironmentVariable("SERVER_API_PASSWORD");
     }
 
+    public bool AllowBots() {
+        return Environment.GetEnvironmentVariable("ALLOW_BOTS") == "true";
+    }
+
     private void Load()
     {
         string filePath = "/serverdata/serverfiles/.env";

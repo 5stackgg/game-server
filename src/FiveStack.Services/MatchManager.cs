@@ -293,6 +293,8 @@ public class MatchManager
             _gameServer.SendCommands(new[] { "game_type 0; game_mode 1" });
         }
 
+        KickBots();
+
         _gameServer.SendCommands(new[] { "exec warmup" });
 
         CCSGameRules? rules = CounterStrikeSharp
@@ -324,6 +326,8 @@ public class MatchManager
 
         captainSystem.AutoSelectCaptains();
 
+        KickBots();
+
         _gameServer.SendCommands(new[] { "exec knife" });
 
         _gameEvents.PublishMapStatus(eMapStatus.Knife);
@@ -350,6 +354,8 @@ public class MatchManager
         {
             _gameServer.SendCommands(new[] { "game_type 0; game_mode 1" });
         }
+
+        KickBots();
 
         _gameServer.SendCommands(new[] { "exec live" });
 
@@ -432,5 +438,21 @@ public class MatchManager
         }
 
         captainSystem.IsCaptain(player, startingSide);
+    }
+
+    private void KickBots() {
+        if (_environmentService.AllowBots()) {
+            _gameServer.SendCommands(new [] {
+                "bot_quota_mode normal",
+                "bot_add expert"
+            });
+            return;
+        }
+
+         _gameServer.SendCommands(new[] {
+               "bot_quota 0",
+               "bot_kick",
+               "bot_quota_mode normal"
+             });
     }
 }
