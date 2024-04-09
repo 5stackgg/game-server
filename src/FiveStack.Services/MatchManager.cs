@@ -90,7 +90,7 @@ public class MatchManager
 
     public bool IsLive()
     {
-        return _currentMapStatus == eMapStatus.Live;
+        return _currentMapStatus == eMapStatus.Live || _currentMapStatus == eMapStatus.Overtime;
     }
 
     public bool IsPaused()
