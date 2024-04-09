@@ -50,7 +50,7 @@ public partial class FiveStackPlugin
             $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.PadLeft(2, '0')}.txt";
 
         _gameServer.SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFile}" });
-        
+
         _gameBackupRounds.ResetRestoreBackupRound();
 
         _gameServer.Message(

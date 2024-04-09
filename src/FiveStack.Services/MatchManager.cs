@@ -234,33 +234,33 @@ public class MatchManager
             UpdateMapStatus(MatchUtility.MapStatusStringToEnum(_currentMap.status));
         }
 
-        for (var i = 1; i <= 10; ++i)
+        foreach (var player in CounterStrikeSharp.API.Utilities.GetPlayers())
         {
-            CCSPlayerController player = new CCSPlayerController(NativeAPI.GetEntityFromIndex(i));
-
-            if (player != null && player.UserId != null && player.IsValid && !player.IsBot)
-            {
-                EnforceMemberTeam(player);
-            }
+            EnforceMemberTeam(player);
         }
     }
 
     private void SetupTeamNames()
     {
-        if (_matchData == null)
+        MatchMap? _currentMap = GetCurrentMap();
+        if (_matchData == null || _currentMap == null)
         {
             return;
         }
 
-        if (_matchData.lineup_1.name != null)
+        CsTeam lineup1StartingSide = TeamUtility.TeamStringToCsTeam(_currentMap.lineup_1_side);
+
+        string lineup1Side = "mp_teamname_1";
+        string lineup2Side = "mp_teamname_2";
+
+        if (lineup1StartingSide == CsTeam.Terrorist)
         {
-            _gameServer.SendCommands(new[] { $"mp_teamname_1 {_matchData.lineup_1.name}" });
+            lineup1Side = "mp_teamname_2";
+            lineup2Side = "mp_teamname_1";
         }
 
-        if (_matchData.lineup_2.name != null)
-        {
-            _gameServer.SendCommands(new[] { $"mp_teamname_2 {_matchData.lineup_2.name}" });
-        }
+        _gameServer.SendCommands(new[] { $"${lineup1Side} {_matchData.lineup_1.name}" });
+        _gameServer.SendCommands(new[] { $"${lineup2Side} {_matchData.lineup_2.name}" });
     }
 
     private void ChangeMap(Map map)
@@ -410,34 +410,54 @@ public class MatchManager
             return;
         }
 
-        CsTeam startingSide = TeamUtility.TeamStringToCsTeam(
-            matchData.lineup_1_id == lineup_id ? currentMap.lineup_1_side : currentMap.lineup_2_side
-        );
-
         if (currentTeam == null)
         {
             currentTeam = player.Team;
         }
 
-        if (currentTeam != startingSide)
+        var teamManagers = CounterStrikeSharp.API.Utilities.FindAllEntitiesByDesignerName<CCSTeam>(
+            "cs_team_manager"
+        );
+
+        CsTeam expectedTeam = CsTeam.None;
+
+        string lineupName =
+            matchData.lineup_1_id == lineup_id ? matchData.lineup_1.name : matchData.lineup_2.name;
+
+        _logger.LogInformation($"I AM TEAM {lineupName}");
+        foreach (var teamManager in teamManagers)
         {
-            // allow them to click the menu , they jsut get switched really quick
+            if (teamManager.ClanTeamname == lineupName)
+            {
+                expectedTeam = TeamUtility.TeamNumToCSTeam(teamManager.TeamNum);
+            }
+        }
+
+        if (expectedTeam == CsTeam.None)
+        {
+            _logger.LogWarning("Unable to get expected team");
+            return;
+        }
+
+        if (currentTeam != expectedTeam)
+        {
+            // allow them to click the menu, they just get switched really quick
             await Task.Delay(100);
 
             Server.NextFrame(() =>
             {
-                player.ChangeTeam(startingSide);
+                player.ChangeTeam(expectedTeam);
                 _gameServer.Message(
                     HudDestination.Chat,
-                    $" You've been assigned to {(startingSide == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{TeamUtility.CSTeamToString(startingSide)}.",
+                    $" You've been assigned to {(expectedTeam == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{TeamUtility.CSTeamToString(expectedTeam)}.",
                     player
                 );
-                captainSystem.IsCaptain(player, startingSide);
+                captainSystem.IsCaptain(player, expectedTeam);
             });
             return;
         }
 
-        captainSystem.IsCaptain(player, startingSide);
+        captainSystem.IsCaptain(player, expectedTeam);
     }
 
     private void KickBots()

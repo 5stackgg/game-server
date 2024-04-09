@@ -101,6 +101,7 @@ public partial class FiveStackPlugin
                 { "match_map_id", matchData.current_match_map_id },
                 { "round", _gameServer.GetCurrentRound() },
                 { "type", "Exploded" },
+                { "site", @event.Site },
                 { "player_steam_id", bomber.SteamID.ToString() },
             }
         );

@@ -466,14 +466,9 @@ public class GameBackUpRounds
             return;
         }
 
-        for (var i = 1; i <= 10; ++i)
+        foreach (var player in CounterStrikeSharp.API.Utilities.GetPlayers())
         {
-            CCSPlayerController player = new CCSPlayerController(NativeAPI.GetEntityFromIndex(i));
-
-            if (player != null && player.UserId != null && player.IsValid && !player.IsBot)
-            {
-                SetupResetMessage(player);
-            }
+            SetupResetMessage(player);
         }
     }
 }
