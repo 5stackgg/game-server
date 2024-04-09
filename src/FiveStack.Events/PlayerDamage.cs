@@ -56,7 +56,7 @@ public partial class FiveStackPlugin
                         ? $"{Convert.ToInt32(attackerLocation.X)} {Convert.ToInt32(attackerLocation.Y)} {Convert.ToInt32(attackerLocation.Z)}"
                         : ""
                 },
-                { "weapon", $"{@event.Weapon}" },
+                { "weapon", $"{(@event.Weapon.Length == 0 ? "worldent" : @event.Weapon)}" },
                 { "damage", @event.DmgHealth },
                 { "damage_armor", @event.DmgArmor },
                 { "hitgroup", $"{DamageUtility.HitGroupToString(@event.Hitgroup)}" },
