@@ -442,7 +442,7 @@ public class GameBackUpRounds
         );
     }
 
-    private void ResetRestoreBackupRound()
+    public void ResetRestoreBackupRound()
     {
         _resetRound = null;
         _resetRoundTimer?.Kill();

@@ -32,7 +32,8 @@ public class EnvironmentService
         return Environment.GetEnvironmentVariable("SERVER_API_PASSWORD");
     }
 
-    public bool AllowBots() {
+    public bool AllowBots()
+    {
         return Environment.GetEnvironmentVariable("ALLOW_BOTS") == "true";
     }
 

@@ -440,19 +440,14 @@ public class MatchManager
         captainSystem.IsCaptain(player, startingSide);
     }
 
-    private void KickBots() {
-        if (_environmentService.AllowBots()) {
-            _gameServer.SendCommands(new [] {
-                "bot_quota_mode normal",
-                "bot_add expert"
-            });
+    private void KickBots()
+    {
+        if (_environmentService.AllowBots())
+        {
+            _gameServer.SendCommands(new[] { "bot_quota_mode normal", "bot_add expert" });
             return;
         }
 
-         _gameServer.SendCommands(new[] {
-               "bot_quota 0",
-               "bot_kick",
-               "bot_quota_mode normal"
-             });
+        _gameServer.SendCommands(new[] { "bot_quota 0", "bot_kick", "bot_quota_mode normal" });
     }
 }
