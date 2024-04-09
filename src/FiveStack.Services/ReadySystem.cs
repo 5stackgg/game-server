@@ -41,6 +41,7 @@ public class ReadySystem
 
     public void ToggleReady(CCSPlayerController player)
     {
+        // TODO - must not be a coach
         if (!_readyPlayers.ContainsKey(player.UserId!.Value))
         {
             _readyPlayers[player.UserId.Value] = true;
