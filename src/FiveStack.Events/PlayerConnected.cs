@@ -31,7 +31,7 @@ public partial class FiveStackPlugin
 
         Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
 
-        if (lineup_id == null)
+        if (lineup_id == null && match.IsWarmup() == false)
         {
             Server.ExecuteCommand($"kickid {player.UserId}");
             return HookResult.Continue;
