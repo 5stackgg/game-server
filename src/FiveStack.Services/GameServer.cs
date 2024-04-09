@@ -2,12 +2,20 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
 public class GameServer
 {
-    public GameServer() { }
+    private int _currentRound = 0;
+    private readonly ILogger<GameServer> _logger;
+
+    public GameServer(ILogger<GameServer> logger)
+    {
+        _logger = logger;
+        UpdateCurrentRound();
+    }
 
     public void SendCommands(string[] commands)
     {
@@ -51,22 +59,17 @@ public class GameServer
 
     public int GetCurrentRound()
     {
-        int roundsPlayed = 0;
-        var teamManagers = CounterStrikeSharp.API.Utilities.FindAllEntitiesByDesignerName<CCSTeam>(
-            "cs_team_manager"
-        );
+        return _currentRound;
+    }
 
-        foreach (var teamManager in teamManagers)
-        {
-            if (
-                teamManager.TeamNum == (int)CsTeam.Terrorist
-                || teamManager.TeamNum == (int)CsTeam.CounterTerrorist
-            )
-            {
-                roundsPlayed += teamManager.Score;
-            }
-        }
+    public void UpdateCurrentRound()
+    {
+        CCSGameRules? rules = CounterStrikeSharp
+            .API.Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+            .First()
+            .GameRules;
 
-        return roundsPlayed + 1;
+        _currentRound = rules?.TotalRoundsPlayed ?? 0;
+        _logger.LogInformation($"Current Round {_currentRound}");
     }
 }

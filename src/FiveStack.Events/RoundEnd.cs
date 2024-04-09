@@ -21,8 +21,10 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        // TODO - better way to get round
-        _ = _gameBackupRounds.UploadBackupRound((_gameServer.GetCurrentRound() - 2).ToString());
+        _ = _gameBackupRounds.UploadBackupRound((_gameServer.GetCurrentRound() - 1).ToString());
+
+        _gameServer.UpdateCurrentRound();
+
         if (match != null && match.isOverTime())
         {
             match.UpdateMapStatus(eMapStatus.Overtime);
