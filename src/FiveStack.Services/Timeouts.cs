@@ -46,8 +46,6 @@ public class Timeouts
             return;
         }
 
-    
-
         string pauseMessage = "Admin Paused the Match";
 
         if (player != null)
@@ -80,11 +78,10 @@ public class Timeouts
             _backUpManagement.VoteFailed();
         }
 
-        MatchManager? match = _matchService.GetCurrentMatch(); 
-        _logger.LogInformation($"TRY TO RESUME {match.IsPaused()}:{_backUpManagement.IsResttingRound()}");
-        
-        
-        if (match == null || !match.IsPaused() || _backUpManagement.IsResttingRound())
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        // TODO - game rules has a bug where i cant detect if were paused
+        if (match == null || _backUpManagement.IsResttingRound())
         {
             return;
         }

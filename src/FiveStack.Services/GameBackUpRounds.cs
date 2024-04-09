@@ -14,6 +14,7 @@ namespace FiveStack;
 public class GameBackUpRounds
 {
     private string? _resetRound;
+    private bool _initialRestore = false;
     private Dictionary<ulong, bool> _restoreRoundVote = new Dictionary<ulong, bool>();
 
     private readonly MatchEvents _gameEvents;
@@ -63,6 +64,11 @@ public class GameBackUpRounds
 
     public bool CheckForBackupRestore()
     {
+        if (File.Exists("/opt/initial-restore.lock"))
+        {
+            return false;
+        }
+
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
         if (match == null)
@@ -111,6 +117,7 @@ public class GameBackUpRounds
 
         if (highestNumber > currentRound)
         {
+            _initialRestore = true;
             _logger.LogInformation("Server restarted, requires a vote to restore round");
             RestoreBackupRound(highestNumber.ToString(), null, true);
             return true;
@@ -314,6 +321,11 @@ public class GameBackUpRounds
 
     public void VoteFailed()
     {
+        if (_initialRestore)
+        {
+            File.Create("/opt/initial-restore.lock").Close();
+        }
+
         _gameServer.Message(
             HudDestination.Alert,
             $" {ChatColors.Red}Captain denied request to reset round to {_resetRound}"

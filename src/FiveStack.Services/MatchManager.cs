@@ -94,15 +94,23 @@ public class MatchManager
         return _currentMapStatus == eMapStatus.Live;
     }
 
-    public bool IsPaused() {
-        return _currentMapStatus == eMapStatus.Paused;
+    public bool IsPaused()
+    {
+        CCSGameRules? rules = CounterStrikeSharp
+            .API.Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+            .First()
+            .GameRules;
+
+        return _currentMapStatus == eMapStatus.Paused || (rules?.GamePaused ?? false);
     }
-    
-    public void PauseMatch(string? message = null) {
+
+    public void PauseMatch(string? message = null)
+    {
         _gameServer.SendCommands(new[] { "mp_pause_match" });
         UpdateMapStatus(eMapStatus.Paused);
 
-        if(message != null) {
+        if (message != null)
+        {
             _gameServer.Message(HudDestination.Alert, message);
         }
     }
@@ -142,8 +150,6 @@ public class MatchManager
 
         _logger.LogInformation($"Update Map Status {_currentMapStatus} -> {status}");
 
-     
-
         switch (status)
         {
             case eMapStatus.Scheduled:
@@ -170,14 +176,8 @@ public class MatchManager
                 }
 
                 break;
-            case eMapStatus.Paused:    
-                // we are trying to fix a case where we want to go form resume to live, but backups exist 
-                if(!_backUpManagement.IsResttingRound()) {
-                    // _backUpManagement.CheckForBackupRestore();
-                }
-                break;
             case eMapStatus.Live:
-                StartLive(!IsPaused());
+                StartLive();
                 break;
             default:
                 _gameEvents.PublishMapStatus(status);
@@ -327,7 +327,7 @@ public class MatchManager
         });
     }
 
-    private async void StartLive(bool checkBackupRound)
+    private async void StartLive()
     {
         if (_matchData == null || _matchData == null)
         {
@@ -353,7 +353,7 @@ public class MatchManager
         {
             // if we can restore from backup we will prompt the for a vote to restore
             // most likely this happeend because of a server crash
-            if (checkBackupRound && _backUpManagement.CheckForBackupRestore())
+            if (_backUpManagement.CheckForBackupRestore())
             {
                 if (IsWarmup())
                 {
