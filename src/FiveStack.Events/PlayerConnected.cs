@@ -4,6 +4,7 @@ using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -28,15 +29,12 @@ public partial class FiveStackPlugin
 
         CCSPlayerController player = @event.Userid;
 
-        if (match.IsLive())
-        {
-            Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
+        Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
 
-            if (lineup_id == null)
-            {
-                Server.ExecuteCommand($"kick player {player.UserId}");
-                return HookResult.Continue;
-            }
+        if (lineup_id == null)
+        {
+            Server.ExecuteCommand($"kickid {player.UserId}");
+            return HookResult.Continue;
         }
 
         _matchEvents.PublishGameEvent(
