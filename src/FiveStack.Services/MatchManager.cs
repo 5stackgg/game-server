@@ -259,8 +259,8 @@ public class MatchManager
             lineup2Side = "mp_teamname_1";
         }
 
-        _gameServer.SendCommands(new[] { $"${lineup1Side} {_matchData.lineup_1.name}" });
-        _gameServer.SendCommands(new[] { $"${lineup2Side} {_matchData.lineup_2.name}" });
+        _gameServer.SendCommands(new[] { $"{lineup1Side} {_matchData.lineup_1.name}" });
+        _gameServer.SendCommands(new[] { $"{lineup2Side} {_matchData.lineup_2.name}" });
     }
 
     private void ChangeMap(Map map)
