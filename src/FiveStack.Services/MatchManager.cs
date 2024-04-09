@@ -424,7 +424,6 @@ public class MatchManager
         string lineupName =
             matchData.lineup_1_id == lineup_id ? matchData.lineup_1.name : matchData.lineup_2.name;
 
-        _logger.LogInformation($"I AM TEAM {lineupName}");
         foreach (var teamManager in teamManagers)
         {
             if (teamManager.ClanTeamname == lineupName)
