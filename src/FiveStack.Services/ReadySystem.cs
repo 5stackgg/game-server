@@ -1,14 +1,18 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
+using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
+using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
 namespace FiveStack;
 
 public class ReadySystem
 {
+    private Timer? _readyStatusTimer;
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
     private readonly ILogger<ReadySystem> _logger;
@@ -26,6 +30,15 @@ public class ReadySystem
         _matchService = matchService;
     }
 
+    public void Setup()
+    {
+        SendReadyStatusMessage();
+        if (_readyStatusTimer == null)
+        {
+            _readyStatusTimer = TimerUtility.AddTimer(3, SendReadyStatusMessage, TimerFlags.REPEAT);
+        }
+    }
+
     public void ToggleReady(CCSPlayerController player)
     {
         if (!_readyPlayers.ContainsKey(player.UserId!.Value))
@@ -36,6 +49,8 @@ public class ReadySystem
         {
             _readyPlayers[player.UserId.Value] = !_readyPlayers[player.UserId.Value];
         }
+
+        SendReadyStatusMessage();
     }
 
     public void ShowReady(CCSPlayerController player)
@@ -179,5 +194,32 @@ public class ReadySystem
         }
 
         return notReadyPlayers.ToArray();
+    }
+
+    private void SendReadyStatusMessage()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (match == null)
+        {
+            return;
+        }
+
+        if (!match.IsWarmup())
+        {
+            _readyStatusTimer?.Kill();
+            _readyStatusTimer = null;
+            return;
+        }
+
+        for (var i = 1; i <= 10; ++i)
+        {
+            CCSPlayerController player = new CCSPlayerController(NativeAPI.GetEntityFromIndex(i));
+
+            if (player != null && player.UserId != null && player.IsValid && !player.IsBot)
+            {
+                SetupReadyMessage(player);
+            }
+        }
     }
 }

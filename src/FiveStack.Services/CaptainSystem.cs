@@ -150,9 +150,11 @@ public class CaptainSystem
         if (matchData != null)
         {
             MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, player);
-            if (member?.captain == true)
+
+            if (member?.captain == true && _captains[team] == null)
             {
-                ClaimCaptain(player, team);
+                _captains[team] = player;
+                ShowCaptains();
             }
         }
 

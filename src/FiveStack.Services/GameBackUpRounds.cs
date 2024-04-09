@@ -4,16 +4,19 @@ using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
+using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
 namespace FiveStack;
 
 public class GameBackUpRounds
 {
     private string? _resetRound;
+    private Timer? _resetRoundTimer;
     private bool _initialRestore = false;
     private Dictionary<ulong, bool> _restoreRoundVote = new Dictionary<ulong, bool>();
 
@@ -232,14 +235,16 @@ public class GameBackUpRounds
             || _restoreRoundVote.ContainsKey(playerId) && _restoreRoundVote[playerId]
         )
         {
-            player.PrintToCenter($"Waiting for captin [{totalVoted}/2]");
+            player.PrintToCenter(
+                $"Waiting for captins [{totalVoted}/2] to reset round to {_resetRound}"
+            );
             return;
         }
 
-        player.PrintToCenter($"Type .reset reset the round to round {_resetRound}");
+        player.PrintToCenter($"Type .yes / .no reset the round to round {_resetRound}");
     }
 
-    public void CastVote(CCSPlayerController player, string? vote)
+    public void CastVote(CCSPlayerController player, bool vote)
     {
         if (_resetRound == null)
         {
@@ -255,9 +260,7 @@ public class GameBackUpRounds
 
         if (MatchUtility.GetMemberFromLineup(matchData, player)?.captain == true)
         {
-            // TODO - different command to progress failure?
-            // mabye just a .y / .n
-            if (vote != null)
+            if (vote == false)
             {
                 VoteFailed();
                 return;
@@ -268,7 +271,10 @@ public class GameBackUpRounds
             if (_restoreRoundVote.Count(pair => pair.Value) == 2)
             {
                 RestoreRound(_resetRound);
+                return;
             }
+
+            SendResetRoundMessage();
         }
     }
 
@@ -302,6 +308,14 @@ public class GameBackUpRounds
         if (player != null || vote == true)
         {
             _resetRound = round;
+            if (_resetRoundTimer == null)
+            {
+                _resetRoundTimer = TimerUtility.AddTimer(
+                    3,
+                    SendResetRoundMessage,
+                    TimerFlags.REPEAT
+                );
+            }
 
             if (player != null)
             {
@@ -431,6 +445,35 @@ public class GameBackUpRounds
     private void ResetRestoreBackupRound()
     {
         _resetRound = null;
+        _resetRoundTimer?.Kill();
+        _resetRoundTimer = null;
         _restoreRoundVote = new Dictionary<ulong, bool>();
+    }
+
+    private void SendResetRoundMessage()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (match == null)
+        {
+            return;
+        }
+
+        if (!IsResttingRound())
+        {
+            _resetRoundTimer?.Kill();
+            _resetRoundTimer = null;
+            return;
+        }
+
+        for (var i = 1; i <= 10; ++i)
+        {
+            CCSPlayerController player = new CCSPlayerController(NativeAPI.GetEntityFromIndex(i));
+
+            if (player != null && player.UserId != null && player.IsValid && !player.IsBot)
+            {
+                SetupResetMessage(player);
+            }
+        }
     }
 }

@@ -1,6 +1,5 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Entities;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
@@ -176,6 +175,13 @@ public class MatchManager
                 }
 
                 break;
+            case eMapStatus.Paused:
+                if (_backUpManagement.IsResttingRound())
+                {
+                    break;
+                }
+                StartLive();
+                break;
             case eMapStatus.Live:
                 StartLive();
                 break;
@@ -303,6 +309,8 @@ public class MatchManager
                 _gameServer.SendCommands(new[] { "mp_warmup_start" });
             });
         }
+
+        readySystem.Setup();
 
         _gameEvents.PublishMapStatus(eMapStatus.Warmup);
     }

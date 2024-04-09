@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes;
 using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -45,13 +46,17 @@ public partial class FiveStackPlugin : BasePlugin
         _gameServer.Message(HudDestination.Alert, "5Stack Loaded");
 
         ListenForMapChange();
-        ListenForReadyStatus();
 
         _matchService.GetMatchFromApi();
     }
 
     public override void Unload(bool hotReload)
     {
-        // _matchEvents.Disconnect();
+        TimerUtility.Timers.ForEach(
+            (timer) =>
+            {
+                timer.Kill();
+            }
+        );
     }
 }
