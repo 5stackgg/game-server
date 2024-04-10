@@ -77,6 +77,8 @@ public class KnifeSystem
             $"captain picked to {ChatColors.Red}stay {ChatColors.Default}sides"
         );
 
+        _gameServer.SendCommands(new[] { $"mp_restartgame 1" });
+
         match.UpdateMapStatus(eMapStatus.Live);
     }
 
@@ -105,8 +107,10 @@ public class KnifeSystem
             $"captain picked to {ChatColors.Red}swap {ChatColors.Default}sides"
         );
 
-        _gameServer.SendCommands(new[] { "mp_swapteams" });
+        _gameServer.SendCommands(new[] { "mp_swapteams", "mp_restartgame 1" });
+
         _matchEvents.PublishGameEvent("switch", new Dictionary<string, object>());
+
         match.UpdateMapStatus(eMapStatus.Live);
     }
 
