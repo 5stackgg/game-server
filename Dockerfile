@@ -63,11 +63,11 @@ RUN mkdir $DATA_DIR && \
 	ulimit -n 2048
 
 RUN mkdir /opt/metamod
-ADD https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1284-linux.tar.gz /tmp/metamod.tar.gz
+ADD https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1286-linux.tar.gz /tmp/metamod.tar.gz
 RUN tar -xz -C /opt/metamod -f /tmp/metamod.tar.gz && rm /tmp/metamod.tar.gz
 
 RUN mkdir /opt/counterstrikesharp
-ADD https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v203/counterstrikesharp-with-runtime-build-203-linux-211516c.zip /tmp/counterstrikesharp.zip
+ADD https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v205/counterstrikesharp-with-runtime-build-205-linux-5ce0464.zip /tmp/counterstrikesharp.zip
 RUN unzip /tmp/counterstrikesharp.zip -d /opt/counterstrikesharp && rm /tmp/counterstrikesharp.zip
 
 COPY /cfg /opt/server-cfg
