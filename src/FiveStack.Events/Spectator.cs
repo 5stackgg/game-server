@@ -10,7 +10,7 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    public MemoryFunctionVoid<CPlayer_ObserverServices> SpectatorChanged =
+    public MemoryFunctionVoid<CPlayer_ObserverServices, bool> SpectatorChanged =
         new(_sepectatorSignature);
 
     private static readonly string _sepectatorSignature = RuntimeInformation.IsOSPlatform(
