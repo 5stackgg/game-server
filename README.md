@@ -2,6 +2,8 @@
 
 [5stack.gg](https://5stack.gg)
 
+5Stack provides a matchmaking system for scrimmages, tournaments, and LANs.
+
 ## Features
 - Match Modes
   - Competitive: Current Active Map Pool
@@ -57,3 +59,20 @@
   - Force Ready / Skip Knife
   - Pause / Resume
   - Reset Round
+
+## Technical Details
+
+Behind the scenes, 5Stack harnesses the power of Kubernetes to dynamically deploy CS2 match servers.
+This architecture ensures low-latency for events to the database.
+
+### Components
+
+- [5Stack Mod](https://github.com/5stackgg/5stack-server-mod) using [CounterStrikeSharp](https://docs.cssharp.dev/).
+- [5Stack Web](https://github.com/5stackgg/web)
+- [5Stack API](https://github.com/5stackgg/api)
+- [Hasura](https://hasura.io/)
+- [Postgres](https://www.postgresql.org/)
+- [Minio (s3)](https://min.io/)
+- [Redis](https://redis.io)
+- [TypeSense](https://typesense.org/)
+
