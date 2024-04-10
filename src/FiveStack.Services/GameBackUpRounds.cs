@@ -292,13 +292,13 @@ public class GameBackUpRounds
             return false;
         }
 
-        string backupRoundFile =
-            $"{MatchUtility.GetSafeMatchPrefix(matchData)}_round{round.PadLeft(2, '0')}.txt";
-
-        if (!File.Exists(Path.Join(Server.GameDirectory + "/csgo/", backupRoundFile)))
+        if (!HasBackupRound(round))
         {
             return false;
         }
+
+        string backupRoundFile =
+            $"{MatchUtility.GetSafeMatchPrefix(matchData)}_round{round.PadLeft(2, '0')}.txt";
 
         Server.NextFrame(() =>
         {
@@ -448,6 +448,20 @@ public class GameBackUpRounds
         _resetRoundTimer?.Kill();
         _resetRoundTimer = null;
         _restoreRoundVote = new Dictionary<ulong, bool>();
+    }
+
+    public bool HasBackupRound(string round)
+    {
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        if (match?.current_match_map_id == null)
+        {
+            return false;
+        }
+
+        string backupRoundFile =
+            $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.PadLeft(2, '0')}.txt";
+
+        return File.Exists(Path.Join(Server.GameDirectory + "/csgo/", backupRoundFile));
     }
 
     private void SendResetRoundMessage()

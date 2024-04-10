@@ -1,3 +1,4 @@
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
@@ -48,6 +49,11 @@ public partial class FiveStackPlugin
 
         string backupRoundFile =
             $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.PadLeft(2, '0')}.txt";
+
+        if (!_gameBackupRounds.HasBackupRound(round))
+        {
+            return;
+        }
 
         _gameServer.SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFile}" });
 
