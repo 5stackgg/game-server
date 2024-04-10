@@ -63,5 +63,40 @@ namespace FiveStack.Utilities
                     return "None";
             }
         }
+
+        public static int GetTeamScore(string teamName)
+        {
+            foreach (var team in MatchUtility.Teams())
+            {
+                if (team.ClanTeamname == teamName)
+                {
+                    return team.Score;
+                }
+            }
+
+            return 0;
+        }
+
+        public static int GetTeamMoney(string teamName)
+        {
+            int totalCash = 0;
+
+            foreach (var team in MatchUtility.Teams())
+            {
+                if (team.ClanTeamname == teamName)
+                {
+                    foreach (var player in team.PlayerControllers)
+                    {
+                        totalCash += (
+                            CounterStrikeSharp
+                                .API.Utilities.GetPlayerFromIndex((int)player.Index)
+                                ?.InGameMoneyServices?.Account ?? 0
+                        );
+                    }
+                }
+            }
+
+            return totalCash;
+        }
     }
 }

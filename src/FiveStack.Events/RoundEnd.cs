@@ -78,14 +78,14 @@ public partial class FiveStackPlugin
                 { "time", DateTime.Now },
                 { "match_map_id", currentMap.id },
                 { "round", _gameServer.GetCurrentRound() },
-                { "lineup_1_score", $"{GetTeamScore(matchData.lineup_1.name)}" },
-                { "lineup_1_money", $"{GetTeamMoney(matchData.lineup_1.name)}" },
+                { "lineup_1_score", $"{TeamUtility.GetTeamScore(matchData.lineup_1.name)}" },
+                { "lineup_1_money", $"{TeamUtility.GetTeamMoney(matchData.lineup_1.name)}" },
                 {
                     "lineup_1_timeouts_available",
                     $"{currentMap?.lineup_1_timeouts_available ?? 0}"
                 },
-                { "lineup_2_score", $"{GetTeamScore(matchData.lineup_2.name)}" },
-                { "lineup_2_money", $"{GetTeamMoney(matchData.lineup_2.name)}" },
+                { "lineup_2_score", $"{TeamUtility.GetTeamScore(matchData.lineup_2.name)}" },
+                { "lineup_2_money", $"{TeamUtility.GetTeamMoney(matchData.lineup_2.name)}" },
                 {
                     "lineup_2_timeouts_available",
                     $"{currentMap?.lineup_2_timeouts_available ?? 0}"
@@ -94,40 +94,5 @@ public partial class FiveStackPlugin
         );
 
         return HookResult.Continue;
-    }
-
-    public int GetTeamScore(string teamName)
-    {
-        foreach (var team in MatchUtility.Teams())
-        {
-            if (team.ClanTeamname == teamName)
-            {
-                return team.Score;
-            }
-        }
-
-        return 0;
-    }
-
-    public int GetTeamMoney(string teamName)
-    {
-        int totalCash = 0;
-
-        foreach (var team in MatchUtility.Teams())
-        {
-            if (team.ClanTeamname == teamName)
-            {
-                foreach (var player in team.PlayerControllers)
-                {
-                    totalCash += (
-                        CounterStrikeSharp
-                            .API.Utilities.GetPlayerFromIndex((int)player.Index)
-                            ?.InGameMoneyServices?.Account ?? 0
-                    );
-                }
-            }
-        }
-
-        return totalCash;
     }
 }
