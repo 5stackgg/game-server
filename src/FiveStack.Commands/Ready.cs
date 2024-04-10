@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -26,7 +27,7 @@ public partial class FiveStackPlugin
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (match == null || !match.IsKnife())
+        if (match == null)
         {
             return;
         }

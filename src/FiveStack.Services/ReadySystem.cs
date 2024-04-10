@@ -171,7 +171,13 @@ public class ReadySystem
 
         _gameServer.Message(HudDestination.Center, $"Game has been forced to start.");
 
-        match.UpdateMapStatus(eMapStatus.Knife);
+        if (match.IsWarmup())
+        {
+            match.UpdateMapStatus(eMapStatus.Knife);
+            return;
+        }
+
+        match.UpdateMapStatus(eMapStatus.Live);
     }
 
     private string[] GetNotReadyPlayers()

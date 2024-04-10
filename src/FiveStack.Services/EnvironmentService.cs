@@ -36,7 +36,6 @@ public class EnvironmentService
     {
         string filePath = "/serverdata/serverfiles/.env";
 
-        _logger.LogInformation($"LOAD FILE PATH {filePath}");
         if (!File.Exists(filePath))
         {
             _logger.LogWarning("Unable to read .env file");
@@ -51,8 +50,6 @@ public class EnvironmentService
             {
                 continue;
             }
-
-            _logger.LogTrace($"VARIABLE {parts[0]}:{parts[1]}");
 
             Environment.SetEnvironmentVariable(parts[0], parts[1]);
         }
