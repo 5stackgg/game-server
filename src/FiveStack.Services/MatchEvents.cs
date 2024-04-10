@@ -5,10 +5,10 @@ using StackExchange.Redis;
 
 namespace FiveStack;
 
-// TODO - no idea why but, i have to connect in the constrcutor otherwise it fails.
 public class MatchEvents
 {
-    private readonly IDatabase _pubsub;
+    private IDatabase? _pubsub;
+    private ConnectionMultiplexer? connection;
 
     private readonly ILogger<MatchEvents> _logger;
     private readonly MatchService _matchService;
@@ -23,9 +23,7 @@ public class MatchEvents
         _logger = logger;
         _matchService = matchService;
         _environmentService = environmentService;
-
-        ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("redis");
-        _pubsub = redis.GetDatabase(0);
+        _ = Connect();
     }
 
     public class EventData<T>
@@ -62,61 +60,56 @@ public class MatchEvents
         );
     }
 
-    //    public bool Connect(string username, string password)
-    //     {
+    public async Task<bool> Connect()
+    {
+        if (connection != null)
+        {
+            connection.Dispose();
+        }
 
-    //         try
-    //         {
-    //             if (_pubsub != null)
-    //             {
-    //                 Disconnect();
-    //             }
+        try
+        {
+            ConfigurationOptions options = new ConfigurationOptions
+            {
+                EndPoints = { { "redis", 6379 }, },
+                User = _environmentService.GetServerId(),
+                Password = _environmentService.GetServerApiPassword(),
+            };
 
-    //             // ConfigurationOptions options = new ConfigurationOptions
-    //             // {
-    //             //     EndPoints = { { "redis", 6379 }, },
-    //             //     User = username,
-    //             //     Password = password,
-    //             // };
-
-    //             ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("redis");
-    //             _pubsub = redis.GetDatabase(0);
-    //             return true;
-    //         }
-    //         catch (RedisConnectionException ex)
-    //         {
-    //             Console.WriteLine("Failed to connect to Redis server: " + ex.Message);
-    //             return false;
-    //         }
-    //         catch (Exception ex)
-    //         {
-    //             Console.WriteLine("An error occurred: " + ex.Message);
-    //             return false;
-    //         }
-    //     }
-
+            connection = await ConnectionMultiplexer.ConnectAsync("redis");
+            _pubsub = connection.GetDatabase(0);
+            return true;
+        }
+        catch (RedisConnectionException ex)
+        {
+            Console.WriteLine("Failed to connect to Redis server: " + ex.Message);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("An error occurred: " + ex.Message);
+            return false;
+        }
+    }
 
     private Boolean IsConnected()
     {
-        MatchManager? match = _matchService.GetCurrentMatch();
-
-        if (_pubsub == null || match == null)
+        if (connection == null)
         {
             return false;
         }
 
-        return _pubsub.Multiplexer.IsConnected;
+        return connection.IsConnected;
     }
 
-    //     public void Disconnect()
-    //     {
-    //         if (_pubsub != null)
-    //         {
-    //             _pubsub.Multiplexer.Close();
-    //             _pubsub = null;
-    //         }
-    //     }
-
+    public void Disconnect()
+    {
+        if (connection != null)
+        {
+            connection.Close();
+            _pubsub = null;
+        }
+    }
 
     private Boolean Publish<T>(string channel, EventData<T> data)
     {
