@@ -79,6 +79,8 @@ public class MatchEvents
 
             connection = await ConnectionMultiplexer.ConnectAsync(options);
             _pubsub = connection.GetDatabase(0);
+
+            _logger.LogInformation("Connected to Redis!");
             return true;
         }
         catch (RedisConnectionException ex)

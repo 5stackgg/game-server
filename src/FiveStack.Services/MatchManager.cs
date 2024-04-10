@@ -154,6 +154,10 @@ public class MatchManager
                 {
                     StartKnife();
                 }
+                else
+                {
+                    StartLive();
+                }
 
                 break;
             case eMapStatus.Paused:
