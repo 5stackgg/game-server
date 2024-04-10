@@ -45,6 +45,7 @@ public class MatchEvents
         if (IsConnected() == false)
         {
             _logger.LogWarning("not connected to redis");
+            return;
         }
 
         Guid matchId = _matchService.GetCurrentMatch()?.GetMatchData()?.id ?? Guid.Empty;
@@ -76,18 +77,18 @@ public class MatchEvents
                 Password = _environmentService.GetServerApiPassword(),
             };
 
-            connection = await ConnectionMultiplexer.ConnectAsync("redis");
+            connection = await ConnectionMultiplexer.ConnectAsync(options);
             _pubsub = connection.GetDatabase(0);
             return true;
         }
         catch (RedisConnectionException ex)
         {
-            Console.WriteLine("Failed to connect to Redis server: " + ex.Message);
+            _logger.LogWarning("Failed to connect to Redis server: " + ex.Message);
             return false;
         }
         catch (Exception ex)
         {
-            Console.WriteLine("An error occurred: " + ex.Message);
+            _logger.LogError("An error occurred: " + ex.Message);
             return false;
         }
     }
@@ -115,7 +116,7 @@ public class MatchEvents
     {
         if (_pubsub == null || IsConnected() == false)
         {
-            Console.WriteLine("redis is not connected!");
+            _logger.LogWarning("redis is not connected!");
             return false;
         }
 
@@ -126,7 +127,7 @@ public class MatchEvents
         }
         catch (ArgumentException error)
         {
-            Console.WriteLine($"Error: {error.Message}");
+            _logger.LogError($"Error: {error.Message}");
         }
 
         return false;
