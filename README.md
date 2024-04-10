@@ -1,52 +1,59 @@
 # 5stack-mod
 
+[5stack.gg](https://5stack.gg)
+
 ## Features
-- [x] automatic team assignment
-- [x] automatic pause if player disconnects
-- [x] tactical timeouts (4 30 second timeouts for each team )
-  - [ ] db reporting
-- [x] tech pause / unpause
-  - [ ] permissions players / coach / admin
-- [x] Knife Round (with captains)
-  - [x] stay / switch
-- [x] ready system
-  - [x] hint system https://user-images.githubusercontent.com/32937653/284095437-2122c5f3-3a88-4853-a408-df790bcede85.png
-  - [x] show ready tag in clan name
-- [x] Overtime (infinite)
-- [x] Workshop Maps
-- [x] Game Events
-    - [x] Report start of match
-    - [x] Report round results
-    - [x] Report map ended
-- [x] Player Stats
-    - [x] Damage
-    - [x] Kills
-    - [x] Assists
-    - [x] Utility
-    - [x] Enemies Flash /
-    - [x] Friendlies Flashed
-    - [x] death by suicide
-    - [ ] death by bomb
-    - [x] won by plant / defuse
-- [x] Discord Integration
-  - [x] player picks
-  - [x] veto system
-  - [x] match creation
-  - [x] current score / status of match
-- [x] demo recording
-  - [x] downloadable
-  - [ ] link to discord match overview
-- [x] backup rounds 
-  - [ ] upload to db
-- [x] setup to handle multiple servers natively
-- [x] wingman
-- [ ] coach support
-- [x] best of x
-- [x] web ui at 5stack.gg
-  - [x] rcon
-  - [ ] permissions
-  - [x] creation of matches
-- [x] require steam id
-  - [ ] kick if not assigned
-  - [ ] discord assign steam id
-- [ ] rules command
+- Match Modes
+  - Competitive: Current Active Map Pool
+  - Scrimmage: All Available Competitive Maps + Workshop Maps
+  - Wingman: All Available Wingman Maps + Workshop Maps
+- Best of X
+- Automatic Team Assignment
+- Kick Non-Registered Players
+- Automatic Pause if Player Disconnects
+- Ready Up System
+- Captain System
+  - Picks for Knife Round
+  - Picks round reset
+- Knife Round System
+- Backup Round System
+  - Download / Upload via S3 compatible API
+  - Automatic Restore when server crashes
+- Veto System
+  - [x] Discord
+  - [x] Web
+  - [ ] Mod
+- Demos System
+  - Download via S3 compatible API
+- Tactical Timeout System
+- Tech Pauses
+  - Permissions (players / admin)
+- Overtime
+- Workshop Maps
+- Game Events
+  - Report start of match
+  - Report round results
+  - Report map ended
+- Player Stats
+  - Damage
+  - Kills
+  - Deaths
+  - Assists
+  - Utility
+  - Enemies Flashed
+  - Friendlies Flashed
+  - Objectives plant / defuse etc.
+- Discord Match Scheduler
+  - Player Picks
+  - Match creation
+  - Current score / status of match
+- Setup to handle multiple servers natively
+- Web UI at [5stack.gg](https://5stack.gg)
+  - RCON
+  - Permissions
+  - Creation of matches
+- Commands
+  - Match Rules
+  - Force Ready / Skip Knife
+  - Pause / Resume
+  - Reset Round
