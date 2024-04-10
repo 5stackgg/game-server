@@ -67,14 +67,14 @@ public class GameBackUpRounds
 
     public bool CheckForBackupRestore()
     {
-        if (File.Exists("/opt/initial-restore.lock"))
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (match == null)
         {
             return false;
         }
 
-        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
-
-        if (match == null)
+        if (File.Exists(GetMatchLockFile()))
         {
             return false;
         }
@@ -337,7 +337,7 @@ public class GameBackUpRounds
     {
         if (_initialRestore)
         {
-            File.Create("/opt/initial-restore.lock").Close();
+            File.Create(GetMatchLockFile()).Close();
         }
 
         _gameServer.Message(
@@ -462,6 +462,18 @@ public class GameBackUpRounds
             $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.PadLeft(2, '0')}.txt";
 
         return File.Exists(Path.Join(Server.GameDirectory + "/csgo/", backupRoundFile));
+    }
+
+    private string GetMatchLockFile()
+    {
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (match == null)
+        {
+            return "/opt/initial-restore.lock";
+        }
+
+        return $"/opt/initial-restore-{match.id}.lock";
     }
 
     private void SendResetRoundMessage()
