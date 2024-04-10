@@ -163,12 +163,12 @@ public class CaptainSystem
 
     private void AutoSelectCaptain(CsTeam team)
     {
-        List<CCSPlayerController> players = CounterStrikeSharp
-            .API.Utilities.GetPlayers()
-            .FindAll(player =>
-            {
-                return player.Team == team && player.SteamID != 0;
-            });
+        var players = MatchUtility.Players();
+
+        players.FindAll(player =>
+        {
+            return player.Team == team && player.SteamID != 0;
+        });
 
         if (players.Count == 0)
         {

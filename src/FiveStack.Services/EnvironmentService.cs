@@ -9,11 +9,6 @@ public class EnvironmentService
     public EnvironmentService(ILogger<EnvironmentService> logger)
     {
         _logger = logger;
-
-        if (bool.TryParse(Environment.GetEnvironmentVariable("DEV_SERVER"), out var isDev) && isDev)
-        {
-            Load();
-        }
     }
 
     public string GetBaseUri()
@@ -37,7 +32,7 @@ public class EnvironmentService
         return Environment.GetEnvironmentVariable("ALLOW_BOTS") == "true";
     }
 
-    private void Load()
+    public void Load()
     {
         string filePath = "/serverdata/serverfiles/.env";
 

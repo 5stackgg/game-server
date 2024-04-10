@@ -80,12 +80,7 @@ public class MatchManager
             return true;
         }
 
-        CCSGameRules? rules = CounterStrikeSharp
-            .API.Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
-            .First()
-            .GameRules;
-
-        return rules?.WarmupPeriod ?? false;
+        return MatchUtility.Rules()?.WarmupPeriod ?? false;
     }
 
     public bool IsLive()
@@ -95,12 +90,8 @@ public class MatchManager
 
     public bool IsPaused()
     {
-        CCSGameRules? rules = CounterStrikeSharp
-            .API.Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
-            .First()
-            .GameRules;
-
-        return _currentMapStatus == eMapStatus.Paused || (rules?.GamePaused ?? false);
+        return _currentMapStatus == eMapStatus.Paused
+            || (MatchUtility.Rules()?.GamePaused ?? false);
     }
 
     public void PauseMatch(string? message = null)
@@ -121,17 +112,7 @@ public class MatchManager
 
     public int GetOverTimeNumber()
     {
-        CCSGameRules? rules = CounterStrikeSharp
-            .API.Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
-            .First()
-            .GameRules;
-
-        if (rules == null)
-        {
-            return 0;
-        }
-
-        return rules.OvertimePlaying;
+        return MatchUtility.Rules()?.OvertimePlaying ?? 0;
     }
 
     public bool IsKnife()
@@ -197,6 +178,8 @@ public class MatchManager
     {
         _matchData = match;
 
+        _gameServer.UpdateCurrentRound();
+
         if (IsWarmup())
         {
             _gameServer.Message(HudDestination.Alert, "Received Match Data");
@@ -234,7 +217,7 @@ public class MatchManager
             UpdateMapStatus(MatchUtility.MapStatusStringToEnum(_currentMap.status));
         }
 
-        foreach (var player in CounterStrikeSharp.API.Utilities.GetPlayers())
+        foreach (var player in MatchUtility.Players())
         {
             EnforceMemberTeam(player);
         }
@@ -297,14 +280,9 @@ public class MatchManager
 
         _gameServer.SendCommands(new[] { "exec warmup" });
 
-        CCSGameRules? rules = CounterStrikeSharp
-            .API.Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
-            .First()
-            .GameRules;
+        bool isInWarmup = MatchUtility.Rules()?.WarmupPeriod ?? false;
 
-        bool isINWarmup = rules?.WarmupPeriod ?? false;
-
-        if (isINWarmup == false)
+        if (isInWarmup == false)
         {
             Server.NextFrame(() =>
             {
@@ -415,20 +393,16 @@ public class MatchManager
             currentTeam = player.Team;
         }
 
-        var teamManagers = CounterStrikeSharp.API.Utilities.FindAllEntitiesByDesignerName<CCSTeam>(
-            "cs_team_manager"
-        );
-
         CsTeam expectedTeam = CsTeam.None;
 
         string lineupName =
             matchData.lineup_1_id == lineup_id ? matchData.lineup_1.name : matchData.lineup_2.name;
 
-        foreach (var teamManager in teamManagers)
+        foreach (var team in MatchUtility.Teams())
         {
-            if (teamManager.ClanTeamname == lineupName)
+            if (team.ClanTeamname == lineupName)
             {
-                expectedTeam = TeamUtility.TeamNumToCSTeam(teamManager.TeamNum);
+                expectedTeam = TeamUtility.TeamNumToCSTeam(team.TeamNum);
             }
         }
 

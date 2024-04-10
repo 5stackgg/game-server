@@ -466,7 +466,7 @@ public class GameBackUpRounds
             return;
         }
 
-        foreach (var player in CounterStrikeSharp.API.Utilities.GetPlayers())
+        foreach (var player in MatchUtility.Players())
         {
             SetupResetMessage(player);
         }

@@ -98,15 +98,11 @@ public partial class FiveStackPlugin
 
     public int GetTeamScore(string teamName)
     {
-        var teamManagers = CounterStrikeSharp.API.Utilities.FindAllEntitiesByDesignerName<CCSTeam>(
-            "cs_team_manager"
-        );
-
-        foreach (var teamManager in teamManagers)
+        foreach (var team in MatchUtility.Teams())
         {
-            if (teamManager.ClanTeamname == teamName)
+            if (team.ClanTeamname == teamName)
             {
-                return teamManager.Score;
+                return team.Score;
             }
         }
 
@@ -116,15 +112,12 @@ public partial class FiveStackPlugin
     public int GetTeamMoney(string teamName)
     {
         int totalCash = 0;
-        var teamManagers = CounterStrikeSharp.API.Utilities.FindAllEntitiesByDesignerName<CCSTeam>(
-            "cs_team_manager"
-        );
 
-        foreach (var teamManager in teamManagers)
+        foreach (var team in MatchUtility.Teams())
         {
-            if (teamManager.ClanTeamname == teamName)
+            if (team.ClanTeamname == teamName)
             {
-                foreach (var player in teamManager.PlayerControllers)
+                foreach (var player in team.PlayerControllers)
                 {
                     totalCash += (
                         CounterStrikeSharp

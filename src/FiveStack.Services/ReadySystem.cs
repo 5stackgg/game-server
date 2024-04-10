@@ -178,7 +178,7 @@ public class ReadySystem
     {
         List<string> notReadyPlayers = new List<string>();
 
-        foreach (var player in CounterStrikeSharp.API.Utilities.GetPlayers())
+        foreach (var player in MatchUtility.Players())
         {
             if (player.IsBot || !player.IsValid || player.UserId == null)
             {
@@ -213,7 +213,7 @@ public class ReadySystem
             return;
         }
 
-        foreach (var player in CounterStrikeSharp.API.Utilities.GetPlayers())
+        foreach (var player in MatchUtility.Players())
         {
             SetupReadyMessage(player);
         }

@@ -1,4 +1,5 @@
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Entities;
 using FiveStack.Entities;
 using FiveStack.Enums;
 
@@ -63,6 +64,26 @@ namespace FiveStack.Utilities
                 default:
                     throw new ArgumentException($"Unsupported status string: {state}");
             }
+        }
+
+        public static CCSGameRules? Rules()
+        {
+            return CounterStrikeSharp
+                .API.Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+                ?.First()
+                ?.GameRules;
+        }
+
+        public static List<CCSPlayerController> Players()
+        {
+            return CounterStrikeSharp.API.Utilities.GetPlayers();
+        }
+
+        public static IEnumerable<CCSTeam> Teams()
+        {
+            return CounterStrikeSharp.API.Utilities.FindAllEntitiesByDesignerName<CCSTeam>(
+                "cs_team_manager"
+            );
         }
     }
 }

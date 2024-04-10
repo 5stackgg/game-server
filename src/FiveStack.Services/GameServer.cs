@@ -2,6 +2,7 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -14,7 +15,6 @@ public class GameServer
     public GameServer(ILogger<GameServer> logger)
     {
         _logger = logger;
-        UpdateCurrentRound();
     }
 
     public void SendCommands(string[] commands)
@@ -64,12 +64,7 @@ public class GameServer
 
     public void UpdateCurrentRound()
     {
-        CCSGameRules? rules = CounterStrikeSharp
-            .API.Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
-            .First()
-            .GameRules;
-
-        _currentRound = rules?.TotalRoundsPlayed ?? 0;
+        _currentRound = MatchUtility.Rules()?.TotalRoundsPlayed ?? 0;
         _logger.LogInformation($"Current Round {_currentRound}");
     }
 }

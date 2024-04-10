@@ -14,8 +14,9 @@ public partial class FiveStackPlugin : BasePlugin
     private readonly Timeouts _matchTimeouts;
     private readonly MatchEvents _matchEvents;
     private readonly MatchService _matchService;
-    private readonly GameBackUpRounds _gameBackupRounds;
     private readonly ILogger<FiveStackPlugin> _logger;
+    private readonly GameBackUpRounds _gameBackupRounds;
+    private readonly EnvironmentService _environmentService;
 
     public override string ModuleName => "FiveStack";
     public override string ModuleVersion => "0.0.1";
@@ -28,8 +29,9 @@ public partial class FiveStackPlugin : BasePlugin
         MatchEvents matchEvents,
         MatchService matchService,
         Timeouts matchTimeoutSystem,
+        ILogger<FiveStackPlugin> logger,
         GameBackUpRounds backUpManagement,
-        ILogger<FiveStackPlugin> logger
+        EnvironmentService environmentService
     )
     {
         _logger = logger;
@@ -38,16 +40,20 @@ public partial class FiveStackPlugin : BasePlugin
         _matchEvents = matchEvents;
         _matchService = matchService;
         _matchTimeouts = matchTimeoutSystem;
+        _matchTimeouts = matchTimeoutSystem;
         _gameBackupRounds = backUpManagement;
+        _environmentService = environmentService;
     }
 
     public override void Load(bool hotReload)
     {
-        _gameServer.Message(HudDestination.Alert, "5Stack Loaded");
+        _environmentService.Load();
 
         ListenForMapChange();
 
         _matchService.GetMatchFromApi();
+
+        _gameServer.Message(HudDestination.Alert, "5Stack Loaded");
     }
 
     public override void Unload(bool hotReload)
