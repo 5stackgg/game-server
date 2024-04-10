@@ -23,7 +23,7 @@ public partial class FiveStackPlugin
     {
         // TODO - crashes service
         return;
-        SpectatorChanged.Hook(SpectatorChangedHook, HookMode.Post);
+        // SpectatorChanged.Hook(SpectatorChangedHook, HookMode.Post);
     }
 
     private HookResult SpectatorChangedHook(DynamicHook handle)
@@ -53,15 +53,11 @@ public partial class FiveStackPlugin
 
         _logger.LogWarning($"BAD SPECTATOR2");
 
-        if (
-            viewingTeam == CsTeam.None
-            || viewingTeam == CsTeam.Spectator
-            || viewingTeam != CsTeam.Terrorist
-        )
-        {
+        if(viewingTeam == CsTeam.None || viewingTeam == CsTeam.Spectator || viewingTeam != CsTeam.Terrorist) {
             _logger.LogWarning("BAD VIEW");
             // return HookResult.Stop;
         }
+
 
         return HookResult.Continue;
     }
