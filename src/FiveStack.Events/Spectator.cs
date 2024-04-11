@@ -69,10 +69,9 @@ public partial class FiveStackPlugin
             // TODO - chnage their view to eyes
         }
 
-        MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, player);
         Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
 
-        if (member == null || lineup_id == null)
+        if (lineup_id == null)
         {
             return HookResult.Continue;
         }
