@@ -31,8 +31,6 @@ public class MatchService
         string? serverId = _environmentService.GetServerId();
         string? apiPassword = _environmentService.GetServerApiPassword();
 
-        _logger.LogInformation($"Server ID: {serverId}");
-
         if (serverId == null || apiPassword == null)
         {
             _logger.LogWarning("Missing Server ID / API Password");
@@ -49,7 +47,7 @@ public class MatchService
         {
             string matchUri = $"{_environmentService.GetBaseUri()}/server/{serverId}/current-match";
 
-            _logger.LogInformation($"Fetching Match Info: {matchUri}");
+            _logger.LogInformation("Fetching Match Info");
 
             httpClient.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiPassword);

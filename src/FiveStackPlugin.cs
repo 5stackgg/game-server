@@ -49,6 +49,8 @@ public partial class FiveStackPlugin : BasePlugin
     {
         _environmentService.Load();
 
+        _logger.LogInformation($"Server ID: {_environmentService.GetServerId()}");
+
         ListenForMapChange();
 
         _gameServer.Message(HudDestination.Alert, "5Stack Loaded");

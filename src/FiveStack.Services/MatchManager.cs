@@ -182,19 +182,14 @@ public class MatchManager
     {
         _matchData = match;
 
-        _gameServer.UpdateCurrentRound();
-
-        if (IsWarmup())
-        {
-            _gameServer.Message(HudDestination.Alert, "Received Match Data");
-        }
-
         if (_matchData == null)
         {
             _logger.LogInformation("Missing Match Data");
             return;
         }
         _logger.LogInformation($"Setup Match {_matchData.id}");
+
+        _gameServer.UpdateCurrentRound();
 
         MatchMap? _currentMap = GetCurrentMap();
 
@@ -214,7 +209,9 @@ public class MatchManager
 
         SetupTeamNames();
 
-        _logger.LogInformation($"Current Game State {_currentMap.status}:{_currentMap.map.name}");
+        _logger.LogInformation(
+            $"Expected Game State {_currentMap.status} on {_currentMap.map.name}"
+        );
 
         if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
         {
@@ -224,6 +221,11 @@ public class MatchManager
         foreach (var player in MatchUtility.Players())
         {
             EnforceMemberTeam(player);
+        }
+
+        if (IsWarmup())
+        {
+            _gameServer.Message(HudDestination.Alert, "Received Match Data");
         }
     }
 
