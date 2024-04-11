@@ -41,7 +41,7 @@ public partial class FiveStackPlugin
     private static readonly string _setNextObserveTarget = RuntimeInformation.IsOSPlatform(
         OSPlatform.Linux
     )
-        ? @"\x55\x48\x89\xE5\x41\x57\x41\x56\x41\x55\x41\x89\xF5\x40\x0F\xB6\xF6"
+        ? @"\x55\x48\x89\xE5\x41\x55\x49\x89\xFD\x41\x54\x48\x83\xEC\x00\x48\x85\xF6"
         // TODO - get for windows
         : @"";
 
