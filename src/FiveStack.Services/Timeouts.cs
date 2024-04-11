@@ -9,7 +9,7 @@ namespace FiveStack;
 
 public class Timeouts
 {
-    private readonly MatchEvents _gameEvents;
+    private readonly MatchEvents _matchEvents;
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
     private readonly GameBackUpRounds _backUpManagement;
@@ -17,14 +17,14 @@ public class Timeouts
 
     public Timeouts(
         ILogger<Timeouts> logger,
-        MatchEvents gameEvents,
+        MatchEvents matchEvents,
         GameServer gameServer,
         MatchService matchService,
         GameBackUpRounds backUpManagement
     )
     {
         _logger = logger;
-        _gameEvents = gameEvents;
+        _matchEvents = matchEvents;
         _gameServer = gameServer;
         _matchService = matchService;
         _backUpManagement = backUpManagement;
@@ -197,7 +197,7 @@ public class Timeouts
                 $"{player.PlayerName} {ChatColors.Red}called a tactical timeout ({timeouts_available} remaining)"
             );
 
-            _gameEvents.PublishGameEvent(
+            _matchEvents.PublishGameEvent(
                 "techTimeout",
                 new Dictionary<string, object>
                 {

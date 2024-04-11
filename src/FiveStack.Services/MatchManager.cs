@@ -13,7 +13,7 @@ public class MatchManager
     private MatchData? _matchData;
     private eMapStatus _currentMapStatus = eMapStatus.Unknown;
 
-    private readonly MatchEvents _gameEvents;
+    private readonly MatchEvents _matchEvents;
     private readonly GameServer _gameServer;
     private readonly GameDemos _matchDemos;
     private readonly ILogger<MatchManager> _logger;
@@ -29,7 +29,7 @@ public class MatchManager
 
     public MatchManager(
         ILogger<MatchManager> logger,
-        MatchEvents gameEvents,
+        MatchEvents matchEvents,
         GameServer gameServer,
         GameBackUpRounds backUpManagement,
         GameDemos matchDemos,
@@ -41,7 +41,7 @@ public class MatchManager
     {
         _logger = logger;
         _matchDemos = matchDemos;
-        _gameEvents = gameEvents;
+        _matchEvents = matchEvents;
         _gameServer = gameServer;
         knifeSystem = KnifeSystem;
         readySystem = ReadySystem;
@@ -130,6 +130,11 @@ public class MatchManager
 
         _logger.LogInformation($"Update Map Status {_currentMapStatus} -> {status}");
 
+        if (_currentMapStatus == eMapStatus.Warmup && status != eMapStatus.Warmup)
+        {
+            SendUpdatedMatchLineups();
+        }
+
         switch (status)
         {
             case eMapStatus.Scheduled:
@@ -171,7 +176,7 @@ public class MatchManager
                 StartLive();
                 break;
             default:
-                _gameEvents.PublishMapStatus(status);
+                _matchEvents.PublishMapStatus(status);
                 break;
         }
 
@@ -307,7 +312,7 @@ public class MatchManager
 
             readySystem.Setup();
 
-            _gameEvents.PublishMapStatus(eMapStatus.Warmup);
+            _matchEvents.PublishMapStatus(eMapStatus.Warmup);
         });
     }
 
@@ -324,7 +329,7 @@ public class MatchManager
 
         _gameServer.SendCommands(new[] { "exec knife" });
 
-        _gameEvents.PublishMapStatus(eMapStatus.Knife);
+        _matchEvents.PublishMapStatus(eMapStatus.Knife);
 
         Server.NextFrame(() =>
         {
@@ -360,7 +365,7 @@ public class MatchManager
                 {
                     _gameServer.SendCommands(new[] { "mp_warmup_end" });
                 }
-                _gameEvents.PublishMapStatus(eMapStatus.Live);
+                _matchEvents.PublishMapStatus(eMapStatus.Live);
                 return;
             }
 
@@ -376,7 +381,7 @@ public class MatchManager
                 _gameServer.Message(HudDestination.Alert, "LIVE LIVE LIVE!");
             }
 
-            _gameEvents.PublishMapStatus(eMapStatus.Live);
+            _matchEvents.PublishMapStatus(eMapStatus.Live);
         });
     }
 
@@ -453,5 +458,41 @@ public class MatchManager
         }
 
         _gameServer.SendCommands(new[] { "bot_quota 0", "bot_kick", "bot_quota_mode competitive" });
+    }
+
+    private void SendUpdatedMatchLineups()
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        var lineups = new Dictionary<string, List<object>>
+        {
+            { "lineup_1", new List<object>() },
+            { "lineup_2", new List<object>() },
+        };
+
+        foreach (var player in MatchUtility.Players())
+        {
+            Guid? lineup_id = MatchUtility.GetPlayerLineup(_matchData, player);
+
+            if (_matchData.lineup_1_id == lineup_id)
+            {
+                ((List<object>)lineups["lineup_1"]).Add(
+                    new { name = player.PlayerName, steam_id = player.SteamID, }
+                );
+            }
+            else
+            {
+                ((List<object>)lineups["lineup_2"]).Add(
+                    new { name = player.PlayerName, steam_id = player.SteamID, }
+                );
+            }
+        }
+
+        var data = new Dictionary<string, object> { { "lineups", lineups } };
+
+        _matchEvents.PublishGameEvent("lineups", data);
     }
 }

@@ -8,7 +8,7 @@ namespace FiveStack;
 
 public class CaptainSystem
 {
-    private readonly MatchEvents _gameEvents;
+    private readonly MatchEvents _matchEvents;
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
     private readonly ILogger<CaptainSystem> _logger;
@@ -24,13 +24,13 @@ public class CaptainSystem
 
     public CaptainSystem(
         ILogger<CaptainSystem> logger,
-        MatchEvents gameEvents,
+        MatchEvents matchEvents,
         GameServer gameServer,
         MatchService matchService
     )
     {
         _logger = logger;
-        _gameEvents = gameEvents;
+        _matchEvents = matchEvents;
         _gameServer = gameServer;
         _matchService = matchService;
     }
@@ -67,7 +67,7 @@ public class CaptainSystem
 
         _captains[team] = null;
 
-        _gameEvents.PublishGameEvent(
+        _matchEvents.PublishGameEvent(
             "captain",
             new Dictionary<string, object>
             {
@@ -130,7 +130,7 @@ public class CaptainSystem
                 $"{player.PlayerName} was assigned captain for the {TeamUtility.TeamNumToString((int)team)}"
             );
 
-            _gameEvents.PublishGameEvent(
+            _matchEvents.PublishGameEvent(
                 "captain",
                 new Dictionary<string, object>
                 {
