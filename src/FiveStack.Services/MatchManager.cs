@@ -391,6 +391,7 @@ public class MatchManager
 
     public async void EnforceMemberTeam(CCSPlayerController player, CsTeam? currentTeam = null)
     {
+        return;
         MatchData? matchData = GetMatchData();
         MatchMap? currentMap = GetCurrentMap();
 
