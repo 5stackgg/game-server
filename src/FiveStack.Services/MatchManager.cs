@@ -266,7 +266,7 @@ public class MatchManager
         }
     }
 
-    private void StartWarmup()
+    private void SetupGameMode()
     {
         if (_matchData == null)
         {
@@ -281,24 +281,34 @@ public class MatchManager
         {
             _gameServer.SendCommands(new[] { "game_type 0; game_mode 1" });
         }
+    }
 
-        KickBots();
+    private void StartWarmup()
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        SetupGameMode();
 
         _gameServer.SendCommands(new[] { "exec warmup" });
 
-        bool isInWarmup = MatchUtility.Rules()?.WarmupPeriod ?? false;
-
-        if (isInWarmup == false)
+        Server.NextFrame(() =>
         {
-            Server.NextFrame(() =>
+            KickBots();
+
+            bool isInWarmup = MatchUtility.Rules()?.WarmupPeriod ?? false;
+
+            if (isInWarmup == false)
             {
                 _gameServer.SendCommands(new[] { "mp_warmup_start" });
-            });
-        }
+            }
 
-        readySystem.Setup();
+            readySystem.Setup();
 
-        _gameEvents.PublishMapStatus(eMapStatus.Warmup);
+            _gameEvents.PublishMapStatus(eMapStatus.Warmup);
+        });
     }
 
     private void StartKnife()
@@ -330,25 +340,18 @@ public class MatchManager
             return;
         }
 
-        if (_matchData.type == "Wingman")
-        {
-            _gameServer.SendCommands(new[] { "game_type 0; game_mode 2" });
-        }
-        else
-        {
-            _gameServer.SendCommands(new[] { "game_type 0; game_mode 1" });
-        }
-
-        KickBots();
+        SetupGameMode();
 
         _gameServer.SendCommands(new[] { "exec live" });
-
-        _matchDemos.Start();
 
         await _backUpManagement.DownloadBackupRounds();
 
         Server.NextFrame(() =>
         {
+            KickBots();
+
+            _matchDemos.Start();
+
             // if we can restore from backup we will prompt the for a vote to restore
             // most likely this happeend because of a server crash
             if (_backUpManagement.CheckForBackupRestore())
@@ -443,10 +446,12 @@ public class MatchManager
     {
         if (_environmentService.AllowBots())
         {
-            _gameServer.SendCommands(new[] { "bot_quota_mode normal", "bot_add expert" });
+            _gameServer.SendCommands(
+                new[] { "bot_quota 3", "bot_quota_mode fill", "bot_add expert" }
+            );
             return;
         }
 
-        _gameServer.SendCommands(new[] { "bot_quota 0", "bot_kick", "bot_quota_mode normal" });
+        _gameServer.SendCommands(new[] { "bot_quota 0", "bot_kick", "bot_quota_mode competitive" });
     }
 }
