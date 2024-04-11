@@ -134,14 +134,15 @@ public partial class FiveStackPlugin
             }
         }
 
-        previous = observerServices.ObserverTarget?.Value?.Handle;
-
+    
         if (previous != null)
         {
             _logger.LogInformation($"OK LETS GO TO PREV {previous.Value}");
             SetNextObserveTarget(observerServices, previous.Value);
             return HookResult.Changed;
         }
+
+        previous = observerServices.ObserverTarget?.Value?.Handle;
 
         if (viewingTeam != expectedTeam)
         {
