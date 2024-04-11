@@ -34,9 +34,8 @@ ENV DATA_PERM=770
 
 ENV SERVER_ID=""
 
-# TODO -
-ENV METAMOD_DOWNLOAD_LINK=""
-ENV COUNTER_STRIKE_SHARP_URL=""
+ENV METAMOD_URL=https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1286-linux.tar.gz
+ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v211/counterstrikesharp-with-runtime-build-211-linux-ad6e1ca.zip
 
 RUN  echo "deb http://deb.debian.org/debian bookworm contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
 	apt-get update && apt-get -y upgrade && \
@@ -63,11 +62,11 @@ RUN mkdir $DATA_DIR && \
 	ulimit -n 2048
 
 RUN mkdir /opt/metamod
-ADD https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1286-linux.tar.gz /tmp/metamod.tar.gz
+ADD $METAMOD_URL /tmp/metamod.tar.gz
 RUN tar -xz -C /opt/metamod -f /tmp/metamod.tar.gz && rm /tmp/metamod.tar.gz
 
 RUN mkdir /opt/counterstrikesharp
-ADD https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v205/counterstrikesharp-with-runtime-build-205-linux-5ce0464.zip /tmp/counterstrikesharp.zip
+ADD $COUNTER_STRIKE_SHARP_URL /tmp/counterstrikesharp.zip
 RUN unzip /tmp/counterstrikesharp.zip -d /opt/counterstrikesharp && rm /tmp/counterstrikesharp.zip
 
 COPY /cfg /opt/server-cfg
