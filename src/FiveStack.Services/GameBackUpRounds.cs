@@ -494,6 +494,10 @@ public class GameBackUpRounds
 
         foreach (var player in MatchUtility.Players())
         {
+            if (player.IsBot)
+            {
+                continue;
+            }
             SetupResetMessage(player);
         }
     }

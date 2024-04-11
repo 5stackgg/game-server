@@ -225,6 +225,10 @@ public class MatchManager
 
         foreach (var player in MatchUtility.Players())
         {
+            if (player.IsBot)
+            {
+                continue;
+            }
             EnforceMemberTeam(player);
         }
 
@@ -462,7 +466,9 @@ public class MatchManager
 
     private void SendUpdatedMatchLineups()
     {
-        if (_matchData == null)
+        MatchMap? _currentMap = GetCurrentMap();
+
+        if (_matchData == null || _currentMap == null)
         {
             return;
         }
@@ -475,24 +481,37 @@ public class MatchManager
 
         foreach (var player in MatchUtility.Players())
         {
-            Guid? lineup_id = MatchUtility.GetPlayerLineup(_matchData, player);
+            if (player.PlayerName == "SourceTV")
+            {
+                continue;
+            }
 
-            if (_matchData.lineup_1_id == lineup_id)
+            if (TeamUtility.TeamStringToCsTeam(_currentMap.lineup_1_side) == player.Team)
             {
                 ((List<object>)lineups["lineup_1"]).Add(
-                    new { name = player.PlayerName, steam_id = player.SteamID, }
+                    new
+                    {
+                        name = player.PlayerName,
+                        steam_id = player.SteamID.ToString(),
+                        captain = captainSystem.IsCaptain(player, player.Team)
+                    }
                 );
             }
             else
             {
                 ((List<object>)lineups["lineup_2"]).Add(
-                    new { name = player.PlayerName, steam_id = player.SteamID, }
+                    new
+                    {
+                        name = player.PlayerName,
+                        steam_id = player.SteamID.ToString(),
+                        captain = captainSystem.IsCaptain(player, player.Team)
+                    }
                 );
             }
         }
 
         var data = new Dictionary<string, object> { { "lineups", lineups } };
 
-        _matchEvents.PublishGameEvent("lineups", data);
+        _matchEvents.PublishGameEvent("updateLineups", data);
     }
 }

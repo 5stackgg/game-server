@@ -163,12 +163,12 @@ public class CaptainSystem
 
     private void AutoSelectCaptain(CsTeam team)
     {
-        var players = MatchUtility.Players();
-
-        players.FindAll(player =>
-        {
-            return player.Team == team && player.SteamID != 0;
-        });
+        var players = MatchUtility
+            .Players()
+            .FindAll(player =>
+            {
+                return player.Team == team && player.IsBot == false;
+            });
 
         if (players.Count == 0)
         {

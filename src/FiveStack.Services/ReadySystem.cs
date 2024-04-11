@@ -222,6 +222,10 @@ public class ReadySystem
 
         foreach (var player in MatchUtility.Players())
         {
+            if (player.IsBot)
+            {
+                continue;
+            }
             SetupReadyMessage(player);
         }
     }
