@@ -134,7 +134,7 @@ public partial class FiveStackPlugin
             }
         }
 
-        previous = observerServices.ObserverTarget.Value.Handle;
+        previous = observerServices.ObserverTarget?.Value?.Handle;
 
         if (previous != null)
         {
