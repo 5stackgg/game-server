@@ -51,8 +51,6 @@ public partial class FiveStackPlugin : BasePlugin
 
         ListenForMapChange();
 
-        _matchService.GetMatchFromApi();
-
         _gameServer.Message(HudDestination.Alert, "5Stack Loaded");
 
         _watchSpectatorChanges();
