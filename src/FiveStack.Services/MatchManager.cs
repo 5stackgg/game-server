@@ -275,11 +275,11 @@ public class MatchManager
 
         if (_matchData.type == "Wingman")
         {
-            _gameServer.SendCommands(new[] { "game_type 0; game_mode 2" });
+            _gameServer.SendCommands(new[] { "game_type 0", "game_mode 2" });
         }
         else
         {
-            _gameServer.SendCommands(new[] { "game_type 0; game_mode 1" });
+            _gameServer.SendCommands(new[] { "game_type 0", "game_mode 1" });
         }
     }
 
