@@ -466,6 +466,7 @@ public class MatchManager
 
     private void SendUpdatedMatchLineups()
     {
+        bool shouldUpdateApi = false;
         MatchMap? _currentMap = GetCurrentMap();
 
         if (_matchData == null || _currentMap == null)
@@ -484,6 +485,12 @@ public class MatchManager
             if (player.PlayerName == "SourceTV")
             {
                 continue;
+            }
+
+            MatchMember? member = MatchUtility.GetMemberFromLineup(_matchData, player);
+            if (member == null)
+            {
+                shouldUpdateApi = true;
             }
 
             if (TeamUtility.TeamStringToCsTeam(_currentMap.lineup_1_side) == player.Team)
@@ -510,8 +517,12 @@ public class MatchManager
             }
         }
 
-        var data = new Dictionary<string, object> { { "lineups", lineups } };
-
-        _matchEvents.PublishGameEvent("updateLineups", data);
+        if (shouldUpdateApi)
+        {
+            _matchEvents.PublishGameEvent(
+                "updateLineups",
+                new Dictionary<string, object> { { "lineups", lineups } }
+            );
+        }
     }
 }
