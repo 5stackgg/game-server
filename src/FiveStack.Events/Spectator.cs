@@ -60,8 +60,6 @@ public partial class FiveStackPlugin
         SpectatorChanged.Hook(SpectatorChangedHook, HookMode.Post);
     }
 
-    private IntPtr? previous;
-
     private HookResult SpectatorChangedHook(DynamicHook handle)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -134,19 +132,10 @@ public partial class FiveStackPlugin
             }
         }
 
-    
-        if (previous != null)
-        {
-            _logger.LogInformation($"OK LETS GO TO PREV {previous.Value}");
-            SetNextObserveTarget(observerServices, previous.Value);
-            return HookResult.Changed;
-        }
-
-        previous = observerServices.ObserverTarget?.Value?.Handle;
-
         if (viewingTeam != expectedTeam)
         {
             // return HookResult.Stop;
+            //  SetNextObserveTarget(observerServices, secondParam);
             return HookResult.Continue;
         }
 
