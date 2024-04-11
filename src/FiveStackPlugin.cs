@@ -54,8 +54,6 @@ public partial class FiveStackPlugin : BasePlugin
         ListenForMapChange();
 
         _gameServer.Message(HudDestination.Alert, "5Stack Loaded");
-
-        _watchSpectatorChanges();
     }
 
     public override void Unload(bool hotReload)
@@ -66,6 +64,5 @@ public partial class FiveStackPlugin : BasePlugin
                 timer.Kill();
             }
         );
-        SpectatorChanged.Unhook(SpectatorChangedHook, HookMode.Post);
     }
 }
