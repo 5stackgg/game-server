@@ -140,7 +140,6 @@ public partial class FiveStackPlugin
         {
             _logger.LogInformation($"OK LETS GO TO PREV {previous.Value}");
             SetNextObserveTarget(observerServices, previous.Value);
-            previous = null;
             return HookResult.Changed;
         }
 
