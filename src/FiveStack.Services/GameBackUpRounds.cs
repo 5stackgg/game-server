@@ -20,7 +20,7 @@ public class GameBackUpRounds
     private bool _initialRestore = false;
     private Dictionary<ulong, bool> _restoreRoundVote = new Dictionary<ulong, bool>();
 
-    private readonly MatchEvents _gameEvents;
+    private readonly MatchEvents _matchEvents;
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
@@ -28,14 +28,14 @@ public class GameBackUpRounds
 
     public GameBackUpRounds(
         ILogger<GameBackUpRounds> logger,
-        MatchEvents gameEvents,
+        MatchEvents matchEvents,
         GameServer gameServer,
         MatchService matchService,
         EnvironmentService environmentService
     )
     {
         _logger = logger;
-        _gameEvents = gameEvents;
+        _matchEvents = matchEvents;
         _gameServer = gameServer;
         _matchService = matchService;
         _environmentService = environmentService;
@@ -432,7 +432,7 @@ public class GameBackUpRounds
             return;
         }
 
-        _gameEvents.PublishGameEvent(
+        _matchEvents.PublishGameEvent(
             "restoreRound",
             new Dictionary<string, object>
             {
@@ -494,6 +494,10 @@ public class GameBackUpRounds
 
         foreach (var player in MatchUtility.Players())
         {
+            if (player.IsBot)
+            {
+                continue;
+            }
             SetupResetMessage(player);
         }
     }

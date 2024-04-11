@@ -51,18 +51,19 @@ public class ReadySystem
             _readyPlayers[player.UserId.Value] = !_readyPlayers[player.UserId.Value];
         }
 
-        SendReadyStatusMessage();
-    }
+        if (TotalReady() == GetExpectedPlayerCount())
+        {
+            _logger.LogInformation("WEE");
+            return;
+        }
 
-    public void ShowReady(CCSPlayerController player)
-    {
         if (TotalReady() == GetExpectedPlayerCount())
         {
             _matchService.GetCurrentMatch()?.UpdateMapStatus(eMapStatus.Knife);
+            return;
         }
-
         SendReadyMessage(player);
-
+        SendReadyStatusMessage();
         SendNotReadyMessage();
     }
 
@@ -221,6 +222,10 @@ public class ReadySystem
 
         foreach (var player in MatchUtility.Players())
         {
+            if (player.IsBot)
+            {
+                continue;
+            }
             SetupReadyMessage(player);
         }
     }

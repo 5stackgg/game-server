@@ -1,5 +1,4 @@
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Entities;
 using FiveStack.Entities;
 using FiveStack.Enums;
 
@@ -29,9 +28,9 @@ namespace FiveStack.Utilities
             });
         }
 
-        public static Guid? GetPlayerLineup(MatchData match, CCSPlayerController player)
+        public static Guid? GetPlayerLineup(MatchData matchData, CCSPlayerController player)
         {
-            MatchMember? member = MatchUtility.GetMemberFromLineup(match, player);
+            MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, player);
 
             if (member == null)
             {
