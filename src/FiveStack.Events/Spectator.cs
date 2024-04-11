@@ -141,10 +141,9 @@ public partial class FiveStackPlugin
             _logger.LogInformation($"OK LETS GO TO PREV {previous.Value}");
             SetNextObserveTarget(observerServices, previous.Value);
             previous = null;
+            return HookResult.Changed;
         }
 
-        // SetNextObserveTarget(CounterStrikeSharp.API.Utilities.GetPlayerFromSlot(0).ObserverPawn.Value.ObserverServices, secondParam);
-        // SetNextObserveTarget(observerServices, CounterStrikeSharp.API.Utilities.GetPlayerFromSlot(0).Handle);
         if (viewingTeam != expectedTeam)
         {
             // return HookResult.Stop;
