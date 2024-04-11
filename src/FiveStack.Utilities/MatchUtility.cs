@@ -6,15 +6,18 @@ namespace FiveStack.Utilities
 {
     public static class MatchUtility
     {
-        public static string GetSafeMatchPrefix(MatchData match)
+        public static string GetSafeMatchPrefix(MatchData matchData)
         {
-            return $"{match.id}_{match.current_match_map_id}".Replace("-", "");
+            return $"{matchData.id}_{matchData.current_match_map_id}".Replace("-", "");
         }
 
-        public static MatchMember? GetMemberFromLineup(MatchData match, CCSPlayerController player)
+        public static MatchMember? GetMemberFromLineup(
+            MatchData matchData,
+            CCSPlayerController player
+        )
         {
-            List<MatchMember> players = match
-                .lineup_1.lineup_players.Concat(match.lineup_2.lineup_players)
+            List<MatchMember> players = matchData
+                .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
                 .ToList();
 
             return players.Find(member =>

@@ -30,8 +30,21 @@ public partial class FiveStackPlugin
         CCSPlayerController player = @event.Userid;
 
         Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
+        List<MatchMember> players = matchData
+            .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
+            .ToList();
 
-        if (lineup_id == null && match.IsWarmup() == false)
+        bool shouldKick = true;
+
+        if (match.IsWarmup())
+        {
+            if (players.Find(player => player.steam_id == null) != null)
+            {
+                shouldKick = false;
+            }
+        }
+
+        if (shouldKick && lineup_id == null)
         {
             Server.ExecuteCommand($"kickid {player.UserId}");
             return HookResult.Continue;
