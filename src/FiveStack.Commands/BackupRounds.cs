@@ -88,13 +88,10 @@ public partial class FiveStackPlugin
             return;
         }
 
-        _logger.LogInformation($"COMMAND GIVEN {command.GetCommandString}");
-
         _gameBackupRounds.CastVote(
             player,
             command.GetCommandString == "css_yes" || command.GetCommandString == "css_y"
         );
-        return;
     }
 
     [ConsoleCommand("download_backup_rounds", "downloads the backup rounds from the api")]

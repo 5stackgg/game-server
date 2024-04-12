@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using CounterStrikeSharp.API.Modules.Utils;
@@ -14,108 +15,104 @@ public partial class FiveStackPlugin
         OSPlatform.Linux
     )
         ? @"\x55\x48\x89\xE5\x41\x57\x41\x56\x41\x55\x4C\x8D\x2D\x2A\x2A\x2A\x2A\x41\x54\x49\x89\xFC\x53\x48\x89\xF3"
-        // TODO - get for windows
-        : @"";
+        : @"\x48\x89\x5C\x24\x2A\x48\x89\x6C\x24\x2A\x48\x89\x74\x24\x2A\x57\x48\x83\xEC\x2A\x83\xBA\x2A\x2A\x2A\x2A\x2A\x48\x8D\x2D\x2A\x2A\x2A\x2A\x48\x8B\xF2\x48\x8B\xF9";
 
     public MemoryFunctionWithReturn<CPlayer_ObserverServices, IntPtr, bool> SpectatorChanged =
         new(_specTatorChanged);
 
-    private static readonly string _getNextObserverTarget = RuntimeInformation.IsOSPlatform(
-        OSPlatform.Linux
-    )
-        ? @"\x55\x48\x89\xE5\x41\x57\x41\x56\x41\x55\x41\x89\xF5\x40\x0F\xB6\xF6"
-        // TODO - get for windows
-        : @"";
-
-    public static MemoryFunctionWithReturn<
-        CPlayer_ObserverServices,
-        byte,
-        bool
-    > GetNextObserverTargetInputFunc = new(_getNextObserverTarget);
-
-    public bool GetNextObserverTarget(CPlayer_ObserverServices services, byte unknownParam)
-    {
-        return GetNextObserverTargetInputFunc.Invoke(services, unknownParam);
-    }
-
-    private static readonly string _setNextObserveTarget = RuntimeInformation.IsOSPlatform(
-        OSPlatform.Linux
-    )
-        ? @"\x55\x48\x89\xE5\x41\x55\x49\x89\xFD\x41\x54\x48\x83\xEC\x00\x48\x85\xF6"
-        // TODO - get for windows
-        : @"";
-
-    public static MemoryFunctionVoid<
-        CPlayer_ObserverServices,
-        IntPtr
-    > SetNextObserveTargetInputFunc = new(_setNextObserveTarget);
-
-    public void SetNextObserveTarget(CPlayer_ObserverServices services, IntPtr unknownParam)
-    {
-        SetNextObserveTargetInputFunc.Invoke(services, unknownParam);
-    }
-
     private void _watchSpectatorChanges()
     {
-        SpectatorChanged.Hook(SpectatorChangedHook, HookMode.Post);
+        SpectatorChanged.Hook(OnChangeSpecator, HookMode.Post);
+        SpectatorChanged.Hook(OnChangedSpectatorMode, HookMode.Pre);
     }
 
-    private HookResult SpectatorChangedHook(DynamicHook handle)
+    private HookResult OnChangedSpectatorMode(DynamicHook handle)
+    {
+        ObserverMode_t desiredMode = ObserverMode_t.OBS_MODE_IN_EYE;
+
+        var observerServices = handle.GetParam<CPlayer_ObserverServices>(0);
+        var spectateCommand = _getSpecatorCommand(handle.GetParam<IntPtr>(1));
+
+        // force them to stay in eye mode
+        if (
+            spectateCommand == "spec_mode"
+            && desiredMode == (ObserverMode_t)observerServices.ObserverMode
+        )
+        {
+            handle.SetReturn(false);
+            return HookResult.Stop;
+        }
+
+        // TODO - what happens if they aren't in this mode (on connect?)
+
+        handle.SetReturn(true);
+        return HookResult.Continue;
+    }
+
+    private HookResult OnChangeSpecator(DynamicHook handle)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchData? matchData = match?.GetMatchData();
 
         if (matchData == null)
         {
+            handle.SetReturn(true);
             return HookResult.Continue;
         }
 
         var observerServices = handle.GetParam<CPlayer_ObserverServices>(0);
-        var secondParam = handle.GetParam<IntPtr>(1);
-        _logger.LogInformation($"2nd param {secondParam}");
-
-        ObserverMode_t desiredMode = ObserverMode_t.OBS_MODE_IN_EYE;
+        var spectateCommand = _getSpecatorCommand(handle.GetParam<IntPtr>(1));
 
         CBasePlayerController? spectator = observerServices.Pawn.Value.Controller.Value;
 
-        if (spectator == null)
+        if (spectator == null || spectator.Pawn.Value?.ObserverServices == null)
         {
+            _logger.LogWarning("spec is null");
+            handle.SetReturn(true);
             return HookResult.Continue;
         }
 
-        // _logger.LogInformation($"THIS WILL CRASH {GetNextObserverTarget(observerServices, 0)}");
-        if (desiredMode != (ObserverMode_t)observerServices.ObserverMode)
+        CBaseEntity? target = observerServices.ObserverTarget.Value;
+
+        if (target == null)
         {
-            // _logger.LogWarning($"sepectator tried to view in non eye mode coming from {observerServices.ObserverLastMode}");
-            return HookResult.Changed;
-        }
-
-        var player = CounterStrikeSharp.API.Utilities.GetPlayerFromSteamId(spectator.SteamID);
-
-        var target = observerServices.ObserverTarget.Value;
-
-        if (target == null || target.IsValid == false)
-        {
+            _logger.LogWarning("target is null");
+            handle.SetReturn(true);
             return HookResult.Continue;
         }
+
+        var targetPlayer = new CBasePlayerPawn(target.Handle);
 
         int viewingTeamNum = target?.TeamNum ?? -1;
 
-        if (player == null || viewingTeamNum == -1)
+        if (viewingTeamNum == -1)
         {
+            _logger.LogWarning("viewing team is none");
+            handle.SetReturn(true);
             return HookResult.Continue;
         }
 
         CsTeam viewingTeam = TeamUtility.TeamNumToCSTeam(viewingTeamNum);
 
         _logger.LogInformation(
-            $"Specator ID: {spectator.SteamID} is viewing {viewingTeam} @ {observerServices.ObserverMode}"
+            $"{spectator.PlayerName} is viewing [{viewingTeam}] {targetPlayer.Controller.Value?.PlayerName} @ {(ObserverMode_t)observerServices.ObserverMode}"
         );
+
+        var player = CounterStrikeSharp.API.Utilities.GetPlayerFromSteamId(spectator.SteamID);
+
+        if (player == null)
+        {
+            _logger.LogWarning("player is null");
+            handle.SetReturn(true);
+            return HookResult.Continue;
+        }
 
         Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
 
         if (lineup_id == null)
         {
+            _logger.LogWarning("lineup_id is null");
+            handle.SetReturn(true);
             return HookResult.Continue;
         }
 
@@ -129,16 +126,46 @@ public partial class FiveStackPlugin
             if (team.ClanTeamname == lineupName)
             {
                 expectedTeam = TeamUtility.TeamNumToCSTeam(team.TeamNum);
+                break;
             }
         }
 
         if (viewingTeam != expectedTeam)
         {
-            // return HookResult.Stop;
-            //  SetNextObserveTarget(observerServices, secondParam);
-            return HookResult.Continue;
+            var forceViewingPlayer = MatchUtility
+                .Players()
+                .Find(player =>
+                {
+                    return player.Team == expectedTeam;
+                });
+
+            if (forceViewingPlayer == null)
+            {
+                // TODO - what happens if no one is on the team yet?
+                _logger.LogWarning("no available players to spectate");
+                return HookResult.Continue;
+            }
+
+            observerServices.ObserverTarget.Raw = forceViewingPlayer.EntityHandle.Raw;
+            handle.SetReturn(true);
+            return HookResult.Changed;
         }
 
-        return HookResult.Changed;
+        handle.SetReturn(true);
+        return HookResult.Continue;
+    }
+
+    private string _getSpecatorCommand(IntPtr command)
+    {
+        var sizePtr = IntPtr.Add(command, 0x438);
+        var size = Marshal.ReadInt32(sizePtr);
+
+        var commandPtrPtr = IntPtr.Add(command, 0x440);
+        var commandPtr = Marshal.ReadIntPtr(commandPtrPtr);
+
+        var commandBytes = new byte[size];
+        Marshal.Copy(commandPtr, commandBytes, 0, size);
+
+        return CounterStrikeSharp.API.Utilities.ReadStringUtf8(commandPtr);
     }
 }

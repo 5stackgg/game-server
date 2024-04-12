@@ -66,6 +66,7 @@ public partial class FiveStackPlugin : BasePlugin
                 timer.Kill();
             }
         );
-        SpectatorChanged.Unhook(SpectatorChangedHook, HookMode.Post);
+        SpectatorChanged.Unhook(OnChangeSpecator, HookMode.Post);
+        SpectatorChanged.Unhook(OnChangedSpectatorMode, HookMode.Pre);
     }
 }
