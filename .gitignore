@@ -1,0 +1,6 @@
+src/bin
+src/obj
+src/src.sln
+src/Folder.DotSettings.user
+.env
+release
