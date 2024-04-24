@@ -57,7 +57,14 @@ public class MatchEvents
 
         Publish(
             $"matches:{matchId}",
-            new MatchEvents.EventData<Dictionary<string, object>> { @event = Event, data = Data }
+            new MatchEvents.EventData<Dictionary<string, object>>
+            { 
+                data = new Dictionary<string, object>
+                {
+                    { "event", Event },
+                    { "data", Data }
+                }
+            }
         );
     }
 
