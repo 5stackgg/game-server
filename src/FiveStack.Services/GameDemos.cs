@@ -69,8 +69,10 @@ public class GameDemos
 
         foreach (string file in files)
         {
+            _logger.LogInformation($"uploading demo {file}");
             await UploadDemo(file);
         }
+        _logger.LogInformation("Uploaded demos");
     }
 
     public async Task UploadDemo(string filePath)
@@ -93,32 +95,30 @@ public class GameDemos
             _logger.LogInformation($"Uploading Demo {endpoint}");
 
             using (var httpClient = new HttpClient())
+            using (var fileStream = File.OpenRead(filePath))
             {
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                    "Bearer",
+                    apiPassword
+                );
+
                 using (var formData = new MultipartFormDataContent())
+                using (var streamContent = new StreamContent(fileStream))
                 {
-                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-                        "Bearer",
-                        apiPassword
+                    streamContent.Headers.ContentType = new MediaTypeHeaderValue(
+                        "application/octet-stream"
                     );
+                    formData.Add(streamContent, "file", Path.GetFileName(filePath));
 
-                    using (var fileStream = File.OpenRead(filePath))
-                    using (var streamContent = new StreamContent(fileStream))
+                    var response = await httpClient.PostAsync(endpoint, formData);
+                    if (response.IsSuccessStatusCode)
                     {
-                        streamContent.Headers.ContentType = new MediaTypeHeaderValue(
-                            "application/octet-stream"
-                        );
-                        formData.Add(streamContent, "file", Path.GetFileName(filePath));
-
-                        var response = await httpClient.PostAsync(endpoint, formData);
-                        if (response.IsSuccessStatusCode)
-                        {
-                            _logger.LogInformation("demo uploaded");
-                            File.Delete(filePath);
-                        }
-                        else
-                        {
-                            _logger.LogError($"unable to upload demo {response.StatusCode}");
-                        }
+                        _logger.LogInformation("demo uploaded");
+                        File.Delete(filePath);
+                    }
+                    else
+                    {
+                        _logger.LogError($"unable to upload demo {response.StatusCode}");
                     }
                 }
             }

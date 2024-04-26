@@ -45,9 +45,10 @@ public class MatchService
 
         try
         {
-            string matchUri = $"{_environmentService.GetBaseUri()}/matches/current-match/{serverId}";
+            string matchUri =
+                $"{_environmentService.GetBaseUri()}/matches/current-match/{serverId}";
 
-            _logger.LogInformation("Fetching Match Info");
+            _logger.LogInformation($"Fetching Match Info {matchUri}");
 
             httpClient.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiPassword);

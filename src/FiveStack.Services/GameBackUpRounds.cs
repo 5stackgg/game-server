@@ -387,35 +387,40 @@ public class GameBackUpRounds
             _logger.LogInformation($"Uploading Backup Round {endpoint}");
 
             using (var httpClient = new HttpClient())
+            using (var fileStream = File.OpenRead(backupRoundFilePath))
+            using (var formData = new MultipartFormDataContent())
             {
-                using (var formData = new MultipartFormDataContent())
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                    "Bearer",
+                    apiPassword
+                );
+
+                // Define the buffer size for reading chunks
+                int bufferSize = 4096;
+                byte[] buffer = new byte[bufferSize];
+                int bytesRead;
+
+                // Read and upload the file in chunks
+                while ((bytesRead = await fileStream.ReadAsync(buffer, 0, bufferSize)) > 0)
                 {
-                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-                        "Bearer",
-                        apiPassword
+                    formData.Add(
+                        new ByteArrayContent(buffer, 0, bytesRead),
+                        "file",
+                        Path.GetFileName(backupRoundFilePath)
                     );
+                    var response = await httpClient.PostAsync(endpoint, formData);
 
-                    using (var fileStream = File.OpenRead(backupRoundFilePath))
-                    using (var streamContent = new StreamContent(fileStream))
+                    if (!response.IsSuccessStatusCode)
                     {
-                        streamContent.Headers.ContentType = new MediaTypeHeaderValue(
-                            "application/octet-stream"
-                        );
-                        formData.Add(streamContent, "file", Path.GetFileName(backupRoundFilePath));
-
-                        var response = await httpClient.PostAsync(endpoint, formData);
-                        if (response.IsSuccessStatusCode)
-                        {
-                            _logger.LogInformation("backup round uploaded");
-                        }
-                        else
-                        {
-                            _logger.LogError(
-                                $"unable to upload backup round {response.StatusCode}"
-                            );
-                        }
+                        _logger.LogError($"unable to upload backup round {response.StatusCode}");
+                        return;
                     }
+
+                    // Clear the form data for next chunk
+                    formData.Dispose();
                 }
+
+                _logger.LogInformation("backup round uploaded");
             }
         }
         catch (Exception ex)
