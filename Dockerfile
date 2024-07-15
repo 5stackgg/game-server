@@ -34,8 +34,8 @@ ENV DATA_PERM=770
 
 ENV SERVER_ID=""
 
-ENV METAMOD_URL=https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1289-linux.tar.gz
-ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v215/counterstrikesharp-with-runtime-build-215-linux-7cae4be.zip
+ENV METAMOD_URL=https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1293-linux.tar.gz
+ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v247/counterstrikesharp-with-runtime-build-247-linux-f8451c2.zip
 
 RUN  echo "deb http://deb.debian.org/debian bookworm contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
 	apt-get update && apt-get -y upgrade && \
