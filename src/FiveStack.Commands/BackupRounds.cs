@@ -71,7 +71,7 @@ public partial class FiveStackPlugin
         string round = command.ArgByIndex(1);
 
         // TODO - round can be null, reset to -1 round
-        if (round == null || _gameBackupRounds.IsResttingRound())
+        if (round == null || _gameBackupRounds.IsResettingRound())
         {
             return;
         }
@@ -83,7 +83,7 @@ public partial class FiveStackPlugin
     [ConsoleCommand("css_yes", "Casts vote for Resetting a Round")]
     public void OnResetAnswer(CCSPlayerController? player, CommandInfo command)
     {
-        if (player == null || !_gameBackupRounds.IsResttingRound())
+        if (player == null || !_gameBackupRounds.IsResettingRound())
         {
             return;
         }

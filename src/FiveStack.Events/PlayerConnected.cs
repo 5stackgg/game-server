@@ -98,10 +98,7 @@ public partial class FiveStackPlugin
             @event.Userid
         );
 
-        if (!match.IsLive())
-        {
-            match.EnforceMemberTeam(player, TeamUtility.TeamNumToCSTeam(@event.Team));
-        }
+        match.EnforceMemberTeam(player, TeamUtility.TeamNumToCSTeam(@event.Team));
 
         return HookResult.Continue;
     }

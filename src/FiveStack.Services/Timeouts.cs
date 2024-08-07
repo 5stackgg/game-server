@@ -34,7 +34,7 @@ public class Timeouts
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (match == null || !match.IsLive() && _backUpManagement.IsResttingRound() == false)
+        if (match == null || !match.IsLive() && _backUpManagement.IsResettingRound() == false)
         {
             return;
         }
@@ -51,7 +51,7 @@ public class Timeouts
         if (player != null)
         {
             eTimeoutSettings timeoutSetting = TimeoutUtility.TimeoutSettingStringToEnum(
-                matchData.tech_timeout_setting
+                matchData.options.tech_timeout_setting
             );
 
             // TODO - coach support
@@ -73,7 +73,7 @@ public class Timeouts
 
     public void Resume(CCSPlayerController? player)
     {
-        if (player == null && _backUpManagement.IsResttingRound())
+        if (player == null && _backUpManagement.IsResettingRound())
         {
             _backUpManagement.VoteFailed();
         }
@@ -81,7 +81,7 @@ public class Timeouts
         MatchManager? match = _matchService.GetCurrentMatch();
 
         // TODO - game rules has a bug where i cant detect if were paused
-        if (match == null || _backUpManagement.IsResttingRound())
+        if (match == null || _backUpManagement.IsResettingRound())
         {
             return;
         }
@@ -100,7 +100,7 @@ public class Timeouts
         if (player != null)
         {
             eTimeoutSettings timeoutSetting = TimeoutUtility.TimeoutSettingStringToEnum(
-                matchData.tech_timeout_setting
+                matchData.options.tech_timeout_setting
             );
 
             // TODO - coach support
@@ -124,7 +124,7 @@ public class Timeouts
     public void CallTacTimeout(CCSPlayerController? player)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
-        if (match == null || !match.IsLive() || _backUpManagement.IsResttingRound())
+        if (match == null || !match.IsLive() || _backUpManagement.IsResettingRound())
         {
             return;
         }
@@ -140,7 +140,7 @@ public class Timeouts
         if (player != null)
         {
             eTimeoutSettings timeoutSetting = TimeoutUtility.TimeoutSettingStringToEnum(
-                matchData.tech_timeout_setting
+                matchData.options.tech_timeout_setting
             );
 
             // TODO - coach support

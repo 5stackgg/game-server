@@ -53,14 +53,14 @@ public class GameBackUpRounds
         _gameServer.SendCommands(
             new[]
             {
-                $"mp_maxrounds {match.mr * 2}",
-                $"mp_overtime_enable {match.overtime}",
+                $"mp_maxrounds {match.options.mr * 2}",
+                $"mp_overtime_enable {match.options.overtime}",
                 $"mp_backup_round_file {MatchUtility.GetSafeMatchPrefix(match)}",
             }
         );
     }
 
-    public bool IsResttingRound()
+    public bool IsResettingRound()
     {
         return _resetRound != null;
     }
@@ -490,7 +490,7 @@ public class GameBackUpRounds
             return;
         }
 
-        if (!IsResttingRound())
+        if (!IsResettingRound())
         {
             _resetRoundTimer?.Kill();
             _resetRoundTimer = null;

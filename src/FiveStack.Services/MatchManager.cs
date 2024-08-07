@@ -143,7 +143,7 @@ public class MatchManager
                 StartWarmup();
                 break;
             case eMapStatus.Knife:
-                if (!_matchData.knife_round)
+                if (!_matchData.options.knife_round)
                 {
                     UpdateMapStatus(eMapStatus.Live);
                     return;
@@ -155,7 +155,7 @@ public class MatchManager
                     break;
                 }
 
-                if (currentMap.order == _matchData.best_of)
+                if (currentMap.order == _matchData.options.best_of)
                 {
                     StartKnife();
                 }
@@ -166,7 +166,7 @@ public class MatchManager
 
                 break;
             case eMapStatus.Paused:
-                if (_backUpManagement.IsResttingRound())
+                if (_backUpManagement.IsResettingRound())
                 {
                     break;
                 }
@@ -175,10 +175,10 @@ public class MatchManager
             case eMapStatus.Live:
                 StartLive();
                 break;
-            default:
-                _matchEvents.PublishMapStatus(status);
-                break;
         }
+        
+
+        _matchEvents.PublishMapStatus(status);
 
         _currentMapStatus = status;
     }
@@ -282,7 +282,7 @@ public class MatchManager
             return;
         }
 
-        if (_matchData.type == "Wingman")
+        if (_matchData.options.type == "Wingman")
         {
             _gameServer.SendCommands(new[] { "game_type 0", "game_mode 2" });
         }
@@ -315,8 +315,6 @@ public class MatchManager
             }
 
             readySystem.Setup();
-
-            _matchEvents.PublishMapStatus(eMapStatus.Warmup);
         });
     }
 
@@ -332,8 +330,6 @@ public class MatchManager
         KickBots();
 
         _gameServer.SendCommands(new[] { "exec knife" });
-
-        _matchEvents.PublishMapStatus(eMapStatus.Knife);
 
         Server.NextFrame(() =>
         {
@@ -369,7 +365,6 @@ public class MatchManager
                 {
                     _gameServer.SendCommands(new[] { "mp_warmup_end" });
                 }
-                _matchEvents.PublishMapStatus(eMapStatus.Live);
                 return;
             }
 
@@ -384,8 +379,6 @@ public class MatchManager
             {
                 _gameServer.Message(HudDestination.Alert, "LIVE LIVE LIVE!");
             }
-
-            _matchEvents.PublishMapStatus(eMapStatus.Live);
         });
     }
 
