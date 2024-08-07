@@ -15,7 +15,7 @@ namespace FiveStack;
 
 public class GameBackUpRounds
 {
-    private string? _resetRound;
+    private int? _resetRound;
     private Timer? _resetRoundTimer;
     private bool _initialRestore = false;
     private Dictionary<ulong, bool> _restoreRoundVote = new Dictionary<ulong, bool>();
@@ -53,14 +53,14 @@ public class GameBackUpRounds
         _gameServer.SendCommands(
             new[]
             {
-                $"mp_maxrounds {match.mr * 2}",
-                $"mp_overtime_enable {match.overtime}",
+                $"mp_maxrounds {match.options.mr * 2}",
+                $"mp_overtime_enable {match.options.overtime}",
                 $"mp_backup_round_file {MatchUtility.GetSafeMatchPrefix(match)}",
             }
         );
     }
 
-    public bool IsResttingRound()
+    public bool IsResettingRound()
     {
         return _resetRound != null;
     }
@@ -122,7 +122,7 @@ public class GameBackUpRounds
         {
             _initialRestore = true;
             _logger.LogInformation("Server restarted, requires a vote to restore round");
-            RestoreBackupRound(highestNumber.ToString(), null, true);
+            RestoreBackupRound(highestNumber, null, true);
             return true;
         }
 
@@ -270,7 +270,7 @@ public class GameBackUpRounds
 
             if (_restoreRoundVote.Count(pair => pair.Value) == 2)
             {
-                RestoreRound(_resetRound);
+                RestoreRound(_resetRound ?? 0);
                 return;
             }
 
@@ -278,11 +278,7 @@ public class GameBackUpRounds
         }
     }
 
-    public bool RestoreBackupRound(
-        string round,
-        CCSPlayerController? player = null,
-        bool vote = false
-    )
+    public bool RestoreBackupRound(int round, CCSPlayerController? player = null, bool vote = false)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchData? matchData = match?.GetMatchData();
@@ -298,7 +294,7 @@ public class GameBackUpRounds
         }
 
         string backupRoundFile =
-            $"{MatchUtility.GetSafeMatchPrefix(matchData)}_round{round.PadLeft(2, '0')}.txt";
+            $"{MatchUtility.GetSafeMatchPrefix(matchData)}_round{round.ToString().PadLeft(2, '0')}.txt";
 
         Server.NextFrame(() =>
         {
@@ -429,7 +425,7 @@ public class GameBackUpRounds
         }
     }
 
-    public void RestoreRound(string round)
+    public void RestoreRound(int round)
     {
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
         if (match?.current_match_map_id == null)
@@ -455,7 +451,7 @@ public class GameBackUpRounds
         _restoreRoundVote = new Dictionary<ulong, bool>();
     }
 
-    public bool HasBackupRound(string round)
+    public bool HasBackupRound(int round)
     {
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
         if (match?.current_match_map_id == null)
@@ -464,7 +460,7 @@ public class GameBackUpRounds
         }
 
         string backupRoundFile =
-            $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.PadLeft(2, '0')}.txt";
+            $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.ToString().PadLeft(2, '0')}.txt";
 
         return File.Exists(Path.Join(Server.GameDirectory + "/csgo/", backupRoundFile));
     }
@@ -490,7 +486,7 @@ public class GameBackUpRounds
             return;
         }
 
-        if (!IsResttingRound())
+        if (!IsResettingRound())
         {
             _resetRoundTimer?.Kill();
             _resetRoundTimer = null;

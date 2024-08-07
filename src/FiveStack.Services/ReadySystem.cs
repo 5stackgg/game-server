@@ -100,7 +100,7 @@ public class ReadySystem
             return 10;
         }
 
-        return match.type == "Wingman" ? 4 : 10;
+        return match.options.type == "Wingman" ? 4 : 10;
     }
 
     private void ResetReadyPlayers()

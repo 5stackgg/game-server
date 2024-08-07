@@ -25,7 +25,8 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        CCSPlayerController? attacker = @event.Attacker.IsValid ? @event.Attacker : null;
+        CCSPlayerController? attacker =
+            @event.Attacker != null && @event.Attacker.IsValid ? @event.Attacker : null;
 
         CCSPlayerController attacked = @event.Userid;
 

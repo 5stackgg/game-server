@@ -205,7 +205,12 @@ public partial class FiveStackPlugin
         }
 
         CCSPlayerController thrower = @event.Userid;
-        CCSPlayerController attacked = @event.Attacker;
+        CCSPlayerController? attacked = @event.Attacker;
+
+        if (attacked == null)
+        {
+            return HookResult.Continue;
+        }
 
         _matchEvents.PublishGameEvent(
             "flash",

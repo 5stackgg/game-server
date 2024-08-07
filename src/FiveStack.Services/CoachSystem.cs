@@ -28,7 +28,7 @@ public class CoachSystem
     public bool IsCoach(CCSPlayerController player, CsTeam team)
     {
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
-        if (matchData != null && matchData.coaches)
+        if (matchData != null && matchData.options.coaches)
         {
             if (
                 player.SteamID.ToString() == matchData.lineup_1.coach_steam_id

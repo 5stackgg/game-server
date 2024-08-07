@@ -46,17 +46,18 @@ public partial class FiveStackPlugin
         }
 
         command.ReplyToCommand($"  Rules: ");
-        string matchDetails = $"{match.type} (MR:{match.mr}), Best of {match.best_of}";
+        string matchDetails =
+            $"{match.options.type} (MR:{match.options.mr}), Best of {match.options.best_of}";
 
         bool hasDetails = false;
 
-        if (match.overtime)
+        if (match.options.overtime)
         {
             hasDetails = true;
             matchDetails += $" with Overtime";
         }
 
-        if (match.knife_round)
+        if (match.options.knife_round)
         {
             matchDetails += $"{(hasDetails ? " with" : " and")} knife round";
         }
@@ -66,16 +67,16 @@ public partial class FiveStackPlugin
         hasDetails = false;
         string additionalDetails = "";
 
-        if (match.coaches)
+        if (match.options.coaches)
         {
             hasDetails = true;
             additionalDetails += $"Coach Support";
         }
 
-        if (match.number_of_substitutes > 0)
+        if (match.options.number_of_substitutes > 0)
         {
             additionalDetails +=
-                $"{(hasDetails ? " with" : " and")} Maximum Number of Substitutes: {match.number_of_substitutes}";
+                $"{(hasDetails ? " with" : " and")} Maximum Number of Substitutes: {match.options.number_of_substitutes}";
         }
 
         if (additionalDetails != "")
@@ -84,10 +85,10 @@ public partial class FiveStackPlugin
         }
 
         command.ReplyToCommand(
-            $"Allow Timeouts {StringUtility.ConvertCamelToHumanReadable(match.timeout_setting)}"
+            $"Allow Timeouts {StringUtility.ConvertCamelToHumanReadable(match.options.timeout_setting)}"
         );
         command.ReplyToCommand(
-            $"Tech Timeouts {StringUtility.ConvertCamelToHumanReadable(match.tech_timeout_setting)}"
+            $"Tech Timeouts {StringUtility.ConvertCamelToHumanReadable(match.options.tech_timeout_setting)}"
         );
     }
 }
