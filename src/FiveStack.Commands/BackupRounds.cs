@@ -56,6 +56,7 @@ public partial class FiveStackPlugin
 
         if (!_gameBackupRounds.HasBackupRound(round))
         {
+            _logger.LogWarning($"missing backup round: {backupRoundFile}");
             return;
         }
 
@@ -74,7 +75,6 @@ public partial class FiveStackPlugin
     {
         string _round = command.ArgByIndex(1);
 
-        // TODO - round can be null, reset to -1 round
         if (_round == null || _gameBackupRounds.IsResettingRound())
         {
             return;
