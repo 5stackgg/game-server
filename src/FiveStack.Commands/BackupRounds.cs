@@ -15,12 +15,14 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnResetRound(CCSPlayerController? player, CommandInfo command)
     {
-        string round = command.ArgByIndex(1);
+        string _round = command.ArgByIndex(1);
 
-        if (round == null)
+        if (_round == null)
         {
             return;
         }
+
+        int round = Int32.Parse(_round);
 
         _gameBackupRounds.RestoreRound(round);
     }
@@ -32,12 +34,14 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnApiResetRound(CCSPlayerController? player, CommandInfo command)
     {
-        string round = command.ArgByIndex(1);
+        string _round = command.ArgByIndex(1);
 
-        if (round == null)
+        if (_round == null)
         {
             return;
         }
+
+        int round = Int32.Parse(_round);
 
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
@@ -48,7 +52,7 @@ public partial class FiveStackPlugin
         }
 
         string backupRoundFile =
-            $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.PadLeft(2, '0')}.txt";
+            $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.ToString().PadLeft(2, '0')}.txt";
 
         if (!_gameBackupRounds.HasBackupRound(round))
         {
@@ -68,13 +72,15 @@ public partial class FiveStackPlugin
     [ConsoleCommand("css_reset", "Restores to a previous round")]
     public void OnRestoreRound(CCSPlayerController? player, CommandInfo command)
     {
-        string round = command.ArgByIndex(1);
+        string _round = command.ArgByIndex(1);
 
         // TODO - round can be null, reset to -1 round
-        if (round == null || _gameBackupRounds.IsResettingRound())
+        if (_round == null || _gameBackupRounds.IsResettingRound())
         {
             return;
         }
+
+        int round = Int32.Parse(_round);
 
         _gameBackupRounds.RestoreBackupRound(round, player);
     }
