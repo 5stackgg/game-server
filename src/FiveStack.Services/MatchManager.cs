@@ -176,7 +176,6 @@ public class MatchManager
                 StartLive();
                 break;
         }
-        
 
         _matchEvents.PublishMapStatus(status);
 
@@ -446,11 +445,23 @@ public class MatchManager
 
     private void KickBots()
     {
+        if (this._matchData == null)
+        {
+            return;
+        }
+
         if (_environmentService.AllowBots())
         {
-            _gameServer.SendCommands(
-                new[] { "bot_quota 3", "bot_quota_mode fill", "bot_add expert" }
-            );
+            int maxPlayers = this._matchData.options.type == "Wingman" ? 4 : 10;
+            int currentPlayers = MatchUtility.Players().Count;
+            int maxBots = 4;
+            _gameServer.SendCommands(new[] { "bot_quota_mode fill", $"bot_quota {maxBots}" });
+
+            if (currentPlayers < maxPlayers)
+            {
+                _gameServer.SendCommands(new[] { "bot_add expert" });
+            }
+
             return;
         }
 

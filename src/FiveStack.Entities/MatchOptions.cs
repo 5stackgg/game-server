@@ -2,7 +2,7 @@ namespace FiveStack.Entities;
 
 public class MatchOptions
 {
-  public int mr { get; set; } = 0;
+    public int mr { get; set; } = 0;
     public string type { get; set; } = "";
     public bool overtime { get; set; } = true;
     public int best_of { get; set; } = 1;

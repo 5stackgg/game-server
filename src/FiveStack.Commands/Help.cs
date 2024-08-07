@@ -46,7 +46,8 @@ public partial class FiveStackPlugin
         }
 
         command.ReplyToCommand($"  Rules: ");
-        string matchDetails = $"{match.options.type} (MR:{match.options.mr}), Best of {match.options.best_of}";
+        string matchDetails =
+            $"{match.options.type} (MR:{match.options.mr}), Best of {match.options.best_of}";
 
         bool hasDetails = false;
 

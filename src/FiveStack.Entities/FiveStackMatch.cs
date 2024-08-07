@@ -3,13 +3,13 @@ namespace FiveStack.Entities;
 public class MatchData
 {
     public Guid id { get; set; } = Guid.Empty;
-      public string password { get; set; } = "connectme";
-  
+    public string password { get; set; } = "connectme";
+
     public Guid? current_match_map_id { get; set; } = Guid.Empty;
 
     public MatchMap[] match_maps { get; set; } = new MatchMap[0];
 
-    public MatchOptions options {get; set;} = new MatchOptions();
+    public MatchOptions options { get; set; } = new MatchOptions();
 
     public Guid lineup_1_id { get; set; } = Guid.Empty;
     public Guid lineup_2_id { get; set; } = Guid.Empty;

@@ -31,7 +31,8 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        CCSPlayerController? attacker = @event.Attacker.IsValid ? @event.Attacker : null;
+        CCSPlayerController? attacker =
+            @event.Attacker != null && @event.Attacker.IsValid ? @event.Attacker : null;
 
         var attackerLocation = attacker?.PlayerPawn?.Value?.AbsOrigin;
         var attackedLocation = attacked?.PlayerPawn?.Value?.AbsOrigin;
