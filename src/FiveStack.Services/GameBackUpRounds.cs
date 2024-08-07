@@ -241,7 +241,9 @@ public class GameBackUpRounds
             return;
         }
 
-        player.PrintToCenter($"Type .yes / .no reset the round to round {_resetRound}");
+        
+
+        player.PrintToCenter($"YOUR THE CAPTINType .yes / .no reset the round to round {_resetRound}");
     }
 
     public void CastVote(CCSPlayerController player, bool vote)
@@ -442,6 +444,8 @@ public class GameBackUpRounds
             }
         );
     }
+
+
 
     public void ResetRestoreBackupRound()
     {
