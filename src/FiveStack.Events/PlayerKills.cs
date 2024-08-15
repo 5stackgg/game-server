@@ -18,6 +18,11 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        if (MatchUtility.Rules()?.FreezePeriod == true)
+        {
+            return HookResult.Continue;
+        }
+
         CCSPlayerController attacked = @event.Userid;
 
         if (match.IsWarmup() && attacked.InGameMoneyServices != null)

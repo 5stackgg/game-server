@@ -10,3 +10,5 @@ ignore:
   - "src/obj/"
   - "Folder.DotSettings.user"
   - "src/src.sln"
+  - "src/src.generated.sln"
+  - "5stack-server-mod.generated.sln"

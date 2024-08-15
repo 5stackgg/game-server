@@ -1,6 +1,8 @@
 src/bin
 src/obj
 src/src.sln
+src/src.generated.sln
 src/Folder.DotSettings.user
 .env
 release
+5stack-server-mod.generated.sln
