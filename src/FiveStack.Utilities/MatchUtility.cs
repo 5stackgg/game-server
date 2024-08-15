@@ -24,7 +24,7 @@ namespace FiveStack.Utilities
             {
                 if (member.steam_id == null)
                 {
-                    return member.name.StartsWith(player.PlayerName);
+                    return member.placeholder_name.StartsWith(player.PlayerName);
                 }
 
                 return member.steam_id == player.SteamID.ToString();

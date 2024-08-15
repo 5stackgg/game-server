@@ -391,56 +391,56 @@ public class MatchManager
             return;
         }
 
-        Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
+        await Task.Delay(100);
 
-        if (lineup_id == null)
+        Server.NextFrame(() =>
         {
-            return;
-        }
+            Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
 
-        if (currentTeam == null)
-        {
-            currentTeam = player.Team;
-        }
-
-        CsTeam expectedTeam = CsTeam.None;
-
-        string lineupName =
-            matchData.lineup_1_id == lineup_id ? matchData.lineup_1.name : matchData.lineup_2.name;
-
-        foreach (var team in MatchUtility.Teams())
-        {
-            if (team.ClanTeamname == lineupName)
+            if (lineup_id == null)
             {
-                expectedTeam = TeamUtility.TeamNumToCSTeam(team.TeamNum);
+                return;
             }
-        }
 
-        if (expectedTeam == CsTeam.None)
-        {
-            _logger.LogWarning("Unable to get expected team");
-            return;
-        }
-
-        if (currentTeam != expectedTeam)
-        {
-            // allow them to click the menu, they just get switched really quick
-            await Task.Delay(100);
-
-            Server.NextFrame(() =>
+            if (currentTeam == null)
             {
+                currentTeam = player.Team;
+            }
+
+            CsTeam expectedTeam = CsTeam.None;
+
+            string lineupName =
+                matchData.lineup_1_id == lineup_id
+                    ? matchData.lineup_1.name
+                    : matchData.lineup_2.name;
+
+            foreach (var team in MatchUtility.Teams())
+            {
+                if (team.ClanTeamname == lineupName)
+                {
+                    expectedTeam = TeamUtility.TeamNumToCSTeam(team.TeamNum);
+                }
+            }
+
+            if (expectedTeam == CsTeam.None)
+            {
+                _logger.LogWarning("Unable to get expected team");
+                return;
+            }
+
+            if (currentTeam != expectedTeam)
+            {
+                // allow them to click the menu, they just get switched really quick
                 player.ChangeTeam(expectedTeam);
                 _gameServer.Message(
                     HudDestination.Chat,
                     $" You've been assigned to {(expectedTeam == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{TeamUtility.CSTeamToString(expectedTeam)}.",
                     player
                 );
-                captainSystem.IsCaptain(player, expectedTeam);
-            });
-            return;
-        }
+            }
 
-        captainSystem.IsCaptain(player, expectedTeam);
+            captainSystem.IsCaptain(player, expectedTeam);
+        });
     }
 
     private void KickBots()

@@ -98,6 +98,11 @@ public partial class FiveStackPlugin
             @event.Userid
         );
 
+        if (MatchUtility.Rules()?.SwitchingTeamsAtRoundReset == true)
+        {
+            return HookResult.Continue;
+        }
+
         match.EnforceMemberTeam(player, TeamUtility.TeamNumToCSTeam(@event.Team));
 
         return HookResult.Continue;
