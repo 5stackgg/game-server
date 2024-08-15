@@ -431,16 +431,12 @@ public class MatchManager
             if (currentTeam != expectedTeam)
             {
                 // allow them to click the menu, they just get switched really quick
-
-
                 player.ChangeTeam(expectedTeam);
                 _gameServer.Message(
                     HudDestination.Chat,
                     $" You've been assigned to {(expectedTeam == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{TeamUtility.CSTeamToString(expectedTeam)}.",
                     player
                 );
-                captainSystem.IsCaptain(player, expectedTeam);
-                return;
             }
 
             captainSystem.IsCaptain(player, expectedTeam);
