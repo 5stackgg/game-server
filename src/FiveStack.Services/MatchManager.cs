@@ -203,6 +203,8 @@ public class MatchManager
             return;
         }
 
+        _logger.LogInformation($"curret name {_currentMap.map.name } =>{Server.MapName}");
+        
         if (_currentMap.map.name != Server.MapName)
         {
             ChangeMap(_currentMap.map);
