@@ -36,7 +36,7 @@ public class MatchEvents
     {
         PublishGameEvent(
             "mapStatus",
-            new Dictionary<string, object> { { "status", status.ToString() }, }
+            new Dictionary<string, object> { { "status", status.ToString() } }
         );
     }
 
@@ -59,7 +59,7 @@ public class MatchEvents
             $"matches:{matchId}",
             new MatchEvents.EventData<Dictionary<string, object>>
             {
-                data = new Dictionary<string, object> { { "event", Event }, { "data", Data } }
+                data = new Dictionary<string, object> { { "event", Event }, { "data", Data } },
             }
         );
     }
@@ -75,7 +75,7 @@ public class MatchEvents
         {
             ConfigurationOptions options = new ConfigurationOptions
             {
-                EndPoints = { { "redis", 6379 }, },
+                EndPoints = { { "redis", 6379 } },
                 User = _environmentService.GetServerId(),
                 Password = _environmentService.GetServerApiPassword(),
             };

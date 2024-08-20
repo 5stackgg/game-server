@@ -35,7 +35,7 @@ public partial class FiveStackPlugin
                 { "round", _gameServer.GetCurrentRound() },
                 { "type", "Decoy" },
                 { "attacker_steam_id", thrower.SteamID.ToString() },
-                { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" }
+                { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" },
             }
         );
 
@@ -71,7 +71,7 @@ public partial class FiveStackPlugin
                 { "round", _gameServer.GetCurrentRound() },
                 { "type", "HighExplosive" },
                 { "attacker_steam_id", thrower.SteamID.ToString() },
-                { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" }
+                { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" },
             }
         );
 
@@ -107,7 +107,7 @@ public partial class FiveStackPlugin
                 { "round", _gameServer.GetCurrentRound() },
                 { "type", "Flash" },
                 { "attacker_steam_id", thrower.SteamID.ToString() },
-                { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" }
+                { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" },
             }
         );
 
@@ -143,7 +143,7 @@ public partial class FiveStackPlugin
                 { "round", _gameServer.GetCurrentRound() },
                 { "type", "Molotov" },
                 { "attacker_steam_id", thrower.SteamID.ToString() },
-                { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" }
+                { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" },
             }
         );
 
@@ -179,7 +179,7 @@ public partial class FiveStackPlugin
                 { "round", _gameServer.GetCurrentRound() },
                 { "type", "Smoke" },
                 { "attacker_steam_id", thrower.SteamID.ToString() },
-                { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" }
+                { "attacker_location_coordinates", $"{@event.X},{@event.Y},{@event.Z}" },
             }
         );
 
@@ -222,7 +222,7 @@ public partial class FiveStackPlugin
                 { "attacker_steam_id", thrower.SteamID.ToString() },
                 { "attacked_steam_id", attacked.SteamID.ToString() },
                 { "duration", @event.BlindDuration },
-                { "team_flash", thrower.TeamNum == attacked.TeamNum }
+                { "team_flash", thrower.TeamNum == attacked.TeamNum },
             }
         );
 

@@ -203,8 +203,8 @@ public class MatchManager
             return;
         }
 
-        _logger.LogInformation($"curret name {_currentMap.map.name } =>{Server.MapName}");
-        
+        _logger.LogInformation($"curret name {_currentMap.map.name} =>{Server.MapName}");
+
         if (_currentMap.map.name != Server.MapName)
         {
             ChangeMap(_currentMap.map);
@@ -506,7 +506,7 @@ public class MatchManager
                     {
                         name = player.PlayerName,
                         steam_id = player.SteamID.ToString(),
-                        captain = captainSystem.IsCaptain(player, player.Team)
+                        captain = captainSystem.IsCaptain(player, player.Team),
                     }
                 );
             }
@@ -517,7 +517,7 @@ public class MatchManager
                     {
                         name = player.PlayerName,
                         steam_id = player.SteamID.ToString(),
-                        captain = captainSystem.IsCaptain(player, player.Team)
+                        captain = captainSystem.IsCaptain(player, player.Team),
                     }
                 );
             }

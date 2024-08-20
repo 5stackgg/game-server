@@ -26,5 +26,5 @@ public enum eMapStatus
     Paused,
 
     [Description("Unknown")]
-    Unknown
+    Unknown,
 }

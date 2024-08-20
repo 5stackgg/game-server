@@ -16,7 +16,7 @@ public class CoachSystem
     >
     {
         { CsTeam.Terrorist, null },
-        { CsTeam.CounterTerrorist, null }
+        { CsTeam.CounterTerrorist, null },
     };
 
     public CoachSystem(ILogger<CoachSystem> logger, MatchService matchService)

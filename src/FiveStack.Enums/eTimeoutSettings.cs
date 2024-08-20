@@ -11,5 +11,5 @@ public enum eTimeoutSettings
     CoachAndPlayers,
 
     [Description("Admin")]
-    Admin
+    Admin,
 }

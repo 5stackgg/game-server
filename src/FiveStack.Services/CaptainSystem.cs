@@ -19,7 +19,7 @@ public class CaptainSystem
     >
     {
         { CsTeam.Terrorist, null },
-        { CsTeam.CounterTerrorist, null }
+        { CsTeam.CounterTerrorist, null },
     };
 
     public CaptainSystem(
@@ -73,7 +73,7 @@ public class CaptainSystem
             {
                 { "claim", false },
                 { "steam_id", player.SteamID.ToString() },
-                { "player_name", player.PlayerName }
+                { "player_name", player.PlayerName },
             }
         );
 
@@ -136,7 +136,7 @@ public class CaptainSystem
                 {
                     { "claim", true },
                     { "steam_id", player.SteamID.ToString() },
-                    { "player_name", player.PlayerName }
+                    { "player_name", player.PlayerName },
                 }
             );
         }
