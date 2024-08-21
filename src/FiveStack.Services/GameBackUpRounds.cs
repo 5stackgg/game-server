@@ -50,13 +50,16 @@ public class GameBackUpRounds
             return;
         }
 
+        string lockFilePath = GetLockFilePath();
+        if (File.Exists(lockFilePath))
+        {
+            return;
+        }
+
+        File.Create(lockFilePath).Dispose();
+
         _gameServer.SendCommands(
-            new[]
-            {
-                $"mp_maxrounds {match.options.mr * 2}",
-                $"mp_overtime_enable {match.options.overtime}",
-                $"mp_backup_round_file {MatchUtility.GetSafeMatchPrefix(match)}",
-            }
+            new[] { $"mp_backup_round_file {MatchUtility.GetSafeMatchPrefix(match)}" }
         );
     }
 
@@ -384,39 +387,30 @@ public class GameBackUpRounds
 
             using (var httpClient = new HttpClient())
             using (var fileStream = File.OpenRead(backupRoundFilePath))
-            using (var formData = new MultipartFormDataContent())
             {
                 httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
                     "Bearer",
                     apiPassword
                 );
 
-                // Define the buffer size for reading chunks
-                int bufferSize = 4096;
-                byte[] buffer = new byte[bufferSize];
-                int bytesRead;
-
-                // Read and upload the file in chunks
-                while ((bytesRead = await fileStream.ReadAsync(buffer, 0, bufferSize)) > 0)
+                using (var formData = new MultipartFormDataContent())
+                using (var streamContent = new StreamContent(fileStream))
                 {
-                    formData.Add(
-                        new ByteArrayContent(buffer, 0, bytesRead),
-                        "file",
-                        Path.GetFileName(backupRoundFilePath)
+                    streamContent.Headers.ContentType = new MediaTypeHeaderValue(
+                        "application/octet-stream"
                     );
-                    var response = await httpClient.PostAsync(endpoint, formData);
+                    formData.Add(streamContent, "file", Path.GetFileName(backupRoundFilePath));
 
+                    var response = await httpClient.PostAsync(endpoint, formData);
                     if (!response.IsSuccessStatusCode)
                     {
                         _logger.LogError($"unable to upload backup round {response.StatusCode}");
-                        return;
                     }
-
-                    // Clear the form data for next chunk
-                    formData.Dispose();
+                    else
+                    {
+                        _logger.LogInformation("backup round uploaded");
+                    }
                 }
-
-                _logger.LogInformation("backup round uploaded");
             }
         }
         catch (Exception ex)
@@ -501,5 +495,10 @@ public class GameBackUpRounds
             }
             SetupResetMessage(player);
         }
+    }
+
+    private string GetLockFilePath()
+    {
+        return "/opt/.backup-rounds";
     }
 }

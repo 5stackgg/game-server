@@ -1,3 +1,4 @@
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Utils;
@@ -16,17 +17,21 @@ public partial class FiveStackPlugin
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchData? matchData = match?.GetMatchData();
+        MatchMap? currentMap = match?.GetCurrentMap();
 
-        if (match == null || matchData?.current_match_map_id == null)
+        if (match == null || currentMap == null || matchData?.current_match_map_id == null)
         {
             return HookResult.Continue;
         }
 
-        _ = _gameBackupRounds.UploadBackupRound((_gameServer.GetCurrentRound() - 1).ToString());
+        if (!match.IsLive())
+        {
+            return HookResult.Continue;
+        }
 
         _gameServer.UpdateCurrentRound();
 
-        if (match != null && match.isOverTime())
+        if (match.isOverTime())
         {
             match.UpdateMapStatus(eMapStatus.Overtime);
             if (timeoutGivenForOvertime != match.GetOverTimeNumber())
@@ -43,33 +48,6 @@ public partial class FiveStackPlugin
                     }
                 );
             }
-        }
-
-        return HookResult.Continue;
-    }
-
-    [GameEventHandler]
-    public HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info)
-    {
-        MatchManager? match = _matchService.GetCurrentMatch();
-        MatchMap? currentMap = match?.GetCurrentMap();
-        MatchData? matchData = match?.GetMatchData();
-
-        if (match == null || matchData == null || currentMap == null)
-        {
-            return HookResult.Continue;
-        }
-
-        if (match.IsKnife())
-        {
-            match.knifeSystem.SetWinningTeam(TeamUtility.TeamNumToCSTeam(@event.Winner));
-
-            return HookResult.Continue;
-        }
-
-        if (!match.IsLive())
-        {
-            return HookResult.Continue;
         }
 
         CsTeam lineup1Side = CsTeam.None;
@@ -109,6 +87,28 @@ public partial class FiveStackPlugin
                 { "lineup_2_side", $"{TeamUtility.CSTeamToString(lineup2Side)}" },
             }
         );
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info)
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
+        MatchData? matchData = match?.GetMatchData();
+
+        if (match == null || matchData == null || currentMap == null)
+        {
+            return HookResult.Continue;
+        }
+
+        if (match.IsKnife())
+        {
+            match.knifeSystem.SetWinningTeam(TeamUtility.TeamNumToCSTeam(@event.Winner));
+
+            return HookResult.Continue;
+        }
 
         return HookResult.Continue;
     }

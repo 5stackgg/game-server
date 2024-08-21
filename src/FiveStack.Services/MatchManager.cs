@@ -1,3 +1,4 @@
+using System.Diagnostics.Eventing.Reader;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
@@ -174,6 +175,10 @@ public class MatchManager
                 break;
             case eMapStatus.Live:
                 StartLive();
+                if (_currentMapStatus != eMapStatus.Live && _currentMapStatus != eMapStatus.Unknown)
+                {
+                    _gameServer.Message(HudDestination.Alert, "LIVE LIVE LIVE!");
+                }
                 break;
         }
 
@@ -348,27 +353,21 @@ public class MatchManager
 
         SetupGameMode();
 
-        _gameServer.SendCommands(new[] { "exec live" });
+        _gameServer.SendCommands(
+            new[]
+            {
+                "exec live",
+                $"mp_maxrounds {_matchData.options.mr * 2}",
+                $"mp_overtime_enable {_matchData.options.overtime}",
+            }
+        );
 
         await _backUpManagement.DownloadBackupRounds();
 
         Server.NextFrame(() =>
         {
             KickBots();
-
             _matchDemos.Start();
-
-            // if we can restore from backup we will prompt the for a vote to restore
-            // most likely this happeend because of a server crash
-            if (_backUpManagement.CheckForBackupRestore())
-            {
-                if (IsWarmup())
-                {
-                    _gameServer.SendCommands(new[] { "mp_warmup_end" });
-                }
-                return;
-            }
-
             _backUpManagement.Setup();
 
             if (IsWarmup())
@@ -376,9 +375,11 @@ public class MatchManager
                 _gameServer.SendCommands(new[] { "mp_warmup_end" });
             }
 
-            if (IsWarmup() || IsKnife())
+            // if we can restore from backup we will prompt the for a vote to restore
+            // most likely this happeend because of a server crash
+            if (_backUpManagement.CheckForBackupRestore())
             {
-                _gameServer.Message(HudDestination.Alert, "LIVE LIVE LIVE!");
+                return;
             }
         });
     }
