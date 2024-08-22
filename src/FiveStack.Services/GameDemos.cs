@@ -51,6 +51,7 @@ public class GameDemos
         _gameServer.SendCommands(
             new[]
             {
+                $"tv_delay ${match.options.tv_delay}",
                 $"tv_record {GetMatchDemoPath()}/{MatchUtility.GetSafeMatchPrefix(match)}_{DateTime.Now.ToString("yyyyMMdd-HHmm")}-{Server.MapName}",
             }
         );

@@ -6,6 +6,7 @@ public class MatchOptions
     public string type { get; set; } = "";
     public bool overtime { get; set; } = true;
     public int best_of { get; set; } = 1;
+    public int tv_delay { get; set; } = 115;
     public bool coaches { get; set; } = true;
     public int number_of_substitutes { get; set; } = 0;
     public bool knife_round { get; set; } = true;
