@@ -24,5 +24,5 @@ jobs:
         with:
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/5stack-game-server:${{ github.sha }}
-            ghcr.io/${{ github.repository }}/5stack-game-server:latest
+            ghcr.io/${{ github.repository_owner }}/game-server:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/game-server:latest
