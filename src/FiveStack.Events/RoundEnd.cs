@@ -5,6 +5,7 @@ using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -15,6 +16,10 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnRoundOfficiallyEnded(EventRoundOfficiallyEnded @event, GameEventInfo info)
     {
+        this._logger.LogInformation("ENDED");
+
+        
+
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchData? matchData = match?.GetMatchData();
         MatchMap? currentMap = match?.GetCurrentMap();

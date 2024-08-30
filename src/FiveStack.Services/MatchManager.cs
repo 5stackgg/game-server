@@ -178,9 +178,19 @@ public class MatchManager
                 break;
             case eMapStatus.Live:
                 StartLive();
+
                 if (_currentMapStatus != eMapStatus.Live && _currentMapStatus != eMapStatus.Unknown)
                 {
-                    _gameServer.Message(HudDestination.Alert, "LIVE LIVE LIVE!");
+                    _gameServer.SendCommands(new[] { "mp_restartgame 1" });
+
+                    Server.NextFrame(async () => {
+                          await Task.Delay(1000 * 3);
+                            Server.NextFrame(() =>
+                            {
+                                _gameServer.Message(HudDestination.Alert, "LIVE LIVE LIVE!");
+                            });
+                        
+                    });
                 }
                 break;
         }
@@ -300,6 +310,7 @@ public class MatchManager
             if (gameMode != 2)
             {
                 _gameServer.SendCommands(new[] { "mp_restartgame 1" });
+                KickBots();
             }
         }
         else
@@ -308,10 +319,9 @@ public class MatchManager
             if (gameMode != 1)
             {
                 _gameServer.SendCommands(new[] { "mp_restartgame 1" });
+                KickBots();
             }
         }
-
-        KickBots();
     }
 
     private void StartWarmup()
