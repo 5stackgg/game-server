@@ -51,6 +51,8 @@ public partial class FiveStackPlugin : BasePlugin
 
         _logger.LogInformation($"Server ID: {_environmentService.GetServerId()}");
 
+        RecordEnd.Hook(RecordEndHookResult, HookMode.Post);
+
         ListenForMapChange();
 
         _gameServer.Message(HudDestination.Alert, "5Stack Loaded");
@@ -58,6 +60,8 @@ public partial class FiveStackPlugin : BasePlugin
 
     public override void Unload(bool hotReload)
     {
+        RecordEnd.Unhook(RecordEndHookResult, HookMode.Post);
+
         TimerUtility.Timers.ForEach(
             (timer) =>
             {
