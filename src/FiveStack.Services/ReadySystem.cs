@@ -53,15 +53,10 @@ public class ReadySystem
 
         if (TotalReady() == GetExpectedPlayerCount())
         {
-            _logger.LogInformation("WEE");
-            return;
-        }
-
-        if (TotalReady() == GetExpectedPlayerCount())
-        {
             _matchService.GetCurrentMatch()?.UpdateMapStatus(eMapStatus.Knife);
             return;
         }
+
         SendReadyMessage(player);
         SendReadyStatusMessage();
         SendNotReadyMessage();
@@ -103,11 +98,6 @@ public class ReadySystem
         return match.options.type == "Wingman" ? 4 : 10;
     }
 
-    private void ResetReadyPlayers()
-    {
-        _readyPlayers = new Dictionary<int, bool>();
-    }
-
     public void SendReadyMessage(CCSPlayerController player)
     {
         if (player.UserId == null)
@@ -116,7 +106,6 @@ public class ReadySystem
         }
 
         bool isReady = _readyPlayers[player.UserId.Value];
-        player.Clan = isReady ? "[Ready]" : "";
 
         _gameServer.Message(
             HudDestination.Chat,
@@ -151,7 +140,7 @@ public class ReadySystem
 
                 _gameServer.Message(
                     HudDestination.Notify,
-                    $" Players {ChatColors.Red}Not Ready: {ChatColors.Default}{string.Join(", ", notReadyPlayers)} type {ChatColors.Green}.ready"
+                    $" Players {ChatColors.Red}Not Ready: {ChatColors.Default}{string.Join(", ", notReadyPlayers)} type {ChatColors.Green}.r"
                 );
             });
         }

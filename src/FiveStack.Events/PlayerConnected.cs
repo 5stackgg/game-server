@@ -88,7 +88,7 @@ public partial class FiveStackPlugin
 
         _gameServer.Message(
             HudDestination.Chat,
-            $"{ChatColors.Default}type {ChatColors.Green}.ready {ChatColors.Default}to be marked as ready for the match",
+            $"{ChatColors.Default}type {ChatColors.Green}.r {ChatColors.Default}to be marked as ready for the match",
             @event.Userid
         );
 
