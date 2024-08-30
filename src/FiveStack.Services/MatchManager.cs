@@ -1,6 +1,7 @@
 using System.Diagnostics.Eventing.Reader;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
@@ -135,6 +136,8 @@ public class MatchManager
         {
             SendUpdatedMatchLineups();
         }
+
+        SetupGameMode();
 
         switch (status)
         {
@@ -288,14 +291,28 @@ public class MatchManager
             return;
         }
 
+        int? gameMode = ConVar.Find("game_mode")?.GetPrimitiveValue<int>();
+
         if (_matchData.options.type == "Wingman")
         {
             _gameServer.SendCommands(new[] { "game_type 0", "game_mode 2" });
+
+            if (gameMode != 2)
+            {
+                _logger.LogInformation("OK RESTART");
+                _gameServer.SendCommands(new[] { "mp_restartgame 1" });
+            }
         }
         else
         {
             _gameServer.SendCommands(new[] { "game_type 0", "game_mode 1" });
+            if (gameMode != 1)
+            {
+                _gameServer.SendCommands(new[] { "mp_restartgame 1" });
+            }
         }
+
+        KickBots();
     }
 
     private void StartWarmup()
@@ -305,14 +322,10 @@ public class MatchManager
             return;
         }
 
-        SetupGameMode();
-
         _gameServer.SendCommands(new[] { "exec warmup" });
 
         Server.NextFrame(() =>
         {
-            KickBots();
-
             bool isInWarmup = MatchUtility.Rules()?.WarmupPeriod ?? false;
 
             if (isInWarmup == false)
@@ -333,8 +346,6 @@ public class MatchManager
 
         captainSystem.AutoSelectCaptains();
 
-        KickBots();
-
         _gameServer.SendCommands(new[] { "exec knife" });
 
         Server.NextFrame(() =>
@@ -351,8 +362,6 @@ public class MatchManager
             return;
         }
 
-        SetupGameMode();
-
         _gameServer.SendCommands(
             new[]
             {
@@ -366,7 +375,6 @@ public class MatchManager
 
         Server.NextFrame(() =>
         {
-            KickBots();
             _matchDemos.Start();
             _backUpManagement.Setup();
 
