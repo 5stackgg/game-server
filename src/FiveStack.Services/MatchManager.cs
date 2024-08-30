@@ -299,7 +299,6 @@ public class MatchManager
 
             if (gameMode != 2)
             {
-                _logger.LogInformation("OK RESTART");
                 _gameServer.SendCommands(new[] { "mp_restartgame 1" });
             }
         }
@@ -456,27 +455,38 @@ public class MatchManager
 
     private void KickBots()
     {
-        if (this._matchData == null)
+        Server.NextFrame(() =>
         {
-            return;
-        }
-
-        if (_environmentService.AllowBots())
-        {
-            int maxPlayers = this._matchData.options.type == "Wingman" ? 4 : 10;
-            int currentPlayers = MatchUtility.Players().Count;
-            int maxBots = 4;
-            _gameServer.SendCommands(new[] { "bot_quota_mode fill", $"bot_quota {maxBots}" });
-
-            if (currentPlayers < maxPlayers)
+            if (this._matchData == null)
             {
-                _gameServer.SendCommands(new[] { "bot_add expert" });
+                return;
             }
 
-            return;
-        }
+            if (_environmentService.AllowBots())
+            {
+                int currentPlayers = MatchUtility.Players().Count;
+                int maxPlayers = this._matchData.options.type == "Wingman" ? 4 : 10;
 
-        _gameServer.SendCommands(new[] { "bot_quota 0", "bot_kick", "bot_quota_mode competitive" });
+                _gameServer.SendCommands(
+                    new[]
+                    {
+                        "bot_quota_mode normal",
+                        $"bot_quota {Math.Min(0, maxPlayers - currentPlayers)}",
+                    }
+                );
+
+                if (currentPlayers < maxPlayers)
+                {
+                    _gameServer.SendCommands(new[] { "bot_add expert" });
+                }
+
+                return;
+            }
+
+            _gameServer.SendCommands(
+                new[] { "bot_quota_mode competitive", "bot_quota 0", "bot_kick" }
+            );
+        });
     }
 
     private void SendUpdatedMatchLineups()
