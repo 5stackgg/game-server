@@ -1,25 +1,20 @@
-using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
-using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
+    CsTeam roundWinner;
     int timeoutGivenForOvertime;
 
     [GameEventHandler]
     public HookResult OnRoundOfficiallyEnded(EventRoundOfficiallyEnded @event, GameEventInfo info)
     {
-        this._logger.LogInformation("ENDED");
-
-        
-
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchData? matchData = match?.GetMatchData();
         MatchMap? currentMap = match?.GetCurrentMap();
@@ -90,6 +85,7 @@ public partial class FiveStackPlugin
                 },
                 { "lineup_1_side", $"{TeamUtility.CSTeamToString(lineup1Side)}" },
                 { "lineup_2_side", $"{TeamUtility.CSTeamToString(lineup2Side)}" },
+                { "winning_side", $"{TeamUtility.CSTeamToString(this.roundWinner)}" },
             }
         );
 
@@ -107,6 +103,8 @@ public partial class FiveStackPlugin
         {
             return HookResult.Continue;
         }
+
+        this.roundWinner = TeamUtility.TeamNumToCSTeam(@event.Winner);
 
         if (match.IsKnife())
         {

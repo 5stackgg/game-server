@@ -1,4 +1,3 @@
-using System.Diagnostics.Eventing.Reader;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Cvars;
@@ -182,15 +181,6 @@ public class MatchManager
                 if (_currentMapStatus != eMapStatus.Live && _currentMapStatus != eMapStatus.Unknown)
                 {
                     _gameServer.SendCommands(new[] { "mp_restartgame 1" });
-
-                    Server.NextFrame(async () => {
-                          await Task.Delay(1000 * 3);
-                            Server.NextFrame(() =>
-                            {
-                                _gameServer.Message(HudDestination.Alert, "LIVE LIVE LIVE!");
-                            });
-                        
-                    });
                 }
                 break;
         }
