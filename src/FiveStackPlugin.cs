@@ -43,7 +43,11 @@ public partial class FiveStackPlugin : BasePlugin
         _matchTimeouts = matchTimeoutSystem;
         _gameBackupRounds = backUpManagement;
         _environmentService = environmentService;
+
+        _pingTimer = new Timer(Ping, null, TimeSpan.Zero, TimeSpan.FromSeconds(15));
     }
+
+    private Timer _pingTimer;
 
     public override void Load(bool hotReload)
     {
@@ -55,11 +59,14 @@ public partial class FiveStackPlugin : BasePlugin
 
         ListenForMapChange();
 
+        _gameServer.Ping();
+
         _gameServer.Message(HudDestination.Alert, "5Stack Loaded");
     }
 
     public override void Unload(bool hotReload)
     {
+        _pingTimer?.Dispose();
         RecordEnd.Unhook(RecordEndHookResult, HookMode.Post);
 
         TimerUtility.Timers.ForEach(
@@ -68,5 +75,10 @@ public partial class FiveStackPlugin : BasePlugin
                 timer.Kill();
             }
         );
+    }
+
+    private void Ping(object? state)
+    {
+        _gameServer.Ping();
     }
 }

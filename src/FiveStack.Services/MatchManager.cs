@@ -178,7 +178,13 @@ public class MatchManager
             case eMapStatus.Live:
                 StartLive();
 
-                if (_currentMapStatus != eMapStatus.Live && (_currentMapStatus == eMapStatus.Warmup || _currentMapStatus == eMapStatus.Knife))
+                if (
+                    _currentMapStatus != eMapStatus.Live
+                    && (
+                        _currentMapStatus == eMapStatus.Warmup
+                        || _currentMapStatus == eMapStatus.Knife
+                    )
+                )
                 {
                     _gameServer.SendCommands(new[] { "mp_restartgame 1" });
                 }

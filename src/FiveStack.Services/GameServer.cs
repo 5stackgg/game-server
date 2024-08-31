@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Memory;
@@ -11,10 +12,12 @@ public class GameServer
 {
     private int _currentRound = 0;
     private readonly ILogger<GameServer> _logger;
+    private readonly EnvironmentService _environmentService;
 
-    public GameServer(ILogger<GameServer> logger)
+    public GameServer(ILogger<GameServer> logger, EnvironmentService environmentService)
     {
         _logger = logger;
+        _environmentService = environmentService;
     }
 
     public void SendCommands(string[] commands)
@@ -66,5 +69,33 @@ public class GameServer
     {
         _currentRound = MatchUtility.Rules()?.TotalRoundsPlayed ?? 0;
         _logger.LogInformation($"Current Round {_currentRound}");
+    }
+
+    public async void Ping()
+    {
+        string? serverId = _environmentService.GetServerId();
+        string? apiPassword = _environmentService.GetServerApiPassword();
+
+        string endpoint = $"https://api.5stack.gg/game-server-node/ping/{serverId}";
+
+        this._logger.LogInformation($"PING :{endpoint}");
+
+        using (HttpClient httpClient = new HttpClient())
+        {
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                "Bearer",
+                apiPassword
+            );
+
+            try
+            {
+                HttpResponseMessage response = await httpClient.GetAsync(endpoint);
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError($"unable to ping {ex.Message}");
+                return;
+            }
+        }
     }
 }
