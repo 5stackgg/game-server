@@ -61,6 +61,8 @@ public partial class FiveStackPlugin : BasePlugin
 
         _gameServer.Ping();
 
+        AddCommandListener("say", OnPlayerChat, HookMode.Post);
+
         _gameServer.Message(HudDestination.Alert, "5Stack Loaded");
     }
 
