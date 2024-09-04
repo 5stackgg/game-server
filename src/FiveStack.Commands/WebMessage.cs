@@ -11,7 +11,18 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnWebMessGe(CCSPlayerController? player, CommandInfo? command)
     {
+        if (command == null)
+        {
+            return;
+        }
+
         string message = command.ArgByIndex(1);
+
+        if (message == null)
+        {
+            return;
+        }
+
 
         _gameServer.Message(HudDestination.Chat, message);
     }
