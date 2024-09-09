@@ -16,12 +16,8 @@ fi
 
 # Update SteamCMD
 echo "---Update SteamCMD---"
-if [ -z "${STEAM_UPDATE_USERNAME}" ]; then
-    "${STEAMCMD_DIR}/steamcmd.sh" +login anonymous +quit
-else
-    "${STEAMCMD_DIR}/steamcmd.sh" +login "${STEAM_UPDATE_USERNAME}" "${STEAM_UPDATE_PASSWORD}" +quit
-fi
+ "${STEAMCMD_DIR}/steamcmd.sh" +login anonymous +quit
 
 # Update Server
 echo "---Update Server---"
-"${STEAMCMD_DIR}/steamcmd.sh" +force_install_dir "${BASE_SERVER_DIR}" +login "${STEAM_UPDATE_USERNAME}" "${STEAM_UPDATE_PASSWORD}" +app_update "${GAME_ID}" ${VALIDATE:+validate} +quit
+"${STEAMCMD_DIR}/steamcmd.sh" +force_install_dir "${BASE_SERVER_DIR}" +login anonymous +app_update "${GAME_ID}" ${VALIDATE:+validate} +quit
