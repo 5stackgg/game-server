@@ -16,7 +16,7 @@ fi
 
 # Update SteamCMD
 echo "---Update SteamCMD---"
- "${STEAMCMD_DIR}/steamcmd.sh" +login anonymous +quit
+"${STEAMCMD_DIR}/steamcmd.sh" +login anonymous +quit
 
 # Update Server
 echo "---Update Server---"
