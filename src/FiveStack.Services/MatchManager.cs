@@ -306,7 +306,6 @@ public class MatchManager
             if (gameMode != 2)
             {
                 _gameServer.SendCommands(new[] { "mp_restartgame 1" });
-                KickBots();
             }
         }
         else
@@ -315,9 +314,9 @@ public class MatchManager
             if (gameMode != 1)
             {
                 _gameServer.SendCommands(new[] { "mp_restartgame 1" });
-                KickBots();
             }
         }
+        KickBots();
     }
 
     private void StartWarmup()
@@ -477,7 +476,7 @@ public class MatchManager
                     new[]
                     {
                         "bot_quota_mode normal",
-                        $"bot_quota {Math.Min(0, maxPlayers - currentPlayers)}",
+                        $"bot_quota {Math.Max(0, maxPlayers - currentPlayers)}",
                     }
                 );
 

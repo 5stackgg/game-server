@@ -15,7 +15,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-       if (_gameBackupRounds.IsResettingRound())
+        if (_gameBackupRounds.IsResettingRound())
         {
             _gameBackupRounds.CastVote(player, command.GetCommandString == "css_y");
         }
