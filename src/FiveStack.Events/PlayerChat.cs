@@ -1,8 +1,6 @@
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using FiveStack.Entities;
-using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -10,7 +8,6 @@ public partial class FiveStackPlugin
 {
     public HookResult OnPlayerChat(CCSPlayerController? player, CommandInfo info)
     {
-        this._logger.LogInformation("OK LETS GO");
         if (player == null || !player.IsValid)
         {
             return HookResult.Continue;

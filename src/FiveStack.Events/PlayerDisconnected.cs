@@ -33,6 +33,7 @@ public partial class FiveStackPlugin
         {
             _gameServer.Message(HudDestination.Center, $" {ChatColors.Red}Match Paused");
             match.PauseMatch();
+            _surrender.SetupDisconnectTimer(@event.Userid.Team, @event.Userid.SteamID);
         }
 
         return HookResult.Continue;

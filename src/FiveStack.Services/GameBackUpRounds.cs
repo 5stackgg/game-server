@@ -171,6 +171,13 @@ public class GameBackUpRounds
 
                 if (response.IsSuccessStatusCode)
                 {
+                    var contentType = response.Content.Headers.ContentType;
+                    if (contentType?.MediaType == "text/html")
+                    {
+                        _logger.LogInformation("Backup rounds are empty");
+                        return;
+                    }
+
                     using (Stream contentStream = await response.Content.ReadAsStreamAsync())
                     {
                         using (
@@ -244,7 +251,7 @@ public class GameBackUpRounds
             return;
         }
 
-        player.PrintToCenter($"Type .yes / .no reset the round to round {_resetRound}");
+        player.PrintToCenter($"Type .y / .n reset the round to round {_resetRound}");
     }
 
     public void CastVote(CCSPlayerController player, bool vote)

@@ -1,0 +1,236 @@
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Timers;
+using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.Entities;
+using FiveStack.Utilities;
+using Microsoft.Extensions.Logging;
+using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
+
+namespace FiveStack;
+
+public class SurrenderSystem
+{
+    private readonly GameServer _gameServer;
+    private readonly MatchEvents _matchEvents;
+    private readonly MatchService _matchService;
+    private readonly ILogger<ReadySystem> _logger;
+
+    private Dictionary<CsTeam, Timer?> _surrenderTimers = new Dictionary<CsTeam, Timer?>();
+    private Dictionary<CsTeam, Timer?> _surrenderMessageTimers = new Dictionary<CsTeam, Timer?>();
+    private Dictionary<CsTeam, Dictionary<ulong, bool>> _surrenderVotes =
+        new Dictionary<CsTeam, Dictionary<ulong, bool>>();
+    private Dictionary<CsTeam, Dictionary<ulong, Timer>> _disconnectTimers =
+        new Dictionary<CsTeam, Dictionary<ulong, Timer>>();
+
+    public SurrenderSystem(
+        ILogger<ReadySystem> logger,
+        GameServer gameServer,
+        MatchEvents matchEvents,
+        MatchService matchService
+    )
+    {
+        _logger = logger;
+        _gameServer = gameServer;
+        _matchEvents = matchEvents;
+        _matchService = matchService;
+
+        ResetTeamSurrender(CsTeam.Terrorist);
+        ResetTeamSurrender(CsTeam.CounterTerrorist);
+    }
+
+    public void SetupDisconnectTimer(CsTeam team, ulong steamId)
+    {
+        _disconnectTimers[team][steamId] = TimerUtility.AddTimer(
+            30,
+            () =>
+            {
+                setupSurrender(team);
+            },
+            TimerFlags.REPEAT
+        );
+    }
+
+    // we dont pass the team in because they may not be on the team immediately after reconnecting
+    public void CancelDisconnectTimer(ulong steamId)
+    {
+        foreach (var _team in MatchUtility.Teams())
+        {
+            CsTeam team = TeamUtility.TeamNumToCSTeam(_team.TeamNum);
+
+            if (!_disconnectTimers[team].ContainsKey(steamId))
+            {
+                _disconnectTimers[team][steamId].Kill();
+                _disconnectTimers[team].Remove(steamId);
+            }
+        }
+    }
+
+    public void setupSurrender(CsTeam team)
+    {
+        if (_surrenderTimers[team] == null)
+        {
+            SendSurrenderMessage(team);
+            _surrenderMessageTimers[team] = TimerUtility.AddTimer(
+                3,
+                () => SendSurrenderMessage(team),
+                TimerFlags.REPEAT
+            );
+            _surrenderTimers[team] = TimerUtility.AddTimer(
+                30,
+                () =>
+                {
+                    CheckVotes(team, true);
+                },
+                TimerFlags.REPEAT
+            );
+        }
+    }
+
+    public bool IsSurrendering()
+    {
+        return _surrenderTimers[CsTeam.Terrorist] != null
+            || _surrenderTimers[CsTeam.CounterTerrorist] != null;
+    }
+
+    public void CheckVotes(CsTeam team, bool force = false)
+    {
+        if (_surrenderVotes[team].Count != ExpectedVoteCount(team) && !force)
+        {
+            return;
+        }
+
+        if (_surrenderVotes[team].Count(vote => vote.Value == true) == ExpectedVoteCount(team))
+        {
+            Surrender(team);
+            ResetTeamSurrender(CsTeam.Terrorist);
+            ResetTeamSurrender(CsTeam.CounterTerrorist);
+            _gameServer.Message(HudDestination.Alert, $" {ChatColors.Red}Surrender Vote Passed");
+            return;
+        }
+
+        ResetTeamSurrender(team);
+        _gameServer.Message(HudDestination.Alert, $" {ChatColors.Red}Surrender Vote Failed");
+    }
+
+    private void ResetTeamSurrender(CsTeam team)
+    {
+        if (_surrenderTimers.ContainsKey(team) && _surrenderTimers[team] != null)
+        {
+            _surrenderTimers[team]?.Kill();
+        }
+
+        if (_surrenderMessageTimers.ContainsKey(team) && _surrenderMessageTimers[team] != null)
+        {
+            _surrenderMessageTimers[team]?.Kill();
+        }
+
+        if (_disconnectTimers.ContainsKey(team) && _disconnectTimers[team] != null)
+        {
+            foreach (var timer in _disconnectTimers[team].Values)
+            {
+                timer.Kill();
+            }
+        }
+
+        _surrenderTimers[team] = null;
+        _surrenderMessageTimers[team] = null;
+        _surrenderVotes[team] = new Dictionary<ulong, bool>();
+        _disconnectTimers[team] = new Dictionary<ulong, Timer>();
+    }
+
+    private void SendSurrenderMessage(CsTeam team)
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        if (match == null)
+        {
+            return;
+        }
+
+        foreach (var player in MatchUtility.Players())
+        {
+            if (player.IsBot || player.Team != team)
+            {
+                continue;
+            }
+
+            this._gameServer.Message(
+                HudDestination.Alert,
+                $" {ChatColors.Red}Surrender Vote {_surrenderVotes[team].Count}/{ExpectedVoteCount(team)}"
+            );
+        }
+    }
+
+    public void CastVote(CCSPlayerController? player, bool vote)
+    {
+        if (player == null)
+        {
+            return;
+        }
+
+        CsTeam team = player.Team;
+
+        if (_surrenderVotes[team] == null)
+        {
+            return;
+        }
+
+        _surrenderVotes[team].Add(player.SteamID, vote);
+        CheckVotes(team);
+    }
+
+    public void Surrender(CsTeam team)
+    {
+        MatchManager? match = this._matchService.GetCurrentMatch();
+        if (match == null)
+        {
+            return;
+        }
+
+        MatchData? matchData = match.GetMatchData();
+        if (matchData == null)
+        {
+            return;
+        }
+
+        Guid? lineup_id = null;
+
+        foreach (var _team in MatchUtility.Teams())
+        {
+            if (TeamUtility.TeamNumToCSTeam(_team.TeamNum) == team)
+            {
+                lineup_id =
+                    matchData.lineup_1.name == TeamUtility.CSTeamToString(team)
+                        ? matchData.lineup_1_id
+                        : matchData.lineup_2_id;
+                break;
+            }
+        }
+
+        if (lineup_id == null)
+        {
+            return;
+        }
+
+        _matchEvents.PublishGameEvent(
+            "surrender",
+            new Dictionary<string, object>
+            {
+                { "time", DateTime.Now },
+                { "winning_lineup_id", lineup_id.Value },
+            }
+        );
+    }
+
+    private int ExpectedVoteCount(CsTeam team)
+    {
+        foreach (var _team in MatchUtility.Teams())
+        {
+            if (TeamUtility.TeamNumToCSTeam(_team.TeamNum) == team)
+            {
+                return _team.PlayerControllers.Count;
+            }
+        }
+
+        return 0;
+    }
+}

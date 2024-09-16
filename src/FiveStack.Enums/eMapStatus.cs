@@ -27,4 +27,7 @@ public enum eMapStatus
 
     [Description("Unknown")]
     Unknown,
+
+    [Description("Surrender")]
+    Surrender,
 }

@@ -13,6 +13,7 @@ public class FiveStackServiceCollection : IPluginServiceCollection<FiveStackPlug
         serviceCollection.AddSingleton<GameServer>();
         serviceCollection.AddSingleton<GameDemos>();
         serviceCollection.AddSingleton<GameBackUpRounds>();
+        serviceCollection.AddSingleton<SurrenderSystem>();
         serviceCollection.AddSingleton<EnvironmentService>();
 
         serviceCollection.AddTransient<MatchManager>();

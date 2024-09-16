@@ -27,6 +27,8 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        _surrender.CancelDisconnectTimer(@event.Userid.SteamID);
+
         CCSPlayerController player = @event.Userid;
 
         Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);

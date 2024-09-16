@@ -23,7 +23,6 @@ public partial class FiveStackPlugin
             return;
         }
 
-
         _gameServer.Message(HudDestination.Chat, message);
     }
 }

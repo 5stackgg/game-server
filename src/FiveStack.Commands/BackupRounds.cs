@@ -85,21 +85,6 @@ public partial class FiveStackPlugin
         _gameBackupRounds.RestoreBackupRound(round, player);
     }
 
-    [ConsoleCommand("css_no", "Casts vote for Resetting a Round")]
-    [ConsoleCommand("css_yes", "Casts vote for Resetting a Round")]
-    public void OnResetAnswer(CCSPlayerController? player, CommandInfo command)
-    {
-        if (player == null || !_gameBackupRounds.IsResettingRound())
-        {
-            return;
-        }
-
-        _gameBackupRounds.CastVote(
-            player,
-            command.GetCommandString == "css_yes" || command.GetCommandString == "css_y"
-        );
-    }
-
     [ConsoleCommand("download_backup_rounds", "downloads the backup rounds from the api")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public async void OnDownloadBackupRounds(CCSPlayerController? player, CommandInfo command)
