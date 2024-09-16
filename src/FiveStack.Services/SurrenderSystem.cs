@@ -41,10 +41,11 @@ public class SurrenderSystem
     public void SetupDisconnectTimer(CsTeam team, ulong steamId)
     {
         _disconnectTimers[team][steamId] = TimerUtility.AddTimer(
-            30,
+            60 * 3,
             () =>
             {
                 setupSurrender(team);
+                PlayerAbandonedMatch(steamId);
             },
             TimerFlags.REPEAT
         );
@@ -232,5 +233,17 @@ public class SurrenderSystem
         }
 
         return 0;
+    }
+
+    public void PlayerAbandonedMatch(ulong steamId)
+    {
+        _matchEvents.PublishGameEvent(
+            "abandoned",
+            new Dictionary<string, object>
+            {
+                { "time", DateTime.Now },
+                { "steam_id", steamId.ToString() },
+            }
+        );
     }
 }
