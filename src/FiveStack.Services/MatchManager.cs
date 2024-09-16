@@ -470,7 +470,13 @@ public class MatchManager
             if (_environmentService.AllowBots())
             {
                 int currentPlayers = MatchUtility.Players().Count;
+
                 int maxPlayers = this._matchData.options.type == "Wingman" ? 4 : 10;
+
+                if (currentPlayers >= maxPlayers)
+                {
+                    return;
+                }
 
                 _gameServer.SendCommands(
                     new[]
