@@ -9,7 +9,7 @@ public partial class FiveStackPlugin
     [ConsoleCommand("css_pause", "Pauses the match")]
     public void OnPause(CCSPlayerController? player, CommandInfo? command)
     {
-        _matchTimeouts.CallTimeout(player);
+        _matchTimeouts.Pause(player);
     }
 
     [ConsoleCommand("css_resume", "Resumes the match")]

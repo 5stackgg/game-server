@@ -30,7 +30,7 @@ public class Timeouts
         _backUpManagement = backUpManagement;
     }
 
-    public void CallTimeout(CCSPlayerController? player)
+    public void Pause(CCSPlayerController? player)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
