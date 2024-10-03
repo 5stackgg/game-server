@@ -12,6 +12,16 @@ RUN dotnet build -c Release -o release
 
 RUN rm /mod/release/CounterStrikeSharp.API.dll
 
+# New stage for creating the zip file
+FROM debian:bookworm-slim AS zip-creator
+
+WORKDIR /zip-content
+
+COPY --from=build /mod/release .
+
+RUN apt-get update && apt-get install -y zip && \
+    zip -r /mod-release.zip .
+
 FROM debian:bookworm-slim
 
 ENV DATA_DIR="/serverdata"
