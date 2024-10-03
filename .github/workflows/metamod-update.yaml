@@ -38,5 +38,6 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add Dockerfile
-          git commit -m "Update MetaMod Source URL to latest version"
+          BUILD_ID=$(echo ${{ env.LATEST_URL }} | grep -oP '(?<=mmsource-)[^.]+')
+          git commit -m "chore: update metamod to version ${BUILD_ID}"
           git push

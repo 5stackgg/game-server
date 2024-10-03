@@ -46,5 +46,5 @@ jobs:
           VERSION_NUMBER=$(echo ${{ env.LATEST_URL }} | grep -oP 'v\K\d+')
           sed -i "s|<PackageReference Include=\"CounterStrikeSharp.API\" Version=\".*\"|<PackageReference Include=\"CounterStrikeSharp.API\" Version=\"1.0.${VERSION_NUMBER}\"|" src/FiveStack.csproj
           git add src/FiveStack.csproj
-          git commit -m "Update FiveStack.csproj version to 1.0.${VERSION_NUMBER}"
+          git commit -m "chore: update counter-strike sharp version to 1.0.${VERSION_NUMBER}"
           git push
