@@ -39,3 +39,12 @@ jobs:
           git add Dockerfile
           git commit -m "Update CounterStrikeSharp URL to latest version"
           git push
+
+      - name: Update csproj
+        if: env.CURRENT_URL != env.LATEST_URL && steps.check-version.outputs.version_changed == 'true'
+        run: |
+          VERSION_NUMBER=$(echo ${{ env.LATEST_URL }} | grep -oP 'v\K\d+')
+          sed -i "s|<PackageReference Include=\"CounterStrikeSharp.API\" Version=\".*\"|<PackageReference Include=\"CounterStrikeSharp.API\" Version=\"1.0.${VERSION_NUMBER}\"|" src/FiveStack.csproj
+          git add src/FiveStack.csproj
+          git commit -m "Update FiveStack.csproj version to 1.0.${VERSION_NUMBER}"
+          git push
