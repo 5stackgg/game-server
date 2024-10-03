@@ -35,14 +35,31 @@ jobs:
         docker cp temp:/mod-release.zip ./mod-release.zip
         docker rm temp
 
+    - name: Get latest release
+      id: get_latest_release
+      uses: actions/github-script@v6
+      with:
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        script: |
+          const releases = await github.rest.repos.listReleases({
+            owner: context.repo.owner,
+            repo: context.repo.repo
+          });
+          const latestRelease = releases.data[0];
+          if (latestRelease) {
+            const version = parseInt(latestRelease.tag_name.replace('v', ''));
+            return version + 1;
+          }
+          return 1;
+
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
+        tag_name: v${{ steps.get_latest_release.outputs.result }}
+        release_name: Release v${{ steps.get_latest_release.outputs.result }}
         draft: false
         prerelease: false
 
