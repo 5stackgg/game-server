@@ -1,8 +1,6 @@
 name: Check CounterStrikeSharp Release
 
 on:
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch:
     description: 'Manually trigger CounterStrikeSharp update check'
 

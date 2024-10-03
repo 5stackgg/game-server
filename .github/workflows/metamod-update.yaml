@@ -1,8 +1,6 @@
 name: Check MetaMod Source Release
 
 on:
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch:
     description: 'Manually trigger MetaMod Source update check'
 
