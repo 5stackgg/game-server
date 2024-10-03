@@ -1,0 +1,42 @@
+name: Check MetaMod Source Release
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    description: 'Manually trigger MetaMod Source update check'
+
+jobs:
+  check-url:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Extract current URL from Dockerfile
+        run: |
+          CURRENT_URL=$(grep 'ENV METAMOD_URL' Dockerfile | cut -d'=' -f2)
+          echo "CURRENT_URL=$CURRENT_URL" >> $GITHUB_ENV
+
+      - name: Check latest release URL
+        run: |
+          LATEST_URL=$(curl -s https://mms.alliedmods.net/mmsdrop/2.0/ | grep -oP 'href="\K[^"]+(?=\.tar\.gz")' | sort -V | tail -n1)
+          LATEST_URL="https://mms.alliedmods.net/mmsdrop/2.0/${LATEST_URL}.tar.gz"
+          echo "LATEST_URL=$LATEST_URL" >> $GITHUB_ENV
+
+      - name: Compare URLs
+        if: env.CURRENT_URL != env.LATEST_URL
+        run: |
+          echo "URL has changed!"
+          echo "Current URL: ${{ env.CURRENT_URL }}"
+          echo "Latest URL: ${{ env.LATEST_URL }}"
+
+      - name: Update Dockerfile (optional)
+        if: env.CURRENT_URL != env.LATEST_URL
+        run: |
+          sed -i 's|ENV METAMOD_URL=.*|ENV METAMOD_URL=${{ env.LATEST_URL }}|' Dockerfile
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add Dockerfile
+          git commit -m "Update MetaMod Source URL to latest version"
+          git push
