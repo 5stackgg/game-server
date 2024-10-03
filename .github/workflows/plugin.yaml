@@ -2,8 +2,14 @@ name: Build and Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - "main"
+  workflow_run:
+    workflows: ["Check CounterStrikeSharp Release", "Check MetaMod Source Release"]
+    types:
+      - completed
+  workflow_dispatch:
+    description: 'build'
 
 jobs:
   build-and-release:
