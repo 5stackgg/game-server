@@ -1,3 +1,4 @@
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes;
 using CounterStrikeSharp.API.Modules.Utils;
@@ -66,7 +67,10 @@ public partial class FiveStackPlugin : BasePlugin
 
         AddCommandListener("say", OnPlayerChat, HookMode.Post);
 
-        _gameServer.Message(HudDestination.Alert, "5Stack Loaded");
+        Server.NextFrame(() =>
+        {
+            _gameServer.Message(HudDestination.Alert, "5Stack Loaded");
+        });
     }
 
     public override void Unload(bool hotReload)
