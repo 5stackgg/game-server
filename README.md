@@ -1,4 +1,4 @@
-# 5stack-mod
+# 5stack Game Server and Plugin
 
 [5stack.gg](https://5stack.gg)
 
@@ -24,7 +24,6 @@
 - Veto System
   - [x] Discord
   - [x] Web
-  - [ ] Mod
 - Demos System
   - Download via S3 compatible API
 - Tactical Timeout System
@@ -67,7 +66,7 @@ This architecture ensures low-latency for events to the database.
 
 ### Components
 
-- [5Stack Mod](https://github.com/5stackgg/5stack-server-mod) using [CounterStrikeSharp](https://docs.cssharp.dev/).
+- [5Stack Game Server + Plugin](https://github.com/5stackgg/game-server) using [CounterStrikeSharp](https://docs.cssharp.dev/).
 - [5Stack Web](https://github.com/5stackgg/web)
 - [5Stack API](https://github.com/5stackgg/api)
 - [Hasura](https://hasura.io/)
