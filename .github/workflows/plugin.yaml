@@ -47,10 +47,10 @@ jobs:
           });
           const latestRelease = releases.data[0];
 
-          console.log('Latest release:', latestRelease);
+          console.log('Latest release:', latestRelease.tag_name);
 
           if (latestRelease) {
-            const version = parseInt(latestRelease.tag_name.replace('v', ''));
+            const version = parseInt(latestRelease.tag_name.replace('v0.0.', ''));
             return version + 1;
           }
           return 1;
