@@ -46,6 +46,9 @@ jobs:
             repo: context.repo.repo
           });
           const latestRelease = releases.data[0];
+
+          console.log('Latest release:', latestRelease);
+
           if (latestRelease) {
             const version = parseInt(latestRelease.tag_name.replace('v', ''));
             return version + 1;
