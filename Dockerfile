@@ -85,10 +85,5 @@ RUN mkdir -p /opt/addons/counterstrikesharp/plugins
 RUN rm -rf /opt/metamod
 RUN rm -rf /opt/counterstrikesharp
 
-RUN mkdir -p /cores
-RUN chmod 777 /cores
-ENV CORE_DUMP_PATH=/cores
-RUN echo "/cores/core.%e.%p.%h.%t" > /proc/sys/kernel/core_pattern
-
 #Server Start
 ENTRYPOINT ["/opt/scripts/server.sh"]
