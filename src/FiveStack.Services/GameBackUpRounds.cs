@@ -134,6 +134,13 @@ public class GameBackUpRounds
 
     public async Task DownloadBackupRounds()
     {
+        if (File.Exists(GetMatchDownloadLockFile()))
+        {
+            return;
+        }
+
+        File.Create(GetMatchDownloadLockFile()).Close();
+
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
         if (match == null)
         {
@@ -476,6 +483,18 @@ public class GameBackUpRounds
         }
 
         return $"/opt/initial-restore-{match.id}.lock";
+    }
+
+    private string GetMatchDownloadLockFile()
+    {
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (match == null)
+        {
+            return "/opt/download.lock";
+        }
+
+        return $"/opt/download-{match.id}.lock";
     }
 
     private void SendResetRoundMessage()
