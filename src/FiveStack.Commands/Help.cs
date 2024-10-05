@@ -9,6 +9,7 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
+    [ConsoleCommand("css_rules", "Shows Available Commands")]
     [ConsoleCommand("css_help", "Shows Available Commands")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnHelp(CCSPlayerController? player, CommandInfo command)
@@ -23,8 +24,12 @@ public partial class FiveStackPlugin
         command.ReplyToCommand(
             $" {ChatColors.BlueGrey}Knife Round: {ChatColors.Default}.stay, .switch"
         );
+
         command.ReplyToCommand(
             $" {ChatColors.BlueGrey}Captains: {ChatColors.Default}/captain, /release-captain"
+        );
+        command.ReplyToCommand(
+            $" {ChatColors.BlueGrey}Show Captains: {ChatColors.Default}.captains"
         );
 
         command.ReplyToCommand($" {ChatColors.BlueGrey}Timeouts: {ChatColors.Default}/timeout");

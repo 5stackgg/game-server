@@ -341,7 +341,7 @@ public class MatchManager
         });
     }
 
-    private void StartKnife()
+    private async void StartKnife()
     {
         if (_matchData == null || IsKnife())
         {
@@ -350,11 +350,14 @@ public class MatchManager
 
         captainSystem.AutoSelectCaptains();
 
+        _gameServer.SendCommands(new[] { "mp_warmup_end" });
         _gameServer.SendCommands(new[] { "exec knife" });
+        _gameServer.SendCommands(new[] { "mp_restartgame 1" });
+
+        await Task.Delay(3000);
 
         Server.NextFrame(() =>
         {
-            _gameServer.SendCommands(new[] { "mp_warmup_end" });
             _gameServer.Message(HudDestination.Alert, "KNIFE KNIFE KNIFE!");
         });
     }

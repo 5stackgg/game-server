@@ -6,7 +6,7 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    [ConsoleCommand("css_captain", "Shows / Claims Captain Spots")]
+    [ConsoleCommand("css_captain", "Claims Captain Spots")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnCaptain(CCSPlayerController? player, CommandInfo? command)
     {
@@ -18,6 +18,20 @@ public partial class FiveStackPlugin
         }
 
         match.captainSystem.ClaimCaptain(player, player.Team);
+    }
+
+    [ConsoleCommand("css_captains", "Shows Captains")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    public void OnShowCaptains(CCSPlayerController? player, CommandInfo? command)
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (player == null || match == null)
+        {
+            return;
+        }
+
+        match.captainSystem.ShowCaptains();
     }
 
     [ConsoleCommand("css_release-captain", "Release Captain Spot")]
