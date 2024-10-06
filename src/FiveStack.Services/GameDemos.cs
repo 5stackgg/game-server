@@ -91,11 +91,13 @@ public class GameDemos
             }
 
             string endpoint =
-                $"{_environmentService.GetBaseUri()}/matches/{match.id}/demos/map/{match.current_match_map_id}";
+                $"{_environmentService.GetDemosBaseUri()}/demos/{match.id}/map/{match.current_match_map_id}";
 
             _logger.LogInformation($"Uploading Demo {endpoint}");
 
-            using (var httpClient = new HttpClient())
+            using var httpClient = new HttpClient();
+            httpClient.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+
             using (var fileStream = File.OpenRead(filePath))
             {
                 httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(

@@ -17,6 +17,12 @@ public class EnvironmentService
         return "https://api.5stack.gg";
     }
 
+    public string GetDemosBaseUri()
+    {
+        // TODO - env variable
+        return "https://demos.5stack.gg";
+    }
+
     public string? GetServerId()
     {
         return Environment.GetEnvironmentVariable("SERVER_ID");
