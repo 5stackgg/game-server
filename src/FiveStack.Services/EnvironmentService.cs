@@ -22,6 +22,11 @@ public class EnvironmentService
             + (Environment.GetEnvironmentVariable("DEMOS_DOMAIN") ?? "demos.5stack.gg");
     }
 
+    public string GetRedisHost()
+    {
+        return Environment.GetEnvironmentVariable("REDIS_HOST") ?? "redis";
+    }
+
     public string? GetServerId()
     {
         return Environment.GetEnvironmentVariable("SERVER_ID");

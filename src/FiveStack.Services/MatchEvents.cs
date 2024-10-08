@@ -75,7 +75,7 @@ public class MatchEvents
         {
             ConfigurationOptions options = new ConfigurationOptions
             {
-                EndPoints = { { "redis", 6379 } },
+                EndPoints = { { _environmentService.GetRedisHost(), 6379 } },
                 User = _environmentService.GetServerId(),
                 Password = _environmentService.GetServerApiPassword(),
             };
