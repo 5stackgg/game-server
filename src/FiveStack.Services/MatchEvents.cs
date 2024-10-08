@@ -1,14 +1,14 @@
+using System.Net.WebSockets;
+using System.Text;
 using System.Text.Json;
 using FiveStack.Enums;
 using Microsoft.Extensions.Logging;
-using StackExchange.Redis;
 
 namespace FiveStack;
 
 public class MatchEvents
 {
-    private IDatabase? _pubsub;
-    private ConnectionMultiplexer? connection;
+    private ClientWebSocket? _webSocket;
 
     private readonly ILogger<MatchEvents> _logger;
     private readonly MatchService _matchService;
@@ -29,6 +29,7 @@ public class MatchEvents
     public class EventData<T>
     {
         public string @event { get; set; } = "";
+        public Guid matchId { get; set; } = Guid.Empty;
         public T? data { get; set; }
     }
 
@@ -40,11 +41,11 @@ public class MatchEvents
         );
     }
 
-    public void PublishGameEvent(string Event, Dictionary<string, object> Data)
+    public async void PublishGameEvent(string Event, Dictionary<string, object> Data)
     {
         if (IsConnected() == false)
         {
-            _logger.LogWarning("not connected to redis");
+            _logger.LogWarning("not connected to WebSocket");
             return;
         }
 
@@ -55,8 +56,8 @@ public class MatchEvents
             return;
         }
 
-        Publish(
-            $"matches:{matchId}",
+        await Publish(
+            matchId,
             new MatchEvents.EventData<Dictionary<string, object>>
             {
                 data = new Dictionary<string, object> { { "event", Event }, { "data", Data } },
@@ -66,32 +67,41 @@ public class MatchEvents
 
     public async Task<bool> Connect()
     {
-        if (connection != null)
+        if (_webSocket != null)
         {
-            connection.Dispose();
+            await _webSocket.CloseAsync(
+                WebSocketCloseStatus.NormalClosure,
+                "Reconnecting",
+                CancellationToken.None
+            );
         }
 
         try
         {
-            ConfigurationOptions options = new ConfigurationOptions
-            {
-                EndPoints = { { _environmentService.GetRedisHost(), 6379 } },
-                User = _environmentService.GetServerId(),
-                Password = _environmentService.GetServerApiPassword(),
-            };
+            _webSocket = new ClientWebSocket();
 
-            connection = await ConnectionMultiplexer.ConnectAsync(options);
-            _pubsub = connection.GetDatabase(0);
+            var serverId = _environmentService.GetServerId();
+            var serverApiPassword = _environmentService.GetServerApiPassword();
 
-            _logger.LogInformation("Connected to Redis");
+            _webSocket.Options.SetRequestHeader(
+                "Authorization",
+                $"Basic {Convert.ToBase64String(
+                System.Text.Encoding.UTF8.GetBytes($"{serverId}:{serverApiPassword}")
+            )}"
+            );
+
+            var uri = new Uri($"wss://{_environmentService.GetWSBaseUri()}/matches");
+            await _webSocket.ConnectAsync(uri, CancellationToken.None);
+
+            _logger.LogInformation("Connected to 5stack");
 
             _matchService.GetMatchFromApi();
 
             return true;
         }
-        catch (RedisConnectionException ex)
+        catch (WebSocketException ex)
         {
-            _logger.LogWarning("Failed to connect to Redis server: " + ex.Message);
+            _logger.LogWarning("Failed to connect to WebSocket server: " + ex.Message);
             return false;
         }
         catch (Exception ex)
@@ -103,41 +113,46 @@ public class MatchEvents
 
     private Boolean IsConnected()
     {
-        if (connection == null)
-        {
-            return false;
-        }
-
-        return connection.IsConnected;
+        return _webSocket?.State == WebSocketState.Open;
     }
 
-    public void Disconnect()
+    public async Task Disconnect()
     {
-        if (connection != null)
+        if (_webSocket != null && _webSocket.State == WebSocketState.Open)
         {
-            connection.Close();
-            _pubsub = null;
+            await _webSocket.CloseAsync(
+                WebSocketCloseStatus.NormalClosure,
+                "Disconnecting",
+                CancellationToken.None
+            );
+            _webSocket = null;
         }
     }
 
-    private Boolean Publish<T>(string channel, EventData<T> data)
+    private async Task Publish<T>(Guid matchId, EventData<T> data)
     {
-        if (_pubsub == null || IsConnected() == false)
+        if (_webSocket == null || IsConnected() == false)
         {
-            _logger.LogWarning("redis is not connected!");
-            return false;
+            _logger.LogWarning("WebSocket is not connected!");
+            return;
         }
+
+        data.matchId = matchId;
 
         try
         {
-            _pubsub.Publish(RedisChannel.Literal(channel), JsonSerializer.Serialize(data));
-            return true;
+            var message = JsonSerializer.Serialize(new { @event = "events", data });
+            var buffer = Encoding.UTF8.GetBytes(message);
+            await _webSocket.SendAsync(
+                new ArraySegment<byte>(buffer),
+                WebSocketMessageType.Text,
+                true,
+                CancellationToken.None
+            );
         }
-        catch (ArgumentException error)
+        catch (Exception error)
         {
             _logger.LogError($"Error: {error.Message}");
         }
-
-        return false;
     }
 }

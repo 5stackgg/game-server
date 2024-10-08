@@ -2,7 +2,7 @@
 
 [5stack.gg](https://5stack.gg)
 
-5Stack provides a matchmaking system for scrimmages, tournaments, and LANs.
+The game server requires the setup of the 5stack Panel, to setup the panel view [documentation](https://docs.5stack.gg).
 
 ## Features
 - Match Modes
@@ -58,20 +58,3 @@
   - Force Ready / Skip Knife
   - Pause / Resume
   - Reset Round
-
-## Technical Details
-
-Behind the scenes, 5Stack harnesses the power of Kubernetes to dynamically deploy CS2 match servers.
-This architecture ensures low-latency for events to the database.
-
-### Components
-
-- [5Stack Game Server + Plugin](https://github.com/5stackgg/game-server) using [CounterStrikeSharp](https://docs.cssharp.dev/).
-- [5Stack Web](https://github.com/5stackgg/web)
-- [5Stack API](https://github.com/5stackgg/api)
-- [Hasura](https://hasura.io/)
-- [Postgres](https://www.postgresql.org/)
-- [Minio (s3)](https://min.io/)
-- [Redis](https://redis.io)
-- [TypeSense](https://typesense.org/)
-
