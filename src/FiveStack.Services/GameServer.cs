@@ -76,9 +76,9 @@ public class GameServer
         string? serverId = _environmentService.GetServerId();
         string? apiPassword = _environmentService.GetServerApiPassword();
 
-        string endpoint = $"https://api.5stack.gg/game-server-node/ping/{serverId}";
+        string endpoint = $"{_environmentService.GetBaseApiUri()}/game-server-node/ping/{serverId}";
 
-        this._logger.LogInformation($"PING :{endpoint}");
+        this._logger.LogInformation($"PING: {endpoint}");
 
         using (HttpClient httpClient = new HttpClient())
         {

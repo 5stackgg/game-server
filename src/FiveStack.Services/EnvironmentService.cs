@@ -11,16 +11,15 @@ public class EnvironmentService
         _logger = logger;
     }
 
-    public string GetBaseUri()
+    public string GetBaseApiUri()
     {
-        // TODO - env variable
-        return "https://api.5stack.gg";
+        return "https://" + (Environment.GetEnvironmentVariable("API_DOMAIN") ?? "api.5stack.gg");
     }
 
     public string GetDemosBaseUri()
     {
-        // TODO - env variable
-        return "https://demos.5stack.gg";
+        return "https://"
+            + (Environment.GetEnvironmentVariable("DEMOS_DOMAIN") ?? "demos.5stack.gg");
     }
 
     public string? GetServerId()
