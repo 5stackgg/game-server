@@ -151,7 +151,7 @@ public class GameBackUpRounds
         string? apiPassword = _environmentService.GetServerApiPassword();
 
         string endpoint =
-            $"{_environmentService.GetBaseApiUri()}/matches/{match.id}/backup-rounds/map/{match.current_match_map_id}";
+            $"{_environmentService.GetApiUrl()}/matches/{match.id}/backup-rounds/map/{match.current_match_map_id}";
 
         string downloadDirectory = "/opt";
         Directory.CreateDirectory(downloadDirectory);
@@ -395,7 +395,7 @@ public class GameBackUpRounds
             }
 
             string endpoint =
-                $"{_environmentService.GetBaseApiUri()}/matches/{match.id}/backup-rounds/map/{match.current_match_map_id}/round/{round}";
+                $"{_environmentService.GetApiUrl()}/matches/{match.id}/backup-rounds/map/{match.current_match_map_id}/round/{round}";
 
             _logger.LogInformation($"Uploading Backup Round {endpoint}");
 

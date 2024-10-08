@@ -11,20 +11,19 @@ public class EnvironmentService
         _logger = logger;
     }
 
-    public string GetBaseApiUri()
+    public string GetApiUrl()
     {
-        return "https://" + (Environment.GetEnvironmentVariable("API_DOMAIN") ?? "api.5stack.gg");
+        return Environment.GetEnvironmentVariable("API_DOMAIN") ?? "https://api.5stack.gg";
     }
 
-    public string GetDemosBaseUri()
+    public string GetDemosUrl()
     {
-        return "https://"
-            + (Environment.GetEnvironmentVariable("DEMOS_DOMAIN") ?? "demos.5stack.gg");
+        return Environment.GetEnvironmentVariable("DEMOS_DOMAIN") ?? "https://demos.5stack.gg";
     }
 
-    public string GetWSBaseUri()
+    public string GetWsUrl()
     {
-        return Environment.GetEnvironmentVariable("WS_DOMAIN") ?? "ws.5stack.gg";
+        return Environment.GetEnvironmentVariable("WS_DOMAIN") ?? "wss://ws.5stack.gg";
     }
 
     public string? GetServerId()

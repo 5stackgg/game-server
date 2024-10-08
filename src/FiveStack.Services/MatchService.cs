@@ -45,8 +45,7 @@ public class MatchService
 
         try
         {
-            string matchUri =
-                $"{_environmentService.GetBaseApiUri()}/matches/current-match/{serverId}";
+            string matchUri = $"{_environmentService.GetApiUrl()}/matches/current-match/{serverId}";
 
             _logger.LogInformation($"Fetching Match Info {matchUri}");
 

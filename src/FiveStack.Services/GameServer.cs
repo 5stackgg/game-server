@@ -76,7 +76,7 @@ public class GameServer
         string? serverId = _environmentService.GetServerId();
         string? apiPassword = _environmentService.GetServerApiPassword();
 
-        string endpoint = $"{_environmentService.GetBaseApiUri()}/game-server-node/ping/{serverId}";
+        string endpoint = $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}";
 
         this._logger.LogInformation($"PING: {endpoint}");
 

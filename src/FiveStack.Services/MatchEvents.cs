@@ -90,7 +90,7 @@ public class MatchEvents
             )}"
             );
 
-            var uri = new Uri($"wss://{_environmentService.GetWSBaseUri()}/matches");
+            var uri = new Uri($"{_environmentService.GetWsUrl()}/matches");
             await _webSocket.ConnectAsync(uri, CancellationToken.None);
 
             _logger.LogInformation("Connected to 5stack");

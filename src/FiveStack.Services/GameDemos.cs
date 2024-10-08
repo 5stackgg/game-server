@@ -91,7 +91,7 @@ public class GameDemos
             }
 
             string endpoint =
-                $"{_environmentService.GetDemosBaseUri()}/demos/{match.id}/map/{match.current_match_map_id}";
+                $"{_environmentService.GetDemosUrl()}/demos/{match.id}/map/{match.current_match_map_id}";
 
             _logger.LogInformation($"Uploading Demo {endpoint}");
 
