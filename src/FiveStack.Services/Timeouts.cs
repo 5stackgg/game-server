@@ -140,7 +140,7 @@ public class Timeouts
         if (player != null)
         {
             eTimeoutSettings timeoutSetting = TimeoutUtility.TimeoutSettingStringToEnum(
-                matchData.options.tech_timeout_setting
+                matchData.options.timeout_setting
             );
 
             // TODO - coach support
