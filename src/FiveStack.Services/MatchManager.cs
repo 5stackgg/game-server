@@ -207,8 +207,6 @@ public class MatchManager
         }
         _logger.LogInformation($"Setup Match {_matchData.id}");
 
-        _gameServer.UpdateCurrentRound();
-
         MatchMap? _currentMap = GetCurrentMap();
 
         if (_currentMap == null)

@@ -29,8 +29,6 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        _gameServer.UpdateCurrentRound();
-
         if (match.isOverTime())
         {
             match.UpdateMapStatus(eMapStatus.Overtime);
