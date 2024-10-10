@@ -84,6 +84,8 @@ public partial class FiveStackPlugin : BasePlugin
                 timer.Kill();
             }
         );
+
+        _ = _matchEvents.Disconnect();
     }
 
     private void Ping(object? state)

@@ -8,8 +8,10 @@ namespace FiveStack;
 
 public class MatchEvents
 {
+    private bool _isMonitoring = false;
     private ClientWebSocket? _webSocket;
     private CancellationTokenSource? _connectionCts;
+    private bool _manualDisconnect = false;
 
     private readonly ILogger<MatchEvents> _logger;
     private readonly MatchService _matchService;
@@ -44,12 +46,6 @@ public class MatchEvents
 
     public async void PublishGameEvent(string Event, Dictionary<string, object> Data)
     {
-        if (!await EnsureConnected())
-        {
-            _logger.LogWarning("Unable to connect to WebSocket");
-            return;
-        }
-
         Guid matchId = _matchService.GetCurrentMatch()?.GetMatchData()?.id ?? Guid.Empty;
         if (matchId == Guid.Empty)
         {
@@ -66,17 +62,24 @@ public class MatchEvents
         );
     }
 
-    private async Task<bool> ConnectAndMonitor()
+    private async Task ConnectAndMonitor()
     {
-        while (true)
+        if (_isMonitoring || _manualDisconnect)
         {
-            if (await Connect())
-            {
-                _ = MonitorConnection();
-                return true;
-            }
-            await Task.Delay(5000);
+            return;
         }
+
+        _isMonitoring = true;
+
+        if (!await Connect())
+        {
+            await Task.Delay(1000 * 3);
+            _isMonitoring = false;
+            _ = ConnectAndMonitor();
+            return;
+        }
+
+        _ = MonitorConnection();
     }
 
     private async Task MonitorConnection()
@@ -90,18 +93,22 @@ public class MatchEvents
                     new ArraySegment<byte>(buffer),
                     _connectionCts?.Token ?? CancellationToken.None
                 );
+
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    await ConnectAndMonitor();
-                    return;
+                    _logger.LogInformation("WebSocket closed, attempting to reconnect");
+                    break;
                 }
             }
             catch (WebSocketException)
             {
-                await ConnectAndMonitor();
-                return;
+                _logger.LogInformation("WebSocket exception, attempting to reconnect");
+                break;
             }
         }
+
+        _isMonitoring = false;
+        await ConnectAndMonitor();
     }
 
     public async Task<bool> Connect()
@@ -169,18 +176,12 @@ public class MatchEvents
         }
     }
 
-    private async Task<bool> EnsureConnected()
-    {
-        if (_webSocket?.State != WebSocketState.Open)
-        {
-            return await ConnectAndMonitor();
-        }
-        return true;
-    }
-
     public async Task Disconnect()
     {
+        _manualDisconnect = true;
         _connectionCts?.Cancel();
+        _isMonitoring = false;
+
         if (_webSocket != null && _webSocket.State == WebSocketState.Open)
         {
             await _webSocket.CloseAsync(
@@ -194,12 +195,11 @@ public class MatchEvents
 
     private async Task Publish<T>(Guid matchId, EventData<T> data)
     {
-        if (!await EnsureConnected())
+        if (_webSocket == null || _webSocket.State == WebSocketState.Closed)
         {
-            _logger.LogWarning("Unable to connect to WebSocket!");
+            _logger.LogWarning($"Trying to publish but not connected");
             return;
         }
-
         data.matchId = matchId;
 
         try
@@ -216,7 +216,7 @@ public class MatchEvents
         catch (Exception error)
         {
             _logger.LogError($"Error: {error.Message}");
-            await ConnectAndMonitor();
         }
     }
 }
+
