@@ -10,7 +10,6 @@ namespace FiveStack;
 
 public class GameServer
 {
-    private int _currentRound = 0;
     private readonly ILogger<GameServer> _logger;
     private readonly EnvironmentService _environmentService;
 
@@ -62,7 +61,7 @@ public class GameServer
 
     public int GetCurrentRound()
     {
-        return MatchUtility.Rules()?.TotalRoundsPlayed ?? 0;;
+        return MatchUtility.Rules()?.TotalRoundsPlayed ?? 0;
     }
 
     public async void Ping()
