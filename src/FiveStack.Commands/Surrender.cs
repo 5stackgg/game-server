@@ -20,6 +20,6 @@ public partial class FiveStackPlugin
             $"{player.PlayerName} has asked to surrender the match, type in .y or .n to vote"
         );
 
-        _surrender.setupSurrender(player.Team);
+        _surrender.SetupSurrender(player.Team);
     }
 }

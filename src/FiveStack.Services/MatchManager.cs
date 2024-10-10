@@ -215,7 +215,7 @@ public class MatchManager
             return;
         }
 
-        _logger.LogInformation($"curret name {_currentMap.map.name} =>{Server.MapName}");
+        _logger.LogInformation($"Game State {_currentMap.status} on {_currentMap.map.name}");
 
         if (_currentMap.map.name != Server.MapName)
         {
@@ -226,10 +226,6 @@ public class MatchManager
         _gameServer.SendCommands(new[] { $"sv_password \"{_matchData.password}\"" });
 
         SetupTeamNames();
-
-        _logger.LogInformation(
-            $"Expected Game State {_currentMap.status} on {_currentMap.map.name}"
-        );
 
         if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
         {
