@@ -40,15 +40,18 @@ public class SurrenderSystem
 
     public void SetupDisconnectTimer(CsTeam team, ulong steamId)
     {
-        _disconnectTimers[team][steamId] = TimerUtility.AddTimer(
-            60 * 3,
-            () =>
-            {
-                setupSurrender(team);
-                PlayerAbandonedMatch(steamId);
-            },
-            TimerFlags.REPEAT
-        );
+        if (_matchService.GetCurrentMatch()?.IsLive() == true)
+        {
+            _disconnectTimers[team][steamId] = TimerUtility.AddTimer(
+                60 * 3,
+                () =>
+                {
+                    SetupSurrender(team);
+                    PlayerAbandonedMatch(steamId);
+                },
+                TimerFlags.REPEAT
+            );
+        }
     }
 
     // we dont pass the team in because they may not be on the team immediately after reconnecting
@@ -58,15 +61,18 @@ public class SurrenderSystem
         {
             CsTeam team = TeamUtility.TeamNumToCSTeam(_team.TeamNum);
 
-            if (!_disconnectTimers[team].ContainsKey(steamId))
+            if (_disconnectTimers.ContainsKey(team))
             {
-                _disconnectTimers[team][steamId].Kill();
-                _disconnectTimers[team].Remove(steamId);
+                if (_disconnectTimers[team].ContainsKey(steamId))
+                {
+                    _disconnectTimers[team][steamId].Kill();
+                    _disconnectTimers[team].Remove(steamId);
+                }
             }
         }
     }
 
-    public void setupSurrender(CsTeam team)
+    public void SetupSurrender(CsTeam team)
     {
         if (_surrenderTimers[team] == null)
         {

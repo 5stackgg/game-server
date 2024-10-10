@@ -71,8 +71,6 @@ public class GameServer
 
         string endpoint = $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}";
 
-        this._logger.LogInformation($"PING: {endpoint}");
-
         using (HttpClient httpClient = new HttpClient())
         {
             httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
