@@ -62,7 +62,8 @@ public class GameServer
 
     public int GetCurrentRound()
     {
-        return MatchUtility.Rules()?.TotalRoundsPlayed ?? 0;;
+        return MatchUtility.Rules()?.TotalRoundsPlayed ?? 0;
+        ;
     }
 
     public async void Ping()
