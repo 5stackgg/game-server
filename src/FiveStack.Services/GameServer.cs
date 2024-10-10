@@ -10,7 +10,6 @@ namespace FiveStack;
 
 public class GameServer
 {
-    private int _currentRound = 0;
     private readonly ILogger<GameServer> _logger;
     private readonly EnvironmentService _environmentService;
 
