@@ -13,6 +13,7 @@ public class GameDemos
     private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
     private readonly ILogger<GameDemos> _logger;
+    private string _rootDir = "/opt";
 
     public GameDemos(
         ILogger<GameDemos> logger,
@@ -25,6 +26,11 @@ public class GameDemos
         _gameServer = gameServer;
         _matchService = matchService;
         _environmentService = environmentService;
+
+         if (!Directory.Exists(_rootDir))
+        {
+            _rootDir = Directory.GetCurrentDirectory();
+        }
     }
 
     public void Start()
@@ -137,14 +143,14 @@ public class GameDemos
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
         if (match == null || match.current_match_map_id == null)
         {
-            return "/opt/demos";
+            return $"{_rootDir}/demos";
         }
 
-        return $"/opt/demos/{match.id}/{match.current_match_map_id}";
+        return $"{_rootDir}/demos/{match.id}/{match.current_match_map_id}";
     }
 
     private string GetLockFilePath()
     {
-        return "/opt/.recording-demo";
+        return $"{_rootDir}/.recording-demo";
     }
 }
