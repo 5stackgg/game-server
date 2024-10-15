@@ -35,7 +35,7 @@ jobs:
           });
           const latestRelease = releases.data[0];
 
-          console.log('Latest release:', latestRelease.tag_name);
+          console.log('Latest release:', latestRelease ? latestRelease.tag_name : 'No releases found');
 
           if (latestRelease) {
             const version = parseInt(latestRelease.tag_name.replace('v0.0.', ''));
@@ -65,7 +65,7 @@ jobs:
 
     - name: Extract zip file from published image
       run: |
-         docker create --name temp mod-builder:latest
+        docker create --name temp mod-builder:latest
         docker cp temp:/mod-release.zip ./5stack-plugin.zip
         docker rm temp
 
