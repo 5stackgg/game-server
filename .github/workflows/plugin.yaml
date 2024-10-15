@@ -55,9 +55,11 @@ jobs:
         tags: |
             ghcr.io/${{ github.repository_owner }}/game-server:latest
             ghcr.io/${{ github.repository_owner }}/game-server:${{ github.sha }}
+        target: zip-creator
 
-    - name: Load image and extract zip
+    - name: Extract zip file from published image
       run: |
+        docker pull ghcr.io/${{ github.repository_owner }}/game-server:${{ github.sha }}
         docker create --name temp ghcr.io/${{ github.repository_owner }}/game-server:${{ github.sha }}
         docker cp temp:/mod-release.zip ./5stack-plugin.zip
         docker rm temp
