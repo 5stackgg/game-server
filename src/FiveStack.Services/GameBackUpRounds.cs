@@ -42,7 +42,7 @@ public class GameBackUpRounds
         _matchService = matchService;
         _environmentService = environmentService;
 
-        if (!Directory.Exists(_rootDir))
+        if (!Directory.Exists(_rootDir) || new DirectoryInfo(_rootDir).Attributes.HasFlag(FileAttributes.ReadOnly))
         {
             _rootDir = Directory.GetCurrentDirectory();
         }
@@ -57,7 +57,7 @@ public class GameBackUpRounds
             return;
         }
 
-        string lockFilePath = GetLockFilePath();
+        string lockFilePath = GetLockFilePath(match.id);
         if (File.Exists(lockFilePath))
         {
             return;
@@ -530,8 +530,8 @@ public class GameBackUpRounds
         }
     }
 
-    private string GetLockFilePath()
+    private string GetLockFilePath(Guid matchId)
     {
-        return $"{_rootDir}/.backup-rounds";
+        return $"{_rootDir}/.backup-rounds-{matchId}";
     }
 }

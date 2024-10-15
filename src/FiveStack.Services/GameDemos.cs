@@ -27,7 +27,7 @@ public class GameDemos
         _matchService = matchService;
         _environmentService = environmentService;
 
-         if (!Directory.Exists(_rootDir))
+        if (!Directory.Exists(_rootDir) || new DirectoryInfo(_rootDir).Attributes.HasFlag(FileAttributes.ReadOnly))
         {
             _rootDir = Directory.GetCurrentDirectory();
         }
@@ -42,7 +42,7 @@ public class GameDemos
             return;
         }
 
-        string lockFilePath = GetLockFilePath();
+        string lockFilePath = GetLockFilePath(match.id);
         if (File.Exists(lockFilePath))
         {
             return;
@@ -65,7 +65,14 @@ public class GameDemos
 
     public void Stop()
     {
-        File.Delete(GetLockFilePath());
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (match == null)
+        {
+            return;
+        }
+
+        File.Delete(GetLockFilePath(match.id));
         _gameServer.SendCommands(new[] { "tv_stoprecord" });
     }
 
@@ -149,8 +156,8 @@ public class GameDemos
         return $"{_rootDir}/demos/{match.id}/{match.current_match_map_id}";
     }
 
-    private string GetLockFilePath()
+    private string GetLockFilePath(Guid matchId)
     {
-        return $"{_rootDir}/.recording-demo";
+        return $"{_rootDir}/.recording-demo-{matchId}";
     }
 }
