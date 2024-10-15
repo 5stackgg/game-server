@@ -47,11 +47,12 @@ jobs:
       run: |
         sed -i 's/__RELEASE_VERSION__/0.0.${{ steps.get_latest_release.outputs.result }}/' src/FiveStackPlugin.cs
 
-    - name: Build Zip
-      uses: docker/build-push-action@v6
+    - name: Build Docker image
+      uses: docker/build-push-action@v3
       with:
         context: .
         push: false
+        load: true
         tags: mod-builder:latest
         target: zip-creator
 
@@ -60,7 +61,7 @@ jobs:
         docker create --name temp mod-builder:latest
         docker cp temp:/mod-release.zip ./5stack-plugin.zip
         docker rm temp
-
+        
     - name: Build and Push Docker image
       uses: docker/build-push-action@v6
       with:
