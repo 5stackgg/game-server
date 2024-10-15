@@ -33,10 +33,6 @@ jobs:
           }
           return 1;
 
-    - name: Update version in FiveStackPlugin.cs
-      run: |
-        sed -i 's/__RELEASE_VERSION__/0.0.${{ steps.get_latest_release.outputs.result }}/' src/FiveStackPlugin.cs
-
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 

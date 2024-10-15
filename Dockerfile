@@ -8,6 +8,8 @@ RUN dotnet restore
 
 COPY . .
 
+RUN sed -i 's/__RELEASE_VERSION__/'${RELEASE_VERSION}'/' src/FiveStackPlugin.cs
+
 RUN dotnet build -c Release -o release
 
 RUN rm /mod/release/CounterStrikeSharp.API.dll
@@ -84,6 +86,5 @@ RUN mkdir -p /opt/addons/counterstrikesharp/plugins
 
 RUN rm -rf /opt/metamod
 RUN rm -rf /opt/counterstrikesharp
-
 #Server Start
 ENTRYPOINT ["/opt/scripts/server.sh"]
