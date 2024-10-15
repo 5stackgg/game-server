@@ -55,7 +55,7 @@ jobs:
         tags: |
             ghcr.io/${{ github.repository_owner }}/game-server:latest
             ghcr.io/${{ github.repository_owner }}/game-server:${{ github.sha }}
-        target: zip-creator
+        # target: zip-creator
 
     - name: Extract zip file from published image
       run: |
