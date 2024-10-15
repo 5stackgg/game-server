@@ -46,11 +46,6 @@ jobs:
     - name: Update version in FiveStackPlugin.cs
       run: |
         sed -i 's/__RELEASE_VERSION__/0.0.${{ steps.get_latest_release.outputs.result }}/' src/FiveStackPlugin.cs
-        git config user.name github-actions
-        git config user.email github-actions@github.com
-        git add src/FiveStackPlugin.cs
-        git commit -m "chore: update plugin version to 0.0.${{ steps.get_latest_release.outputs.result }}"
-        git push
 
     - name: Build and Push Docker image
       uses: docker/build-push-action@v6
@@ -58,15 +53,13 @@ jobs:
         context: .
         push: true
         tags: |
-            ghcr.io/${{ github.repository_owner }}/game-server:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/game-server:latest
-        outputs: type=docker,dest=/tmp/image.tar
+            ghcr.io/${{ github.repository_owner }}/game-server:${{ github.sha }}
 
     - name: Load image and extract zip
       run: |
-        docker load < /tmp/image.tar
         docker create --name temp ghcr.io/${{ github.repository_owner }}/game-server:${{ github.sha }}
-        docker cp temp:/app/mod-release.zip ./5stack-plugin.zip
+        docker cp temp:/mod-release.zip ./5stack-plugin.zip
         docker rm temp
 
     - name: Create Release and Upload Asset
