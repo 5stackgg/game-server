@@ -47,7 +47,7 @@ jobs:
       run: |
         sed -i 's/__RELEASE_VERSION__/0.0.${{ steps.get_latest_release.outputs.result }}/' src/FiveStackPlugin.cs
 
-    - name: Build and Push Docker image
+    - name: Build Zip
       uses: docker/build-push-action@v6
       with:
         context: .
