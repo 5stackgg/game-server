@@ -55,6 +55,8 @@ jobs:
         load: true
         tags: mod-builder:latest
         target: zip-creator
+        build-args: |
+          RELEASE_VERSION=0.0.${{ steps.get_latest_release.outputs.result }}
 
     - name: Extract zip file
       run: |
@@ -69,6 +71,8 @@ jobs:
         tags: |
             ghcr.io/${{ github.repository_owner }}/game-server:latest
             ghcr.io/${{ github.repository_owner }}/game-server:${{ github.sha }}
+        build-args: |
+          RELEASE_VERSION=0.0.${{ steps.get_latest_release.outputs.result }}
 
     - name: Create Release and Upload Asset
       uses: softprops/action-gh-release@v2
