@@ -8,6 +8,9 @@ RUN dotnet restore
 
 COPY . .
 
+ARG RELEASE_VERSION
+ENV RELEASE_VERSION ${RELEASE_VERSION}
+
 RUN sed -i 's/__RELEASE_VERSION__/'${RELEASE_VERSION}'/' src/FiveStackPlugin.cs
 
 RUN dotnet build -c Release -o release
