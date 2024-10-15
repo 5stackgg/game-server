@@ -46,9 +46,10 @@ jobs:
     - name: Update version in FiveStackPlugin.cs
       run: |
         sed -i 's/__RELEASE_VERSION__/0.0.${{ steps.get_latest_release.outputs.result }}/' src/FiveStackPlugin.cs
+        cat src/FiveStackPlugin.cs  # Print the file content to verify the change
 
     - name: Build Docker image
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       with:
         context: .
         push: false
