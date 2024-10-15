@@ -21,7 +21,7 @@ public partial class FiveStackPlugin : BasePlugin
     private readonly EnvironmentService _environmentService;
 
     public override string ModuleName => "FiveStack";
-    public override string ModuleVersion => "0.0.1";
+    public override string ModuleVersion => "__RELEASE_VERSION__";
     public override string ModuleAuthor => "5Stack.gg";
     public override string ModuleDescription => "5Stack creates and managements custom matches";
 
