@@ -43,12 +43,18 @@ public class EnvironmentService
 
     public void Load()
     {
-        string filePath = "/serverdata/serverfiles/.env";
+        string currentDirectory = Directory.GetCurrentDirectory();
+        _logger.LogInformation($"Current directory: {currentDirectory}");
 
+        string filePath = Path.Combine(currentDirectory, ".env");
         if (!File.Exists(filePath))
         {
-            _logger.LogWarning("Unable to read .env file");
-            return;
+            filePath = "/serverdata/serverfiles/.env";
+            if (!File.Exists(filePath))
+            {
+                _logger.LogWarning("Unable to read .env file");
+                return;
+            }   
         }
 
         foreach (var line in File.ReadAllLines(filePath))
