@@ -26,6 +26,8 @@ public class GameBackUpRounds
     private readonly EnvironmentService _environmentService;
     private readonly ILogger<GameBackUpRounds> _logger;
 
+    private string _rootDir = "/opt";
+
     public GameBackUpRounds(
         ILogger<GameBackUpRounds> logger,
         MatchEvents matchEvents,
@@ -39,6 +41,11 @@ public class GameBackUpRounds
         _gameServer = gameServer;
         _matchService = matchService;
         _environmentService = environmentService;
+
+        if (!Directory.Exists(_rootDir))
+        {
+            _rootDir = Directory.GetCurrentDirectory();
+        }
     }
 
     public void Setup()
@@ -479,10 +486,10 @@ public class GameBackUpRounds
 
         if (match == null)
         {
-            return "/opt/initial-restore.lock";
+            return $"{_rootDir}/initial-restore.lock";
         }
 
-        return $"/opt/initial-restore-{match.id}.lock";
+        return $"{_rootDir}/initial-restore-{match.id}.lock";
     }
 
     private string GetMatchDownloadLockFile()
@@ -491,10 +498,10 @@ public class GameBackUpRounds
 
         if (match == null)
         {
-            return "/opt/download.lock";
+            return $"{_rootDir}/download.lock";
         }
 
-        return $"/opt/download-{match.id}.lock";
+        return $"{_rootDir}/download-{match.id}.lock";
     }
 
     private void SendResetRoundMessage()
@@ -525,6 +532,6 @@ public class GameBackUpRounds
 
     private string GetLockFilePath()
     {
-        return "/opt/.backup-rounds";
+        return $"{_rootDir}/.backup-rounds";
     }
 }
