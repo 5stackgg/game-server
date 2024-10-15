@@ -28,21 +28,15 @@ jobs:
           echo "Current URL: ${{ env.CURRENT_URL }}"
           echo "Latest URL: ${{ env.LATEST_URL }}"
 
-      - name: Update Dockerfile
-        if: env.CURRENT_URL != env.LATEST_URL
-        run: |
-          sed -i 's|ENV COUNTER_STRIKE_SHARP_URL=.*|ENV COUNTER_STRIKE_SHARP_URL=${{ env.LATEST_URL }}|' Dockerfile
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add Dockerfile
-          git commit -m "Update CounterStrikeSharp URL to latest version"
-          git push
-
-      - name: Update csproj
+      - name: Update Dockerfile / csproj
         if: env.CURRENT_URL != env.LATEST_URL
         run: |
           VERSION_NUMBER=$(echo ${{ env.LATEST_URL }} | grep -oP 'v\K\d+')
+          sed -i 's|ENV COUNTER_STRIKE_SHARP_URL=.*|ENV COUNTER_STRIKE_SHARP_URL=${{ env.LATEST_URL }}|' Dockerfile
           sed -i "s|<PackageReference Include=\"CounterStrikeSharp.API\" Version=\".*\"|<PackageReference Include=\"CounterStrikeSharp.API\" Version=\"1.0.${VERSION_NUMBER}\"|" src/FiveStack.csproj
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add Dockerfile
           git add src/FiveStack.csproj
           git commit -m "chore: update counter-strike sharp version to 1.0.${VERSION_NUMBER}"
           git push
