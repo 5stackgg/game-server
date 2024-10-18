@@ -163,10 +163,9 @@ public class GameBackUpRounds
         string endpoint =
             $"{_environmentService.GetApiUrl()}/matches/{match.id}/backup-rounds/map/{match.current_match_map_id}";
 
-        string downloadDirectory = "/opt";
-        Directory.CreateDirectory(downloadDirectory);
+        Directory.CreateDirectory(_rootDir);
 
-        string zipFilePath = Path.Combine(downloadDirectory, "backup-rounds.zip");
+        string zipFilePath = Path.Combine(_rootDir, "backup-rounds.zip");
 
         if (File.Exists(zipFilePath))
         {
