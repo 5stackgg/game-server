@@ -54,7 +54,7 @@ public class EnvironmentService
             {
                 _logger.LogWarning("Unable to read .env file");
                 return;
-            }   
+            }
         }
 
         foreach (var line in File.ReadAllLines(filePath))

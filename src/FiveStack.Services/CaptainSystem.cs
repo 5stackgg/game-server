@@ -146,6 +146,11 @@ public class CaptainSystem
 
     public bool IsCaptain(CCSPlayerController player, CsTeam team)
     {
+        if (team != CsTeam.Terrorist && team != CsTeam.CounterTerrorist)
+        {
+            return false;
+        }
+
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
         if (matchData != null)
         {

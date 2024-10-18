@@ -27,7 +27,10 @@ public class GameDemos
         _matchService = matchService;
         _environmentService = environmentService;
 
-        if (!Directory.Exists(_rootDir) || new DirectoryInfo(_rootDir).Attributes.HasFlag(FileAttributes.ReadOnly))
+        if (
+            !Directory.Exists(_rootDir)
+            || new DirectoryInfo(_rootDir).Attributes.HasFlag(FileAttributes.ReadOnly)
+        )
         {
             _rootDir = Directory.GetCurrentDirectory();
         }
