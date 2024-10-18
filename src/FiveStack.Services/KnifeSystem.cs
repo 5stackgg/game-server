@@ -92,6 +92,8 @@ public class KnifeSystem
             return;
         }
 
+        _logger.LogInformation($"Knife round winning team: {winningTeam}");
+
         if (match.captainSystem.IsCaptain(player, winningTeam) == false)
         {
             _gameServer.Message(

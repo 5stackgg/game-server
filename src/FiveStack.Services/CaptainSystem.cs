@@ -151,6 +151,11 @@ public class CaptainSystem
             return false;
         }
 
+        if (player.Team != team)
+        {
+            return false;
+        }
+
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
         if (matchData != null)
         {
