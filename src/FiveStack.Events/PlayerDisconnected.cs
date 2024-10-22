@@ -24,6 +24,13 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        CCSPlayerController player = @event.Userid;
+
+        _matchEvents.PublishGameEvent(
+            "player-disconnected",
+            new Dictionary<string, object> { { "steam_id", player.SteamID.ToString() } }
+        );
+
         if (match.IsWarmup() || match.IsKnife())
         {
             match.captainSystem.RemoveCaptain(@event.Userid);

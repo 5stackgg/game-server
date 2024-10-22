@@ -38,12 +38,17 @@ public partial class FiveStackPlugin
 
         bool shouldKick = true;
 
-        if (match.IsWarmup())
+        if (
+            match.IsWarmup()
+            && players.Any(player => !string.IsNullOrEmpty(player.placeholder_name))
+        )
         {
-            if (players.Find(player => player.steam_id == null) != null)
-            {
-                shouldKick = false;
-            }
+            shouldKick = false;
+        }
+
+        if (players.Find(player => player.steam_id == null) != null)
+        {
+            shouldKick = false;
         }
 
         if (shouldKick && lineup_id == null)
@@ -53,10 +58,9 @@ public partial class FiveStackPlugin
         }
 
         _matchEvents.PublishGameEvent(
-            "player",
+            "player-connected",
             new Dictionary<string, object>
             {
-                { "match_map_id", matchData.current_match_map_id },
                 { "player_name", player.PlayerName },
                 { "steam_id", player.SteamID.ToString() },
             }
