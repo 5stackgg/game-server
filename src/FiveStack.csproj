@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.277" />
+    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.284" />
   </ItemGroup>
   
 </Project>
