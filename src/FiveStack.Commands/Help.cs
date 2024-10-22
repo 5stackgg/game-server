@@ -21,7 +21,7 @@ public partial class FiveStackPlugin
 
         command.ReplyToCommand($"  Available Commands: ");
         command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Toggle Ready: {ChatColors.Default}{CoreConfig.PublicChatTrigger}r"
+            $" {ChatColors.BlueGrey}Toggle Ready: {ChatColors.Default}{CommandUtility.PublicChatTrigger}r"
         );
         command.ReplyToCommand(
             $" {ChatColors.BlueGrey}Knife Round: {ChatColors.Default}{CommandUtility.PublicChatTrigger}stay, {CommandUtility.PublicChatTrigger}switch"
