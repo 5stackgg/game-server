@@ -93,8 +93,6 @@ public class Timeouts
             return;
         }
 
-        _gameServer.SendCommands(new[] { "mp_unpause_match" });
-
         string pauseMessage = "Admin Resumed the Match";
 
         if (player != null)
@@ -117,6 +115,7 @@ public class Timeouts
             pauseMessage = $"{player.PlayerName} {ChatColors.Red}resumed the match";
         }
 
+        _gameServer.SendCommands(new[] { "mp_unpause_match" });
         _gameServer.Message(HudDestination.Alert, pauseMessage);
         match.UpdateMapStatus(match.isOverTime() ? eMapStatus.Overtime : eMapStatus.Live);
     }
@@ -134,6 +133,19 @@ public class Timeouts
 
         if (matchData == null || currentMap == null)
         {
+            return;
+        }
+
+        if (
+            MatchUtility.Rules()?.TerroristTimeOutActive == true
+            || MatchUtility.Rules()?.CTTimeOutActive == true
+        )
+        {
+            _gameServer.Message(
+                HudDestination.Chat,
+                $" {ChatColors.Red}A timout is already active",
+                player
+            );
             return;
         }
 

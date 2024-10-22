@@ -95,7 +95,7 @@ public class CaptainSystem
             {
                 _gameServer.Message(
                     HudDestination.Notify,
-                    $"[{TeamUtility.TeamNumToString((int)team)}] {ChatColors.Green}.captain to claim"
+                    $"[{TeamUtility.TeamNumToString((int)team)}] {ChatColors.Green}{CommandUtility.SilentChatTrigger}captain to claim"
                 );
                 continue;
             }

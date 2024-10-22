@@ -20,24 +20,32 @@ public partial class FiveStackPlugin
         }
 
         command.ReplyToCommand($"  Available Commands: ");
-        command.ReplyToCommand($" {ChatColors.BlueGrey}Toggle Ready: {ChatColors.Default}.r");
         command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Knife Round: {ChatColors.Default}.stay, .switch"
+            $" {ChatColors.BlueGrey}Toggle Ready: {ChatColors.Default}{CoreConfig.PublicChatTrigger}r"
+        );
+        command.ReplyToCommand(
+            $" {ChatColors.BlueGrey}Knife Round: {ChatColors.Default}{CommandUtility.PublicChatTrigger}stay, {CommandUtility.PublicChatTrigger}switch"
         );
 
         command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Captains: {ChatColors.Default}/captain, /release-captain"
+            $" {ChatColors.BlueGrey}Captains: {ChatColors.Default}{CommandUtility.SilentChatTrigger}captain, {CommandUtility.SilentChatTrigger}release-captain"
         );
         command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Show Captains: {ChatColors.Default}.captains"
+            $" {ChatColors.BlueGrey}Show Captains: {ChatColors.Default}{CommandUtility.PublicChatTrigger}captains"
         );
 
-        command.ReplyToCommand($" {ChatColors.BlueGrey}Timeouts: {ChatColors.Default}/timeout");
-        command.ReplyToCommand($" {ChatColors.BlueGrey}Tactical Pause: {ChatColors.Default}/tac");
         command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Tech Pause: {ChatColors.Default}.pause, .resume"
+            $" {ChatColors.BlueGrey}Timeouts: {ChatColors.Default}{CommandUtility.SilentChatTrigger}timeout"
         );
-        command.ReplyToCommand($" {ChatColors.BlueGrey}Rules: {ChatColors.Default}.rules");
+        command.ReplyToCommand(
+            $" {ChatColors.BlueGrey}Tactical Pause: {ChatColors.Default}{CommandUtility.SilentChatTrigger}tac"
+        );
+        command.ReplyToCommand(
+            $" {ChatColors.BlueGrey}Tech Pause: {ChatColors.Default}{CommandUtility.PublicChatTrigger}pause, {CommandUtility.PublicChatTrigger}resume"
+        );
+        command.ReplyToCommand(
+            $" {ChatColors.BlueGrey}Rules: {ChatColors.Default}{CommandUtility.PublicChatTrigger}rules"
+        );
     }
 
     [ConsoleCommand("css_rules", "Shows Rules for Match")]

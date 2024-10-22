@@ -140,7 +140,7 @@ public class ReadySystem
 
                 _gameServer.Message(
                     HudDestination.Notify,
-                    $" Players {ChatColors.Red}Not Ready: {ChatColors.Default}{string.Join(", ", notReadyPlayers)} type {ChatColors.Green}.r"
+                    $" Players {ChatColors.Red}Not Ready: {ChatColors.Default}{string.Join(", ", notReadyPlayers)} type {ChatColors.Green}{CommandUtility.PublicChatTrigger}r"
                 );
             });
         }

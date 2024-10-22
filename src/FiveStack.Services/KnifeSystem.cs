@@ -1,6 +1,8 @@
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Enums;
+using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -27,8 +29,23 @@ public class KnifeSystem
         _gameServer = gameServer;
     }
 
+    public async void Start()
+    {
+        _gameServer.SendCommands(new[] { "mp_warmup_end" });
+        _gameServer.SendCommands(new[] { "exec knife" });
+        _gameServer.SendCommands(new[] { "mp_restartgame 1" });
+
+        await Task.Delay(3000);
+
+        Server.NextFrame(() =>
+        {
+            _gameServer.Message(HudDestination.Alert, "KNIFE KNIFE KNIFE!");
+        });
+    }
+
     public void SetWinningTeam(CsTeam team)
     {
+        _gameServer.SendCommands(new[] { "mp_warmup_start" });
         _winningTeam = team;
 
         CCSPlayerController? captain = _matchService
@@ -43,7 +60,7 @@ public class KnifeSystem
 
         _gameServer.Message(
             HudDestination.Chat,
-            $"As the captain you must select to {ChatColors.Green}.stay {ChatColors.Default} or {ChatColors.Green}.switch",
+            $"As the captain you must select to {ChatColors.Green}{CommandUtility.PublicChatTrigger}stay {ChatColors.Default} or {ChatColors.Green}{CommandUtility.PublicChatTrigger}switch",
             captain
         );
         _gameServer.Message(
@@ -77,7 +94,7 @@ public class KnifeSystem
             $"captain picked to {ChatColors.Red}stay {ChatColors.Default}sides"
         );
 
-        _gameServer.SendCommands(new[] { $"mp_restartgame 1" });
+        _gameServer.SendCommands(new[] { "mp_restartgame 1" });
 
         match.UpdateMapStatus(eMapStatus.Live);
     }

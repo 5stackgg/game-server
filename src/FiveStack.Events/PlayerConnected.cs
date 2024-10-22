@@ -90,13 +90,13 @@ public partial class FiveStackPlugin
 
         _gameServer.Message(
             HudDestination.Chat,
-            $"{ChatColors.Default}type {ChatColors.Green}.r {ChatColors.Default}to be marked as ready for the match",
+            $" {ChatColors.Default}type {ChatColors.Green}{CommandUtility.PublicChatTrigger}r {ChatColors.Default}to be marked as ready for the match",
             @event.Userid
         );
 
         _gameServer.Message(
             HudDestination.Chat,
-            $"type {ChatColors.Green}.help {ChatColors.Default}to view additional commands",
+            $"type {ChatColors.Green}{CommandUtility.SilentChatTrigger}help {ChatColors.Default}to view additional commands",
             @event.Userid
         );
 

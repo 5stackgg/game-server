@@ -2,12 +2,13 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.Utilities;
 
 namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    [ConsoleCommand("css_surrender", "TEMP")]
+    [ConsoleCommand("css_surrender", "Initiates a surrender vote for the player's team")]
     public void Surrender(CCSPlayerController? player, CommandInfo? command)
     {
         if (player == null)
@@ -17,7 +18,7 @@ public partial class FiveStackPlugin
 
         _gameServer.Message(
             HudDestination.Notify,
-            $"{player.PlayerName} has asked to surrender the match, type in .y or .n to vote"
+            $"{player.PlayerName} has asked to surrender the match, type in {CommandUtility.PublicChatTrigger}y or {CommandUtility.PublicChatTrigger}n to vote"
         );
 
         _surrender.SetupSurrender(player.Team);

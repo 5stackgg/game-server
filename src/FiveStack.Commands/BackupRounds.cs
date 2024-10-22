@@ -66,7 +66,7 @@ public partial class FiveStackPlugin
 
         _gameServer.Message(
             HudDestination.Alert,
-            $" {ChatColors.Red}Round {round} has been restored (.resume to continue)"
+            $" {ChatColors.Red}Round {round} has been restored ({CommandUtility.PublicChatTrigger}resume to continue)"
         );
     }
 
