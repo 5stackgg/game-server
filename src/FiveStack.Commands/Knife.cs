@@ -20,6 +20,7 @@ public partial class FiveStackPlugin
         match.knifeSystem.Stay(player);
     }
 
+    [ConsoleCommand("css_swap", "")]
     [ConsoleCommand("css_switch", "")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnSwitch(CCSPlayerController? player, CommandInfo? command)

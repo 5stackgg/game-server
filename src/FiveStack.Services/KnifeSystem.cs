@@ -1,9 +1,11 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
+using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
 namespace FiveStack;
 
@@ -13,6 +15,8 @@ public class KnifeSystem
     private readonly MatchEvents _matchEvents;
     private readonly MatchService _matchService;
     private readonly ILogger<KnifeSystem> _logger;
+
+    private Timer? _knifeRoundTimer;
 
     private CsTeam? _winningTeam;
 
@@ -45,12 +49,29 @@ public class KnifeSystem
 
     public void SetWinningTeam(CsTeam team)
     {
-        _gameServer.SendCommands(new[] { "mp_warmup_start" });
+        _gameServer.SendCommands(new[] { "mp_pause_match" });
         _winningTeam = team;
+
+        _knifeRoundTimer = TimerUtility.AddTimer(3, SetupKnifeMessage, TimerFlags.REPEAT);
+
+        SetupKnifeMessage();
+
+        _gameServer.Message(
+            HudDestination.Alert,
+            $"{(team == CsTeam.Terrorist ? "Terrorist" : "CT")} - Captain is Picking Sides!"
+        );
+    }
+
+    public void SetupKnifeMessage()
+    {
+        if (_winningTeam == null)
+        {
+            return;
+        }
 
         CCSPlayerController? captain = _matchService
             ?.GetCurrentMatch()
-            ?.captainSystem?.GetTeamCaptain(team);
+            ?.captainSystem?.GetTeamCaptain(_winningTeam.Value);
 
         if (captain == null)
         {
@@ -59,18 +80,17 @@ public class KnifeSystem
         }
 
         _gameServer.Message(
-            HudDestination.Chat,
-            $"As the captain you must select to {ChatColors.Green}{CommandUtility.PublicChatTrigger}stay {ChatColors.Default} or {ChatColors.Green}{CommandUtility.PublicChatTrigger}switch",
-            captain
-        );
-        _gameServer.Message(
             HudDestination.Alert,
-            $"{(team == CsTeam.Terrorist ? "Terrorist" : "CT")} - Captain is Picking Sides!"
+            $"As the captain you must select to {ChatColors.Green}{CommandUtility.PublicChatTrigger}stay {ChatColors.Default} or {ChatColors.Green}{CommandUtility.PublicChatTrigger}switch"
         );
     }
 
     public void Stay(CCSPlayerController player)
     {
+        _logger.LogInformation("Knife round staying");
+        _knifeRoundTimer?.Kill();
+        _knifeRoundTimer = null;
+
         CsTeam winningTeam = GetWinningTeam() ?? CsTeam.None;
         MatchManager? match = _matchService.GetCurrentMatch();
 
@@ -101,6 +121,10 @@ public class KnifeSystem
 
     public void Switch(CCSPlayerController player)
     {
+        _logger.LogInformation("Knife round switching");
+        _knifeRoundTimer?.Kill();
+        _knifeRoundTimer = null;
+
         CsTeam winningTeam = GetWinningTeam() ?? CsTeam.None;
         MatchManager? match = _matchService.GetCurrentMatch();
 

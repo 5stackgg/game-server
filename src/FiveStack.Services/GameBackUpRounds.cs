@@ -267,7 +267,9 @@ public class GameBackUpRounds
             return;
         }
 
-        player.PrintToCenter($"Type .y / .n reset the round to round {_resetRound}");
+        player.PrintToCenter(
+            $"Type {CommandUtility.PublicChatTrigger}y / {CommandUtility.PublicChatTrigger}n reset the round to round {_resetRound}"
+        );
     }
 
     public void CastVote(CCSPlayerController player, bool vote)
@@ -343,6 +345,8 @@ public class GameBackUpRounds
             {
                 _restoreRoundVote[player.SteamID] = true;
             }
+
+            SendResetRoundMessage();
 
             _gameServer.Message(
                 HudDestination.Alert,
