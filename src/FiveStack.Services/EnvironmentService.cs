@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CounterStrikeSharp.API;
 using Microsoft.Extensions.Logging;
 
@@ -42,7 +43,8 @@ public class EnvironmentService
         return Environment.GetEnvironmentVariable("ALLOW_BOTS") == "true";
     }
 
-    public string[] PossibleDirectories = [
+    public string[] PossibleDirectories =
+    [
         "/serverdata/serverfiles",
         $"{Server.GameDirectory}/csgo",
         Directory.GetCurrentDirectory(),
@@ -50,6 +52,7 @@ public class EnvironmentService
 
     public void Load()
     {
+        bool isJson = false;
         string? filePath = null;
 
         foreach (var possibleDirectory in PossibleDirectories)
@@ -61,12 +64,45 @@ public class EnvironmentService
                 filePath = testPath;
                 break;
             }
-        }   
 
+            var testPathJson = Path.Combine(possibleDirectory, "5stack.json");
+            if (File.Exists(testPathJson))
+            {
+                isJson = true;
+                filePath = testPath;
+                break;
+            }
+        }
 
         if (filePath == null)
         {
             _logger.LogWarning("Unable to find .env file");
+            return;
+        }
+
+        if (isJson)
+        {
+            try
+            {
+                var jsonString = File.ReadAllText(filePath);
+                var config = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonString);
+
+                if (config != null)
+                {
+                    foreach (var kvp in config)
+                    {
+                        Environment.SetEnvironmentVariable(kvp.Key, kvp.Value);
+                    }
+                }
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError($"Error parsing JSON config: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error reading config file: {ex.Message}");
+            }
             return;
         }
 
