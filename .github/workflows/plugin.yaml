@@ -57,7 +57,7 @@ jobs:
     - name: Extract zip file
       run: |
         docker create --name temp mod-builder:latest
-        docker cp temp:/mod-release.zip ./5stack-plugin.zip
+        docker cp temp:/mod-release.zip ./FiveStack.zip
         docker rm temp
         
     - name: Build and Push Docker image
@@ -80,4 +80,4 @@ jobs:
         draft: false
         prerelease: false
         files: |
-          ./5stack-plugin.zip
+          ./FiveStack.zip
