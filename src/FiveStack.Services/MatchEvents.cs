@@ -73,7 +73,11 @@ public class MatchEvents
 
         if (!await Connect())
         {
-            await Task.Delay(1000 * 3);
+            string? serverId = _environmentService.GetServerId();
+            string? serverApiPassword = _environmentService.GetServerApiPassword();
+
+            await Task.Delay(serverId == null || serverApiPassword == null ? 1000 * 10 : 1000 * 3);
+
             _isMonitoring = false;
             _ = ConnectAndMonitor();
             return;
@@ -108,6 +112,12 @@ public class MatchEvents
         }
 
         _isMonitoring = false;
+
+        string? serverId = _environmentService.GetServerId();
+        string? serverApiPassword = _environmentService.GetServerApiPassword();
+
+        await Task.Delay(serverId == null || serverApiPassword == null ? 1000 * 10 : 1000 * 3);
+
         await ConnectAndMonitor();
     }
 
@@ -145,8 +155,16 @@ public class MatchEvents
         {
             _webSocket = new ClientWebSocket();
 
-            var serverId = _environmentService.GetServerId();
-            var serverApiPassword = _environmentService.GetServerApiPassword();
+            _environmentService.Load();
+
+            string? serverId = _environmentService.GetServerId();
+            string? serverApiPassword = _environmentService.GetServerApiPassword();
+
+            if (serverId == null || serverApiPassword == null)
+            {
+                _logger.LogWarning("Cannot connect to WebSocket, Missing Server ID / API Password");
+                return false;
+            }
 
             _webSocket.Options.SetRequestHeader(
                 "Authorization",
@@ -157,8 +175,6 @@ public class MatchEvents
 
             var uri = new Uri($"{_environmentService.GetWsUrl()}/matches");
             await _webSocket.ConnectAsync(uri, _connectionCts.Token);
-
-            _logger.LogInformation("Connected to 5stack");
 
             _matchService.GetMatchFromApi();
 

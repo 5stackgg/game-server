@@ -33,7 +33,6 @@ public class MatchService
 
         if (serverId == null || apiPassword == null)
         {
-            _logger.LogWarning("Missing Server ID / API Password");
             await Task.Delay(1000 * 5);
             Server.NextFrame(() =>
             {
