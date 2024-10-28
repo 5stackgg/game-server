@@ -1,5 +1,5 @@
-using System.Text.Json;
 using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Modules.Config;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -15,27 +15,28 @@ public class EnvironmentService
 
     public string GetApiUrl()
     {
-        return Environment.GetEnvironmentVariable("API_DOMAIN") ?? "https://api.5stack.gg";
+        return Environment.GetEnvironmentVariable("API_DOMAIN") ?? GetConfig().API_DOMAIN;
     }
 
     public string GetDemosUrl()
     {
-        return Environment.GetEnvironmentVariable("DEMOS_DOMAIN") ?? "https://demos.5stack.gg";
+        return Environment.GetEnvironmentVariable("DEMOS_DOMAIN") ?? GetConfig().DEMOS_DOMAIN;
     }
 
     public string GetWsUrl()
     {
-        return Environment.GetEnvironmentVariable("WS_DOMAIN") ?? "wss://ws.5stack.gg";
+        return Environment.GetEnvironmentVariable("WS_DOMAIN") ?? GetConfig().WS_DOMAIN;
     }
 
     public string? GetServerId()
     {
-        return Environment.GetEnvironmentVariable("SERVER_ID");
+        return Environment.GetEnvironmentVariable("SERVER_ID") ?? GetConfig().SERVER_ID;
     }
 
     public string? GetServerApiPassword()
     {
-        return Environment.GetEnvironmentVariable("SERVER_API_PASSWORD");
+        return Environment.GetEnvironmentVariable("SERVER_API_PASSWORD")
+            ?? GetConfig().SERVER_API_PASSWORD;
     }
 
     public bool AllowBots()
@@ -50,25 +51,20 @@ public class EnvironmentService
         Directory.GetCurrentDirectory(),
     ];
 
+    public FiveStackConfig GetConfig()
+    {
+        return ConfigManager.Load<FiveStackConfig>("FiveStack");
+    }
+
     public void Load()
     {
-        bool isJson = false;
         string? filePath = null;
 
         foreach (var possibleDirectory in PossibleDirectories)
         {
             var testPath = Path.Combine(possibleDirectory, ".env");
-            _logger.LogInformation($"Checking for .env file in {testPath}");
             if (File.Exists(testPath))
             {
-                filePath = testPath;
-                break;
-            }
-
-            var testPathJson = Path.Combine(possibleDirectory, "5stack.json");
-            if (File.Exists(testPathJson))
-            {
-                isJson = true;
                 filePath = testPath;
                 break;
             }
@@ -76,33 +72,6 @@ public class EnvironmentService
 
         if (filePath == null)
         {
-            _logger.LogWarning("Unable to find .env file");
-            return;
-        }
-
-        if (isJson)
-        {
-            try
-            {
-                var jsonString = File.ReadAllText(filePath);
-                var config = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonString);
-
-                if (config != null)
-                {
-                    foreach (var kvp in config)
-                    {
-                        Environment.SetEnvironmentVariable(kvp.Key, kvp.Value);
-                    }
-                }
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogError($"Error parsing JSON config: {ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error reading config file: {ex.Message}");
-            }
             return;
         }
 
