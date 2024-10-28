@@ -1,3 +1,4 @@
+using CounterStrikeSharp.API;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -41,20 +42,32 @@ public class EnvironmentService
         return Environment.GetEnvironmentVariable("ALLOW_BOTS") == "true";
     }
 
+    public string[] PossibleDirectories = [
+        "/serverdata/serverfiles",
+        $"{Server.GameDirectory}/csgo",
+        Directory.GetCurrentDirectory(),
+    ];
+
     public void Load()
     {
-        string currentDirectory = Directory.GetCurrentDirectory();
-        _logger.LogInformation($"Current directory: {currentDirectory}");
+        string? filePath = null;
 
-        string filePath = Path.Combine(currentDirectory, ".env");
-        if (!File.Exists(filePath))
+        foreach (var possibleDirectory in PossibleDirectories)
         {
-            filePath = "/serverdata/serverfiles/.env";
-            if (!File.Exists(filePath))
+            var testPath = Path.Combine(possibleDirectory, ".env");
+            _logger.LogInformation($"Checking for .env file in {testPath}");
+            if (File.Exists(testPath))
             {
-                _logger.LogWarning("Unable to read .env file");
-                return;
+                filePath = testPath;
+                break;
             }
+        }   
+
+
+        if (filePath == null)
+        {
+            _logger.LogWarning("Unable to find .env file");
+            return;
         }
 
         foreach (var line in File.ReadAllLines(filePath))
