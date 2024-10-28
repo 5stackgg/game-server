@@ -32,7 +32,7 @@ public class GameDemos
             || new DirectoryInfo(_rootDir).Attributes.HasFlag(FileAttributes.ReadOnly)
         )
         {
-            _rootDir = Directory.GetCurrentDirectory();
+            _rootDir = Server.GameDirectory;
         }
     }
 
