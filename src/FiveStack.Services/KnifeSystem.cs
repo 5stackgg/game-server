@@ -79,8 +79,7 @@ public class KnifeSystem
             return;
         }
 
-        _gameServer.Message(
-            HudDestination.Alert,
+        captain.PrintToCenter(
             $"As the captain you must select to {ChatColors.Green}{CommandUtility.PublicChatTrigger}stay {ChatColors.Default} or {ChatColors.Green}{CommandUtility.PublicChatTrigger}switch"
         );
     }
