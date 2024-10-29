@@ -36,7 +36,7 @@ public class KnifeSystem
     public async void Start()
     {
         _gameServer.SendCommands(new[] { "mp_warmup_end" });
-        _gameServer.SendCommands(new[] { "exec knife" });
+        _gameServer.SendCommands(new[] { "exec 5stack.knife" });
         _gameServer.SendCommands(new[] { "mp_restartgame 1" });
 
         await Task.Delay(3000);

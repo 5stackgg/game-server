@@ -320,7 +320,7 @@ public class MatchManager
             return;
         }
 
-        _gameServer.SendCommands(new[] { "exec warmup" });
+        _gameServer.SendCommands(new[] { "exec 5stack.warmup" });
 
         Server.NextFrame(() =>
         {
@@ -362,7 +362,7 @@ public class MatchManager
         _gameServer.SendCommands(
             new[]
             {
-                "exec live",
+                "exec 5stack.live",
                 $"mp_maxrounds {_matchData.options.mr * 2}",
                 $"mp_overtime_enable {_matchData.options.overtime}",
             }
