@@ -46,10 +46,10 @@ create_symlinks() {
 create_symlinks "$BASE_SERVER_DIR" "$INSTANCE_SERVER_DIR"
 
 cp "/opt/server-cfg/server.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
-cp "/opt/server-cfg/base.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
-cp "/opt/server-cfg/warmup.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
-cp "/opt/server-cfg/knife.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
-cp "/opt/server-cfg/live.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
+cp "/opt/server-cfg/5stack.base.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
+cp "/opt/server-cfg/5stack.warmup.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
+cp "/opt/server-cfg/5stack.knife.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
+cp "/opt/server-cfg/5stack.live.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
 cp "/opt/server-cfg/subscribed_file_ids.txt" "$INSTANCE_SERVER_DIR/game/csgo"
 
 echo "---Install Addons---"

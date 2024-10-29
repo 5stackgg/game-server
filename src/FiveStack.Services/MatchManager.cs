@@ -56,6 +56,10 @@ public class MatchManager
         _matchData = match;
     }
 
+    public void GetMatchConfigs() {
+        string directoryPath = Path.Join(Server.GameDirectory + "/csgo/cfg");
+    }
+
     public MatchData? GetMatchData()
     {
         return _matchData;
