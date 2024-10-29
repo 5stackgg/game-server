@@ -71,6 +71,8 @@ public partial class FiveStackPlugin : BasePlugin
         {
             _gameServer.Message(HudDestination.Alert, "5Stack Loaded");
         });
+
+        _ = _matchService.GetMatchConfigs();
     }
 
     public override void Unload(bool hotReload)

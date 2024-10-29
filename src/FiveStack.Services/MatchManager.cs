@@ -56,10 +56,6 @@ public class MatchManager
         _matchData = match;
     }
 
-    public void GetMatchConfigs() {
-        string directoryPath = Path.Join(Server.GameDirectory + "/csgo/cfg");
-    }
-
     public MatchData? GetMatchData()
     {
         return _matchData;
@@ -324,7 +320,7 @@ public class MatchManager
             return;
         }
 
-        _gameServer.SendCommands(new[] { "exec 5stack.warmup" });
+        _gameServer.SendCommands(new[] { "exec 5stack.warmup.cfg" });
 
         Server.NextFrame(() =>
         {
@@ -366,7 +362,7 @@ public class MatchManager
         _gameServer.SendCommands(
             new[]
             {
-                "exec 5stack.live",
+                "exec 5stack.live.cfg",
                 $"mp_maxrounds {_matchData.options.mr * 2}",
                 $"mp_overtime_enable {_matchData.options.overtime}",
             }

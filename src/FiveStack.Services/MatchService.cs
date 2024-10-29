@@ -24,6 +24,34 @@ public class MatchService
         _environmentService = environmentService;
     }
 
+    public async Task GetMatchConfigs()
+    {
+        string directoryPath = Path.Join(Server.GameDirectory + "/csgo/cfg");
+        foreach (
+            var file in new[]
+            {
+                "5stack.base.cfg",
+                "5stack.knife.cfg",
+                "5stack.live.cfg",
+                "5stack.warmup.cfg",
+            }
+        )
+        {
+            if (!File.Exists(Path.Join(directoryPath, file)))
+            {
+                _logger.LogInformation($"Downloading Config: {file}");
+                string url =
+                    $"https://raw.githubusercontent.com/5stackgg/game-server/main/cfg/{file}";
+                using (var client = new HttpClient())
+                {
+                    var response = await client.GetAsync(url);
+                    var content = await response.Content.ReadAsStringAsync();
+                    File.WriteAllText(Path.Join(directoryPath, file), content);
+                }
+            }
+        }
+    }
+
     public async void GetMatchFromApi()
     {
         HttpClient httpClient = new HttpClient();
