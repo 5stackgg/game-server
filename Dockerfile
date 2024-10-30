@@ -92,4 +92,4 @@ RUN mkdir -p /opt/addons/counterstrikesharp/plugins
 RUN rm -rf /opt/metamod
 RUN rm -rf /opt/counterstrikesharp
 
-ENTRYPOINT ["/opt/scripts/setup && /opt/scripts/server.sh"]
+ENTRYPOINT ["/bin/bash", "-c", "/opt/scripts/setup.sh && /opt/scripts/server.sh"]
