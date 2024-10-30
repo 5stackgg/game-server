@@ -34,6 +34,8 @@ ENV STEAMCMD_DIR="${DATA_DIR}/steamcmd"
 ENV BASE_SERVER_DIR="${DATA_DIR}/serverfiles"
 ENV INSTANCE_SERVER_DIR="/opt/instance"
 
+ENV AUTOLOAD_PLUGINS=true
+
 ENV GAME_ID="730"
 ENV GAME_PARAMS=""
 ENV GAME_PORT=27015
@@ -89,5 +91,5 @@ RUN mkdir -p /opt/addons/counterstrikesharp/plugins
 
 RUN rm -rf /opt/metamod
 RUN rm -rf /opt/counterstrikesharp
-#Server Start
+
 ENTRYPOINT ["/opt/scripts/server.sh"]

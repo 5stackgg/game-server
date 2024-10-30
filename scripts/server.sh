@@ -64,6 +64,11 @@ fi
 
 cp "/opt/server-cfg/core.json" "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs"
 
+if [ "$AUTOLOAD_PLUGINS" = "false" ]; then
+  echo "---Disable Auto Loading Plugins---"
+  sed -i 's/"PluginAutoLoadEnabled": true/"PluginAutoLoadEnabled": false/' "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs/core.json"
+fi
+
 echo "---Check Metamod Install---"
 gameinfo_path="${INSTANCE_SERVER_DIR}/game/csgo/gameinfo.gi"
 new_line="                        Game    csgo/addons/metamod"
