@@ -25,8 +25,8 @@ A clear and concise description of what actually happened.
 If applicable, add screenshots to help explain your problem.
 
 ## Environment
-- OS: [e.g. Windows 10, macOS 12.0]
-- Plugin Version: [e.g. v0.0.1]
+- OS: [e.g. Ubuntu 20.04.6]
+- 5Stack Plugin Version: [e.g. v0.0.1]
 
 ## Additional Context
 Add any other context 
