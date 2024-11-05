@@ -71,7 +71,9 @@ if $AUTOLOAD_PLUGINS = true ; then
           ln -s "$config_dir" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs/$config_name"
       fi
   done
+fi
 
+if $INSTALL_5STACK_PLUGIN = true ; then
   echo "---Install 5Stack---"
   if [ "${DEV_SWAPPED}" == "1" ]; then
     ln -s "/opt/dev" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/FiveStack"
