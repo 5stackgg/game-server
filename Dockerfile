@@ -22,10 +22,11 @@ FROM debian:bookworm-slim AS zip-creator
 
 WORKDIR /zip-content
 
-COPY --from=build /mod/release .
+COPY --from=build /mod/release ./addons/counterstrikesharp/plugins/./
 
-RUN apt-get update && apt-get install -y zip && \
-    zip -r /mod-release.zip .
+RUN apt-get update && apt-get install -y zip
+
+RUN zip -r /mod-release.zip .
 
 FROM debian:bookworm-slim
 
