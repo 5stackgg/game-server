@@ -146,6 +146,11 @@ public class CaptainSystem
 
     public bool IsCaptain(CCSPlayerController player, CsTeam team)
     {
+        if (player.IsBot)
+        {
+            return false;
+        }
+
         if (team != CsTeam.Terrorist && team != CsTeam.CounterTerrorist)
         {
             return false;
