@@ -22,7 +22,7 @@ FROM debian:bookworm-slim AS zip-creator
 
 WORKDIR /zip-content
 
-COPY --from=build /mod/release ./addons/counterstrikesharp/plugins/./
+COPY --from=build /mod/release ./addons/counterstrikesharp/plugins/FiveStack/./
 
 RUN apt-get update && apt-get install -y zip
 
