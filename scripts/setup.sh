@@ -55,21 +55,10 @@ cp "/opt/server-cfg/subscribed_file_ids.txt" "$INSTANCE_SERVER_DIR/game/csgo"
 echo "---Install Addons---"
 cp -r "/opt/addons" "${INSTANCE_SERVER_DIR}/game/csgo"
 
-
 if $AUTOLOAD_PLUGINS = true ; then
   echo "---Install Custom Plugins---"
-  for plugin_dir in /opt/custom-plugins/plugins/* ; do
-      if [ -d "$plugin_dir" ]; then
-          plugin_name=$(basename "$plugin_dir")
-          ln -s "$plugin_dir" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/$plugin_name"
-      fi
-  done
-
-  for config_dir in /opt/custom-plugins/configs/* ; do
-      if [ -d "$config_dir" ]; then
-          config_name=$(basename "$config_dir") 
-          ln -s "$config_dir" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs/$config_name"
-      fi
+  for plugin_dir in /opt/custom-plugins/* ; do
+    create_symlinks "$plugin_dir" "${INSTANCE_SERVER_DIR}/game/csgo/"
   done
 fi
 
