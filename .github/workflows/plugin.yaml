@@ -80,4 +80,4 @@ jobs:
         draft: false
         prerelease: false
         files: |
-          ./FiveStack.zip
+          ./FiveStack-v0.0.${{ steps.get_latest_release.outputs.result }}.zip
