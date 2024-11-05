@@ -57,6 +57,14 @@ cp -r "/opt/addons" "${INSTANCE_SERVER_DIR}/game/csgo"
 
 
 if $AUTOLOAD_PLUGINS = true ; then
+  echo "---Install Custom Plugins---"
+  for plugin_dir in /opt/plugins/*/ ; do
+      if [ -d "$plugin_dir" ]; then
+          plugin_name=$(basename "$plugin_dir")
+          ln -s "$plugin_dir" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/$plugin_name"
+      fi
+  done
+
   echo "---Install 5Stack---"
   if [ "${DEV_SWAPPED}" == "1" ]; then
     ln -s "/opt/dev" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/FiveStack"
