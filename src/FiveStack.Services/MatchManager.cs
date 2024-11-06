@@ -112,6 +112,12 @@ public class MatchManager
 
     public void PauseMatch(string? message = null)
     {
+        if (!IsLive())
+        {
+            _logger.LogWarning("Match is not live, cannot pause");
+            return;
+        }
+
         _gameServer.SendCommands(new[] { "mp_pause_match" });
         UpdateMapStatus(eMapStatus.Paused);
 
