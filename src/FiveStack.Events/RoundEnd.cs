@@ -97,12 +97,12 @@ public partial class FiveStackPlugin
         MatchMap? currentMap = match?.GetCurrentMap();
         MatchData? matchData = match?.GetMatchData();
 
+        this.roundWinner = TeamUtility.TeamNumToCSTeam(@event.Winner);
+
         if (match == null || matchData == null || currentMap == null)
         {
             return HookResult.Continue;
         }
-
-        this.roundWinner = TeamUtility.TeamNumToCSTeam(@event.Winner);
 
         if (match.IsKnife())
         {

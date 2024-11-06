@@ -13,6 +13,7 @@ public class SurrenderSystem
     private readonly GameServer _gameServer;
     private readonly MatchEvents _matchEvents;
     private readonly MatchService _matchService;
+    private readonly TimeoutSystem _timeoutSystem;
     private readonly ILogger<ReadySystem> _logger;
 
     private Dictionary<CsTeam, Timer?> _surrenderTimers = new Dictionary<CsTeam, Timer?>();
@@ -26,14 +27,15 @@ public class SurrenderSystem
         ILogger<ReadySystem> logger,
         GameServer gameServer,
         MatchEvents matchEvents,
-        MatchService matchService
+        MatchService matchService,
+        TimeoutSystem timeoutSystem
     )
     {
         _logger = logger;
         _gameServer = gameServer;
         _matchEvents = matchEvents;
         _matchService = matchService;
-
+        _timeoutSystem = timeoutSystem;
         ResetTeamSurrender(CsTeam.Terrorist);
         ResetTeamSurrender(CsTeam.CounterTerrorist);
     }
@@ -54,6 +56,21 @@ public class SurrenderSystem
         }
     }
 
+    public void ResetDisconnectTimers()
+    {
+        foreach (var team in _disconnectTimers.Keys)
+        {
+            foreach (var steamId in _disconnectTimers[team].Keys.ToList())
+            {
+                if (_disconnectTimers[team][steamId] != null)
+                {
+                    _disconnectTimers[team][steamId].Kill();
+                }
+            }
+            _disconnectTimers[team].Clear();
+        }
+    }
+
     // we dont pass the team in because they may not be on the team immediately after reconnecting
     public void CancelDisconnectTimer(ulong steamId)
     {
@@ -69,6 +86,14 @@ public class SurrenderSystem
                     _disconnectTimers[team].Remove(steamId);
                 }
             }
+        }
+
+        if (
+            _disconnectTimers[CsTeam.Terrorist].Count == 0
+            && _disconnectTimers[CsTeam.CounterTerrorist].Count == 0
+        )
+        {
+            _timeoutSystem.ResumeMatch();
         }
     }
 

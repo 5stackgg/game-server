@@ -95,17 +95,6 @@ public class MatchManager
             || (MatchUtility.Rules()?.GamePaused ?? false);
     }
 
-    public void PauseMatch(string? message = null)
-    {
-        _gameServer.SendCommands(new[] { "mp_pause_match" });
-        UpdateMapStatus(eMapStatus.Paused);
-
-        if (message != null)
-        {
-            _gameServer.Message(HudDestination.Alert, message);
-        }
-    }
-
     public bool isOverTime()
     {
         return GetOverTimeNumber() > 0;
@@ -313,6 +302,16 @@ public class MatchManager
         KickBots();
     }
 
+    public int GetExpectedPlayerCount()
+    {
+        if (_matchData == null)
+        {
+            return 10;
+        }
+
+        return _matchData.options.type == "Wingman" ? 4 : 10;
+    }
+
     private void StartWarmup()
     {
         if (_matchData == null)
@@ -399,6 +398,7 @@ public class MatchManager
             return;
         }
 
+        // required because joined team is not set immediately
         await Task.Delay(100);
 
         Server.NextFrame(() =>
@@ -462,11 +462,10 @@ public class MatchManager
 
             if (_environmentService.AllowBots())
             {
+                int expectedPlayers = GetExpectedPlayerCount();
                 int currentPlayers = MatchUtility.Players().Count;
 
-                int maxPlayers = this._matchData.options.type == "Wingman" ? 4 : 10;
-
-                if (currentPlayers >= maxPlayers)
+                if (currentPlayers >= expectedPlayers)
                 {
                     return;
                 }
@@ -475,11 +474,11 @@ public class MatchManager
                     new[]
                     {
                         "bot_quota_mode normal",
-                        $"bot_quota {Math.Max(0, maxPlayers - currentPlayers)}",
+                        $"bot_quota {Math.Max(0, expectedPlayers - currentPlayers)}",
                     }
                 );
 
-                if (currentPlayers < maxPlayers)
+                if (currentPlayers < expectedPlayers)
                 {
                     _gameServer.SendCommands(new[] { "bot_add expert" });
                 }

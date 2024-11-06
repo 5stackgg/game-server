@@ -21,6 +21,6 @@ public class FiveStackServiceCollection : IPluginServiceCollection<FiveStackPlug
         serviceCollection.AddTransient<ReadySystem>();
         serviceCollection.AddTransient<CoachSystem>();
         serviceCollection.AddTransient<CaptainSystem>();
-        serviceCollection.AddTransient<Timeouts>();
+        serviceCollection.AddTransient<TimeoutSystem>();
     }
 }

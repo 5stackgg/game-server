@@ -21,6 +21,6 @@ public partial class FiveStackPlugin
             $"{player.PlayerName} has asked to surrender the match, type in {CommandUtility.PublicChatTrigger}y or {CommandUtility.PublicChatTrigger}n to vote"
         );
 
-        _surrender.SetupSurrender(player.Team);
+        _surrenderSystem.SetupSurrender(player.Team);
     }
 }

@@ -71,7 +71,10 @@ if $INSTALL_5STACK_PLUGIN = true ; then
   fi
 fi
 
-cp "/opt/server-cfg/core.json" "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs"
+if [ ! -e "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs/core.json" ]; then
+    cp "/opt/server-cfg/core.json" "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs"
+fi
+
 
 echo "---Check Metamod Install---"
 gameinfo_path="${INSTANCE_SERVER_DIR}/game/csgo/gameinfo.gi"

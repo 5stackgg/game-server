@@ -20,9 +20,9 @@ public partial class FiveStackPlugin
             _gameBackupRounds.CastVote(player, command.GetCommandString == "css_y");
         }
 
-        if (_surrender.IsSurrendering())
+        if (_surrenderSystem.IsSurrendering())
         {
-            _surrender.CastVote(player, command.GetCommandString == "css_y");
+            _surrenderSystem.CastVote(player, command.GetCommandString == "css_y");
         }
     }
 }
