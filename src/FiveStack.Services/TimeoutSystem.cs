@@ -30,11 +30,6 @@ public class TimeoutSystem
         _backUpManagement = backUpManagement;
     }
 
-    public bool IsPaused()
-    {
-        return MatchUtility.Rules()?.GamePaused ?? false;
-    }
-
     public void RequestPause(CCSPlayerController? player)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -73,7 +68,7 @@ public class TimeoutSystem
             pauseMessage = $"{player.PlayerName} {ChatColors.Red}paused the match";
         }
 
-        PauseMatch(pauseMessage);
+        _matchService.GetCurrentMatch()?.PauseMatch(pauseMessage);
     }
 
     public void RequestResume(CCSPlayerController? player)
@@ -120,35 +115,7 @@ public class TimeoutSystem
             resumeMessage = $"{player.PlayerName} {ChatColors.Red}resumed the match";
         }
 
-        ResumeMatch(resumeMessage);
-    }
-
-    public void PauseMatch(string? message = null)
-    {
-        _gameServer.SendCommands(new[] { "mp_pause_match" });
-        _matchService.GetCurrentMatch()?.UpdateMapStatus(eMapStatus.Paused);
-
-        if (message != null)
-        {
-            _gameServer.Message(HudDestination.Alert, message);
-        }
-    }
-
-    public void ResumeMatch(string? message = null)
-    {
-        _gameServer.SendCommands(new[] { "mp_unpause_match" });
-        MatchManager? match = _matchService.GetCurrentMatch();
-        if (match == null)
-        {
-            return;
-        }
-
-        match.UpdateMapStatus(match.isOverTime() ? eMapStatus.Overtime : eMapStatus.Live);
-
-        if (message != null)
-        {
-            _gameServer.Message(HudDestination.Alert, message);
-        }
+        _matchService.GetCurrentMatch()?.ResumeMatch(resumeMessage);
     }
 
     public void CallTacTimeout(CCSPlayerController? player)

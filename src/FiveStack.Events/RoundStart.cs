@@ -16,7 +16,7 @@ public partial class FiveStackPlugin
 
         if (expectedPlayers != currentPlayers)
         {
-            _timeoutSystem.PauseMatch("Waiting for players to reconnect");
+            _matchService.GetCurrentMatch()?.PauseMatch("Waiting for players to reconnect");
         }
 
         _logger.LogInformation("Round started");

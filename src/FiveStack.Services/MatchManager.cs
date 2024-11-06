@@ -110,6 +110,29 @@ public class MatchManager
         return _currentMapStatus == eMapStatus.Knife;
     }
 
+    public void PauseMatch(string? message = null)
+    {
+        _gameServer.SendCommands(new[] { "mp_pause_match" });
+        UpdateMapStatus(eMapStatus.Paused);
+
+        if (message != null)
+        {
+            _gameServer.Message(HudDestination.Alert, message);
+        }
+    }
+
+    public void ResumeMatch(string? message = null)
+    {
+        _gameServer.SendCommands(new[] { "mp_unpause_match" });
+
+        UpdateMapStatus(isOverTime() ? eMapStatus.Overtime : eMapStatus.Live);
+
+        if (message != null)
+        {
+            _gameServer.Message(HudDestination.Alert, message);
+        }
+    }
+
     public void UpdateMapStatus(eMapStatus status)
     {
         if (_matchData == null)

@@ -93,7 +93,7 @@ public class SurrenderSystem
             && _disconnectTimers[CsTeam.CounterTerrorist].Count == 0
         )
         {
-            _timeoutSystem.ResumeMatch();
+            _matchService.GetCurrentMatch()?.ResumeMatch();
         }
     }
 

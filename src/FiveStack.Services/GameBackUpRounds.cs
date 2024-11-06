@@ -23,7 +23,6 @@ public class GameBackUpRounds
     private readonly MatchEvents _matchEvents;
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
-    private readonly TimeoutSystem _timeoutSystem;
     private readonly EnvironmentService _environmentService;
     private readonly ILogger<GameBackUpRounds> _logger;
 
@@ -34,7 +33,6 @@ public class GameBackUpRounds
         MatchEvents matchEvents,
         GameServer gameServer,
         MatchService matchService,
-        TimeoutSystem timeoutSystem,
         EnvironmentService environmentService
     )
     {
@@ -42,7 +40,6 @@ public class GameBackUpRounds
         _matchEvents = matchEvents;
         _gameServer = gameServer;
         _matchService = matchService;
-        _timeoutSystem = timeoutSystem;
         _environmentService = environmentService;
 
         if (
@@ -329,7 +326,7 @@ public class GameBackUpRounds
 
         Server.NextFrame(() =>
         {
-            _timeoutSystem.PauseMatch();
+            _matchService.GetCurrentMatch()?.PauseMatch();
         });
 
         if (player != null || vote == true)
