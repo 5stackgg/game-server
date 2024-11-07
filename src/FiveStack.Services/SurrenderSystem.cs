@@ -1,3 +1,4 @@
+using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
@@ -10,11 +11,11 @@ namespace FiveStack;
 
 public class SurrenderSystem
 {
+    private readonly GameServer _gameServer;
     private readonly MatchEvents _matchEvents;
     private readonly MatchService _matchService;
     private readonly ILogger<ReadySystem> _logger;
     private readonly IServiceProvider _serviceProvider;
-
     public VoteSystem? surrenderingVote;
 
     private Dictionary<CsTeam, Dictionary<ulong, Timer>> _disconnectTimers =
@@ -24,10 +25,12 @@ public class SurrenderSystem
         ILogger<ReadySystem> logger,
         MatchEvents matchEvents,
         MatchService matchService,
+        GameServer gameServer,
         IServiceProvider serviceProvider
     )
     {
         _logger = logger;
+        _gameServer = gameServer;
         _matchEvents = matchEvents;
         _matchService = matchService;
         _serviceProvider = serviceProvider;
@@ -97,7 +100,7 @@ public class SurrenderSystem
         }
     }
 
-    public void SetupSurrender(CsTeam team)
+    public void SetupSurrender(CsTeam team, CCSPlayerController? player = null)
     {
         surrenderingVote = _serviceProvider.GetRequiredService(typeof(VoteSystem)) as VoteSystem;
 
@@ -107,7 +110,7 @@ public class SurrenderSystem
         }
 
         surrenderingVote.StartVote(
-            "Vote to Surrender",
+            player == null  ? "Vote to Surrender" :$"{player.PlayerName} wants to to Surrender",
             () =>
             {
                 Surrender(team);
