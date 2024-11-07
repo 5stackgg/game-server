@@ -109,7 +109,7 @@ public class TimeoutSystem
                 if (resumeVote != null)
                 {
                     resumeVote.StartVote(
-                        "Vote to Resume",
+                        $"{player.PlayerName} wants to Resume",
                         (
                             () =>
                             {
