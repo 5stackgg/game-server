@@ -17,10 +17,11 @@ public class FiveStackServiceCollection : IPluginServiceCollection<FiveStackPlug
         serviceCollection.AddSingleton<EnvironmentService>();
 
         serviceCollection.AddTransient<MatchManager>();
+        serviceCollection.AddTransient<VoteSystem>();
         serviceCollection.AddTransient<KnifeSystem>();
         serviceCollection.AddTransient<ReadySystem>();
         serviceCollection.AddTransient<CoachSystem>();
         serviceCollection.AddTransient<CaptainSystem>();
-        serviceCollection.AddTransient<Timeouts>();
+        serviceCollection.AddTransient<TimeoutSystem>();
     }
 }

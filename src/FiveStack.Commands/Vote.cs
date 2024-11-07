@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -17,12 +18,23 @@ public partial class FiveStackPlugin
 
         if (_gameBackupRounds.IsResettingRound())
         {
-            _gameBackupRounds.CastVote(player, command.GetCommandString == "css_y");
+            _gameBackupRounds.restoreRoundVote?.CastVote(
+                player,
+                command.GetCommandString == "css_y"
+            );
         }
 
-        if (_surrender.IsSurrendering())
+        if (_surrenderSystem.IsSurrendering())
         {
-            _surrender.CastVote(player, command.GetCommandString == "css_y");
+            _surrenderSystem.surrenderingVote?.CastVote(
+                player,
+                command.GetCommandString == "css_y"
+            );
+        }
+
+        if (_timeoutSystem.resumeVote != null)
+        {
+            _timeoutSystem.resumeVote?.CastVote(player, command.GetCommandString == "css_y");
         }
     }
 }

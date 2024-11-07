@@ -1,6 +1,5 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
-using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 
 namespace FiveStack;
@@ -38,9 +37,7 @@ public partial class FiveStackPlugin
 
         if (match.IsLive())
         {
-            _gameServer.Message(HudDestination.Center, $" {ChatColors.Red}Match Paused");
-            match.PauseMatch();
-            _surrender.SetupDisconnectTimer(@event.Userid.Team, @event.Userid.SteamID);
+            _surrenderSystem.SetupDisconnectTimer(@event.Userid.Team, @event.Userid.SteamID);
         }
 
         return HookResult.Continue;

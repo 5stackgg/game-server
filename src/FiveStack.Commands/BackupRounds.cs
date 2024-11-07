@@ -32,8 +32,9 @@ public partial class FiveStackPlugin
         "Should only be called by the API, this is so we know the api regonized the restore"
     )]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
-    public void OnApiResetRound(CCSPlayerController? player, CommandInfo command)
+    public async void OnApiResetRound(CCSPlayerController? player, CommandInfo command)
     {
+        _logger.LogInformation("API Restoring Round");
         string _round = command.ArgByIndex(1);
 
         if (_round == null)
@@ -62,12 +63,18 @@ public partial class FiveStackPlugin
 
         _gameServer.SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFile}" });
 
-        _gameBackupRounds.ResetRestoreBackupRound();
+        _logger.LogInformation($"LETS GO Round {round}");
 
-        _gameServer.Message(
-            HudDestination.Alert,
-            $" {ChatColors.Red}Round {round} has been restored ({CommandUtility.PublicChatTrigger}resume to continue)"
-        );
+        await Task.Delay(10 * 1000);
+
+        Server.NextFrame(() =>
+        {
+            _logger.LogInformation($"Sending Message for Round {round}");
+            _gameServer.Message(
+                HudDestination.Alert,
+                $" {ChatColors.Red}Round {round} has been restored ({CommandUtility.PublicChatTrigger}resume to continue)"
+            );
+        });
     }
 
     [ConsoleCommand("css_reset", "Restores to a previous round")]
@@ -77,6 +84,7 @@ public partial class FiveStackPlugin
 
         if (_round == null || _gameBackupRounds.IsResettingRound())
         {
+            _logger.LogWarning("Already restoring round, skipping");
             return;
         }
 

@@ -12,10 +12,10 @@ public partial class FiveStackPlugin : BasePlugin
 {
     private readonly GameDemos _gameDemos;
     private readonly GameServer _gameServer;
-    private readonly Timeouts _matchTimeouts;
     private readonly MatchEvents _matchEvents;
-    private readonly SurrenderSystem _surrender;
+    private readonly TimeoutSystem _timeoutSystem;
     private readonly MatchService _matchService;
+    private readonly SurrenderSystem _surrenderSystem;
     private readonly ILogger<FiveStackPlugin> _logger;
     private readonly GameBackUpRounds _gameBackupRounds;
     private readonly EnvironmentService _environmentService;
@@ -30,7 +30,7 @@ public partial class FiveStackPlugin : BasePlugin
         GameServer gameServer,
         MatchEvents matchEvents,
         MatchService matchService,
-        Timeouts matchTimeoutSystem,
+        TimeoutSystem timeoutSystem,
         ILogger<FiveStackPlugin> logger,
         SurrenderSystem surrenderSystem,
         GameBackUpRounds backUpManagement,
@@ -42,9 +42,8 @@ public partial class FiveStackPlugin : BasePlugin
         _gameServer = gameServer;
         _matchEvents = matchEvents;
         _matchService = matchService;
-        _surrender = surrenderSystem;
-        _matchTimeouts = matchTimeoutSystem;
-        _matchTimeouts = matchTimeoutSystem;
+        _timeoutSystem = timeoutSystem;
+        _surrenderSystem = surrenderSystem;
         _gameBackupRounds = backUpManagement;
         _environmentService = environmentService;
 

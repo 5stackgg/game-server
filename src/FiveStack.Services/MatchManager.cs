@@ -95,17 +95,6 @@ public class MatchManager
             || (MatchUtility.Rules()?.GamePaused ?? false);
     }
 
-    public void PauseMatch(string? message = null)
-    {
-        _gameServer.SendCommands(new[] { "mp_pause_match" });
-        UpdateMapStatus(eMapStatus.Paused);
-
-        if (message != null)
-        {
-            _gameServer.Message(HudDestination.Alert, message);
-        }
-    }
-
     public bool isOverTime()
     {
         return GetOverTimeNumber() > 0;
@@ -119,6 +108,30 @@ public class MatchManager
     public bool IsKnife()
     {
         return _currentMapStatus == eMapStatus.Knife;
+    }
+
+    public void PauseMatch(string? message = null)
+    {
+        _logger.LogInformation($"Pausing Match: {message}");
+        UpdateMapStatus(eMapStatus.Paused);
+
+        if (message != null)
+        {
+            _gameServer.Message(HudDestination.Center, message);
+        }
+    }
+
+    public void ResumeMatch(string? message = null)
+    {
+        _logger.LogInformation($"Resuming Match: {message}");
+        _gameServer.SendCommands(new[] { "mp_unpause_match" });
+
+        UpdateMapStatus(isOverTime() ? eMapStatus.Overtime : eMapStatus.Live);
+
+        if (message != null)
+        {
+            _gameServer.Message(HudDestination.Center, message);
+        }
     }
 
     public void UpdateMapStatus(eMapStatus status)
@@ -173,7 +186,8 @@ public class MatchManager
                 {
                     break;
                 }
-                StartLive();
+
+                _gameServer.SendCommands(new[] { "mp_pause_match" });
                 break;
             case eMapStatus.Live:
                 StartLive();
@@ -234,10 +248,6 @@ public class MatchManager
 
         foreach (var player in MatchUtility.Players())
         {
-            if (player.IsBot)
-            {
-                continue;
-            }
             EnforceMemberTeam(player);
         }
 
@@ -313,6 +323,16 @@ public class MatchManager
         KickBots();
     }
 
+    public int GetExpectedPlayerCount()
+    {
+        if (_matchData == null)
+        {
+            return 10;
+        }
+
+        return _matchData.options.type == "Wingman" ? 4 : 10;
+    }
+
     private void StartWarmup()
     {
         if (_matchData == null)
@@ -354,10 +374,8 @@ public class MatchManager
             return;
         }
 
-        if (IsKnife())
-        {
-            _gameServer.SendCommands(new[] { "mp_unpause_match" });
-        }
+        _logger.LogInformation("Starting Live Match");
+        _gameServer.SendCommands(new[] { "mp_unpause_match" });
 
         _gameServer.SendCommands(
             new[]
@@ -399,6 +417,7 @@ public class MatchManager
             return;
         }
 
+        // required because joined team is not set immediately
         await Task.Delay(100);
 
         Server.NextFrame(() =>
@@ -462,11 +481,11 @@ public class MatchManager
 
             if (_environmentService.AllowBots())
             {
-                int currentPlayers = MatchUtility.Players().Count;
+                int expectedPlayers = GetExpectedPlayerCount();
+                // we want to count the bots in this case
+                int currentPlayers = CounterStrikeSharp.API.Utilities.GetPlayers().Count;
 
-                int maxPlayers = this._matchData.options.type == "Wingman" ? 4 : 10;
-
-                if (currentPlayers >= maxPlayers)
+                if (currentPlayers >= expectedPlayers)
                 {
                     return;
                 }
@@ -475,11 +494,11 @@ public class MatchManager
                     new[]
                     {
                         "bot_quota_mode normal",
-                        $"bot_quota {Math.Max(0, maxPlayers - currentPlayers)}",
+                        $"bot_quota {Math.Max(0, expectedPlayers - currentPlayers)}",
                     }
                 );
 
-                if (currentPlayers < maxPlayers)
+                if (currentPlayers < expectedPlayers)
                 {
                     _gameServer.SendCommands(new[] { "bot_add expert" });
                 }
@@ -511,11 +530,6 @@ public class MatchManager
 
         foreach (var player in MatchUtility.Players())
         {
-            if (player.PlayerName == "SourceTV")
-            {
-                continue;
-            }
-
             MatchMember? member = MatchUtility.GetMemberFromLineup(_matchData, player);
             if (member == null)
             {

@@ -78,7 +78,23 @@ namespace FiveStack.Utilities
 
         public static List<CCSPlayerController> Players()
         {
-            return CounterStrikeSharp.API.Utilities.GetPlayers();
+            var players = CounterStrikeSharp.API.Utilities.GetPlayers();
+            var validPlayers = new List<CCSPlayerController>();
+
+            foreach (var player in players)
+            {
+                if (
+                    !player.IsBot
+                    && player.IsValid
+                    && player.UserId != null
+                    && player.PlayerName != "SourceTV"
+                )
+                {
+                    validPlayers.Add(player);
+                }
+            }
+
+            return validPlayers;
         }
 
         public static IEnumerable<CCSTeam> Teams()

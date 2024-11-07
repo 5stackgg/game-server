@@ -51,7 +51,7 @@ public class ReadySystem
             _readyPlayers[player.UserId.Value] = !_readyPlayers[player.UserId.Value];
         }
 
-        if (TotalReady() == GetExpectedPlayerCount())
+        if (TotalReady() == (_matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10))
         {
             _matchService.GetCurrentMatch()?.UpdateMapStatus(eMapStatus.Knife);
             return;
@@ -70,7 +70,7 @@ public class ReadySystem
         }
 
         int totalReady = TotalReady();
-        int expectedReady = GetExpectedPlayerCount();
+        int expectedReady = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
 
         int playerId = player.UserId.Value;
         if (_readyPlayers.ContainsKey(playerId) && _readyPlayers[playerId])
@@ -84,18 +84,6 @@ public class ReadySystem
     private int TotalReady()
     {
         return _readyPlayers.Count(pair => pair.Value);
-    }
-
-    private int GetExpectedPlayerCount()
-    {
-        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
-
-        if (match == null)
-        {
-            return 10;
-        }
-
-        return match.options.type == "Wingman" ? 4 : 10;
     }
 
     public void SendReadyMessage(CCSPlayerController player)
@@ -176,7 +164,7 @@ public class ReadySystem
 
         foreach (var player in MatchUtility.Players())
         {
-            if (player.IsBot || !player.IsValid || player.UserId == null)
+            if (player.UserId == null)
             {
                 continue;
             }
@@ -211,10 +199,6 @@ public class ReadySystem
 
         foreach (var player in MatchUtility.Players())
         {
-            if (player.IsBot)
-            {
-                continue;
-            }
             SetupReadyMessage(player);
         }
     }

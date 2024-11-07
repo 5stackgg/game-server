@@ -3,34 +3,40 @@ using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
-public class Timeouts
+public class TimeoutSystem
 {
     private readonly MatchEvents _matchEvents;
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
     private readonly GameBackUpRounds _backUpManagement;
-    private readonly ILogger<Timeouts> _logger;
+    private readonly ILogger<TimeoutSystem> _logger;
+    private readonly IServiceProvider _serviceProvider;
 
-    public Timeouts(
-        ILogger<Timeouts> logger,
+    public VoteSystem? resumeVote;
+
+    public TimeoutSystem(
+        ILogger<TimeoutSystem> logger,
         MatchEvents matchEvents,
         GameServer gameServer,
         MatchService matchService,
-        GameBackUpRounds backUpManagement
+        GameBackUpRounds backUpManagement,
+        IServiceProvider serviceProvider
     )
     {
         _logger = logger;
         _matchEvents = matchEvents;
         _gameServer = gameServer;
         _matchService = matchService;
+        _serviceProvider = serviceProvider;
         _backUpManagement = backUpManagement;
     }
 
-    public void Pause(CCSPlayerController? player)
+    public void RequestPause(CCSPlayerController? player)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
@@ -68,32 +74,26 @@ public class Timeouts
             pauseMessage = $"{player.PlayerName} {ChatColors.Red}paused the match";
         }
 
-        match.PauseMatch(pauseMessage);
+        _matchService.GetCurrentMatch()?.PauseMatch(pauseMessage);
     }
 
-    public void Resume(CCSPlayerController? player)
+    public void RequestResume(CCSPlayerController? player)
     {
-        if (player == null && _backUpManagement.IsResettingRound())
+        if (player == null)
         {
-            _backUpManagement.VoteFailed();
+            _logger.LogInformation("Cancelling Voting");
+            resumeVote?.CancelVote();
+            _backUpManagement.restoreRoundVote?.CancelVote();
         }
 
-        MatchManager? match = _matchService.GetCurrentMatch();
-
-        // TODO - game rules has a bug where i cant detect if were paused
-        if (match == null || _backUpManagement.IsResettingRound())
-        {
-            return;
-        }
-
-        MatchData? matchData = match.GetMatchData();
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
 
         if (matchData == null)
         {
             return;
         }
 
-        string pauseMessage = "Admin Resumed the Match";
+        string resumeMessage = "Admin Resumed the Match";
 
         if (player != null)
         {
@@ -104,20 +104,40 @@ public class Timeouts
             // TODO - coach support
             if (timeoutSetting != eTimeoutSettings.CoachAndPlayers)
             {
-                _gameServer.Message(
-                    HudDestination.Chat,
-                    $" {ChatColors.Red}you are not allowed to resume the match!",
-                    player
-                );
+                resumeVote = _serviceProvider.GetRequiredService(typeof(VoteSystem)) as VoteSystem;
+
+                if (resumeVote != null)
+                {
+                    resumeVote.StartVote(
+                        "Resume",
+                        new CsTeam[] { CsTeam.CounterTerrorist, CsTeam.Terrorist },
+                        (
+                            () =>
+                            {
+                                _matchService.GetCurrentMatch()?.ResumeMatch("Resume Vote Passed");
+                            }
+                        ),
+                        () =>
+                        {
+                            resumeVote = null;
+                        },
+                        true,
+                        30
+                    );
+
+                    if (player != null)
+                    {
+                        resumeVote.CastVote(player, true);
+                    }
+                }
+
                 return;
             }
 
-            pauseMessage = $"{player.PlayerName} {ChatColors.Red}resumed the match";
+            resumeMessage = $"{player.PlayerName} {ChatColors.Red}resumed the match";
         }
 
-        _gameServer.SendCommands(new[] { "mp_unpause_match" });
-        _gameServer.Message(HudDestination.Alert, pauseMessage);
-        match.UpdateMapStatus(match.isOverTime() ? eMapStatus.Overtime : eMapStatus.Live);
+        _matchService.GetCurrentMatch()?.ResumeMatch(resumeMessage);
     }
 
     public void CallTacTimeout(CCSPlayerController? player)

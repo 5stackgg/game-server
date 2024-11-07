@@ -8,6 +8,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnGameEnd(EventCsWinPanelMatch @event, GameEventInfo info)
     {
+        _surrenderSystem.ResetDisconnectTimers();
         _gameDemos.Stop();
 
         MatchManager? match = _matchService.GetCurrentMatch();

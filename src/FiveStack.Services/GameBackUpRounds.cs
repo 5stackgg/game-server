@@ -4,27 +4,26 @@ using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
 namespace FiveStack;
 
 public class GameBackUpRounds
 {
     private int? _resetRound;
-    private Timer? _resetRoundTimer;
     private bool _initialRestore = false;
-    private Dictionary<ulong, bool> _restoreRoundVote = new Dictionary<ulong, bool>();
-
     private readonly MatchEvents _matchEvents;
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly EnvironmentService _environmentService;
     private readonly ILogger<GameBackUpRounds> _logger;
+
+    public VoteSystem? restoreRoundVote;
 
     private string _rootDir = "/opt";
 
@@ -33,6 +32,7 @@ public class GameBackUpRounds
         MatchEvents matchEvents,
         GameServer gameServer,
         MatchService matchService,
+        IServiceProvider serviceProvider,
         EnvironmentService environmentService
     )
     {
@@ -40,6 +40,7 @@ public class GameBackUpRounds
         _matchEvents = matchEvents;
         _gameServer = gameServer;
         _matchService = matchService;
+        _serviceProvider = serviceProvider;
         _environmentService = environmentService;
 
         if (
@@ -242,83 +243,26 @@ public class GameBackUpRounds
         });
     }
 
-    public void SetupResetMessage(CCSPlayerController player)
+    public void RestoreBackupRound(int round, CCSPlayerController? player = null, bool vote = false)
     {
-        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
-
-        if (match == null || player.UserId == null)
+        _logger.LogInformation($"Restoring Backup Round {round}");
+        if (IsResettingRound())
         {
             return;
         }
 
-        int totalVoted = _restoreRoundVote.Count(pair => pair.Value);
-
-        ulong playerId = player.SteamID;
-        bool isCaptain = MatchUtility.GetMemberFromLineup(match, player)?.captain ?? false;
-
-        if (
-            isCaptain == false
-            || _restoreRoundVote.ContainsKey(playerId) && _restoreRoundVote[playerId]
-        )
-        {
-            player.PrintToCenter(
-                $"Waiting for captins [{totalVoted}/2] to reset round to {_resetRound}"
-            );
-            return;
-        }
-
-        player.PrintToCenter(
-            $"Type {CommandUtility.PublicChatTrigger}y / {CommandUtility.PublicChatTrigger}n reset the round to round {_resetRound}"
-        );
-    }
-
-    public void CastVote(CCSPlayerController player, bool vote)
-    {
-        if (_resetRound == null)
-        {
-            return;
-        }
-
-        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
-
-        if (matchData == null)
-        {
-            return;
-        }
-
-        if (MatchUtility.GetMemberFromLineup(matchData, player)?.captain == true)
-        {
-            if (vote == false)
-            {
-                VoteFailed();
-                return;
-            }
-
-            _restoreRoundVote[player.SteamID] = true;
-
-            if (_restoreRoundVote.Count(pair => pair.Value) == 2)
-            {
-                RestoreRound(_resetRound ?? 0);
-                return;
-            }
-
-            SendResetRoundMessage();
-        }
-    }
-
-    public bool RestoreBackupRound(int round, CCSPlayerController? player = null, bool vote = false)
-    {
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchData? matchData = match?.GetMatchData();
 
         if (match == null || matchData == null)
         {
-            return false;
+            return;
         }
 
         if (!HasBackupRound(round))
         {
-            return false;
+            _logger.LogWarning($"missing backup round: {round}");
+            return;
         }
 
         string backupRoundFile =
@@ -326,51 +270,55 @@ public class GameBackUpRounds
 
         Server.NextFrame(() =>
         {
-            match.PauseMatch();
+            _matchService.GetCurrentMatch()?.PauseMatch();
         });
 
         if (player != null || vote == true)
         {
             _resetRound = round;
-            if (_resetRoundTimer == null)
+
+            restoreRoundVote =
+                _serviceProvider.GetRequiredService(typeof(VoteSystem)) as VoteSystem;
+
+            if (restoreRoundVote == null)
             {
-                _resetRoundTimer = TimerUtility.AddTimer(
-                    3,
-                    SendResetRoundMessage,
-                    TimerFlags.REPEAT
-                );
+                return;
             }
+
+            _logger.LogInformation($"Starting vote to restore round {round}");
+
+            restoreRoundVote.StartVote(
+                $"Restore Round to {round}",
+                new CsTeam[] { CsTeam.CounterTerrorist, CsTeam.Terrorist },
+                () =>
+                {
+                    _resetRound = null;
+                    RestoreRound(round);
+                },
+                () =>
+                {
+                    _resetRound = null;
+
+                    if (_initialRestore)
+                    {
+                        File.Create(GetMatchLockFile()).Close();
+                    }
+
+                    _matchService.GetCurrentMatch()?.ResumeMatch();
+
+                    restoreRoundVote = null;
+                },
+                true
+            );
 
             if (player != null)
             {
-                _restoreRoundVote[player.SteamID] = true;
+                restoreRoundVote.CastVote(player, true);
             }
 
-            SendResetRoundMessage();
-
-            _gameServer.Message(
-                HudDestination.Alert,
-                $" {ChatColors.Red}Reset round to {round}, captains must accept"
-            );
-            return true;
+            return;
         }
         RestoreRound(round);
-
-        return true;
-    }
-
-    public void VoteFailed()
-    {
-        if (_initialRestore)
-        {
-            File.Create(GetMatchLockFile()).Close();
-        }
-
-        _gameServer.Message(
-            HudDestination.Alert,
-            $" {ChatColors.Red}Captain denied request to reset round to {_resetRound}"
-        );
-        ResetRestoreBackupRound();
     }
 
     public async Task UploadBackupRound(string round)
@@ -464,14 +412,6 @@ public class GameBackUpRounds
         );
     }
 
-    public void ResetRestoreBackupRound()
-    {
-        _resetRound = null;
-        _resetRoundTimer?.Kill();
-        _resetRoundTimer = null;
-        _restoreRoundVote = new Dictionary<ulong, bool>();
-    }
-
     public bool HasBackupRound(int round)
     {
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
@@ -508,32 +448,6 @@ public class GameBackUpRounds
         }
 
         return $"{_rootDir}/download-{match.id}.lock";
-    }
-
-    private void SendResetRoundMessage()
-    {
-        MatchManager? match = _matchService.GetCurrentMatch();
-
-        if (match == null)
-        {
-            return;
-        }
-
-        if (!IsResettingRound())
-        {
-            _resetRoundTimer?.Kill();
-            _resetRoundTimer = null;
-            return;
-        }
-
-        foreach (var player in MatchUtility.Players())
-        {
-            if (player.IsBot)
-            {
-                continue;
-            }
-            SetupResetMessage(player);
-        }
     }
 
     private string GetLockFilePath(Guid matchId)
