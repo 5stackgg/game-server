@@ -81,6 +81,11 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        if (MatchUtility.Players().Count == 1 && match.IsWarmup())
+        {
+            _gameServer.SendCommands(new[] { "mp_warmup_start" });
+        }
+        
         // TODO - coaches
         // dont allow them to join a team
         // if (
