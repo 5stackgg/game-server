@@ -17,6 +17,7 @@ public class FiveStackServiceCollection : IPluginServiceCollection<FiveStackPlug
         serviceCollection.AddSingleton<EnvironmentService>();
 
         serviceCollection.AddTransient<MatchManager>();
+        serviceCollection.AddTransient<VoteSystem>();
         serviceCollection.AddTransient<KnifeSystem>();
         serviceCollection.AddTransient<ReadySystem>();
         serviceCollection.AddTransient<CoachSystem>();

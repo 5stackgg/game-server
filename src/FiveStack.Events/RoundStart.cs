@@ -10,16 +10,31 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnRoundStart(EventRoundPrestart @event, GameEventInfo info)
     {
+        MatchManager? matchManager = _matchService.GetCurrentMatch();
+        if (matchManager == null)
+        {
+            return HookResult.Continue;
+        }
+
+        if (!matchManager.IsLive())
+        {
+            return HookResult.Continue;
+        }
+
         int currentPlayers = MatchUtility.Players().Count;
 
         int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
 
-        if (expectedPlayers != currentPlayers)
+        _logger.LogInformation(
+            "expectedPlayers: {expectedPlayers}, currentPlayers: {currentPlayers}",
+            expectedPlayers,
+            currentPlayers
+        );
+        if (currentPlayers < expectedPlayers)
         {
-            _matchService.GetCurrentMatch()?.PauseMatch("Waiting for players to reconnect");
+            matchManager.PauseMatch("Waiting for players to reconnect");
         }
 
-        _logger.LogInformation("Round started");
         return HookResult.Continue;
     }
 }

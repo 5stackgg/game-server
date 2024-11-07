@@ -112,30 +112,25 @@ public class MatchManager
 
     public void PauseMatch(string? message = null)
     {
-        if (!IsLive())
-        {
-            _logger.LogWarning("Match is not live, cannot pause");
-            return;
-        }
-
-        _gameServer.SendCommands(new[] { "mp_pause_match" });
+        _logger.LogInformation($"Pausing Match: {message}");
         UpdateMapStatus(eMapStatus.Paused);
 
         if (message != null)
         {
-            _gameServer.Message(HudDestination.Alert, message);
+            _gameServer.Message(HudDestination.Center, message);
         }
     }
 
     public void ResumeMatch(string? message = null)
     {
+        _logger.LogInformation($"Resuming Match: {message}");
         _gameServer.SendCommands(new[] { "mp_unpause_match" });
 
         UpdateMapStatus(isOverTime() ? eMapStatus.Overtime : eMapStatus.Live);
 
         if (message != null)
         {
-            _gameServer.Message(HudDestination.Alert, message);
+            _gameServer.Message(HudDestination.Center, message);
         }
     }
 
@@ -191,7 +186,8 @@ public class MatchManager
                 {
                     break;
                 }
-                StartLive();
+
+                _gameServer.SendCommands(new[] { "mp_pause_match" });
                 break;
             case eMapStatus.Live:
                 StartLive();
@@ -252,10 +248,6 @@ public class MatchManager
 
         foreach (var player in MatchUtility.Players())
         {
-            if (player.IsBot)
-            {
-                continue;
-            }
             EnforceMemberTeam(player);
         }
 
@@ -382,10 +374,8 @@ public class MatchManager
             return;
         }
 
-        if (IsKnife())
-        {
-            _gameServer.SendCommands(new[] { "mp_unpause_match" });
-        }
+        _logger.LogInformation("Starting Live Match");
+        _gameServer.SendCommands(new[] { "mp_unpause_match" });
 
         _gameServer.SendCommands(
             new[]
@@ -492,7 +482,8 @@ public class MatchManager
             if (_environmentService.AllowBots())
             {
                 int expectedPlayers = GetExpectedPlayerCount();
-                int currentPlayers = MatchUtility.Players().Count;
+                // we want to count the bots in this case
+                int currentPlayers = CounterStrikeSharp.API.Utilities.GetPlayers().Count;
 
                 if (currentPlayers >= expectedPlayers)
                 {
@@ -539,11 +530,6 @@ public class MatchManager
 
         foreach (var player in MatchUtility.Players())
         {
-            if (player.PlayerName == "SourceTV")
-            {
-                continue;
-            }
-
             MatchMember? member = MatchUtility.GetMemberFromLineup(_matchData, player);
             if (member == null)
             {

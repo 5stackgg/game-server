@@ -164,7 +164,7 @@ public class ReadySystem
 
         foreach (var player in MatchUtility.Players())
         {
-            if (player.IsBot || !player.IsValid || player.UserId == null)
+            if (player.UserId == null)
             {
                 continue;
             }
@@ -199,10 +199,6 @@ public class ReadySystem
 
         foreach (var player in MatchUtility.Players())
         {
-            if (player.IsBot)
-            {
-                continue;
-            }
             SetupReadyMessage(player);
         }
     }

@@ -3,6 +3,7 @@ using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -14,19 +15,24 @@ public class TimeoutSystem
     private readonly MatchService _matchService;
     private readonly GameBackUpRounds _backUpManagement;
     private readonly ILogger<TimeoutSystem> _logger;
+    private readonly IServiceProvider _serviceProvider;
+
+    public VoteSystem? resumeVote;
 
     public TimeoutSystem(
         ILogger<TimeoutSystem> logger,
         MatchEvents matchEvents,
         GameServer gameServer,
         MatchService matchService,
-        GameBackUpRounds backUpManagement
+        GameBackUpRounds backUpManagement,
+        IServiceProvider serviceProvider
     )
     {
         _logger = logger;
         _matchEvents = matchEvents;
         _gameServer = gameServer;
         _matchService = matchService;
+        _serviceProvider = serviceProvider;
         _backUpManagement = backUpManagement;
     }
 
@@ -73,20 +79,14 @@ public class TimeoutSystem
 
     public void RequestResume(CCSPlayerController? player)
     {
-        if (player == null && _backUpManagement.IsResettingRound())
+        if (player == null)
         {
-            _backUpManagement.VoteFailed();
+            _logger.LogInformation("Cancelling Voting");
+            resumeVote?.CancelVote();
+            _backUpManagement.restoreRoundVote?.CancelVote();
         }
 
-        MatchManager? match = _matchService.GetCurrentMatch();
-
-        // TODO - game rules has a bug where i cant detect if were paused
-        if (match == null || _backUpManagement.IsResettingRound())
-        {
-            return;
-        }
-
-        MatchData? matchData = match.GetMatchData();
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
 
         if (matchData == null)
         {
@@ -104,11 +104,32 @@ public class TimeoutSystem
             // TODO - coach support
             if (timeoutSetting != eTimeoutSettings.CoachAndPlayers)
             {
-                _gameServer.Message(
-                    HudDestination.Chat,
-                    $" {ChatColors.Red}you are not allowed to resume the match!",
-                    player
-                );
+                resumeVote = _serviceProvider.GetRequiredService(typeof(VoteSystem)) as VoteSystem;
+
+                if (resumeVote != null)
+                {
+                    resumeVote.StartVote(
+                        "Vote to Resume",
+                        (
+                            () =>
+                            {
+                                _matchService.GetCurrentMatch()?.ResumeMatch("Resume Vote Passed");
+                            }
+                        ),
+                        () =>
+                        {
+                            resumeVote = null;
+                        },
+                        true,
+                        30
+                    );
+
+                    if (player != null)
+                    {
+                        resumeVote.CastVote(player, true);
+                    }
+                }
+
                 return;
             }
 
