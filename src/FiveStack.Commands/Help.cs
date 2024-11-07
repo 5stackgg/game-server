@@ -46,6 +46,9 @@ public partial class FiveStackPlugin
         command.ReplyToCommand(
             $" {ChatColors.BlueGrey}Rules: {ChatColors.Default}{CommandUtility.PublicChatTrigger}rules"
         );
+        command.ReplyToCommand(
+            $" {ChatColors.BlueGrey}Restore Round: {ChatColors.Default}{CommandUtility.PublicChatTrigger}reset <round>"
+        );
     }
 
     [ConsoleCommand("css_rules", "Shows Rules for Match")]

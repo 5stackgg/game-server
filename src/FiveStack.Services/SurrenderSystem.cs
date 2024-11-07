@@ -102,6 +102,13 @@ public class SurrenderSystem
 
     public void SetupSurrender(CsTeam team, CCSPlayerController? player = null)
     {
+        _logger.LogInformation($"Setting up surrender vote for {team}");
+        if (surrenderingVote != null)
+        {
+            player?.PrintToConsole(" A surrender vote is already in progress");
+            return;
+        }
+
         surrenderingVote = _serviceProvider.GetRequiredService(typeof(VoteSystem)) as VoteSystem;
 
         if (surrenderingVote == null)
@@ -109,8 +116,10 @@ public class SurrenderSystem
             return;
         }
 
+        _logger.LogInformation($"Starting Surrender Vote for {team}");
         surrenderingVote.StartVote(
-            player == null  ? "Vote to Surrender" :$"{player.PlayerName} wants to to Surrender",
+            "Surrender",
+            new CsTeam[] { team },
             () =>
             {
                 Surrender(team);

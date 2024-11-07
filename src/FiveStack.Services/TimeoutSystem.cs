@@ -109,7 +109,8 @@ public class TimeoutSystem
                 if (resumeVote != null)
                 {
                     resumeVote.StartVote(
-                        $"{player.PlayerName} wants to Resume",
+                        "Resume",
+                        new CsTeam[] { CsTeam.CounterTerrorist, CsTeam.Terrorist },
                         (
                             () =>
                             {

@@ -14,6 +14,7 @@ public class VoteSystem
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
 
+    private CsTeam[] _allowedTeamsToVote;
     private Action? _voteFailedCallback;
     private Action? _voteSuccessCallback;
     private Dictionary<ulong, bool> _votes = new Dictionary<ulong, bool>();
@@ -33,6 +34,7 @@ public class VoteSystem
     // TODO - either all players , or one team
     public void StartVote(
         string voteMessage,
+        CsTeam[] allowedTeamsToVote,
         Action voteSuccessCallback,
         Action voteFailedCallback,
         bool captainOnly = false,
@@ -40,9 +42,10 @@ public class VoteSystem
     )
     {
         _voteMessage = voteMessage;
-        _captainOnly = captainOnly;
+        _allowedTeamsToVote = allowedTeamsToVote;
         _voteSuccessCallback = voteSuccessCallback;
         _voteFailedCallback = voteFailedCallback;
+        _captainOnly = captainOnly;
 
         KillTimers();
 
@@ -74,12 +77,13 @@ public class VoteSystem
     public void CancelVote()
     {
         KillTimers();
-        _logger.LogInformation("Cancelling Vote");
+        _logger.LogInformation($"Vote Cancelled: {_voteMessage}");
         _voteFailedCallback?.Invoke();
     }
 
     private void VoteFailed()
     {
+        _logger.LogInformation($"Vote Failed: {_voteMessage}");
         KillTimers();
 
         if (_voteFailedCallback == null)
@@ -87,14 +91,13 @@ public class VoteSystem
             return;
         }
 
-        _logger.LogInformation("Vote Failed");
-
         _gameServer.Message(HudDestination.Center, $" {ChatColors.Red}Vote Failed");
         _voteFailedCallback();
     }
 
     private void VoteSuccess()
     {
+        _logger.LogInformation($"Vote Success: {_voteMessage}");
         KillTimers();
 
         if (_voteSuccessCallback == null)
@@ -102,7 +105,6 @@ public class VoteSystem
             return;
         }
 
-        _logger.LogInformation("Vote Success");
         _gameServer.Message(HudDestination.Center, $" {ChatColors.Red}Vote Succesful");
         _voteSuccessCallback();
     }
@@ -115,6 +117,11 @@ public class VoteSystem
 
     public void CastVote(CCSPlayerController player, bool vote)
     {
+        if (!CanVote(player))
+        {
+            return;
+        }
+
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
 
         if (matchData == null)
@@ -138,15 +145,16 @@ public class VoteSystem
 
         _votes[player.SteamID] = vote;
 
-        CheckVotes();
-
         SendVoteMessage();
+
+        CheckVotes();
     }
 
     private void SendVoteMessage()
     {
         bool isCaptainVoteOnly = IsCaptainVoteOnly();
         var captains = GetCaptains();
+
         foreach (var player in MatchUtility.Players())
         {
             if (isCaptainVoteOnly && captains[player.Team] != player)
@@ -154,14 +162,25 @@ public class VoteSystem
                 continue;
             }
 
-            if (_votes.ContainsKey(player.SteamID))
+            string action = _voteMessage?.ToLower() ?? "";
+
+            if (!CanVote(player))
             {
+                player.PrintToCenterAlert($"The other team is voting to {action}");
+
                 continue;
             }
 
-            _gameServer.Message(
-                HudDestination.Alert,
-                $" {ChatColors.Yellow}{_voteMessage} [{_votes.Count}/{GetExpectedVoteCount()}] ({CommandUtility.PublicChatTrigger}y or {CommandUtility.PublicChatTrigger}n)"
+            if (_votes.ContainsKey(player.SteamID))
+            {
+                player.PrintToCenterAlert(
+                    $" Vote to {action} [{_votes.Count}/{GetExpectedVoteCount()}]"
+                );
+                continue;
+            }
+
+            player.PrintToCenterAlert(
+                $" Vote to {action} ({CommandUtility.PublicChatTrigger}y or {CommandUtility.PublicChatTrigger}n)"
             );
         }
     }
@@ -219,7 +238,12 @@ public class VoteSystem
 
         if (IsCaptainVoteOnly())
         {
-            if (totalYesVotes >= 1)
+            if (_votes.Count < 2)
+            {
+                return;
+            }
+
+            if (totalYesVotes >= 2)
             {
                 VoteSuccess();
                 return;
@@ -229,7 +253,7 @@ public class VoteSystem
             return;
         }
 
-        if (totalYesVotes >= (expectedVoteCount / 2) + 1)
+        if (totalYesVotes >= Math.Floor(expectedVoteCount / 2.0) + 1)
         {
             VoteSuccess();
             return;
@@ -241,13 +265,27 @@ public class VoteSystem
         }
     }
 
+    private bool CanVote(CCSPlayerController player)
+    {
+        return _allowedTeamsToVote.Contains(player.Team);
+    }
+
     private int GetExpectedVoteCount()
     {
+        var players = MatchUtility
+            .Players()
+            .Where(player =>
+            {
+                return CanVote(player);
+                ;
+            })
+            .ToList();
+
         if (IsCaptainVoteOnly())
         {
-            return Math.Min(MatchUtility.Players().Count, 2);
+            return Math.Min(players.Count, 2);
         }
 
-        return MatchUtility.Players().Count;
+        return players.Count;
     }
 }

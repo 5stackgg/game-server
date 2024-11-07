@@ -288,7 +288,8 @@ public class GameBackUpRounds
             _logger.LogInformation($"Starting vote to restore round {round}");
 
             restoreRoundVote.StartVote(
-                $" {ChatColors.Red}Vote to Restore Round {round}",
+                $"Restore Round to {round}",
+                new CsTeam[] { CsTeam.CounterTerrorist, CsTeam.Terrorist },
                 () =>
                 {
                     _resetRound = null;
