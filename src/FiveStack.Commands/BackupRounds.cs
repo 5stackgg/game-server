@@ -63,8 +63,6 @@ public partial class FiveStackPlugin
 
         _gameServer.SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFile}" });
 
-        _logger.LogInformation($"LETS GO Round {round}");
-
         await Task.Delay(10 * 1000);
 
         Server.NextFrame(() =>

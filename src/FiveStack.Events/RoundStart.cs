@@ -25,11 +25,6 @@ public partial class FiveStackPlugin
 
         int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
 
-        _logger.LogInformation(
-            "expectedPlayers: {expectedPlayers}, currentPlayers: {currentPlayers}",
-            expectedPlayers,
-            currentPlayers
-        );
         if (currentPlayers < expectedPlayers)
         {
             matchManager.PauseMatch("Waiting for players to reconnect");

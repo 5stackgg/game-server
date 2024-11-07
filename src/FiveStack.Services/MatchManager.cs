@@ -91,8 +91,7 @@ public class MatchManager
 
     public bool IsPaused()
     {
-        return _currentMapStatus == eMapStatus.Paused
-            || (MatchUtility.Rules()?.GamePaused ?? false);
+        return _currentMapStatus == eMapStatus.Paused;
     }
 
     public bool isOverTime()
@@ -125,6 +124,11 @@ public class MatchManager
     {
         _logger.LogInformation($"Resuming Match: {message}");
         _gameServer.SendCommands(new[] { "mp_unpause_match" });
+
+        if (!IsPaused())
+        {
+            return;
+        }
 
         UpdateMapStatus(isOverTime() ? eMapStatus.Overtime : eMapStatus.Live);
 

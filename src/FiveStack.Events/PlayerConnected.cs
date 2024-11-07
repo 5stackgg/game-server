@@ -57,6 +57,8 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        match.EnforceMemberTeam(player, CsTeam.None);
+
         _matchEvents.PublishGameEvent(
             "player-connected",
             new Dictionary<string, object>

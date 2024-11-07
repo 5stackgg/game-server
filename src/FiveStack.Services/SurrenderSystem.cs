@@ -94,6 +94,7 @@ public class SurrenderSystem
         if (
             _disconnectTimers[CsTeam.Terrorist].Count == 0
             && _disconnectTimers[CsTeam.CounterTerrorist].Count == 0
+            && _matchService.GetCurrentMatch()?.IsPaused() == true
         )
         {
             _matchService.GetCurrentMatch()?.ResumeMatch();
