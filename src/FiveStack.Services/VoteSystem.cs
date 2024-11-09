@@ -14,7 +14,7 @@ public class VoteSystem
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
 
-    private CsTeam[] _allowedTeamsToVote;
+    private CsTeam[]? _allowedTeamsToVote;
     private Action? _voteFailedCallback;
     private Action? _voteSuccessCallback;
     private Dictionary<ulong, bool> _votes = new Dictionary<ulong, bool>();
@@ -267,6 +267,11 @@ public class VoteSystem
 
     private bool CanVote(CCSPlayerController player)
     {
+        if (_allowedTeamsToVote == null)
+        {
+            return true;
+        }
+
         return _allowedTeamsToVote.Contains(player.Team);
     }
 

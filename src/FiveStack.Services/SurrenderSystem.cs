@@ -77,6 +77,7 @@ public class SurrenderSystem
     // we dont pass the team in because they may not be on the team immediately after reconnecting
     public void CancelDisconnectTimer(ulong steamId)
     {
+        bool canceledTimer = false;
         foreach (var _team in MatchUtility.Teams())
         {
             CsTeam team = TeamUtility.TeamNumToCSTeam(_team.TeamNum);
@@ -87,16 +88,21 @@ public class SurrenderSystem
                 {
                     _disconnectTimers[team][steamId].Kill();
                     _disconnectTimers[team].Remove(steamId);
+                    canceledTimer = true;
                 }
             }
         }
 
-        if (
-            _disconnectTimers[CsTeam.Terrorist].Count == 0
-            && _disconnectTimers[CsTeam.CounterTerrorist].Count == 0
-            && _matchService.GetCurrentMatch()?.IsPaused() == true
-        )
+        if (!canceledTimer)
         {
+            return;
+        }
+
+        int currentPlayers = MatchUtility.Players().Count;
+
+        int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
+
+        if(_matchService.GetCurrentMatch()?.IsPaused() == true && currentPlayers == expectedPlayers) {
             _matchService.GetCurrentMatch()?.ResumeMatch();
         }
     }
