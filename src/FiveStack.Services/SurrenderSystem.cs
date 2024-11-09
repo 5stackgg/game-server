@@ -1,5 +1,4 @@
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
@@ -34,14 +33,9 @@ public class SurrenderSystem
         _matchEvents = matchEvents;
         _matchService = matchService;
         _serviceProvider = serviceProvider;
-        ResetTeamSurrender(CsTeam.Terrorist);
-        ResetTeamSurrender(CsTeam.CounterTerrorist);
+        ResetSurrender();
     }
 
-    private void ResetTeamSurrender(CsTeam team)
-    {
-        _disconnectTimers[team] = new Dictionary<ulong, Timer>();
-    }
 
     public void SetupDisconnectTimer(CsTeam team, ulong steamId)
     {
@@ -53,24 +47,8 @@ public class SurrenderSystem
                 {
                     SetupSurrender(team);
                     PlayerAbandonedMatch(steamId);
-                },
-                TimerFlags.REPEAT
-            );
-        }
-    }
-
-    public void ResetDisconnectTimers()
-    {
-        foreach (var team in _disconnectTimers.Keys)
-        {
-            foreach (var steamId in _disconnectTimers[team].Keys.ToList())
-            {
-                if (_disconnectTimers[team][steamId] != null)
-                {
-                    _disconnectTimers[team][steamId].Kill();
                 }
-            }
-            _disconnectTimers[team].Clear();
+            );
         }
     }
 
@@ -103,6 +81,7 @@ public class SurrenderSystem
         int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
 
         if(_matchService.GetCurrentMatch()?.IsPaused() == true && currentPlayers == expectedPlayers) {
+            ResetSurrender();
             _matchService.GetCurrentMatch()?.ResumeMatch();
         }
     }
@@ -130,19 +109,35 @@ public class SurrenderSystem
             () =>
             {
                 Surrender(team);
-                surrenderingVote = null;
-                ResetTeamSurrender(CsTeam.Terrorist);
-                ResetTeamSurrender(CsTeam.CounterTerrorist);
+                ResetSurrender();
             },
             () =>
             {
-                surrenderingVote = null;
-                ResetTeamSurrender(CsTeam.Terrorist);
-                ResetTeamSurrender(CsTeam.CounterTerrorist);
+                ResetSurrender();
             },
             false,
             30
         );
+    }
+
+    public void ResetSurrender()
+    {
+        surrenderingVote = null;
+
+        foreach (var team in _disconnectTimers.Keys)
+        {
+            foreach (var timer in _disconnectTimers[team].Values)
+            {
+                timer?.Kill();
+            }
+            _disconnectTimers[team].Clear();
+        }
+
+        _disconnectTimers = new Dictionary<CsTeam, Dictionary<ulong, Timer>>()
+        {
+            { CsTeam.Terrorist, new Dictionary<ulong, Timer>() },
+            { CsTeam.CounterTerrorist, new Dictionary<ulong, Timer>() }
+        };
     }
 
     public bool IsSurrendering()
