@@ -149,7 +149,12 @@ public class KnifeSystem
             $"captain picked to {ChatColors.Red}swap {ChatColors.Default}sides"
         );
 
-        _gameServer.SendCommands(new[] { "mp_swapteams", "mp_restartgame 1" });
+        _gameServer.SendCommands(new[] { "mp_swapteams" });
+
+        Server.NextFrame(() =>
+        {
+            _gameServer.SendCommands(new[] { "mp_restartgame 1" });
+        });
 
         _matchEvents.PublishGameEvent("switch", new Dictionary<string, object>());
 

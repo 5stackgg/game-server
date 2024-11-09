@@ -470,6 +470,11 @@ public class MatchManager
                 );
             }
 
+            if (IsWarmup() || (MatchUtility.Rules()?.FreezePeriod == true))
+            {
+                player.Respawn();
+            }
+
             captainSystem.IsCaptain(player, expectedTeam);
         });
     }
