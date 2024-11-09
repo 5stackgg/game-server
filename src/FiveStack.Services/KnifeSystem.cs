@@ -87,8 +87,6 @@ public class KnifeSystem
     public void Stay(CCSPlayerController player)
     {
         _logger.LogInformation("Knife round staying");
-        _knifeRoundTimer?.Kill();
-        _knifeRoundTimer = null;
 
         CsTeam winningTeam = GetWinningTeam() ?? CsTeam.None;
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -108,6 +106,8 @@ public class KnifeSystem
             return;
         }
 
+        ResetKnifeRound();
+
         _gameServer.Message(
             HudDestination.Alert,
             $"captain picked to {ChatColors.Red}stay {ChatColors.Default}sides"
@@ -121,8 +121,6 @@ public class KnifeSystem
     public void Switch(CCSPlayerController player)
     {
         _logger.LogInformation("Knife round switching");
-        _knifeRoundTimer?.Kill();
-        _knifeRoundTimer = null;
 
         CsTeam winningTeam = GetWinningTeam() ?? CsTeam.None;
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -144,6 +142,8 @@ public class KnifeSystem
             return;
         }
 
+        ResetKnifeRound();
+
         _gameServer.Message(
             HudDestination.Alert,
             $"captain picked to {ChatColors.Red}swap {ChatColors.Default}sides"
@@ -163,6 +163,8 @@ public class KnifeSystem
 
     public void Skip()
     {
+        ResetKnifeRound();
+
         MatchManager? match = _matchService.GetCurrentMatch();
 
         if (match == null || !match.IsKnife())
@@ -178,5 +180,12 @@ public class KnifeSystem
     public CsTeam? GetWinningTeam()
     {
         return _winningTeam;
+    }
+
+    public void ResetKnifeRound()
+    {
+        _knifeRoundTimer?.Kill();
+        _knifeRoundTimer = null;
+        _winningTeam = null;
     }
 }

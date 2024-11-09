@@ -339,6 +339,8 @@ public class MatchManager
 
     private void StartWarmup()
     {
+        knifeSystem.ResetKnifeRound();
+
         if (_matchData == null)
         {
             return;
@@ -373,7 +375,9 @@ public class MatchManager
 
     private async void StartLive()
     {
-        if (_matchData == null || _matchData == null)
+        knifeSystem.ResetKnifeRound();
+
+        if (_matchData == null)
         {
             return;
         }
