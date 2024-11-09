@@ -261,7 +261,7 @@ public class MatchManager
         }
     }
 
-    private void SetupTeamNames()
+    public void SetupTeamNames()
     {
         MatchMap? _currentMap = GetCurrentMap();
         if (_matchData == null || _currentMap == null)
