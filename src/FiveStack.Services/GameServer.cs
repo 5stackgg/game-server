@@ -64,29 +64,34 @@ public class GameServer
         return MatchUtility.Rules()?.TotalRoundsPlayed ?? 0;
     }
 
-    public async void Ping()
+    public void Ping()
     {
         string? serverId = _environmentService.GetServerId();
         string? apiPassword = _environmentService.GetServerApiPassword();
 
-        string endpoint = $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}";
-
-        using (HttpClient httpClient = new HttpClient())
+        Server.NextFrame(async () =>
         {
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-                "Bearer",
-                apiPassword
-            );
+            string endpoint =
+                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={Server.MapName}";
+            _logger.LogInformation($"Pinging {endpoint}");
 
-            try
+            using (HttpClient httpClient = new HttpClient())
             {
-                HttpResponseMessage response = await httpClient.GetAsync(endpoint);
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                    "Bearer",
+                    apiPassword
+                );
+
+                try
+                {
+                    HttpResponseMessage response = await httpClient.GetAsync(endpoint);
+                }
+                catch (HttpRequestException ex)
+                {
+                    _logger.LogError($"unable to ping {ex.Message}");
+                    return;
+                }
             }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogError($"unable to ping {ex.Message}");
-                return;
-            }
-        }
+        });
     }
 }
