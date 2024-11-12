@@ -73,7 +73,6 @@ public class GameServer
         {
             string endpoint =
                 $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={Server.MapName}";
-            _logger.LogInformation($"Pinging {endpoint}");
 
             using (HttpClient httpClient = new HttpClient())
             {
