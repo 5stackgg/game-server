@@ -153,9 +153,10 @@ public class KnifeSystem
 
         var currentMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
 
-        if(currentMap != null) {   
-            currentMap.lineup_1_side = currentMap.lineup_1_side == "CT" ? "T" : "CT"; 
-            currentMap.lineup_2_side = currentMap.lineup_2_side == "CT" ? "T" : "CT"; 
+        if (currentMap != null)
+        {
+            currentMap.lineup_1_side = currentMap.lineup_1_side == "CT" ? "T" : "CT";
+            currentMap.lineup_2_side = currentMap.lineup_2_side == "CT" ? "T" : "CT";
             _matchService.GetCurrentMatch()?.SetupTeamNames();
         }
 

@@ -85,7 +85,7 @@ public partial class FiveStackPlugin
         {
             _gameServer.SendCommands(new[] { "mp_warmup_start" });
         }
-        
+
         // TODO - coaches
         // dont allow them to join a team
         // if (

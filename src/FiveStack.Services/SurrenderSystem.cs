@@ -36,7 +36,6 @@ public class SurrenderSystem
         ResetSurrender();
     }
 
-
     public void SetupDisconnectTimer(CsTeam team, ulong steamId)
     {
         if (_matchService.GetCurrentMatch()?.IsLive() == true)
@@ -80,7 +79,11 @@ public class SurrenderSystem
 
         int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
 
-        if(_matchService.GetCurrentMatch()?.IsPaused() == true && currentPlayers == expectedPlayers) {
+        if (
+            _matchService.GetCurrentMatch()?.IsPaused() == true
+            && currentPlayers == expectedPlayers
+        )
+        {
             ResetSurrender();
             _matchService.GetCurrentMatch()?.ResumeMatch();
         }
@@ -136,7 +139,7 @@ public class SurrenderSystem
         _disconnectTimers = new Dictionary<CsTeam, Dictionary<ulong, Timer>>()
         {
             { CsTeam.Terrorist, new Dictionary<ulong, Timer>() },
-            { CsTeam.CounterTerrorist, new Dictionary<ulong, Timer>() }
+            { CsTeam.CounterTerrorist, new Dictionary<ulong, Timer>() },
         };
     }
 
