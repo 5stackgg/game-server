@@ -47,6 +47,7 @@ ENV VALIDATE=false
 ENV USER="steam"
 
 ENV SERVER_ID=""
+ENV DEFAULT_MAP="de_inferno"
 
 ENV METAMOD_URL=https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1314-linux.tar.gz
 ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v284/counterstrikesharp-with-runtime-build-284-linux-5c9d38b.zip
