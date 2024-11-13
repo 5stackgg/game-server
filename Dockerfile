@@ -50,7 +50,7 @@ ENV SERVER_ID=""
 ENV DEFAULT_MAP="de_inferno"
 
 ENV METAMOD_URL=https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1314-linux.tar.gz
-ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v284/counterstrikesharp-with-runtime-build-284-linux-5c9d38b.zip
+ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v287/counterstrikesharp-with-runtime-build-287-linux-6cf124b.zip
 
 RUN  echo "deb http://deb.debian.org/debian bookworm contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
 	apt-get update && apt-get -y upgrade && \
