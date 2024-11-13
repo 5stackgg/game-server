@@ -135,12 +135,6 @@ public class SurrenderSystem
             }
             _disconnectTimers[team].Clear();
         }
-
-        _disconnectTimers = new Dictionary<CsTeam, Dictionary<ulong, Timer>>()
-        {
-            { CsTeam.Terrorist, new Dictionary<ulong, Timer>() },
-            { CsTeam.CounterTerrorist, new Dictionary<ulong, Timer>() },
-        };
     }
 
     public bool IsSurrendering()

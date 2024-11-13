@@ -32,11 +32,17 @@ public class ReadySystem
 
     public void Setup()
     {
+        ResetReady();
         SendReadyStatusMessage();
         if (_readyStatusTimer == null)
         {
             _readyStatusTimer = TimerUtility.AddTimer(3, SendReadyStatusMessage, TimerFlags.REPEAT);
         }
+    }
+
+    public void ResetReady()
+    {
+        _readyPlayers.Clear();
     }
 
     public void ToggleReady(CCSPlayerController player)
