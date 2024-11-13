@@ -148,7 +148,9 @@ public class MatchManager
 
         _logger.LogInformation($"Update Map Status {_currentMapStatus} -> {status}");
 
-        if (_currentMapStatus == eMapStatus.Warmup && status != eMapStatus.Warmup)
+        var currentMap = GetCurrentMap();
+
+        if (_currentMapStatus == eMapStatus.Warmup && status != eMapStatus.Warmup && currentMap != null && currentMap.order == 1)
         {
             SendUpdatedMatchLineups();
         }
@@ -169,7 +171,7 @@ public class MatchManager
                     return;
                 }
 
-                var currentMap = GetCurrentMap();
+            
                 if (currentMap == null)
                 {
                     break;
