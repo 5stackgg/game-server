@@ -181,7 +181,8 @@ public class MatchManager
                 }
                 else
                 {
-                    StartLive();
+                    UpdateMapStatus(eMapStatus.Live);
+                    return;
                 }
 
                 break;
