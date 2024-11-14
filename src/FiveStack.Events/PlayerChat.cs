@@ -1,6 +1,5 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
-using FiveStack.Entities;
 
 namespace FiveStack;
 
@@ -14,7 +13,6 @@ public partial class FiveStackPlugin
         }
 
         MatchManager? match = _matchService.GetCurrentMatch();
-        MatchMap? currentMap = match?.GetCurrentMap();
 
         if (match == null)
         {

@@ -66,6 +66,9 @@ public partial class FiveStackPlugin : BasePlugin
 
         AddCommandListener("say", OnPlayerChat, HookMode.Post);
 
+        AddCommandListener("say", GagPlayer, HookMode.Pre);
+        AddCommandListener("say_team", GagPlayer, HookMode.Pre);
+
         Server.NextFrame(() =>
         {
             _gameServer.Message(HudDestination.Alert, "5Stack Loaded");

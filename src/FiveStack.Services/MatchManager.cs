@@ -2,6 +2,7 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Utils;
+using CounterStrikeSharp.API.ValveConstants.Protobuf;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
@@ -150,7 +151,12 @@ public class MatchManager
 
         var currentMap = GetCurrentMap();
 
-        if (_currentMapStatus == eMapStatus.Warmup && status != eMapStatus.Warmup && currentMap != null && currentMap.order == 1)
+        if (
+            _currentMapStatus == eMapStatus.Warmup
+            && status != eMapStatus.Warmup
+            && currentMap != null
+            && currentMap.order == 1
+        )
         {
             SendUpdatedMatchLineups();
         }
@@ -171,7 +177,6 @@ public class MatchManager
                     return;
                 }
 
-            
                 if (currentMap == null)
                 {
                     break;
@@ -433,6 +438,28 @@ public class MatchManager
 
         Server.NextFrame(() =>
         {
+            MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, player);
+
+            if (member == null)
+            {
+                return;
+            }
+
+            if (member.is_banned)
+            {
+                player.Disconnect(NetworkDisconnectionReason.NETWORK_DISCONNECT_BANADDED);
+                return;
+            }
+
+            if (member.is_muted)
+            {
+                player.VoiceFlags = VoiceFlags.Muted;
+            }
+            else
+            {
+                player.VoiceFlags = VoiceFlags.Normal;
+            }
+
             Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
 
             if (lineup_id == null)
