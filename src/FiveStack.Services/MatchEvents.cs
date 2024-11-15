@@ -17,6 +17,11 @@ public class MatchEvents
     private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
 
+    private Queue<(Guid matchId, object? data)> _pendingEvents = new();
+    private bool _isRetrying = false;
+    private readonly int _maxRetries = 3;
+    private readonly TimeSpan _retryDelay = TimeSpan.FromSeconds(5);
+
     public MatchEvents(
         ILogger<MatchEvents> logger,
         EnvironmentService environmentService,
@@ -211,18 +216,39 @@ public class MatchEvents
 
     private async Task Publish<T>(Guid matchId, EventData<T> data)
     {
-        if (_webSocket == null || _webSocket.State == WebSocketState.Closed)
+        data.matchId = matchId;
+        await PublishWithRetry(matchId, data);
+    }
+
+    private async Task PublishWithRetry<T>(Guid matchId, T data, int attemptCount = 0)
+    {
+        if (attemptCount >= _maxRetries)
         {
-            _logger.LogWarning($"Trying to publish but not connected");
+            _logger.LogWarning($"Failed to publish after {_maxRetries} attempts, queueing for later retry");
+            _pendingEvents.Enqueue((matchId, data));
+            if (!_isRetrying)
+            {
+                _ = RetryPendingEvents();
+            }
             return;
         }
-        data.matchId = matchId;
+
+        if (_webSocket == null || _webSocket.State == WebSocketState.Closed)
+        {
+            _logger.LogWarning($"WebSocket not connected, queueing event");
+            _pendingEvents.Enqueue((matchId, data));
+            if (!_isRetrying)
+            {
+                _ = RetryPendingEvents();
+            }
+            return;
+        }
 
         try
         {
             var message = JsonSerializer.Serialize(new { @event = "events", data });
             var buffer = Encoding.UTF8.GetBytes(message);
-            await _webSocket!.SendAsync(
+            await _webSocket.SendAsync(
                 new ArraySegment<byte>(buffer),
                 WebSocketMessageType.Text,
                 true,
@@ -231,7 +257,41 @@ public class MatchEvents
         }
         catch (Exception error)
         {
-            _logger.LogError($"Error: {error.Message}");
+            _logger.LogError($"Error publishing event (attempt {attemptCount + 1}): {error.Message}");
+            await Task.Delay(_retryDelay);
+            await PublishWithRetry(matchId, data, attemptCount + 1);
         }
+    }
+
+    private async Task RetryPendingEvents()
+    {
+        if (_isRetrying) {
+            return;
+        }
+        
+        _isRetrying = true;
+        
+        while (_pendingEvents.Count > 0)
+        {
+            if (_webSocket?.State == WebSocketState.Open)
+            {
+                var (matchId, data) = _pendingEvents.Peek();
+                try
+                {
+                    await PublishWithRetry(matchId, data);
+                    _pendingEvents.Dequeue();
+                }
+                catch
+                {
+                    await Task.Delay(_retryDelay);
+                }
+            }
+            else
+            {
+                await Task.Delay(_retryDelay);
+            }
+        }
+
+        _isRetrying = false;
     }
 }
