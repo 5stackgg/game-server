@@ -174,8 +174,8 @@ public class MatchEvents
             _webSocket.Options.SetRequestHeader(
                 "Authorization",
                 $"Basic {Convert.ToBase64String(
-                System.Text.Encoding.UTF8.GetBytes($"{serverId}:{serverApiPassword}")
-            )}"
+                    System.Text.Encoding.UTF8.GetBytes($"{serverId}:{serverApiPassword}")
+                )}"
             );
 
             var uri = new Uri($"{_environmentService.GetWsUrl()}/matches");
