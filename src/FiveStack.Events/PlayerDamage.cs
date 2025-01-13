@@ -47,8 +47,6 @@ public partial class FiveStackPlugin
             }
         }
 
-        Console.WriteLine($"POST PlayerDamage: {damageDealt}");
-
         _matchEvents.PublishGameEvent(
             "damage",
             new Dictionary<string, object>
