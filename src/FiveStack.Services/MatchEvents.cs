@@ -1,6 +1,7 @@
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using FiveStack.Entities;
 using FiveStack.Enums;
 using Microsoft.Extensions.Logging;
 
@@ -12,6 +13,9 @@ public class MatchEvents
     private ClientWebSocket? _webSocket;
     private CancellationTokenSource? _connectionCts;
     private bool _manualDisconnect = false;
+    private Dictionary<Guid, EventData<Dictionary<string, object>>> _pendingMessages = new();
+    private System.Timers.Timer _retryTimer;
+    private const int RETRY_INTERVAL_MS = 5000;
 
     private readonly ILogger<MatchEvents> _logger;
     private readonly MatchService _matchService;
@@ -26,6 +30,10 @@ public class MatchEvents
         _logger = logger;
         _matchService = matchService;
         _environmentService = environmentService;
+
+        _retryTimer = new System.Timers.Timer(RETRY_INTERVAL_MS);
+        _retryTimer.Elapsed += async (sender, e) => await RetryPendingMessages();
+
         _ = ConnectAndMonitor();
     }
 
@@ -33,6 +41,7 @@ public class MatchEvents
     {
         public string @event { get; set; } = "";
         public Guid matchId { get; set; } = Guid.Empty;
+        public Guid messageId { get; set; } = Guid.Empty;
         public T? data { get; set; }
     }
 
@@ -64,6 +73,8 @@ public class MatchEvents
 
     private async Task ConnectAndMonitor()
     {
+        _retryTimer.Start();
+
         if (_isMonitoring || _manualDisconnect)
         {
             return;
@@ -88,7 +99,7 @@ public class MatchEvents
 
     private async Task MonitorConnection()
     {
-        var buffer = new byte[1024];
+        var buffer = new byte[64];
         while (_webSocket?.State == WebSocketState.Open)
         {
             try
@@ -102,6 +113,26 @@ public class MatchEvents
                 {
                     _logger.LogInformation("WebSocket closed, attempting to reconnect");
                     break;
+                }
+
+                if (result.MessageType == WebSocketMessageType.Text)
+                {
+                    var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    try
+                    {
+                        var response = JsonSerializer.Deserialize<FiveStackMessageResponse>(
+                            message
+                        );
+
+                        if (response != null && response.messageId != Guid.Empty)
+                        {
+                            _pendingMessages.Remove(response.messageId);
+                        }
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogError($"Failed to parse websocket message: {ex.Message}");
+                    }
                 }
             }
             catch (WebSocketException)
@@ -197,6 +228,7 @@ public class MatchEvents
         _manualDisconnect = true;
         _connectionCts?.Cancel();
         _isMonitoring = false;
+        _retryTimer.Stop();
 
         if (_webSocket != null && _webSocket.State == WebSocketState.Open)
         {
@@ -209,6 +241,38 @@ public class MatchEvents
         }
     }
 
+    private async Task RetryPendingMessages()
+    {
+        var messagesToRetry = _pendingMessages.ToList();
+
+        foreach (var message in messagesToRetry)
+        {
+            try
+            {
+                var jsonMessage = JsonSerializer.Serialize(
+                    new { @event = "events", data = message.Value }
+                );
+                var buffer = Encoding.UTF8.GetBytes(jsonMessage);
+
+                if (_webSocket?.State == WebSocketState.Open)
+                {
+                    await _webSocket.SendAsync(
+                        new ArraySegment<byte>(buffer),
+                        WebSocketMessageType.Text,
+                        true,
+                        _connectionCts?.Token ?? CancellationToken.None
+                    );
+
+                    _pendingMessages[message.Key] = message.Value;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error retrying message {message.Key}: {ex.Message}");
+            }
+        }
+    }
+
     private async Task Publish<T>(Guid matchId, EventData<T> data)
     {
         if (_webSocket == null || _webSocket.State == WebSocketState.Closed)
@@ -216,7 +280,14 @@ public class MatchEvents
             _logger.LogWarning($"Trying to publish but not connected");
             return;
         }
+
         data.matchId = matchId;
+        data.messageId = Guid.NewGuid();
+
+        if (data is EventData<Dictionary<string, object>> typedData)
+        {
+            _pendingMessages[data.messageId] = typedData;
+        }
 
         try
         {
