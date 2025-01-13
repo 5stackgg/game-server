@@ -16,6 +16,7 @@ public partial class FiveStackPlugin
         if (
             @event.Userid == null
             || !@event.Userid.IsValid
+            || @event.Userid.IsBot
             || match == null
             || matchData?.current_match_map_id == null
             || match.IsLive() == false
