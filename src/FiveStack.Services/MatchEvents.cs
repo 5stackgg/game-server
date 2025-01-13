@@ -248,8 +248,6 @@ public class MatchEvents
 
         foreach (var message in messagesToRetry)
         {
-            _logger.LogInformation($"Retrying message {message.Key} {message.Value.@event}");
-
             try
             {
                 var jsonMessage = JsonSerializer.Serialize(
@@ -289,7 +287,6 @@ public class MatchEvents
 
         if (data is EventData<Dictionary<string, object>> typedData)
         {
-            _logger.LogInformation($"Storing message {data.messageId}: {typedData.@event}");
             _pendingMessages[data.messageId] = typedData;
         }
 
