@@ -18,6 +18,9 @@ fi
 echo "---Update SteamCMD---"
 "${STEAMCMD_DIR}/steamcmd.sh" +login anonymous +quit
 
+# Remove old steamapps
+rm -rf "${BASE_SERVER_DIR}/steamapps"
+
 # Update Server
 echo "---Update Server---"
 "${STEAMCMD_DIR}/steamcmd.sh" +force_install_dir "${BASE_SERVER_DIR}" +login anonymous +app_update "${GAME_ID}" ${VALIDATE:+validate} +quit
