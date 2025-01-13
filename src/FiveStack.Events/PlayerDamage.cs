@@ -16,7 +16,6 @@ public partial class FiveStackPlugin
         if (
             @event.Userid == null
             || !@event.Userid.IsValid
-            || @event.Userid.IsBot
             || match == null
             || matchData?.current_match_map_id == null
             || match.IsLive() == false
@@ -38,6 +37,18 @@ public partial class FiveStackPlugin
         var attackerLocation = attacker?.PlayerPawn.Value?.AbsOrigin;
         var attackedLocation = attacked?.PlayerPawn?.Value?.AbsOrigin;
 
+        var damageDealt = @event.DmgHealth;
+
+        if (attacked != null)
+        {
+            if (attacked.PlayerPawn.Value.Health < 0)
+            {
+                damageDealt = damageDealt + attacked.PlayerPawn.Value.Health;
+            }
+        }
+
+        Console.WriteLine($"POST PlayerDamage: {damageDealt}");
+
         _matchEvents.PublishGameEvent(
             "damage",
             new Dictionary<string, object>
@@ -58,7 +69,7 @@ public partial class FiveStackPlugin
                         : ""
                 },
                 { "weapon", $"{(@event.Weapon.Length == 0 ? "worldent" : @event.Weapon)}" },
-                { "damage", @event.DmgHealth },
+                { "damage", damageDealt },
                 { "damage_armor", @event.DmgArmor },
                 { "hitgroup", $"{DamageUtility.HitGroupToString(@event.Hitgroup)}" },
                 { "health", @event.Health },
