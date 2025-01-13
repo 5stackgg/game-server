@@ -38,6 +38,16 @@ public partial class FiveStackPlugin
         var attackerLocation = attacker?.PlayerPawn.Value?.AbsOrigin;
         var attackedLocation = attacked?.PlayerPawn?.Value?.AbsOrigin;
 
+        var damageDealt = @event.DmgHealth;
+
+        if (attacked != null)
+        {
+            if (attacked.PlayerPawn.Value.Health < 0)
+            {
+                damageDealt = damageDealt + attacked.PlayerPawn.Value.Health;
+            }
+        }
+
         _matchEvents.PublishGameEvent(
             "damage",
             new Dictionary<string, object>
@@ -58,7 +68,7 @@ public partial class FiveStackPlugin
                         : ""
                 },
                 { "weapon", $"{(@event.Weapon.Length == 0 ? "worldent" : @event.Weapon)}" },
-                { "damage", @event.DmgHealth },
+                { "damage", damageDealt },
                 { "damage_armor", @event.DmgArmor },
                 { "hitgroup", $"{DamageUtility.HitGroupToString(@event.Hitgroup)}" },
                 { "health", @event.Health },

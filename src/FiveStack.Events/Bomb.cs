@@ -41,7 +41,7 @@ public partial class FiveStackPlugin
     }
 
     [GameEventHandler]
-    public HookResult BombPlaned(EventBombDefused @event, GameEventInfo info)
+    public HookResult BombDefused(EventBombDefused @event, GameEventInfo info)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchData? matchData = match?.GetMatchData();
