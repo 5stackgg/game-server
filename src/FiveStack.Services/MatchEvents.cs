@@ -99,7 +99,7 @@ public class MatchEvents
 
     private async Task MonitorConnection()
     {
-        var buffer = new byte[64];
+        var buffer = new byte[38];
         while (_webSocket?.State == WebSocketState.Open)
         {
             try
@@ -117,21 +117,17 @@ public class MatchEvents
 
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
-                    var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    var messageIdStr = Encoding.UTF8.GetString(buffer, 0, result.Count);
                     try
                     {
-                        var response = JsonSerializer.Deserialize<FiveStackMessageResponse>(
-                            message
-                        );
-
-                        if (response != null && response.messageId != Guid.Empty)
-                        {
-                            _pendingMessages.Remove(response.messageId);
-                        }
+                        var messageId = Guid.Parse(messageIdStr.Trim('"'));
+                        _pendingMessages.Remove(messageId);
                     }
-                    catch (JsonException ex)
+                    catch (Exception ex)
                     {
-                        _logger.LogError($"Failed to parse websocket message: {ex.Message}");
+                        _logger.LogError(
+                            $"Failed to parse messageId '{messageIdStr}': {ex.Message}"
+                        );
                     }
                 }
             }
