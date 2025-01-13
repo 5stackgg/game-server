@@ -99,7 +99,7 @@ public class MatchEvents
 
     private async Task MonitorConnection()
     {
-        var buffer = new byte[128];
+        var buffer = new byte[64];
         while (_webSocket?.State == WebSocketState.Open)
         {
             try
