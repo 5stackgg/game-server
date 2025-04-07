@@ -315,7 +315,7 @@ public class MatchManager
 
         int? gameMode = ConVar.Find("game_mode")?.GetPrimitiveValue<int>();
 
-        if (_matchData.options.type == "Wingman")
+        if (_matchData.options.type == "Wingman" || _matchData.options.type == "Duel")
         {
             _gameServer.SendCommands(new[] { "game_type 0", "game_mode 2" });
 
@@ -342,7 +342,17 @@ public class MatchManager
             return 10;
         }
 
-        return _matchData.options.type == "Wingman" ? 4 : 10;
+        if (_matchData.options.type == "Wingman")
+        {
+            return 4;
+        }
+
+        if (_matchData.options.type == "Duel")
+        {
+            return 2;
+        }
+
+        return 10;
     }
 
     private void StartWarmup()
