@@ -250,7 +250,7 @@ public class MatchManager
 
         _logger.LogInformation($"Game State {_currentMap.status} on {_currentMap.map.label} {_currentMap.map.name}  / {Server.MapName}");
 
-        string addonID = GetAddonID();
+        string addonID = GetWorkshopID();
         _logger.LogInformation($"Addon ID: {addonID}");
 
 
@@ -281,7 +281,7 @@ public class MatchManager
         }
     }
 
-    private string GetAddonID()
+    private string GetWorkshopID()
     {
         IntPtr networkGameServer = _networkServerService.GetIGameServer().Handle;
         IntPtr vtablePtr = Marshal.ReadIntPtr(networkGameServer);
