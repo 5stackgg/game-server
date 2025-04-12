@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Cvars;
@@ -9,6 +10,9 @@ using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
+
+[UnmanagedFunctionPointer(CallingConvention.ThisCall)]
+delegate IntPtr GetAddonNameDelegate(IntPtr self);
 
 public class MatchManager
 {
@@ -28,6 +32,7 @@ public class MatchManager
     // public CoachSystem _coachSystem;
     public KnifeSystem knifeSystem;
     public CaptainSystem captainSystem;
+    public INetworkServerService _networkServerService;
 
     public MatchManager(
         ILogger<MatchManager> logger,
@@ -38,7 +43,8 @@ public class MatchManager
         KnifeSystem KnifeSystem,
         ReadySystem ReadySystem,
         CaptainSystem CaptainSystem,
-        EnvironmentService environmentService
+        EnvironmentService environmentService,
+        INetworkServerService networkServerService
     )
     {
         _logger = logger;
@@ -50,6 +56,7 @@ public class MatchManager
         captainSystem = CaptainSystem;
         _backUpManagement = backUpManagement;
         _environmentService = environmentService;
+        _networkServerService = networkServerService;
     }
 
     public void Init(MatchData match)
@@ -241,10 +248,22 @@ public class MatchManager
             return;
         }
 
-        _logger.LogInformation($"Game State {_currentMap.status} on {_currentMap.map.label} {_currentMap.map.name}  / {Server.MapName}");
+        _logger.LogInformation(
+            $"Game State {_currentMap.status} on ({_currentMap.map.name}) / {Server.MapName}"
+        );
 
-        // attempt to reduce the number of bad map naming issues
-        if (!new[] { _currentMap.map.name, _currentMap.map.label.ToLower() }.Contains(Server.MapName.ToLower()))
+        if (_currentMap.map.workshop_map_id is not null)
+        {
+            string currentWorkshopID = GetWorkshopID();
+            _logger.LogInformation($"Checking Workshop Map {_currentMap.map.workshop_map_id} / {currentWorkshopID}");
+
+            if (_currentMap.map.workshop_map_id != currentWorkshopID)
+            {
+                ChangeMap(_currentMap.map);
+                return;
+            }
+        }
+        else if (!Server.MapName.ToLower().Contains(_currentMap.map.name.ToLower()))
         {
             ChangeMap(_currentMap.map);
             return;
@@ -268,6 +287,16 @@ public class MatchManager
         {
             _gameServer.Message(HudDestination.Alert, "Received Match Data");
         }
+    }
+
+    private string GetWorkshopID()
+    {
+        IntPtr networkGameServer = _networkServerService.GetIGameServerHandle();
+        IntPtr vtablePtr = Marshal.ReadIntPtr(networkGameServer);
+        IntPtr functionPtr = Marshal.ReadIntPtr(vtablePtr + (25 * IntPtr.Size));
+        var getAddonName = Marshal.GetDelegateForFunctionPointer<GetAddonNameDelegate>(functionPtr);
+        IntPtr result = getAddonName(networkGameServer);
+        return Marshal.PtrToStringAnsi(result)!.Split(',')[0];
     }
 
     public void SetupTeamNames()

@@ -15,6 +15,7 @@ public class FiveStackServiceCollection : IPluginServiceCollection<FiveStackPlug
         serviceCollection.AddSingleton<GameBackUpRounds>();
         serviceCollection.AddSingleton<SurrenderSystem>();
         serviceCollection.AddSingleton<EnvironmentService>();
+        serviceCollection.AddSingleton<INetworkServerService>();
 
         serviceCollection.AddTransient<MatchManager>();
         serviceCollection.AddTransient<VoteSystem>();
