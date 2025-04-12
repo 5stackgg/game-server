@@ -291,7 +291,7 @@ public class MatchManager
 
     private string GetWorkshopID()
     {
-        IntPtr networkGameServer = _networkServerService.GetIGameServer().Handle;
+        IntPtr networkGameServer = _networkServerService.GetIGameServerHandle();
         IntPtr vtablePtr = Marshal.ReadIntPtr(networkGameServer);
         IntPtr functionPtr = Marshal.ReadIntPtr(vtablePtr + (25 * IntPtr.Size));
         var getAddonName = Marshal.GetDelegateForFunctionPointer<GetAddonNameDelegate>(functionPtr);
