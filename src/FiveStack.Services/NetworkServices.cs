@@ -33,8 +33,6 @@ public class INetworkServerService : NativeObject
 
     public INetworkServerService() : base(NativeAPI.GetValveInterface(0, "NetworkServerService_001"))
     {
-        // Define the offset directly in code instead of using gamedata.json
-        // Windows: 23, Linux: 24
         int offset = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? 23 : 24;
         this.GetIGameServerFunc = new VirtualFunctionWithReturn<nint, nint>(this.Handle, offset);
     }
@@ -47,8 +45,6 @@ public class INetworkServerService : NativeObject
 
 public class INetworkGameServer : NativeObject
 {
-    // Define the offset directly in code instead of using gamedata.json
-    // Windows: 624, Linux: 640
     private static int SlotsOffset = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? 624 : 640;
 
     private CUtlVector Slots;
