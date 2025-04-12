@@ -281,19 +281,6 @@ public class MatchManager
         }
     }
 
-// "INetworkServerService_GetIGameServer": {
-//         "offsets": {
-//         "windows": 23,
-//         "linux": 24
-//         }
-//     },
-//     "INetworkGameServer_Slots": {
-//         "offsets": {
-//         "windows": 624,
-//         "linux": 640
-//         }
-//     }
-
     private string GetAddonID()
     {
         IntPtr networkGameServer = _networkServerService.GetIGameServer().Handle;
