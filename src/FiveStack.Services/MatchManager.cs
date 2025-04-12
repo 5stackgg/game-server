@@ -241,9 +241,10 @@ public class MatchManager
             return;
         }
 
-        _logger.LogInformation($"Game State {_currentMap.status} on {_currentMap.map.name}");
+        _logger.LogInformation($"Game State {_currentMap.status} on {_currentMap.map.label} {_currentMap.map.name}  / {Server.MapName}");
 
-        if (_currentMap.map.name != Server.MapName)
+        // attempt to reduce the number of bad map naming issues
+        if (!new[] { _currentMap.map.name, _currentMap.map.label.ToLower() }.Contains(Server.MapName.ToLower()))
         {
             ChangeMap(_currentMap.map);
             return;

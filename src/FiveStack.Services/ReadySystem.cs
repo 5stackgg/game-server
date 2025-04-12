@@ -32,6 +32,7 @@ public class ReadySystem
 
     public void Setup()
     {
+        _logger.LogInformation("Setting up ready system");
         ResetReady();
         SendReadyStatusMessage();
         if (_readyStatusTimer == null)
@@ -59,11 +60,29 @@ public class ReadySystem
 
         if (TotalReady() == (_matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10))
         {
+            ResetReady();
             _matchService.GetCurrentMatch()?.UpdateMapStatus(eMapStatus.Knife);
             return;
         }
 
         SendReadyMessage(player);
+        SendReadyStatusMessage();
+        SendNotReadyMessage();
+    }
+
+    public void UnreadyPlayer(CCSPlayerController player)
+    {
+        if (player.UserId == null)
+        {
+            return;
+        }
+
+        int playerId = player.UserId.Value;
+        if (_readyPlayers.ContainsKey(playerId) && _readyPlayers[playerId])
+        {
+            _readyPlayers[playerId] = false;
+        }
+
         SendReadyStatusMessage();
         SendNotReadyMessage();
     }
