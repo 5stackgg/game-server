@@ -32,6 +32,7 @@ public class ReadySystem
 
     public void Setup()
     {
+        _logger.LogInformation("Setting up ready system");
         ResetReady();
         SendReadyStatusMessage();
         if (_readyStatusTimer == null)
@@ -47,23 +48,48 @@ public class ReadySystem
 
     public void ToggleReady(CCSPlayerController player)
     {
-        // TODO - must not be a coach
-        if (!_readyPlayers.ContainsKey(player.UserId!.Value))
+        if (player.UserId == null)
         {
-            _readyPlayers[player.UserId.Value] = true;
+            return;
+        }
+
+        int playerId = player.UserId.Value;
+
+        // TODO - must not be a coach
+        if (!_readyPlayers.ContainsKey(playerId))
+        {
+            _readyPlayers[playerId] = true;
         }
         else
         {
-            _readyPlayers[player.UserId.Value] = !_readyPlayers[player.UserId.Value];
+            _readyPlayers[playerId] = !_readyPlayers[playerId];
         }
 
         if (TotalReady() == (_matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10))
         {
+            ResetReady();
             _matchService.GetCurrentMatch()?.UpdateMapStatus(eMapStatus.Knife);
             return;
         }
 
         SendReadyMessage(player);
+        SendReadyStatusMessage();
+        SendNotReadyMessage();
+    }
+
+    public void UnreadyPlayer(CCSPlayerController player)
+    {
+        if (player.UserId == null)
+        {
+            return;
+        }
+
+        int playerId = player.UserId.Value;
+        if (_readyPlayers.ContainsKey(playerId))
+        {
+            _readyPlayers[playerId] = false;
+        }
+
         SendReadyStatusMessage();
         SendNotReadyMessage();
     }
