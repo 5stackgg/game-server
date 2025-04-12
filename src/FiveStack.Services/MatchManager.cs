@@ -255,6 +255,7 @@ public class MatchManager
         if (_currentMap.map.workshop_map_id is not null)
         {
             string currentWorkshopID = GetWorkshopID();
+            _logger.LogInformation($"Checking Workshop Map {_currentMap.map.workshop_map_id} / {currentWorkshopID}");
 
             if (_currentMap.map.workshop_map_id != currentWorkshopID)
             {
