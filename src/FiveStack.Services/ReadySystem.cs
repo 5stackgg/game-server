@@ -85,7 +85,7 @@ public class ReadySystem
         }
 
         int playerId = player.UserId.Value;
-        if (_readyPlayers.ContainsKey(playerId) && _readyPlayers[playerId])
+        if (_readyPlayers.ContainsKey(playerId))
         {
             _readyPlayers[playerId] = false;
         }
