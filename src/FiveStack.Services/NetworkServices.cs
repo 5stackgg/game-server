@@ -3,7 +3,6 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Memory;
 
-
 [StructLayout(LayoutKind.Sequential)]
 struct CUtlMemory
 {
@@ -23,7 +22,7 @@ struct CUtlVector
 
     public int m_iSize;
     public CUtlMemory m_Memory;
-    
+
     public nint Element(int index) => this[index];
 }
 
@@ -31,7 +30,8 @@ public class INetworkServerService : NativeObject
 {
     private readonly VirtualFunctionWithReturn<nint, nint> GetIGameServerFunc;
 
-    public INetworkServerService() : base(NativeAPI.GetValveInterface(0, "NetworkServerService_001"))
+    public INetworkServerService()
+        : base(NativeAPI.GetValveInterface(0, "NetworkServerService_001"))
     {
         int offset = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? 23 : 24;
         this.GetIGameServerFunc = new VirtualFunctionWithReturn<nint, nint>(this.Handle, offset);
@@ -45,11 +45,14 @@ public class INetworkServerService : NativeObject
 
 public class INetworkGameServer : NativeObject
 {
-    private static int SlotsOffset = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? 624 : 640;
+    private static int SlotsOffset = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+        ? 624
+        : 640;
 
     private CUtlVector Slots;
 
-    public INetworkGameServer(nint ptr) : base(ptr)
+    public INetworkGameServer(nint ptr)
+        : base(ptr)
     {
         this.Slots = Marshal.PtrToStructure<CUtlVector>(base.Handle + SlotsOffset);
     }
