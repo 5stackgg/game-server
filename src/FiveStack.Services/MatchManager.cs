@@ -433,15 +433,29 @@ public class MatchManager
         _logger.LogInformation("Starting Live Match");
         _gameServer.SendCommands(new[] { "mp_unpause_match" });
 
-        _gameServer.SendCommands(
-            new[]
-            {
-                "exec 5stack.live.cfg",
-                $"exec 5stack.{_matchData.options.type.ToLower()}.cfg",
-                $"mp_maxrounds {_matchData.options.mr * 2}",
-                $"mp_overtime_enable {_matchData.options.overtime}",
-            }
-        );
+        List<string> commands = new List<string>
+        {
+            "exec 5stack.live.cfg"
+        };
+
+        _logger.LogInformation($"cfg_override: {_matchData.options.cfg_override}");
+        
+
+        if (_matchData.options.cfg_override != "")
+        {
+            // Split the cfg_override string by newlines and add each line as a separate command
+            string[] cfgLines = _matchData.options.cfg_override.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            commands.AddRange(cfgLines);
+        }
+        else
+        {
+            commands.Add($"exec 5stack.{_matchData.options.type.ToLower()}.cfg");
+        }
+
+        commands.Add($"mp_maxrounds {_matchData.options.mr * 2}");
+        commands.Add($"mp_overtime_enable {_matchData.options.overtime}");
+
+        _gameServer.SendCommands(commands.ToArray());
 
         await _backUpManagement.DownloadBackupRounds();
 
