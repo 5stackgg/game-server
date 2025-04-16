@@ -23,7 +23,6 @@ public class GameServer
     {
         foreach (var command in commands)
         {
-            
             _logger.LogInformation($"Executing command: {command}");
             Server.ExecuteCommand(command);
         }
