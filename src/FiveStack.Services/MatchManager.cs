@@ -437,8 +437,6 @@ public class MatchManager
 
         List<string> commands = new List<string> { "exec 5stack.live.cfg" };
 
-        _logger.LogInformation($"cfg_override: {_matchData.options.cfg_override}");
-
         if (_matchData.options.cfg_override != "")
         {
             // Split the cfg_override string by newlines and add each line as a separate command
