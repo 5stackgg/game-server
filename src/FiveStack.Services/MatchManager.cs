@@ -437,7 +437,7 @@ public class MatchManager
             new[]
             {
                 "exec 5stack.live.cfg",
-                $"exec 5stack.{_matchData.options.type}.cfg",
+                $"exec 5stack.{_matchData.options.type.ToLower()}.cfg",
                 $"mp_maxrounds {_matchData.options.mr * 2}",
                 $"mp_overtime_enable {_matchData.options.overtime}",
             }
