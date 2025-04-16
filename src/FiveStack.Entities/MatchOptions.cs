@@ -12,4 +12,5 @@ public class MatchOptions
     public bool knife_round { get; set; } = true;
     public string timeout_setting { get; set; } = "CoachAndPlayers";
     public string tech_timeout_setting { get; set; } = "CoachAndPlayers";
+    public string cfg_override { get; set; } = "";
 }
