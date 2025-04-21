@@ -16,22 +16,34 @@ public class ReadySystem
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
     private readonly ILogger<ReadySystem> _logger;
+    private readonly CoachSystem _coachSystem;
+    private readonly CaptainSystem _captainSystem;
 
     private Dictionary<int, bool> _readyPlayers = new Dictionary<int, bool>();
 
     public ReadySystem(
         ILogger<ReadySystem> logger,
         GameServer gameServer,
-        MatchService matchService
+        MatchService matchService,
+        CoachSystem coachSystem,
+        CaptainSystem captainSystem
     )
     {
         _logger = logger;
         _gameServer = gameServer;
         _matchService = matchService;
+        _coachSystem = coachSystem;
+        _captainSystem = captainSystem;
     }
 
     public void Setup()
     {
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+        if (matchData == null)
+        {
+            return;
+        }
+
         _logger.LogInformation("Setting up ready system");
         ResetReady();
         SendReadyStatusMessage();
@@ -53,19 +65,31 @@ public class ReadySystem
             return;
         }
 
+        if (!CanVote(player))
+        {
+            _gameServer.Message(HudDestination.Chat, $"You are not allowed to ready up", player);
+            return;
+        }
+
         int playerId = player.UserId.Value;
 
-        // TODO - must not be a coach
-        if (!_readyPlayers.ContainsKey(playerId))
+        _readyPlayers[playerId] = !_readyPlayers[playerId];
+
+        int expectedCount = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
+        switch (GetReadySetting())
         {
-            _readyPlayers[playerId] = true;
-        }
-        else
-        {
-            _readyPlayers[playerId] = !_readyPlayers[playerId];
+            case eReadySettings.Admin:
+                expectedCount = 1;
+                break;
+            case eReadySettings.Captains:
+                expectedCount = 2;
+                break;
+            case eReadySettings.Coach:
+                expectedCount = 2;
+                break;
         }
 
-        if (TotalReady() == (_matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10))
+        if (TotalReady() == expectedCount)
         {
             ResetReady();
             _matchService.GetCurrentMatch()?.UpdateMapStatus(eMapStatus.Knife);
@@ -110,7 +134,25 @@ public class ReadySystem
             player.PrintToCenter($"Waiting for players [{totalReady}/{expectedReady}]");
             return;
         }
-        player.PrintToCenter($"Type .r to ready up!");
+
+        if (CanVote(player))
+        {
+            player.PrintToCenter($"Type {CommandUtility.PublicChatTrigger}r to ready up!");
+            return;
+        }
+
+        switch (GetReadySetting())
+        {
+            case eReadySettings.Admin:
+                player.PrintToCenter($"The Admin will start the match when everyone is ready");
+                break;
+            case eReadySettings.Captains:
+                player.PrintToCenter($"Waiting for the Captins to ready up");
+                break;
+            case eReadySettings.Coach:
+                player.PrintToCenter($"Waiting for the coach to ready up");
+                break;
+        }
     }
 
     private int TotalReady()
@@ -196,7 +238,7 @@ public class ReadySystem
 
         foreach (var player in MatchUtility.Players())
         {
-            if (player.UserId == null)
+            if (player.UserId == null || !CanVote(player))
             {
                 continue;
             }
@@ -211,6 +253,59 @@ public class ReadySystem
         }
 
         return notReadyPlayers.ToArray();
+    }
+
+    private bool CanVote(CCSPlayerController player)
+    {
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (matchData == null || player == null)
+        {
+            return false;
+        }
+
+        bool isCoach = _coachSystem.IsCoach(player, player.Team);
+        bool isCaptain = _captainSystem.IsCaptain(player, player.Team);
+
+        switch (GetReadySetting())
+        {
+            case eReadySettings.Coach:
+                if (!isCoach)
+                {
+                    return false;
+                }
+                break;
+            case eReadySettings.Captains:
+                if (!isCaptain)
+                {
+                    return false;
+                }
+                break;
+            case eReadySettings.Admin:
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool IsAdminOnly()
+    {
+        return GetReadySetting() == eReadySettings.Admin;
+    }
+
+    private eReadySettings GetReadySetting()
+    {
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+        if (matchData == null)
+        {
+            return eReadySettings.Admin;
+        }
+
+        eReadySettings readySetting = ReadyUtility.ReadySettingStringToEnum(
+            matchData.options.ready_setting
+        );
+
+        return readySetting;
     }
 
     private void SendReadyStatusMessage()
