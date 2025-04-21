@@ -44,12 +44,6 @@ public class ReadySystem
             return;
         }
 
-        if (IsAdminOnly())
-        {
-            _logger.LogInformation("Ready system is admin only");
-            return;
-        }
-
         _logger.LogInformation("Setting up ready system");
         ResetReady();
         SendReadyStatusMessage();
@@ -140,7 +134,25 @@ public class ReadySystem
             player.PrintToCenter($"Waiting for players [{totalReady}/{expectedReady}]");
             return;
         }
-        player.PrintToCenter($"Type .r to ready up!");
+
+        if (CanVote(player))
+        {
+            player.PrintToCenter($"Type {CommandUtility.PublicChatTrigger}r to ready up!");
+            return;
+        }
+
+        switch (GetReadySetting())
+        {
+            case eReadySettings.Admin:
+                player.PrintToCenter($"The Admin will start the match when everyone is ready");
+                break;
+            case eReadySettings.Captains:
+                player.PrintToCenter($"Waiting for the Captins to ready up");
+                break;
+            case eReadySettings.Coach:
+                player.PrintToCenter($"Waiting for the coach to ready up");
+                break;
+        }
     }
 
     private int TotalReady()
@@ -314,10 +326,7 @@ public class ReadySystem
 
         foreach (var player in MatchUtility.Players())
         {
-            if (CanVote(player))
-            {
-                SetupReadyMessage(player);
-            }
+            SetupReadyMessage(player);
         }
     }
 }

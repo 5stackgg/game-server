@@ -20,6 +20,7 @@ public partial class FiveStackPlugin
         }
 
         command.ReplyToCommand($"  Available Commands: ");
+
         command.ReplyToCommand(
             $" {ChatColors.BlueGrey}Toggle Ready: {ChatColors.Default}{CommandUtility.PublicChatTrigger}r"
         );
@@ -35,17 +36,17 @@ public partial class FiveStackPlugin
         );
 
         command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Timeouts: {ChatColors.Default}{CommandUtility.SilentChatTrigger}timeout"
-        );
-        command.ReplyToCommand(
             $" {ChatColors.BlueGrey}Tactical Pause: {ChatColors.Default}{CommandUtility.SilentChatTrigger}tac"
         );
+
         command.ReplyToCommand(
             $" {ChatColors.BlueGrey}Tech Pause: {ChatColors.Default}{CommandUtility.PublicChatTrigger}pause, {CommandUtility.PublicChatTrigger}resume"
         );
+
         command.ReplyToCommand(
             $" {ChatColors.BlueGrey}Rules: {ChatColors.Default}{CommandUtility.PublicChatTrigger}rules"
         );
+
         command.ReplyToCommand(
             $" {ChatColors.BlueGrey}Restore Round: {ChatColors.Default}{CommandUtility.PublicChatTrigger}reset <round>"
         );

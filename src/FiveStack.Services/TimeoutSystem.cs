@@ -45,6 +45,8 @@ public class TimeoutSystem
     {
         string pauseMessage = "Admin Paused the Match";
 
+        _logger.LogInformation("Requesting pause");
+
         if (player != null)
         {
             if (!CanPause(player))
