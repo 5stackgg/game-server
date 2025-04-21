@@ -7,6 +7,9 @@ public enum eTimeoutSettings
     [Description("Coach")]
     Coach,
 
+    [Description("CoachAndCaptains")]
+    CoachAndCaptains,
+
     [Description("CoachAndPlayers")]
     CoachAndPlayers,
 

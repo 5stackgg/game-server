@@ -10,6 +10,8 @@ namespace FiveStack.Utilities
             {
                 case "Coach":
                     return eTimeoutSettings.Coach;
+                case "CoachAndCaptains":
+                    return eTimeoutSettings.CoachAndCaptains;
                 case "CoachAndPlayers":
                     return eTimeoutSettings.CoachAndPlayers;
                 case "Admin":

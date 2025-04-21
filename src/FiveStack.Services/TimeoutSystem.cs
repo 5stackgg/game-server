@@ -16,7 +16,8 @@ public class TimeoutSystem
     private readonly GameBackUpRounds _backUpManagement;
     private readonly ILogger<TimeoutSystem> _logger;
     private readonly IServiceProvider _serviceProvider;
-
+    private readonly CoachSystem _coachSystem;
+    private readonly CaptainSystem _captainSystem;
     public VoteSystem? resumeVote;
 
     public TimeoutSystem(
@@ -25,7 +26,9 @@ public class TimeoutSystem
         GameServer gameServer,
         MatchService matchService,
         GameBackUpRounds backUpManagement,
-        IServiceProvider serviceProvider
+        IServiceProvider serviceProvider,
+        CoachSystem coachSystem,
+        CaptainSystem captainSystem
     )
     {
         _logger = logger;
@@ -34,40 +37,19 @@ public class TimeoutSystem
         _matchService = matchService;
         _serviceProvider = serviceProvider;
         _backUpManagement = backUpManagement;
+        _coachSystem = coachSystem;
+        _captainSystem = captainSystem;
     }
 
     public void RequestPause(CCSPlayerController? player)
     {
-        MatchManager? match = _matchService.GetCurrentMatch();
-
-        if (match == null || !match.IsLive() && _backUpManagement.IsResettingRound() == false)
-        {
-            return;
-        }
-
-        MatchData? matchData = match.GetMatchData();
-
-        if (matchData == null)
-        {
-            return;
-        }
-
         string pauseMessage = "Admin Paused the Match";
 
         if (player != null)
         {
-            eTimeoutSettings timeoutSetting = TimeoutUtility.TimeoutSettingStringToEnum(
-                matchData.options.tech_timeout_setting
-            );
-
-            // TODO - coach support
-            if (timeoutSetting != eTimeoutSettings.CoachAndPlayers)
+            if (!CanPause(player))
             {
-                _gameServer.Message(
-                    HudDestination.Chat,
-                    $" {ChatColors.Red}you are not allowed to pause the match!",
-                    player
-                );
+                CannotPauseMessage(player);
                 return;
             }
 
@@ -75,6 +57,46 @@ public class TimeoutSystem
         }
 
         _matchService.GetCurrentMatch()?.PauseMatch(pauseMessage);
+    }
+
+    private bool CanPause(CCSPlayerController? player)
+    {
+        if (player == null)
+        {
+            return true;
+        }
+
+        bool isCoach = _coachSystem.IsCoach(player, player.Team);
+        bool isCaptain = _captainSystem.IsCaptain(player, player.Team);
+
+        switch (GetTimeoutSetting())
+        {
+            case eTimeoutSettings.Coach:
+                if (!isCoach)
+                {
+                    return false;
+                }
+                break;
+            case eTimeoutSettings.CoachAndCaptains:
+                if (!isCoach && !isCaptain)
+                {
+                    return false;
+                }
+                break;
+            case eTimeoutSettings.Admin:
+                return false;
+        }
+
+        return true;
+    }
+
+    private void CannotPauseMessage(CCSPlayerController? player)
+    {
+        _gameServer.Message(
+            HudDestination.Chat,
+            $" {ChatColors.Red}you are not allowed to pause the match!",
+            player
+        );
     }
 
     public void RequestResume(CCSPlayerController? player)
@@ -97,12 +119,7 @@ public class TimeoutSystem
 
         if (player != null)
         {
-            eTimeoutSettings timeoutSetting = TimeoutUtility.TimeoutSettingStringToEnum(
-                matchData.options.tech_timeout_setting
-            );
-
-            // TODO - coach support
-            if (timeoutSetting != eTimeoutSettings.CoachAndPlayers)
+            if (GetTimeoutSetting() != eTimeoutSettings.CoachAndPlayers)
             {
                 resumeVote = _serviceProvider.GetRequiredService(typeof(VoteSystem)) as VoteSystem;
 
@@ -171,12 +188,7 @@ public class TimeoutSystem
 
         if (player != null)
         {
-            eTimeoutSettings timeoutSetting = TimeoutUtility.TimeoutSettingStringToEnum(
-                matchData.options.timeout_setting
-            );
-
-            // TODO - coach support
-            if (timeoutSetting != eTimeoutSettings.CoachAndPlayers)
+            if (GetTimeoutSetting() != eTimeoutSettings.CoachAndPlayers)
             {
                 _gameServer.Message(
                     HudDestination.Chat,
@@ -243,5 +255,28 @@ public class TimeoutSystem
         {
             _gameServer.Message(HudDestination.Alert, "Tech Timeout Called by Admin");
         }
+    }
+
+    private eTimeoutSettings GetTimeoutSetting()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (match == null || !match.IsLive() && _backUpManagement.IsResettingRound() == false)
+        {
+            return eTimeoutSettings.Admin;
+        }
+
+        MatchData? matchData = match.GetMatchData();
+
+        if (matchData == null)
+        {
+            return eTimeoutSettings.Admin;
+        }
+
+        eTimeoutSettings timeoutSetting = TimeoutUtility.TimeoutSettingStringToEnum(
+            matchData.options.tech_timeout_setting
+        );
+
+        return timeoutSetting;
     }
 }
