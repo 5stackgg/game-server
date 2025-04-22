@@ -1,6 +1,6 @@
 # Define the path to the dotnet-csharpier executable
 csharpier_dir="$HOME/.dotnet/tools"
-csharpier_executable="$csharpier_dir/dotnet-csharpier"
+csharpier_executable="$csharpier_dir/csharpier"
 
 # Check if dotnet-csharpier executable exists
 if [ -x "$csharpier_executable" ]; then
@@ -27,4 +27,4 @@ if [ ! -x "$csharpier_executable" ]; then
 fi
 
 # Execute the csharpier command
-$csharpier_executable /opt/5stack
+$csharpier_executable format /opt/5stack

@@ -6,7 +6,10 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    [ConsoleCommand("css_pause", "Pauses the match")]
+    [
+        ConsoleCommand("css_tech", "Pauses the match"),
+        ConsoleCommand("css_pause", "Pauses the match")
+    ]
     public void OnPause(CCSPlayerController? player, CommandInfo? command)
     {
         _timeoutSystem.RequestPause(player);
@@ -18,7 +21,10 @@ public partial class FiveStackPlugin
         _timeoutSystem.RequestResume(player);
     }
 
-    [ConsoleCommand("css_tac", "Tactical Timeout")]
+    [
+        ConsoleCommand("css_tac", "Tactical Timeout"),
+        ConsoleCommand("css_timeout", "Tactical Timeout")
+    ]
     public void OnTimeout(CCSPlayerController? player, CommandInfo? command)
     {
         _timeoutSystem.CallTacTimeout(player);

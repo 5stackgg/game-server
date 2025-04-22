@@ -36,11 +36,11 @@ public partial class FiveStackPlugin
         );
 
         command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Tactical Pause: {ChatColors.Default}{CommandUtility.SilentChatTrigger}tac"
+            $" {ChatColors.BlueGrey}Tactical Timeout: {ChatColors.Default}{CommandUtility.SilentChatTrigger}tac"
         );
 
         command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Tech Pause: {ChatColors.Default}{CommandUtility.PublicChatTrigger}pause, {CommandUtility.PublicChatTrigger}resume"
+            $" {ChatColors.BlueGrey}Technical Pause: {ChatColors.Default}{CommandUtility.PublicChatTrigger}tech, {CommandUtility.PublicChatTrigger}resume"
         );
 
         command.ReplyToCommand(

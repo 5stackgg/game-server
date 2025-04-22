@@ -1,3 +1,4 @@
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
@@ -43,13 +44,30 @@ public class TimeoutSystem
 
     public void RequestPause(CCSPlayerController? player)
     {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        if (match == null || !match.IsLive() || _backUpManagement.IsResettingRound())
+        {
+            _gameServer.Message(
+                HudDestination.Chat,
+                $" {ChatColors.Red}Cannot call a tactical timeout while match is not live",
+                player
+            );
+            return;
+        }
+
+        if (IsTimeoutActive())
+        {
+            SendTimeoutAlreadyActiveMessage(player);
+            return;
+        }
+
         string pauseMessage = "Admin Paused the Match";
 
         if (player != null)
         {
             if (!CanPause(player))
             {
-                CannotPauseMessage(player);
+                CannotPauseMessage(player, "technical pause");
                 return;
             }
 
@@ -69,7 +87,7 @@ public class TimeoutSystem
         bool isCoach = _coachSystem.IsCoach(player, player.Team);
         bool isCaptain = _captainSystem.IsCaptain(player, player.Team);
 
-        switch (GetTimeoutSetting())
+        switch (GetTechnicalPauseSetting())
         {
             case eTimeoutSettings.Coach:
                 if (!isCoach)
@@ -90,11 +108,42 @@ public class TimeoutSystem
         return true;
     }
 
-    private void CannotPauseMessage(CCSPlayerController? player)
+    private bool CanCallTacticalTimeout(CCSPlayerController? player)
+    {
+        if (player == null)
+        {
+            return true;
+        }
+
+        bool isCoach = _coachSystem.IsCoach(player, player.Team);
+        bool isCaptain = _captainSystem.IsCaptain(player, player.Team);
+
+        switch (GetTacticalTimeoutSetting())
+        {
+            case eTimeoutSettings.Coach:
+                if (!isCoach)
+                {
+                    return false;
+                }
+                break;
+            case eTimeoutSettings.CoachAndCaptains:
+                if (!isCoach && !isCaptain)
+                {
+                    return false;
+                }
+                break;
+            case eTimeoutSettings.Admin:
+                return false;
+        }
+
+        return true;
+    }
+
+    private void CannotPauseMessage(CCSPlayerController? player, string type)
     {
         _gameServer.Message(
             HudDestination.Chat,
-            $" {ChatColors.Red}you are not allowed to pause the match!",
+            $" {ChatColors.Red}you are not allowed to call a {type} the match!",
             player
         );
     }
@@ -119,7 +168,7 @@ public class TimeoutSystem
 
         if (player != null)
         {
-            if (GetTimeoutSetting() != eTimeoutSettings.CoachAndPlayers)
+            if (!CanPause(player))
             {
                 resumeVote = _serviceProvider.GetRequiredService(typeof(VoteSystem)) as VoteSystem;
 
@@ -162,6 +211,11 @@ public class TimeoutSystem
         MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null || !match.IsLive() || _backUpManagement.IsResettingRound())
         {
+            _gameServer.Message(
+                HudDestination.Chat,
+                $" {ChatColors.Red}Cannot call a tactical timeout while match is not live",
+                player
+            );
             return;
         }
 
@@ -173,28 +227,17 @@ public class TimeoutSystem
             return;
         }
 
-        if (
-            MatchUtility.Rules()?.TerroristTimeOutActive == true
-            || MatchUtility.Rules()?.CTTimeOutActive == true
-        )
+        if (IsTimeoutActive())
         {
-            _gameServer.Message(
-                HudDestination.Chat,
-                $" {ChatColors.Red}A timout is already active",
-                player
-            );
+            SendTimeoutAlreadyActiveMessage(player);
             return;
         }
 
         if (player != null)
         {
-            if (GetTimeoutSetting() != eTimeoutSettings.CoachAndPlayers)
+            if (!CanCallTacticalTimeout(player))
             {
-                _gameServer.Message(
-                    HudDestination.Chat,
-                    $" {ChatColors.Red}you are not allowed to call a tech timeout!",
-                    player
-                );
+                CannotPauseMessage(player, "tactical timeout");
                 return;
             }
 
@@ -232,9 +275,7 @@ public class TimeoutSystem
 
             timeouts_available--;
 
-            _gameServer.SendCommands(
-                new[] { $"timeout_{(player.Team == CsTeam.Terrorist ? "terrorist" : "ct")}_start" }
-            );
+            CallTimeout(player.Team);
 
             _gameServer.Message(
                 HudDestination.Alert,
@@ -257,7 +298,30 @@ public class TimeoutSystem
         }
     }
 
-    private eTimeoutSettings GetTimeoutSetting()
+    private void CallTimeout(CsTeam team)
+    {
+        _gameServer.SendCommands(
+            new[] { $"timeout_{(team == CsTeam.Terrorist ? "terrorist" : "ct")}_start" }
+        );
+
+        Server.NextFrame(() =>
+        {
+            if (IsTimeoutActive())
+            {
+                return;
+            }
+
+            _logger.LogInformation($"Adding timeout for team {team}");
+
+            _gameServer.SendCommands(
+                new[] { $"mp_modify_timeouts {(team == CsTeam.Terrorist ? "T" : "CT")} 1" }
+            );
+
+            CallTimeout(team);
+        });
+    }
+
+    private eTimeoutSettings GetTechnicalPauseSetting()
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
@@ -278,5 +342,48 @@ public class TimeoutSystem
         );
 
         return timeoutSetting;
+    }
+
+    private eTimeoutSettings GetTacticalTimeoutSetting()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (match == null || !match.IsLive() && _backUpManagement.IsResettingRound() == false)
+        {
+            return eTimeoutSettings.Admin;
+        }
+
+        MatchData? matchData = match.GetMatchData();
+
+        if (matchData == null)
+        {
+            return eTimeoutSettings.Admin;
+        }
+
+        eTimeoutSettings timeoutSetting = TimeoutUtility.TimeoutSettingStringToEnum(
+            matchData.options.timeout_setting
+        );
+
+        return timeoutSetting;
+    }
+
+    private void SendTimeoutAlreadyActiveMessage(CCSPlayerController? player)
+    {
+        if (player == null)
+        {
+            return;
+        }
+
+        _gameServer.Message(
+            HudDestination.Chat,
+            $" {ChatColors.Red}A timout is already active",
+            player
+        );
+    }
+
+    public bool IsTimeoutActive()
+    {
+        return MatchUtility.Rules()?.TerroristTimeOutActive == true
+            || MatchUtility.Rules()?.CTTimeOutActive == true;
     }
 }

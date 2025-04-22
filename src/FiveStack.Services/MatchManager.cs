@@ -26,7 +26,7 @@ public class MatchManager
     private readonly GameBackUpRounds _backUpManagement;
 
     private readonly EnvironmentService _environmentService;
-
+    private readonly TimeoutSystem _timeoutSystem;
     public ReadySystem readySystem;
 
     // public CoachSystem _coachSystem;
@@ -44,7 +44,8 @@ public class MatchManager
         ReadySystem ReadySystem,
         CaptainSystem CaptainSystem,
         EnvironmentService environmentService,
-        INetworkServerService networkServerService
+        INetworkServerService networkServerService,
+        TimeoutSystem timeoutSystem
     )
     {
         _logger = logger;
@@ -57,6 +58,7 @@ public class MatchManager
         _backUpManagement = backUpManagement;
         _environmentService = environmentService;
         _networkServerService = networkServerService;
+        _timeoutSystem = timeoutSystem;
     }
 
     public void Init(MatchData match)
@@ -130,6 +132,12 @@ public class MatchManager
 
     public void ResumeMatch(string? message = null)
     {
+        if (_timeoutSystem.IsTimeoutActive())
+        {
+            _logger.LogInformation("Timeout is active, cannot resume match");
+            return;
+        }
+
         _logger.LogInformation($"Resuming Match: {message}");
         _gameServer.SendCommands(new[] { "mp_unpause_match" });
 
