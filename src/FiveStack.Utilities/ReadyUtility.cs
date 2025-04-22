@@ -14,6 +14,8 @@ namespace FiveStack.Utilities
                     return eReadySettings.Coach;
                 case "Admin":
                     return eReadySettings.Admin;
+                case "Players":
+                    return eReadySettings.Players;
                 default:
                     throw new ArgumentException($"Unsupported ready setting: {state}");
             }

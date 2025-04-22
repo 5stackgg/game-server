@@ -73,7 +73,14 @@ public class ReadySystem
 
         int playerId = player.UserId.Value;
 
-        _readyPlayers[playerId] = !_readyPlayers[playerId];
+        if (!_readyPlayers.ContainsKey(playerId))
+        {
+            _readyPlayers[playerId] = true;
+        }
+        else
+        {
+            _readyPlayers[playerId] = !_readyPlayers[playerId];
+        }
 
         int expectedCount = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
         switch (GetReadySetting())

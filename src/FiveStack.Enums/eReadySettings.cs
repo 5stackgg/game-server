@@ -12,4 +12,7 @@ public enum eReadySettings
 
     [Description("Admin")]
     Admin,
+
+    [Description("Players")]
+    Players,
 }
