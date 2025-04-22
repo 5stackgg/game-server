@@ -99,11 +99,14 @@ public partial class FiveStackPlugin
 
         CCSPlayerController player = @event.Userid;
 
-        _gameServer.Message(
-            HudDestination.Chat,
-            $" {ChatColors.Default}type {ChatColors.Green}{CommandUtility.PublicChatTrigger}r {ChatColors.Default}to be marked as ready for the match",
-            @event.Userid
-        );
+        if (_readySystem.IsWaitingForReady())
+        {
+            _gameServer.Message(
+                HudDestination.Chat,
+                $" {ChatColors.Default}type {ChatColors.Green}{CommandUtility.PublicChatTrigger}r {ChatColors.Default}to be marked as ready for the match",
+                @event.Userid
+            );
+        }
 
         _gameServer.Message(
             HudDestination.Chat,

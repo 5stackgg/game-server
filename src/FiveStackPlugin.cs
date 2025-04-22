@@ -13,13 +13,13 @@ public partial class FiveStackPlugin : BasePlugin
     private readonly GameDemos _gameDemos;
     private readonly GameServer _gameServer;
     private readonly MatchEvents _matchEvents;
+    private readonly ReadySystem _readySystem;
     private readonly TimeoutSystem _timeoutSystem;
     private readonly MatchService _matchService;
     private readonly SurrenderSystem _surrenderSystem;
     private readonly ILogger<FiveStackPlugin> _logger;
     private readonly GameBackUpRounds _gameBackupRounds;
     private readonly EnvironmentService _environmentService;
-
     public override string ModuleName => "FiveStack";
     public override string ModuleVersion => "__RELEASE_VERSION__";
     public override string ModuleAuthor => "5Stack.gg";
@@ -30,6 +30,7 @@ public partial class FiveStackPlugin : BasePlugin
         GameServer gameServer,
         MatchEvents matchEvents,
         MatchService matchService,
+        ReadySystem readySystem,
         TimeoutSystem timeoutSystem,
         ILogger<FiveStackPlugin> logger,
         SurrenderSystem surrenderSystem,
@@ -41,6 +42,7 @@ public partial class FiveStackPlugin : BasePlugin
         _gameDemos = matchDemos;
         _gameServer = gameServer;
         _matchEvents = matchEvents;
+        _readySystem = readySystem;
         _matchService = matchService;
         _timeoutSystem = timeoutSystem;
         _surrenderSystem = surrenderSystem;

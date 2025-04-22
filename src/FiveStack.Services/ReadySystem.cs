@@ -58,6 +58,11 @@ public class ReadySystem
         _readyPlayers.Clear();
     }
 
+    public bool IsWaitingForReady()
+    {
+        return _readyStatusTimer != null;
+    }
+
     public void ToggleReady(CCSPlayerController player)
     {
         if (player.UserId == null)
