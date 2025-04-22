@@ -292,12 +292,13 @@ public class GameBackUpRounds
                 new CsTeam[] { CsTeam.CounterTerrorist, CsTeam.Terrorist },
                 () =>
                 {
+                    _logger.LogInformation("restore round vote passed");
                     RestoreRound(round);
                     _resetRound = null;
                 },
                 () =>
                 {
-                    _resetRound = null;
+                    _logger.LogInformation("restore round vote failed");
 
                     if (_initialRestore)
                     {
@@ -307,6 +308,7 @@ public class GameBackUpRounds
                     _matchService.GetCurrentMatch()?.ResumeMatch();
 
                     restoreRoundVote = null;
+                    _resetRound = null;
                 },
                 true
             );
@@ -396,6 +398,7 @@ public class GameBackUpRounds
 
     public void RestoreRound(int round)
     {
+        _logger.LogInformation($"Restoring Round {round}");
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
         if (match?.current_match_map_id == null)
         {

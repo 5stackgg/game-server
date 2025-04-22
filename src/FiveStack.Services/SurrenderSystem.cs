@@ -111,11 +111,13 @@ public class SurrenderSystem
             new CsTeam[] { team },
             () =>
             {
+                _logger.LogInformation("surrender vote passed");
                 Surrender(team);
                 ResetSurrender();
             },
             () =>
             {
+                _logger.LogInformation("surrender vote failed");
                 ResetSurrender();
             },
             false,

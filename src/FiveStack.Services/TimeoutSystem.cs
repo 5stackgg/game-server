@@ -179,12 +179,14 @@ public class TimeoutSystem
                         (
                             () =>
                             {
+                                _logger.LogInformation("resume vote passed");
                                 _matchService.GetCurrentMatch()?.ResumeMatch("Resume Vote Passed");
                                 resumeVote = null;
                             }
                         ),
                         () =>
                         {
+                            _logger.LogInformation("resume vote failed");
                             resumeVote = null;
                         },
                         true,
