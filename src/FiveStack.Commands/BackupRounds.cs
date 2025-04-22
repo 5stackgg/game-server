@@ -63,7 +63,12 @@ public partial class FiveStackPlugin
 
         _gameServer.SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFile}" });
 
-        await Task.Delay(10 * 1000);
+        Server.NextFrame(() =>
+        {
+            _matchService.GetCurrentMatch()?.PauseMatch();
+        });
+
+        await Task.Delay(5 * 1000);
 
         Server.NextFrame(() =>
         {
