@@ -151,13 +151,6 @@ public class TimeoutSystem
 
     public void RequestResume(CCSPlayerController? player)
     {
-        if (player == null)
-        {
-            _logger.LogInformation("Cancelling Voting");
-            resumeVote?.CancelVote();
-            _backUpManagement.restoreRoundVote?.CancelVote();
-        }
-
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
 
         if (matchData == null)
