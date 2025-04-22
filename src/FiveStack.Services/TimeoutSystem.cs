@@ -148,13 +148,6 @@ public class TimeoutSystem
         );
     }
 
-    public void CancelVote()
-    {
-        _logger.LogInformation("Cancelling Voting");
-        resumeVote?.CancelVote();
-        resumeVote = null;
-    }
-
     public void RequestResume(CCSPlayerController? player)
     {
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();

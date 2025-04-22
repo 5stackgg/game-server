@@ -132,8 +132,8 @@ public class MatchManager
 
     public void ResumeMatch(string? message = null)
     {
-        _timeoutSystem.CancelVote();
-        _backUpManagement.CancelVote();
+        _timeoutSystem.resumeVote?.CancelVote();
+        _backUpManagement.restoreRoundVote?.CancelVote();
 
         if (_timeoutSystem.IsTimeoutActive())
         {
