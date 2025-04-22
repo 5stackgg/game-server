@@ -180,6 +180,7 @@ public class TimeoutSystem
                             () =>
                             {
                                 _matchService.GetCurrentMatch()?.ResumeMatch("Resume Vote Passed");
+                                resumeVote = null;
                             }
                         ),
                         () =>

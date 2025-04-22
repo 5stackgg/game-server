@@ -292,8 +292,8 @@ public class GameBackUpRounds
                 new CsTeam[] { CsTeam.CounterTerrorist, CsTeam.Terrorist },
                 () =>
                 {
-                    _resetRound = null;
                     RestoreRound(round);
+                    _resetRound = null;
                 },
                 () =>
                 {
