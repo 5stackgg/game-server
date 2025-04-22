@@ -285,8 +285,6 @@ public class GameBackUpRounds
                 return;
             }
 
-            _logger.LogInformation($"Starting vote to restore round {round}");
-
             restoreRoundVote.StartVote(
                 $"Restore Round to {round}",
                 new CsTeam[] { CsTeam.CounterTerrorist, CsTeam.Terrorist },
@@ -305,10 +303,10 @@ public class GameBackUpRounds
                         File.Create(GetMatchLockFile()).Close();
                     }
 
-                    _matchService.GetCurrentMatch()?.ResumeMatch();
-
                     restoreRoundVote = null;
                     _resetRound = null;
+
+                    _matchService.GetCurrentMatch()?.ResumeMatch();
                 },
                 true
             );
