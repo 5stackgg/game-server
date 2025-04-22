@@ -1,3 +1,4 @@
+using System.Reflection.Metadata.Ecma335;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
@@ -171,6 +172,7 @@ public class TimeoutSystem
             if (resumeVote != null)
             {
                 resumeVote.CastVote(player, true);
+                return;
             }
             else if (!CanPause(player))
             {
