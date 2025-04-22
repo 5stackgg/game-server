@@ -87,6 +87,13 @@ public class CaptainSystem
 
     public void ShowCaptains()
     {
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (matchData != null && matchData.options.type == "Duel")
+        {
+            return;
+        }
+
         foreach (var pair in _captains)
         {
             CsTeam? team = pair.Key;
