@@ -169,13 +169,14 @@ public class TimeoutSystem
 
         if (player != null)
         {
-            if (resumeVote != null)
+            if (!CanPause(player))
             {
-                resumeVote.CastVote(player, true);
-                return;
-            }
-            else if (!CanPause(player))
-            {
+                if (resumeVote != null)
+                {
+                    resumeVote.CastVote(player, true);
+                    return;
+                }
+
                 resumeVote = _serviceProvider.GetRequiredService(typeof(VoteSystem)) as VoteSystem;
 
                 if (resumeVote != null)
