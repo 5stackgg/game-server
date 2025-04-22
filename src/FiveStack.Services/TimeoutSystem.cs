@@ -150,13 +150,6 @@ public class TimeoutSystem
 
     public void RequestResume(CCSPlayerController? player)
     {
-        if (player == null)
-        {
-            _logger.LogInformation("Cancelling Voting");
-            resumeVote?.CancelVote();
-            _backUpManagement.restoreRoundVote?.CancelVote();
-        }
-
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
 
         if (matchData == null)
@@ -170,6 +163,12 @@ public class TimeoutSystem
         {
             if (!CanPause(player))
             {
+                if (resumeVote != null)
+                {
+                    resumeVote.CastVote(player, true);
+                    return;
+                }
+
                 resumeVote = _serviceProvider.GetRequiredService(typeof(VoteSystem)) as VoteSystem;
 
                 if (resumeVote != null)
@@ -180,11 +179,14 @@ public class TimeoutSystem
                         (
                             () =>
                             {
+                                _logger.LogInformation("resume vote passed");
                                 _matchService.GetCurrentMatch()?.ResumeMatch("Resume Vote Passed");
+                                resumeVote = null;
                             }
                         ),
                         () =>
                         {
+                            _logger.LogInformation("resume vote failed");
                             resumeVote = null;
                         },
                         true,

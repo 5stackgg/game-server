@@ -49,7 +49,7 @@ public class VoteSystem
 
         KillTimers();
 
-        _logger.LogInformation($"Starting Vote: {voteMessage}");
+        _logger.LogInformation($"Starting vote: {voteMessage}");
 
         _playerMessageTimer = TimerUtility.AddTimer(
             3,

@@ -141,6 +141,9 @@ public class MatchManager
         _logger.LogInformation($"Resuming Match: {message}");
         _gameServer.SendCommands(new[] { "mp_unpause_match" });
 
+        _timeoutSystem.resumeVote?.CancelVote();
+        _backUpManagement.restoreRoundVote?.CancelVote();
+
         if (!IsPaused())
         {
             return;
@@ -474,13 +477,10 @@ public class MatchManager
             if (IsWarmup())
             {
                 _gameServer.SendCommands(new[] { "mp_warmup_end" });
-            }
 
-            // if we can restore from backup we will prompt the for a vote to restore
-            // most likely this happeend because of a server crash
-            if (_backUpManagement.CheckForBackupRestore())
-            {
-                return;
+                // if we can restore from backup we will prompt the for a vote to restore
+                // most likely this happeend because of a server crash
+                _backUpManagement.CheckForBackupRestore();
             }
         });
     }

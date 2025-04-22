@@ -285,28 +285,28 @@ public class GameBackUpRounds
                 return;
             }
 
-            _logger.LogInformation($"Starting vote to restore round {round}");
-
             restoreRoundVote.StartVote(
                 $"Restore Round to {round}",
                 new CsTeam[] { CsTeam.CounterTerrorist, CsTeam.Terrorist },
                 () =>
                 {
-                    _resetRound = null;
+                    _logger.LogInformation("restore round vote passed");
                     RestoreRound(round);
+                    _resetRound = null;
                 },
                 () =>
                 {
-                    _resetRound = null;
+                    _logger.LogInformation("restore round vote failed");
 
                     if (_initialRestore)
                     {
                         File.Create(GetMatchLockFile()).Close();
                     }
 
-                    _matchService.GetCurrentMatch()?.ResumeMatch();
-
                     restoreRoundVote = null;
+                    _resetRound = null;
+
+                    _matchService.GetCurrentMatch()?.ResumeMatch();
                 },
                 true
             );
@@ -396,6 +396,7 @@ public class GameBackUpRounds
 
     public void RestoreRound(int round)
     {
+        _logger.LogInformation($"Restoring Round {round}");
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
         if (match?.current_match_map_id == null)
         {
