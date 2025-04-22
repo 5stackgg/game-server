@@ -52,6 +52,12 @@ public class GameBackUpRounds
         }
     }
 
+    public void CancelVote()
+    {
+        restoreRoundVote?.CancelVote();
+        restoreRoundVote = null;
+    }
+
     public void Setup()
     {
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
