@@ -120,8 +120,6 @@ public class KnifeSystem
 
     public void Switch(CCSPlayerController player)
     {
-        _logger.LogInformation("Knife round switching");
-
         CsTeam winningTeam = GetWinningTeam() ?? CsTeam.None;
         MatchManager? match = _matchService.GetCurrentMatch();
 
@@ -171,23 +169,7 @@ public class KnifeSystem
     public void ConfirmSwitch()
     {
         _logger.LogInformation("Knife round confirming switch");
-
-        _gameServer.SendCommands(new[] { "mp_swapteams" });
-
-        _matchService.GetMatchFromApi();
-
-        Server.NextFrame(() =>
-        {
-            MatchManager? match = _matchService.GetCurrentMatch();
-
-            if (match == null || !match.IsKnife())
-            {
-                return;
-            }
-
-            _gameServer.SendCommands(new[] { "mp_restartgame 1" });
-            match.UpdateMapStatus(eMapStatus.Live);
-        });
+        _matchService.GetMatchFromApi(eMapStatus.Live);
     }
 
     public CsTeam? GetWinningTeam()

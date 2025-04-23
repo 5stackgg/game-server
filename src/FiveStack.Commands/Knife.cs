@@ -65,6 +65,4 @@ public partial class FiveStackPlugin
 
         match.knifeSystem.ConfirmSwitch();
     }
-
-    
 }

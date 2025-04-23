@@ -1,7 +1,6 @@
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
-using FiveStack.Entities;
 using FiveStack.Enums;
 using Microsoft.Extensions.Logging;
 
@@ -13,9 +12,13 @@ public class MatchEvents
     private ClientWebSocket? _webSocket;
     private CancellationTokenSource? _connectionCts;
     private bool _manualDisconnect = false;
-    private Dictionary<Guid, EventData<Dictionary<string, object>>> _pendingMessages = new();
+    private Dictionary<
+        Guid,
+        (EventData<Dictionary<string, object>> Event, DateTime Timestamp)
+    > _pendingMessages = new();
     private System.Timers.Timer _retryTimer;
     private const int RETRY_INTERVAL_MS = 5000;
+    private const int MESSAGE_RETRY_THRESHOLD_SECONDS = 10;
 
     private readonly ILogger<MatchEvents> _logger;
     private readonly MatchService _matchService;
@@ -239,14 +242,20 @@ public class MatchEvents
 
     private async Task RetryPendingMessages()
     {
-        var messagesToRetry = _pendingMessages.ToList();
+        var currentTime = DateTime.UtcNow;
+
+        var messagesToRetry = _pendingMessages
+            .Where(m =>
+                (currentTime - m.Value.Timestamp).TotalSeconds >= MESSAGE_RETRY_THRESHOLD_SECONDS
+            )
+            .ToList();
 
         foreach (var message in messagesToRetry)
         {
             try
             {
                 var jsonMessage = JsonSerializer.Serialize(
-                    new { @event = "events", data = message.Value }
+                    new { @event = "events", data = message.Value.Event }
                 );
                 var buffer = Encoding.UTF8.GetBytes(jsonMessage);
 
@@ -259,7 +268,7 @@ public class MatchEvents
                         _connectionCts?.Token ?? CancellationToken.None
                     );
 
-                    _pendingMessages[message.Key] = message.Value;
+                    _pendingMessages[message.Key] = (message.Value.Event, currentTime);
                 }
             }
             catch (Exception ex)
@@ -282,7 +291,7 @@ public class MatchEvents
 
         if (data is EventData<Dictionary<string, object>> typedData)
         {
-            _pendingMessages[data.messageId] = typedData;
+            _pendingMessages[data.messageId] = (typedData, DateTime.UtcNow);
         }
 
         try
