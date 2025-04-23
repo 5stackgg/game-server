@@ -1,6 +1,7 @@
 using System.Text.Json;
 using CounterStrikeSharp.API;
 using FiveStack.Entities;
+using FiveStack.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -55,7 +56,7 @@ public class MatchService
         }
     }
 
-    public async void GetMatchFromApi()
+    public async void GetMatchFromApi(eMapStatus? forceState = null)
     {
         HttpClient httpClient = new HttpClient();
 
@@ -101,14 +102,14 @@ public class MatchService
 
                 if (_currentMatch?.GetMatchData()?.id == matchData.id)
                 {
-                    _currentMatch.SetupMatch(matchData);
+                    _currentMatch.SetupMatch(matchData, forceState);
                     return;
                 }
 
                 _currentMatch =
                     _serviceProvider.GetRequiredService(typeof(MatchManager)) as MatchManager;
 
-                _currentMatch!.SetupMatch(matchData);
+                _currentMatch!.SetupMatch(matchData, forceState);
             });
         }
         catch (HttpRequestException ex)

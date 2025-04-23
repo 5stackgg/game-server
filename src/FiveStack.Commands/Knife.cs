@@ -48,4 +48,21 @@ public partial class FiveStackPlugin
 
         match.knifeSystem.Skip();
     }
+
+    [ConsoleCommand(
+        "api_knife_switch",
+        "Should only be called by the API, this is so we know the api regonized the switch"
+    )]
+    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public void OnApiSwitch(CCSPlayerController player, CommandInfo command)
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (match == null)
+        {
+            return;
+        }
+
+        match.knifeSystem.ConfirmSwitch();
+    }
 }

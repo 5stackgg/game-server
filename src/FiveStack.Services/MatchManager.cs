@@ -240,7 +240,7 @@ public class MatchManager
         _currentMapStatus = status;
     }
 
-    public void SetupMatch(MatchData match)
+    public void SetupMatch(MatchData match, eMapStatus? forceState = null)
     {
         _matchData = match;
 
@@ -257,6 +257,11 @@ public class MatchManager
         {
             _logger.LogWarning("match does not have a current map");
             return;
+        }
+
+        if (forceState != null)
+        {
+            _currentMap.status = forceState.Value.ToString();
         }
 
         _logger.LogInformation(
@@ -286,15 +291,18 @@ public class MatchManager
 
         SetupTeamNames();
 
-        if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
-        {
-            UpdateMapStatus(MatchUtility.MapStatusStringToEnum(_currentMap.status));
-        }
-
         foreach (var player in MatchUtility.Players())
         {
             EnforceMemberTeam(player);
         }
+
+        Server.NextFrame(() =>
+        {
+            if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
+            {
+                UpdateMapStatus(MatchUtility.MapStatusStringToEnum(_currentMap.status));
+            }
+        });
 
         if (IsWarmup())
         {
@@ -490,6 +498,13 @@ public class MatchManager
         MatchData? matchData = GetMatchData();
         MatchMap? currentMap = GetCurrentMap();
 
+        CsTeam lineup1StartingSide = TeamUtility.TeamStringToCsTeam(
+            currentMap?.lineup_1_side ?? CsTeam.CounterTerrorist.ToString()
+        );
+        CsTeam lineup2StartingSide = TeamUtility.TeamStringToCsTeam(
+            currentMap?.lineup_2_side ?? CsTeam.Terrorist.ToString()
+        );
+
         if (matchData == null || currentMap == null)
         {
             return;
@@ -536,20 +551,8 @@ public class MatchManager
                 currentTeam = player.Team;
             }
 
-            CsTeam expectedTeam = CsTeam.None;
-
-            string lineupName =
-                matchData.lineup_1_id == lineup_id
-                    ? matchData.lineup_1.name
-                    : matchData.lineup_2.name;
-
-            foreach (var team in MatchUtility.Teams())
-            {
-                if (team.ClanTeamname == lineupName)
-                {
-                    expectedTeam = TeamUtility.TeamNumToCSTeam(team.TeamNum);
-                }
-            }
+            CsTeam expectedTeam =
+                matchData.lineup_1_id == lineup_id ? lineup1StartingSide : lineup2StartingSide;
 
             if (expectedTeam == CsTeam.None)
             {

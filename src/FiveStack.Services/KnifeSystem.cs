@@ -120,8 +120,6 @@ public class KnifeSystem
 
     public void Switch(CCSPlayerController player)
     {
-        _logger.LogInformation("Knife round switching");
-
         CsTeam winningTeam = GetWinningTeam() ?? CsTeam.None;
         MatchManager? match = _matchService.GetCurrentMatch();
 
@@ -149,25 +147,7 @@ public class KnifeSystem
             $"captain picked to {ChatColors.Red}swap {ChatColors.Default}sides"
         );
 
-        _gameServer.SendCommands(new[] { "mp_swapteams" });
-
-        var currentMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
-
-        if (currentMap != null)
-        {
-            currentMap.lineup_1_side = currentMap.lineup_1_side == "CT" ? "T" : "CT";
-            currentMap.lineup_2_side = currentMap.lineup_2_side == "CT" ? "T" : "CT";
-            _matchService.GetCurrentMatch()?.SetupTeamNames();
-        }
-
-        Server.NextFrame(() =>
-        {
-            _gameServer.SendCommands(new[] { "mp_restartgame 1" });
-        });
-
         _matchEvents.PublishGameEvent("switch", new Dictionary<string, object>());
-
-        match.UpdateMapStatus(eMapStatus.Live);
     }
 
     public void Skip()
@@ -184,6 +164,12 @@ public class KnifeSystem
         _gameServer.Message(HudDestination.Center, $"Skipping Knife.");
 
         match.UpdateMapStatus(eMapStatus.Live);
+    }
+
+    public void ConfirmSwitch()
+    {
+        _logger.LogInformation("Knife round confirming switch");
+        _matchService.GetMatchFromApi(eMapStatus.Live);
     }
 
     public CsTeam? GetWinningTeam()
