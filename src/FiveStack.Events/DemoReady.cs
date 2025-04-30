@@ -34,7 +34,11 @@ public partial class FiveStackPlugin
 
         Server.NextFrame(async () =>
         {
-            await _gameDemos.UploadDemos();
+            if (!_environmentService.isOnGameServerNode())
+            {
+                await _gameDemos.UploadDemos();
+            }
+
             Server.NextFrame(() =>
             {
                 match.UpdateMapStatus(eMapStatus.Finished);

@@ -44,6 +44,11 @@ public class EnvironmentService
         return Environment.GetEnvironmentVariable("ALLOW_BOTS") == "true";
     }
 
+    public bool isOnGameServerNode()
+    {
+        return Environment.GetEnvironmentVariable("GAME_NODE_SERVER") == "true";
+    }
+
     public string[] PossibleDirectories =
     [
         "/serverdata/serverfiles",
