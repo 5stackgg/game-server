@@ -34,7 +34,7 @@ public partial class FiveStackPlugin
 
         Server.NextFrame(async () =>
         {
-            if (_environmentService.isOnGameServerNode())
+            if (!_environmentService.isOnGameServerNode())
             {
                 await _gameDemos.UploadDemos();
             }
