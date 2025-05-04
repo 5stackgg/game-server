@@ -1,4 +1,7 @@
+using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
@@ -6,6 +9,12 @@ using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
+
+public record PresignedUrlResponse
+{
+    [JsonPropertyName("presignedUrl")]
+    public string? PresignedUrl { get; init; }
+}
 
 public class GameDemos
 {
@@ -86,10 +95,10 @@ public class GameDemos
 
         foreach (string file in files)
         {
-            _logger.LogInformation($"uploading demo {file}");
+            _logger.LogInformation($"Uploading demo {file}");
             await UploadDemo(file);
         }
-        _logger.LogInformation("Uploaded demos");
+        _logger.LogInformation("Uploaded all demos");
     }
 
     public async Task UploadDemo(string filePath)
@@ -106,39 +115,62 @@ public class GameDemos
                 return;
             }
 
-            string endpoint =
-                $"{_environmentService.GetDemosUrl()}/demos/{match.id}/map/{match.current_match_map_id}";
-
-            _logger.LogInformation($"Uploading Demo {endpoint}");
+            string? presignedUrl = await GetPresignedUrl(filePath);
+            if (string.IsNullOrEmpty(presignedUrl))
+            {
+                _logger.LogError("Failed to get presigned URL");
+                return;
+            }
 
             using var httpClient = new HttpClient();
             httpClient.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
 
+            var fileInfo = new FileInfo(filePath);
             using (var fileStream = File.OpenRead(filePath))
             {
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-                    "Bearer",
-                    apiPassword
+                var request = new HttpRequestMessage(HttpMethod.Put, presignedUrl);
+                request.Content = new StreamContent(fileStream);
+                request.Content.Headers.ContentType = new MediaTypeHeaderValue(
+                    "application/octet-stream"
                 );
+                request.Content.Headers.ContentLength = fileInfo.Length;
 
-                using (var formData = new MultipartFormDataContent())
-                using (var streamContent = new StreamContent(fileStream))
+                var response = await httpClient.SendAsync(request);
+                if (response.IsSuccessStatusCode)
                 {
-                    streamContent.Headers.ContentType = new MediaTypeHeaderValue(
-                        "application/octet-stream"
-                    );
-                    formData.Add(streamContent, "file", Path.GetFileName(filePath));
+                    _logger.LogInformation("demo uploaded");
 
-                    var response = await httpClient.PostAsync(endpoint, formData);
-                    if (response.IsSuccessStatusCode)
+                    var notifyEndpoint =
+                        $"{_environmentService.GetDemosUrl()}/demos/{match.id}/uploaded";
+                    var notifyRequest = new
                     {
-                        _logger.LogInformation("demo uploaded");
+                        demo = Path.GetFileName(filePath),
+                        mapId = match.current_match_map_id,
+                        size = fileInfo.Length,
+                    };
+
+                    using var notifyClient = new HttpClient();
+                    notifyClient.DefaultRequestHeaders.Authorization =
+                        new AuthenticationHeaderValue("Bearer", apiPassword);
+                    var notifyResponse = await notifyClient.PostAsJsonAsync(
+                        notifyEndpoint,
+                        notifyRequest
+                    );
+
+                    if (notifyResponse.IsSuccessStatusCode)
+                    {
                         File.Delete(filePath);
                     }
                     else
                     {
-                        _logger.LogError($"unable to upload demo {response.StatusCode}");
+                        _logger.LogError(
+                            $"Failed to notify about demo upload: {notifyResponse.StatusCode}"
+                        );
                     }
+                }
+                else
+                {
+                    _logger.LogError($"unable to upload demo {response.StatusCode}");
                 }
             }
         }
@@ -146,6 +178,63 @@ public class GameDemos
         {
             _logger.LogError($"An error occurred during file upload: {ex.Message}");
         }
+    }
+
+    private async Task<string?> GetPresignedUrl(string filePath)
+    {
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (match == null)
+        {
+            return null;
+        }
+
+        string? apiPassword = _environmentService.GetServerApiPassword();
+        if (apiPassword == null)
+        {
+            return null;
+        }
+
+        string endpoint = $"{_environmentService.GetDemosUrl()}/demos/{match.id}/pre-signed";
+
+        using var httpClient = new HttpClient();
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            apiPassword
+        );
+
+        var requestBody = new
+        {
+            demo = Path.GetFileName(filePath),
+            mapId = _matchService.GetCurrentMatch()?.GetMatchData()?.current_match_map_id,
+        };
+
+        var response = await httpClient.PostAsJsonAsync(endpoint, requestBody);
+
+        switch (response.StatusCode)
+        {
+            case HttpStatusCode.Conflict:
+                _logger.LogInformation("match map is not finished");
+                break;
+            case HttpStatusCode.NotAcceptable:
+                _logger.LogInformation("demo is already uploaded");
+                File.Delete(filePath);
+                break;
+            case HttpStatusCode.Gone:
+                _logger.LogInformation("match map not found");
+                File.Delete(filePath);
+                break;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError($"unable to get presigned url: {response.StatusCode}");
+            return null;
+        }
+
+        var responseContent = await response.Content.ReadFromJsonAsync<PresignedUrlResponse>();
+
+        return responseContent?.PresignedUrl;
     }
 
     private string GetMatchDemoPath()

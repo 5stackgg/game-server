@@ -49,7 +49,7 @@ public class TimeoutSystem
         {
             _gameServer.Message(
                 HudDestination.Chat,
-                $" {ChatColors.Red}Cannot call a tactical timeout while match is not live",
+                $" {ChatColors.Red}Cannot pause while match is not live",
                 player
             );
             return;
