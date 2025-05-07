@@ -11,12 +11,6 @@ public partial class FiveStackPlugin
         _surrenderSystem.ResetSurrender();
         _gameDemos.Stop();
 
-        MatchManager? match = _matchService.GetCurrentMatch();
-        if (match == null)
-        {
-            return HookResult.Continue;
-        }
-
         return HookResult.Continue;
     }
 }
