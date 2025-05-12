@@ -23,18 +23,8 @@ copy_directories=(
 )
 
 for dir in "${copy_directories[@]}"; do
-  if [ "$dir" = "game/bin/linuxsteamrt64" ]; then
-    mkdir -p "$INSTANCE_SERVER_DIR/$dir"
-
-    for item in "$BASE_SERVER_DIR/$dir"/*; do
-      if [ "$(basename "$item")" != "steamapps" ]; then
-        cp -R "$item" "$INSTANCE_SERVER_DIR/$dir/"
-      fi
-    done
-  else
-    echo "---Copying $dir---"
-    cp -R "$BASE_SERVER_DIR/$dir" "$INSTANCE_SERVER_DIR/$dir"
-  fi
+  echo "---Copying $dir---"
+  cp -R "$BASE_SERVER_DIR/$dir" "$INSTANCE_SERVER_DIR/$dir"
 done
 
 echo "---Create Symbolic Links---"
