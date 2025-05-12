@@ -5,19 +5,31 @@ make_directories=(
   "game/csgo/addons"
   "game/csgo/maps/soundcache"
   "game/csgo/logs"
+  "game/bin/linuxsteamrt64"
 )
 
 for dir in "${make_directories[@]}"; do
     mkdir -p "$INSTANCE_SERVER_DIR/$dir"
 done
 
+
+if [ ! -d "$BASE_SERVER_DIR/game/bin/linuxsteamrt64/steamapps" ]; then
+  mkdir -p "$BASE_SERVER_DIR/game/bin/linuxsteamrt64/steamapps"
+fi
+
 copy_directories=(
-  "game/bin"
   "game/csgo/cfg"
+  "game/bin/linuxsteamrt64"
 )
 
 for dir in "${copy_directories[@]}"; do
+  if [ "$dir" = "game/bin/linuxsteamrt64" ]; then
+    if [ "$dir" != "game/bin/linuxsteamrt64/steamapps" ]; then
+      cp -R "$BASE_SERVER_DIR/$dir" "$INSTANCE_SERVER_DIR/$dir"
+    fi
+  else
     cp -R "$BASE_SERVER_DIR/$dir" "$INSTANCE_SERVER_DIR/$dir"
+  fi
 done
 
 echo "---Create Symbolic Links---"
