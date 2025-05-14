@@ -310,6 +310,7 @@ public class MatchManager
         }
     }
 
+    // TODO - pseudo safe
     private string GetWorkshopID()
     {
         IntPtr networkGameServer = _networkServerService.GetIGameServerHandle();
