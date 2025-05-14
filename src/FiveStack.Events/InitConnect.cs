@@ -1,10 +1,10 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
+using FiveStack.Entities;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -71,36 +71,34 @@ public partial class FiveStackPlugin
         var password = hook.GetParam<string>(5);
         var steamId = MemoryMarshal.Read<ulong>(authTicket[..8]);
 
-        var svPassword = ConVar.Find("sv_password");
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
-        if (svPassword == null)
+        if (match == null)
         {
             return HookResult.Continue;
         }
 
-        try
-        {
-            var handler = new JwtSecurityTokenHandler();
-            var token = handler.ReadJwtToken(password);
+        var matchPassword = match.password;
 
-            _logger.LogInformation("JWT Claims:");
-            foreach (var claim in token.Claims)
-            {
-                _logger.LogInformation("{Type}: {Value}", claim.Type, claim.Value);
-            }
-        }
-        catch (Exception ex)
+        if (password == matchPassword)
         {
-            _logger.LogError("Failed to decode JWT: {Message}", ex.Message);
+            return HookResult.Continue;
         }
 
-        var svPasswordValue = svPassword.StringValue;
+        var matchId = match.id;
 
-        hook.SetParam(5, svPasswordValue);
+        var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(matchPassword));
+        var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes($"{steamId}:{matchId}"));
+        var computedToken = Convert.ToBase64String(computedHash);
 
-        _logger.LogInformation("SteamId: {SteamId}", steamId);
-        _logger.LogInformation("Password: {Password}", password);
-        _logger.LogInformation("Password: {Password}", svPasswordValue);
+        if (computedToken != password.Replace("-", "/"))
+        {
+            return HookResult.Continue;
+        }
+
+        hook.SetParam(5, matchPassword);
+
+        _logger.LogInformation($"Token validated successfully {matchPassword}");
 
         return HookResult.Continue;
     }
