@@ -65,10 +65,10 @@ public partial class FiveStackPlugin
 
         _logger.LogInformation($"token {token} {matchPassword}");
 
-
-        if(token == null)
+        if (token == null)
         {
-            hook.SetParam(5, "bad-password");
+            hook.SetParam(6, 0);
+            hook.SetParam(7, 0);
             return HookResult.Continue;
         }
 
@@ -81,12 +81,11 @@ public partial class FiveStackPlugin
 
         string[] parts = token.Split(':');
 
-        if(parts.Length != 2)
+        if (parts.Length != 2)
         {
-            hook.SetParam(5, "bad-password");
             return HookResult.Continue;
         }
-        
+
         string role = parts[0];
         string password = parts.Length > 1 ? parts[1] : "";
 
@@ -100,7 +99,8 @@ public partial class FiveStackPlugin
 
         if (computedToken != password)
         {
-            hook.SetParam(5, "bad-password");
+            hook.SetParam(6, 0);
+            hook.SetParam(7, 0);
             return HookResult.Continue;
         }
 
@@ -119,20 +119,24 @@ public partial class FiveStackPlugin
     {
         Span<byte> buffer = stackalloc byte[PasswordBufferLength];
 
-		int length = Encoding.UTF8.GetBytes(src, buffer[..(buffer.Length - 1)]);
-		buffer[length] = (byte)'\0';
+        int length = Encoding.UTF8.GetBytes(src, buffer[..(buffer.Length - 1)]);
+        buffer[length] = (byte)'\0';
 
-		var dstBuffer = new Span<byte>((byte*)dst, PasswordBufferLength);
-		buffer.CopyTo(dstBuffer);
-	}
+        var dstBuffer = new Span<byte>((byte*)dst, PasswordBufferLength);
+        buffer.CopyTo(dstBuffer);
+    }
 }
 
 public static class DynamicHookExtensions
 {
-	public static unsafe Span<T> GetParamArray<T>(this DynamicHook hook, int paramIndex, int lengthParamIndex)
-	{
-		var value = hook.GetParam<nint>(paramIndex);
-		var length = hook.GetParam<int>(lengthParamIndex);
-		return new Span<T>((void*)value, length);
-	}
+    public static unsafe Span<T> GetParamArray<T>(
+        this DynamicHook hook,
+        int paramIndex,
+        int lengthParamIndex
+    )
+    {
+        var value = hook.GetParam<nint>(paramIndex);
+        var length = hook.GetParam<int>(lengthParamIndex);
+        return new Span<T>((void*)value, length);
+    }
 }
