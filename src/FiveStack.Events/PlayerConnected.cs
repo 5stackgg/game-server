@@ -49,10 +49,10 @@ public partial class FiveStackPlugin
             .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
             .ToList();
 
-        bool shouldKick = true;
-
         if (player.ClanName != "[admin]" && player.ClanName != "[organizer]")
         {
+            bool shouldKick = true;
+
             if (
                 match.IsWarmup()
                 && players.Any(player => !string.IsNullOrEmpty(player.placeholder_name))
