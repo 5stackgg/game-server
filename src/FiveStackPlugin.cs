@@ -61,6 +61,7 @@ public partial class FiveStackPlugin : BasePlugin
         _logger.LogInformation($"Server ID: {_environmentService.GetServerId()}");
 
         RecordEnd.Hook(RecordEndHookResult, HookMode.Post);
+        ConnectClientFunc.Hook(ConnectClientHook, HookMode.Pre);
 
         ListenForMapChange();
 
@@ -83,6 +84,7 @@ public partial class FiveStackPlugin : BasePlugin
     {
         _pingTimer?.Dispose();
         RecordEnd.Unhook(RecordEndHookResult, HookMode.Post);
+        ConnectClientFunc.Unhook(ConnectClientHook, HookMode.Pre);
 
         TimerUtility.Timers.ForEach(
             (timer) =>
