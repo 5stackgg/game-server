@@ -287,6 +287,7 @@ public class MatchManager
             return;
         }
 
+        FiveStackPlugin.SetPasswordBuffer(_matchData.password);
         _gameServer.SendCommands(new[] { $"sv_password \"{_matchData.password}\"" });
 
         SetupTeamNames();
@@ -310,7 +311,7 @@ public class MatchManager
         }
     }
 
-    private string GetWorkshopID()
+    private unsafe string GetWorkshopID()
     {
         IntPtr networkGameServer = _networkServerService.GetIGameServerHandle();
         IntPtr vtablePtr = Marshal.ReadIntPtr(networkGameServer);
@@ -512,6 +513,7 @@ public class MatchManager
 
             if (member == null)
             {
+                player.ChangeTeam(CsTeam.Spectator);
                 return;
             }
 
@@ -677,7 +679,7 @@ public class MatchManager
         }
     }
 
-    private void UpdatePlayerName(CCSPlayerController player, string name, string? tag = null)
+    public void UpdatePlayerName(CCSPlayerController player, string name, string? tag = null)
     {
         if (player == null || player.IsBot)
         {

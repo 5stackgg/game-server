@@ -31,30 +31,46 @@ public partial class FiveStackPlugin
 
         CCSPlayerController player = @event.Userid;
 
+        if (PendingPlayers.ContainsKey(player.SteamID))
+        {
+            player.ClanName = PendingPlayers[player.SteamID];
+            PendingPlayers.Remove(player.SteamID);
+
+            MatchManager? matchManager = _matchService.GetCurrentMatch();
+
+            if (matchManager != null)
+            {
+                matchManager.UpdatePlayerName(player, player.PlayerName, player.ClanName);
+            }
+        }
+
         Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
         List<MatchMember> players = matchData
             .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
             .ToList();
 
-        bool shouldKick = true;
-
-        if (
-            match.IsWarmup()
-            && players.Any(player => !string.IsNullOrEmpty(player.placeholder_name))
-        )
+        if (player.ClanName != "[admin]" && player.ClanName != "[organizer]")
         {
-            shouldKick = false;
-        }
+            bool shouldKick = true;
 
-        if (players.Find(player => player.steam_id == null) != null)
-        {
-            shouldKick = false;
-        }
+            if (
+                match.IsWarmup()
+                && players.Any(player => !string.IsNullOrEmpty(player.placeholder_name))
+            )
+            {
+                shouldKick = false;
+            }
 
-        if (shouldKick && lineup_id == null)
-        {
-            Server.ExecuteCommand($"kickid {player.UserId}");
-            return HookResult.Continue;
+            if (players.Find(player => player.steam_id == null) != null)
+            {
+                shouldKick = false;
+            }
+
+            if (shouldKick && lineup_id == null)
+            {
+                Server.ExecuteCommand($"kickid {player.UserId}");
+                return HookResult.Continue;
+            }
         }
 
         match.EnforceMemberTeam(player, CsTeam.None);
