@@ -17,10 +17,8 @@ namespace FiveStack.Utilities
                     return ePlayerRoles.Streamer;
                 case "verified":
                     return ePlayerRoles.VerifiedUser;
-                case "user":
-                    return ePlayerRoles.User;
                 default:
-                    throw new ArgumentException($"Unsupported timeout setting: {state}");
+                    return ePlayerRoles.User;
             }
         }
     }
