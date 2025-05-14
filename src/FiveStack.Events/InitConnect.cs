@@ -1,5 +1,8 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Runtime.InteropServices;
+using System.Text;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using Microsoft.Extensions.Logging;
@@ -65,9 +68,39 @@ public partial class FiveStackPlugin
     private HookResult ConnectClientHook(DynamicHook hook)
     {
         var authTicket = hook.GetParamArray<byte>(6, 7);
+        var password = hook.GetParam<string>(5);
         var steamId = MemoryMarshal.Read<ulong>(authTicket[..8]);
 
-        _logger.LogInformation($"init connect steam id: {steamId}");
+        var svPassword = ConVar.Find("sv_password");
+
+        if (svPassword == null)
+        {
+            return HookResult.Continue;
+        }
+
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var token = handler.ReadJwtToken(password);
+
+            _logger.LogInformation("JWT Claims:");
+            foreach (var claim in token.Claims)
+            {
+                _logger.LogInformation("{Type}: {Value}", claim.Type, claim.Value);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Failed to decode JWT: {Message}", ex.Message);
+        }
+
+        var svPasswordValue = svPassword.StringValue;
+
+        hook.SetParam(5, svPasswordValue);
+
+        _logger.LogInformation("SteamId: {SteamId}", steamId);
+        _logger.LogInformation("Password: {Password}", password);
+        _logger.LogInformation("Password: {Password}", svPasswordValue);
 
         return HookResult.Continue;
     }
