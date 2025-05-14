@@ -513,6 +513,7 @@ public class MatchManager
 
             if (member == null)
             {
+                player.ChangeTeam(CsTeam.Spectator);
                 return;
             }
 
@@ -678,7 +679,7 @@ public class MatchManager
         }
     }
 
-    private void UpdatePlayerName(CCSPlayerController player, string name, string? tag = null)
+    public void UpdatePlayerName(CCSPlayerController player, string name, string? tag = null)
     {
         if (player == null || player.IsBot)
         {

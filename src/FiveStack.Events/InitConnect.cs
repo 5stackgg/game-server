@@ -1,12 +1,12 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
-using System.Security.Principal;
 using System.Text;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using FiveStack.Entities;
-using Microsoft.Extensions.Logging;
+using FiveStack.Enums;
+using FiveStack.Utilities;
 
 namespace FiveStack;
 
@@ -14,6 +14,7 @@ public partial class FiveStackPlugin
 {
     private static int PasswordBufferLength = 86;
     public static nint PasswordBuffer { get; set; } = nint.Zero;
+    public static Dictionary<ulong, string> PendingPlayers = new();
 
     // near "CNetworkGameServerBase::ConnectClient( name=\'%s\', remote=\'%s\' )\n"
     private static string ConnectClientSignature = RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
@@ -108,6 +109,21 @@ public partial class FiveStackPlugin
                 hook.SetParam(7, 0);
             }
             return HookResult.Continue;
+        }
+
+        ePlayerRoles playerRole = PlayerRoleUtility.PlayerRoleStringToEnum(role);
+
+        if (
+            type == "game"
+            && (
+                playerRole == ePlayerRoles.Administrator
+                || playerRole == ePlayerRoles.TournamentOrganizer
+                || playerRole == ePlayerRoles.MatchOrganizer
+            )
+        )
+        {
+            PendingPlayers[steamId] =
+                playerRole == ePlayerRoles.Administrator ? "admin" : "organizer";
         }
 
         hook.SetParam(5, PasswordBuffer);
