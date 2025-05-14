@@ -11,11 +11,11 @@ public class INetworkServerService : NativeObject
         : base(NativeAPI.GetValveInterface(0, "NetworkServerService_001"))
     {
         int offset = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? 23 : 24;
-        this.GetIGameServerFunc = new VirtualFunctionWithReturn<nint, nint>(this.Handle, offset);
+        GetIGameServerFunc = new VirtualFunctionWithReturn<nint, nint>(Handle, offset);
     }
 
     public nint GetIGameServerHandle()
     {
-        return this.GetIGameServerFunc.Invoke(this.Handle);
+        return GetIGameServerFunc.Invoke(Handle);
     }
 }

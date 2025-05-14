@@ -287,6 +287,7 @@ public class MatchManager
             return;
         }
 
+        FiveStackPlugin.SetPasswordBuffer(_matchData.password);
         _gameServer.SendCommands(new[] { $"sv_password \"{_matchData.password}\"" });
 
         SetupTeamNames();
@@ -310,8 +311,7 @@ public class MatchManager
         }
     }
 
-    // TODO - pseudo safe
-    private string GetWorkshopID()
+    private unsafe string GetWorkshopID()
     {
         IntPtr networkGameServer = _networkServerService.GetIGameServerHandle();
         IntPtr vtablePtr = Marshal.ReadIntPtr(networkGameServer);

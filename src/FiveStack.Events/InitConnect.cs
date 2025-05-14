@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Security.Principal;
 using System.Text;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Memory;
@@ -9,29 +10,11 @@ using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
-public static class DynamicHookExtensions
-{
-    // TODO - pseudo safe
-    public static Span<T> GetParamArray<T>(
-        this DynamicHook hook,
-        int paramIndex,
-        int lengthParamIndex
-    )
-        where T : struct
-    {
-        var value = hook.GetParam<nint>(paramIndex);
-        var length = hook.GetParam<int>(lengthParamIndex);
-        var array = new T[length];
-        for (int i = 0; i < length; i++)
-        {
-            array[i] = Marshal.PtrToStructure<T>(value + (i * Marshal.SizeOf<T>()));
-        }
-        return array;
-    }
-}
-
 public partial class FiveStackPlugin
 {
+    private static int PasswordBufferLength = 86;
+    public static nint PasswordBuffer { get; set; } = nint.Zero;
+
     // near "CNetworkGameServerBase::ConnectClient( name=\'%s\', remote=\'%s\' )\n"
     private static string ConnectClientSignature = RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
         ? "55 48 89 E5 41 57 49 89 F7 41 56 4D 89 CE 41 55 49 89 FD 41 54 48 8D 7D 80 49 89 D4 53 48 81 EC F8 00 00 00 8B 45 20 89 8D 10 FF FF FF B9 08 00 00 00 8B 55 18 48 89 BD 28 FF FF FF 48 8B 75 10 4C 89 85 18 FF FF FF 89 85 20 FF FF FF"
@@ -68,7 +51,7 @@ public partial class FiveStackPlugin
     private HookResult ConnectClientHook(DynamicHook hook)
     {
         var authTicket = hook.GetParamArray<byte>(6, 7);
-        var password = hook.GetParam<string>(5);
+        var token = hook.GetParam<string>(5);
         var steamId = MemoryMarshal.Read<ulong>(authTicket[..8]);
 
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
@@ -80,26 +63,76 @@ public partial class FiveStackPlugin
 
         var matchPassword = match.password;
 
-        if (password == matchPassword)
+        _logger.LogInformation($"token {token} {matchPassword}");
+
+
+        if(token == null)
+        {
+            hook.SetParam(5, "bad-password");
+            return HookResult.Continue;
+        }
+
+        if (token == matchPassword)
         {
             return HookResult.Continue;
         }
 
         var matchId = match.id;
 
+        string[] parts = token.Split(':');
+
+        if(parts.Length != 2)
+        {
+            hook.SetParam(5, "bad-password");
+            return HookResult.Continue;
+        }
+        
+        string role = parts[0];
+        string password = parts.Length > 1 ? parts[1] : "";
+
         var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(matchPassword));
-        var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes($"{steamId}:{matchId}"));
+        var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes($"{role}:{steamId}:{matchId}"));
         var computedToken = Convert.ToBase64String(computedHash);
 
-        if (computedToken != password.Replace("-", "/"))
+        // fix + and - for URL safe characters
+        password = password.Replace("-", "+");
+        password = password.Replace("_", "/");
+
+        if (computedToken != password)
         {
+            hook.SetParam(5, "bad-password");
             return HookResult.Continue;
         }
 
-        hook.SetParam(5, matchPassword);
-
-        _logger.LogInformation($"Token validated successfully {matchPassword}");
+        hook.SetParam(5, PasswordBuffer);
 
         return HookResult.Continue;
     }
+
+    public static void SetPasswordBuffer(string password)
+    {
+        PasswordBuffer = Marshal.StringToCoTaskMemUTF8(new string('\0', PasswordBufferLength));
+        StrCpy(PasswordBuffer, password);
+    }
+
+    private static unsafe void StrCpy(nint dst, string src)
+    {
+        Span<byte> buffer = stackalloc byte[PasswordBufferLength];
+
+		int length = Encoding.UTF8.GetBytes(src, buffer[..(buffer.Length - 1)]);
+		buffer[length] = (byte)'\0';
+
+		var dstBuffer = new Span<byte>((byte*)dst, PasswordBufferLength);
+		buffer.CopyTo(dstBuffer);
+	}
+}
+
+public static class DynamicHookExtensions
+{
+	public static unsafe Span<T> GetParamArray<T>(this DynamicHook hook, int paramIndex, int lengthParamIndex)
+	{
+		var value = hook.GetParam<nint>(paramIndex);
+		var length = hook.GetParam<int>(lengthParamIndex);
+		return new Span<T>((void*)value, length);
+	}
 }

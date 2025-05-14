@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes;
@@ -85,6 +86,8 @@ public partial class FiveStackPlugin : BasePlugin
         _pingTimer?.Dispose();
         RecordEnd.Unhook(RecordEndHookResult, HookMode.Post);
         ConnectClientFunc.Unhook(ConnectClientHook, HookMode.Pre);
+
+        Marshal.FreeCoTaskMem(PasswordBuffer);
 
         TimerUtility.Timers.ForEach(
             (timer) =>
