@@ -8,6 +8,7 @@ namespace FiveStack;
 
 public static class DynamicHookExtensions
 {
+    // TODO - pseudo safe
     public static Span<T> GetParamArray<T>(
         this DynamicHook hook,
         int paramIndex,
