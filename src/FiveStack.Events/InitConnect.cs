@@ -63,8 +63,6 @@ public partial class FiveStackPlugin
 
         var matchPassword = match.password;
 
-        _logger.LogInformation($"token {token} {matchPassword}");
-
         if (token == null)
         {
             hook.SetParam(6, 0);
@@ -81,16 +79,21 @@ public partial class FiveStackPlugin
 
         string[] parts = token.Split(':');
 
-        if (parts.Length != 2)
+        if (parts.Length != 3)
         {
+            hook.SetParam(6, 0);
+            hook.SetParam(7, 0);
             return HookResult.Continue;
         }
 
-        string role = parts[0];
-        string password = parts.Length > 1 ? parts[1] : "";
+        string type = parts[0];
+        string role = parts[1];
+        string password = parts.Length > 1 ? parts[2] : "";
 
         var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(matchPassword));
-        var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes($"{role}:{steamId}:{matchId}"));
+        var computedHash = hmac.ComputeHash(
+            Encoding.UTF8.GetBytes($"{type}:{role}:{steamId}:{matchId}")
+        );
         var computedToken = Convert.ToBase64String(computedHash);
 
         // fix + and - for URL safe characters
@@ -99,8 +102,11 @@ public partial class FiveStackPlugin
 
         if (computedToken != password)
         {
-            hook.SetParam(6, 0);
-            hook.SetParam(7, 0);
+            if (type == "tv")
+            {
+                hook.SetParam(6, 0);
+                hook.SetParam(7, 0);
+            }
             return HookResult.Continue;
         }
 
