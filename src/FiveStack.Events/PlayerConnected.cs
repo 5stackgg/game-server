@@ -31,42 +31,43 @@ public partial class FiveStackPlugin
 
         CCSPlayerController player = @event.Userid;
 
-        if (PendingPlayers.ContainsKey(player.SteamID))
-        {
-            player.ClanName = PendingPlayers[player.SteamID];
-            PendingPlayers.Remove(player.SteamID);
-
-            MatchManager? matchManager = _matchService.GetCurrentMatch();
-
-            if (matchManager != null)
-            {
-                matchManager.UpdatePlayerName(player, player.PlayerName, player.ClanName);
-            }
-        }
-
         Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
         List<MatchMember> players = matchData
             .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
             .ToList();
 
-        if (player.ClanName != "[admin]" && player.ClanName != "[organizer]")
+        
+        bool shouldKick = true;
+
+        if (
+            match.IsWarmup()
+            && players.Any(player => !string.IsNullOrEmpty(player.placeholder_name))
+        )
         {
-            bool shouldKick = true;
+            shouldKick = false;
+        }
 
-            if (
-                match.IsWarmup()
-                && players.Any(player => !string.IsNullOrEmpty(player.placeholder_name))
-            )
+        if (players.Find(player => player.steam_id == null) != null)
+        {
+            shouldKick = false;
+        }        
+
+        if (shouldKick && lineup_id == null)
+        {
+            if (PendingPlayers.ContainsKey(player.SteamID))
             {
-                shouldKick = false;
+                player.ClanName = PendingPlayers[player.SteamID];
+                PendingPlayers.Remove(player.SteamID);
+
+                MatchManager? matchManager = _matchService.GetCurrentMatch();
+
+                if (matchManager != null)
+                {
+                    matchManager.UpdatePlayerName(player, player.PlayerName, player.ClanName);
+                }
             }
 
-            if (players.Find(player => player.steam_id == null) != null)
-            {
-                shouldKick = false;
-            }
-
-            if (shouldKick && lineup_id == null)
+            if (player.ClanName != "[admin]" && player.ClanName != "[organizer]")
             {
                 Server.ExecuteCommand($"kickid {player.UserId}");
                 return HookResult.Continue;

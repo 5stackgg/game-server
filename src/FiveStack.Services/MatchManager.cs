@@ -546,17 +546,34 @@ public class MatchManager
                 currentTeam = player.Team;
             }
 
-            string lineupName =
-                matchData.lineup_1_id == lineup_id
-                    ? matchData.lineup_1.name
-                    : matchData.lineup_2.name;
-
             CsTeam expectedTeam = CsTeam.None;
-            foreach (var team in MatchUtility.Teams())
+
+            if (IsKnife())
             {
-                if (team.ClanTeamname == lineupName)
+                _logger.LogInformation("Knife round");
+                CsTeam lineup1StartingSide = TeamUtility.TeamStringToCsTeam(
+                    currentMap?.lineup_1_side ?? CsTeam.CounterTerrorist.ToString()
+                );
+                CsTeam lineup2StartingSide = TeamUtility.TeamStringToCsTeam(
+                    currentMap?.lineup_2_side ?? CsTeam.Terrorist.ToString()
+                );
+
+                expectedTeam =
+                    matchData.lineup_1_id == lineup_id ? lineup1StartingSide : lineup2StartingSide;
+            }
+            else
+            {
+                string lineupName =
+                    matchData.lineup_1_id == lineup_id
+                        ? matchData.lineup_1.name
+                        : matchData.lineup_2.name;
+
+                foreach (var team in MatchUtility.Teams())
                 {
-                    expectedTeam = TeamUtility.TeamNumToCSTeam(team.TeamNum);
+                    if (team.ClanTeamname == lineupName)
+                    {
+                        expectedTeam = TeamUtility.TeamNumToCSTeam(team.TeamNum);
+                    }
                 }
             }
 
