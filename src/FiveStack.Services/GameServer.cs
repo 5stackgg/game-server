@@ -64,7 +64,7 @@ public class GameServer
         return MatchUtility.Rules()?.TotalRoundsPlayed ?? 0;
     }
 
-    public void Ping()
+    public void Ping(string pluginVersion)
     {
         string? serverId = _environmentService.GetServerId();
         string? apiPassword = _environmentService.GetServerApiPassword();
@@ -72,7 +72,7 @@ public class GameServer
         Server.NextFrame(async () =>
         {
             string endpoint =
-                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={Server.MapName}";
+                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={Server.MapName}&pluginVersion={pluginVersion}";
 
             using (HttpClient httpClient = new HttpClient())
             {

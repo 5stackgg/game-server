@@ -36,7 +36,6 @@ public partial class FiveStackPlugin
             .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
             .ToList();
 
-        
         bool shouldKick = true;
 
         if (
@@ -50,7 +49,7 @@ public partial class FiveStackPlugin
         if (players.Find(player => player.steam_id == null) != null)
         {
             shouldKick = false;
-        }        
+        }
 
         if (shouldKick && lineup_id == null)
         {

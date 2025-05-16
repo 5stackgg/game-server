@@ -66,7 +66,7 @@ public partial class FiveStackPlugin : BasePlugin
 
         ListenForMapChange();
 
-        _gameServer.Ping();
+        _gameServer.Ping(ModuleVersion);
 
         AddCommandListener("say", OnPlayerChat, HookMode.Post);
 
@@ -101,6 +101,6 @@ public partial class FiveStackPlugin : BasePlugin
 
     private void Ping(object? state)
     {
-        _gameServer.Ping();
+        _gameServer.Ping(ModuleVersion);
     }
 }
