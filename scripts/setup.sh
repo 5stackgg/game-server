@@ -101,7 +101,7 @@ fi
 
 gameinfo_branchspecific_path="${INSTANCE_SERVER_DIR}/game/csgo/gameinfo_branchspecific.gi"
 
-if [ "$STEAM_RELAY_ENABLED" = "true" ]; then
+if [ "$STEAM_RELAY" = "true" ]; then
   rm "$gameinfo_branchspecific_path"
 
   echo "---Enable Steam Relay---"

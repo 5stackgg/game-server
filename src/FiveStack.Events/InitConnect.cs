@@ -76,6 +76,14 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        MatchMember? member = MatchUtility.GetMemberFromLineup(match, steamId.ToString(), token);
+
+        if(member != null)
+        {
+            hook.SetParam(5, PasswordBuffer);
+            return HookResult.Continue;
+        }
+
         var matchId = match.id;
 
         string[] parts = token.Split(':');

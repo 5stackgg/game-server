@@ -29,7 +29,7 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, player);
+        MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, player.SteamID.ToString(), player.PlayerName);
 
         if (member != null)
         {
