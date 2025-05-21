@@ -40,6 +40,11 @@ public class SurrenderSystem
     {
         if (_matchService.GetCurrentMatch()?.IsLive() == true)
         {
+            if (!_disconnectTimers.ContainsKey(team))
+            {
+                _disconnectTimers[team] = new Dictionary<ulong, Timer>();
+            }
+
             _disconnectTimers[team][steamId] = TimerUtility.AddTimer(
                 60 * 3,
                 () =>
