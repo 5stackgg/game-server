@@ -132,7 +132,7 @@ public class VoteSystem
 
         if (IsCaptainVoteOnly())
         {
-            if (MatchUtility.GetMemberFromLineup(matchData, player)?.captain == false)
+            if (MatchUtility.GetMemberFromLineup(matchData, player.SteamID.ToString(), player.PlayerName)?.captain == false)
             {
                 _gameServer.Message(
                     HudDestination.Chat,
@@ -216,7 +216,7 @@ public class VoteSystem
 
         foreach (var player in MatchUtility.Players())
         {
-            if (MatchUtility.GetMemberFromLineup(matchData, player)?.captain ?? false)
+            if (MatchUtility.GetMemberFromLineup(matchData, player.SteamID.ToString(), player.PlayerName)?.captain ?? false)
             {
                 captains[player.Team] = player;
             }

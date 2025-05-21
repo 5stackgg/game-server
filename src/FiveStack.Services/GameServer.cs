@@ -5,6 +5,7 @@ using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
+using CounterStrikeSharp.API.Modules.Cvars;
 
 namespace FiveStack;
 
@@ -12,11 +13,13 @@ public class GameServer
 {
     private readonly ILogger<GameServer> _logger;
     private readonly EnvironmentService _environmentService;
+    private readonly bool _steamRelay;
 
     public GameServer(ILogger<GameServer> logger, EnvironmentService environmentService)
     {
         _logger = logger;
         _environmentService = environmentService;
+        _steamRelay = ConVar.Find("net_p2p_listen_dedicated")?.GetPrimitiveValue<bool>() ?? false;
     }
 
     public void SendCommands(string[] commands)
@@ -72,7 +75,7 @@ public class GameServer
         Server.NextFrame(async () =>
         {
             string endpoint =
-                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={Server.MapName}&pluginVersion={pluginVersion}";
+                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={Server.MapName}&pluginVersion={pluginVersion}&steamRelay={_steamRelay}";
 
             using (HttpClient httpClient = new HttpClient())
             {

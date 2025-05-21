@@ -509,7 +509,7 @@ public class MatchManager
 
         Server.NextFrame(() =>
         {
-            MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, player);
+            MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, player.SteamID.ToString(), player.PlayerName);
 
             if (member == null)
             {
@@ -657,7 +657,7 @@ public class MatchManager
 
         foreach (var player in MatchUtility.Players())
         {
-            MatchMember? member = MatchUtility.GetMemberFromLineup(_matchData, player);
+            MatchMember? member = MatchUtility.GetMemberFromLineup(_matchData, player.SteamID.ToString(), player.PlayerName);
             if (member == null)
             {
                 shouldUpdateApi = true;

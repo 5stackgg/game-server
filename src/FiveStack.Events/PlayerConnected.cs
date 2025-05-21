@@ -68,7 +68,10 @@ public partial class FiveStackPlugin
 
             if (player.ClanName != "[admin]" && player.ClanName != "[organizer]")
             {
-                Server.ExecuteCommand($"kickid {player.UserId}");
+
+
+
+                // Server.ExecuteCommand($"kickid {player.UserId}");
                 return HookResult.Continue;
             }
         }

@@ -171,7 +171,7 @@ public class CaptainSystem
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
         if (matchData != null)
         {
-            MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, player);
+            MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, player.SteamID.ToString(), player.PlayerName);
 
             if (member?.captain == true && _captains[team] == null)
             {

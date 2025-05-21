@@ -13,7 +13,8 @@ namespace FiveStack.Utilities
 
         public static MatchMember? GetMemberFromLineup(
             MatchData matchData,
-            CCSPlayerController player
+            string steamId,
+            string playerName
         )
         {
             List<MatchMember> players = matchData
@@ -24,16 +25,16 @@ namespace FiveStack.Utilities
             {
                 if (member.steam_id == null)
                 {
-                    return member.placeholder_name.StartsWith(player.PlayerName);
+                    return member.placeholder_name.StartsWith(playerName);
                 }
 
-                return member.steam_id == player.SteamID.ToString();
+                return member.steam_id == steamId;
             });
         }
 
         public static Guid? GetPlayerLineup(MatchData matchData, CCSPlayerController player)
         {
-            MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, player);
+            MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, player.SteamID.ToString(), player.PlayerName);
 
             if (member == null)
             {
