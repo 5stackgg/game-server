@@ -32,6 +32,7 @@ public class MatchService
             var file in new[]
             {
                 "5stack.base.cfg",
+                "5stack.lan.cfg",
                 "5stack.knife.cfg",
                 "5stack.live.cfg",
                 "5stack.warmup.cfg",

@@ -78,7 +78,7 @@ public partial class FiveStackPlugin
 
         MatchMember? member = MatchUtility.GetMemberFromLineup(match, steamId.ToString(), token);
 
-        if(member != null)
+        if (member != null)
         {
             hook.SetParam(5, PasswordBuffer);
             return HookResult.Continue;
