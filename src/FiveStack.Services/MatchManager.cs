@@ -251,6 +251,11 @@ public class MatchManager
         }
         _logger.LogInformation($"Setup Match {_matchData.id}");
 
+        if (_matchData.is_lan)
+        {
+            _gameServer.SendCommands(new[] { "exec 5stack.lan.cfg" });
+        }
+
         MatchMap? _currentMap = GetCurrentMap();
 
         if (_currentMap == null)
@@ -509,7 +514,11 @@ public class MatchManager
 
         Server.NextFrame(() =>
         {
-            MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, player.SteamID.ToString(), player.PlayerName);
+            MatchMember? member = MatchUtility.GetMemberFromLineup(
+                matchData,
+                player.SteamID.ToString(),
+                player.PlayerName
+            );
 
             if (member == null)
             {
@@ -657,7 +666,11 @@ public class MatchManager
 
         foreach (var player in MatchUtility.Players())
         {
-            MatchMember? member = MatchUtility.GetMemberFromLineup(_matchData, player.SteamID.ToString(), player.PlayerName);
+            MatchMember? member = MatchUtility.GetMemberFromLineup(
+                _matchData,
+                player.SteamID.ToString(),
+                player.PlayerName
+            );
             if (member == null)
             {
                 shouldUpdateApi = true;

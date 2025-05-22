@@ -34,7 +34,11 @@ namespace FiveStack.Utilities
 
         public static Guid? GetPlayerLineup(MatchData matchData, CCSPlayerController player)
         {
-            MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, player.SteamID.ToString(), player.PlayerName);
+            MatchMember? member = MatchUtility.GetMemberFromLineup(
+                matchData,
+                player.SteamID.ToString(),
+                player.PlayerName
+            );
 
             if (member == null)
             {

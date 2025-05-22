@@ -3,6 +3,7 @@ namespace FiveStack.Entities;
 public class MatchData
 {
     public Guid id { get; set; } = Guid.Empty;
+    public bool is_lan { get; set; } = false;
     public string password { get; set; } = "connectme";
 
     public Guid? current_match_map_id { get; set; } = Guid.Empty;

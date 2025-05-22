@@ -70,6 +70,7 @@ public class GameDemos
             new[]
             {
                 $"tv_delay {match.options.tv_delay}",
+                $"tv_record_immediate 1",
                 $"tv_record {GetMatchDemoPath()}/{MatchUtility.GetSafeMatchPrefix(match)}_{DateTime.Now.ToString("yyyyMMdd-HHmm")}-{Server.MapName}",
             }
         );
