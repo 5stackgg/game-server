@@ -143,7 +143,6 @@ public partial class FiveStackPlugin
 
         if (expectedTeam != CsTeam.None && joiningTeam != expectedTeam)
         {
-            _logger.LogInformation($"STOP: {joiningTeam} -> {expectedTeam}");
             return HookResult.Stop;
         }
 
