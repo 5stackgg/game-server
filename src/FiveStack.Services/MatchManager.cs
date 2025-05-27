@@ -342,10 +342,6 @@ public class MatchManager
             lineup2Side = "mp_teamname_1";
         }
 
-        _logger.LogInformation(
-            $"Setting up team names {lineup1Side} {_matchData.lineup_1.name} {lineup2Side} {_matchData.lineup_2.name}"
-        );
-
         _gameServer.SendCommands(
             new[]
             {
