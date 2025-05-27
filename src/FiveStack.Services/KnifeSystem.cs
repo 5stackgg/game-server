@@ -171,9 +171,9 @@ public class KnifeSystem
     {
         _logger.LogInformation("Knife round confirming switch");
 
-        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (matchData == null)
+        if (match == null)
         {
             return;
         }
@@ -184,7 +184,7 @@ public class KnifeSystem
 
         Server.NextFrame(() =>
         {
-            _matchService.GetCurrentMatch()?.UpdateMapStatus(eMapStatus.Live);
+            match.UpdateMapStatus(eMapStatus.Live);
         });
     }
 

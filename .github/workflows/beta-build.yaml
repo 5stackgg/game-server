@@ -1,9 +1,6 @@
 name: Branch Build and Push
 
 on:
-  push:
-    branches:
-      - '**'  # This will trigger on pushes to any branch
   workflow_dispatch:
     inputs:
       branch_name:
