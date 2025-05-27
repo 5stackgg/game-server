@@ -1,6 +1,9 @@
 name: Branch Build and Push
 
 on:
+  push:
+    branches:
+      - '**'  # This will trigger on pushes to any branch
   workflow_dispatch:
     inputs:
       branch_name:
@@ -14,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        ref: ${{ github.event.inputs.branch_name }}
+        ref: ${{ github.event.inputs.branch_name || github.ref_name }}
 
     - name: Get latest release
       id: get_latest_release
