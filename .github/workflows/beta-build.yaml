@@ -45,13 +45,20 @@ jobs:
         docker create --name temp mod-builder:latest
         docker cp temp:/mod-release.zip ./FiveStack-${{ github.sha }}.zip
         docker rm temp
+
+    - name: Sanitize branch name
+      id: sanitize
+      run: |
+        BRANCH_NAME="${{ github.event.inputs.branch_name || github.ref_name }}"
+        SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9]/-/g')
+        echo "sanitized_branch=$SANITIZED_BRANCH" >> $GITHUB_OUTPUT
         
     - name: Build and Push Docker image
       uses: docker/build-push-action@v6
       with:
         push: true
         tags: |
-            ghcr.io/${{ github.repository_owner }}/game-server:${{ github.event.inputs.branch_name || github.ref_name }}
+            ghcr.io/${{ github.repository_owner }}/game-server:${{ steps.sanitize.outputs.sanitized_branch }}
             ghcr.io/${{ github.repository_owner }}/game-server:${{ github.sha }}
         build-args: |
           RELEASE_VERSION=${{ github.sha }}
