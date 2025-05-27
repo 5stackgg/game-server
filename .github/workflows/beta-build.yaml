@@ -1,18 +1,20 @@
-name: Beta Build and Push
+name: Branch Build and Push
 
 on:
   workflow_dispatch:
     inputs:
-      beta_number:
-        description: 'Beta Build'
+      branch_name:
+        description: 'Branch name to build from'
         required: true
         type: string
 
 jobs:
-  beta-build-push:
+  branch-build-push:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.inputs.branch_name }}
 
     - name: Get latest release
       id: get_latest_release
@@ -53,12 +55,12 @@ jobs:
         tags: mod-builder:latest
         target: zip-creator
         build-args: |
-          RELEASE_VERSION=0.0.${{ steps.get_latest_release.outputs.result }}-beta${{ github.event.inputs.beta_number }}
+          RELEASE_VERSION=0.0.${{ steps.get_latest_release.outputs.result }}-${{ github.event.inputs.branch_name }}
 
     - name: Extract zip file
       run: |
         docker create --name temp mod-builder:latest
-        docker cp temp:/mod-release.zip ./FiveStack-v0.0.${{ steps.get_latest_release.outputs.result }}-beta${{ github.event.inputs.beta_number }}.zip
+        docker cp temp:/mod-release.zip ./FiveStack-v0.0.${{ steps.get_latest_release.outputs.result }}-${{ github.event.inputs.branch_name }}.zip
         docker rm temp
         
     - name: Build and Push Docker image
@@ -66,19 +68,19 @@ jobs:
       with:
         push: true
         tags: |
-            ghcr.io/${{ github.repository_owner }}/game-server:beta${{ github.event.inputs.beta_number }}
+            ghcr.io/${{ github.repository_owner }}/game-server:${{ github.event.inputs.branch_name }}
             ghcr.io/${{ github.repository_owner }}/game-server:${{ github.sha }}
         build-args: |
-          RELEASE_VERSION=0.0.${{ steps.get_latest_release.outputs.result }}-beta${{ github.event.inputs.beta_number }}
+          RELEASE_VERSION=0.0.${{ steps.get_latest_release.outputs.result }}-${{ github.event.inputs.branch_name }}
 
-    - name: Create Beta Release and Upload Asset
+    - name: Create Branch Release and Upload Asset
       uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: v0.0.${{ steps.get_latest_release.outputs.result }}-beta${{ github.event.inputs.beta_number }}
-        name: Beta v0.0.${{ steps.get_latest_release.outputs.result }}-beta${{ github.event.inputs.beta_number }}
+        tag_name: v0.0.${{ steps.get_latest_release.outputs.result }}-${{ github.event.inputs.branch_name }}
+        name: Branch Build v0.0.${{ steps.get_latest_release.outputs.result }}-${{ github.event.inputs.branch_name }}
         draft: true
         prerelease: true
         files: |
-          ./FiveStack-v0.0.${{ steps.get_latest_release.outputs.result }}-beta${{ github.event.inputs.beta_number }}.zip 
+          ./FiveStack-v0.0.${{ steps.get_latest_release.outputs.result }}-${{ github.event.inputs.branch_name }}.zip 
