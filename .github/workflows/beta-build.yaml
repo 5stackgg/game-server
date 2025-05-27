@@ -51,7 +51,7 @@ jobs:
       with:
         push: true
         tags: |
-            ghcr.io/${{ github.repository_owner }}/game-server:${{ github.event.inputs.branch_name }}
+            ghcr.io/${{ github.repository_owner }}/game-server:${{ github.event.inputs.branch_name || github.ref_name }}
             ghcr.io/${{ github.repository_owner }}/game-server:${{ github.sha }}
         build-args: |
           RELEASE_VERSION=${{ github.sha }}
