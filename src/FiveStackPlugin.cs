@@ -1,8 +1,6 @@
 using System.Runtime.InteropServices;
-using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes;
-using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
@@ -72,11 +70,7 @@ public partial class FiveStackPlugin : BasePlugin
 
         AddCommandListener("say", GagPlayer, HookMode.Pre);
         AddCommandListener("say_team", GagPlayer, HookMode.Pre);
-
-        Server.NextFrame(() =>
-        {
-            _gameServer.Message(HudDestination.Alert, "5Stack Loaded");
-        });
+        AddCommandListener("jointeam", HandleJoinTeam, HookMode.Pre);
 
         _ = _matchService.GetMatchConfigs();
     }

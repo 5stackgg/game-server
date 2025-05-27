@@ -8,6 +8,7 @@ using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualBasic.FileIO;
 
 namespace FiveStack;
 
@@ -302,13 +303,10 @@ public class MatchManager
             EnforceMemberTeam(player);
         }
 
-        Server.NextFrame(() =>
+        if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
         {
-            if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
-            {
-                UpdateMapStatus(MatchUtility.MapStatusStringToEnum(_currentMap.status));
-            }
-        });
+            UpdateMapStatus(MatchUtility.MapStatusStringToEnum(_currentMap.status));
+        }
 
         if (IsWarmup())
         {
@@ -345,8 +343,17 @@ public class MatchManager
             lineup2Side = "mp_teamname_1";
         }
 
-        _gameServer.SendCommands(new[] { $"{lineup1Side} {_matchData.lineup_1.name}" });
-        _gameServer.SendCommands(new[] { $"{lineup2Side} {_matchData.lineup_2.name}" });
+        _logger.LogInformation(
+            $"Setting up team names {lineup1Side} {_matchData.lineup_1.name} {lineup2Side} {_matchData.lineup_2.name}"
+        );
+
+        _gameServer.SendCommands(
+            new[]
+            {
+                $"{lineup1Side} {_matchData.lineup_1.name}",
+                $"{lineup2Side} {_matchData.lineup_2.name}",
+            }
+        );
     }
 
     private void ChangeMap(Map map)
@@ -499,153 +506,138 @@ public class MatchManager
         });
     }
 
-    public async void EnforceMemberTeam(CCSPlayerController player, CsTeam? currentTeam = null)
+    public void EnforceMemberTeam(CCSPlayerController player, CsTeam? currentTeam = null)
+    {
+        CsTeam expectedTeam = GetExpectedTeam(player);
+
+        if (expectedTeam == CsTeam.None)
+        {
+            _logger.LogInformation($"No expected team for {player.PlayerName}");
+            return;
+        }
+
+        if (currentTeam != expectedTeam)
+        {
+            _logger.LogInformation(
+                $"Changing Team {player.PlayerName} {currentTeam} -> {expectedTeam}"
+            );
+
+            // allow them to click the menu, they just get switched really quick
+            player.ChangeTeam(expectedTeam);
+            _gameServer.Message(
+                HudDestination.Chat,
+                $" You've been assigned to {(expectedTeam == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{TeamUtility.CSTeamToString(expectedTeam)}.",
+                player
+            );
+        }
+
+        if (IsWarmup() || (MatchUtility.Rules()?.FreezePeriod == true))
+        {
+            player.Respawn();
+        }
+
+        captainSystem.IsCaptain(player, expectedTeam);
+    }
+
+    public CsTeam GetExpectedTeam(CCSPlayerController player)
     {
         MatchData? matchData = GetMatchData();
         MatchMap? currentMap = GetCurrentMap();
 
         if (matchData == null || currentMap == null)
         {
-            return;
+            return CsTeam.None;
         }
 
-        // required because joined team is not set immediately
-        await Task.Delay(100);
+        MatchMember? member = MatchUtility.GetMemberFromLineup(
+            matchData,
+            player.SteamID.ToString(),
+            player.PlayerName
+        );
 
-        Server.NextFrame(() =>
+        if (member == null)
         {
-            MatchMember? member = MatchUtility.GetMemberFromLineup(
-                matchData,
-                player.SteamID.ToString(),
-                player.PlayerName
-            );
+            player.ChangeTeam(CsTeam.Spectator);
+            return CsTeam.Spectator;
+        }
 
-            if (member == null)
+        UpdatePlayerName(player, member.name);
+
+        if (member.is_banned)
+        {
+            player.Disconnect(NetworkDisconnectionReason.NETWORK_DISCONNECT_BANADDED);
+            return CsTeam.None;
+        }
+
+        if (member.is_muted)
+        {
+            player.VoiceFlags = VoiceFlags.Muted;
+        }
+        else
+        {
+            player.VoiceFlags = VoiceFlags.Normal;
+        }
+
+        Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
+
+        if (lineup_id == null)
+        {
+            return CsTeam.None;
+        }
+
+        CsTeam expectedTeam = CsTeam.None;
+
+        string lineupName =
+            matchData.lineup_1_id == lineup_id ? matchData.lineup_1.name : matchData.lineup_2.name;
+
+        foreach (var team in MatchUtility.Teams())
+        {
+            if (team.ClanTeamname == lineupName)
             {
-                player.ChangeTeam(CsTeam.Spectator);
-                return;
+                expectedTeam = TeamUtility.TeamNumToCSTeam(team.TeamNum);
             }
+        }
 
-            UpdatePlayerName(player, member.name);
+        _logger.LogInformation($"Expected Team: {expectedTeam}");
 
-            if (member.is_banned)
-            {
-                player.Disconnect(NetworkDisconnectionReason.NETWORK_DISCONNECT_BANADDED);
-                return;
-            }
-
-            if (member.is_muted)
-            {
-                player.VoiceFlags = VoiceFlags.Muted;
-            }
-            else
-            {
-                player.VoiceFlags = VoiceFlags.Normal;
-            }
-
-            Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
-
-            if (lineup_id == null)
-            {
-                return;
-            }
-
-            if (currentTeam == null)
-            {
-                currentTeam = player.Team;
-            }
-
-            CsTeam expectedTeam = CsTeam.None;
-
-            if (IsKnife())
-            {
-                _logger.LogInformation("Knife round");
-                CsTeam lineup1StartingSide = TeamUtility.TeamStringToCsTeam(
-                    currentMap?.lineup_1_side ?? CsTeam.CounterTerrorist.ToString()
-                );
-                CsTeam lineup2StartingSide = TeamUtility.TeamStringToCsTeam(
-                    currentMap?.lineup_2_side ?? CsTeam.Terrorist.ToString()
-                );
-
-                expectedTeam =
-                    matchData.lineup_1_id == lineup_id ? lineup1StartingSide : lineup2StartingSide;
-            }
-            else
-            {
-                string lineupName =
-                    matchData.lineup_1_id == lineup_id
-                        ? matchData.lineup_1.name
-                        : matchData.lineup_2.name;
-
-                foreach (var team in MatchUtility.Teams())
-                {
-                    if (team.ClanTeamname == lineupName)
-                    {
-                        expectedTeam = TeamUtility.TeamNumToCSTeam(team.TeamNum);
-                    }
-                }
-            }
-
-            if (currentTeam != expectedTeam)
-            {
-                // allow them to click the menu, they just get switched really quick
-                player.ChangeTeam(expectedTeam);
-                _gameServer.Message(
-                    HudDestination.Chat,
-                    $" You've been assigned to {(expectedTeam == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{TeamUtility.CSTeamToString(expectedTeam)}.",
-                    player
-                );
-            }
-
-            if (IsWarmup() || (MatchUtility.Rules()?.FreezePeriod == true))
-            {
-                player.Respawn();
-            }
-
-            captainSystem.IsCaptain(player, expectedTeam);
-        });
+        return expectedTeam;
     }
 
     private void KickBots()
     {
-        Server.NextFrame(() =>
+        if (this._matchData == null)
         {
-            if (this._matchData == null)
+            return;
+        }
+
+        if (_environmentService.AllowBots())
+        {
+            int expectedPlayers = GetExpectedPlayerCount();
+            // we want to count the bots in this case
+            int currentPlayers = CounterStrikeSharp.API.Utilities.GetPlayers().Count;
+
+            if (currentPlayers >= expectedPlayers)
             {
-                return;
-            }
-
-            if (_environmentService.AllowBots())
-            {
-                int expectedPlayers = GetExpectedPlayerCount();
-                // we want to count the bots in this case
-                int currentPlayers = CounterStrikeSharp.API.Utilities.GetPlayers().Count;
-
-                if (currentPlayers >= expectedPlayers)
-                {
-                    return;
-                }
-
-                _gameServer.SendCommands(
-                    new[]
-                    {
-                        "bot_quota_mode normal",
-                        $"bot_quota {Math.Max(0, expectedPlayers - currentPlayers)}",
-                    }
-                );
-
-                if (currentPlayers < expectedPlayers)
-                {
-                    _gameServer.SendCommands(new[] { "bot_add expert" });
-                }
-
                 return;
             }
 
             _gameServer.SendCommands(
-                new[] { "bot_quota_mode competitive", "bot_quota 0", "bot_kick" }
+                new[]
+                {
+                    "bot_quota_mode normal",
+                    $"bot_quota {Math.Max(0, expectedPlayers - currentPlayers)}",
+                }
             );
-        });
+
+            if (currentPlayers < expectedPlayers)
+            {
+                _gameServer.SendCommands(new[] { "bot_add expert" });
+            }
+
+            return;
+        }
+
+        _gameServer.SendCommands(new[] { "bot_quota_mode competitive", "bot_quota 0", "bot_kick" });
     }
 
     private void SendUpdatedMatchLineups()

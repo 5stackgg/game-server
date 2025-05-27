@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
@@ -102,17 +103,6 @@ public partial class FiveStackPlugin
             _gameServer.SendCommands(new[] { "mp_warmup_start" });
         }
 
-        // TODO - coaches
-        // dont allow them to join a team
-        // if (
-        //     _coaches[CsTeam.Terrorist] == @event.Userid
-        //     || _coaches[CsTeam.CounterTerrorist] == @event.Userid
-        // )
-        // {
-        //     @event.Silent = true;
-        //     return HookResult.Changed;
-        // }
-
         CCSPlayerController player = @event.Userid;
 
         if (_readySystem.IsWaitingForReady())
@@ -120,22 +110,42 @@ public partial class FiveStackPlugin
             _gameServer.Message(
                 HudDestination.Chat,
                 $" {ChatColors.Default}type {ChatColors.Green}{CommandUtility.PublicChatTrigger}r {ChatColors.Default}to be marked as ready for the match",
-                @event.Userid
+                player
             );
         }
 
         _gameServer.Message(
             HudDestination.Chat,
             $"type {ChatColors.Green}{CommandUtility.SilentChatTrigger}help {ChatColors.Default}to view additional commands",
-            @event.Userid
+            player
         );
 
-        if (MatchUtility.Rules()?.SwitchingTeamsAtRoundReset == true)
+        return HookResult.Continue;
+    }
+
+    public HookResult HandleJoinTeam(CCSPlayerController? player, CommandInfo info)
+    {
+        if (player == null)
         {
             return HookResult.Continue;
         }
 
-        match.EnforceMemberTeam(player, TeamUtility.TeamNumToCSTeam(@event.Team));
+        CsTeam joiningTeam = TeamUtility.TeamNumToCSTeam(int.Parse(info.ArgByIndex(1)));
+
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (match == null)
+        {
+            return HookResult.Continue;
+        }
+
+        CsTeam expectedTeam = match.GetExpectedTeam(player);
+
+        if (expectedTeam != CsTeam.None && joiningTeam != expectedTeam)
+        {
+            _logger.LogInformation($"STOP: {joiningTeam} -> {expectedTeam}");
+            return HookResult.Stop;
+        }
 
         return HookResult.Continue;
     }
