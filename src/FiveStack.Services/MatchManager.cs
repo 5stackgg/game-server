@@ -593,8 +593,6 @@ public class MatchManager
             }
         }
 
-        _logger.LogInformation($"Expected Team: {expectedTeam}");
-
         return expectedTeam;
     }
 
