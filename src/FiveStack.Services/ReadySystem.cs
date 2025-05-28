@@ -87,7 +87,10 @@ public class ReadySystem
             _readyPlayers[playerId] = !_readyPlayers[playerId];
         }
 
-        int expectedCount = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
+        MatchManager? currentMatch = _matchService.GetCurrentMatch();
+
+        int expectedCount = currentMatch?.GetExpectedPlayerCount() ?? 10;
+
         switch (GetReadySetting())
         {
             case eReadySettings.Admin:
@@ -104,7 +107,7 @@ public class ReadySystem
         if (TotalReady() == expectedCount)
         {
             ResetReady();
-            _matchService.GetCurrentMatch()?.UpdateMapStatus(eMapStatus.Knife);
+            currentMatch?.UpdateMapStatus(eMapStatus.Knife);
             return;
         }
 

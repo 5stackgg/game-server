@@ -2,6 +2,7 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
@@ -166,10 +167,25 @@ public class KnifeSystem
         match.UpdateMapStatus(eMapStatus.Live);
     }
 
-    public void ConfirmSwitch()
+    public async void ConfirmSwitch()
     {
         _logger.LogInformation("Knife round confirming switch");
-        _matchService.GetMatchFromApi(eMapStatus.Live);
+
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (match == null)
+        {
+            return;
+        }
+
+        _gameServer.SendCommands(new[] { "mp_swapteams" });
+
+        await Task.Delay(1 * 1000);
+
+        Server.NextFrame(() =>
+        {
+            match.UpdateMapStatus(eMapStatus.Live);
+        });
     }
 
     public CsTeam? GetWinningTeam()
