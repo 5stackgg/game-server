@@ -240,7 +240,7 @@ public class MatchManager
         _currentMapStatus = status;
     }
 
-    public void SetupMatch(MatchData match, eMapStatus? forceState = null)
+    public void SetupMatch(MatchData match)
     {
         _matchData = match;
 
@@ -264,9 +264,9 @@ public class MatchManager
             return;
         }
 
-        if (forceState != null)
+        if (_currentMapStatus == eMapStatus.Unknown)
         {
-            _currentMap.status = forceState.Value.ToString();
+            SetupTeams();
         }
 
         _logger.LogInformation(
@@ -295,13 +295,6 @@ public class MatchManager
         FiveStackPlugin.SetPasswordBuffer(_matchData.password);
         _gameServer.SendCommands(new[] { $"sv_password \"{_matchData.password}\"" });
 
-        SetupTeamNames();
-
-        foreach (var player in MatchUtility.Players())
-        {
-            EnforceMemberTeam(player);
-        }
-
         if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
         {
             UpdateMapStatus(MatchUtility.MapStatusStringToEnum(_currentMap.status));
@@ -323,7 +316,7 @@ public class MatchManager
         return Marshal.PtrToStringAnsi(result)!.Split(',')[0];
     }
 
-    public void SetupTeamNames()
+    public void SetupTeams()
     {
         MatchMap? _currentMap = GetCurrentMap();
         if (_matchData == null || _currentMap == null)
@@ -349,6 +342,11 @@ public class MatchManager
                 $"{lineup2Side} {_matchData.lineup_2.name}",
             }
         );
+
+        foreach (var player in MatchUtility.Players())
+        {
+            EnforceMemberTeam(player);
+        }
     }
 
     private void ChangeMap(Map map)
@@ -511,6 +509,11 @@ public class MatchManager
             return;
         }
 
+        if (currentTeam == null)
+        {
+            currentTeam = player.Team;
+        }
+
         if (currentTeam != expectedTeam)
         {
             _logger.LogInformation(
@@ -580,8 +583,6 @@ public class MatchManager
             return CsTeam.None;
         }
 
-        CsTeam expectedTeam = CsTeam.None;
-
         string lineupName =
             matchData.lineup_1_id == lineup_id ? matchData.lineup_1.name : matchData.lineup_2.name;
 
@@ -589,11 +590,11 @@ public class MatchManager
         {
             if (team.ClanTeamname == lineupName)
             {
-                expectedTeam = TeamUtility.TeamNumToCSTeam(team.TeamNum);
+                return TeamUtility.TeamNumToCSTeam(team.TeamNum);
             }
         }
 
-        return expectedTeam;
+        return CsTeam.None;
     }
 
     private void KickBots()

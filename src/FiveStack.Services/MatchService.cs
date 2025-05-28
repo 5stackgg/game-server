@@ -57,7 +57,7 @@ public class MatchService
         }
     }
 
-    public async void GetMatchFromApi(eMapStatus? forceState = null)
+    public async void GetMatchFromApi()
     {
         HttpClient httpClient = new HttpClient();
 
@@ -103,14 +103,14 @@ public class MatchService
 
                 if (_currentMatch?.GetMatchData()?.id == matchData.id)
                 {
-                    _currentMatch.SetupMatch(matchData, forceState);
+                    _currentMatch.SetupMatch(matchData);
                     return;
                 }
 
                 _currentMatch =
                     _serviceProvider.GetRequiredService(typeof(MatchManager)) as MatchManager;
 
-                _currentMatch!.SetupMatch(matchData, forceState);
+                _currentMatch!.SetupMatch(matchData);
             });
         }
         catch (HttpRequestException ex)
