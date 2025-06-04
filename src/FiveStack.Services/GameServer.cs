@@ -79,6 +79,7 @@ public class GameServer
 
             using (HttpClient httpClient = new HttpClient())
             {
+                httpClient.Timeout = TimeSpan.FromSeconds(5);
                 httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
                     "Bearer",
                     apiPassword
@@ -86,12 +87,21 @@ public class GameServer
 
                 try
                 {
-                    HttpResponseMessage response = await httpClient.GetAsync(endpoint);
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    HttpResponseMessage response = await httpClient.GetAsync(endpoint, cts.Token);
+                    response.EnsureSuccessStatusCode();
+                }
+                catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+                {
+                    _logger.LogWarning("Ping request timed out after 5 seconds");
                 }
                 catch (HttpRequestException ex)
                 {
-                    _logger.LogError($"unable to ping {ex.Message}");
-                    return;
+                    _logger.LogError($"Unable to ping: {ex.Message}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"Unexpected error during ping: {ex.Message}");
                 }
             }
         });
