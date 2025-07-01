@@ -5,6 +5,7 @@ using FiveStack.Utilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
+using FiveStack.Enums;
 
 namespace FiveStack;
 
@@ -185,6 +186,8 @@ public class SurrenderSystem
 
         _logger.LogInformation($"Surrendering ${team}:{lineup_id.Value}");
 
+        match.UpdateMapStatus(eMapStatus.Surrender);
+        
         _matchEvents.PublishGameEvent(
             "surrender",
             new Dictionary<string, object>

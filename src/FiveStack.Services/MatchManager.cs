@@ -233,6 +233,9 @@ public class MatchManager
                     _gameServer.SendCommands(new[] { "mp_restartgame 3" });
                 }
                 break;
+            case eMapStatus.Surrender:
+                _matchDemos.Stop();
+                break;
         }
 
         _matchEvents.PublishMapStatus(status);
