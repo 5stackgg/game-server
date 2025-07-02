@@ -242,6 +242,7 @@ public class MatchManager
                 }
                 break;
             case eMapStatus.Surrendered:
+                _surrenderSystem.ResetSurrender();
                 _matchDemos.Stop();
                 break;
             case eMapStatus.Canceled:
