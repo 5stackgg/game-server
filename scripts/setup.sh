@@ -68,9 +68,7 @@ cp -r "/opt/addons" "${INSTANCE_SERVER_DIR}/game/csgo"
 
 if $AUTOLOAD_PLUGINS = true ; then
   echo "---Install Custom Plugins---"
-  for plugin_dir in /opt/custom-plugins/* ; do
-    create_symlinks "$plugin_dir" "${INSTANCE_SERVER_DIR}/game/csgo/"
-  done
+  create_symlinks "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
 fi
 
 if $INSTALL_5STACK_PLUGIN = true ; then
