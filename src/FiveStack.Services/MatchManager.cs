@@ -24,6 +24,7 @@ public class MatchManager
     private readonly GameDemos _matchDemos;
     private readonly ILogger<MatchManager> _logger;
     private readonly GameBackUpRounds _backUpManagement;
+    private readonly SurrenderSystem _surrenderSystem;
 
     private readonly EnvironmentService _environmentService;
     private readonly TimeoutSystem _timeoutSystem;
@@ -45,7 +46,8 @@ public class MatchManager
         CaptainSystem CaptainSystem,
         EnvironmentService environmentService,
         INetworkServerService networkServerService,
-        TimeoutSystem timeoutSystem
+        TimeoutSystem timeoutSystem,
+        SurrenderSystem surrenderSystem
     )
     {
         _logger = logger;
@@ -59,6 +61,7 @@ public class MatchManager
         _environmentService = environmentService;
         _networkServerService = networkServerService;
         _timeoutSystem = timeoutSystem;
+        _surrenderSystem = surrenderSystem;
     }
 
     public void Init(MatchData match)
@@ -107,6 +110,11 @@ public class MatchManager
     public bool isOverTime()
     {
         return GetOverTimeNumber() > 0;
+    }
+
+    public bool isSurrendered()
+    {
+        return _currentMapStatus == eMapStatus.Surrendered;
     }
 
     public int GetOverTimeNumber()
@@ -233,8 +241,13 @@ public class MatchManager
                     _gameServer.SendCommands(new[] { "mp_restartgame 3" });
                 }
                 break;
-            case eMapStatus.Surrender:
+            case eMapStatus.Surrendered:
+            case eMapStatus.UploadingDemo:
                 _matchDemos.Stop();
+                _surrenderSystem.ResetSurrender();
+                break;
+            case eMapStatus.Finished:
+                _surrenderSystem.ResetSurrender();
                 break;
         }
 

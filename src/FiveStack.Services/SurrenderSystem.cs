@@ -1,17 +1,16 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
-using FiveStack.Enums;
 
 namespace FiveStack;
 
 public class SurrenderSystem
 {
-    private readonly GameServer _gameServer;
     private readonly MatchEvents _matchEvents;
     private readonly MatchService _matchService;
     private readonly ILogger<ReadySystem> _logger;
@@ -21,16 +20,16 @@ public class SurrenderSystem
     private Dictionary<CsTeam, Dictionary<ulong, Timer>> _disconnectTimers =
         new Dictionary<CsTeam, Dictionary<ulong, Timer>>();
 
+    private Guid? winningLineupId;
+
     public SurrenderSystem(
         ILogger<ReadySystem> logger,
         MatchEvents matchEvents,
         MatchService matchService,
-        GameServer gameServer,
         IServiceProvider serviceProvider
     )
     {
         _logger = logger;
-        _gameServer = gameServer;
         _matchEvents = matchEvents;
         _matchService = matchService;
         _serviceProvider = serviceProvider;
@@ -186,16 +185,14 @@ public class SurrenderSystem
 
         _logger.LogInformation($"Surrendering ${team}:{lineup_id.Value}");
 
-        match.UpdateMapStatus(eMapStatus.Surrender);
-        
-        _matchEvents.PublishGameEvent(
-            "surrender",
-            new Dictionary<string, object>
-            {
-                { "time", DateTime.Now },
-                { "winning_lineup_id", lineup_id.Value },
-            }
-        );
+        winningLineupId = lineup_id.Value;
+
+        _matchService.GetCurrentMatch()?.UpdateMapStatus(eMapStatus.Surrendered);
+    }
+
+    public Guid? GetWinningLineupId()
+    {
+        return winningLineupId;
     }
 
     public void PlayerAbandonedMatch(ulong steamId)

@@ -37,6 +37,22 @@ public partial class FiveStackPlugin
 
             Server.NextFrame(() =>
             {
+                if (match.isSurrendered())
+                {
+                    Guid? winningLineupId = _surrenderSystem.GetWinningLineupId();
+                    if (winningLineupId != null)
+                    {
+                        _matchEvents.PublishGameEvent(
+                            "surrender",
+                            new Dictionary<string, object>
+                            {
+                                { "time", DateTime.Now },
+                                { "winning_lineup_id", winningLineupId },
+                            }
+                        );
+                    }
+                }
+
                 match.UpdateMapStatus(eMapStatus.Finished);
             });
         });
