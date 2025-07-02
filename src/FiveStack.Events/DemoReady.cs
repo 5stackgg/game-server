@@ -32,7 +32,6 @@ public partial class FiveStackPlugin
         {
             if (!_environmentService.isOnGameServerNode())
             {
-                match.UpdateMapStatus(eMapStatus.UploadingDemo);
                 await _gameDemos.UploadDemos();
             }
 

@@ -242,11 +242,10 @@ public class MatchManager
                 }
                 break;
             case eMapStatus.Surrendered:
-                _surrenderSystem.ResetSurrender();
-                _matchDemos.Stop();
-                break;
-            case eMapStatus.Canceled:
             case eMapStatus.UploadingDemo:
+                _matchDemos.Stop();
+                _surrenderSystem.ResetSurrender();
+                break;
             case eMapStatus.Finished:
                 _surrenderSystem.ResetSurrender();
                 break;

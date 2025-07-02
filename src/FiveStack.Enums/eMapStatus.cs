@@ -28,9 +28,6 @@ public enum eMapStatus
     [Description("Finished")]
     Finished,
 
-    [Description("Canceled")]
-    Canceled,
-
     [Description("Surrendered")]
     Surrendered,
 
