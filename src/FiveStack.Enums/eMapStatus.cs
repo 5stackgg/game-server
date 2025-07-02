@@ -4,30 +4,36 @@ namespace FiveStack.Enums;
 
 public enum eMapStatus
 {
-    [Description("Scheduled")]
-    Scheduled,
-
-    [Description("Warmup")]
-    Warmup,
-
     [Description("Knife")]
     Knife,
 
     [Description("Live")]
     Live,
 
-    [Description("Overtime")]
-    Overtime,
-
-    [Description("Finished")]
-    Finished,
+    [Description("Warmup")]
+    Warmup,
 
     [Description("Paused")]
     Paused,
 
+    [Description("Scheduled")]
+    Scheduled,
+
+    [Description("Overtime")]
+    Overtime,
+
+    [Description("UploadingDemo")]
+    UploadingDemo,
+
+    [Description("Finished")]
+    Finished,
+
+    [Description("Canceled")]
+    Canceled,
+
+    [Description("Surrendered")]
+    Surrendered,
+
     [Description("Unknown")]
     Unknown,
-
-    [Description("Surrender")]
-    Surrender,
 }
