@@ -69,6 +69,12 @@ cp -r "/opt/addons" "${INSTANCE_SERVER_DIR}/game/csgo"
 if $AUTOLOAD_PLUGINS = true ; then
   echo "---Install Custom Plugins---"
   create_symlinks "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
+
+  if [ -e "/opt/custom-plugins/addons/counterstrikesharp/gamedata/gamedata.json" ]; then
+    echo "---Install Custom Gamedata---"
+    rm "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/gamedata/gamedata.json"  
+    cp "/opt/custom-plugins/addons/counterstrikesharp/gamedata/gamedata.json" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/gamedata/gamedata.json"
+  fi
 fi
 
 if $INSTALL_5STACK_PLUGIN = true ; then
