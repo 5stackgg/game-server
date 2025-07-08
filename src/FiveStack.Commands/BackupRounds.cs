@@ -17,12 +17,17 @@ public partial class FiveStackPlugin
     {
         string _round = command.ArgByIndex(1);
 
-        if (_round == null)
+        if (string.IsNullOrWhiteSpace(_round))
         {
+            _logger.LogWarning("Invalid round number provided");
             return;
         }
 
-        int round = Int32.Parse(_round);
+        if (!int.TryParse(_round, out int round))
+        {
+            _logger.LogWarning($"Failed to parse round number: {_round}");
+            return;
+        }
 
         _gameBackupRounds.RestoreRound(round);
     }
@@ -37,12 +42,17 @@ public partial class FiveStackPlugin
         _logger.LogInformation("API Restoring Round");
         string _round = command.ArgByIndex(1);
 
-        if (_round == null)
+        if (string.IsNullOrWhiteSpace(_round))
         {
+            _logger.LogWarning("Invalid round number provided");
             return;
         }
 
-        int round = Int32.Parse(_round);
+        if (!int.TryParse(_round, out int round))
+        {
+            _logger.LogWarning($"Failed to parse round number: {_round}");
+            return;
+        }
 
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
@@ -82,13 +92,24 @@ public partial class FiveStackPlugin
     {
         string _round = command.ArgByIndex(1);
 
-        if (_round == null || _gameBackupRounds.IsResettingRound())
+        if (string.IsNullOrWhiteSpace(_round) || _gameBackupRounds.IsResettingRound())
         {
-            _logger.LogWarning("Already restoring round, skipping");
+            if (_gameBackupRounds.IsResettingRound())
+            {
+                _logger.LogWarning("Already restoring round, skipping");
+            }
+            else
+            {
+                _logger.LogWarning("Invalid round number provided");
+            }
             return;
         }
 
-        int round = Int32.Parse(_round);
+        if (!int.TryParse(_round, out int round))
+        {
+            _logger.LogWarning($"Failed to parse round number: {_round}");
+            return;
+        }
 
         _gameBackupRounds.RestoreBackupRound(round, player);
     }
@@ -106,8 +127,9 @@ public partial class FiveStackPlugin
     {
         string round = command.ArgByIndex(1);
 
-        if (round == null)
+        if (string.IsNullOrWhiteSpace(round))
         {
+            _logger.LogWarning("Invalid round number provided");
             return;
         }
 
