@@ -18,7 +18,7 @@ public partial class FiveStackPlugin
 
     // near "CNetworkGameServerBase::ConnectClient( name=\'%s\', remote=\'%s\' )\n"
     private static string ConnectClientSignature = RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
-        ? "55 48 89 E5 41 57 41 56 41 89 CE 41 55 41 54 4D 89 CC 53 48 89 D3 48 81 EC F8 03 00 00 8B 45 20 48 89 BD 48 FC FF FF 48 8B 3D ?? ?? ?? ?? 48 89 B5 40 FC FF FF 48 C7 85 60 FC FF FF 00 00 00 00"
+        ? "55 48 89 E5 41 57 41 56 41 89 CE 41 55 41 54 4D 89 CC 53 48 89 D3 48 81 EC ? ? ? ? 8B 45 20"
         : "";
     /// <summary>
     /// <c>
