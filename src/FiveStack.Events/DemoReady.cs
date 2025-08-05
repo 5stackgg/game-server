@@ -4,16 +4,17 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using FiveStack.Enums;
+using Microsoft.Extensions.Logging;
 
-namespace FiveStack;
+namespace FiveStack;    
 
 public partial class FiveStackPlugin
 {
     private static readonly string demoRecordEndSignature = RuntimeInformation.IsOSPlatform(
         OSPlatform.Linux
     )
-        ? @"\x55\x48\x89\xE5\x41\x57\x41\x56\x41\x55\x49\x89\xF5\x41\x54\x4C\x8D\x67\x08"
-        : @"\x40\x55\x56\x41\x57\x48\x8D\x6C\x24\x00\x48\x81\xEC\x00\x00\x00\x00\x80\xB9\x00\x00\x00\x00\x00";
+        ? "55 48 89 E5 41 57 41 56 41 55 41 54 53 48 89 FB 48 81 EC"
+        : "";
 
     public MemoryFunctionVoid<IntPtr, IntPtr> RecordEnd = new(
         demoRecordEndSignature,
@@ -22,40 +23,42 @@ public partial class FiveStackPlugin
 
     private HookResult RecordEndHookResult(DynamicHook hook)
     {
-        MatchManager? match = _matchService.GetCurrentMatch();
-        if (match == null)
-        {
-            return HookResult.Continue;
-        }
+        _logger.LogInformation("RecordEndHookResult");
 
-        Server.NextFrame(async () =>
-        {
-            if (!_environmentService.isOnGameServerNode())
-            {
-                await _gameDemos.UploadDemos();
-            }
+        // MatchManager? match = _matchService.GetCurrentMatch();
+        // if (match == null)
+        // {
+        //     return HookResult.Continue;
+        // }
 
-            Server.NextFrame(() =>
-            {
-                if (match.isSurrendered())
-                {
-                    Guid? winningLineupId = _surrenderSystem.GetWinningLineupId();
-                    if (winningLineupId != null)
-                    {
-                        _matchEvents.PublishGameEvent(
-                            "surrender",
-                            new Dictionary<string, object>
-                            {
-                                { "time", DateTime.Now },
-                                { "winning_lineup_id", winningLineupId },
-                            }
-                        );
-                    }
-                }
+        // Server.NextFrame(async () =>
+        // {
+        //     if (!_environmentService.isOnGameServerNode())
+        //     {
+        //         await _gameDemos.UploadDemos();
+        //     }
 
-                match.UpdateMapStatus(eMapStatus.Finished);
-            });
-        });
+        //     Server.NextFrame(() =>
+        //     {
+        //         if (match.isSurrendered())
+        //         {
+        //             Guid? winningLineupId = _surrenderSystem.GetWinningLineupId();
+        //             if (winningLineupId != null)
+        //             {
+        //                 _matchEvents.PublishGameEvent(
+        //                     "surrender",
+        //                     new Dictionary<string, object>
+        //                     {
+        //                         { "time", DateTime.Now },
+        //                         { "winning_lineup_id", winningLineupId },
+        //                     }
+        //                 );
+        //             }
+        //         }
+
+        //         match.UpdateMapStatus(eMapStatus.Finished);
+        //     });
+        // });
         return HookResult.Continue;
     }
 }
