@@ -13,7 +13,7 @@ public partial class FiveStackPlugin
     private static readonly string demoRecordEndSignature = RuntimeInformation.IsOSPlatform(
         OSPlatform.Linux
     )
-        ? "55 48 89 E5 41 57 41 56 41 55 41 54 53 48 89 FB 48 81 EC"
+        ? "55 48 89 E5 41 57 41 56 41 55 41 54 53 48 89 ? 48 81 EC ? ? ? ?"
         : "";
 
     public MemoryFunctionVoid<IntPtr, IntPtr> RecordEnd = new(
