@@ -9,6 +9,7 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
+    // near Completed SourceTV demo \"%s\":\n\tRecording time %.1f,\n\tSize %d (%d per tick).\n\tAnimation data size %d (%d per tick).\n
     private static readonly string demoRecordEndSignature = RuntimeInformation.IsOSPlatform(
         OSPlatform.Linux
     )
