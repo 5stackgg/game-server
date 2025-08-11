@@ -91,8 +91,16 @@ public class GameDemos
 
     public async Task UploadDemos()
     {
-        _logger.LogInformation($"Uploading demos from {GetMatchDemoPath()}");
-        string[] files = Directory.GetFiles(GetMatchDemoPath(), "*");
+        string demoPath = GetMatchDemoPath();
+        _logger.LogInformation($"Uploading demos from {demoPath}");
+
+        if (!Directory.Exists(demoPath))
+        {
+            _logger.LogWarning($"Demo directory does not exist: {demoPath}");
+            return;
+        }
+
+        string[] files = Directory.GetFiles(demoPath, "*");
 
         foreach (string file in files)
         {
