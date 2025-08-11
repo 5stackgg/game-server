@@ -87,6 +87,13 @@ public class MatchManager
         });
     }
 
+    public bool IsMapFinished()
+    {
+        return _currentMapStatus == eMapStatus.Finished
+            || _currentMapStatus == eMapStatus.UploadingDemo
+            || _currentMapStatus == eMapStatus.Surrendered;
+    }
+
     public bool IsWarmup()
     {
         if (_currentMapStatus == eMapStatus.Warmup)

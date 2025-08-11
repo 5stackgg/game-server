@@ -31,6 +31,11 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        if (!match.IsMapFinished())
+        {
+            return HookResult.Continue;
+        }
+
         Server.NextFrame(async () =>
         {
             if (!_environmentService.isOnGameServerNode())
