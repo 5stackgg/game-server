@@ -68,6 +68,10 @@ namespace FiveStack.Utilities
                     return eMapStatus.Paused;
                 case "Warmup":
                     return eMapStatus.Warmup;
+                case "UploadingDemo":
+                    return eMapStatus.UploadingDemo;
+                case "Surrendered":
+                    return eMapStatus.Surrendered;
                 case "Unknown":
                     return eMapStatus.Unknown;
                 default:
