@@ -4,6 +4,7 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using FiveStack.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -23,6 +24,7 @@ public partial class FiveStackPlugin
 
     private HookResult RecordEndHookResult(DynamicHook hook)
     {
+        _logger.LogInformation("Demo Ready for Upload");
         MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null)
         {
