@@ -19,6 +19,7 @@ public class TimeoutSystem
     private readonly IServiceProvider _serviceProvider;
     private readonly CoachSystem _coachSystem;
     private readonly CaptainSystem _captainSystem;
+    public VoteSystem? pauseVote;
     public VoteSystem? resumeVote;
 
     public TimeoutSystem(
@@ -67,7 +68,44 @@ public class TimeoutSystem
         {
             if (!CanPause(player))
             {
-                CannotPauseMessage(player, "technical pause");
+                if (pauseVote != null)
+                {
+                    pauseVote.CastVote(player, true);
+                    return;
+                }
+
+                pauseVote = _serviceProvider.GetRequiredService(typeof(VoteSystem)) as VoteSystem;
+
+                if (pauseVote != null)
+                {
+                    pauseVote.StartVote(
+                        "Technical Timeout",
+                        new CsTeam[] { CsTeam.CounterTerrorist, CsTeam.Terrorist },
+                        (
+                            () =>
+                            {
+                                _logger.LogInformation("technical pause vote passed");
+                                _matchService
+                                    .GetCurrentMatch()
+                                    ?.PauseMatch("Technical Timeout Vote Passed");
+                                pauseVote = null;
+                            }
+                        ),
+                        () =>
+                        {
+                            _logger.LogInformation("technical pause vote failed");
+                            pauseVote = null;
+                        },
+                        true,
+                        30
+                    );
+
+                    if (player != null)
+                    {
+                        pauseVote.CastVote(player, true);
+                    }
+                }
+
                 return;
             }
 

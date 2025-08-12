@@ -91,7 +91,7 @@ public class VoteSystem
             return;
         }
 
-        _gameServer.Message(HudDestination.Center, $" {ChatColors.Red}Vote Failed");
+        _gameServer.Message(HudDestination.Center, $"{_voteMessage} Vote Failed");
         _voteFailedCallback();
     }
 
@@ -105,7 +105,7 @@ public class VoteSystem
             return;
         }
 
-        _gameServer.Message(HudDestination.Center, $" {ChatColors.Red}Vote Succesful");
+        _gameServer.Message(HudDestination.Center, $"{_voteMessage} Vote Succesful");
         _voteSuccessCallback();
     }
 

@@ -2,12 +2,14 @@ using System.Runtime.InteropServices;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Cvars;
+using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using CounterStrikeSharp.API.ValveConstants.Protobuf;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
+using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
 namespace FiveStack;
 
@@ -18,6 +20,7 @@ public class MatchManager
 {
     private MatchData? _matchData;
     private eMapStatus _currentMapStatus = eMapStatus.Unknown;
+    private Timer? _resumeMessageTimer;
 
     private readonly MatchEvents _matchEvents;
     private readonly GameServer _gameServer;
@@ -111,7 +114,19 @@ public class MatchManager
 
     public bool IsPaused()
     {
-        return _currentMapStatus == eMapStatus.Paused;
+        if (_currentMapStatus == eMapStatus.Paused)
+        {
+            return true;
+        }
+
+        _resumeMessageTimer?.Kill();
+
+        return false;
+    }
+
+    public bool IsFreezePeriod()
+    {
+        return MatchUtility.Rules()?.FreezePeriod ?? false;
     }
 
     public bool isOverTime()
@@ -134,18 +149,48 @@ public class MatchManager
         return _currentMapStatus == eMapStatus.Knife;
     }
 
-    public void PauseMatch(string? message = null)
+    public void PauseMatch(string? message = null, bool skipUpdate = false)
     {
+        if (IsPaused())
+        {
+            return;
+        }
+
         _logger.LogInformation($"Pausing Match: {message}");
-        UpdateMapStatus(eMapStatus.Paused);
+        _gameServer.SendCommands(new[] { "mp_pause_match" });
 
         if (message != null)
         {
-            _gameServer.Message(HudDestination.Center, message);
+            _gameServer.Message(HudDestination.Alert, message);
         }
+
+        _resumeMessageTimer = TimerUtility.AddTimer(
+            3,
+            () =>
+            {
+                if (!IsFreezePeriod() || !IsPaused())
+                {
+                    _logger.LogInformation("Freeze period is not active, skipping resume message");
+                    return;
+                }
+
+                _gameServer.Message(
+                    HudDestination.Alert,
+                    $"to resume type {CommandUtility.PublicChatTrigger}resume"
+                );
+            },
+            TimerFlags.REPEAT
+        );
+
+        if (skipUpdate)
+        {
+            return;
+        }
+
+        UpdateMapStatus(eMapStatus.Paused);
     }
 
-    public void ResumeMatch(string? message = null)
+    public void ResumeMatch(string? message = null, bool skipUpdate = false)
     {
         if (_timeoutSystem.IsTimeoutActive())
         {
@@ -156,6 +201,7 @@ public class MatchManager
         _logger.LogInformation($"Resuming Match: {message}");
         _gameServer.SendCommands(new[] { "mp_unpause_match" });
 
+        _resumeMessageTimer?.Kill();
         _timeoutSystem.resumeVote?.CancelVote();
         _backUpManagement.restoreRoundVote?.CancelVote();
 
@@ -164,12 +210,17 @@ public class MatchManager
             return;
         }
 
-        UpdateMapStatus(isOverTime() ? eMapStatus.Overtime : eMapStatus.Live);
-
         if (message != null)
         {
             _gameServer.Message(HudDestination.Center, message);
         }
+
+        if (skipUpdate)
+        {
+            return;
+        }
+
+        UpdateMapStatus(isOverTime() ? eMapStatus.Overtime : eMapStatus.Live);
     }
 
     public void UpdateMapStatus(eMapStatus status)
@@ -232,7 +283,12 @@ public class MatchManager
                     break;
                 }
 
-                _gameServer.SendCommands(new[] { "mp_pause_match" });
+                if (IsWarmup())
+                {
+                    _gameServer.SendCommands(new[] { "mp_warmup_end" });
+                }
+
+                PauseMatch(null, true);
                 break;
             case eMapStatus.Live:
                 StartLive();
@@ -259,7 +315,6 @@ public class MatchManager
         }
 
         _matchEvents.PublishMapStatus(status);
-
         _currentMapStatus = status;
     }
 
@@ -481,7 +536,7 @@ public class MatchManager
         }
 
         _logger.LogInformation("Starting Live Match");
-        _gameServer.SendCommands(new[] { "mp_unpause_match" });
+        ResumeMatch(null, true);
 
         List<string> commands = new List<string> { "exec 5stack.live.cfg" };
 
