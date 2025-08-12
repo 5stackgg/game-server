@@ -1,7 +1,3 @@
-using System.IO.Compression;
-using System.Net;
-using System.Net.Http.Headers;
-using System.Text.RegularExpressions;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
@@ -15,7 +11,6 @@ namespace FiveStack;
 public class GameBackUpRounds
 {
     private int? _resetRound;
-    private bool _initialRestore = false;
     private readonly MatchEvents _matchEvents;
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
@@ -61,14 +56,6 @@ public class GameBackUpRounds
             return;
         }
 
-        string lockFilePath = GetLockFilePath(match.id);
-        if (File.Exists(lockFilePath))
-        {
-            return;
-        }
-
-        File.Create(lockFilePath).Dispose();
-
         _gameServer.SendCommands(
             new[] { $"mp_backup_round_file {MatchUtility.GetSafeMatchPrefix(match)}" }
         );
@@ -79,46 +66,37 @@ public class GameBackUpRounds
         return _resetRound != null;
     }
 
-    public bool CheckForBackupRestore()
+    public void CheckForBackupRestore()
     {
-        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchMap? matchMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
 
-        if (match == null)
+        if (matchMap == null)
         {
-            return false;
+            return;
         }
-
-        if (File.Exists(GetMatchLockFile()))
-        {
-            return false;
-        }
-
-        string directoryPath = Path.Join(Server.GameDirectory + "/csgo/");
-
-        string[] files = Directory.GetFiles(
-            directoryPath,
-            MatchUtility.GetSafeMatchPrefix(match) + "*"
-        );
-
-        Regex regex = new Regex(@"(\d+)(?!.*\d)");
 
         int highestNumber = -1;
 
-        foreach (string file in files)
-        {
-            Match isMatched = regex.Match(Path.GetFileNameWithoutExtension(file));
-
-            if (isMatched.Success)
-            {
-                int number;
-                if (int.TryParse(isMatched.Value, out number))
+        highestNumber = matchMap
+            .rounds.Where(
+                (backupRound) =>
                 {
-                    highestNumber = Math.Max(highestNumber, number);
+                    return backupRound.deleted_at == null;
                 }
-            }
-        }
+            )
+            .Max(
+                (backupRound) =>
+                {
+                    return backupRound.round;
+                }
+            );
 
         int currentRound = _gameServer.GetCurrentRound();
+
+        _logger.LogInformation(
+            $"Highest Backup Round: {highestNumber}, and current round is {currentRound}"
+        );
+
         if (highestNumber != -1)
         {
             _logger.LogInformation(
@@ -129,122 +107,21 @@ public class GameBackUpRounds
         if (highestNumber != -1 && currentRound > 0 && currentRound >= highestNumber)
         {
             // we are already live, do not restart the match accidently
-            return false;
+            return;
         }
 
         if (highestNumber > currentRound)
         {
-            _initialRestore = true;
             _logger.LogInformation("Server restarted, requires a vote to restore round");
-            RestoreBackupRound(highestNumber, null, true);
-            return true;
+            RequestRestoreBackupRound(highestNumber, null, true);
         }
-
-        return false;
     }
 
-    public async Task DownloadBackupRounds()
-    {
-        if (File.Exists(GetMatchDownloadLockFile()))
-        {
-            _logger.LogInformation("Backup rounds are already downloaded");
-            return;
-        }
-
-        File.Create(GetMatchDownloadLockFile()).Close();
-
-        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
-        if (match == null)
-        {
-            return;
-        }
-
-        string? serverId = _environmentService.GetServerId();
-        string? apiPassword = _environmentService.GetServerApiPassword();
-
-        string endpoint =
-            $"{_environmentService.GetApiUrl()}/matches/{match.id}/backup-rounds/map/{match.current_match_map_id}";
-
-        Directory.CreateDirectory(_rootDir);
-
-        string zipFilePath = Path.Combine(_rootDir, "backup-rounds.zip");
-
-        if (File.Exists(zipFilePath))
-        {
-            return;
-        }
-
-        _logger.LogInformation($"Downloading Backup Rounds {endpoint}");
-
-        using (HttpClient httpClient = new HttpClient())
-        {
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-                "Bearer",
-                apiPassword
-            );
-
-            try
-            {
-                HttpResponseMessage response = await httpClient.GetAsync(endpoint);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var contentType = response.Content.Headers.ContentType;
-                    if (contentType?.MediaType == "text/html")
-                    {
-                        _logger.LogInformation("Backup rounds are empty");
-                        return;
-                    }
-
-                    using (Stream contentStream = await response.Content.ReadAsStreamAsync())
-                    {
-                        using (
-                            FileStream fileStream = new FileStream(
-                                zipFilePath,
-                                FileMode.Create,
-                                FileAccess.Write,
-                                FileShare.None
-                            )
-                        )
-                        {
-                            await contentStream.CopyToAsync(fileStream);
-                        }
-                    }
-                    _logger.LogTrace($"backup rounds downloaded: {zipFilePath}");
-                }
-                else if (response.StatusCode == HttpStatusCode.NotFound)
-                {
-                    return;
-                }
-                else
-                {
-                    _logger.LogError($"backup rounds failed to download: {response.StatusCode}");
-                    return;
-                }
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogError($"backup rounds failed to download: {ex.Message}");
-                return;
-            }
-        }
-
-        await Server.NextFrameAsync(() =>
-        {
-            string extractPath = Path.Join(Server.GameDirectory + "/csgo/");
-            try
-            {
-                ZipFile.ExtractToDirectory(zipFilePath, extractPath, true);
-                _logger.LogInformation($"backup rounds downloaded");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error extracting backup rounds zip: {ex.Message}");
-            }
-        });
-    }
-
-    public void RestoreBackupRound(int round, CCSPlayerController? player = null, bool vote = false)
+    public void RequestRestoreBackupRound(
+        int round,
+        CCSPlayerController? player = null,
+        bool vote = false
+    )
     {
         _logger.LogInformation($"Restoring Backup Round {round}");
         if (IsResettingRound())
@@ -252,27 +129,27 @@ public class GameBackUpRounds
             return;
         }
 
-        MatchManager? match = _matchService.GetCurrentMatch();
-        MatchData? matchData = match?.GetMatchData();
+        MatchMap? matchMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
 
-        if (match == null || matchData == null)
+        if (matchMap == null)
         {
             return;
         }
 
-        if (!HasBackupRound(round))
+        BackupRound? backupRound = matchMap.rounds.FirstOrDefault(
+            (backupRound) =>
+            {
+                return backupRound.round == round;
+            }
+        );
+
+        if (backupRound == null)
         {
             _logger.LogWarning($"missing backup round: {round}");
             return;
         }
 
-        string backupRoundFile =
-            $"{MatchUtility.GetSafeMatchPrefix(matchData)}_round{round.ToString().PadLeft(2, '0')}.txt";
-
-        Server.NextFrame(() =>
-        {
-            _matchService.GetCurrentMatch()?.PauseMatch();
-        });
+        _gameServer.SendCommands(new[] { "mp_pause_match" });
 
         if (player != null || vote == true)
         {
@@ -292,17 +169,12 @@ public class GameBackUpRounds
                 () =>
                 {
                     _logger.LogInformation("restore round vote passed");
-                    RestoreRound(round);
+                    SendRestoreRoundToBackend(round);
                     _resetRound = null;
                 },
                 () =>
                 {
                     _logger.LogInformation("restore round vote failed");
-
-                    if (_initialRestore)
-                    {
-                        File.Create(GetMatchLockFile()).Close();
-                    }
 
                     restoreRoundVote = null;
                     _resetRound = null;
@@ -319,17 +191,17 @@ public class GameBackUpRounds
 
             return;
         }
-        RestoreRound(round);
+        SendRestoreRoundToBackend(round);
     }
 
-    public async Task UploadBackupRound(string round)
+    public string? GetBackupRoundFile(int round)
     {
         try
         {
             MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
             if (match == null)
             {
-                return;
+                return null;
             }
 
             string? serverId = _environmentService.GetServerId();
@@ -340,12 +212,12 @@ public class GameBackUpRounds
                 _logger.LogInformation(
                     $"Unable to upload backup round because we're missing server id / api password"
                 );
-                return;
+                return null;
             }
 
             string backupRoundFilePath = Path.Join(
                 Server.GameDirectory + "/csgo/",
-                $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.PadLeft(2, '0')}.txt"
+                $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.ToString().PadLeft(2, '0')}.txt"
             );
 
             if (!File.Exists(backupRoundFilePath))
@@ -353,49 +225,19 @@ public class GameBackUpRounds
                 _logger.LogInformation(
                     $"Unable to upload backup round because it's missing {backupRoundFilePath}"
                 );
-                return;
+                return null;
             }
 
-            string endpoint =
-                $"{_environmentService.GetApiUrl()}/matches/{match.id}/backup-rounds/map/{match.current_match_map_id}/round/{round}";
-
-            _logger.LogInformation($"Uploading Backup Round {endpoint}");
-
-            using (var httpClient = new HttpClient())
-            using (var fileStream = File.OpenRead(backupRoundFilePath))
-            {
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-                    "Bearer",
-                    apiPassword
-                );
-
-                using (var formData = new MultipartFormDataContent())
-                using (var streamContent = new StreamContent(fileStream))
-                {
-                    streamContent.Headers.ContentType = new MediaTypeHeaderValue(
-                        "application/octet-stream"
-                    );
-                    formData.Add(streamContent, "file", Path.GetFileName(backupRoundFilePath));
-
-                    var response = await httpClient.PostAsync(endpoint, formData);
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        _logger.LogError($"unable to upload backup round {response.StatusCode}");
-                    }
-                    else
-                    {
-                        _logger.LogInformation("backup round uploaded");
-                    }
-                }
-            }
+            return File.ReadAllText(backupRoundFilePath);
         }
         catch (Exception ex)
         {
             _logger.LogError($"An error occurred during backup round upload: {ex.Message}");
         }
+        return null;
     }
 
-    public void RestoreRound(int round)
+    public void SendRestoreRoundToBackend(int round)
     {
         _logger.LogInformation($"Restoring Round {round}");
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
@@ -414,46 +256,49 @@ public class GameBackUpRounds
         );
     }
 
-    public bool HasBackupRound(int round)
+    public async void RestoreRound(int round)
     {
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
-        if (match?.current_match_map_id == null)
+        MatchMap? matchMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
+
+        if (match == null || matchMap == null)
         {
-            return false;
+            return;
         }
 
-        string backupRoundFile =
-            $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.ToString().PadLeft(2, '0')}.txt";
+        BackupRound? backupRound = matchMap.rounds.FirstOrDefault(
+            (backupRound) =>
+            {
+                return backupRound.round == round;
+            }
+        );
 
-        return File.Exists(Path.Join(Server.GameDirectory + "/csgo/", backupRoundFile));
-    }
-
-    private string GetMatchLockFile()
-    {
-        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
-
-        if (match == null)
+        if (backupRound == null)
         {
-            return $"{_rootDir}/initial-restore.lock";
+            _logger.LogWarning($"missing backup round: {round}");
+            return;
         }
 
-        return $"{_rootDir}/initial-restore-{match.id}.lock";
-    }
+        string backupRoundFilePath = Path.Join(
+            Server.GameDirectory + "/csgo/",
+            $"restore-{MatchUtility.GetSafeMatchPrefix(match)}round{round.ToString().PadLeft(2, '0')}.txt"
+        );
 
-    private string GetMatchDownloadLockFile()
-    {
-        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        File.WriteAllText(backupRoundFilePath, backupRound.backup_file);
 
-        if (match == null)
+        _gameServer.SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFilePath}" });
+
+        _matchService.GetCurrentMatch()?.PauseMatch();
+
+        await Task.Delay(5 * 1000);
+
+        Server.NextFrame(() =>
         {
-            return $"{_rootDir}/download.lock";
-        }
-
-        return $"{_rootDir}/download-{match.id}.lock";
-    }
-
-    private string GetLockFilePath(Guid matchId)
-    {
-        return $"{_rootDir}/.backup-rounds-{matchId}";
+            _logger.LogInformation($"Sending Message for Round {round}");
+            _gameServer.Message(
+                HudDestination.Alert,
+                $" {ChatColors.Red}Round {round} has been restored ({CommandUtility.PublicChatTrigger}resume to continue)"
+            );
+        });
     }
 }

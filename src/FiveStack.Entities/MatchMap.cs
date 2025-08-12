@@ -13,4 +13,5 @@ public class MatchMap
 
     public int lineup_1_timeouts_available { get; set; } = 0;
     public int lineup_2_timeouts_available { get; set; } = 0;
+    public BackupRound[] rounds { get; set; } = new BackupRound[0];
 }

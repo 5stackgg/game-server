@@ -84,6 +84,10 @@ public partial class FiveStackPlugin
                 { "lineup_1_side", $"{TeamUtility.CSTeamToString(lineup1Side)}" },
                 { "lineup_2_side", $"{TeamUtility.CSTeamToString(lineup2Side)}" },
                 { "winning_side", $"{TeamUtility.CSTeamToString(this.roundWinner)}" },
+                {
+                    "backup_file",
+                    _gameBackupRounds.GetBackupRoundFile(_gameServer.GetCurrentRound()) ?? ""
+                },
             }
         );
 

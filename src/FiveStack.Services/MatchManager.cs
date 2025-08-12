@@ -241,7 +241,7 @@ public class MatchManager
 
         if (_currentMapStatus == eMapStatus.Unknown && status != eMapStatus.Live)
         {
-            CheckBackupRounds();
+            _backUpManagement.CheckForBackupRestore();
         }
 
         var currentMap = GetCurrentMap();
@@ -537,7 +537,7 @@ public class MatchManager
         knifeSystem.Start();
     }
 
-    private async void StartLive()
+    private void StartLive()
     {
         knifeSystem.ResetKnifeRound();
 
@@ -570,7 +570,7 @@ public class MatchManager
 
         _gameServer.SendCommands(commands.ToArray());
 
-        await _backUpManagement.DownloadBackupRounds();
+        _backUpManagement.CheckForBackupRestore();
 
         Server.NextFrame(() =>
         {
@@ -581,15 +581,6 @@ public class MatchManager
             {
                 _gameServer.SendCommands(new[] { "mp_warmup_end" });
             }
-        });
-    }
-
-    private async void CheckBackupRounds()
-    {
-        await _backUpManagement.DownloadBackupRounds();
-        Server.NextFrame(() =>
-        {
-            _backUpManagement.CheckForBackupRestore();
         });
     }
 
