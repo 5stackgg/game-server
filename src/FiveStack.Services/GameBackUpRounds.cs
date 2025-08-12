@@ -147,6 +147,7 @@ public class GameBackUpRounds
     {
         if (File.Exists(GetMatchDownloadLockFile()))
         {
+            _logger.LogInformation("Backup rounds are already downloaded");
             return;
         }
 

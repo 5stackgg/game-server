@@ -164,13 +164,13 @@ public class MatchManager
             _gameServer.Message(HudDestination.Alert, message);
         }
 
+        _resumeMessageTimer?.Kill();
         _resumeMessageTimer = TimerUtility.AddTimer(
             3,
             () =>
             {
-                if (!IsFreezePeriod() || !IsPaused())
+                if (!IsFreezePeriod() || !IsPaused() || _backUpManagement.IsResettingRound())
                 {
-                    _logger.LogInformation("Freeze period is not active, skipping resume message");
                     return;
                 }
 
@@ -195,6 +195,12 @@ public class MatchManager
         if (_timeoutSystem.IsTimeoutActive())
         {
             _logger.LogInformation("Timeout is active, cannot resume match");
+            return;
+        }
+
+        if (_backUpManagement.IsResettingRound())
+        {
+            _logger.LogInformation("Resetting round, cannot resume match");
             return;
         }
 
@@ -232,6 +238,11 @@ public class MatchManager
         }
 
         _logger.LogInformation($"Update Map Status {_currentMapStatus} -> {status}");
+
+        if (_currentMapStatus == eMapStatus.Unknown && status != eMapStatus.Live)
+        {
+            CheckBackupRounds();
+        }
 
         var currentMap = GetCurrentMap();
 
@@ -569,11 +580,16 @@ public class MatchManager
             if (IsWarmup())
             {
                 _gameServer.SendCommands(new[] { "mp_warmup_end" });
-
-                // if we can restore from backup we will prompt the for a vote to restore
-                // most likely this happeend because of a server crash
-                _backUpManagement.CheckForBackupRestore();
             }
+        });
+    }
+
+    private async void CheckBackupRounds()
+    {
+        await _backUpManagement.DownloadBackupRounds();
+        Server.NextFrame(() =>
+        {
+            _backUpManagement.CheckForBackupRestore();
         });
     }
 
