@@ -82,7 +82,7 @@ public class CaptainSystem
 
     public CCSPlayerController? GetTeamCaptain(CsTeam team)
     {
-        if (team == CsTeam.None)
+        if (team == CsTeam.None || team == CsTeam.Spectator)
         {
             return null;
         }
