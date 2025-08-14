@@ -75,21 +75,24 @@ public class GameBackUpRounds
             return;
         }
 
-        int highestNumber = -1;
+        var availableRounds = matchMap.rounds.Where(
+            (backupRound) =>
+            {
+                return backupRound.deleted_at == null;
+            }
+        );
 
-        highestNumber = matchMap
-            .rounds.Where(
-                (backupRound) =>
-                {
-                    return backupRound.deleted_at == null;
-                }
-            )
-            .Max(
-                (backupRound) =>
-                {
-                    return backupRound.round;
-                }
-            );
+        if (availableRounds.Count() == 0)
+        {
+            return;
+        }
+
+        int highestNumber = availableRounds.Max(
+            (backupRound) =>
+            {
+                return backupRound.round;
+            }
+        );
 
         int currentRound = _gameServer.GetCurrentRound();
 
