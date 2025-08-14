@@ -82,6 +82,11 @@ public class CaptainSystem
 
     public CCSPlayerController? GetTeamCaptain(CsTeam team)
     {
+        if (team == CsTeam.None)
+        {
+            return null;
+        }
+
         return _captains[team];
     }
 

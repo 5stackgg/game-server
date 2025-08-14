@@ -2,7 +2,6 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
-using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
@@ -114,7 +113,7 @@ public class KnifeSystem
             $"captain picked to {ChatColors.Red}stay {ChatColors.Default}sides"
         );
 
-        _gameServer.SendCommands(new[] { "mp_restartgame 1" });
+        _resetWarmup();
 
         match.UpdateMapStatus(eMapStatus.Live);
     }
@@ -151,6 +150,17 @@ public class KnifeSystem
         _matchEvents.PublishGameEvent("switch", new Dictionary<string, object>());
     }
 
+    private void _resetWarmup()
+    {
+        _gameServer.SendCommands(new[] { "mp_warmup_start" });
+
+        var rules = MatchUtility.Rules();
+        if (rules != null)
+        {
+            rules.RoundsPlayedThisPhase = 0;
+        }
+    }
+
     public void Skip()
     {
         ResetKnifeRound();
@@ -184,6 +194,7 @@ public class KnifeSystem
 
         Server.NextFrame(() =>
         {
+            _resetWarmup();
             match.UpdateMapStatus(eMapStatus.Live);
         });
     }

@@ -303,17 +303,6 @@ public class MatchManager
                 break;
             case eMapStatus.Live:
                 StartLive();
-
-                if (
-                    _currentMapStatus != eMapStatus.Live
-                    && (
-                        _currentMapStatus == eMapStatus.Warmup
-                        || _currentMapStatus == eMapStatus.Knife
-                    )
-                )
-                {
-                    _gameServer.SendCommands(new[] { "mp_restartgame 3" });
-                }
                 break;
             case eMapStatus.Surrendered:
             case eMapStatus.UploadingDemo:
