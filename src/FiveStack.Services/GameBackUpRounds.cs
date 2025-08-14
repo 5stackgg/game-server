@@ -100,14 +100,7 @@ public class GameBackUpRounds
             $"Highest Backup Round: {highestNumber}, and current round is {currentRound}"
         );
 
-        if (highestNumber != -1)
-        {
-            _logger.LogInformation(
-                $"Found Backup Round File {highestNumber} and were on {currentRound}"
-            );
-        }
-
-        if (highestNumber != -1 && currentRound > 0 && currentRound >= highestNumber)
+        if (currentRound > 0 && currentRound >= highestNumber)
         {
             // we are already live, do not restart the match accidently
             return;
