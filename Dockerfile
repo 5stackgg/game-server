@@ -44,7 +44,10 @@ ENV GAME_ID="730"
 ENV GAME_PARAMS=""
 ENV GAME_PORT=27015
 ENV VALIDATE=false
-ENV USER="steam"
+ENV USER=steam
+
+ENV STEAM_USER="anonymous"
+ENV STEAM_PASSWORD=""
 
 ENV SERVER_ID=""
 ENV DEFAULT_MAP="de_inferno"
@@ -56,7 +59,7 @@ ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/re
 
 RUN  echo "deb http://deb.debian.org/debian bookworm contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
 	apt-get update && apt-get -y upgrade && \
-	apt-get -y install --no-install-recommends wget locales procps && \
+	apt-get -y install --no-install-recommends wget locales procps jq && \
 	touch /etc/locale.gen && \
 	echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
 	locale-gen && \
