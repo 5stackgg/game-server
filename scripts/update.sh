@@ -23,4 +23,9 @@ rm -rf "${BASE_SERVER_DIR}/steamapps"
 
 # Update Server
 echo "---Update Server---"
-"${STEAMCMD_DIR}/steamcmd.sh" +force_install_dir "${BASE_SERVER_DIR}" +login anonymous +app_update "${GAME_ID}" ${VALIDATE:+validate} +quit
+STEAMCMD_ARGS="+force_install_dir \"${BASE_SERVER_DIR}\" +login anonymous +app_update \"${GAME_ID}\""
+[ -n "${BUILD_ID}" ] && STEAMCMD_ARGS="${STEAMCMD_ARGS} -manifest \"${BUILD_ID}\""
+[ -n "${VALIDATE}" ] && STEAMCMD_ARGS="${STEAMCMD_ARGS} validate"
+STEAMCMD_ARGS="${STEAMCMD_ARGS} +quit"
+
+eval "${STEAMCMD_DIR}/steamcmd.sh" ${STEAMCMD_ARGS}
