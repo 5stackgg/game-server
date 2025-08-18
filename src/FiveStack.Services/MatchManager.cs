@@ -156,7 +156,7 @@ public class MatchManager
             return;
         }
 
-        _logger.LogInformation($"Pausing Match: {message}");
+        _logger.LogInformation($"Pausing Match{(message != null ? $": {message}" : "")}");
         _gameServer.SendCommands(new[] { "mp_pause_match" });
 
         if (message != null)
@@ -204,7 +204,7 @@ public class MatchManager
             return;
         }
 
-        _logger.LogInformation($"Resuming Match: {message}");
+        _logger.LogInformation($"Resuming Match{(message != null ? $": {message}" : "")}");
         _gameServer.SendCommands(new[] { "mp_unpause_match" });
 
         _resumeMessageTimer?.Kill();

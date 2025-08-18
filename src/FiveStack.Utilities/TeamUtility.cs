@@ -90,7 +90,8 @@ namespace FiveStack.Utilities
                         totalCash += (
                             CounterStrikeSharp
                                 .API.Utilities.GetPlayerFromIndex((int)player.Index)
-                                ?.InGameMoneyServices?.Account ?? 0
+                                ?.InGameMoneyServices?.Account
+                            ?? 0
                         );
                     }
                 }

@@ -39,7 +39,7 @@ public class KnifeSystem
         _gameServer.SendCommands(new[] { "exec 5stack.knife.cfg" });
         _gameServer.SendCommands(new[] { "mp_restartgame 1" });
 
-        await Task.Delay(3000);
+        await Task.Delay(5000);
 
         Server.NextFrame(() =>
         {
@@ -84,7 +84,7 @@ public class KnifeSystem
         );
     }
 
-    public void Stay(CCSPlayerController player)
+    public async void Stay(CCSPlayerController player)
     {
         _logger.LogInformation("Knife round staying");
 
@@ -113,9 +113,13 @@ public class KnifeSystem
             $"captain picked to {ChatColors.Red}stay {ChatColors.Default}sides"
         );
 
-        _resetWarmup();
+        await Task.Delay(1 * 1000);
 
-        match.UpdateMapStatus(eMapStatus.Live);
+        Server.NextFrame(() =>
+        {
+            _resetWarmup();
+            match.UpdateMapStatus(eMapStatus.Live);
+        });
     }
 
     public void Switch(CCSPlayerController player)
