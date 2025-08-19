@@ -23,17 +23,21 @@ rm -rf "${BASE_SERVER_DIR}/steamapps"
 
 # Update Server
 STEAMCMD_ARGS="+force_install_dir \"${BASE_SERVER_DIR}\" +login anonymous"
-if [ -n "${BUILD_ID}" ]; then
+if [ -n "${BUILD_MANIFESTS}" ]; then
     echo "---Update Linux Server To Specific Version---"
 
-    IFS=',' read -ra DEPOT_ID_ARRAY <<< "${DEPOT_IDS}"
-    
-    for depotId in "${DEPOT_ID_ARRAY[@]}"; do
-        echo "---Updating Depot ${depotId}---"
-        LINUX_SERVER="${STEAMCMD_ARGS} +download_depot ${GAME_ID} ${depotId} ${BUILD_ID} +quit"
-        echo "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
-        eval "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
-    done
+    echo "---Parsing BUILD_MANIFESTS---"
+    while IFS= read -r line; do
+        if [ -n "$line" ]; then
+            gid=$(echo "$line" | jq -r '.gid')
+            depotId=$(echo "$line" | jq -r '.depotId')
+            
+            echo "---Updating Depot ${depotId} with Build ${gid}---"
+            LINUX_SERVER="${STEAMCMD_ARGS} +download_depot ${GAME_ID} ${depotId} ${gid} +quit"
+            echo "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
+            eval "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
+        fi
+    done < <(echo "${BUILD_MANIFESTS}" | jq -c '.[]')
 else
     echo "---Update Server To Latest Version---"
 
