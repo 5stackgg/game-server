@@ -11,13 +11,15 @@ namespace FiveStack;
 
 public class GameServer
 {
-    private readonly ILogger<GameServer> _logger;
+    private readonly SteamAPI _steamAPI;
     private readonly EnvironmentService _environmentService;
+    private readonly ILogger<GameServer> _logger;
     private readonly bool _steamRelay;
 
-    public GameServer(ILogger<GameServer> logger, EnvironmentService environmentService)
+    public GameServer(ILogger<GameServer> logger, SteamAPI steamAPI, EnvironmentService environmentService)
     {
         _logger = logger;
+        _steamAPI = steamAPI;
         _environmentService = environmentService;
         _steamRelay = ConVar.Find("net_p2p_listen_dedicated")?.GetPrimitiveValue<bool>() ?? false;
     }
@@ -71,6 +73,11 @@ public class GameServer
     {
         string? serverId = _environmentService.GetServerId();
         string? apiPassword = _environmentService.GetServerApiPassword();
+        string? serverSteamID = _steamAPI.GetServerSteamIDFormatted();
+
+        _logger.LogInformation($"Server ID: {serverId}");
+        _logger.LogInformation($"Server Steam ID: {serverSteamID}");
+        _logger.LogInformation($"Steam Relay: {_steamRelay}");
 
         Server.NextFrame(async () =>
         {
