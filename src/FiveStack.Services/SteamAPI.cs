@@ -59,7 +59,7 @@ public class SteamAPI
             return;
         }
   
-        _gGameServer = ISteamClient_GetISteamGenericInterface(steamClient, (IntPtr)steamUser, (IntPtr)steamPipe, "SteamGameServer014");
+        _gGameServer = ISteamClient_GetISteamGenericInterface(steamClient, steamUser, steamPipe, "SteamGameServer014");
         
         if(_gGameServer == IntPtr.Zero)
         {
