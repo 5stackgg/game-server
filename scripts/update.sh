@@ -28,4 +28,5 @@ STEAMCMD_ARGS="+force_install_dir \"${BASE_SERVER_DIR}\" +login anonymous +app_u
 [ -n "${VALIDATE}" ] && STEAMCMD_ARGS="${STEAMCMD_ARGS} validate"
 STEAMCMD_ARGS="${STEAMCMD_ARGS} +quit"
 
+echo "${STEAMCMD_DIR}/steamcmd.sh" ${STEAMCMD_ARGS}
 eval "${STEAMCMD_DIR}/steamcmd.sh" ${STEAMCMD_ARGS}
