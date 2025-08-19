@@ -31,6 +31,7 @@ if [ -n "${BUILD_ID}" ]; then
     for depotId in "${DEPOT_ID_ARRAY[@]}"; do
         echo "---Updating Depot ${depotId}---"
         LINUX_SERVER="${STEAMCMD_ARGS} +download_depot ${GAME_ID} ${depotId} ${BUILD_ID} +quit"
+        echo "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
         eval "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
     done
 else
