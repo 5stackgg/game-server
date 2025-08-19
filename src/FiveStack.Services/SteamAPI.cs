@@ -10,28 +10,28 @@ public class SteamAPI
     private IntPtr _gGameServer = IntPtr.Zero;
 
     [DllImport("steam_api")]
-    public static extern IntPtr SteamInternal_CreateInterface(string name);
+    private static extern IntPtr SteamInternal_CreateInterface(string name);
 
     [DllImport(
         "steam_api",
         EntryPoint = "SteamGameServer_GetHSteamPipe",
         CallingConvention = CallingConvention.Cdecl
     )]
-    public static extern int SteamGameServer_GetHSteamPipe();
+    private static extern int SteamGameServer_GetHSteamPipe();
 
     [DllImport(
         "steam_api",
         EntryPoint = "SteamGameServer_GetHSteamUser",
         CallingConvention = CallingConvention.Cdecl
     )]
-    public static extern int SteamGameServer_GetHSteamUser();
+    private static extern int SteamGameServer_GetHSteamUser();
 
     [DllImport(
         "steam_api",
         EntryPoint = "SteamAPI_ISteamClient_GetISteamGenericInterface",
         CallingConvention = CallingConvention.Cdecl
     )]
-    public static extern IntPtr ISteamClient_GetISteamGenericInterface(
+    private static extern IntPtr ISteamClient_GetISteamGenericInterface(
         IntPtr instancePtr,
         IntPtr hSteamUser,
         IntPtr hSteamPipe,
@@ -43,12 +43,27 @@ public class SteamAPI
         EntryPoint = "SteamAPI_ISteamGameServer_GetSteamID",
         CallingConvention = CallingConvention.Cdecl
     )]
-    public static extern ulong ISteamGameServer_GetSteamID(IntPtr instancePtr);
+    private static extern ulong ISteamGameServer_GetSteamID(IntPtr instancePtr);
 
     public SteamAPI(ILogger<SteamAPI> logger)
     {
         _logger = logger;
         NativeLibrary.SetDllImportResolver(Assembly.GetExecutingAssembly(), DllImportResolver);
+    }
+
+    public string GetServerSteamIDFormatted()
+    {
+        if (_gGameServer != IntPtr.Zero)
+        {
+            var steamID64 = ISteamGameServer_GetSteamID(_gGameServer);
+            if (steamID64 == 0)
+            {
+                return "";
+            }
+
+            return ConvertSteamID64ToSteamID(steamID64);
+        }
+        return "";
     }
 
     public void OnSteamAPIActivated()
@@ -112,19 +127,6 @@ public class SteamAPI
             );
 
         return IntPtr.Zero;
-    }
-
-    public string GetServerSteamIDFormatted()
-    {
-        if (_gGameServer != IntPtr.Zero)
-        {
-            var steamID64 = ISteamGameServer_GetSteamID(_gGameServer);
-            if (steamID64 == 0)
-                return "";
-
-            return ConvertSteamID64ToSteamID(steamID64);
-        }
-        return "";
     }
 
     private string ConvertSteamID64ToSteamID(ulong steamID64)
