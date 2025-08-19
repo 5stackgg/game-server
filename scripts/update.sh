@@ -43,12 +43,14 @@ if [ -n "${BUILD_MANIFESTS}" ]; then
         fi
     done < <(echo "${BUILD_MANIFESTS}" | jq -c '.[]')
 
+    rm -rf "${STEAMCMD_DIR}/linux32/steamapps"
+
     mkdir "${BASE_SERVER_DIR}/steamapps"
 
-    cat > "${BASE_SERVER_DIR}/steamapps/pinned_version" << 'EOF'
+    cat > "${BASE_SERVER_DIR}/steamapps/appmanifest_730.acf" << EOF
 "AppState"
 {
-        "buildid"               "19657793"
+        "buildid"               "${BUILD_ID}"
 }
 EOF
 
