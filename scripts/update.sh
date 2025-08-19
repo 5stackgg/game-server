@@ -24,14 +24,15 @@ rm -rf "${BASE_SERVER_DIR}/steamapps"
 # Update Server
 STEAMCMD_ARGS="+force_install_dir \"${BASE_SERVER_DIR}\" +login anonymous"
 if [ -n "${BUILD_ID}" ]; then
-    LINUX_SERVER="${STEAMCMD_ARGS} +download_depot ${GAME_ID} ${DEPO_ID} ${BUILD_ID} +quit"
-    LINUX_COMMON_SERVER="${STEAMCMD_ARGS} +download_depot ${GAME_ID} ${COMMON_DEPOT_ID} ${BUILD_ID} +quit"
-
     echo "---Update Linux Server To Specific Version---"
-    eval "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
+
+    IFS=',' read -ra DEPOT_ID_ARRAY <<< "${DEPOT_IDS}"
     
-    echo "---Update Linux Common Server To Latest Version---"
-    eval "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_COMMON_SERVER}
+    for depotId in "${DEPOT_ID_ARRAY[@]}"; do
+        echo "---Updating Depot ${depotId}---"
+        LINUX_SERVER="${STEAMCMD_ARGS} +download_depot ${GAME_ID} ${depotId} ${BUILD_ID} +quit"
+        eval "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
+    done
 else
     echo "---Update Server To Latest Version---"
 
