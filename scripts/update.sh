@@ -32,15 +32,13 @@ if [ -n "${BUILD_ID}" ]; then
     
     echo "---Update Linux Common Server To Latest Version---"
     eval "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_COMMON_SERVER}
+else
+    echo "---Update Server To Latest Version---"
 
-    return
+    STEAMCMD_ARGS="${STEAMCMD_ARGS} +app_update \"${GAME_ID}\""
+    [ -n "${VALIDATE}" ] && STEAMCMD_ARGS="${STEAMCMD_ARGS} validate"
+    STEAMCMD_ARGS="${STEAMCMD_ARGS} +quit"
+
+    echo "${STEAMCMD_DIR}/steamcmd.sh" ${STEAMCMD_ARGS}
+    eval "${STEAMCMD_DIR}/steamcmd.sh" ${STEAMCMD_ARGS}
 fi
-
-echo "---Update Server To Latest Version---"
-
-STEAMCMD_ARGS="${STEAMCMD_ARGS} +app_update \"${GAME_ID}\""
-[ -n "${VALIDATE}" ] && STEAMCMD_ARGS="${STEAMCMD_ARGS} validate"
-STEAMCMD_ARGS="${STEAMCMD_ARGS} +quit"
-
-echo "${STEAMCMD_DIR}/steamcmd.sh" ${STEAMCMD_ARGS}
-eval "${STEAMCMD_DIR}/steamcmd.sh" ${STEAMCMD_ARGS}
