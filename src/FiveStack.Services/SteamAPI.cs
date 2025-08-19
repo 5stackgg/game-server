@@ -87,6 +87,10 @@ public class SteamAPI
             return;
         }
 
+        // See: https://github.com/ValveSoftware/Proton/tree/proton_10.0/lsteamclient
+        // You can find SteamClient and SteamGameServer interface versions there.
+        // It's unclear how to determine which version to use.
+
         var steamClient = SteamInternal_CreateInterface("SteamClient020");
 
         if (steamClient == IntPtr.Zero)
