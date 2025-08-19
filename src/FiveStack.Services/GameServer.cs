@@ -75,7 +75,7 @@ public class GameServer
         string? apiPassword = _environmentService.GetServerApiPassword();
         string? serverSteamID = _steamAPI.GetServerSteamIDFormatted();
 
-        _logger.LogInformation($"Steam Relay: {_steamRelay}");
+        _logger.LogInformation($"Server Steam ID: {serverSteamID}");
 
         Server.NextFrame(async () =>
         {
