@@ -6,8 +6,8 @@ namespace FiveStack;
 
 public class SteamAPI
 {
-    private readonly ILogger<SteamAPI> _logger;
     private IntPtr _gGameServer = IntPtr.Zero;
+    private readonly ILogger<SteamAPI> _logger;
 
     [DllImport("steam_api")]
     private static extern IntPtr SteamInternal_CreateInterface(string name);
