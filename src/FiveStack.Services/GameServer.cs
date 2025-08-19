@@ -79,12 +79,10 @@ public class GameServer
         string? apiPassword = _environmentService.GetServerApiPassword();
         string? serverSteamID = _steamAPI.GetServerSteamIDFormatted();
 
-        _logger.LogInformation($"Server Steam ID: {serverSteamID}");
-
         Server.NextFrame(async () =>
         {
             string endpoint =
-                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={Server.MapName}&pluginVersion={pluginVersion}&steamRelay={_steamRelay}";
+                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={Server.MapName}&pluginVersion={pluginVersion}&steamRelay={_steamRelay}&steamID={serverSteamID}";
 
             using (HttpClient httpClient = new HttpClient())
             {
