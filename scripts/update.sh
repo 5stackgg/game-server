@@ -26,7 +26,8 @@ STEAMCMD_ARGS="+force_install_dir \"${BASE_SERVER_DIR}\" +login anonymous"
 if [ -n "${BUILD_MANIFESTS}" ]; then
     echo "---Update Linux Server To Specific Version---"
 
-    echo "---Parsing BUILD_MANIFESTS---"
+    rm -rf "${BASE_SERVER_DIR}/serverfiles/*"
+
     while IFS= read -r line; do
         if [ -n "$line" ]; then
             gid=$(echo "$line" | jq -r '.gid')
@@ -36,8 +37,22 @@ if [ -n "${BUILD_MANIFESTS}" ]; then
             LINUX_SERVER="${STEAMCMD_ARGS} +download_depot ${GAME_ID} ${depotId} ${gid} +quit"
             echo "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
             eval "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
+
+            echo "---Syncing to ServerFiles---"
+            mv "${STEAMCMD_DIR}/linux32/steamapps/content/app_730/depot_${depotId}"/* "${BASE_SERVER_DIR}"
         fi
     done < <(echo "${BUILD_MANIFESTS}" | jq -c '.[]')
+
+    mkdir "${BASE_SERVER_DIR}/steamapps"
+
+    cat > "${BASE_SERVER_DIR}/steamapps/pinned_version" << 'EOF'
+"AppState"
+{
+        "buildid"               "19657793"
+}
+EOF
+
+
 else
     echo "---Update Server To Latest Version---"
 
