@@ -28,24 +28,46 @@ if [ -n "${BUILD_MANIFESTS}" ]; then
 
     rm -rf "${BASE_SERVER_DIR}/serverfiles/*"
 
+    declare -A depot_gids
+    depots=()
+
     while IFS= read -r line; do
         if [ -n "$line" ]; then
             gid=$(echo "$line" | jq -r '.gid')
             depotId=$(echo "$line" | jq -r '.depotId')
-            
+            depots+=("${depotId}")
+            depot_gids["${depotId}"]="${gid}"
+        fi
+    done < <(echo "${BUILD_MANIFESTS}" | jq -c '.[]')
+
+    # download depots
+    for depotId in "${depots[@]}"; do
+        gid="${depot_gids[${depotId}]}"
+        depotDir="${STEAMCMD_DIR}/linux32/steamapps/content/app_${GAME_ID}/depot_${depotId}"
+
+        if [ -d "${depotDir}" ] && [ "$(ls -A "${depotDir}")" ]; then
+            echo "---Depot ${depotId} already downloaded, skipping download---"
+        else
             echo "---Updating Depot ${depotId} with Build ${gid}---"
             LINUX_SERVER="${STEAMCMD_ARGS} +download_depot ${GAME_ID} ${depotId} ${gid} +quit"
             echo "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
             eval "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
-
-            echo "---Syncing to ServerFiles---"
-            mv "${STEAMCMD_DIR}/linux32/steamapps/content/app_730/depot_${depotId}"/* "${BASE_SERVER_DIR}"
         fi
-    done < <(echo "${BUILD_MANIFESTS}" | jq -c '.[]')
+    done
 
-    rm -rf "${STEAMCMD_DIR}/linux32/steamapps"
+    # sync downloaded depots to server files
+    for depotId in "${depots[@]}"; do
+        depotDir="${STEAMCMD_DIR}/linux32/steamapps/content/app_${GAME_ID}/depot_${depotId}"
+        if [ -d "${depotDir}" ] && [ "$(ls -A "${depotDir}")" ]; then
+            echo "---Syncing Depot ${depotId} to ServerFiles---"
+            cp -r "${depotDir}/"* "${BASE_SERVER_DIR}/"
+        else
+            echo "Depot directory ${depotDir} does not exist or is empty. Exiting."
+            exit 1
+        fi
+    done
 
-    mkdir "${BASE_SERVER_DIR}/steamapps"
+    rm -rf "${STEAMCMD_DIR}/linux32/steamapps/*"
 
     cat > "${BASE_SERVER_DIR}/steamapps/appmanifest_730.acf" << EOF
 "AppState"
@@ -53,7 +75,6 @@ if [ -n "${BUILD_MANIFESTS}" ]; then
         "buildid"               "${BUILD_ID}"
 }
 EOF
-
 
 else
     echo "---Update Server To Latest Version---"
