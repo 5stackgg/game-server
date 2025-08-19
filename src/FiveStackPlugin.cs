@@ -20,12 +20,12 @@ public partial class FiveStackPlugin : BasePlugin
     private readonly GameBackUpRounds _gameBackupRounds;
     private readonly EnvironmentService _environmentService;
     private readonly SteamAPI _steamAPI;
-        
+
     public override string ModuleName => "FiveStack";
     public override string ModuleVersion => "__RELEASE_VERSION__";
     public override string ModuleAuthor => "5Stack.gg";
     public override string ModuleDescription => "5Stack creates and managements custom matches";
-    
+
     public FiveStackPlugin(
         SteamAPI steamAPI,
         GameDemos matchDemos,
@@ -60,12 +60,15 @@ public partial class FiveStackPlugin : BasePlugin
     public override void Load(bool hotReload)
     {
         RegisterListener<Listeners.OnGameServerSteamAPIActivated>(_steamAPI.OnSteamAPIActivated);
-        RegisterListener<Listeners.OnGameServerSteamAPIDeactivated>(_steamAPI.OnSteamAPIDeactivated);
+        RegisterListener<Listeners.OnGameServerSteamAPIDeactivated>(
+            _steamAPI.OnSteamAPIDeactivated
+        );
 
-        if (hotReload) {
+        if (hotReload)
+        {
             _steamAPI.OnSteamAPIActivated();
         }
-        
+
         _environmentService.Load();
 
         _logger.LogInformation($"Server ID: {_environmentService.GetServerId()}");

@@ -16,7 +16,11 @@ public class GameServer
     private readonly ILogger<GameServer> _logger;
     private readonly bool _steamRelay;
 
-    public GameServer(ILogger<GameServer> logger, SteamAPI steamAPI, EnvironmentService environmentService)
+    public GameServer(
+        ILogger<GameServer> logger,
+        SteamAPI steamAPI,
+        EnvironmentService environmentService
+    )
     {
         _logger = logger;
         _steamAPI = steamAPI;
