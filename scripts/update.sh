@@ -16,13 +16,13 @@ fi
 
 # Update SteamCMD
 echo "---Update SteamCMD---"
-"${STEAMCMD_DIR}/steamcmd.sh" +login anonymous +quit
+"${STEAMCMD_DIR}/steamcmd.sh" +login "${STEAM_USER}" "${STEAM_PASSWORD}" +quit
 
 # Remove old steamapps
 rm -rf "${BASE_SERVER_DIR}/steamapps"
 
 # Update Server
-STEAMCMD_ARGS="+force_install_dir \"${BASE_SERVER_DIR}\" +login anonymous"
+STEAMCMD_ARGS="+force_install_dir \"${BASE_SERVER_DIR}\" +login \"${STEAM_USER}\" \"${STEAM_PASSWORD}\""
 if [ -n "${BUILD_MANIFESTS}" ]; then
     echo "---Update Linux Server To Specific Version---"
 
