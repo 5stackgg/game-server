@@ -22,9 +22,23 @@ echo "---Update SteamCMD---"
 rm -rf "${BASE_SERVER_DIR}/steamapps"
 
 # Update Server
-echo "---Update Server---"
-STEAMCMD_ARGS="+force_install_dir \"${BASE_SERVER_DIR}\" +login anonymous +app_update \"${GAME_ID}\""
-[ -n "${BUILD_ID}" ] && STEAMCMD_ARGS="${STEAMCMD_ARGS} -manifest \"${BUILD_ID}\""
+STEAMCMD_ARGS="+force_install_dir \"${BASE_SERVER_DIR}\" +login anonymous"
+if [ -n "${BUILD_ID}" ]; then
+    LINUX_SERVER="${STEAMCMD_ARGS} +download_depot ${GAME_ID} ${DEPO_ID} ${BUILD_ID} +quit"
+    LINUX_COMMON_SERVER="${STEAMCMD_ARGS} +download_depot ${GAME_ID} ${COMMON_DEPOT_ID} ${BUILD_ID} +quit"
+
+    echo "---Update Linux Server To Specific Version---"
+    eval "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
+    
+    echo "---Update Linux Common Server To Latest Version---"
+    eval "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_COMMON_SERVER}
+
+    return
+fi
+
+echo "---Update Server To Latest Version---"
+
+STEAMCMD_ARGS="${STEAMCMD_ARGS} +app_update \"${GAME_ID}\""
 [ -n "${VALIDATE}" ] && STEAMCMD_ARGS="${STEAMCMD_ARGS} validate"
 STEAMCMD_ARGS="${STEAMCMD_ARGS} +quit"
 
