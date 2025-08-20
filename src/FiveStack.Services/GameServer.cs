@@ -82,7 +82,17 @@ public class GameServer
         Server.NextFrame(async () =>
         {
             string endpoint =
-                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={Server.MapName}&pluginVersion={pluginVersion}&steamRelay={_steamRelay}&steamID={serverSteamID}";
+                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={Server.MapName}&pluginVersion={pluginVersion}";
+
+            if (_steamRelay)
+            {
+                endpoint += $"&steamRelay={_steamRelay}";
+            }
+
+            if (serverSteamID != null)
+            {
+                endpoint += $"&steamID={serverSteamID}";
+            }
 
             using (HttpClient httpClient = new HttpClient())
             {

@@ -51,19 +51,19 @@ public class SteamAPI
         NativeLibrary.SetDllImportResolver(Assembly.GetExecutingAssembly(), DllImportResolver);
     }
 
-    public string GetServerSteamIDFormatted()
+    public string? GetServerSteamIDFormatted()
     {
         if (_gGameServer != IntPtr.Zero)
         {
             var steamID64 = ISteamGameServer_GetSteamID(_gGameServer);
             if (steamID64 == 0)
             {
-                return "";
+                return null;
             }
 
             return ConvertSteamID64ToSteamID(steamID64);
         }
-        return "";
+        return null;
     }
 
     public void OnSteamAPIActivated()
