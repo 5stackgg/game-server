@@ -22,9 +22,9 @@ echo "---Update SteamCMD---"
 rm -rf "${BASE_SERVER_DIR}/steamapps"
 
 # Update Server
-STEAMCMD_ARGS="+force_install_dir \"${BASE_SERVER_DIR}\" +login \"${STEAM_USER}\" \"${STEAM_PASSWORD}\""
 if [ -n "${BUILD_MANIFESTS}" ]; then
     echo "---Update Linux Server To Specific Version---"
+    STEAMCMD_ARGS="+force_install_dir \"${BASE_SERVER_DIR}\" +login \"${STEAM_USER}\" \"${STEAM_PASSWORD}\""
 
     rm -rf "${BASE_SERVER_DIR}/serverfiles/*"
 
@@ -78,11 +78,5 @@ EOF
 
 else
     echo "---Update Server To Latest Version---"
-
-    STEAMCMD_ARGS="${STEAMCMD_ARGS} +app_update \"${GAME_ID}\""
-    [ -n "${VALIDATE}" ] && STEAMCMD_ARGS="${STEAMCMD_ARGS} validate"
-    STEAMCMD_ARGS="${STEAMCMD_ARGS} +quit"
-
-    echo "${STEAMCMD_DIR}/steamcmd.sh" ${STEAMCMD_ARGS}
-    eval "${STEAMCMD_DIR}/steamcmd.sh" ${STEAMCMD_ARGS}
+    "${STEAMCMD_DIR}/steamcmd.sh" +force_install_dir "${BASE_SERVER_DIR}" +login anonymous +app_update "${GAME_ID}" ${VALIDATE:+validate} +quit
 fi
