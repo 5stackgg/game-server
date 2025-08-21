@@ -77,21 +77,27 @@ public class GameServer
     {
         string? serverId = _environmentService.GetServerId();
         string? apiPassword = _environmentService.GetServerApiPassword();
-        string? serverSteamID = _steamAPI.GetServerSteamIDFormatted();
 
         Server.NextFrame(async () =>
         {
+            if (serverId == null || apiPassword == null)
+            {
+                _logger.LogError("Server ID or API password is null");
+                return;
+            }
+
             string endpoint =
                 $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={Server.MapName}&pluginVersion={pluginVersion}";
 
             if (_steamRelay)
             {
                 endpoint += $"&steamRelay={_steamRelay}";
-            }
+                string? serverSteamID = _steamAPI.GetServerSteamIDFormatted();
 
-            if (serverSteamID != null)
-            {
-                endpoint += $"&steamID={serverSteamID}";
+                if (serverSteamID != null)
+                {
+                    endpoint += $"&steamID={serverSteamID}";
+                }
             }
 
             using (HttpClient httpClient = new HttpClient())
