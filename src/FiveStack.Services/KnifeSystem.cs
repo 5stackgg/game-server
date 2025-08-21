@@ -33,17 +33,18 @@ public class KnifeSystem
         _gameServer = gameServer;
     }
 
-    public async void Start()
+    public void Start()
     {
-        _gameServer.SendCommands(new[] { "mp_warmup_end" });
-        _gameServer.SendCommands(new[] { "exec 5stack.knife.cfg" });
-        _gameServer.SendCommands(new[] { "mp_restartgame 1" });
-
-        await Task.Delay(5000);
+        _gameServer.SendCommands(
+            new[] { "exec 5stack.knife.cfg", "mp_warmup_end", "mp_restartgame 1" }
+        );
 
         Server.NextFrame(() =>
         {
-            _gameServer.Message(HudDestination.Alert, "KNIFE KNIFE KNIFE!");
+            TimerUtility.AddTimer(
+                5,
+                () => _gameServer.Message(HudDestination.Alert, "KNIFE KNIFE KNIFE!")
+            );
         });
     }
 
