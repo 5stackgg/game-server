@@ -45,17 +45,62 @@ public class ReadySystem
         }
 
         _logger.LogInformation("Setting up ready system");
-        ResetReady();
+        ResetReady(true);
         SendReadyStatusMessage();
-        if (_readyStatusTimer == null)
+    }
+
+    public void ResetReady(bool setupTimer = false)
+    {
+        _readyStatusTimer?.Kill();
+        _readyStatusTimer = null;
+
+        _readyPlayers.Clear();
+
+        if (setupTimer)
         {
             _readyStatusTimer = TimerUtility.AddTimer(3, SendReadyStatusMessage, TimerFlags.REPEAT);
         }
+
+        UpdatePlayerStatus();
     }
 
-    public void ResetReady()
+    public void UpdatePlayerStatus()
     {
-        _readyPlayers.Clear();
+        foreach (var player in MatchUtility.Players())
+        {
+            if (player.UserId == null)
+            {
+                continue;
+            }
+
+            if (
+                player.ClanName != ""
+                && player.ClanName != "[ready]"
+                && player.ClanName != "[not ready]"
+            )
+            {
+                continue;
+            }
+
+            if (_readyStatusTimer == null)
+            {
+                _matchService.GetCurrentMatch()?.UpdatePlayerName(player, player.PlayerName);
+                continue;
+            }
+
+            if (
+                _readyPlayers.ContainsKey(player.UserId.Value) && _readyPlayers[player.UserId.Value]
+            )
+            {
+                _matchService
+                    .GetCurrentMatch()
+                    ?.UpdatePlayerName(player, player.PlayerName, "ready");
+                continue;
+            }
+            _matchService
+                .GetCurrentMatch()
+                ?.UpdatePlayerName(player, player.PlayerName, "not ready");
+        }
     }
 
     public bool IsWaitingForReady()
@@ -114,6 +159,7 @@ public class ReadySystem
         SendReadyMessage(player);
         SendReadyStatusMessage();
         SendNotReadyMessage();
+        UpdatePlayerStatus();
     }
 
     public void UnreadyPlayer(CCSPlayerController player)
@@ -131,6 +177,7 @@ public class ReadySystem
 
         SendReadyStatusMessage();
         SendNotReadyMessage();
+        UpdatePlayerStatus();
     }
 
     public void SetupReadyMessage(CCSPlayerController player)
@@ -230,6 +277,8 @@ public class ReadySystem
     public void Skip()
     {
         MatchManager? match = _matchService.GetCurrentMatch();
+
+        ResetReady();
 
         if (match == null || !match.IsWarmup())
         {
@@ -334,8 +383,7 @@ public class ReadySystem
 
         if (!match.IsWarmup())
         {
-            _readyStatusTimer?.Kill();
-            _readyStatusTimer = null;
+            ResetReady();
             return;
         }
 

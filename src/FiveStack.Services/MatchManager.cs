@@ -791,10 +791,10 @@ public class MatchManager
             tag = $"[{tag.Trim()}]";
         }
 
-        if (tag != null && player.Clan != tag)
+        if (player.Clan != tag)
         {
-            player.Clan = tag;
-            player.ClanName = tag;
+            player.Clan = tag ?? "";
+            player.ClanName = tag ?? "";
 
             CounterStrikeSharp.API.Utilities.SetStateChanged(
                 player,
