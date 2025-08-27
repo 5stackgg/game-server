@@ -50,9 +50,16 @@ public class KnifeSystem
 
     public void SetWinningTeam(CsTeam team)
     {
+        _gameServer.SendCommands(new[] { "mp_warmup_start;mp_pause_match" });
+
+        var rules = MatchUtility.Rules();
+        if (rules != null)
+        {
+            rules.RoundsPlayedThisPhase = 0;
+        }
+
         _logger.LogInformation($"setting winning team: {team}");
 
-        _gameServer.SendCommands(new[] { "mp_pause_match" });
         _winningTeam = team;
 
         _knifeRoundTimer = TimerUtility.AddTimer(3, SetupKnifeMessage, TimerFlags.REPEAT);
@@ -88,7 +95,7 @@ public class KnifeSystem
         );
     }
 
-    public async void Stay(CCSPlayerController player)
+    public void Stay(CCSPlayerController player)
     {
         _logger.LogInformation("Knife round staying");
 
@@ -117,13 +124,7 @@ public class KnifeSystem
             $"captain picked to {ChatColors.Red}stay {ChatColors.Default}sides"
         );
 
-        await Task.Delay(1 * 1000);
-
-        Server.NextFrame(() =>
-        {
-            _resetWarmup();
-            match.UpdateMapStatus(eMapStatus.Live);
-        });
+        match.UpdateMapStatus(eMapStatus.Live);
     }
 
     public void Switch(CCSPlayerController player)
@@ -154,17 +155,6 @@ public class KnifeSystem
         );
 
         _matchEvents.PublishGameEvent("switch", new Dictionary<string, object>());
-    }
-
-    private void _resetWarmup()
-    {
-        _gameServer.SendCommands(new[] { "mp_warmup_start" });
-
-        var rules = MatchUtility.Rules();
-        if (rules != null)
-        {
-            rules.RoundsPlayedThisPhase = 0;
-        }
     }
 
     public void Skip()
@@ -200,7 +190,6 @@ public class KnifeSystem
 
         Server.NextFrame(() =>
         {
-            _resetWarmup();
             match.UpdateMapStatus(eMapStatus.Live);
         });
     }

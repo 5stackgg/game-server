@@ -566,7 +566,7 @@ public class MatchManager
 
             if (IsWarmup())
             {
-                _gameServer.SendCommands(new[] { "mp_warmup_end" });
+                _gameServer.SendCommands(new[] { "mp_restartgame 1;mp_warmup_end;" });
             }
         });
     }
