@@ -205,7 +205,7 @@ public class GameBackUpRounds
 
             if (serverId == null || apiPassword == null)
             {
-                _logger.LogInformation(
+                _logger.LogCritical(
                     $"Unable to upload backup round because we're missing server id / api password"
                 );
                 return null;
@@ -218,7 +218,7 @@ public class GameBackUpRounds
 
             if (!File.Exists(backupRoundFilePath))
             {
-                _logger.LogInformation(
+                _logger.LogCritical(
                     $"Unable to upload backup round because it's missing {backupRoundFilePath}"
                 );
                 return null;

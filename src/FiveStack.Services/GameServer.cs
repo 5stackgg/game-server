@@ -82,7 +82,7 @@ public class GameServer
         {
             if (serverId == null || apiPassword == null)
             {
-                _logger.LogError("Server ID or API password is null");
+                _logger.LogCritical("Server ID or API password is null");
                 return;
             }
 
@@ -96,7 +96,7 @@ public class GameServer
 
                 if (serverSteamID == null)
                 {
-                    _logger.LogError("still connecting to the steam relay");
+                    _logger.LogInformation("still connecting to the steam relay");
                     return;
                 }
 
@@ -123,11 +123,11 @@ public class GameServer
                 }
                 catch (HttpRequestException ex)
                 {
-                    _logger.LogError($"Unable to ping: {ex.Message}");
+                    _logger.LogCritical($"Unable to ping: {ex.Message}");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError($"Unexpected error during ping: {ex.Message}");
+                    _logger.LogCritical($"Unexpected error during ping: {ex.Message}");
                 }
             }
         });

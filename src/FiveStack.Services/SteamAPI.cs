@@ -83,7 +83,7 @@ public class SteamAPI
 
         if (steamPipe == 0 || steamUser == 0)
         {
-            _logger.LogError("Steam API failed to load");
+            _logger.LogCritical("Steam API failed to load");
             return;
         }
 
@@ -95,7 +95,7 @@ public class SteamAPI
 
         if (steamClient == IntPtr.Zero)
         {
-            _logger.LogError("Steam Client failed to load");
+            _logger.LogCritical("Steam Client failed to load");
             return;
         }
 
@@ -108,7 +108,7 @@ public class SteamAPI
 
         if (_gGameServer == IntPtr.Zero)
         {
-            _logger.LogError("Failed to get SteamGameServer");
+            _logger.LogCritical("Failed to get SteamGameServer");
             return;
         }
 

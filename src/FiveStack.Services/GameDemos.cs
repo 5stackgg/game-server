@@ -96,7 +96,7 @@ public class GameDemos
 
         if (!Directory.Exists(demoPath))
         {
-            _logger.LogWarning($"Demo directory does not exist: {demoPath}");
+            _logger.LogCritical($"Demo directory does not exist: {demoPath}");
             return;
         }
 
@@ -127,7 +127,7 @@ public class GameDemos
             string? presignedUrl = await GetPresignedUrl(filePath);
             if (string.IsNullOrEmpty(presignedUrl))
             {
-                _logger.LogError("Failed to get presigned URL");
+                _logger.LogCritical("Failed to get presigned URL");
                 return;
             }
 
@@ -172,20 +172,20 @@ public class GameDemos
                     }
                     else
                     {
-                        _logger.LogError(
+                        _logger.LogCritical(
                             $"Failed to notify about demo upload: {notifyResponse.StatusCode}"
                         );
                     }
                 }
                 else
                 {
-                    _logger.LogError($"unable to upload demo {response.StatusCode}");
+                    _logger.LogCritical($"unable to upload demo {response.StatusCode}");
                 }
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError($"An error occurred during file upload: {ex.Message}");
+            _logger.LogCritical($"An error occurred during file upload: {ex.Message}");
         }
     }
 
@@ -237,7 +237,7 @@ public class GameDemos
 
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogError($"unable to get presigned url: {response.StatusCode}");
+            _logger.LogCritical($"unable to get presigned url: {response.StatusCode}");
             return null;
         }
 

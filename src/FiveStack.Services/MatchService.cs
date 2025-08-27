@@ -115,15 +115,15 @@ public class MatchService
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogInformation($"HTTP request error: {ex.Message}");
+            _logger.LogError($"HTTP request error: {ex.Message}");
         }
         catch (JsonException ex)
         {
-            _logger.LogInformation($"JSON deserialization error: {ex.Message}");
+            _logger.LogCritical($"JSON deserialization error: {ex.Message}");
         }
         catch (Exception ex)
         {
-            _logger.LogInformation($"An unexpected error occurred: {ex.Message}");
+            _logger.LogError($"An unexpected error occurred: {ex.Message}");
         }
     }
 

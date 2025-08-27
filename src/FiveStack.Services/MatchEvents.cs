@@ -61,7 +61,6 @@ public class MatchEvents
         Guid matchId = _matchService.GetCurrentMatch()?.GetMatchData()?.id ?? Guid.Empty;
         if (matchId == Guid.Empty)
         {
-            _logger.LogWarning("match data missing");
             return;
         }
 
@@ -217,7 +216,7 @@ public class MatchEvents
         }
         catch (Exception ex)
         {
-            _logger.LogError("An error occurred: " + ex.Message);
+            _logger.LogCritical("An error occurred: " + ex.Message);
             return false;
         }
     }
@@ -307,7 +306,7 @@ public class MatchEvents
         }
         catch (Exception error)
         {
-            _logger.LogError($"Error: {error.Message}");
+            _logger.LogCritical($"Error: {error.Message}");
         }
     }
 }

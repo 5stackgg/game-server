@@ -126,7 +126,6 @@ public class VoteSystem
 
         if (matchData == null)
         {
-            _logger.LogWarning("No match data found");
             return;
         }
 

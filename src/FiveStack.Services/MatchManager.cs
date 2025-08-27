@@ -233,7 +233,6 @@ public class MatchManager
     {
         if (_matchData == null)
         {
-            _logger.LogInformation("missing event data");
             return;
         }
 
@@ -324,7 +323,6 @@ public class MatchManager
 
         if (_matchData == null)
         {
-            _logger.LogInformation("Missing Match Data");
             return;
         }
         _logger.LogInformation($"Setup Match {_matchData.id}");
@@ -579,7 +577,6 @@ public class MatchManager
 
         if (expectedTeam == CsTeam.None)
         {
-            _logger.LogInformation($"No expected team for {player.PlayerName}");
             return;
         }
 

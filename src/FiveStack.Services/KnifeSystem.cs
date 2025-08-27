@@ -50,6 +50,8 @@ public class KnifeSystem
 
     public void SetWinningTeam(CsTeam team)
     {
+        _logger.LogInformation($"setting winning team: {team}");
+
         _gameServer.SendCommands(new[] { "mp_pause_match" });
         _winningTeam = team;
 
@@ -67,6 +69,7 @@ public class KnifeSystem
     {
         if (_winningTeam == null)
         {
+            _logger.LogCritical("missing winning team");
             return;
         }
 
@@ -132,8 +135,6 @@ public class KnifeSystem
         {
             return;
         }
-
-        _logger.LogInformation($"Knife round winning team: {winningTeam}");
 
         if (match.captainSystem.IsCaptain(player, winningTeam) == false)
         {
