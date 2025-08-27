@@ -133,7 +133,7 @@ public class SteamAPI
         return IntPtr.Zero;
     }
 
-    private string ConvertSteamID64ToSteamID(ulong steamID64)
+    private string? ConvertSteamID64ToSteamID(ulong steamID64)
     {
         // https://developer.valvesoftware.com/wiki/SteamID
         // Bits 0-31: Account ID
@@ -159,6 +159,11 @@ public class SteamAPI
             8 => 'T', // Chat
             _ => 'I',
         };
+
+        if (accountID == 0)
+        {
+            return null;
+        }
 
         return $"[{accountTypeChar}:{universe}:{accountID}:{instance}]";
     }

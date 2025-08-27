@@ -94,10 +94,13 @@ public class GameServer
                 endpoint += $"&steamRelay={_steamRelay}";
                 string? serverSteamID = _steamAPI.GetServerSteamIDFormatted();
 
-                if (serverSteamID != null)
+                if (serverSteamID == null)
                 {
-                    endpoint += $"&steamID={serverSteamID}";
+                    _logger.LogError("still connecting to the steam relay");
+                    return;
                 }
+
+                endpoint += $"&steamID={serverSteamID}";
             }
 
             using (HttpClient httpClient = new HttpClient())
