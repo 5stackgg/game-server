@@ -127,11 +127,22 @@ public partial class FiveStackPlugin
                 playerRole == ePlayerRoles.Administrator
                 || playerRole == ePlayerRoles.TournamentOrganizer
                 || playerRole == ePlayerRoles.MatchOrganizer
+                || playerRole == ePlayerRoles.Streamer
             )
         )
         {
-            PendingPlayers[steamId] =
-                playerRole == ePlayerRoles.Administrator ? "admin" : "organizer";
+            if (playerRole == ePlayerRoles.Administrator)
+            {
+                PendingPlayers[steamId] = "admin";
+            }
+            if (playerRole == ePlayerRoles.Streamer)
+            {
+                PendingPlayers[steamId] = "streamer";
+            }
+            else
+            {
+                PendingPlayers[steamId] = "organizer";
+            }
         }
 
         hook.SetParam(5, PasswordBuffer);
