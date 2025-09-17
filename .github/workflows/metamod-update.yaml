@@ -18,8 +18,8 @@ jobs:
 
       - name: Check latest release URL
         run: |
-          LATEST_URL=$(curl -s https://mms.alliedmods.net/mmsdrop/2.0/ | grep -oP 'href="\K[^"]+(?=\.tar\.gz")' | sort -V | tail -n1)
-          LATEST_URL="https://mms.alliedmods.net/mmsdrop/2.0/${LATEST_URL}.tar.gz"
+          LATEST_VERSION=$(curl -s "https://mms.alliedmods.net/mmsdrop/2.0/?C=M;O=D" | grep -oP 'href="\K[^"]+\.tar\.gz' |head -n1)
+          LATEST_URL="https://mms.alliedmods.net/mmsdrop/2.0/${LATEST_VERSION}"
           echo "LATEST_URL=$LATEST_URL" >> $GITHUB_ENV
 
       - name: Compare URLs
