@@ -22,3 +22,23 @@ for ((i=from_num; i<=to_num; i++)); do
     continue
   fi
 done
+
+echo "Removing Containers Images"
+for ((i=from_num; i<=to_num; i++)); do
+  tag="v0.0.$i"
+
+  image="ghcr.io/five-stack/game-server"
+  tag="v0.0.$i"
+
+  image_id=$(gh api -H "Accept: application/vnd.github+json" \
+    "/user/packages/container/game-server/versions" \
+    | jq ".[] | select(.metadata.container.tags[]? == \"$tag\") | .id" | head -n 1)
+
+  if [[ -n "$image_id" ]]; then
+    echo "Deleting container image version with tag $tag (id: $image_id)"
+    gh api -X DELETE -H "Accept: application/vnd.github+json" \
+      "/user/packages/container/game-server/versions/$image_id"
+  else
+    echo "No container image found for tag $tag"
+  fi
+done
