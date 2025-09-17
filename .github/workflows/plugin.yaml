@@ -67,6 +67,7 @@ jobs:
         tags: |
             ghcr.io/${{ github.repository_owner }}/game-server:latest
             ghcr.io/${{ github.repository_owner }}/game-server:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/game-server:v0.0.${{ steps.get_latest_release.outputs.result }}
         build-args: |
           RELEASE_VERSION=0.0.${{ steps.get_latest_release.outputs.result }}
 
@@ -81,11 +82,3 @@ jobs:
         prerelease: false
         files: |
           ./FiveStack-v0.0.${{ steps.get_latest_release.outputs.result }}.zip
-
-    - name: Delete Package Versions
-      uses: actions/delete-package-versions@v5.0.0
-      with:
-        package-name: game-server
-        package-type: container
-        min-versions-to-keep: 3
-        ignore-versions: '^buildcache-*'
