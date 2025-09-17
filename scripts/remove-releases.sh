@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# gh auth login --scopes read:packages,write:packages,delete:packages
+
 latest_tag=$(gh release list | head -n 1 | awk '{print $1}')
 
 echo "Latest tag: $latest_tag"
@@ -27,17 +29,22 @@ echo "Removing Containers Images"
 for ((i=from_num; i<=to_num; i++)); do
   tag="v0.0.$i"
 
-  image="ghcr.io/five-stack/game-server"
+  image="ghcr.io/5stackgg/game-server"
   tag="v0.0.$i"
 
-  image_id=$(gh api -H "Accept: application/vnd.github+json" \
-    "/user/packages/container/game-server/versions" \
+  image_id=$(gh api \
+    -H "Accept: application/vnd.github+json" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "/orgs/5stackgg/packages/container/game-server/versions" \
     | jq ".[] | select(.metadata.container.tags[]? == \"$tag\") | .id" | head -n 1)
+
 
   if [[ -n "$image_id" ]]; then
     echo "Deleting container image version with tag $tag (id: $image_id)"
-    gh api -X DELETE -H "Accept: application/vnd.github+json" \
-      "/user/packages/container/game-server/versions/$image_id"
+    gh api -X DELETE \
+      -H "Accept: application/vnd.github+json" \
+      -H "X-GitHub-Api-Version: 2022-11-28" \
+      "/orgs/5stackgg/packages/container/game-server/versions/$image_id" &
   else
     echo "No container image found for tag $tag"
   fi
