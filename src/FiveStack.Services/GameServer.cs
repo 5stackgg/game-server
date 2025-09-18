@@ -56,7 +56,7 @@ public class GameServer
         }
         else if (destination == HudDestination.Alert || destination == HudDestination.Center)
         {
-            VirtualFunctions.ClientPrintAll(destination, $" {message}", 0, 0, 0, 0);
+            VirtualFunctions.ClientPrintAll(destination, $" {message}", 0, 0, 0, 0, 0);
         }
         else
         {
