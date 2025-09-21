@@ -73,18 +73,6 @@ public class ReadySystem
                 continue;
             }
 
-            // Additional validation to prevent null pointer exceptions
-            try
-            {
-                // Test if we can access SteamID without throwing an exception
-                var _ = player.SteamID;
-            }
-            catch (ArgumentNullException)
-            {
-                // Player has null schema pointer, skip this player
-                continue;
-            }
-
             if (
                 player.ClanName != ""
                 && player.ClanName != "[ready]"
@@ -196,18 +184,6 @@ public class ReadySystem
     {
         if (player.UserId == null || !player.IsValid || player.IsBot)
         {
-            return;
-        }
-
-        // Additional validation to prevent null pointer exceptions
-        try
-        {
-            // Test if we can access SteamID without throwing an exception
-            var _ = player.SteamID;
-        }
-        catch (ArgumentNullException)
-        {
-            // Player has null schema pointer, skip this player
             return;
         }
 

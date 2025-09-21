@@ -173,32 +173,23 @@ public class CaptainSystem
             return false;
         }
 
-        // Wrap the entire method in try-catch to handle null pointer exceptions
-        try
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+        if (matchData != null)
         {
-            MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
-            if (matchData != null)
+            MatchMember? member = MatchUtility.GetMemberFromLineup(
+                matchData,
+                player.SteamID.ToString(),
+                player.PlayerName
+            );
+
+            if (member?.captain == true && _captains[team] == null)
             {
-                MatchMember? member = MatchUtility.GetMemberFromLineup(
-                    matchData,
-                    player.SteamID.ToString(),
-                    player.PlayerName
-                );
-
-                if (member?.captain == true && _captains[team] == null)
-                {
-                    _captains[team] = player;
-                    ShowCaptains();
-                }
+                _captains[team] = player;
+                ShowCaptains();
             }
+        }
 
-            return _captains[team]?.SteamID == player.SteamID;
-        }
-        catch (ArgumentNullException)
-        {
-            // Player has null schema pointer, skip this player
-            return false;
-        }
+        return _captains[team]?.SteamID == player.SteamID;
     }
 
     private void AutoSelectCaptain(CsTeam team)
