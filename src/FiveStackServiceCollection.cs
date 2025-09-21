@@ -18,12 +18,13 @@ public class FiveStackServiceCollection : IPluginServiceCollection<FiveStackPlug
         serviceCollection.AddSingleton<SteamAPI>();
         serviceCollection.AddSingleton<INetworkServerService>();
 
+        serviceCollection.AddSingleton<CoachSystem>();
+        serviceCollection.AddSingleton<CaptainSystem>();
+
         serviceCollection.AddTransient<MatchManager>();
         serviceCollection.AddTransient<VoteSystem>();
         serviceCollection.AddTransient<KnifeSystem>();
         serviceCollection.AddTransient<ReadySystem>();
-        serviceCollection.AddTransient<CoachSystem>();
-        serviceCollection.AddTransient<CaptainSystem>();
         serviceCollection.AddTransient<TimeoutSystem>();
     }
 }
