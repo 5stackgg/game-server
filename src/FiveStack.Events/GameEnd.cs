@@ -13,17 +13,24 @@ public partial class FiveStackPlugin
     public HookResult OnGameEnd(EventCsWinPanelMatch @event, GameEventInfo info)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
-        if (match != null)
-        {
-            match.UpdateMapStatus(eMapStatus.UploadingDemo);
-        }
-
-        MatchData? matchData = match?.GetMatchData();
-        MatchMap? currentMap = match?.GetCurrentMap();
-
-        if (match == null || currentMap == null || matchData?.current_match_map_id == null)
+        if (match == null)
         {
             return HookResult.Continue;
+        }
+
+        match.UpdateMapStatus(eMapStatus.UploadingDemo);
+
+        MatchData? matchData = match.GetMatchData();
+        MatchMap? currentMap = match.GetCurrentMap();
+
+        if (currentMap == null || matchData?.current_match_map_id == null)
+        {
+            return HookResult.Continue;
+        }
+
+        if (matchData.options.tv_delay > 0)
+        {
+            match.delayChangeMap(matchData.options.tv_delay);
         }
 
         CsTeam lineup1Side = CsTeam.None;
