@@ -37,6 +37,10 @@ public class MatchManager
     public KnifeSystem knifeSystem;
     public CaptainSystem captainSystem;
     public INetworkServerService _networkServerService;
+    public MatchService _matchService;
+
+    private int _remainingMapChangeDelay = 0;
+    private Timer? _mapChangeCountdownTimer;
 
     public MatchManager(
         ILogger<MatchManager> logger,
@@ -50,7 +54,8 @@ public class MatchManager
         EnvironmentService environmentService,
         INetworkServerService networkServerService,
         TimeoutSystem timeoutSystem,
-        SurrenderSystem surrenderSystem
+        SurrenderSystem surrenderSystem,
+        MatchService matchService
     )
     {
         _logger = logger;
@@ -65,6 +70,7 @@ public class MatchManager
         _networkServerService = networkServerService;
         _timeoutSystem = timeoutSystem;
         _surrenderSystem = surrenderSystem;
+        _matchService = matchService;
     }
 
     public void Init(MatchData match)
@@ -425,8 +431,47 @@ public class MatchManager
         }
     }
 
+    public void delayChangeMap(int delay)
+    {
+        _remainingMapChangeDelay = delay;
+        _logger.LogInformation($"Delaying map change by {delay} seconds");
+
+        _mapChangeCountdownTimer?.Kill();
+
+        TimerUtility.AddTimer(
+            delay,
+            () =>
+            {
+                _mapChangeCountdownTimer?.Kill();
+                _mapChangeCountdownTimer = null;
+                _matchService.GetMatchFromApi();
+            }
+        );
+
+        _mapChangeCountdownTimer = TimerUtility.AddTimer(
+            1,
+            () =>
+            {
+                if (_remainingMapChangeDelay > 0)
+                {
+                    _gameServer.Message(
+                        HudDestination.Alert,
+                        $"TV delay ({_remainingMapChangeDelay}s left)"
+                    );
+                    _remainingMapChangeDelay--;
+                }
+            },
+            TimerFlags.REPEAT
+        );
+    }
+
     private void ChangeMap(Map map)
     {
+        if (_mapChangeCountdownTimer != null)
+        {
+            return;
+        }
+
         _logger.LogInformation($"Changing Map {map.name}");
 
         if (map.workshop_map_id == null && Server.IsMapValid(map.name))
