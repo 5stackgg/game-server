@@ -27,18 +27,23 @@ public class CoachSystem
 
     public bool IsCoach(CCSPlayerController player, CsTeam team)
     {
+        if (player.IsBot || !player.IsValid)
+        {
+            return false;
+        }
+
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
         if (matchData != null && matchData.options.coaches)
         {
             if (
                 player.SteamID.ToString() == matchData.lineup_1.coach_steam_id
-                || player.SteamID.ToString() == matchData.lineup_1.coach_steam_id
+                || player.SteamID.ToString() == matchData.lineup_2.coach_steam_id
             )
             {
                 return true;
             }
         }
 
-        return true;
+        return false;
     }
 }

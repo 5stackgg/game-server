@@ -158,7 +158,7 @@ public class CaptainSystem
 
     public bool IsCaptain(CCSPlayerController player, CsTeam team)
     {
-        if (player.IsBot)
+        if (player.IsBot || !player.IsValid)
         {
             return false;
         }
