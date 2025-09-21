@@ -158,7 +158,7 @@ public class CaptainSystem
 
     public bool IsCaptain(CCSPlayerController player, CsTeam team)
     {
-        if (player.IsBot)
+        if (player.IsBot || !player.IsValid)
         {
             return false;
         }
@@ -173,23 +173,32 @@ public class CaptainSystem
             return false;
         }
 
-        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
-        if (matchData != null)
+        // Wrap the entire method in try-catch to handle null pointer exceptions
+        try
         {
-            MatchMember? member = MatchUtility.GetMemberFromLineup(
-                matchData,
-                player.SteamID.ToString(),
-                player.PlayerName
-            );
-
-            if (member?.captain == true && _captains[team] == null)
+            MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+            if (matchData != null)
             {
-                _captains[team] = player;
-                ShowCaptains();
-            }
-        }
+                MatchMember? member = MatchUtility.GetMemberFromLineup(
+                    matchData,
+                    player.SteamID.ToString(),
+                    player.PlayerName
+                );
 
-        return _captains[team]?.SteamID == player.SteamID;
+                if (member?.captain == true && _captains[team] == null)
+                {
+                    _captains[team] = player;
+                    ShowCaptains();
+                }
+            }
+
+            return _captains[team]?.SteamID == player.SteamID;
+        }
+        catch (ArgumentNullException)
+        {
+            // Player has null schema pointer, skip this player
+            return false;
+        }
     }
 
     private void AutoSelectCaptain(CsTeam team)

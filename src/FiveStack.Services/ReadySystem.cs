@@ -68,8 +68,20 @@ public class ReadySystem
     {
         foreach (var player in MatchUtility.Players())
         {
-            if (player.UserId == null)
+            if (player.UserId == null || !player.IsValid || player.IsBot)
             {
+                continue;
+            }
+
+            // Additional validation to prevent null pointer exceptions
+            try
+            {
+                // Test if we can access SteamID without throwing an exception
+                var _ = player.SteamID;
+            }
+            catch (ArgumentNullException)
+            {
+                // Player has null schema pointer, skip this player
                 continue;
             }
 
@@ -182,8 +194,20 @@ public class ReadySystem
 
     public void SetupReadyMessage(CCSPlayerController player)
     {
-        if (player.UserId == null)
+        if (player.UserId == null || !player.IsValid || player.IsBot)
         {
+            return;
+        }
+
+        // Additional validation to prevent null pointer exceptions
+        try
+        {
+            // Test if we can access SteamID without throwing an exception
+            var _ = player.SteamID;
+        }
+        catch (ArgumentNullException)
+        {
+            // Player has null schema pointer, skip this player
             return;
         }
 
@@ -302,7 +326,7 @@ public class ReadySystem
 
         foreach (var player in MatchUtility.Players())
         {
-            if (player.UserId == null || !CanVote(player))
+            if (player.UserId == null || !player.IsValid || player.IsBot || !CanVote(player))
             {
                 continue;
             }
@@ -323,7 +347,7 @@ public class ReadySystem
     {
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
 
-        if (matchData == null || player == null)
+        if (matchData == null || player == null || !player.IsValid || player.IsBot)
         {
             return false;
         }
