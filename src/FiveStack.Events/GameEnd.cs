@@ -4,6 +4,7 @@ using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -28,7 +29,12 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        if (matchData.options.tv_delay > 0)
+        // Handle offline mode map progression
+        if (_environmentService.IsOfflineMode())
+        {
+            HandleOfflineMapProgression(match, matchData, currentMap);
+        }
+        else if (matchData.options.tv_delay > 0)
         {
             match.delayChangeMap(matchData.options.tv_delay);
         }
@@ -73,5 +79,37 @@ public partial class FiveStackPlugin
         );
 
         return HookResult.Continue;
+    }
+
+    private void HandleOfflineMapProgression(
+        MatchManager match,
+        MatchData matchData,
+        MatchMap currentMap
+    )
+    {
+        _logger.LogInformation(
+            $"Handling offline map progression for map {currentMap.map.name} (order: {currentMap.order})"
+        );
+
+        match.UpdateMapStatus(eMapStatus.Finished);
+
+        MatchMap? nextMap = matchData
+            .match_maps.Where(m => m.order == currentMap.order + 1)
+            .FirstOrDefault();
+
+        if (nextMap == null)
+        {
+            return;
+        }
+
+        _logger.LogInformation(
+            $"Advancing to next map: {nextMap.map.name} (order: {nextMap.order})"
+        );
+
+        matchData.current_match_map_id = nextMap.id;
+
+        nextMap.status = eMapStatus.Warmup.ToString();
+
+        match.ChangeMap(nextMap.map);
     }
 }

@@ -465,7 +465,7 @@ public class MatchManager
         );
     }
 
-    private void ChangeMap(Map map)
+    public void ChangeMap(Map map)
     {
         if (_mapChangeCountdownTimer != null)
         {
