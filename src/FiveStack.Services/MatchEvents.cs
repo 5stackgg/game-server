@@ -50,6 +50,11 @@ public class MatchEvents
 
     public void PublishMapStatus(eMapStatus status)
     {
+        if (_environmentService.IsOfflineMode())
+        {
+            return;
+        }
+
         PublishGameEvent(
             "mapStatus",
             new Dictionary<string, object> { { "status", status.ToString() } }
@@ -58,6 +63,11 @@ public class MatchEvents
 
     public async void PublishGameEvent(string Event, Dictionary<string, object> Data)
     {
+        if (_environmentService.IsOfflineMode())
+        {
+            return;
+        }
+
         Guid matchId = _matchService.GetCurrentMatch()?.GetMatchData()?.id ?? Guid.Empty;
         if (matchId == Guid.Empty)
         {
@@ -75,6 +85,11 @@ public class MatchEvents
 
     private async Task ConnectAndMonitor()
     {
+        if (_environmentService.IsOfflineMode())
+        {
+            return;
+        }
+
         _retryTimer.Start();
 
         if (_isMonitoring || _manualDisconnect)

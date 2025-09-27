@@ -87,6 +87,11 @@ public partial class FiveStackPlugin : BasePlugin
         AddCommandListener("jointeam", HandleJoinTeam, HookMode.Pre);
 
         _ = _matchService.GetMatchConfigs();
+
+        if (_environmentService.IsOfflineMode())
+        {
+            _matchService.GetMatchFromOffline();
+        }
     }
 
     public override void Unload(bool hotReload)

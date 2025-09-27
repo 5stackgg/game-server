@@ -15,7 +15,7 @@ public class KnifeSystem
     private readonly MatchEvents _matchEvents;
     private readonly MatchService _matchService;
     private readonly ILogger<KnifeSystem> _logger;
-
+    private readonly EnvironmentService _environmentService;
     private Timer? _knifeRoundTimer;
 
     private CsTeam? _winningTeam;
@@ -24,13 +24,15 @@ public class KnifeSystem
         ILogger<KnifeSystem> logger,
         GameServer gameServer,
         MatchEvents matchEvents,
-        MatchService matchService
+        MatchService matchService,
+        EnvironmentService environmentService
     )
     {
         _logger = logger;
         _matchService = matchService;
         _matchEvents = matchEvents;
         _gameServer = gameServer;
+        _environmentService = environmentService;
     }
 
     public void Start()
@@ -153,6 +155,16 @@ public class KnifeSystem
             HudDestination.Alert,
             $"captain picked to {ChatColors.Red}swap {ChatColors.Default}sides"
         );
+
+        if (_environmentService.IsOfflineMode())
+        {
+            _gameServer.SendCommands(new[] { "mp_swapteams" });
+            Server.NextFrame(() =>
+            {
+                match.UpdateMapStatus(eMapStatus.Live);
+            });
+            return;
+        }
 
         _matchEvents.PublishGameEvent("switch", new Dictionary<string, object>());
     }

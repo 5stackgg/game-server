@@ -49,6 +49,16 @@ public class EnvironmentService
         return Environment.GetEnvironmentVariable("GAME_NODE_SERVER") == "true";
     }
 
+    public bool IsOfflineMode()
+    {
+        return Environment.GetEnvironmentVariable("OFFLINE_MODE") == "true";
+    }
+
+    public string? GetOfflineMatchData()
+    {
+        return Environment.GetEnvironmentVariable("GAME_SERVER_OFFLINE_MATCH_DATA");
+    }
+
     public string[] PossibleDirectories =
     [
         "/serverdata/serverfiles",

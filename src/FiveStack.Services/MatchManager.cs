@@ -609,7 +609,7 @@ public class MatchManager
             _matchDemos.Start();
             _backUpManagement.Setup();
 
-            if (IsWarmup())
+            if (IsWarmup() || IsKnife())
             {
                 _gameServer.SendCommands(new[] { "mp_restartgame 1;mp_warmup_end;" });
             }
@@ -814,6 +814,11 @@ public class MatchManager
     public void UpdatePlayerName(CCSPlayerController player, string name, string? tag = null)
     {
         if (player == null || player.IsBot)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(name))
         {
             return;
         }

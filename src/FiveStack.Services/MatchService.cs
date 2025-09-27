@@ -59,6 +59,12 @@ public class MatchService
 
     public async void GetMatchFromApi()
     {
+        if (_environmentService.IsOfflineMode())
+        {
+            GetMatchFromOffline();
+            return;
+        }
+
         HttpClient httpClient = new HttpClient();
 
         string? serverId = _environmentService.GetServerId();
@@ -124,6 +130,55 @@ public class MatchService
         catch (Exception ex)
         {
             _logger.LogError($"An unexpected error occurred: {ex.Message}");
+        }
+    }
+
+    public void GetMatchFromOffline()
+    {
+        string? offlineMatchData = _environmentService.GetOfflineMatchData();
+
+        if (string.IsNullOrEmpty(offlineMatchData))
+        {
+            _logger.LogWarning(
+                "Offline mode enabled but no match data provided in GAME_SERVER_OFFLINE_MATCH_DATA"
+            );
+            return;
+        }
+
+        try
+        {
+            _logger.LogInformation("Loading match data from offline mode");
+
+            MatchData? matchData = JsonSerializer.Deserialize<MatchData>(offlineMatchData);
+
+            if (matchData == null)
+            {
+                _logger.LogError("Failed to deserialize offline match data");
+                return;
+            }
+
+            _logger.LogInformation($"Loaded match data from offline mode: {matchData.id}");
+
+            if (_currentMatch?.GetMatchData()?.id == matchData.id)
+            {
+                _currentMatch.SetupMatch(matchData);
+                return;
+            }
+
+            _currentMatch =
+                _serviceProvider.GetRequiredService(typeof(MatchManager)) as MatchManager;
+
+            _currentMatch!.SetupMatch(matchData);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogCritical($"JSON deserialization error for offline match data: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                $"An unexpected error occurred while loading offline match data: {ex.Message}"
+            );
         }
     }
 

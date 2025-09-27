@@ -114,6 +114,11 @@ public class GameDemos
     {
         try
         {
+            if (_environmentService.IsOfflineMode())
+            {
+                return;
+            }
+
             MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
             string? serverId = _environmentService.GetServerId();

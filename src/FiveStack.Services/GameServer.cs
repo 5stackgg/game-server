@@ -75,6 +75,11 @@ public class GameServer
 
     public void Ping(string pluginVersion)
     {
+        if (_environmentService.IsOfflineMode())
+        {
+            return;
+        }
+
         string? serverId = _environmentService.GetServerId();
         string? apiPassword = _environmentService.GetServerApiPassword();
 
