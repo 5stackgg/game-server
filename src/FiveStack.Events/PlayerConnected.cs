@@ -5,7 +5,6 @@ using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
-using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -54,20 +53,15 @@ public partial class FiveStackPlugin
 
         if (shouldKick && lineup_id == null)
         {
+            string? role = null;
             if (PendingPlayers.ContainsKey(player.SteamID))
             {
-                player.ClanName = PendingPlayers[player.SteamID];
+                role = PendingPlayers[player.SteamID];
+                player.Clan = $"[{role}]";
                 PendingPlayers.Remove(player.SteamID);
-
-                MatchManager? matchManager = _matchService.GetCurrentMatch();
-
-                if (matchManager != null)
-                {
-                    matchManager.UpdatePlayerName(player, player.PlayerName, player.ClanName);
-                }
             }
 
-            if (player.ClanName != "[admin]" && player.ClanName != "[organizer]")
+            if (role == null || (role != "admin" && role != "organizer"))
             {
                 Server.ExecuteCommand($"kickid {player.UserId}");
                 return HookResult.Continue;

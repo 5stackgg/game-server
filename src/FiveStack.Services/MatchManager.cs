@@ -636,8 +636,14 @@ public class MatchManager
                 $"Changing Team {player.PlayerName} {currentTeam} -> {expectedTeam}"
             );
 
-            // allow them to click the menu, they just get switched really quick
-            player.ChangeTeam(expectedTeam);
+            TimerUtility.AddTimer(
+                0.1f,
+                () =>
+                {
+                    player.ChangeTeam(expectedTeam);
+                }
+            );
+
             _gameServer.Message(
                 HudDestination.Chat,
                 $" You've been assigned to {(expectedTeam == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{TeamUtility.CSTeamToString(expectedTeam)}.",
@@ -645,7 +651,10 @@ public class MatchManager
             );
         }
 
-        if (IsWarmup() || (MatchUtility.Rules()?.FreezePeriod == true))
+        if (
+            IsWarmup()
+            || (MatchUtility.Rules()?.FreezePeriod == true) && expectedTeam != CsTeam.Spectator
+        )
         {
             player.Respawn();
         }
@@ -671,7 +680,6 @@ public class MatchManager
 
         if (member == null)
         {
-            player.ChangeTeam(CsTeam.Spectator);
             return CsTeam.Spectator;
         }
 
@@ -841,7 +849,6 @@ public class MatchManager
         if (player.Clan != tag)
         {
             player.Clan = tag ?? "";
-            player.ClanName = tag ?? "";
 
             CounterStrikeSharp.API.Utilities.SetStateChanged(
                 player,
