@@ -53,7 +53,12 @@ create_symlinks() {
 
 create_symlinks "$BASE_SERVER_DIR" "$INSTANCE_SERVER_DIR"
 
-cp "/opt/server-cfg/server.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
+if [ "$SERVER_TYPE" = "Ranked" ]; then
+  cp "/opt/server-cfg/ranked.server.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg/server.cfg"
+else
+  cp "/opt/server-cfg/public.server.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg/server.cfg"
+fi
+
 cp "/opt/server-cfg/5stack.lan.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
 cp "/opt/server-cfg/5stack.base.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
 cp "/opt/server-cfg/5stack.warmup.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
