@@ -5,6 +5,7 @@ using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -66,6 +67,21 @@ public partial class FiveStackPlugin
                 Server.ExecuteCommand($"kickid {player.UserId}");
                 return HookResult.Continue;
             }
+        }
+
+        CsTeam expectedTeam = match.GetExpectedTeam(player);
+        int expectedTeamCount = match.GetExpectedPlayerCount() / 2;
+        int teamCount = TeamUtility.GetTeamCount(expectedTeam);
+
+        if (player.Team == expectedTeam)
+        {
+            teamCount--;
+        }
+
+        if (teamCount > expectedTeamCount)
+        {
+            Server.ExecuteCommand($"kickid {player.UserId}");
+            return HookResult.Continue;
         }
 
         match.EnforceMemberTeam(player, CsTeam.None);

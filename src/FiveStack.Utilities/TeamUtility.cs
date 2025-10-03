@@ -1,3 +1,4 @@
+using System.Linq;
 using CounterStrikeSharp.API.Modules.Utils;
 
 namespace FiveStack.Utilities
@@ -98,6 +99,15 @@ namespace FiveStack.Utilities
             }
 
             return totalCash;
+        }
+
+        public static int GetTeamCount(CsTeam csTeam)
+        {
+            return MatchUtility
+                .Teams()
+                .Count(matchTeam =>
+                    matchTeam.PlayerControllers.Count > 0 && matchTeam.TeamNum == (int)csTeam
+                );
         }
     }
 }
