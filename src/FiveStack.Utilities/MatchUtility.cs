@@ -50,6 +50,23 @@ namespace FiveStack.Utilities
             return member.match_lineup_id;
         }
 
+        public static string? GetPlayerLineupTag(MatchData matchData, CCSPlayerController player)
+        {
+            Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
+
+            string tag =
+                matchData.lineup_1_id == lineup_id
+                    ? matchData.lineup_1.tag
+                    : matchData.lineup_2.tag;
+
+            if (tag == null)
+            {
+                return null;
+            }
+
+            return $"[{tag.Trim()}]";
+        }
+
         public static eMapStatus MapStatusStringToEnum(string state)
         {
             switch (state)

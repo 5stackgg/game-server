@@ -845,6 +845,11 @@ public class MatchManager
         {
             tag = $"[{tag.Trim()}]";
         }
+        else
+        {
+            MatchData? matchData = GetMatchData();
+            tag = MatchUtility.GetPlayerLineupTag(matchData, player);
+        }
 
         if (player.Clan != tag)
         {
