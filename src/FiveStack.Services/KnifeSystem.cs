@@ -171,6 +171,14 @@ public class KnifeSystem
 
     public void Skip()
     {
+        _gameServer.SendCommands(new[] { "mp_warmup_start;mp_pause_match" });
+
+        var rules = MatchUtility.Rules();
+        if (rules != null)
+        {
+            rules.RoundsPlayedThisPhase = 0;
+        }
+
         ResetKnifeRound();
 
         MatchManager? match = _matchService.GetCurrentMatch();
