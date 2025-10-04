@@ -1,3 +1,4 @@
+using System;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
@@ -59,7 +60,7 @@ namespace FiveStack.Utilities
                     ? matchData.lineup_1.tag
                     : matchData.lineup_2.tag;
 
-            if (tag == null)
+            if (tag == null || tag == "")
             {
                 return null;
             }
