@@ -1,9 +1,6 @@
-using System;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
-using Microsoft.Extensions.FileProviders;
 
 namespace FiveStack.Utilities
 {
