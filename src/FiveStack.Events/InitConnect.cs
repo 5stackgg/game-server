@@ -51,6 +51,7 @@ public partial class FiveStackPlugin
 
     private HookResult ConnectClientHook(DynamicHook hook)
     {
+        var name = hook.GetParam<string>(1);
         var authTicket = hook.GetParamArray<byte>(6, 7);
         var token = hook.GetParam<string>(5);
         var steamId = MemoryMarshal.Read<ulong>(authTicket[..8]);
@@ -76,7 +77,7 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        MatchMember? member = MatchUtility.GetMemberFromLineup(match, steamId.ToString(), token);
+        MatchMember? member = MatchUtility.GetMemberFromLineup(match, steamId.ToString(), name);
 
         if (member != null)
         {
