@@ -224,7 +224,18 @@ public class GameBackUpRounds
                 return null;
             }
 
-            return File.ReadAllText(backupRoundFilePath);
+            string backupRoundFile = File.ReadAllText(backupRoundFilePath);
+
+            MatchMap? currentMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
+
+            if (currentMap != null)
+            {
+                currentMap.rounds = currentMap
+                    .rounds.Append(new BackupRound { round = round, backup_file = backupRoundFile })
+                    .ToArray();
+            }
+
+            return backupRoundFile;
         }
         catch (Exception ex)
         {

@@ -171,7 +171,7 @@ public class KnifeSystem
 
     public void Skip()
     {
-        _gameServer.SendCommands(new[] { "mp_warmup_start;mp_pause_match" });
+        _gameServer.SendCommands(new[] { "mp_warmup_start;" });
 
         var rules = MatchUtility.Rules();
         if (rules != null)
@@ -189,6 +189,8 @@ public class KnifeSystem
         }
 
         _gameServer.Message(HudDestination.Center, $"Skipping Knife.");
+
+        _gameServer.SendCommands(new[] { "mp_restartgame 1;mp_warmup_end" });
 
         match.UpdateMapStatus(eMapStatus.Live);
     }
