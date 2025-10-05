@@ -230,9 +230,9 @@ public class GameBackUpRounds
 
             if (currentMap != null)
             {
-                currentMap.rounds.Append(
-                    new BackupRound { round = round, backup_file = backupRoundFile }
-                );
+                currentMap.rounds = currentMap
+                    .rounds.Append(new BackupRound { round = round, backup_file = backupRoundFile })
+                    .ToArray();
             }
 
             return backupRoundFile;
