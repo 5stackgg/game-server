@@ -7,7 +7,7 @@ namespace FiveStack;
 public partial class FiveStackPlugin
 {
     [ConsoleCommand("css_stay", "")]
-    [ConsoleCommand("css_ficar, "")]
+    [ConsoleCommand("css_ficar", "")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnStay(CCSPlayerController? player, CommandInfo? command)
     {
