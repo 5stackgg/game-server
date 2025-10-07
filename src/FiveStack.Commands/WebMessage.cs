@@ -9,7 +9,7 @@ public partial class FiveStackPlugin
 {
     [ConsoleCommand("css_web_chat", "web message")]
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
-    public void OnWebMessGe(CCSPlayerController? player, CommandInfo? command)
+    public void OnWebMessage(CCSPlayerController? player, CommandInfo? command)
     {
         if (command == null)
         {
@@ -21,6 +21,12 @@ public partial class FiveStackPlugin
         if (message == null)
         {
             return;
+        }
+
+        if (message.StartsWith("[organizer]"))
+        {
+            message =
+                $" {ChatColors.Red}[organizer]{ChatColors.White} {message.Replace("[organizer]", "")}";
         }
 
         _gameServer.Message(HudDestination.Chat, message);

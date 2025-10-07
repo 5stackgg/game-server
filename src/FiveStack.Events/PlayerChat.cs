@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
 
@@ -12,6 +13,18 @@ public partial class FiveStackPlugin
         if (player == null || !player.IsValid)
         {
             return HookResult.Continue;
+        }
+
+        if (player.Team == CsTeam.Spectator)
+        {
+            PublishChatEvent(player, info.ArgString.Trim('"'));
+
+            _gameServer.Message(
+                HudDestination.Chat,
+                $" {ChatColors.Red}{player.Clan}{ChatColors.White} {player.PlayerName}: {info.ArgString.Trim('"')}"
+            );
+
+            return HookResult.Stop;
         }
 
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -42,15 +55,20 @@ public partial class FiveStackPlugin
             }
         }
 
+        PublishChatEvent(player, info.ArgString.Trim('"'));
+
+        return HookResult.Continue;
+    }
+
+    private void PublishChatEvent(CCSPlayerController player, string message)
+    {
         _matchEvents.PublishGameEvent(
             "chat",
             new Dictionary<string, object>
             {
                 { "player", player.SteamID.ToString() },
-                { "message", info.ArgString.TrimStart('"') },
+                { "message", message },
             }
         );
-
-        return HookResult.Continue;
     }
 }
