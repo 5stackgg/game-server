@@ -7,6 +7,7 @@ namespace FiveStack;
 public partial class FiveStackPlugin
 {
     [ConsoleCommand("css_stay", "")]
+    [ConsoleCommand("css_ficar, "")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnStay(CCSPlayerController? player, CommandInfo? command)
     {
@@ -21,6 +22,7 @@ public partial class FiveStackPlugin
     }
 
     [ConsoleCommand("css_swap", "")]
+    [ConsoleCommand("css_trocar", "")]
     [ConsoleCommand("css_switch", "")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnSwitch(CCSPlayerController? player, CommandInfo? command)

@@ -7,6 +7,7 @@ namespace FiveStack;
 public partial class FiveStackPlugin
 {
     [ConsoleCommand("css_surrender", "Initiates a surrender vote for the player's team")]
+    [ConsoleCommand("css_gg", "Initiates a surrender vote for the player's team")]
     public void Surrender(CCSPlayerController? player, CommandInfo? command)
     {
         if (player == null)
