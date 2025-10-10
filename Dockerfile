@@ -17,6 +17,8 @@ RUN dotnet build -c Release -o release
 
 RUN rm /mod/release/CounterStrikeSharp.API.dll
 
+COPY src/lang /mod/release/lang
+
 # New stage for creating the zip file
 FROM debian:bookworm-slim AS zip-creator
 
