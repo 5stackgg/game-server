@@ -2,6 +2,7 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -12,6 +13,7 @@ public class CaptainSystem
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
     private readonly ILogger<CaptainSystem> _logger;
+    private readonly IStringLocalizer _localizer;
 
     public Dictionary<CsTeam, CCSPlayerController?> _captains = new Dictionary<
         CsTeam,
@@ -26,13 +28,15 @@ public class CaptainSystem
         ILogger<CaptainSystem> logger,
         MatchEvents matchEvents,
         GameServer gameServer,
-        MatchService matchService
+        MatchService matchService,
+        IStringLocalizer localizer
     )
     {
         _logger = logger;
         _matchEvents = matchEvents;
         _gameServer = gameServer;
         _matchService = matchService;
+        _localizer = localizer;
     }
 
     public void AutoSelectCaptains()
@@ -107,14 +111,24 @@ public class CaptainSystem
             {
                 _gameServer.Message(
                     HudDestination.Notify,
-                    $"[{TeamUtility.TeamNumToString((int)team)}] {ChatColors.Green}{CommandUtility.SilentChatTrigger}captain to claim"
+                    _localizer[
+                        "captain.claim_hint",
+                        TeamUtility.TeamNumToString((int)team),
+                        ChatColors.Green,
+                        CommandUtility.SilentChatTrigger
+                    ]
                 );
                 continue;
             }
 
             _gameServer.Message(
                 HudDestination.Notify,
-                $"[{TeamUtility.TeamNumToString((int)team)} Captain] {(team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{pair.Value.PlayerName}"
+                _localizer[
+                    "captain.show",
+                    TeamUtility.TeamNumToString((int)team),
+                    (team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue),
+                    pair.Value.PlayerName
+                ]
             );
         }
     }
@@ -139,7 +153,11 @@ public class CaptainSystem
 
             _gameServer.Message(
                 HudDestination.Alert,
-                $"{player.PlayerName} was assigned captain for the {TeamUtility.TeamNumToString((int)team)}"
+                _localizer[
+                    "captain.assigned",
+                    player.PlayerName,
+                    TeamUtility.TeamNumToString((int)team)
+                ]
             );
 
             _matchEvents.PublishGameEvent(

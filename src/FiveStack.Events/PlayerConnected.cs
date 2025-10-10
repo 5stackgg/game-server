@@ -5,7 +5,6 @@ using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
-using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -119,14 +118,25 @@ public partial class FiveStackPlugin
         {
             _gameServer.Message(
                 HudDestination.Chat,
-                $" {ChatColors.Default}type {ChatColors.Green}{CommandUtility.PublicChatTrigger}r {ChatColors.Default}to be marked as ready for the match",
+                Localizer[
+                    "player.join.ready_hint",
+                    ChatColors.Default,
+                    ChatColors.Green,
+                    CommandUtility.PublicChatTrigger,
+                    ChatColors.Default
+                ],
                 player
             );
         }
 
         _gameServer.Message(
             HudDestination.Chat,
-            $"type {ChatColors.Green}{CommandUtility.SilentChatTrigger}help {ChatColors.Default}to view additional commands",
+            Localizer[
+                "player.join.help_hint",
+                ChatColors.Green,
+                CommandUtility.SilentChatTrigger,
+                ChatColors.Default
+            ],
             player
         );
 

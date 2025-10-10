@@ -4,6 +4,7 @@ using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Enums;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
@@ -16,6 +17,7 @@ public class KnifeSystem
     private readonly MatchService _matchService;
     private readonly ILogger<KnifeSystem> _logger;
     private readonly EnvironmentService _environmentService;
+    private readonly IStringLocalizer _localizer;
     private Timer? _knifeRoundTimer;
 
     private CsTeam? _winningTeam;
@@ -25,7 +27,8 @@ public class KnifeSystem
         GameServer gameServer,
         MatchEvents matchEvents,
         MatchService matchService,
-        EnvironmentService environmentService
+        EnvironmentService environmentService,
+        IStringLocalizer localizer
     )
     {
         _logger = logger;
@@ -33,6 +36,7 @@ public class KnifeSystem
         _matchEvents = matchEvents;
         _gameServer = gameServer;
         _environmentService = environmentService;
+        _localizer = localizer;
     }
 
     public void Start()
@@ -45,7 +49,7 @@ public class KnifeSystem
         {
             TimerUtility.AddTimer(
                 5,
-                () => _gameServer.Message(HudDestination.Alert, "KNIFE KNIFE KNIFE!")
+                () => _gameServer.Message(HudDestination.Alert, _localizer["knife.start"])
             );
         });
     }
@@ -70,7 +74,7 @@ public class KnifeSystem
 
         _gameServer.Message(
             HudDestination.Alert,
-            $"{(team == CsTeam.Terrorist ? "Terrorist" : "CT")} - Captain is Picking Sides!"
+            _localizer["knife.captain_picking", (team == CsTeam.Terrorist ? "Terrorist" : "CT")]
         );
     }
 
@@ -93,7 +97,14 @@ public class KnifeSystem
         }
 
         captain.PrintToCenter(
-            $"As the captain you must select to {ChatColors.Green}{CommandUtility.PublicChatTrigger}stay {ChatColors.Default} or {ChatColors.Green}{CommandUtility.PublicChatTrigger}switch"
+            _localizer[
+                "knife.captain_prompt",
+                ChatColors.Green,
+                CommandUtility.PublicChatTrigger,
+                ChatColors.Default,
+                ChatColors.Green,
+                CommandUtility.PublicChatTrigger
+            ]
         );
     }
 
@@ -113,7 +124,7 @@ public class KnifeSystem
         {
             _gameServer.Message(
                 HudDestination.Chat,
-                $" {ChatColors.Red}You are not the captain!",
+                _localizer["knife.not_captain", ChatColors.Red],
                 player
             );
             return;
@@ -123,7 +134,7 @@ public class KnifeSystem
 
         _gameServer.Message(
             HudDestination.Alert,
-            $"captain picked to {ChatColors.Red}stay {ChatColors.Default}sides"
+            _localizer["knife.captain_picked_stay", ChatColors.Red, ChatColors.Default]
         );
 
         match.UpdateMapStatus(eMapStatus.Live);
@@ -143,7 +154,7 @@ public class KnifeSystem
         {
             _gameServer.Message(
                 HudDestination.Chat,
-                $" {ChatColors.Red}You are not the captain!",
+                _localizer["knife.not_captain", ChatColors.Red],
                 player
             );
             return;
@@ -153,7 +164,7 @@ public class KnifeSystem
 
         _gameServer.Message(
             HudDestination.Alert,
-            $"captain picked to {ChatColors.Red}swap {ChatColors.Default}sides"
+            _localizer["knife.captain_picked_swap", ChatColors.Red, ChatColors.Default]
         );
 
         if (_environmentService.IsOfflineMode())
@@ -188,7 +199,7 @@ public class KnifeSystem
             return;
         }
 
-        _gameServer.Message(HudDestination.Center, $"Skipping Knife.");
+        _gameServer.Message(HudDestination.Center, _localizer["knife.skipping"]);
 
         _gameServer.SendCommands(new[] { "mp_restartgame 1;mp_warmup_end" });
 

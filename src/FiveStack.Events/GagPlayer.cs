@@ -1,6 +1,5 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
-using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
 
@@ -39,7 +38,7 @@ public partial class FiveStackPlugin
         {
             if (member.is_gagged)
             {
-                player.PrintToChat($" {ChatColors.Red}You are gagged");
+                player.PrintToChat(Localizer["gag.you_are_gagged"]);
                 return HookResult.Stop;
             }
         }

@@ -5,6 +5,7 @@ using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
@@ -18,6 +19,7 @@ public class ReadySystem
     private readonly ILogger<ReadySystem> _logger;
     private readonly CoachSystem _coachSystem;
     private readonly CaptainSystem _captainSystem;
+    private readonly IStringLocalizer _localizer;
 
     private Dictionary<int, bool> _readyPlayers = new Dictionary<int, bool>();
 
@@ -26,7 +28,8 @@ public class ReadySystem
         GameServer gameServer,
         MatchService matchService,
         CoachSystem coachSystem,
-        CaptainSystem captainSystem
+        CaptainSystem captainSystem,
+        IStringLocalizer localizer
     )
     {
         _logger = logger;
@@ -34,6 +37,7 @@ public class ReadySystem
         _matchService = matchService;
         _coachSystem = coachSystem;
         _captainSystem = captainSystem;
+        _localizer = localizer;
     }
 
     public void Setup()
@@ -117,7 +121,7 @@ public class ReadySystem
 
         if (!CanVote(player))
         {
-            _gameServer.Message(HudDestination.Chat, $"You are not allowed to ready up", player);
+            _gameServer.Message(HudDestination.Chat, _localizer["ready.not_allowed"], player);
             return;
         }
 
@@ -193,26 +197,30 @@ public class ReadySystem
         int playerId = player.UserId.Value;
         if (_readyPlayers.ContainsKey(playerId) && _readyPlayers[playerId])
         {
-            player.PrintToCenter($"Waiting for players [{totalReady}/{expectedReady}]");
+            player.PrintToCenter(
+                _localizer["ready.waiting_for_players", totalReady, expectedReady]
+            );
             return;
         }
 
         if (CanVote(player))
         {
-            player.PrintToCenter($"Type {CommandUtility.PublicChatTrigger}r to ready up!");
+            player.PrintToCenter(
+                _localizer["ready.type_to_ready", CommandUtility.PublicChatTrigger]
+            );
             return;
         }
 
         switch (GetReadySetting())
         {
             case eReadySettings.Admin:
-                player.PrintToCenter($"The Admin will start the match when everyone is ready");
+                player.PrintToCenter(_localizer["ready.admin_will_start"]);
                 break;
             case eReadySettings.Captains:
-                player.PrintToCenter($"Waiting for the Captins to ready up");
+                player.PrintToCenter(_localizer["ready.waiting_captains"]);
                 break;
             case eReadySettings.Coach:
-                player.PrintToCenter($"Waiting for the coach to ready up");
+                player.PrintToCenter(_localizer["ready.waiting_coach"]);
                 break;
         }
     }
@@ -231,11 +239,11 @@ public class ReadySystem
 
         bool isReady = _readyPlayers[player.UserId.Value];
 
-        _gameServer.Message(
-            HudDestination.Chat,
-            $"You have been marked {(isReady ? $"{ChatColors.Green}ready" : $"{ChatColors.Red}not ready")}",
-            player
-        );
+        string readyWord = isReady ? _localizer["ready.ready"] : _localizer["ready.not_ready"];
+        string colored = isReady
+            ? $"{ChatColors.Green}{readyWord}"
+            : $"{ChatColors.Red}{readyWord}";
+        _gameServer.Message(HudDestination.Chat, _localizer["ready.marked", colored], player);
     }
 
     public CancellationTokenSource? _cancelSendNotReadyMessage;
@@ -262,9 +270,10 @@ public class ReadySystem
                     return;
                 }
 
+                string list = string.Join(", ", notReadyPlayers);
                 _gameServer.Message(
                     HudDestination.Notify,
-                    $" Players {ChatColors.Red}Not Ready: {ChatColors.Default}{string.Join(", ", notReadyPlayers)} type {ChatColors.Green}{CommandUtility.PublicChatTrigger}r"
+                    _localizer["ready.players_not_ready", list, CommandUtility.PublicChatTrigger]
                 );
             });
         }
@@ -285,7 +294,7 @@ public class ReadySystem
             return;
         }
 
-        _gameServer.Message(HudDestination.Center, $"Game has been forced to start.");
+        _gameServer.Message(HudDestination.Center, _localizer["ready.forced_start"]);
 
         if (match.IsWarmup())
         {

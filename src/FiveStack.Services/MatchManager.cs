@@ -8,6 +8,7 @@ using CounterStrikeSharp.API.ValveConstants.Protobuf;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
@@ -28,6 +29,7 @@ public class MatchManager
     private readonly ILogger<MatchManager> _logger;
     private readonly GameBackUpRounds _backUpManagement;
     private readonly SurrenderSystem _surrenderSystem;
+    private readonly IStringLocalizer _localizer;
 
     private readonly EnvironmentService _environmentService;
     private readonly TimeoutSystem _timeoutSystem;
@@ -55,7 +57,8 @@ public class MatchManager
         INetworkServerService networkServerService,
         TimeoutSystem timeoutSystem,
         SurrenderSystem surrenderSystem,
-        MatchService matchService
+        MatchService matchService,
+        IStringLocalizer localizer
     )
     {
         _logger = logger;
@@ -71,6 +74,7 @@ public class MatchManager
         _timeoutSystem = timeoutSystem;
         _surrenderSystem = surrenderSystem;
         _matchService = matchService;
+        _localizer = localizer;
     }
 
     public void Init(MatchData match)
@@ -182,7 +186,7 @@ public class MatchManager
 
                 _gameServer.Message(
                     HudDestination.Alert,
-                    $"to resume type {CommandUtility.PublicChatTrigger}resume"
+                    _localizer["match.resume_hint", CommandUtility.PublicChatTrigger]
                 );
             },
             TimerFlags.REPEAT
@@ -384,7 +388,7 @@ public class MatchManager
 
         if (IsWarmup())
         {
-            _gameServer.Message(HudDestination.Alert, "Received Match Data");
+            _gameServer.Message(HudDestination.Alert, _localizer["match.received_data"]);
         }
     }
 
@@ -456,7 +460,7 @@ public class MatchManager
                 {
                     _gameServer.Message(
                         HudDestination.Alert,
-                        $"TV delay ({_remainingMapChangeDelay}s left)"
+                        _localizer["match.tv_delay", _remainingMapChangeDelay]
                     );
                     _remainingMapChangeDelay--;
                 }

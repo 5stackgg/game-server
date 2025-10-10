@@ -3,6 +3,7 @@ using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
@@ -13,6 +14,7 @@ public class VoteSystem
     private readonly ILogger<VoteSystem> _logger;
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
+    private readonly IStringLocalizer _localizer;
 
     private CsTeam[]? _allowedTeamsToVote;
     private Action? _voteFailedCallback;
@@ -24,11 +26,17 @@ public class VoteSystem
     private Timer? _voteTimeoutTimer;
     private Timer? _playerMessageTimer;
 
-    public VoteSystem(ILogger<VoteSystem> logger, MatchService matchService, GameServer gameServer)
+    public VoteSystem(
+        ILogger<VoteSystem> logger,
+        MatchService matchService,
+        GameServer gameServer,
+        IStringLocalizer localizer
+    )
     {
         _logger = logger;
         _matchService = matchService;
         _gameServer = gameServer;
+        _localizer = localizer;
     }
 
     // TODO - either all players , or one team
@@ -91,7 +99,10 @@ public class VoteSystem
             return;
         }
 
-        _gameServer.Message(HudDestination.Center, $"{_voteMessage} Vote Failed");
+        _gameServer.Message(
+            HudDestination.Center,
+            _localizer["vote.failed", _voteMessage ?? string.Empty]
+        );
         _voteFailedCallback();
     }
 
@@ -105,7 +116,10 @@ public class VoteSystem
             return;
         }
 
-        _gameServer.Message(HudDestination.Center, $"{_voteMessage} Vote Succesful");
+        _gameServer.Message(
+            HudDestination.Center,
+            _localizer["vote.success", _voteMessage ?? string.Empty]
+        );
         _voteSuccessCallback();
     }
 
@@ -169,7 +183,7 @@ public class VoteSystem
 
             if (!CanVote(player))
             {
-                player.PrintToCenterAlert($"The other team is voting to {action}");
+                player.PrintToCenterAlert(_localizer["vote.other_team", action]);
 
                 continue;
             }
@@ -177,13 +191,18 @@ public class VoteSystem
             if (_votes.ContainsKey(player.SteamID))
             {
                 player.PrintToCenterAlert(
-                    $" Vote to {action} [{_votes.Count}/{GetExpectedVoteCount()}]"
+                    _localizer["vote.prompt_count", action, _votes.Count, GetExpectedVoteCount()]
                 );
                 continue;
             }
 
             player.PrintToCenterAlert(
-                $" Vote to {action} ({CommandUtility.PublicChatTrigger}y or {CommandUtility.PublicChatTrigger}n)"
+                _localizer[
+                    "vote.prompt_options",
+                    action,
+                    CommandUtility.PublicChatTrigger,
+                    CommandUtility.PublicChatTrigger
+                ]
             );
         }
     }

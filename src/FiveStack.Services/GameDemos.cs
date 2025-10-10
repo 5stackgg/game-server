@@ -6,6 +6,7 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -22,19 +23,22 @@ public class GameDemos
     private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
     private readonly ILogger<GameDemos> _logger;
+    private readonly IStringLocalizer _localizer;
     private string _rootDir = "/opt";
 
     public GameDemos(
         ILogger<GameDemos> logger,
         GameServer gameServer,
         MatchService matchService,
-        EnvironmentService environmentService
+        EnvironmentService environmentService,
+        IStringLocalizer localizer
     )
     {
         _logger = logger;
         _gameServer = gameServer;
         _matchService = matchService;
         _environmentService = environmentService;
+        _localizer = localizer;
 
         if (
             !Directory.Exists(_rootDir)
@@ -62,7 +66,7 @@ public class GameDemos
 
         File.Create(lockFilePath).Dispose();
 
-        _gameServer.Message(HudDestination.Alert, "Recording Demo");
+        _gameServer.Message(HudDestination.Alert, _localizer["demos.recording"]);
 
         Directory.CreateDirectory(GetMatchDemoPath());
 
