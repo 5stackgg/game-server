@@ -63,6 +63,8 @@
   "captain.show": "[{0} 주장] {1}{2}",
   "captain.assigned": "{0}이(가) {1}의 주장으로 지정되었습니다",
   "demos.recording": "데모 녹화 중",
+  "player.join.help_hint": " Type {0}help {1}{2} for available commands",
+  "player.join.ready_hint": " {0}Type {1}{2}r{3} to ready up!",
   "match.resume_hint": "재개하려면 {0}resume 입력",
   "match.received_data": "경기 데이터 수신됨",
   "match.tv_delay": "TV 지연({0}s 남음)",

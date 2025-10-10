@@ -64,6 +64,8 @@
   "captain.show": "[{0} Kapitan] {1}{2}",
   "captain.assigned": "{0} został wyznaczony kapitanem {1}",
   "demos.recording": "Nagrywanie demo",
+  "player.join.help_hint": " Type {0}help {1}{2} for available commands",
+  "player.join.ready_hint": " {0}Type {1}{2}r{3} to ready up!",
   "match.resume_hint": "aby wznowić wpisz {0}resume",
   "match.received_data": "Otrzymano dane meczu",
   "match.tv_delay": "Opóźnienie TV ({0}s pozostało)",

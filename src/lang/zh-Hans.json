@@ -64,6 +64,8 @@
   "captain.show": "[{0} 队长] {1}{2}",
   "captain.assigned": "{0} 被指定为 {1} 的队长",
   "demos.recording": "正在录制 Demo",
+  "player.join.help_hint": " Type {0}help {1}{2} for available commands",
+  "player.join.ready_hint": " {0}Type {1}{2}r{3} to ready up!",
   "match.resume_hint": "要继续请输入 {0}resume",
   "match.received_data": "已接收比赛数据",
   "match.tv_delay": "TV 延迟（剩余 {0}s）",
