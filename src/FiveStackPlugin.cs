@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -16,6 +17,7 @@ public partial class FiveStackPlugin : BasePlugin
     private readonly TimeoutSystem _timeoutSystem;
     private readonly MatchService _matchService;
     private readonly SurrenderSystem _surrenderSystem;
+    private readonly IStringLocalizer _localizer;
     private readonly ILogger<FiveStackPlugin> _logger;
     private readonly GameBackUpRounds _gameBackupRounds;
     private readonly EnvironmentService _environmentService;
@@ -37,11 +39,13 @@ public partial class FiveStackPlugin : BasePlugin
         ILogger<FiveStackPlugin> logger,
         SurrenderSystem surrenderSystem,
         GameBackUpRounds backUpManagement,
-        EnvironmentService environmentService
+        EnvironmentService environmentService,
+        IStringLocalizer localizer
     )
     {
         _logger = logger;
         _steamAPI = steamAPI;
+        _localizer = localizer;
         _gameDemos = matchDemos;
         _gameServer = gameServer;
         _matchEvents = matchEvents;

@@ -4,6 +4,7 @@ using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -17,6 +18,7 @@ public class GameBackUpRounds
     private readonly IServiceProvider _serviceProvider;
     private readonly EnvironmentService _environmentService;
     private readonly ILogger<GameBackUpRounds> _logger;
+    private readonly IStringLocalizer _localizer;
 
     public VoteSystem? restoreRoundVote;
 
@@ -28,7 +30,8 @@ public class GameBackUpRounds
         GameServer gameServer,
         MatchService matchService,
         IServiceProvider serviceProvider,
-        EnvironmentService environmentService
+        EnvironmentService environmentService,
+        IStringLocalizer localizer
     )
     {
         _logger = logger;
@@ -37,6 +40,7 @@ public class GameBackUpRounds
         _matchService = matchService;
         _serviceProvider = serviceProvider;
         _environmentService = environmentService;
+        _localizer = localizer;
 
         if (
             !Directory.Exists(_rootDir)
@@ -160,7 +164,7 @@ public class GameBackUpRounds
             }
 
             restoreRoundVote.StartVote(
-                $"Restore Round to {round}",
+                _localizer["backup.vote.restore_to", round],
                 new CsTeam[] { CsTeam.CounterTerrorist, CsTeam.Terrorist },
                 () =>
                 {
@@ -304,7 +308,12 @@ public class GameBackUpRounds
             _logger.LogInformation($"Sending Message for Round {round}");
             _gameServer.Message(
                 HudDestination.Alert,
-                $" {ChatColors.Red}Round {round} has been restored ({CommandUtility.PublicChatTrigger}resume to continue)"
+                _localizer[
+                    "backup.round_restored",
+                    ChatColors.Red,
+                    round,
+                    CommandUtility.PublicChatTrigger
+                ]
             );
         });
     }

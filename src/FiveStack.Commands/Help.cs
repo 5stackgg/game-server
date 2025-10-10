@@ -1,7 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
-using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
 
@@ -19,37 +18,39 @@ public partial class FiveStackPlugin
             return;
         }
 
-        command.ReplyToCommand($"  Available Commands: ");
+        command.ReplyToCommand(_localizer["help.available"]);
 
+        command.ReplyToCommand(_localizer["help.toggle_ready", CommandUtility.PublicChatTrigger]);
         command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Toggle Ready: {ChatColors.Default}{CommandUtility.PublicChatTrigger}r"
-        );
-        command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Knife Round: {ChatColors.Default}{CommandUtility.PublicChatTrigger}stay, {CommandUtility.PublicChatTrigger}switch"
-        );
-
-        command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Captains: {ChatColors.Default}{CommandUtility.SilentChatTrigger}captain, {CommandUtility.SilentChatTrigger}release-captain"
-        );
-        command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Show Captains: {ChatColors.Default}{CommandUtility.PublicChatTrigger}captains"
+            _localizer[
+                "help.knife_round",
+                CommandUtility.PublicChatTrigger,
+                CommandUtility.PublicChatTrigger
+            ]
         );
 
         command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Tactical Timeout: {ChatColors.Default}{CommandUtility.SilentChatTrigger}tac"
+            _localizer[
+                "help.captains",
+                CommandUtility.SilentChatTrigger,
+                CommandUtility.SilentChatTrigger
+            ]
         );
+        command.ReplyToCommand(_localizer["help.show_captains", CommandUtility.PublicChatTrigger]);
+
+        command.ReplyToCommand(_localizer["help.tac_timeout", CommandUtility.SilentChatTrigger]);
 
         command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Technical Pause: {ChatColors.Default}{CommandUtility.PublicChatTrigger}tech, {CommandUtility.PublicChatTrigger}resume"
+            _localizer[
+                "help.tech_pause",
+                CommandUtility.PublicChatTrigger,
+                CommandUtility.PublicChatTrigger
+            ]
         );
 
-        command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Rules: {ChatColors.Default}{CommandUtility.PublicChatTrigger}rules"
-        );
+        command.ReplyToCommand(_localizer["help.rules", CommandUtility.PublicChatTrigger]);
 
-        command.ReplyToCommand(
-            $" {ChatColors.BlueGrey}Restore Round: {ChatColors.Default}{CommandUtility.PublicChatTrigger}reset <round>"
-        );
+        command.ReplyToCommand(_localizer["help.restore_round", CommandUtility.PublicChatTrigger]);
     }
 
     [ConsoleCommand("css_rules", "Shows Rules for Match")]
@@ -62,21 +63,26 @@ public partial class FiveStackPlugin
             return;
         }
 
-        command.ReplyToCommand($"  Rules: ");
-        string matchDetails =
-            $"{match.options.type} (MR:{match.options.mr}), Best of {match.options.best_of}";
+        command.ReplyToCommand(_localizer["rules.title"]);
+        string matchDetails = _localizer[
+            "rules.match_details",
+            match.options.type,
+            match.options.mr,
+            match.options.best_of
+        ];
 
         bool hasDetails = false;
 
         if (match.options.overtime)
         {
             hasDetails = true;
-            matchDetails += $" with Overtime";
+            matchDetails += $" {_localizer["rules.with_overtime"]}";
         }
 
         if (match.options.knife_round)
         {
-            matchDetails += $"{(hasDetails ? " with" : " and")} knife round";
+            matchDetails +=
+                $" {(hasDetails ? _localizer["common.with"] : _localizer["common.and"])} {_localizer["rules.knife_round"]}";
         }
 
         command.ReplyToCommand(matchDetails);
@@ -87,13 +93,13 @@ public partial class FiveStackPlugin
         if (match.options.coaches)
         {
             hasDetails = true;
-            additionalDetails += $"Coach Support";
+            additionalDetails += $"{_localizer["rules.coach_support"]}";
         }
 
         if (match.options.number_of_substitutes > 0)
         {
             additionalDetails +=
-                $"{(hasDetails ? " with" : " and")} Maximum Number of Substitutes: {match.options.number_of_substitutes}";
+                $" {(hasDetails ? _localizer["common.with"] : _localizer["common.and"])} {_localizer["rules.max_subs", match.options.number_of_substitutes]}";
         }
 
         if (additionalDetails != "")
@@ -102,10 +108,16 @@ public partial class FiveStackPlugin
         }
 
         command.ReplyToCommand(
-            $"Allow Timeouts {StringUtility.ConvertCamelToHumanReadable(match.options.timeout_setting)}"
+            _localizer[
+                "rules.allow_timeouts",
+                StringUtility.ConvertCamelToHumanReadable(match.options.timeout_setting)
+            ]
         );
         command.ReplyToCommand(
-            $"Tech Timeouts {StringUtility.ConvertCamelToHumanReadable(match.options.tech_timeout_setting)}"
+            _localizer[
+                "rules.tech_timeouts",
+                StringUtility.ConvertCamelToHumanReadable(match.options.tech_timeout_setting)
+            ]
         );
     }
 }

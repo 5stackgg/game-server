@@ -5,6 +5,7 @@ using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -19,6 +20,7 @@ public class TimeoutSystem
     private readonly IServiceProvider _serviceProvider;
     private readonly CoachSystem _coachSystem;
     private readonly CaptainSystem _captainSystem;
+    private readonly IStringLocalizer _localizer;
     public VoteSystem? pauseVote;
     public VoteSystem? resumeVote;
 
@@ -30,7 +32,8 @@ public class TimeoutSystem
         GameBackUpRounds backUpManagement,
         IServiceProvider serviceProvider,
         CoachSystem coachSystem,
-        CaptainSystem captainSystem
+        CaptainSystem captainSystem,
+        IStringLocalizer localizer
     )
     {
         _logger = logger;
@@ -41,6 +44,7 @@ public class TimeoutSystem
         _backUpManagement = backUpManagement;
         _coachSystem = coachSystem;
         _captainSystem = captainSystem;
+        _localizer = localizer;
     }
 
     public void RequestPause(CCSPlayerController? player)
@@ -50,7 +54,7 @@ public class TimeoutSystem
         {
             _gameServer.Message(
                 HudDestination.Chat,
-                $" {ChatColors.Red}Cannot pause while match is not live",
+                _localizer["timeout.cannot_pause_not_live", ChatColors.Red],
                 player
             );
             return;
@@ -62,7 +66,7 @@ public class TimeoutSystem
             return;
         }
 
-        string pauseMessage = "Admin Paused the Match";
+        string pauseMessage = _localizer["timeout.admin_paused"];
 
         if (player != null)
         {
@@ -79,7 +83,7 @@ public class TimeoutSystem
                 if (pauseVote != null)
                 {
                     pauseVote.StartVote(
-                        "Technical Timeout",
+                        _localizer["timeout.vote.technical"],
                         new CsTeam[] { CsTeam.CounterTerrorist, CsTeam.Terrorist },
                         (
                             () =>
@@ -87,7 +91,7 @@ public class TimeoutSystem
                                 _logger.LogInformation("technical pause vote passed");
                                 _matchService
                                     .GetCurrentMatch()
-                                    ?.PauseMatch("Technical Timeout Vote Passed");
+                                    ?.PauseMatch(_localizer["timeout.vote.technical_passed"]);
                                 pauseVote = null;
                             }
                         ),
@@ -109,7 +113,7 @@ public class TimeoutSystem
                 return;
             }
 
-            pauseMessage = $"{player.PlayerName} {ChatColors.Red}paused the match";
+            pauseMessage = _localizer["timeout.player_paused", player.PlayerName, ChatColors.Red];
         }
 
         _matchService.GetCurrentMatch()?.PauseMatch(pauseMessage);
@@ -181,7 +185,7 @@ public class TimeoutSystem
     {
         _gameServer.Message(
             HudDestination.Chat,
-            $" {ChatColors.Red}you are not allowed to call a {type} the match!",
+            _localizer["timeout.not_allowed", ChatColors.Red, type],
             player
         );
     }
@@ -195,7 +199,7 @@ public class TimeoutSystem
             return;
         }
 
-        string resumeMessage = "Admin Resumed the Match";
+        string resumeMessage = _localizer["timeout.admin_resumed"];
 
         if (player != null)
         {
@@ -212,13 +216,15 @@ public class TimeoutSystem
                 if (resumeVote != null)
                 {
                     resumeVote.StartVote(
-                        "Resume",
+                        _localizer["timeout.vote.resume"],
                         new CsTeam[] { CsTeam.CounterTerrorist, CsTeam.Terrorist },
                         (
                             () =>
                             {
                                 _logger.LogInformation("resume vote passed");
-                                _matchService.GetCurrentMatch()?.ResumeMatch("Resume Vote Passed");
+                                _matchService
+                                    .GetCurrentMatch()
+                                    ?.ResumeMatch(_localizer["timeout.vote.resume_passed"]);
                                 resumeVote = null;
                             }
                         ),
@@ -240,7 +246,7 @@ public class TimeoutSystem
                 return;
             }
 
-            resumeMessage = $"{player.PlayerName} {ChatColors.Red}resumed the match";
+            resumeMessage = _localizer["timeout.player_resumed", player.PlayerName, ChatColors.Red];
         }
 
         _matchService.GetCurrentMatch()?.ResumeMatch(resumeMessage);
@@ -253,7 +259,7 @@ public class TimeoutSystem
         {
             _gameServer.Message(
                 HudDestination.Chat,
-                $" {ChatColors.Red}Cannot call a tactical timeout while match is not live",
+                _localizer["timeout.cannot_tac_not_live", ChatColors.Red],
                 player
             );
             return;
@@ -298,7 +304,7 @@ public class TimeoutSystem
             {
                 _gameServer.Message(
                     HudDestination.Chat,
-                    $"Your team has used all its timeouts!",
+                    _localizer["timeout.no_timeouts_left"],
                     player
                 );
                 return;
@@ -319,7 +325,12 @@ public class TimeoutSystem
 
             _gameServer.Message(
                 HudDestination.Alert,
-                $"{player.PlayerName} {ChatColors.Red}called a tactical timeout ({timeouts_available} remaining)"
+                _localizer[
+                    "timeout.called_tactical",
+                    player.PlayerName,
+                    ChatColors.Red,
+                    timeouts_available
+                ]
             );
 
             _matchEvents.PublishGameEvent(
@@ -334,7 +345,7 @@ public class TimeoutSystem
         }
         else
         {
-            _gameServer.Message(HudDestination.Alert, "Tech Timeout Called by Admin");
+            _gameServer.Message(HudDestination.Alert, _localizer["timeout.called_admin"]);
         }
     }
 
@@ -416,7 +427,7 @@ public class TimeoutSystem
 
         _gameServer.Message(
             HudDestination.Chat,
-            $" {ChatColors.Red}A timout is already active",
+            _localizer["timeout.already_active", ChatColors.Red],
             player
         );
     }
