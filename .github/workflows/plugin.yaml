@@ -19,19 +19,30 @@ jobs:
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
+          // Define o número da versão base do projeto original (v0.0.210)
+          const ORIGINAL_PROJECT_BASE_VERSION = 210;
+
+          // Busca o último release no repositório atual (seu fork)
           const releases = await github.rest.repos.listReleases({
             owner: context.repo.owner,
             repo: context.repo.repo
           });
           const latestRelease = releases.data[0];
 
-          console.log('Latest release:', latestRelease ? latestRelease.tag_name : 'No releases found');
+          console.log('Latest release on fork:', latestRelease ? latestRelease.tag_name : 'No releases found');
 
+          let baseVersion = ORIGINAL_PROJECT_BASE_VERSION;
+          
           if (latestRelease) {
-            const version = parseInt(latestRelease.tag_name.replace('v0.0.', ''));
-            return version + 1;
+            const forkVersion = parseInt(latestRelease.tag_name.replace('v0.0.', ''));
+            // Garante que a próxima versão é baseada no maior número entre o original e o fork.
+            baseVersion = Math.max(ORIGINAL_PROJECT_BASE_VERSION, forkVersion);
           }
-          return 1;
+          
+          // A próxima versão a ser construída é base + 1
+          const nextVersion = baseVersion + 1;
+          console.log('Next version will be: v0.0.' + nextVersion);
+          return nextVersion;
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
