@@ -77,11 +77,7 @@ public class ReadySystem
                 continue;
             }
 
-            if (
-                player.ClanName != ""
-                && player.ClanName != "[ready]"
-                && player.ClanName != "[not ready]"
-            )
+            if (player.Clan != "" && player.Clan != "[ready]" && player.Clan != "[not ready]")
             {
                 continue;
             }
