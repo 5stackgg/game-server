@@ -12,7 +12,7 @@ for dir in "${make_directories[@]}"; do
     mkdir -p "$INSTANCE_SERVER_DIR/$dir"
 done
 
-cp -R "$BASE_SERVER_DIR/game/csgo/cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
+cp -R "$BASE_SERVER_DIR/game/csgo/cfg" "$INSTANCE_SERVER_DIR/game/csgo"
 
 if [ ! -d "$BASE_SERVER_DIR/game/bin/linuxsteamrt64/steamapps" ]; then
     mkdir -p "$BASE_SERVER_DIR/game/bin/linuxsteamrt64/steamapps"
@@ -56,7 +56,22 @@ create_symlinks "$BASE_SERVER_DIR" "$INSTANCE_SERVER_DIR"
 if [ "$SERVER_TYPE" = "Ranked" ]; then
   cp "/opt/server-cfg/ranked.server.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg/server.cfg"
 else
-  cp "/opt/server-cfg/public.server.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg/server.cfg"
+  if [ ! -d "/opt/custom-data" ]; then
+    mkdir -p "/opt/custom-data"
+  fi
+
+  if [ ! -e "/opt/custom-data/server.cfg" ]; then
+    cp "/opt/server-cfg/public.server.cfg" "/opt/custom-data/server.cfg"
+  fi
+
+  if [ ! -e "/opt/custom-data/addons/counterstrikesharp/configs/core.json" ]; then
+    if [ ! -d "/opt/custom-data/addons/counterstrikesharp/configs" ]; then
+      mkdir -p "/opt/custom-data/addons/counterstrikesharp/configs"
+    fi
+    cp "/opt/custom-data/core.json" "/opt/custom-data/addons/counterstrikesharp/configs/core.json"
+  fi
+
+  create_symlinks "/opt/custom-data" "${INSTANCE_SERVER_DIR}/game/csgo"
 fi
 
 cp "/opt/server-cfg/5stack.lan.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
