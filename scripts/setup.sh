@@ -55,25 +55,8 @@ create_symlinks "$BASE_SERVER_DIR" "$INSTANCE_SERVER_DIR"
 
 if [ "$SERVER_TYPE" = "Ranked" ]; then
   cp "/opt/server-cfg/ranked.server.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg/server.cfg"
-else
-  if [ ! -d "/opt/custom-data" ]; then
-    mkdir -p "/opt/custom-data"
-  fi
-
-  if [ ! -e "/opt/custom-data/server.cfg" ]; then
-    cp "/opt/server-cfg/public.server.cfg" "/opt/custom-data/server.cfg"
-  fi
-
-  if [ ! -e "/opt/custom-data/addons/counterstrikesharp/configs/core.json" ]; then
-    if [ ! -d "/opt/custom-data/addons/counterstrikesharp/configs" ]; then
-      mkdir -p "/opt/custom-data/addons/counterstrikesharp/configs"
-    fi
-    cp "/opt/custom-data/core.json" "/opt/custom-data/addons/counterstrikesharp/configs/core.json"
-  fi
-
-  create_symlinks "/opt/custom-data" "${INSTANCE_SERVER_DIR}/game/csgo"
 fi
-
+  
 cp "/opt/server-cfg/5stack.lan.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
 cp "/opt/server-cfg/5stack.base.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
 cp "/opt/server-cfg/5stack.warmup.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
@@ -85,6 +68,36 @@ cp "/opt/server-cfg/5stack.competitive.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
 
 echo "---Install Addons---"
 cp -r "/opt/addons" "${INSTANCE_SERVER_DIR}/game/csgo"
+
+if [ "$SERVER_TYPE" != "Ranked" ]; then
+  if [ ! -d "/opt/custom-data" ]; then
+    mkdir -p "/opt/custom-data"
+  fi
+
+  if [ ! -d "/opt/custom-data/maps" ]; then
+    mkdir -p "/opt/custom-data/maps"
+  fi
+
+  if [ ! -e "/opt/custom-data/maps/mg_public.txt" ]; then
+    cp "/opt/server-cfg/mg_public.txt" "/opt/custom-data/maps/mg_public.txt"
+  fi
+
+  if [ ! -d "/opt/custom-data/cfg" ]; then
+    mkdir -p "/opt/custom-data/cfg"
+  fi
+
+  if [ ! -e "/opt/custom-data/cfg/server.cfg" ]; then
+    cp "/opt/server-cfg/public.server.cfg" "/opt/custom-data/cfg/server.cfg"
+  fi
+
+  if [ ! -e "/opt/custom-data/addons/counterstrikesharp/configs/core.json" ]; then
+    if [ ! -d "/opt/custom-data/addons/counterstrikesharp/configs" ]; then
+      mkdir -p "/opt/custom-data/addons/counterstrikesharp/configs"
+    fi
+    cp "/opt/custom-data/core.json" "/opt/custom-data/addons/counterstrikesharp/configs/core.json"
+  fi
+  create_symlinks "/opt/custom-data" "${INSTANCE_SERVER_DIR}/game/csgo"
+fi
 
 if $AUTOLOAD_PLUGINS = true ; then
   echo "---Install Custom Plugins---"
