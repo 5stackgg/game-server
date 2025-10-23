@@ -1,4 +1,5 @@
 #!/bin/bash
+echo "---Setup Non Synlinkable Files and Directories---"
 
 make_directories=(
   "game/csgo/cfg"
@@ -129,10 +130,7 @@ new_line="                        Game    csgo/addons/metamod"
 
 if ! grep -qFx "$new_line" "$gameinfo_path"; then
     echo "---Adding Metamod Loader ---"
-    # If the line doesn't exist, add it
     line_number=$(awk '/Game_LowViolence/{print NR; exit}' "$gameinfo_path")
-    echo "Found Game_LowViolence at line $line_number"
-
     sed -i "${line_number}a\\$new_line" "$gameinfo_path"
 fi
 

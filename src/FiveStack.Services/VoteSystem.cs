@@ -174,6 +174,11 @@ public class VoteSystem
 
         foreach (var player in MatchUtility.Players())
         {
+            if (player == null)
+            {
+                continue;
+            }
+
             if (isCaptainVoteOnly && captains[player.Team] != player)
             {
                 continue;
@@ -238,6 +243,11 @@ public class VoteSystem
 
         foreach (var player in MatchUtility.Players())
         {
+            if (player == null)
+            {
+                continue;
+            }
+
             if (
                 MatchUtility
                     .GetMemberFromLineup(matchData, player.SteamID.ToString(), player.PlayerName)

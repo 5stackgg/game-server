@@ -431,7 +431,10 @@ public class MatchManager
 
         foreach (var player in MatchUtility.Players())
         {
-            EnforceMemberTeam(player);
+            if (player != null)
+            {
+                EnforceMemberTeam(player);
+            }
         }
     }
 
@@ -780,6 +783,11 @@ public class MatchManager
 
         foreach (var player in MatchUtility.Players())
         {
+            if (player == null)
+            {
+                continue;
+            }
+
             MatchMember? member = MatchUtility.GetMemberFromLineup(
                 _matchData,
                 player.SteamID.ToString(),
