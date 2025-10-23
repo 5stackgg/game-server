@@ -31,7 +31,7 @@
   "ready.ready": "klar",
   "ready.not_ready": "ikke klar",
   "ready.marked": "Du er blevet markeret som {0}",
-  "ready.players_not_ready": " Spillere {0}Ikke klar: {1}{2} skriv {3}{4}r",
+  "ready.players_not_ready": "Spillere Ikke klar: {0} skriv {1}r",
 
   "knife.start": "KNIV KNIV KNIV!",
   "knife.captain_picking": "{0} - Kaptajn vælger side!",

@@ -31,7 +31,7 @@
   "ready.ready": "listo",
   "ready.not_ready": "no listo",
   "ready.marked": "Has sido marcado como {0}",
-  "ready.players_not_ready": " Jugadores {0}No listos: {1}{2} escribe {3}{4}r",
+  "ready.players_not_ready": "Jugadores No listos: {0} escribe {1}r",
 
   "knife.start": "¡CUCHILLO CUCHILLO CUCHILLO!",
   "knife.captain_picking": "{0} - ¡El capitán está eligiendo lados!",

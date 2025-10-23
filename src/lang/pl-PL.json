@@ -31,7 +31,7 @@
   "ready.ready": "gotowy",
   "ready.not_ready": "niegotowy",
   "ready.marked": "Zostałeś oznaczony jako {0}",
-  "ready.players_not_ready": " Gracze {0}Niegotowi: {1}{2} wpisz {3}{4}r",
+  "ready.players_not_ready": "Gracze Niegotowi: {0} wpisz {1}r",
 
   "knife.start": "NÓŻ NÓŻ NÓŻ!",
   "knife.captain_picking": "{0} - Kapitan wybiera strony!",

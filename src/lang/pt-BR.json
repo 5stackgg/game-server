@@ -29,7 +29,7 @@
   "ready.ready": "pronto",
   "ready.not_ready": "não pronto",
   "ready.marked": "Você foi marcado como {0}",
-  "ready.players_not_ready": " Jogadores {0}Não Prontos: {1}{2} digite {3}{4}r",
+  "ready.players_not_ready": "Jogadores Não Prontos: {0} digite {1}r",
 
   "knife.start": "FACA FACA FACA!",
   "knife.captain_picking": "{0} - Capitão escolhendo lados!",

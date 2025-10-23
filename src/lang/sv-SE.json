@@ -31,7 +31,7 @@
   "ready.ready": "redo",
   "ready.not_ready": "inte redo",
   "ready.marked": "Du har markerats som {0}",
-  "ready.players_not_ready": " Spelare {0}Inte redo: {1}{2} skriv {3}{4}r",
+  "ready.players_not_ready": "Spelare Inte redo: {0} skriv {1}r",
 
   "knife.start": "KNIV KNIV KNIV!",
   "knife.captain_picking": "{0} - Kaptenen väljer sida!",

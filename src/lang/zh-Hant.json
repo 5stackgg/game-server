@@ -31,7 +31,7 @@
   "ready.ready": "已就緒",
   "ready.not_ready": "未就緒",
   "ready.marked": "你已被標記為 {0}",
-  "ready.players_not_ready": " 玩家 {0}未就緒：{1}{2} 請輸入 {3}{4}r",
+  "ready.players_not_ready": "玩家 未就緒：{0} 請輸入 {1}r",
 
   "knife.start": "小刀！小刀！小刀！",
   "knife.captain_picking": "{0} - 隊長正在選邊！",
