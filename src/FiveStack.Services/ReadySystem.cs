@@ -72,10 +72,12 @@ public class ReadySystem
     {
         foreach (var player in MatchUtility.Players())
         {
-            if (
-                player.UserId == null
-                || (player.Clan != "" && player.Clan != "[ready]" && player.Clan != "[not ready]")
-            )
+            if (player.UserId == null || !player.IsValid || player.IsBot)
+            {
+                continue;
+            }
+
+            if (player.Clan != "" && player.Clan != "[ready]" && player.Clan != "[not ready]")
             {
                 continue;
             }
