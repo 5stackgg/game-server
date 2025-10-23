@@ -72,7 +72,7 @@ public class ReadySystem
     {
         foreach (var player in MatchUtility.Players())
         {
-            if (player.UserId == null || !player.IsValid || player.IsBot)
+            if (player.UserId == null)
             {
                 continue;
             }
