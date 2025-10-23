@@ -74,7 +74,7 @@ public class ReadySystem
         {
             if (
                 player.UserId == null
-                || player.Clan != "" && player.Clan != "[ready]" && player.Clan != "[not ready]"
+                || (player.Clan != "" && player.Clan != "[ready]" && player.Clan != "[not ready]")
             )
             {
                 continue;
