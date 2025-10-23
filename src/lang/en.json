@@ -31,7 +31,7 @@
   "ready.ready": "ready",
   "ready.not_ready": "not ready",
   "ready.marked": "You have been marked {0}",
-  "ready.players_not_ready": " Players {0}Not Ready: {1}{2} type {3}{4}r",
+  "ready.players_not_ready": "Players Not Ready: {0} type {1}r",
 
   "knife.start": "KNIFE KNIFE KNIFE!",
   "knife.captain_picking": "{0} - Captain is Picking Sides!",

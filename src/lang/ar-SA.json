@@ -31,7 +31,7 @@
   "ready.ready": "جاهز",
   "ready.not_ready": "غير جاهز",
   "ready.marked": "تم تحديدك كـ {0}",
-  "ready.players_not_ready": " اللاعبون {0}غير الجاهزين: {1}{2} اكتب {3}{4}r",
+  "ready.players_not_ready": "اللاعبون غير الجاهزين: {0} اكتب {1}r",
 
   "knife.start": "سكين! سكين! سكين!",
   "knife.captain_picking": "{0} - القائد يختار الجوانب!",

@@ -31,7 +31,7 @@
   "ready.ready": "готов",
   "ready.not_ready": "не готов",
   "ready.marked": "Вы отмечены как {0}",
-  "ready.players_not_ready": " Игроки {0}Не готовы: {1}{2} введите {3}{4}r",
+  "ready.players_not_ready": "Игроки Не готовы: {0} введите {1}r",
 
   "knife.start": "НОЖ НОЖ НОЖ!",
   "knife.captain_picking": "{0} - Капитан выбирает стороны!",
