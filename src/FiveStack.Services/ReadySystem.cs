@@ -180,13 +180,13 @@ public class ReadySystem
 
     public void SetupReadyMessage(CCSPlayerController player)
     {
-        int totalReady = TotalReady();
-        int expectedReady = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
-
         if (player.UserId == null)
         {
             return;
         }
+
+        int totalReady = TotalReady();
+        int expectedReady = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
 
         int playerId = player.UserId.Value;
         if (_readyPlayers.ContainsKey(playerId) && _readyPlayers[playerId])
