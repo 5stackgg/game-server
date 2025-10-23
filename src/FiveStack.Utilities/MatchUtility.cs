@@ -110,14 +110,17 @@ namespace FiveStack.Utilities
             foreach (var player in players)
             {
                 if (
-                    !player.IsBot
-                    && player.IsValid
-                    && player.UserId != null
-                    && player.PlayerName != "SourceTV"
+                    player == null
+                    || player.UserId == null
+                    || !player.IsValid
+                    || player.IsBot
+                    || player.PlayerName == "SourceTV"
                 )
                 {
-                    validPlayers.Add(player);
+                    continue;
                 }
+
+                validPlayers.Add(player);
             }
 
             return validPlayers;

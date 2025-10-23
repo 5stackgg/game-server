@@ -83,7 +83,7 @@ public partial class FiveStackPlugin
                 },
                 { "lineup_1_side", $"{TeamUtility.CSTeamToString(lineup1Side)}" },
                 { "lineup_2_side", $"{TeamUtility.CSTeamToString(lineup2Side)}" },
-                { "winning_side", $"{TeamUtility.CSTeamToString(this.roundWinner)}" },
+                { "winning_side", $"{TeamUtility.CSTeamToString(roundWinner)}" },
                 {
                     "backup_file",
                     _gameBackupRounds.GetBackupRoundFile(_gameServer.GetCurrentRound()) ?? ""
@@ -101,7 +101,7 @@ public partial class FiveStackPlugin
         MatchMap? currentMap = match?.GetCurrentMap();
         MatchData? matchData = match?.GetMatchData();
 
-        this.roundWinner = TeamUtility.TeamNumToCSTeam(@event.Winner);
+        roundWinner = TeamUtility.TeamNumToCSTeam(@event.Winner);
 
         if (match == null || matchData == null || currentMap == null)
         {

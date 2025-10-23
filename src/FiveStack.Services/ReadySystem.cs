@@ -72,7 +72,7 @@ public class ReadySystem
     {
         foreach (var player in MatchUtility.Players())
         {
-            if (player.UserId == null || !player.IsValid || player.IsBot)
+            if (player.UserId == null)
             {
                 continue;
             }
@@ -182,7 +182,7 @@ public class ReadySystem
 
     public void SetupReadyMessage(CCSPlayerController player)
     {
-        if (player.UserId == null || !player.IsValid || player.IsBot)
+        if (player.UserId == null)
         {
             return;
         }
@@ -307,7 +307,7 @@ public class ReadySystem
 
         foreach (var player in MatchUtility.Players())
         {
-            if (player.UserId == null || !player.IsValid || player.IsBot || !CanVote(player))
+            if (player.UserId == null || !CanVote(player))
             {
                 continue;
             }
