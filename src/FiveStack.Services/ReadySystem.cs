@@ -384,6 +384,11 @@ public class ReadySystem
 
         foreach (var player in MatchUtility.Players())
         {
+            if (!CanVote(player))
+            {
+                continue;
+            }
+            
             SetupReadyMessage(player);
         }
     }
