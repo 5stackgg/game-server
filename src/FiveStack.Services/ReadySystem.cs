@@ -177,11 +177,6 @@ public class ReadySystem
 
     public void SetupReadyMessage(CCSPlayerController player)
     {
-        if (player == null || player.UserId == null || !player.IsValid || player.IsBot)
-        {
-            return;
-        }
-
         int totalReady = TotalReady();
         int expectedReady = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
 
@@ -388,7 +383,7 @@ public class ReadySystem
             {
                 continue;
             }
-            
+
             SetupReadyMessage(player);
         }
     }
