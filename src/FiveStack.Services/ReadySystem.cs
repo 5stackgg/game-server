@@ -297,6 +297,11 @@ public class ReadySystem
 
         foreach (var player in MatchUtility.Players())
         {
+            if (!CanVote(player))
+            {
+                continue;
+            }
+
             if (
                 !_readyPlayers.ContainsKey(player.UserId.Value)
                 || _readyPlayers[player.UserId.Value] == false
@@ -379,11 +384,6 @@ public class ReadySystem
 
         foreach (var player in MatchUtility.Players())
         {
-            if (!CanVote(player))
-            {
-                continue;
-            }
-
             SetupReadyMessage(player);
         }
     }
