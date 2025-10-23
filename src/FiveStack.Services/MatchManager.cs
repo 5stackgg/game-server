@@ -431,10 +431,7 @@ public class MatchManager
 
         foreach (var player in MatchUtility.Players())
         {
-            if (player != null)
-            {
-                EnforceMemberTeam(player);
-            }
+            EnforceMemberTeam(player);
         }
     }
 
@@ -625,6 +622,11 @@ public class MatchManager
 
     public void EnforceMemberTeam(CCSPlayerController player, CsTeam? currentTeam = null)
     {
+        if(player == null || player.IsBot)
+        {
+            return;
+        }
+
         CsTeam expectedTeam = GetExpectedTeam(player);
 
         if (expectedTeam == CsTeam.None)
