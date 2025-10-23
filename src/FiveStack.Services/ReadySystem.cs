@@ -72,7 +72,10 @@ public class ReadySystem
     {
         foreach (var player in MatchUtility.Players())
         {
-            if (player.Clan != "" && player.Clan != "[ready]" && player.Clan != "[not ready]")
+            if (
+                player.UserId == null
+                || player.Clan != "" && player.Clan != "[ready]" && player.Clan != "[not ready]"
+            )
             {
                 continue;
             }
@@ -179,6 +182,11 @@ public class ReadySystem
     {
         int totalReady = TotalReady();
         int expectedReady = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
+
+        if (player.UserId == null)
+        {
+            return;
+        }
 
         int playerId = player.UserId.Value;
         if (_readyPlayers.ContainsKey(playerId) && _readyPlayers[playerId])
@@ -297,7 +305,7 @@ public class ReadySystem
 
         foreach (var player in MatchUtility.Players())
         {
-            if (!CanVote(player))
+            if (player.UserId == null || !CanVote(player))
             {
                 continue;
             }
