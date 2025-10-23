@@ -72,11 +72,6 @@ public class ReadySystem
     {
         foreach (var player in MatchUtility.Players())
         {
-            if (player == null || player.UserId == null || !player.IsValid || player.IsBot)
-            {
-                continue;
-            }
-
             if (player.Clan != "" && player.Clan != "[ready]" && player.Clan != "[not ready]")
             {
                 continue;
@@ -307,11 +302,6 @@ public class ReadySystem
 
         foreach (var player in MatchUtility.Players())
         {
-            if (player == null || player.UserId == null || !player.IsValid || player.IsBot || !CanVote(player))
-            {
-                continue;
-            }
-
             if (
                 !_readyPlayers.ContainsKey(player.UserId.Value)
                 || _readyPlayers[player.UserId.Value] == false
@@ -394,10 +384,7 @@ public class ReadySystem
 
         foreach (var player in MatchUtility.Players())
         {
-            if (player != null)
-            {
-                SetupReadyMessage(player);
-            }
+            SetupReadyMessage(player);
         }
     }
 }
