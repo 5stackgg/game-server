@@ -93,7 +93,7 @@ if [ "$SERVER_TYPE" != "Ranked" ]; then
     if [ ! -d "/opt/custom-data/addons/counterstrikesharp/configs" ]; then
       mkdir -p "/opt/custom-data/addons/counterstrikesharp/configs"
     fi
-    cp "/opt/custom-data/core.json" "/opt/custom-data/addons/counterstrikesharp/configs/core.json"
+    cp "/opt/server-cfg/core.json" "/opt/custom-data/addons/counterstrikesharp/configs/core.json"
   fi
   create_symlinks "/opt/custom-data" "${INSTANCE_SERVER_DIR}/game/csgo"
 fi
