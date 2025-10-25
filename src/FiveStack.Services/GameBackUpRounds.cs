@@ -290,14 +290,16 @@ public class GameBackUpRounds
             return;
         }
 
+        string backupRoundFileName =
+            $"restore-{MatchUtility.GetSafeMatchPrefix(match)}round{round.ToString().PadLeft(2, '0')}.txt";
         string backupRoundFilePath = Path.Join(
             Server.GameDirectory + "/csgo/",
-            $"restore-{MatchUtility.GetSafeMatchPrefix(match)}round{round.ToString().PadLeft(2, '0')}.txt"
+            backupRoundFileName
         );
 
         File.WriteAllText(backupRoundFilePath, backupRound.backup_file);
 
-        _gameServer.SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFilePath}" });
+        _gameServer.SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFileName}" });
 
         _matchService.GetCurrentMatch()?.PauseMatch();
 
