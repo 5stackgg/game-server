@@ -299,6 +299,7 @@ public class GameBackUpRounds
 
         File.WriteAllText(backupRoundFilePath, backupRound.backup_file);
 
+        _logger.LogInformation($"Loading backup round file {backupRoundFileName}");
         _gameServer.SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFileName}" });
 
         _matchService.GetCurrentMatch()?.PauseMatch();

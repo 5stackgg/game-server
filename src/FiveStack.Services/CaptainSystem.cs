@@ -208,7 +208,8 @@ public class CaptainSystem
         }
 
         var captain = _captains[team];
-        if(captain == null) {
+        if (captain == null)
+        {
             return false;
         }
 

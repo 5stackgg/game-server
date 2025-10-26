@@ -35,8 +35,8 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnApiResetRound(CCSPlayerController? player, CommandInfo command)
     {
-        _logger.LogInformation("API Restoring Round");
         string _round = command.ArgByIndex(1);
+        _logger.LogInformation($"API Restoring Round {_round}");
 
         if (string.IsNullOrWhiteSpace(_round))
         {
