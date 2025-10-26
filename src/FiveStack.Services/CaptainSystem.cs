@@ -207,7 +207,12 @@ public class CaptainSystem
             }
         }
 
-        return _captains[team]?.SteamID == player.SteamID;
+        var captain = _captains[team];
+        if(captain == null) {
+            return false;
+        }
+
+        return captain.SteamID.ToString() == player.SteamID.ToString();
     }
 
     private void AutoSelectCaptain(CsTeam team)
