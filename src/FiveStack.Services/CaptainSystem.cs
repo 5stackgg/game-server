@@ -15,10 +15,7 @@ public class CaptainSystem
     private readonly ILogger<CaptainSystem> _logger;
     private readonly IStringLocalizer _localizer;
 
-    public Dictionary<CsTeam, CCSPlayerController?> _captains = new Dictionary<
-        CsTeam,
-        CCSPlayerController?
-    >
+    public Dictionary<CsTeam, string?> _captains = new Dictionary<CsTeam, string?>
     {
         { CsTeam.Terrorist, null },
         { CsTeam.CounterTerrorist, null },
@@ -52,6 +49,15 @@ public class CaptainSystem
         }
     }
 
+    public Dictionary<CsTeam, CCSPlayerController?> GetCaptains()
+    {
+        return new Dictionary<CsTeam, CCSPlayerController?>
+        {
+            { CsTeam.Terrorist, GetTeamCaptain(CsTeam.Terrorist) },
+            { CsTeam.CounterTerrorist, GetTeamCaptain(CsTeam.CounterTerrorist) },
+        };
+    }
+
     public void RemoveCaptain(CCSPlayerController player)
     {
         CsTeam team = player.Team;
@@ -64,7 +70,7 @@ public class CaptainSystem
             || team == CsTeam.None
             || team == CsTeam.Spectator
             || _captains[team] == null
-            || _captains[team] != player
+            || _captains[team] != player.SteamID.ToString()
         )
         {
             return;
@@ -92,7 +98,9 @@ public class CaptainSystem
             return null;
         }
 
-        return _captains[team];
+        List<CCSPlayerController> players = MatchUtility.Players();
+
+        return players.Find(player => player.SteamID.ToString() == _captains[team]);
     }
 
     public void ShowCaptains()
@@ -104,11 +112,12 @@ public class CaptainSystem
             return;
         }
 
-        foreach (var pair in _captains)
-        {
-            CsTeam? team = pair.Key;
+        var captains = GetCaptains();
 
-            if (pair.Value == null)
+        foreach (CsTeam team in captains.Keys)
+        {
+            CCSPlayerController? captain = captains[team];
+            if (captain == null)
             {
                 _gameServer.Message(
                     HudDestination.Notify,
@@ -128,7 +137,7 @@ public class CaptainSystem
                     "captain.show",
                     TeamUtility.TeamNumToString((int)team),
                     (team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue),
-                    pair.Value.PlayerName
+                    captain.PlayerName
                 ]
             );
         }
@@ -150,7 +159,7 @@ public class CaptainSystem
 
         if (_captains[team] == null)
         {
-            _captains[team] = player;
+            _captains[team] = player.SteamID.ToString();
 
             _gameServer.Message(
                 HudDestination.Alert,
@@ -203,12 +212,12 @@ public class CaptainSystem
 
             if (member?.captain == true && _captains[team] == null)
             {
-                _captains[team] = player;
-                ShowCaptains();
+                ClaimCaptain(player, team);
+                return true;
             }
         }
 
-        return _captains[team]?.SteamID.ToString() == player?.SteamID.ToString();
+        return _captains[team] == player?.SteamID.ToString();
     }
 
     private void AutoSelectCaptain(CsTeam team)

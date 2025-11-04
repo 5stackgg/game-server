@@ -16,6 +16,7 @@ public partial class FiveStackPlugin : BasePlugin
     private readonly ReadySystem _readySystem;
     private readonly TimeoutSystem _timeoutSystem;
     private readonly MatchService _matchService;
+    private readonly CaptainSystem _captainSystem;
     private readonly SurrenderSystem _surrenderSystem;
     private readonly IStringLocalizer _localizer;
     private readonly ILogger<FiveStackPlugin> _logger;
@@ -34,6 +35,7 @@ public partial class FiveStackPlugin : BasePlugin
         GameServer gameServer,
         MatchEvents matchEvents,
         MatchService matchService,
+        CaptainSystem captainSystem,
         ReadySystem readySystem,
         TimeoutSystem timeoutSystem,
         ILogger<FiveStackPlugin> logger,
@@ -51,6 +53,7 @@ public partial class FiveStackPlugin : BasePlugin
         _matchEvents = matchEvents;
         _readySystem = readySystem;
         _matchService = matchService;
+        _captainSystem = captainSystem;
         _timeoutSystem = timeoutSystem;
         _surrenderSystem = surrenderSystem;
         _gameBackupRounds = backUpManagement;
