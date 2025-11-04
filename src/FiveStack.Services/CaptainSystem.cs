@@ -213,7 +213,7 @@ public class CaptainSystem
             return false;
         }
 
-        return captain.SteamID.ToString() == player.SteamID.ToString();
+        return captain?.SteamID.ToString() == player?.SteamID.ToString();
     }
 
     private void AutoSelectCaptain(CsTeam team)

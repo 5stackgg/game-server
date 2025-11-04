@@ -36,8 +36,8 @@ public class CoachSystem
         if (matchData != null && matchData.options.coaches)
         {
             if (
-                player.SteamID.ToString() == matchData.lineup_1.coach_steam_id
-                || player.SteamID.ToString() == matchData.lineup_2.coach_steam_id
+                player?.SteamID.ToString() == matchData.lineup_1.coach_steam_id
+                || player?.SteamID.ToString() == matchData.lineup_2.coach_steam_id
             )
             {
                 return true;

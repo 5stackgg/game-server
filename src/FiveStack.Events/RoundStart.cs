@@ -8,8 +8,9 @@ namespace FiveStack;
 public partial class FiveStackPlugin
 {
     [GameEventHandler]
-    public HookResult OnRoundStart(EventRoundPrestart @event, GameEventInfo info)
+    public HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
     {
+        _logger.LogInformation($"RoundStart: {_gameServer.GetCurrentRound()}");
         MatchManager? matchManager = _matchService.GetCurrentMatch();
         if (matchManager == null)
         {
@@ -20,6 +21,8 @@ public partial class FiveStackPlugin
         {
             return HookResult.Continue;
         }
+
+        PublishRoundInformation(true);
 
         int currentPlayers = MatchUtility.Players().Count;
 
