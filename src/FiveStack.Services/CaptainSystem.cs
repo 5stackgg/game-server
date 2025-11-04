@@ -34,7 +34,6 @@ public class CaptainSystem
         _gameServer = gameServer;
         _matchService = matchService;
         _localizer = localizer;
-        _logger.LogInformation("CaptainSystem initialized");
     }
 
     public void AutoSelectCaptains()
