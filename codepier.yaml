@@ -1,5 +1,5 @@
 namespaces: [5stack]
-image: mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim
+image: registry.gitlab.steamos.cloud/steamrt/sniper/platform:latest-container-runtime-depot
 container: dev
 deployment: dev-cs-server
 supplemental: true
