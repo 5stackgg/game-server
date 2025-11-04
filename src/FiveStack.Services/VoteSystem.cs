@@ -14,6 +14,7 @@ public class VoteSystem
     private readonly ILogger<VoteSystem> _logger;
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
+    private readonly CaptainSystem _captainSystem;
     private readonly IStringLocalizer _localizer;
 
     private CsTeam[]? _allowedTeamsToVote;
@@ -30,12 +31,14 @@ public class VoteSystem
         ILogger<VoteSystem> logger,
         MatchService matchService,
         GameServer gameServer,
+        CaptainSystem captainSystem,
         IStringLocalizer localizer
     )
     {
         _logger = logger;
         _matchService = matchService;
         _gameServer = gameServer;
+        _captainSystem = captainSystem;
         _localizer = localizer;
     }
 
@@ -170,11 +173,10 @@ public class VoteSystem
     private void SendVoteMessage()
     {
         bool isCaptainVoteOnly = IsCaptainVoteOnly();
-        var captains = GetCaptains();
 
         foreach (var player in MatchUtility.Players())
         {
-            if (isCaptainVoteOnly && captains[player.Team] != player)
+            if (isCaptainVoteOnly && _captainSystem.IsCaptain(player, player.Team) == false)
             {
                 continue;
             }
@@ -209,10 +211,11 @@ public class VoteSystem
 
     private bool IsCaptainVoteOnly()
     {
+        var captains = GetCaptains();
         if (
             _captainOnly
-            && GetCaptains()[CsTeam.CounterTerrorist] != null
-            && GetCaptains()[CsTeam.Terrorist] != null
+            && captains[CsTeam.CounterTerrorist] != null
+            && captains[CsTeam.Terrorist] != null
         )
         {
             return true;
@@ -223,32 +226,7 @@ public class VoteSystem
 
     private Dictionary<CsTeam, CCSPlayerController?> GetCaptains()
     {
-        var captains = new Dictionary<CsTeam, CCSPlayerController?>
-        {
-            { CsTeam.CounterTerrorist, null },
-            { CsTeam.Terrorist, null },
-        };
-
-        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
-
-        if (matchData == null)
-        {
-            return captains;
-        }
-
-        foreach (var player in MatchUtility.Players())
-        {
-            if (
-                MatchUtility
-                    .GetMemberFromLineup(matchData, player.SteamID.ToString(), player.PlayerName)
-                    ?.captain ?? false
-            )
-            {
-                captains[player.Team] = player;
-            }
-        }
-
-        return captains;
+        return _captainSystem.GetCaptains();
     }
 
     private void CheckVotes(bool fail = false)
