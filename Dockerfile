@@ -5,12 +5,11 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     wget \
     ca-certificates \
+    && wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh \
+    && chmod +x dotnet-install.sh \
+    && ./dotnet-install.sh --channel 8.0 --install-dir /usr/share/dotnet \
+    && rm -f dotnet-install.sh \
     && rm -rf /var/lib/apt/lists/*
-
-RUN wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh && \
-    chmod +x dotnet-install.sh && \
-    ./dotnet-install.sh --channel 8.0 --install-dir /usr/share/dotnet && \
-    rm dotnet-install.sh
 
 ENV PATH="/usr/share/dotnet:${PATH}"
 ENV DOTNET_ROOT="/usr/share/dotnet"
@@ -41,9 +40,10 @@ WORKDIR /zip-content
 
 COPY --from=build /mod/release ./addons/counterstrikesharp/plugins/FiveStack/./
 
-RUN apt-get update && apt-get install -y zip
-
-RUN zip -r /mod-release.zip .
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends zip && \
+    zip -r /mod-release.zip . && \
+    rm -rf /var/lib/apt/lists/*
 
 FROM registry.gitlab.steamos.cloud/steamrt/sniper/platform:latest-container-runtime-depot
 
@@ -78,10 +78,11 @@ ENV SERVER_TYPE="Ranked"
 ENV METAMOD_URL=https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1373-linux.tar.gz
 ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.345/counterstrikesharp-with-runtime-linux-1.0.345.zip
 
-RUN apt-get update && apt-get -y upgrade && \
-	apt-get -y install --no-install-recommends wget locales procps jq ca-certificates curl unzip lib32gcc-s1 lib32stdc++6 lib32z1 lsof libicu-dev && \
-	touch /etc/locale.gen && \
-	echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
+RUN apt-get update && \
+	apt-get install -y --no-install-recommends \
+	wget locales procps jq ca-certificates curl unzip \
+	lib32gcc-s1 lib32stdc++6 lib32z1 lsof libicu-dev && \
+	echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
 	locale-gen && \
 	rm -rf /var/lib/apt/lists/*
 
@@ -89,32 +90,26 @@ ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
 
-RUN mkdir $DATA_DIR && \
-	mkdir $STEAMCMD_DIR && \
-	mkdir $BASE_SERVER_DIR && \
-    mkdir -p $INSTANCE_SERVER_DIR && \
+RUN mkdir -p $DATA_DIR $STEAMCMD_DIR $BASE_SERVER_DIR $INSTANCE_SERVER_DIR && \
 	useradd -d $DATA_DIR -s /bin/bash $USER && \
 	ulimit -n 2048
 
-RUN mkdir /opt/metamod
-ADD $METAMOD_URL /tmp/metamod.tar.gz
-RUN tar -xz -C /opt/metamod -f /tmp/metamod.tar.gz && rm /tmp/metamod.tar.gz
-
-RUN mkdir /opt/counterstrikesharp
-ADD $COUNTER_STRIKE_SHARP_URL /tmp/counterstrikesharp.zip
-RUN unzip /tmp/counterstrikesharp.zip -d /opt/counterstrikesharp && rm /tmp/counterstrikesharp.zip
+RUN mkdir -p /opt/metamod /opt/counterstrikesharp && \
+	wget -q $METAMOD_URL -O /tmp/metamod.tar.gz && \
+	tar -xz -C /opt/metamod -f /tmp/metamod.tar.gz && \
+	rm /tmp/metamod.tar.gz && \
+	wget -q $COUNTER_STRIKE_SHARP_URL -O /tmp/counterstrikesharp.zip && \
+	unzip -q /tmp/counterstrikesharp.zip -d /opt/counterstrikesharp && \
+	rm /tmp/counterstrikesharp.zip
 
 COPY /cfg /opt/server-cfg
 COPY /scripts /opt/scripts
 COPY --from=build /mod/release /opt/mod
 
-RUN mv /opt/metamod/addons /opt/addons
-
-RUN cp -R /opt/counterstrikesharp/addons/metamod /opt/addons
-RUN cp -R /opt/counterstrikesharp/addons/counterstrikesharp /opt/addons
-RUN mkdir -p /opt/addons/counterstrikesharp/plugins
-
-RUN rm -rf /opt/metamod
-RUN rm -rf /opt/counterstrikesharp
+RUN mv /opt/metamod/addons /opt/addons && \
+	cp -R /opt/counterstrikesharp/addons/metamod /opt/addons && \
+	cp -R /opt/counterstrikesharp/addons/counterstrikesharp /opt/addons && \
+	mkdir -p /opt/addons/counterstrikesharp/plugins && \
+	rm -rf /opt/metamod /opt/counterstrikesharp
 
 ENTRYPOINT ["/bin/bash", "-c", "/opt/scripts/setup.sh && /opt/scripts/server.sh"]
