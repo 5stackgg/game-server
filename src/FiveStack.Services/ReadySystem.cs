@@ -357,11 +357,6 @@ public class ReadySystem
         return true;
     }
 
-    private bool IsAdminOnly()
-    {
-        return GetReadySetting() == eReadySettings.Admin;
-    }
-
     private eReadySettings GetReadySetting()
     {
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
@@ -394,7 +389,14 @@ public class ReadySystem
 
         foreach (var player in MatchUtility.Players())
         {
-            SetupReadyMessage(player);
+            try
+            {
+                SetupReadyMessage(player);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error sending ready status message to player: {ex.Message}");
+            }
         }
     }
 }

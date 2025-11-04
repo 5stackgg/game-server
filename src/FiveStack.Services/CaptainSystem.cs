@@ -59,11 +59,12 @@ public class CaptainSystem
         MatchManager? match = _matchService.GetCurrentMatch();
 
         if (
-            team == CsTeam.None
-            || team == CsTeam.Spectator
-            || _captains[team] != player
-            || match == null
+            match == null
             || !match.IsWarmup()
+            || team == CsTeam.None
+            || team == CsTeam.Spectator
+            || _captains[team] == null
+            || _captains[team] != player
         )
         {
             return;
@@ -207,13 +208,7 @@ public class CaptainSystem
             }
         }
 
-        var captain = _captains[team];
-        if (captain == null)
-        {
-            return false;
-        }
-
-        return captain?.SteamID.ToString() == player?.SteamID.ToString();
+        return _captains[team]?.SteamID.ToString() == player?.SteamID.ToString();
     }
 
     private void AutoSelectCaptain(CsTeam team)

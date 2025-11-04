@@ -624,9 +624,6 @@ public class MatchManager
     public void EnforceMemberTeam(CCSPlayerController player, CsTeam? currentTeam = null)
     {
         CsTeam expectedTeam = GetExpectedTeam(player);
-        _logger.LogInformation(
-            $"Enforcing Member Team {player.PlayerName} {currentTeam} -> {expectedTeam}"
-        );
 
         if (expectedTeam == CsTeam.None)
         {

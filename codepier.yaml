@@ -3,7 +3,7 @@ image: mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim
 container: dev
 deployment: dev-cs-server
 supplemental: true
-workdir: /opt/5stack/scripts
+workdir: /opt/5stack
 sync:
   - .:/opt/5stack
 ignore:

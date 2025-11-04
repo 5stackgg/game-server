@@ -85,7 +85,7 @@ public class MatchService
         {
             string matchUri = $"{_environmentService.GetApiUrl()}/matches/current-match/{serverId}";
 
-            _logger.LogInformation($"Fetching Match Info {matchUri}");
+            _logger.LogInformation($"Fetching Match Info for server : {serverId}");
 
             httpClient.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiPassword);

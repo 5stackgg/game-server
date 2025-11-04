@@ -1,7 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using FiveStack.Utilities;
-using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -10,7 +9,6 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
     {
-        _logger.LogInformation($"RoundStart: {_gameServer.GetCurrentRound()}");
         MatchManager? matchManager = _matchService.GetCurrentMatch();
         if (matchManager == null)
         {
