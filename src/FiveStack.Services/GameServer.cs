@@ -97,7 +97,7 @@ public class GameServer
             string? workshopID = _matchService.GetWorkshopID();
 
             string endpoint =
-                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={workshopID ?? Server.MapName}&pluginVersion={pluginVersion}";
+                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={(string.IsNullOrEmpty(workshopID) ? Server.MapName : workshopID)}&pluginVersion={pluginVersion}";
 
             if (_steamRelay)
             {
