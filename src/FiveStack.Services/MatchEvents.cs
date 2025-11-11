@@ -76,7 +76,7 @@ public class MatchEvents
 
         await Publish(
             matchId,
-            new MatchEvents.EventData<Dictionary<string, object>>
+            new EventData<Dictionary<string, object>>
             {
                 data = new Dictionary<string, object> { { "event", Event }, { "data", Data } },
             }

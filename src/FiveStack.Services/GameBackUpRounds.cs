@@ -98,7 +98,7 @@ public class GameBackUpRounds
             }
         );
 
-        int currentRound = _gameServer.GetCurrentRound();
+        int currentRound = _gameServer.GetTotalRoundsPlayed();
 
         _logger.LogInformation(
             $"Highest Backup Round: {highestNumber}, and current round is {currentRound}"

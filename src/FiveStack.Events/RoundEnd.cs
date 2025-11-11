@@ -86,11 +86,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        int currentRound = _gameServer.GetCurrentRound();
-        if (currentRound == 0)
-        {
-            return;
-        }
+        int currentRound = _gameServer.GetTotalRoundsPlayed();
 
         CsTeam lineup1Side = CsTeam.None;
         CsTeam lineup2Side = CsTeam.None;

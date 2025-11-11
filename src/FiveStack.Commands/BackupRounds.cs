@@ -25,7 +25,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        _gameBackupRounds.SendRestoreRoundToBackend(round);
+        _gameBackupRounds.SendRestoreRoundToBackend(round - 1);
     }
 
     [ConsoleCommand(
@@ -77,6 +77,6 @@ public partial class FiveStackPlugin
             return;
         }
 
-        _gameBackupRounds.RequestRestoreBackupRound(round, player);
+        _gameBackupRounds.RequestRestoreBackupRound(round - 1, player);
     }
 }

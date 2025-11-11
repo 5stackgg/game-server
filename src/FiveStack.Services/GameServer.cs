@@ -73,6 +73,11 @@ public class GameServer
 
     public int GetCurrentRound()
     {
+        return GetTotalRoundsPlayed() + 1;
+    }
+
+    public int GetTotalRoundsPlayed()
+    {
         return MatchUtility.Rules()?.TotalRoundsPlayed ?? 0;
     }
 
