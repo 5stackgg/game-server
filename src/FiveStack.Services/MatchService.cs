@@ -1,7 +1,7 @@
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using CounterStrikeSharp.API;
 using FiveStack.Entities;
-using FiveStack.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -13,16 +13,19 @@ public class MatchService
     private readonly ILogger<MatchService> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly EnvironmentService _environmentService;
+    private readonly INetworkServerService _networkServerService;
 
     public MatchService(
         ILogger<MatchService> logger,
         IServiceProvider serviceProvider,
-        EnvironmentService environmentService
+        EnvironmentService environmentService,
+        INetworkServerService networkServerService
     )
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
         _environmentService = environmentService;
+        _networkServerService = networkServerService;
     }
 
     public async Task GetMatchConfigs()
@@ -55,6 +58,16 @@ public class MatchService
                 }
             }
         }
+    }
+
+    public unsafe string GetWorkshopID()
+    {
+        IntPtr networkGameServer = _networkServerService.GetIGameServerHandle();
+        IntPtr vtablePtr = Marshal.ReadIntPtr(networkGameServer);
+        IntPtr functionPtr = Marshal.ReadIntPtr(vtablePtr + (25 * IntPtr.Size));
+        var getAddonName = Marshal.GetDelegateForFunctionPointer<GetAddonNameDelegate>(functionPtr);
+        IntPtr result = getAddonName(networkGameServer);
+        return Marshal.PtrToStringAnsi(result)!.Split(',')[0];
     }
 
     public async void GetMatchFromApi()

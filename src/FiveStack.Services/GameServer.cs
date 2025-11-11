@@ -12,6 +12,7 @@ namespace FiveStack;
 public class GameServer
 {
     private readonly SteamAPI _steamAPI;
+    private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
     private readonly ILogger<GameServer> _logger;
     private readonly bool _steamRelay;
@@ -19,11 +20,13 @@ public class GameServer
     public GameServer(
         ILogger<GameServer> logger,
         SteamAPI steamAPI,
-        EnvironmentService environmentService
+        EnvironmentService environmentService,
+        MatchService matchService
     )
     {
         _logger = logger;
         _steamAPI = steamAPI;
+        _matchService = matchService;
         _environmentService = environmentService;
         _steamRelay = ConVar.Find("net_p2p_listen_dedicated")?.GetPrimitiveValue<bool>() ?? false;
     }
@@ -91,8 +94,10 @@ public class GameServer
                 return;
             }
 
+            string? workshopID = _matchService.GetWorkshopID();
+
             string endpoint =
-                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={Server.MapName}&pluginVersion={pluginVersion}";
+                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={workshopID ?? Server.MapName}&pluginVersion={pluginVersion}";
 
             if (_steamRelay)
             {

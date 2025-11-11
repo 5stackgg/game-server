@@ -38,7 +38,6 @@ public class MatchManager
     // public CoachSystem _coachSystem;
     public KnifeSystem knifeSystem;
     public CaptainSystem captainSystem;
-    public INetworkServerService _networkServerService;
     public MatchService _matchService;
 
     private int _remainingMapChangeDelay = 0;
@@ -54,7 +53,6 @@ public class MatchManager
         ReadySystem ReadySystem,
         CaptainSystem CaptainSystem,
         EnvironmentService environmentService,
-        INetworkServerService networkServerService,
         TimeoutSystem timeoutSystem,
         SurrenderSystem surrenderSystem,
         MatchService matchService,
@@ -70,7 +68,6 @@ public class MatchManager
         captainSystem = CaptainSystem;
         _backUpManagement = backUpManagement;
         _environmentService = environmentService;
-        _networkServerService = networkServerService;
         _timeoutSystem = timeoutSystem;
         _surrenderSystem = surrenderSystem;
         _matchService = matchService;
@@ -361,7 +358,7 @@ public class MatchManager
 
         if (_currentMap.map.workshop_map_id is not null)
         {
-            string currentWorkshopID = GetWorkshopID();
+            string currentWorkshopID = _matchService.GetWorkshopID();
             _logger.LogInformation(
                 $"Checking Workshop Map {_currentMap.map.workshop_map_id} / {currentWorkshopID}"
             );
@@ -391,16 +388,6 @@ public class MatchManager
             SetupTeams();
             _gameServer.Message(HudDestination.Alert, _localizer["match.received_data"]);
         }
-    }
-
-    private unsafe string GetWorkshopID()
-    {
-        IntPtr networkGameServer = _networkServerService.GetIGameServerHandle();
-        IntPtr vtablePtr = Marshal.ReadIntPtr(networkGameServer);
-        IntPtr functionPtr = Marshal.ReadIntPtr(vtablePtr + (25 * IntPtr.Size));
-        var getAddonName = Marshal.GetDelegateForFunctionPointer<GetAddonNameDelegate>(functionPtr);
-        IntPtr result = getAddonName(networkGameServer);
-        return Marshal.PtrToStringAnsi(result)!.Split(',')[0];
     }
 
     public void SetupTeams()
@@ -728,7 +715,7 @@ public class MatchManager
 
     private void KickBots()
     {
-        if (this._matchData == null)
+        if (_matchData == null)
         {
             return;
         }

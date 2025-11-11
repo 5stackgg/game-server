@@ -151,7 +151,7 @@ public class SurrenderSystem
 
     public void Surrender(CsTeam team)
     {
-        MatchManager? match = this._matchService.GetCurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null)
         {
             return;
