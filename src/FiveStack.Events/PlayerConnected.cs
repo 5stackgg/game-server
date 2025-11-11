@@ -120,7 +120,6 @@ public partial class FiveStackPlugin
                 HudDestination.Chat,
                 Localizer[
                     "player.join.ready_hint",
-                    ChatColors.Default,
                     ChatColors.Green,
                     CommandUtility.PublicChatTrigger,
                     ChatColors.Default
