@@ -484,9 +484,13 @@ public class MatchManager
         }
 
         int? gameMode = ConVar.Find("game_mode")?.GetPrimitiveValue<int>();
+        int? gameType = ConVar.Find("game_type")?.GetPrimitiveValue<int>();
+        _logger.LogInformation($"Current Game Mode {gameMode}");
+        _logger.LogInformation($"Current Game Type {gameType}");
 
         if (_matchData.options.type == "Wingman" || _matchData.options.type == "Duel")
         {
+            _logger.LogInformation($"Setting Game Mode to {_matchData.options.type}");
             _gameServer.SendCommands(new[] { "game_type 0", "game_mode 2" });
 
             if (gameMode != 2)
