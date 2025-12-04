@@ -507,7 +507,7 @@ public class MatchManager
                 _gameServer.SendCommands(new[] { "mp_restartgame 1" });
             }
         }
-        KickBots();
+        // KickBots();
     }
 
     public int GetExpectedPlayerCount()
