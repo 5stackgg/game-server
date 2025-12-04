@@ -66,6 +66,7 @@ if [ "$SERVER_TYPE" = "Ranked" ]; then
   cp "/opt/server-cfg/5stack.duel.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
   cp "/opt/server-cfg/5stack.wingman.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
   cp "/opt/server-cfg/5stack.competitive.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
+  cp "/opt/server-cfg/valve-rulebook.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
 fi
 
 if [ "$SERVER_TYPE" != "Ranked" ]; then
