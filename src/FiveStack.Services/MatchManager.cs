@@ -490,19 +490,20 @@ public class MatchManager
 
         if (_matchData.options.type == "Wingman" || _matchData.options.type == "Duel")
         {
-            _logger.LogInformation($"Setting Game Mode to {_matchData.options.type}");
-            _gameServer.SendCommands(new[] { "game_type 0", "game_mode 2" });
-
             if (gameMode != 2)
             {
+                _logger.LogInformation($"Setting Game Mode to {_matchData.options.type}");
+                _gameServer.SendCommands(new[] { "game_type 0", "game_mode 2" });
+
                 _gameServer.SendCommands(new[] { "mp_restartgame 1" });
             }
         }
         else
         {
-            _gameServer.SendCommands(new[] { "game_type 0", "game_mode 1" });
             if (gameMode != 1)
             {
+                _logger.LogInformation($"Setting Game Mode to {_matchData.options.type}");
+                _gameServer.SendCommands(new[] { "game_type 0", "game_mode 1" });
                 _gameServer.SendCommands(new[] { "mp_restartgame 1" });
             }
         }
