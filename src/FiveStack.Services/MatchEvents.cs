@@ -44,6 +44,7 @@ public class MatchEvents
     {
         public string @event { get; set; } = "";
         public Guid matchId { get; set; } = Guid.Empty;
+        public Guid mapId { get; set; } = Guid.Empty;
         public Guid messageId { get; set; } = Guid.Empty;
         public T? data { get; set; }
     }
@@ -74,8 +75,15 @@ public class MatchEvents
             return;
         }
 
+        Guid mapId = _matchService.GetCurrentMatch()?.GetCurrentMap()?.id ?? Guid.Empty;
+        if (mapId == Guid.Empty)
+        {
+            return;
+        }
+
         await Publish(
             matchId,
+            mapId,
             new EventData<Dictionary<string, object>>
             {
                 data = new Dictionary<string, object> { { "event", Event }, { "data", Data } },
@@ -292,7 +300,7 @@ public class MatchEvents
         }
     }
 
-    private async Task Publish<T>(Guid matchId, EventData<T> data)
+    private async Task Publish<T>(Guid matchId, Guid mapId, EventData<T> data)
     {
         if (_webSocket == null || _webSocket.State == WebSocketState.Closed)
         {
@@ -300,6 +308,7 @@ public class MatchEvents
             return;
         }
 
+        data.mapId = mapId;
         data.matchId = matchId;
         data.messageId = Guid.NewGuid();
 
