@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Timers;
@@ -86,13 +87,20 @@ public class KnifeSystem
             return;
         }
 
-        CCSPlayerController? captain = _matchService
-            ?.GetCurrentMatch()
-            ?.captainSystem?.GetTeamCaptain(_winningTeam.Value);
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (match == null)
+        {
+            _logger.LogCritical("missing match");
+            return;
+        }
+
+        CCSPlayerController? captain = match?.captainSystem?.GetTeamCaptain(_winningTeam.Value);
 
         if (captain == null)
         {
-            _logger.LogCritical("missing team captain");
+            _logger.LogCritical("missing team captain, auto selecting captains");
+            match?.captainSystem?.AutoSelectCaptains();
             return;
         }
 
