@@ -18,7 +18,7 @@ public partial class FiveStackPlugin
             || @event.Userid.IsBot
             || match == null
             || matchData?.current_match_map_id == null
-            || match.IsLive() == false
+            || !match.IsInProgress()
         )
         {
             return HookResult.Continue;
@@ -54,7 +54,7 @@ public partial class FiveStackPlugin
             || @event.Userid.IsBot
             || match == null
             || matchData?.current_match_map_id == null
-            || match.IsLive() == false
+            || !match.IsInProgress()
         )
         {
             return HookResult.Continue;
@@ -90,7 +90,7 @@ public partial class FiveStackPlugin
             || @event.Userid.IsBot
             || match == null
             || matchData?.current_match_map_id == null
-            || match.IsLive() == false
+            || !match.IsInProgress()
         )
         {
             return HookResult.Continue;
@@ -126,7 +126,7 @@ public partial class FiveStackPlugin
             || @event.Userid.IsBot
             || match == null
             || matchData?.current_match_map_id == null
-            || match.IsLive() == false
+            || !match.IsInProgress()
         )
         {
             return HookResult.Continue;
@@ -162,7 +162,7 @@ public partial class FiveStackPlugin
             || @event.Userid.IsBot
             || match == null
             || matchData?.current_match_map_id == null
-            || match.IsLive() == false
+            || !match.IsInProgress()
         )
         {
             return HookResult.Continue;
@@ -198,7 +198,7 @@ public partial class FiveStackPlugin
             || @event.Userid.IsBot
             || match == null
             || matchData?.current_match_map_id == null
-            || match.IsLive() == false
+            || !match.IsInProgress()
         )
         {
             return HookResult.Continue;

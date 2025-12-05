@@ -15,7 +15,7 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        if (!matchManager.IsLive())
+        if (!matchManager.IsInProgress())
         {
             return HookResult.Continue;
         }

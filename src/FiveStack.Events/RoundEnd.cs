@@ -24,11 +24,6 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        if (!match.IsLive())
-        {
-            return HookResult.Continue;
-        }
-
         if (match.isOverTime())
         {
             match.UpdateMapStatus(eMapStatus.Overtime);
@@ -68,8 +63,6 @@ public partial class FiveStackPlugin
         if (match.IsKnife())
         {
             match.knifeSystem.SetWinningTeam(TeamUtility.TeamNumToCSTeam(@event.Winner));
-
-            return HookResult.Continue;
         }
 
         return HookResult.Continue;
