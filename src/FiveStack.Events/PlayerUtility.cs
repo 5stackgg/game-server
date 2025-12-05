@@ -204,10 +204,10 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        CCSPlayerController thrower = @event.Userid;
-        CCSPlayerController? attacked = @event.Attacker;
+        CCSPlayerController blindedPlayer = @event.Userid;
+        CCSPlayerController? attacker = @event.Attacker;
 
-        if (attacked == null)
+        if (attacker == null)
         {
             return HookResult.Continue;
         }
@@ -219,10 +219,10 @@ public partial class FiveStackPlugin
                 { "time", DateTime.Now },
                 { "match_map_id", matchData.current_match_map_id },
                 { "round", _gameServer.GetCurrentRound() },
-                { "attacker_steam_id", thrower.SteamID.ToString() },
-                { "attacked_steam_id", attacked.SteamID.ToString() },
+                { "attacker_steam_id", attacker.SteamID.ToString() },
+                { "attacked_steam_id", blindedPlayer.SteamID.ToString() },
                 { "duration", @event.BlindDuration },
-                { "team_flash", thrower.TeamNum == attacked.TeamNum },
+                { "team_flash", attacker.TeamNum == blindedPlayer.TeamNum },
             }
         );
 
