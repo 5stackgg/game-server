@@ -36,7 +36,7 @@ public partial class FiveStackPlugin
             match.captainSystem.RemoveCaptain(@event.Userid);
         }
 
-        if (match.IsLive())
+        if (match.IsInProgress())
         {
             _surrenderSystem.SetupDisconnectTimer(@event.Userid.Team, @event.Userid.SteamID);
         }

@@ -38,22 +38,25 @@ public class SurrenderSystem
 
     public void SetupDisconnectTimer(CsTeam team, ulong steamId)
     {
-        if (_matchService.GetCurrentMatch()?.IsLive() == true)
+        MatchManager? match = _matchService.GetCurrentMatch();
+        if (match == null || !match.IsInProgress())
         {
-            if (!_disconnectTimers.ContainsKey(team))
-            {
-                _disconnectTimers[team] = new Dictionary<ulong, Timer>();
-            }
-
-            _disconnectTimers[team][steamId] = TimerUtility.AddTimer(
-                60 * 3,
-                () =>
-                {
-                    SetupSurrender(team);
-                    PlayerAbandonedMatch(steamId);
-                }
-            );
+            return;
         }
+
+        if (!_disconnectTimers.ContainsKey(team))
+        {
+            _disconnectTimers[team] = new Dictionary<ulong, Timer>();
+        }
+
+        _disconnectTimers[team][steamId] = TimerUtility.AddTimer(
+            60 * 3,
+            () =>
+            {
+                SetupSurrender(team);
+                PlayerAbandonedMatch(steamId);
+            }
+        );
     }
 
     // we dont pass the team in because they may not be on the team immediately after reconnecting

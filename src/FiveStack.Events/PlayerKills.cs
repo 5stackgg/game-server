@@ -13,7 +13,13 @@ public partial class FiveStackPlugin
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchData? matchData = match?.GetMatchData();
 
-        if (@event.Userid == null || match == null || !@event.Userid.IsValid || @event.Userid.IsBot)
+        if (
+            @event.Userid == null
+            || match == null
+            || matchData?.current_match_map_id == null
+            || !@event.Userid.IsValid
+            || @event.Userid.IsBot
+        )
         {
             return HookResult.Continue;
         }
@@ -31,7 +37,7 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        if (matchData?.current_match_map_id == null || match.IsLive() == false)
+        if (!match.IsInProgress())
         {
             return HookResult.Continue;
         }

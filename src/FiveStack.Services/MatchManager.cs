@@ -114,9 +114,16 @@ public class MatchManager
         return MatchUtility.Rules()?.WarmupPeriod ?? false;
     }
 
-    public bool IsLive()
+    public bool IsInProgress()
     {
-        return _currentMapStatus == eMapStatus.Live || _currentMapStatus == eMapStatus.Overtime;
+        if (IsWarmup() == true || IsKnife() == true)
+        {
+            return false;
+        }
+
+        return _currentMapStatus == eMapStatus.Live
+            || _currentMapStatus == eMapStatus.Overtime
+            || _currentMapStatus == eMapStatus.Paused;
     }
 
     public bool IsPaused()
