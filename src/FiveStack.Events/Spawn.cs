@@ -22,7 +22,7 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        if (match.GetMatchData()?.options.default_models == false)
+        if ((match.GetMatchData()?.options.default_models ?? false) == false)
         {
             return HookResult.Continue;
         }
