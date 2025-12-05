@@ -604,19 +604,20 @@ public class MatchManager
         commands.Add($"mp_maxrounds {_matchData.options.mr * 2}");
         commands.Add($"mp_overtime_enable {_matchData.options.overtime}");
 
-        _gameServer.SendCommands(commands.ToArray());
-
-        _backUpManagement.CheckForBackupRestore();
+        _gameServer.SendCommandsViaTempFile(commands.ToArray());
 
         Server.NextFrame(() =>
         {
             _matchDemos.Start();
             _backUpManagement.Setup();
 
-            if (IsWarmup() || IsKnife())
+            Server.NextFrame(() =>
             {
-                _gameServer.SendCommands(new[] { "mp_restartgame 1;mp_warmup_end;" });
-            }
+                if (IsWarmup() || IsKnife())
+                {
+                    _gameServer.SendCommands(new[] { "mp_restartgame 1;mp_warmup_end;" });
+                }
+            });
         });
     }
 
