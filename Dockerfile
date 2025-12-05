@@ -75,7 +75,6 @@ ENV STEAM_RELAY="false"
 
 ENV SERVER_TYPE="Ranked"
 
-ENV METAMOD_URL=https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1374-linux.tar.gz
 ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.347/counterstrikesharp-with-runtime-linux-1.0.347.zip
 
 RUN apt-get update && \
@@ -94,10 +93,7 @@ RUN mkdir -p $DATA_DIR $STEAMCMD_DIR $BASE_SERVER_DIR $INSTANCE_SERVER_DIR && \
 	useradd -d $DATA_DIR -s /bin/bash $USER && \
 	ulimit -n 2048
 
-RUN mkdir -p /opt/metamod /opt/counterstrikesharp && \
-	wget -q $METAMOD_URL -O /tmp/metamod.tar.gz && \
-	tar -xz -C /opt/metamod -f /tmp/metamod.tar.gz && \
-	rm /tmp/metamod.tar.gz && \
+RUN mkdir -p /opt/counterstrikesharp && \
 	wget -q $COUNTER_STRIKE_SHARP_URL -O /tmp/counterstrikesharp.zip && \
 	unzip -q /tmp/counterstrikesharp.zip -d /opt/counterstrikesharp && \
 	rm /tmp/counterstrikesharp.zip
@@ -106,10 +102,9 @@ COPY /cfg /opt/server-cfg
 COPY /scripts /opt/scripts
 COPY --from=build /mod/release /opt/mod
 
-RUN mv /opt/metamod/addons /opt/addons && \
-	cp -R /opt/counterstrikesharp/addons/metamod /opt/addons && \
+RUN mkdir -p /opt/addons && \
 	cp -R /opt/counterstrikesharp/addons/counterstrikesharp /opt/addons && \
 	mkdir -p /opt/addons/counterstrikesharp/plugins && \
-	rm -rf /opt/metamod /opt/counterstrikesharp
+	rm -rf /opt/counterstrikesharp
 
 ENTRYPOINT ["/bin/bash", "-c", "/opt/scripts/setup.sh && /opt/scripts/server.sh"]
