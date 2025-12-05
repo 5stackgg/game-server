@@ -341,11 +341,6 @@ public class MatchManager
         }
         _logger.LogInformation($"Setup Match {_matchData.id}");
 
-        if (_matchData.is_lan)
-        {
-            _gameServer.SendCommands(new[] { "exec 5stack.lan.cfg" });
-        }
-
         MatchMap? _currentMap = GetCurrentMap();
 
         if (_currentMap == null)
@@ -500,9 +495,9 @@ public class MatchManager
             if (gameMode != 2)
             {
                 _logger.LogInformation($"Setting Game Mode to {_matchData.options.type}");
-                _gameServer.SendCommands(new[] { "game_type 0", "game_mode 2" });
-
-                _gameServer.SendCommands(new[] { "mp_restartgame 1" });
+                _gameServer.SendCommands(
+                    new[] { "game_type 0", "game_mode 2", "mp_restartgame 1" }
+                );
             }
         }
         else
@@ -510,8 +505,9 @@ public class MatchManager
             if (gameMode != 1)
             {
                 _logger.LogInformation($"Setting Game Mode to {_matchData.options.type}");
-                _gameServer.SendCommands(new[] { "game_type 0", "game_mode 1" });
-                _gameServer.SendCommands(new[] { "mp_restartgame 1" });
+                _gameServer.SendCommands(
+                    new[] { "game_type 0", "game_mode 1", "mp_restartgame 1" }
+                );
             }
         }
         KickBots();
@@ -586,6 +582,11 @@ public class MatchManager
         ResumeMatch(null, true);
 
         List<string> commands = new List<string> { "exec 5stack.live.cfg" };
+
+        if (_matchData.is_lan)
+        {
+            commands.Add("exec 5stack.lan.cfg");
+        }
 
         if (_matchData.options.cfg_override != "")
         {
@@ -744,18 +745,18 @@ public class MatchManager
                 return;
             }
 
-            _gameServer.SendCommands(
-                new[]
-                {
-                    "bot_quota_mode normal",
-                    $"bot_quota {Math.Max(0, expectedPlayers - currentPlayers)}",
-                }
-            );
+            string[] commands =
+            {
+                "bot_quota_mode normal",
+                $"bot_quota {Math.Max(0, expectedPlayers - currentPlayers)}",
+            };
 
             if (currentPlayers < expectedPlayers)
             {
-                _gameServer.SendCommands(new[] { "bot_add expert" });
+                commands.Append("bot_add expert");
             }
+
+            _gameServer.SendCommands(commands);
 
             return;
         }

@@ -33,7 +33,6 @@ public class GameServer
 
     public void SendCommands(string[] commands)
     {
-        _logger.LogInformation($"Executing command: {string.Join(";", commands)}");
         Server.NextFrame(() => Server.ExecuteCommand(string.Join(";", commands)));
     }
 
