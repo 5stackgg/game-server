@@ -18,8 +18,21 @@ fi
 echo "---Update SteamCMD---"
 "${STEAMCMD_DIR}/steamcmd.sh" +login "${STEAM_USER}" "${STEAM_PASSWORD}" +quit
 
-# Remove old steamapps
-rm -rf "${BASE_SERVER_DIR}/steamapps"
+# Check build version and remove steamapps if different
+BUILD_TRACK_FILE="${BASE_SERVER_DIR}/.5stack.build"
+CURRENT_BUILD=""
+[ -f "${BUILD_TRACK_FILE}" ] && CURRENT_BUILD=$(cat "${BUILD_TRACK_FILE}" 2>/dev/null)
+
+if [ -n "${BUILD_MANIFESTS}" ] && ([ -z "${BUILD_ID}" ] || [ "${BUILD_ID}" != "${CURRENT_BUILD}" ]); then
+    rm -rf "${BASE_SERVER_DIR}/steamapps"
+fi
+
+if [ -n "${BUILD_MANIFESTS}" ]; then
+    echo "${BUILD_ID}" > "${BUILD_TRACK_FILE}"
+else
+    rm "${BUILD_TRACK_FILE}"
+fi
+
 
 # Update Server
 if [ -n "${BUILD_MANIFESTS}" ]; then
