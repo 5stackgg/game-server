@@ -34,10 +34,7 @@ ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/re
 RUN apt-get update && \
 	apt-get install -y --no-install-recommends \
 	wget locales procps jq ca-certificates curl unzip \
-	lib32gcc-s1 lib32stdc++6 lib32z1 lsof libicu-dev && \
-	echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
-	locale-gen && \
-	rm -rf /var/lib/apt/lists/*
+	&& rm -rf /var/lib/apt/lists/*
 
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
@@ -55,16 +52,15 @@ RUN mkdir -p /opt/metamod /opt/counterstrikesharp && \
 	unzip -q /tmp/counterstrikesharp.zip -d /opt/counterstrikesharp && \
 	rm /tmp/counterstrikesharp.zip
 
-COPY /cfg /opt/server-cfg
-COPY /scripts /opt/scripts
-COPY --from=build /mod/release /opt/mod
-
 RUN mv /opt/metamod/addons /opt/addons && \
 	cp -R /opt/counterstrikesharp/addons/metamod /opt/addons && \
 	cp -R /opt/counterstrikesharp/addons/counterstrikesharp /opt/addons && \
 	mkdir -p /opt/addons/counterstrikesharp/plugins && \
+	mkdir -p /opt/dev && \
 	rm -rf /opt/metamod /opt/counterstrikesharp
 
 WORKDIR /opt/5stack
+
+COPY . .
 
 ENTRYPOINT ["./scripts/dev.sh"]
