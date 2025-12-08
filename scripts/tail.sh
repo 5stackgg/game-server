@@ -1,1 +1,1 @@
-codepier tail --container dev-cs-server
+codepier tail --container dev-game-server
