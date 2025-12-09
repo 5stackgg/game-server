@@ -30,13 +30,12 @@ fi
 if [ -n "${BUILD_MANIFESTS}" ]; then
     echo "${BUILD_ID}" > "${BUILD_TRACK_FILE}"
 else
-    rm "${BUILD_TRACK_FILE}"
+    [ -f "${BUILD_TRACK_FILE}" ] && rm "${BUILD_TRACK_FILE}"
 fi
-
 
 # Update Server
 if [ -n "${BUILD_MANIFESTS}" ]; then
-    echo "---Update Linux Server To Specific Version---"
+    echo "---Pinning Linux Server To Version ${BUILD_ID}---"
     STEAMCMD_ARGS="+force_install_dir \"${BASE_SERVER_DIR}\" +login \"${STEAM_USER}\" \"${STEAM_PASSWORD}\""
 
     rm -rf "${BASE_SERVER_DIR}/serverfiles/*"
