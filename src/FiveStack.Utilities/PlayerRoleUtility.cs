@@ -13,9 +13,9 @@ namespace FiveStack.Utilities
                 case "match_organizer":
                 case "tournament_organizer":
                     return ePlayerRoles.MatchOrganizer;
-                case "stream":
+                case "streamer":
                     return ePlayerRoles.Streamer;
-                case "verified":
+                case "verified_user":
                     return ePlayerRoles.VerifiedUser;
                 default:
                     return ePlayerRoles.User;

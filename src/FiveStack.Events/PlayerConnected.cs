@@ -5,6 +5,7 @@ using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -61,7 +62,7 @@ public partial class FiveStackPlugin
                 PendingPlayers.Remove(player.SteamID);
             }
 
-            if (role == null || (role != "admin" && role != "organizer"))
+            if (role == null)
             {
                 Server.ExecuteCommand($"kickid {player.UserId}");
                 return HookResult.Continue;
