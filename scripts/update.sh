@@ -29,7 +29,7 @@ fi
 
 if [ -n "${BUILD_MANIFESTS}" ]; then
     echo "${BUILD_ID}" > "${BUILD_TRACK_FILE}"
-else if [ -f "${BUILD_TRACK_FILE}" ]; then
+elif [ -f "${BUILD_TRACK_FILE}" ]; then
     rm -f "${BUILD_TRACK_FILE}"
 fi
 
