@@ -5,7 +5,6 @@ using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
-using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 

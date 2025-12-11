@@ -7,7 +7,6 @@ using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
-using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
