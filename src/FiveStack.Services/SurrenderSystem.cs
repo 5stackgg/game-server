@@ -44,6 +44,18 @@ public class SurrenderSystem
             return;
         }
 
+        MatchData? matchData = match.GetMatchData();
+        if (matchData == null)
+        {
+            return;
+        }
+
+        MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, steamId.ToString(), "");
+        if (member == null)
+        {
+            return;
+        }
+
         if (!_disconnectTimers.ContainsKey(team))
         {
             _disconnectTimers[team] = new Dictionary<ulong, Timer>();
