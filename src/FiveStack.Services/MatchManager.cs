@@ -387,7 +387,6 @@ public class MatchManager
 
         if (IsWarmup())
         {
-            SetupTeams();
             _gameServer.Message(HudDestination.Alert, _localizer["match.received_data"]);
         }
     }
@@ -402,27 +401,32 @@ public class MatchManager
 
         CsTeam lineup1StartingSide = TeamUtility.TeamStringToCsTeam(_currentMap.lineup_1_side);
 
-        string lineup1Side = "mp_teamname_1";
-        string lineup2Side = "mp_teamname_2";
+        string mp_teamname_1 = ConVar.Find("mp_teamname_1")?.StringValue ?? "";
+        string mp_teamname_2 = ConVar.Find("mp_teamname_2")?.StringValue ?? "";
 
-        if (lineup1StartingSide == CsTeam.Terrorist)
-        {
-            lineup1Side = "mp_teamname_2";
-            lineup2Side = "mp_teamname_1";
-        }
+        string expectedTeamname1 =
+            lineup1StartingSide == CsTeam.CounterTerrorist
+                ? _matchData.lineup_1.name
+                : _matchData.lineup_2.name;
 
-        _gameServer.SendCommands(
-            new[]
+        string expectedTeamname2 =
+            lineup1StartingSide == CsTeam.CounterTerrorist
+                ? _matchData.lineup_2.name
+                : _matchData.lineup_1.name;
+
+        ConVar.Find("mp_teamname_1")!.StringValue = expectedTeamname1;
+        ConVar.Find("mp_teamname_2")!.StringValue = expectedTeamname2;
+
+        TimerUtility.AddTimer(
+            1.0f,
+            () =>
             {
-                $"{lineup1Side} {_matchData.lineup_1.name}",
-                $"{lineup2Side} {_matchData.lineup_2.name}",
+                foreach (var player in MatchUtility.Players())
+                {
+                    EnforceMemberTeam(player);
+                }
             }
         );
-
-        foreach (var player in MatchUtility.Players())
-        {
-            EnforceMemberTeam(player);
-        }
     }
 
     public void delayChangeMap(int delay)
