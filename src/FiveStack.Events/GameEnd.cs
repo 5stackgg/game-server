@@ -17,6 +17,8 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        _surrenderSystem.ResetSurrender();
+
         match.UpdateMapStatus(eMapStatus.UploadingDemo);
 
         MatchData? matchData = match.GetMatchData();

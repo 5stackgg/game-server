@@ -1,7 +1,9 @@
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using FiveStack.Entities;
 using FiveStack.Enums;
+using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -53,6 +55,33 @@ public class MatchEvents
     {
         if (_environmentService.IsOfflineMode())
         {
+            return;
+        }
+
+        if (status == eMapStatus.Finished)
+        {
+            MatchManager? match = _matchService.GetCurrentMatch();
+            MatchData? matchData = match?.GetMatchData();
+            if (matchData == null)
+            {
+                return;
+            }
+
+            int lineup1Score = TeamUtility.GetTeamScore(matchData.lineup_1.name);
+            int lineup2Score = TeamUtility.GetTeamScore(matchData.lineup_2.name);
+
+            Guid winningLineupId =
+                lineup1Score > lineup2Score ? matchData.lineup_1_id : matchData.lineup_2_id;
+
+            PublishGameEvent(
+                "mapStatus",
+                new Dictionary<string, object>
+                {
+                    { "status", status.ToString() },
+                    { "winning_lineup_id", winningLineupId },
+                }
+            );
+
             return;
         }
 
