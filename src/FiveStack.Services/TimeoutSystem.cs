@@ -144,6 +144,32 @@ public class TimeoutSystem
                 }
                 break;
             case eTimeoutSettings.Admin:
+                MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+
+                if (matchData == null)
+                {
+                    return false;
+                }
+
+                MatchMember? lineupPlayer = MatchUtility.GetMemberFromLineup(
+                    matchData,
+                    player.SteamID.ToString(),
+                    player.PlayerName
+                );
+
+                if (lineupPlayer == null)
+                {
+                    return false;
+                }
+
+                if (
+                    PlayerRoleUtility.PlayerRoleStringToEnum(lineupPlayer.role)
+                    == ePlayerRoles.Administrator
+                )
+                {
+                    return true;
+                }
+
                 return false;
         }
 
