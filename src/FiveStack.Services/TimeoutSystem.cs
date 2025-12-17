@@ -129,6 +129,15 @@ public class TimeoutSystem
         bool isCoach = _coachSystem.IsCoach(player, player.Team);
         bool isCaptain = _captainSystem.IsCaptain(player, player.Team);
 
+        if (
+            player.Clan == "[administrator]"
+            || player.Clan == "[match_organizer]"
+            || player.Clan == "[tournament_organizer]"
+        )
+        {
+            return true;
+        }
+
         switch (GetTechnicalPauseSetting())
         {
             case eTimeoutSettings.Coach:
