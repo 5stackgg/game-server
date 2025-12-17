@@ -116,7 +116,10 @@ public partial class FiveStackPlugin
                 },
                 { "lineup_1_side", $"{TeamUtility.CSTeamToString(lineup1Side)}" },
                 { "lineup_2_side", $"{TeamUtility.CSTeamToString(lineup2Side)}" },
-                { "winning_side", $"{TeamUtility.CSTeamToString(roundWinner)}" },
+                {
+                    "winning_side",
+                    currentRound == 0 ? "None" : $"{TeamUtility.CSTeamToString(roundWinner)}"
+                },
                 {
                     "backup_file",
                     SendBackupRound
