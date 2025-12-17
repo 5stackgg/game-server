@@ -162,9 +162,11 @@ public class TimeoutSystem
                     return false;
                 }
 
+                var roleEnum = PlayerRoleUtility.PlayerRoleStringToEnum(lineupPlayer.role);
                 if (
-                    PlayerRoleUtility.PlayerRoleStringToEnum(lineupPlayer.role)
-                    == ePlayerRoles.Administrator
+                    roleEnum == ePlayerRoles.Administrator
+                    || roleEnum == ePlayerRoles.MatchOrganizer
+                    || roleEnum == ePlayerRoles.TournamentOrganizer
                 )
                 {
                     return true;
