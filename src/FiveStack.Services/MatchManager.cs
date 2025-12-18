@@ -583,7 +583,6 @@ public class MatchManager
         }
 
         _logger.LogInformation("Starting Live Match");
-        ResumeMatch(null, true);
 
         List<string> commands = new List<string> { "exec 5stack.live.cfg" };
 
@@ -618,6 +617,8 @@ public class MatchManager
 
             Server.NextFrame(() =>
             {
+                ResumeMatch(null, true);
+
                 if (IsWarmup() || IsKnife())
                 {
                     _gameServer.SendCommands(new[] { "mp_restartgame 1;mp_warmup_end;" });

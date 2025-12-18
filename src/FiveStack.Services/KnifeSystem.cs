@@ -178,10 +178,19 @@ public class KnifeSystem
         if (_environmentService.IsOfflineMode())
         {
             _gameServer.SendCommands(new[] { "mp_swapteams" });
+
             Server.NextFrame(() =>
             {
                 match.UpdateMapStatus(eMapStatus.Live);
+                TimerUtility.AddTimer(
+                    1.0f,
+                    () =>
+                    {
+                        _gameServer.SendCommands(new[] { "mp_restartgame 1;mp_warmup_end;" });
+                    }
+                );
             });
+
             return;
         }
 
