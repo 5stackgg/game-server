@@ -223,13 +223,17 @@ public class KnifeSystem
         }
 
         _gameServer.SendCommands(new[] { "mp_swapteams" });
-
-        await Task.Delay(1 * 1000);
-
         Server.NextFrame(() =>
         {
             match.UpdateMapStatus(eMapStatus.Live);
         });
+        TimerUtility.AddTimer(
+            1.0f,
+            () =>
+            {
+                _gameServer.SendCommands(new[] { "mp_restartgame 1" });
+            }
+        );
     }
 
     public CsTeam? GetWinningTeam()
