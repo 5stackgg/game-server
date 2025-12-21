@@ -344,14 +344,12 @@ public class MatchManager
 
         if (_matchData.options.cfg_override != "")
         {
-
-            
             string configDirectory = Path.Join(Server.GameDirectory, "csgo", "cfg");
             string configFileName = $"5stack.{_matchData.options.type.ToLower()}.cfg";
             string configFilePath = Path.Join(configDirectory, configFileName);
 
-            _logger.LogInformation($"Overriding config file: {configFileName}/{configFilePath}");
-            // File.WriteAllText(configFilePath, _matchData.options.cfg_override);
+            _logger.LogInformation($"Overriding config file: {configFileName}");
+            File.WriteAllText(configFilePath, _matchData.options.cfg_override);
         }
 
         _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
