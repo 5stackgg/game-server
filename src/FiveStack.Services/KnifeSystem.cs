@@ -220,7 +220,7 @@ public class KnifeSystem
         match.UpdateMapStatus(eMapStatus.Live);
     }
 
-    public async void ConfirmSwitch()
+    public void ConfirmSwitch()
     {
         _logger.LogInformation("Knife round confirming switch");
 

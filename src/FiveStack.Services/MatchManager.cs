@@ -597,16 +597,16 @@ public class MatchManager
 
     private void StartLive()
     {
+        if (_matchData == null)
+        {
+            return;
+        }
+
         _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
 
         _gameServer.SendCommands(["sv_disable_teamselect_menu 1"]);
 
         knifeSystem.ResetKnifeRound();
-
-        if (_matchData == null)
-        {
-            return;
-        }
 
         _logger.LogInformation("Starting Live Match");
 
