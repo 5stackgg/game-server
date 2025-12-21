@@ -32,6 +32,11 @@ public partial class FiveStackPlugin
             );
         }
 
+        if (_timeoutSystem.pauseVote != null)
+        {
+            _timeoutSystem.pauseVote?.CastVote(player, command.GetCommandString == "css_y");
+        }
+
         if (_timeoutSystem.resumeVote != null)
         {
             _timeoutSystem.resumeVote?.CastVote(player, command.GetCommandString == "css_y");

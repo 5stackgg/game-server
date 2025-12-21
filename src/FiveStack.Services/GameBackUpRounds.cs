@@ -184,7 +184,7 @@ public class GameBackUpRounds
                 true
             );
 
-            if (player != null)
+            if (player != null && restoreRoundVote != null)
             {
                 restoreRoundVote.CastVote(player, true);
             }

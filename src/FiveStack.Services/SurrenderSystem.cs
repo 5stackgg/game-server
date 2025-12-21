@@ -112,7 +112,7 @@ public class SurrenderSystem
     public void SetupSurrender(CsTeam team, CCSPlayerController? player = null)
     {
         _logger.LogInformation($"Setting up surrender vote for {team}");
-        if (surrenderingVote != null)
+        if (surrenderingVote != null && surrenderingVote.IsVoteActive())
         {
             player?.PrintToConsole(" A surrender vote is already in progress");
             return;
@@ -161,7 +161,7 @@ public class SurrenderSystem
 
     public bool IsSurrendering()
     {
-        return surrenderingVote != null;
+        return surrenderingVote != null && surrenderingVote.IsVoteActive();
     }
 
     public void Surrender(CsTeam team)
