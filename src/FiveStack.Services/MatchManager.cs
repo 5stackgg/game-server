@@ -604,20 +604,18 @@ public class MatchManager
 
     private void StartLive()
     {
+        knifeSystem.ResetKnifeRound();
+
         if (_matchData == null)
         {
             return;
         }
 
-        _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
-
-        _gameServer.SendCommands(["sv_disable_teamselect_menu 1"]);
-
-        knifeSystem.ResetKnifeRound();
-
         _logger.LogInformation("Starting Live Match");
 
         _gameServer.SendCommands([
+            $"exec 5stack.{_matchData.options.type.ToLower()}.cfg",
+            "sv_disable_teamselect_menu 1",
             "mp_backup_round_auto 1",
             $"mp_maxrounds {_matchData.options.mr * 2}",
             $"mp_overtime_enable {_matchData.options.overtime}",
