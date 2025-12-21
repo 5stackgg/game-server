@@ -14,7 +14,7 @@ public partial class FiveStackPlugin
         {
             return;
         }
-        
+
         _surrenderSystem.SetupSurrender(CsTeam.Terrorist);
     }
 }

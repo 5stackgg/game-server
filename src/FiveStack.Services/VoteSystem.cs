@@ -187,7 +187,7 @@ public class VoteSystem
 
     private void SendVoteMessage()
     {
-        if (!_isVoteActive)
+        if (_playerMessageTimer == null)
         {
             return;
         }
@@ -214,9 +214,7 @@ public class VoteSystem
                 }
                 else
                 {
-                    player.PrintToCenter(
-                        _localizer["vote.other_team", action]
-                    );
+                    player.PrintToCenter(_localizer["vote.other_team", action]);
                 }
 
                 continue;
@@ -232,9 +230,7 @@ public class VoteSystem
                 }
                 else
                 {
-                    player.PrintToCenter(
-                        _localizer["vote.prompt_count", action]
-                    );
+                    player.PrintToCenter(_localizer["vote.prompt_count", action]);
                 }
                 continue;
             }
@@ -270,13 +266,9 @@ public class VoteSystem
         if (_votes.ContainsKey(steamId))
         {
             _votes.Remove(steamId);
-            if (_isVoteActive)
-            {
-                CheckVotes();
-            }
+            CheckVotes();
         }
     }
-
 
     private bool IsCaptainVoteOnly()
     {
@@ -300,7 +292,7 @@ public class VoteSystem
 
     private void CheckVotes(bool fail = false)
     {
-        if (!_isVoteActive)
+        if (_playerMessageTimer == null)
         {
             return;
         }
@@ -384,7 +376,7 @@ public class VoteSystem
 
     private int GetRemainingSeconds()
     {
-        if (!_isVoteActive || _voteStartTime == null || _voteTimeout == null)
+        if (_voteStartTime == null || _voteTimeout == null || _playerMessageTimer == null)
         {
             return 0;
         }
