@@ -342,21 +342,30 @@ public class MatchManager
 
         _logger.LogInformation($"Setup Match {_matchData.id}");
 
-        if (_matchData.options.cfg_override != "")
+        if (_matchData.options.cfg_overrides != null && _matchData.options.cfg_overrides.Count > 0)
         {
             string configDirectory = Path.Join(Server.GameDirectory, "csgo", "cfg");
-            string configFileName = $"5stack.{_matchData.options.type.ToLower()}.cfg";
-            string configFilePath = Path.Join(configDirectory, configFileName);
 
-            _logger.LogInformation($"Overriding config file: {configFileName}");
-            File.WriteAllText(configFilePath, _matchData.options.cfg_override);
+            foreach (var overrideEntry in _matchData.options.cfg_overrides)
+            {
+                if (string.IsNullOrEmpty(overrideEntry.Value))
+                {
+                    continue;
+                }
+
+                string configFileName = $"5stack.{overrideEntry.Key.ToLower()}.cfg";
+                string configFilePath = Path.Join(configDirectory, configFileName);
+
+                _logger.LogInformation($"Overriding config file: {configFileName}");
+                File.WriteAllText(configFilePath, overrideEntry.Value);
+            }
         }
 
         _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
 
         if (_matchData.is_lan)
         {
-            _gameServer.SendCommands(new[] { "exec 5stack.lan.cfg" });
+            _gameServer.SendCommands(["exec 5stack.lan.cfg"]);
         }
 
         MatchMap? _currentMap = GetCurrentMap();
