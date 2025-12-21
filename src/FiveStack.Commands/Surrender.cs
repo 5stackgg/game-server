@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Utils;
 
 namespace FiveStack;
 
@@ -13,7 +14,7 @@ public partial class FiveStackPlugin
         {
             return;
         }
-
-        _surrenderSystem.SetupSurrender(player.Team, player);
+        
+        _surrenderSystem.SetupSurrender(CsTeam.Terrorist);
     }
 }

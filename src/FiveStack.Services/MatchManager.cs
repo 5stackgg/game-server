@@ -165,13 +165,14 @@ public class MatchManager
 
     public void PauseMatch(string? message = null, bool skipUpdate = false)
     {
+        _gameServer.SendCommands(new[] { "mp_pause_match" });
+
         if (IsPaused())
         {
             return;
         }
 
         _logger.LogInformation($"Pausing Match{(message != null ? $": {message}" : "")}");
-        _gameServer.SendCommands(new[] { "mp_pause_match" });
 
         if (message != null)
         {

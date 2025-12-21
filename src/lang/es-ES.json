@@ -73,8 +73,11 @@
   "vote.failed": "{0} Votación fallida",
   "vote.success": "{0} Votación exitosa",
   "vote.other_team": "El otro equipo está votando para {0}",
-  "vote.prompt_count": " Votar para {0} [{1}/{2}]",
-  "vote.prompt_options": " Votar para {0} ({1}y o {2}n)"
+  "vote.other_team_timer": "El otro equipo está votando para {0} ({1}s)",
+  "vote.prompt_count": " Votar para {0}",
+  "vote.prompt_options": " Votar para {0} ({1}y o {2}n)",
+  "vote.prompt_count_timer": " Votar para {0} ({1}s)",
+  "vote.prompt_options_timer": " Votar para {0} ({1}y o {2}n) ({3}s)"
 }
 
 

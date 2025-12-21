@@ -26,6 +26,8 @@ public class VoteSystem
     private string? _voteMessage;
     private Timer? _voteTimeoutTimer;
     private Timer? _playerMessageTimer;
+    private DateTime? _voteStartTime;
+    private float? _voteTimeout;
 
     public VoteSystem(
         ILogger<VoteSystem> logger,
@@ -57,13 +59,16 @@ public class VoteSystem
         _voteSuccessCallback = voteSuccessCallback;
         _voteFailedCallback = voteFailedCallback;
         _captainOnly = captainOnly;
+        _votes.Clear();
+        _voteStartTime = DateTime.Now;
+        _voteTimeout = timeout;
 
         KillTimers();
 
         _logger.LogInformation($"Starting vote: {voteMessage}");
 
         _playerMessageTimer = TimerUtility.AddTimer(
-            3,
+            1,
             () =>
             {
                 SendVoteMessage();
@@ -87,6 +92,8 @@ public class VoteSystem
 
     public void CancelVote()
     {
+        _voteStartTime = null;
+        _voteTimeout = null;
         KillTimers();
         _logger.LogInformation($"Vote Cancelled: {_voteMessage}");
         _voteFailedCallback?.Invoke();
@@ -95,7 +102,10 @@ public class VoteSystem
     private void VoteFailed()
     {
         _logger.LogInformation($"Vote Failed: {_voteMessage}");
+        _voteStartTime = null;
+        _voteTimeout = null;
         KillTimers();
+        _votes.Clear();
 
         if (_voteFailedCallback == null)
         {
@@ -112,7 +122,10 @@ public class VoteSystem
     private void VoteSuccess()
     {
         _logger.LogInformation($"Vote Success: {_voteMessage}");
+        _voteStartTime = null;
+        _voteTimeout = null;
         KillTimers();
+        _votes.Clear();
 
         if (_voteSuccessCallback == null)
         {
@@ -129,7 +142,9 @@ public class VoteSystem
     public void KillTimers()
     {
         _voteTimeoutTimer?.Kill();
+        _voteTimeoutTimer = null;
         _playerMessageTimer?.Kill();
+        _playerMessageTimer = null;
     }
 
     public void CastVote(CCSPlayerController player, bool vote)
@@ -172,6 +187,11 @@ public class VoteSystem
 
     private void SendVoteMessage()
     {
+        if (!_isVoteActive)
+        {
+            return;
+        }
+
         bool isCaptainVoteOnly = IsCaptainVoteOnly();
 
         foreach (var player in MatchUtility.Players())
@@ -182,32 +202,81 @@ public class VoteSystem
             }
 
             string action = _voteMessage?.ToLower() ?? "";
+            int remainingSeconds = GetRemainingSeconds();
 
             if (!CanVote(player))
             {
-                player.PrintToCenterAlert(_localizer["vote.other_team", action]);
+                if (remainingSeconds > 0)
+                {
+                    player.PrintToCenter(
+                        _localizer["vote.other_team_timer", action, remainingSeconds]
+                    );
+                }
+                else
+                {
+                    player.PrintToCenter(
+                        _localizer["vote.other_team", action]
+                    );
+                }
 
                 continue;
             }
 
             if (_votes.ContainsKey(player.SteamID))
             {
-                player.PrintToCenterAlert(
-                    _localizer["vote.prompt_count", action, _votes.Count, GetExpectedVoteCount()]
-                );
+                if (remainingSeconds > 0)
+                {
+                    player.PrintToCenter(
+                        _localizer["vote.prompt_count_timer", action, remainingSeconds]
+                    );
+                }
+                else
+                {
+                    player.PrintToCenter(
+                        _localizer["vote.prompt_count", action]
+                    );
+                }
                 continue;
             }
 
-            player.PrintToCenterAlert(
-                _localizer[
-                    "vote.prompt_options",
-                    action,
-                    CommandUtility.PublicChatTrigger,
-                    CommandUtility.PublicChatTrigger
-                ]
-            );
+            if (remainingSeconds > 0)
+            {
+                player.PrintToCenter(
+                    _localizer[
+                        "vote.prompt_options_timer",
+                        action,
+                        CommandUtility.PublicChatTrigger,
+                        CommandUtility.PublicChatTrigger,
+                        remainingSeconds
+                    ]
+                );
+            }
+            else
+            {
+                player.PrintToCenter(
+                    _localizer[
+                        "vote.prompt_options",
+                        action,
+                        CommandUtility.PublicChatTrigger,
+                        CommandUtility.PublicChatTrigger
+                    ]
+                );
+            }
         }
     }
+
+    public void RemovePlayerVote(ulong steamId)
+    {
+        if (_votes.ContainsKey(steamId))
+        {
+            _votes.Remove(steamId);
+            if (_isVoteActive)
+            {
+                CheckVotes();
+            }
+        }
+    }
+
 
     private bool IsCaptainVoteOnly()
     {
@@ -231,7 +300,18 @@ public class VoteSystem
 
     private void CheckVotes(bool fail = false)
     {
+        if (!_isVoteActive)
+        {
+            return;
+        }
+
         int expectedVoteCount = GetExpectedVoteCount();
+
+        if (expectedVoteCount == 0)
+        {
+            VoteFailed();
+            return;
+        }
 
         int totalYesVotes = _votes.Count(pair =>
         {
@@ -244,6 +324,10 @@ public class VoteSystem
         {
             if (_votes.Count < 2)
             {
+                if (fail)
+                {
+                    VoteFailed();
+                }
                 return;
             }
 
@@ -296,5 +380,17 @@ public class VoteSystem
         }
 
         return players.Count;
+    }
+
+    private int GetRemainingSeconds()
+    {
+        if (!_isVoteActive || _voteStartTime == null || _voteTimeout == null)
+        {
+            return 0;
+        }
+
+        var elapsed = (DateTime.Now - _voteStartTime.Value).TotalSeconds;
+        var remaining = (int)Math.Ceiling(_voteTimeout.Value - elapsed);
+        return Math.Max(0, remaining);
     }
 }

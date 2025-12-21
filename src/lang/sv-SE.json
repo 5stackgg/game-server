@@ -73,8 +73,11 @@
   "vote.failed": "{0} Röstningen misslyckades",
   "vote.success": "{0} Röstningen lyckades",
   "vote.other_team": "Det andra laget röstar för att {0}",
-  "vote.prompt_count": " Rösta för {0} [{1}/{2}]",
-  "vote.prompt_options": " Rösta för {0} ({1}y eller {2}n)"
+  "vote.other_team_timer": "Det andra laget röstar för att {0} ({1}s)",
+  "vote.prompt_count": " Rösta för {0}",
+  "vote.prompt_options": " Rösta för {0} ({1}y eller {2}n)",
+  "vote.prompt_count_timer": " Rösta för {0} ({1}s)",
+  "vote.prompt_options_timer": " Rösta för {0} ({1}y eller {2}n) ({3}s)"
 }
 
 

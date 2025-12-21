@@ -73,8 +73,11 @@
   "vote.failed": "{0} 投票失败",
   "vote.success": "{0} 投票成功",
   "vote.other_team": "对方队伍正在投票 {0}",
-  "vote.prompt_count": " 投票 {0} [{1}/{2}]",
-  "vote.prompt_options": " 投票 {0}（{1}y 或 {2}n）"
+  "vote.other_team_timer": "对方队伍正在投票 {0} ({1}s)",
+  "vote.prompt_count": " 投票 {0}",
+  "vote.prompt_options": " 投票 {0}（{1}y 或 {2}n）",
+  "vote.prompt_count_timer": " 投票 {0} ({1}s)",
+  "vote.prompt_options_timer": " 投票 {0}（{1}y 或 {2}n）({3}s)"
 }
 
 

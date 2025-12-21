@@ -72,8 +72,11 @@
   "vote.failed": "{0} Oylama başarısız",
   "vote.success": "{0} Oylama başarılı",
   "vote.other_team": "Diğer takım {0} için oy kullanıyor",
-  "vote.prompt_count": " {0} için oy ver [{1}/{2}]",
-  "vote.prompt_options": " {0} için oy ver ({1}y veya {2}n)"
+  "vote.other_team_timer": "Diğer takım {0} için oy kullanıyor ({1}s)",
+  "vote.prompt_count": " {0} için oy ver",
+  "vote.prompt_options": " {0} için oy ver ({1}y veya {2}n)",
+  "vote.prompt_count_timer": " {0} için oy ver ({1}s)",
+  "vote.prompt_options_timer": " {0} için oy ver ({1}y veya {2}n) ({3}s)"
 }
 
 

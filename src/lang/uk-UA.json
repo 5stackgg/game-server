@@ -73,8 +73,11 @@
   "vote.failed": "{0} Голосування неуспішне",
   "vote.success": "{0} Голосування успішне",
   "vote.other_team": "Інша команда голосує, щоб {0}",
-  "vote.prompt_count": " Голосувати за {0} [{1}/{2}]",
-  "vote.prompt_options": " Голосувати за {0} ({1}y або {2}n)"
+  "vote.other_team_timer": "Інша команда голосує, щоб {0} ({1}s)",
+  "vote.prompt_count": " Голосувати за {0}",
+  "vote.prompt_options": " Голосувати за {0} ({1}y або {2}n)",
+  "vote.prompt_count_timer": " Голосувати за {0} ({1}s)",
+  "vote.prompt_options_timer": " Голосувати за {0} ({1}y або {2}n) ({3}s)"
 }
 
 

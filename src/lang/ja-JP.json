@@ -73,8 +73,11 @@
   "vote.failed": "{0} 投票失敗",
   "vote.success": "{0} 投票成功",
   "vote.other_team": "相手チームが {0} に投票しています",
-  "vote.prompt_count": " {0} に投票 [{1}/{2}]",
-  "vote.prompt_options": " {0} に投票（{1}y または {2}n）"
+  "vote.other_team_timer": "相手チームが {0} に投票しています ({1}s)",
+  "vote.prompt_count": " {0} に投票",
+  "vote.prompt_options": " {0} に投票（{1}y または {2}n）",
+  "vote.prompt_count_timer": " {0} に投票 ({1}s)",
+  "vote.prompt_options_timer": " {0} に投票（{1}y または {2}n）({3}s)"
 }
 
 
