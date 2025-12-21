@@ -26,7 +26,7 @@
   "ready.waiting_for_players": "Waiting for players [{0}/{1}]",
   "ready.type_to_ready": "Type {0}r to ready up!",
   "ready.admin_will_start": "The Admin will start the match when everyone is ready",
-  "ready.waiting_captains": "Waiting for the Captins to ready up",
+  "ready.waiting_captains": "Waiting for the Captains to ready up",
   "ready.waiting_coach": "Waiting for the coach to ready up",
   "ready.ready": "ready",
   "ready.not_ready": "not ready",
@@ -55,7 +55,7 @@
   "timeout.no_timeouts_left": "Your team has used all its timeouts!",
   "timeout.called_tactical": "{0} {1}called a tactical timeout ({2} remaining)",
   "timeout.called_admin": "Tech Timeout Called by Admin",
-  "timeout.already_active": " {0}A timout is already active",
+  "timeout.already_active": " {0}A timeout is already active",
 
   "backup.vote.restore_to": "Restore Round to {0}",
   "backup.round_restored": " {0}Round {1} has been restored ({2}resume to continue)",
