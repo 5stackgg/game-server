@@ -39,10 +39,8 @@ public class MatchService
                 "5stack.duel.cfg",
                 "5stack.knife.cfg",
                 "5stack.lan.cfg",
-                "5stack.live.cfg",
                 "5stack.warmup.cfg",
                 "5stack.wingman.cfg",
-                "valve-rulebook.cfg",
             }
         )
         {
