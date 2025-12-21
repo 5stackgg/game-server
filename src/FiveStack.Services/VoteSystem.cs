@@ -376,7 +376,7 @@ public class VoteSystem
 
     private int GetRemainingSeconds()
     {
-        if (_voteStartTime == null || _voteTimeout == null || _playerMessageTimer == null)
+        if (_voteStartTime == null || _voteTimeoutTimer == null || _playerMessageTimer == null || _voteTimeout == null)
         {
             return 0;
         }
