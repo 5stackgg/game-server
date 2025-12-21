@@ -59,12 +59,6 @@ public class KnifeSystem
     {
         _gameServer.SendCommands(new[] { "mp_warmup_start;mp_pause_match" });
 
-        var rules = MatchUtility.Rules();
-        if (rules != null)
-        {
-            rules.RoundsPlayedThisPhase = 0;
-        }
-
         MatchManager? match = _matchService.GetCurrentMatch();
 
         if (match != null)
@@ -72,6 +66,12 @@ public class KnifeSystem
             _gameServer.SendCommands([
                 $"exec 5stack.{match.GetMatchData()?.options.type.ToLower()}.cfg",
             ]);
+        }
+
+        var rules = MatchUtility.Rules();
+        if (rules != null)
+        {
+            rules.RoundsPlayedThisPhase = 0;
         }
 
         _logger.LogInformation($"setting winning team: {team}");
@@ -198,6 +198,15 @@ public class KnifeSystem
     {
         _gameServer.SendCommands(new[] { "mp_warmup_start;" });
 
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (match != null)
+        {
+            _gameServer.SendCommands([
+                $"exec 5stack.{match.GetMatchData()?.options.type.ToLower()}.cfg",
+            ]);
+        }
+
         var rules = MatchUtility.Rules();
         if (rules != null)
         {
@@ -205,8 +214,6 @@ public class KnifeSystem
         }
 
         ResetKnifeRound();
-
-        MatchManager? match = _matchService.GetCurrentMatch();
 
         if (match == null || !match.IsKnife())
         {
