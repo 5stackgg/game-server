@@ -560,17 +560,17 @@ public class MatchManager
 
     private void StartWarmup()
     {
+        _gameServer.SendCommands([
+            "sv_disable_teamselect_menu 0",
+            "exec 5stack.warmup.cfg" 
+        ]);
+
         knifeSystem.ResetKnifeRound();
 
         if (_matchData == null)
         {
             return;
         }
-
-        _gameServer.SendCommands([
-            "sv_disable_teamselect_menu 1",
-            "exec 5stack.warmup.cfg" 
-        ]);
 
         Server.NextFrame(() =>
         {
@@ -587,6 +587,10 @@ public class MatchManager
 
     private void StartKnife()
     {
+         _gameServer.SendCommands([
+            "sv_disable_teamselect_menu 1",
+        ]);
+
         if (_matchData == null || IsKnife())
         {
             return;
@@ -599,6 +603,10 @@ public class MatchManager
 
     private void StartLive()
     {
+        _gameServer.SendCommands([
+            "sv_disable_teamselect_menu 1",
+        ]);
+
         knifeSystem.ResetKnifeRound();
 
         if (_matchData == null)
