@@ -223,8 +223,17 @@ public class MatchManager
         _gameServer.SendCommands(new[] { "mp_unpause_match" });
 
         _resumeMessageTimer?.Kill();
-        _timeoutSystem.resumeVote?.CancelVote();
-        _backUpManagement.restoreRoundVote?.CancelVote();
+        if (_timeoutSystem.resumeVote != null)
+        {
+            _timeoutSystem.resumeVote.CancelVote();
+            _timeoutSystem.resumeVote = null;
+        }
+
+        if (_backUpManagement.restoreRoundVote != null)
+        {
+            _backUpManagement.restoreRoundVote.CancelVote();
+            _backUpManagement.restoreRoundVote = null;
+        }
 
         if (!IsPaused())
         {

@@ -72,7 +72,7 @@ public class TimeoutSystem
         {
             if (!CanPause(player))
             {
-                if (pauseVote != null)
+                if (pauseVote != null && pauseVote.IsVoteActive())
                 {
                     pauseVote.CastVote(player, true);
                     return;
@@ -104,7 +104,7 @@ public class TimeoutSystem
                         30
                     );
 
-                    if (player != null)
+                    if (player != null && pauseVote != null)
                     {
                         pauseVote.CastVote(player, true);
                     }
@@ -242,7 +242,7 @@ public class TimeoutSystem
         {
             if (!CanPause(player))
             {
-                if (resumeVote != null)
+                if (resumeVote != null && resumeVote.IsVoteActive())
                 {
                     resumeVote.CastVote(player, true);
                     return;
@@ -274,7 +274,7 @@ public class TimeoutSystem
                         30
                     );
 
-                    if (player != null)
+                    if (player != null && resumeVote != null)
                     {
                         resumeVote.CastVote(player, true);
                     }

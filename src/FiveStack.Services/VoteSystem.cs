@@ -147,6 +147,11 @@ public class VoteSystem
         _playerMessageTimer = null;
     }
 
+    public bool IsVoteActive()
+    {
+        return _playerMessageTimer != null;
+    }
+
     public void CastVote(CCSPlayerController player, bool vote)
     {
         if (!CanVote(player))
