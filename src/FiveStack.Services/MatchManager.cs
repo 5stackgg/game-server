@@ -344,17 +344,17 @@ public class MatchManager
 
         if (_matchData.options.cfg_override != "")
         {
-            // Split the cfg_override string by newlines and add each line as a separate command
-            string[] cfgLines = _matchData.options.cfg_override.Split(
-                new[] { '\r', '\n' },
-                StringSplitOptions.RemoveEmptyEntries
-            );
-            _gameServer.SendCommands(cfgLines);
+
+            
+            string configDirectory = Path.Join(Server.GameDirectory, "csgo", "cfg");
+            string configFileName = $"5stack.{_matchData.options.type.ToLower()}.cfg";
+            string configFilePath = Path.Join(configDirectory, configFileName);
+
+            _logger.LogInformation($"Overriding config file: {configFileName}/{configFilePath}");
+            // File.WriteAllText(configFilePath, _matchData.options.cfg_override);
         }
-        else
-        {
-            _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
-        }
+
+        _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
 
         if (_matchData.is_lan)
         {
