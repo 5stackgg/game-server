@@ -73,8 +73,11 @@
   "vote.failed": "{0} Голосование не прошло",
   "vote.success": "{0} Голосование успешно",
   "vote.other_team": "Другая команда голосует, чтобы {0}",
-  "vote.prompt_count": " Голосовать за {0} [{1}/{2}]",
-  "vote.prompt_options": " Голосовать за {0} ({1}y или {2}n)"
+  "vote.other_team_timer": "Другая команда голосует, чтобы {0} ({1}s)",
+  "vote.prompt_count": " Голосовать за {0}",
+  "vote.prompt_options": " Голосовать за {0} ({1}y или {2}n)",
+  "vote.prompt_count_timer": " Голосовать за {0} ({1}s)",
+  "vote.prompt_options_timer": " Голосовать за {0} ({1}y или {2}n) ({3}s)"
 }
 
 

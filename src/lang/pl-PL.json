@@ -73,8 +73,11 @@
   "vote.failed": "{0} Głosowanie nieudane",
   "vote.success": "{0} Głosowanie udane",
   "vote.other_team": "Drugi zespół głosuje, aby {0}",
-  "vote.prompt_count": " Głosuj za {0} [{1}/{2}]",
-  "vote.prompt_options": " Głosuj za {0} ({1}y lub {2}n)"
+  "vote.other_team_timer": "Drugi zespół głosuje, aby {0} ({1}s)",
+  "vote.prompt_count": " Głosuj za {0}",
+  "vote.prompt_options": " Głosuj za {0} ({1}y lub {2}n)",
+  "vote.prompt_count_timer": " Głosuj za {0} ({1}s)",
+  "vote.prompt_options_timer": " Głosuj za {0} ({1}y lub {2}n) ({3}s)"
 }
 
 

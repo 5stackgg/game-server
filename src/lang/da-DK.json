@@ -73,8 +73,11 @@
   "vote.failed": "{0} Afstemning mislykkedes",
   "vote.success": "{0} Afstemning lykkedes",
   "vote.other_team": "Det andet hold stemmer for at {0}",
-  "vote.prompt_count": " Stem for {0} [{1}/{2}]",
-  "vote.prompt_options": " Stem for {0} ({1}y eller {2}n)"
+  "vote.other_team_timer": "Det andet hold stemmer for at {0} ({1}s)",
+  "vote.prompt_count": " Stem for {0}",
+  "vote.prompt_options": " Stem for {0} ({1}y eller {2}n)",
+  "vote.prompt_count_timer": " Stem for {0} ({1}s)",
+  "vote.prompt_options_timer": " Stem for {0} ({1}y eller {2}n) ({3}s)"
 }
 
 

@@ -73,8 +73,11 @@
   "vote.failed": "{0} Abstimmung fehlgeschlagen",
   "vote.success": "{0} Abstimmung erfolgreich",
   "vote.other_team": "Das andere Team stimmt ab, um {0}",
-  "vote.prompt_count": " Abstimmen für {0} [{1}/{2}]",
-  "vote.prompt_options": " Abstimmen für {0} ({1}y oder {2}n)"
+  "vote.other_team_timer": "Das andere Team stimmt ab, um {0} ({1}s)",
+  "vote.prompt_count": " Abstimmen für {0}",
+  "vote.prompt_options": " Abstimmen für {0} ({1}y oder {2}n)",
+  "vote.prompt_count_timer": " Abstimmen für {0} ({1}s)",
+  "vote.prompt_options_timer": " Abstimmen für {0} ({1}y oder {2}n) ({3}s)"
 }
 
 

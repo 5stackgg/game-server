@@ -73,8 +73,11 @@
   "vote.failed": "{0} فشل التصويت",
   "vote.success": "{0} تم التصويت بنجاح",
   "vote.other_team": "الفريق الآخر يصوت لـ {0}",
-  "vote.prompt_count": " التصويت لـ {0} [{1}/{2}]",
-  "vote.prompt_options": " التصويت لـ {0} ({1}y أو {2}n)"
+  "vote.other_team_timer": "الفريق الآخر يصوت لـ {0} ({1}s)",
+  "vote.prompt_count": " التصويت لـ {0}",
+  "vote.prompt_options": " التصويت لـ {0} ({1}y أو {2}n)",
+  "vote.prompt_count_timer": " التصويت لـ {0} ({1}s)",
+  "vote.prompt_options_timer": " التصويت لـ {0} ({1}y أو {2}n) ({3}s)"
 }
 
 

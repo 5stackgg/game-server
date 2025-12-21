@@ -72,8 +72,11 @@
   "vote.failed": "{0} 투표 실패",
   "vote.success": "{0} 투표 성공",
   "vote.other_team": "상대 팀이 {0} 에 투표 중",
-  "vote.prompt_count": " {0} 에 투표 [{1}/{2}]",
-  "vote.prompt_options": " {0} 에 투표 ({1}y 또는 {2}n)"
+  "vote.other_team_timer": "상대 팀이 {0} 에 투표 중 ({1}s)",
+  "vote.prompt_count": " {0} 에 투표",
+  "vote.prompt_options": " {0} 에 투표 ({1}y 또는 {2}n)",
+  "vote.prompt_count_timer": " {0} 에 투표 ({1}s)",
+  "vote.prompt_options_timer": " {0} 에 투표 ({1}y 또는 {2}n) ({3}s)"
 }
 
 
