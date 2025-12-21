@@ -342,7 +342,6 @@ public class MatchManager
 
         _logger.LogInformation($"Setup Match {_matchData.id}");
 
-
         if (_matchData.options.cfg_override != "")
         {
             // Split the cfg_override string by newlines and add each line as a separate command
@@ -354,7 +353,7 @@ public class MatchManager
         }
         else
         {
-            _gameServer.SendCommands(new[] { $"exec 5stack.{_matchData.options.type.ToLower()}.cfg" });
+            _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
         }
 
         if (_matchData.is_lan)
@@ -560,10 +559,7 @@ public class MatchManager
 
     private void StartWarmup()
     {
-        _gameServer.SendCommands([
-            "sv_disable_teamselect_menu 0",
-            "exec 5stack.warmup.cfg" 
-        ]);
+        _gameServer.SendCommands(["sv_disable_teamselect_menu 0", "exec 5stack.warmup.cfg"]);
 
         knifeSystem.ResetKnifeRound();
 
@@ -587,9 +583,7 @@ public class MatchManager
 
     private void StartKnife()
     {
-         _gameServer.SendCommands([
-            "sv_disable_teamselect_menu 1",
-        ]);
+        _gameServer.SendCommands(["sv_disable_teamselect_menu 1"]);
 
         if (_matchData == null || IsKnife())
         {
@@ -603,9 +597,9 @@ public class MatchManager
 
     private void StartLive()
     {
-        _gameServer.SendCommands([
-            "sv_disable_teamselect_menu 1",
-        ]);
+        _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
+
+        _gameServer.SendCommands(["sv_disable_teamselect_menu 1"]);
 
         knifeSystem.ResetKnifeRound();
 

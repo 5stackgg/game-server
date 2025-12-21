@@ -65,6 +65,15 @@ public class KnifeSystem
             rules.RoundsPlayedThisPhase = 0;
         }
 
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (match != null)
+        {
+            _gameServer.SendCommands([
+                $"exec 5stack.{match.GetMatchData()?.options.type.ToLower()}.cfg",
+            ]);
+        }
+
         _logger.LogInformation($"setting winning team: {team}");
 
         _winningTeam = team;
