@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace FiveStack.Entities;
 
 public class MatchOptions
@@ -14,5 +16,6 @@ public class MatchOptions
     public string ready_setting { get; set; } = "Players";
     public string timeout_setting { get; set; } = "CoachAndPlayers";
     public string tech_timeout_setting { get; set; } = "CoachAndPlayers";
-    public string cfg_override { get; set; } = "";
+    public Dictionary<string, string> cfg_overrides { get; set; } =
+        new Dictionary<string, string>();
 }

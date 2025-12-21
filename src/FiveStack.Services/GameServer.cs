@@ -36,67 +36,6 @@ public class GameServer
         Server.NextFrame(() => Server.ExecuteCommand(string.Join(";", commands)));
     }
 
-    public void SendCommandsViaTempFile(string[] commands)
-    {
-        if (commands == null || commands.Length == 0)
-        {
-            return;
-        }
-
-        var validCommands = commands.Where(c => !string.IsNullOrWhiteSpace(c)).ToList();
-        if (validCommands.Count == 0)
-        {
-            return;
-        }
-
-        string cfgDirectory = Path.Join(Server.GameDirectory, "csgo", "cfg");
-
-        if (!Directory.Exists(cfgDirectory))
-        {
-            _logger.LogWarning($"CFG directory does not exist: {cfgDirectory}");
-            SendCommands(validCommands.ToArray());
-            return;
-        }
-
-        string tempFileName = $"5stack.temp.{Guid.NewGuid():N}.cfg";
-
-        string tempFilePath = Path.Join(cfgDirectory, tempFileName);
-
-        try
-        {
-            File.WriteAllLines(tempFilePath, validCommands);
-
-            Server.NextFrame(() =>
-            {
-                Server.ExecuteCommand($"exec {tempFileName}");
-
-                Server.NextFrame(() =>
-                {
-                    try
-                    {
-                        if (File.Exists(tempFilePath))
-                        {
-                            File.Delete(tempFilePath);
-                            _logger.LogInformation($"Cleaned up temp file: {tempFileName}");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(
-                            $"Failed to delete temp file {tempFileName}: {ex.Message}"
-                        );
-                    }
-                });
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Failed to write temp config file: {ex.Message}");
-            SendCommands(validCommands.ToArray());
-            return;
-        }
-    }
-
     public void Message(
         HudDestination destination,
         string message,

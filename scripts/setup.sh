@@ -58,15 +58,12 @@ create_symlinks() {
 
 if [ "$SERVER_TYPE" = "Ranked" ]; then
   cp "/opt/server-cfg/ranked.server.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg/server.cfg"
-  cp "/opt/server-cfg/5stack.base.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
   cp "/opt/server-cfg/5stack.competitive.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
   cp "/opt/server-cfg/5stack.duel.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
   cp "/opt/server-cfg/5stack.knife.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
   cp "/opt/server-cfg/5stack.lan.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
-  cp "/opt/server-cfg/5stack.live.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
   cp "/opt/server-cfg/5stack.warmup.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
   cp "/opt/server-cfg/5stack.wingman.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
-  cp "/opt/server-cfg/valve-rulebook.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
 fi
 
 if [ "$SERVER_TYPE" != "Ranked" ]; then

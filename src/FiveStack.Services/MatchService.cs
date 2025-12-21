@@ -34,15 +34,12 @@ public class MatchService
         foreach (
             var file in new[]
             {
-                "5stack.base.cfg",
                 "5stack.competitive.cfg",
                 "5stack.duel.cfg",
                 "5stack.knife.cfg",
                 "5stack.lan.cfg",
-                "5stack.live.cfg",
                 "5stack.warmup.cfg",
                 "5stack.wingman.cfg",
-                "valve-rulebook.cfg",
             }
         )
         {

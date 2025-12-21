@@ -339,7 +339,34 @@ public class MatchManager
         {
             return;
         }
+
         _logger.LogInformation($"Setup Match {_matchData.id}");
+
+        if (_matchData.options.cfg_overrides != null && _matchData.options.cfg_overrides.Count > 0)
+        {
+            string configDirectory = Path.Join(Server.GameDirectory, "csgo", "cfg");
+
+            foreach (var overrideEntry in _matchData.options.cfg_overrides)
+            {
+                if (string.IsNullOrEmpty(overrideEntry.Value))
+                {
+                    continue;
+                }
+
+                string configFileName = $"5stack.{overrideEntry.Key.ToLower()}.cfg";
+                string configFilePath = Path.Join(configDirectory, configFileName);
+
+                _logger.LogInformation($"Overriding config file: {configFileName}");
+                File.WriteAllText(configFilePath, overrideEntry.Value);
+            }
+        }
+
+        _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
+
+        if (_matchData.is_lan)
+        {
+            _gameServer.SendCommands(["exec 5stack.lan.cfg"]);
+        }
 
         MatchMap? _currentMap = GetCurrentMap();
 
@@ -539,14 +566,14 @@ public class MatchManager
 
     private void StartWarmup()
     {
+        _gameServer.SendCommands(["sv_disable_teamselect_menu 0", "exec 5stack.warmup.cfg"]);
+
         knifeSystem.ResetKnifeRound();
 
         if (_matchData == null)
         {
             return;
         }
-
-        _gameServer.SendCommands(new[] { "exec 5stack.warmup.cfg" });
 
         Server.NextFrame(() =>
         {
@@ -563,6 +590,8 @@ public class MatchManager
 
     private void StartKnife()
     {
+        _gameServer.SendCommands(["sv_disable_teamselect_menu 1"]);
+
         if (_matchData == null || IsKnife())
         {
             return;
@@ -584,31 +613,13 @@ public class MatchManager
 
         _logger.LogInformation("Starting Live Match");
 
-        List<string> commands = new List<string> { "exec 5stack.live.cfg" };
-
-        if (_matchData.is_lan)
-        {
-            commands.Add("exec 5stack.lan.cfg");
-        }
-
-        if (_matchData.options.cfg_override != "")
-        {
-            // Split the cfg_override string by newlines and add each line as a separate command
-            string[] cfgLines = _matchData.options.cfg_override.Split(
-                new[] { '\r', '\n' },
-                StringSplitOptions.RemoveEmptyEntries
-            );
-            commands.AddRange(cfgLines);
-        }
-        else
-        {
-            commands.Add($"exec 5stack.{_matchData.options.type.ToLower()}.cfg");
-        }
-
-        commands.Add($"mp_maxrounds {_matchData.options.mr * 2}");
-        commands.Add($"mp_overtime_enable {_matchData.options.overtime}");
-
-        _gameServer.SendCommandsViaTempFile(commands.ToArray());
+        _gameServer.SendCommands([
+            $"exec 5stack.{_matchData.options.type.ToLower()}.cfg",
+            "sv_disable_teamselect_menu 1",
+            "mp_backup_round_auto 1",
+            $"mp_maxrounds {_matchData.options.mr * 2}",
+            $"mp_overtime_enable {_matchData.options.overtime}",
+        ]);
 
         Server.NextFrame(() =>
         {
