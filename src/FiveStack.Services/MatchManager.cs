@@ -354,12 +354,12 @@ public class MatchManager
 
 
         _gameServer.SendCommands([
-            $"tv_broadcast_url \"{_environmentService.GetApiUrl()}/matches/{_matchData.id}/relay\"",
+            $"tv_broadcast_url \"{_environmentService.GetRelayUrl()}/{_matchData.id}\"",
             $"tv_broadcast_origin_auth {_matchData.id}:{_matchData.password}",
             "tv_broadcast 1"
         ]);
 
-        _logger.LogInformation($"TV Broadcast URL: {_environmentService.GetApiUrl()}/matches/{_matchData.id}/relay");
+        _logger.LogInformation($"TV Broadcast URL: {_environmentService.GetRelayUrl()}/{_matchData.id}");
 
         if (_matchData.options.cfg_overrides != null && _matchData.options.cfg_overrides.Count > 0)
         {

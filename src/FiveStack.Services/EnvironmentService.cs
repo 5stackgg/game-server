@@ -18,6 +18,11 @@ public class EnvironmentService
         return Environment.GetEnvironmentVariable("API_DOMAIN") ?? GetConfig().API_DOMAIN;
     }
 
+    public string GetRelayUrl()
+    {
+        return Environment.GetEnvironmentVariable("RELAY_DOMAIN") ?? GetConfig().RELAY_DOMAIN;
+    }
+    
     public string GetDemosUrl()
     {
         return Environment.GetEnvironmentVariable("DEMOS_DOMAIN") ?? GetConfig().DEMOS_DOMAIN;
