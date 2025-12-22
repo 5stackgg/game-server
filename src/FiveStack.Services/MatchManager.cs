@@ -355,7 +355,7 @@ public class MatchManager
 
         _gameServer.SendCommands([
             $"tv_broadcast_url \"{_environmentService.GetApiUrl()}/matches/{_matchData.id}/relay\"",
-            $"tv_broadcast_origin_auth {_matchData.password}",
+            $"tv_broadcast_origin_auth {_matchData.id}:{_matchData.password}",
             "tv_broadcast 1"
         ]);
 
