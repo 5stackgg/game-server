@@ -352,6 +352,15 @@ public class MatchManager
 
         _logger.LogInformation($"Setup Match {_matchData.id}");
 
+
+        _gameServer.SendCommands([
+            $"tv_broadcast_url \"{_environmentService.GetApiUrl()}/matches/{_matchData.id}/relay\"",
+            $"tv_broadcast_origin_auth {_matchData.password}",
+            "tv_broadcast 1"
+        ]);
+
+        _logger.LogInformation($"TV Broadcast URL: {_environmentService.GetApiUrl()}/matches/{_matchData.id}/relay");
+
         if (_matchData.options.cfg_overrides != null && _matchData.options.cfg_overrides.Count > 0)
         {
             string configDirectory = Path.Join(Server.GameDirectory, "csgo", "cfg");
