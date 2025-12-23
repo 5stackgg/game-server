@@ -352,14 +352,46 @@ public class MatchManager
 
         _logger.LogInformation($"Setup Match {_matchData.id}");
 
+        MatchMap? _currentMap = GetCurrentMap();
+
+        if (_currentMap == null)
+        {
+            _logger.LogWarning("match does not have a current map");
+            return;
+        }
+
+        _logger.LogInformation(
+            $"Game State {_currentMap.status} on ({_currentMap.map.name}) / {Server.MapName}"
+        );
+
+        if (_currentMap.map.workshop_map_id is not null)
+        {
+            string currentWorkshopID = _matchService.GetWorkshopID();
+            _logger.LogInformation(
+                $"Checking Workshop Map {_currentMap.map.workshop_map_id} / {currentWorkshopID}"
+            );
+
+            if (_currentMap.map.workshop_map_id != currentWorkshopID)
+            {
+                ChangeMap(_currentMap.map);
+                return;
+            }
+        }
+        else if (!Server.MapName.ToLower().Contains(_currentMap.map.name.ToLower()))
+        {
+            ChangeMap(_currentMap.map);
+            return;
+        }
+
+        _logger.LogInformation(
+            $"TV Broadcast URL: {_environmentService.GetRelayUrl()}/{_matchData.id}"
+        );
 
         _gameServer.SendCommands([
             $"tv_broadcast_url \"{_environmentService.GetRelayUrl()}/{_matchData.id}\"",
             $"tv_broadcast_origin_auth {_matchData.id}:{_matchData.password}",
-            "tv_broadcast 1"
+            "tv_broadcast 1",
         ]);
-
-        _logger.LogInformation($"TV Broadcast URL: {_environmentService.GetRelayUrl()}/{_matchData.id}");
 
         if (_matchData.options.cfg_overrides != null && _matchData.options.cfg_overrides.Count > 0)
         {
@@ -387,40 +419,9 @@ public class MatchManager
             _gameServer.SendCommands(["exec 5stack.lan.cfg"]);
         }
 
-        MatchMap? _currentMap = GetCurrentMap();
-
-        if (_currentMap == null)
-        {
-            _logger.LogWarning("match does not have a current map");
-            return;
-        }
-
         if (_currentMapStatus == eMapStatus.Unknown)
         {
             SetupTeams();
-        }
-
-        _logger.LogInformation(
-            $"Game State {_currentMap.status} on ({_currentMap.map.name}) / {Server.MapName}"
-        );
-
-        if (_currentMap.map.workshop_map_id is not null)
-        {
-            string currentWorkshopID = _matchService.GetWorkshopID();
-            _logger.LogInformation(
-                $"Checking Workshop Map {_currentMap.map.workshop_map_id} / {currentWorkshopID}"
-            );
-
-            if (_currentMap.map.workshop_map_id != currentWorkshopID)
-            {
-                ChangeMap(_currentMap.map);
-                return;
-            }
-        }
-        else if (!Server.MapName.ToLower().Contains(_currentMap.map.name.ToLower()))
-        {
-            ChangeMap(_currentMap.map);
-            return;
         }
 
         FiveStackPlugin.SetPasswordBuffer(_matchData.password);
@@ -515,6 +516,8 @@ public class MatchManager
         {
             return;
         }
+
+        _gameServer.SendCommands(new[] { "tv_broadcast 0" });
 
         _logger.LogInformation($"Changing Map {map.name}");
 

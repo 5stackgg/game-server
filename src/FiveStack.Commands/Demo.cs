@@ -11,7 +11,7 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public async void OnUploadDemo(CCSPlayerController? player, CommandInfo command)
     {
-         MatchManager? match = _matchService.GetCurrentMatch();
+        MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null)
         {
             return;
