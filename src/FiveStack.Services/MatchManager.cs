@@ -954,7 +954,11 @@ public class MatchManager
                 .Find("tv_broadcast_origin_auth")
                 ?.SetValue($"{_matchData.id}:{_matchData.password}");
 
-            _gameServer.SendCommands(["tv_broadcast 1"]);
+            Server.NextFrame(() =>
+            {
+                _gameServer.SendCommands(["tv_broadcast 1"]);
+                _logger.LogInformation("Sending TV Broadcast command");
+            });
         }
     }
 }
