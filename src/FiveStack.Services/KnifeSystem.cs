@@ -42,9 +42,7 @@ public class KnifeSystem
 
     public void Start()
     {
-        _gameServer.SendCommands(
-            new[] { "exec 5stack.knife.cfg", "mp_warmup_end", "mp_restartgame 1" }
-        );
+        _gameServer.SendCommands(["exec 5stack.knife.cfg", "mp_warmup_end", "mp_restartgame 1"]);
 
         Server.NextFrame(() =>
         {
@@ -57,7 +55,7 @@ public class KnifeSystem
 
     public void SetWinningTeam(CsTeam team)
     {
-        _gameServer.SendCommands(new[] { "mp_warmup_start;mp_pause_match" });
+        _gameServer.SendCommands(["mp_warmup_start;mp_pause_match"]);
 
         MatchManager? match = _matchService.GetCurrentMatch();
 
@@ -187,7 +185,7 @@ public class KnifeSystem
         if (_environmentService.IsOfflineMode())
         {
             match.UpdateMapStatus(eMapStatus.Live);
-            _gameServer.SendCommands(new[] { "mp_swapteams; mp_restartgame 1" });
+            _gameServer.SendCommands(["mp_swapteams; mp_restartgame 1"]);
             return;
         }
 
@@ -196,7 +194,7 @@ public class KnifeSystem
 
     public void Skip()
     {
-        _gameServer.SendCommands(new[] { "mp_warmup_start;" });
+        _gameServer.SendCommands(["mp_warmup_start;"]);
 
         MatchManager? match = _matchService.GetCurrentMatch();
 
@@ -222,7 +220,7 @@ public class KnifeSystem
 
         _gameServer.Message(HudDestination.Center, _localizer["knife.skipping"]);
 
-        _gameServer.SendCommands(new[] { "mp_restartgame 1;mp_warmup_end" });
+        _gameServer.SendCommands(["mp_restartgame 1;mp_warmup_end"]);
 
         match.UpdateMapStatus(eMapStatus.Live);
     }
@@ -238,7 +236,7 @@ public class KnifeSystem
             return;
         }
 
-        _gameServer.SendCommands(new[] { "mp_swapteams" });
+        _gameServer.SendCommands(["mp_swapteams"]);
         Server.NextFrame(() =>
         {
             match.UpdateMapStatus(eMapStatus.Live);
@@ -247,7 +245,7 @@ public class KnifeSystem
             1.0f,
             () =>
             {
-                _gameServer.SendCommands(new[] { "mp_restartgame 1" });
+                _gameServer.SendCommands(["mp_restartgame 1"]);
             }
         );
     }

@@ -165,7 +165,7 @@ public class MatchManager
 
     public void PauseMatch(string? message = null, bool skipUpdate = false)
     {
-        _gameServer.SendCommands(new[] { "mp_pause_match" });
+        _gameServer.SendCommands(["mp_pause_match"]);
 
         if (IsPaused())
         {
@@ -220,7 +220,7 @@ public class MatchManager
         }
 
         _logger.LogInformation($"Resuming Match{(message != null ? $": {message}" : "")}");
-        _gameServer.SendCommands(new[] { "mp_unpause_match" });
+        _gameServer.SendCommands(["mp_unpause_match"]);
 
         _resumeMessageTimer?.Kill();
         if (_timeoutSystem.resumeVote != null)
@@ -319,7 +319,7 @@ public class MatchManager
 
                 if (IsWarmup())
                 {
-                    _gameServer.SendCommands(new[] { "mp_warmup_end" });
+                    _gameServer.SendCommands(["mp_warmup_end"]);
                 }
 
                 PauseMatch(null, true);
@@ -383,18 +383,7 @@ public class MatchManager
             return;
         }
 
-        if (_matchData.options.use_playcast)
-        {
-            _logger.LogInformation(
-                $"TV Broadcast URL: {_environmentService.GetRelayUrl()}/{_matchData.id}"
-            );
-
-            _gameServer.SendCommands([
-                $"tv_broadcast_url \"{_environmentService.GetRelayUrl()}/{_matchData.id}\"",
-                $"tv_broadcast_origin_auth {_matchData.id}:{_matchData.password}",
-                "tv_broadcast 1",
-            ]);
-        }
+        SetupBroadcast();
 
         if (_matchData.options.cfg_overrides != null && _matchData.options.cfg_overrides.Count > 0)
         {
@@ -428,7 +417,7 @@ public class MatchManager
         }
 
         FiveStackPlugin.SetPasswordBuffer(_matchData.password);
-        _gameServer.SendCommands(new[] { $"sv_password \"{_matchData.password}\"" });
+        ConVar.Find("sv_password")?.SetValue(_matchData.password);
 
         if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
         {
@@ -520,17 +509,17 @@ public class MatchManager
             return;
         }
 
-        _gameServer.SendCommands(new[] { "tv_broadcast 0" });
+        ConVar.Find("tv_broadcast")?.SetValue(0);
 
         _logger.LogInformation($"Changing Map {map.name}");
 
         if (map.workshop_map_id == null && Server.IsMapValid(map.name))
         {
-            _gameServer.SendCommands(new[] { $"changelevel \"{map.name}\"" });
+            _gameServer.SendCommands([$"changelevel \"{map.name}\""]);
         }
         else
         {
-            _gameServer.SendCommands(new[] { $"host_workshop_map {map.workshop_map_id}" });
+            _gameServer.SendCommands([$"host_workshop_map {map.workshop_map_id}"]);
         }
     }
 
@@ -551,9 +540,9 @@ public class MatchManager
             if (gameMode != 2)
             {
                 _logger.LogInformation($"Setting Game Mode to {_matchData.options.type}");
-                _gameServer.SendCommands(
-                    new[] { "game_type 0", "game_mode 2", "mp_restartgame 1" }
-                );
+                ConVar.Find("game_type")?.SetValue(0);
+                ConVar.Find("game_mode")?.SetValue(2);
+                _gameServer.SendCommands(["mp_restartgame 1"]);
             }
         }
         else
@@ -561,9 +550,9 @@ public class MatchManager
             if (gameMode != 1)
             {
                 _logger.LogInformation($"Setting Game Mode to {_matchData.options.type}");
-                _gameServer.SendCommands(
-                    new[] { "game_type 0", "game_mode 1", "mp_restartgame 1" }
-                );
+                ConVar.Find("game_type")?.SetValue(0);
+                ConVar.Find("game_mode")?.SetValue(1);
+                _gameServer.SendCommands(["mp_restartgame 1"]);
             }
         }
         KickBots();
@@ -591,7 +580,8 @@ public class MatchManager
 
     private void StartWarmup()
     {
-        _gameServer.SendCommands(["sv_disable_teamselect_menu 0", "exec 5stack.warmup.cfg"]);
+        ConVar.Find("sv_disable_teamselect_menu")?.SetValue(0);
+        _gameServer.SendCommands(["exec 5stack.warmup.cfg"]);
 
         knifeSystem.ResetKnifeRound();
 
@@ -606,7 +596,7 @@ public class MatchManager
 
             if (isInWarmup == false)
             {
-                _gameServer.SendCommands(new[] { "mp_warmup_start" });
+                _gameServer.SendCommands(["mp_warmup_start"]);
             }
 
             readySystem.Setup();
@@ -615,7 +605,7 @@ public class MatchManager
 
     private void StartKnife()
     {
-        _gameServer.SendCommands(["sv_disable_teamselect_menu 1"]);
+        ConVar.Find("sv_disable_teamselect_menu")?.SetValue(1);
 
         if (_matchData == null || IsKnife())
         {
@@ -638,13 +628,14 @@ public class MatchManager
 
         _logger.LogInformation("Starting Live Match");
 
-        _gameServer.SendCommands([
-            $"exec 5stack.{_matchData.options.type.ToLower()}.cfg",
-            "sv_disable_teamselect_menu 1",
-            "mp_backup_round_auto 1",
-            $"mp_maxrounds {_matchData.options.mr * 2}",
-            $"mp_overtime_enable {_matchData.options.overtime}",
-        ]);
+        ConVar.Find("sv_disable_teamselect_menu")?.SetValue(1);
+
+        ConVar.Find("mp_backup_round_auto")?.SetValue(1);
+
+        ConVar.Find("mp_maxrounds")?.SetValue(_matchData.options.mr * 2);
+        ConVar.Find("mp_overtime_enable")?.SetValue(_matchData.options.overtime);
+
+        _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
 
         Server.NextFrame(() =>
         {
@@ -657,7 +648,7 @@ public class MatchManager
 
                 if (IsWarmup() || IsKnife())
                 {
-                    _gameServer.SendCommands(new[] { "mp_restartgame 1;mp_warmup_end;" });
+                    _gameServer.SendCommands(["mp_restartgame 1;mp_warmup_end;"]);
                 }
             });
         });
@@ -802,7 +793,10 @@ public class MatchManager
             return;
         }
 
-        _gameServer.SendCommands(new[] { "bot_quota_mode competitive", "bot_quota 0", "bot_kick" });
+        ConVar.Find("bot_quota_mode")?.SetValue("competitive");
+        ConVar.Find("bot_quota")?.SetValue(0);
+
+        _gameServer.SendCommands(["bot_kick"]);
     }
 
     private void SendUpdatedMatchLineups()
@@ -935,5 +929,32 @@ public class MatchManager
 
         // force the client to update the player name
         new EventNextlevelChanged(false).FireEventToClient(player);
+    }
+
+    public void SetupBroadcast()
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        ConVar.Find("tv_delay")?.SetValue(_matchData.options.tv_delay);
+        ConVar.Find("tv_record_immediate")?.SetValue(1);
+
+        if (_matchData.options.use_playcast)
+        {
+            _logger.LogInformation(
+                $"TV Broadcast URL: {_environmentService.GetRelayUrl()}/{_matchData.id}"
+            );
+
+            ConVar
+                .Find("tv_broadcast_url")
+                ?.SetValue($"{_environmentService.GetRelayUrl()}/{_matchData.id}");
+            ConVar
+                .Find("tv_broadcast_origin_auth")
+                ?.SetValue($"{_matchData.id}:{_matchData.password}");
+
+            _gameServer.SendCommands(["tv_broadcast 1"]);
+        }
     }
 }

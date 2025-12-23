@@ -388,9 +388,9 @@ public class TimeoutSystem
 
     private void CallTimeout(CsTeam team)
     {
-        _gameServer.SendCommands(
-            new[] { $"timeout_{(team == CsTeam.Terrorist ? "terrorist" : "ct")}_start" }
-        );
+        _gameServer.SendCommands([
+            $"timeout_{(team == CsTeam.Terrorist ? "terrorist" : "ct")}_start",
+        ]);
 
         Server.NextFrame(() =>
         {
@@ -401,9 +401,9 @@ public class TimeoutSystem
 
             _logger.LogInformation($"Adding timeout for team {team}");
 
-            _gameServer.SendCommands(
-                new[] { $"mp_modify_timeouts {(team == CsTeam.Terrorist ? "T" : "CT")} 1" }
-            );
+            _gameServer.SendCommands([
+                $"mp_modify_timeouts {(team == CsTeam.Terrorist ? "T" : "CT")} 1",
+            ]);
 
             CallTimeout(team);
         });

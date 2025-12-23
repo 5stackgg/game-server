@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
@@ -70,14 +71,11 @@ public class GameDemos
 
         Directory.CreateDirectory(GetMatchDemoPath());
 
-        _gameServer.SendCommands(
-            new[]
-            {
-                $"tv_delay {match.options.tv_delay}",
-                $"tv_record_immediate 1",
-                $"tv_record {GetMatchDemoPath()}/{MatchUtility.GetSafeMatchPrefix(match)}_{DateTime.Now.ToString("yyyyMMdd-HHmm")}-{Server.MapName}",
-            }
-        );
+        ConVar
+            .Find("tv_record")
+            ?.SetValue(
+                $"{GetMatchDemoPath()}/{MatchUtility.GetSafeMatchPrefix(match)}_{DateTime.Now.ToString("yyyyMMdd-HHmm")}-{Server.MapName}"
+            );
     }
 
     public void Stop()
@@ -90,7 +88,7 @@ public class GameDemos
         }
 
         File.Delete(GetLockFilePath(match.id));
-        _gameServer.SendCommands(new[] { "tv_stoprecord" });
+        _gameServer.SendCommands(["tv_stoprecord"]);
     }
 
     public async Task UploadDemos()

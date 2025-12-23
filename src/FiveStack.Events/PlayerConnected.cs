@@ -109,7 +109,7 @@ public partial class FiveStackPlugin
 
         if (MatchUtility.Players().Count == 1 && match.IsWarmup())
         {
-            _gameServer.SendCommands(new[] { "mp_warmup_start" });
+            _gameServer.SendCommands(["mp_warmup_start"]);
         }
 
         CCSPlayerController player = @event.Userid;

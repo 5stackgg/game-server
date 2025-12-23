@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
@@ -60,9 +61,7 @@ public class GameBackUpRounds
             return;
         }
 
-        _gameServer.SendCommands(
-            new[] { $"mp_backup_round_file {MatchUtility.GetSafeMatchPrefix(match)}" }
-        );
+        ConVar.Find("mp_backup_round_file")?.SetValue(MatchUtility.GetSafeMatchPrefix(match));
     }
 
     public bool IsResettingRound()
@@ -149,7 +148,7 @@ public class GameBackUpRounds
             return;
         }
 
-        _gameServer.SendCommands(new[] { "mp_pause_match" });
+        _gameServer.SendCommands(["mp_pause_match"]);
 
         if (player != null || vote == true)
         {
@@ -300,7 +299,7 @@ public class GameBackUpRounds
         File.WriteAllText(backupRoundFilePath, backupRound.backup_file);
 
         _logger.LogInformation($"Loading backup round file {backupRoundFileName}");
-        _gameServer.SendCommands(new[] { $"mp_backup_restore_load_file {backupRoundFileName}" });
+        _gameServer.SendCommands([$"mp_backup_restore_load_file {backupRoundFileName}"]);
 
         _matchService.GetCurrentMatch()?.PauseMatch();
 

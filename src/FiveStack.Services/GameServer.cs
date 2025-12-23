@@ -44,7 +44,7 @@ public class GameServer
     {
         if (player != null)
         {
-            var parts = message.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            var parts = message.Split(["\r\n", "\r", "\n"], StringSplitOptions.None);
             foreach (var part in parts)
             {
                 player.PrintToChat($"{part}");
@@ -60,7 +60,7 @@ public class GameServer
         }
         else
         {
-            var parts = message.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            var parts = message.Split(["\r\n", "\r", "\n"], StringSplitOptions.None);
             foreach (var part in parts)
             {
                 Server.PrintToChatAll($"{part}");
