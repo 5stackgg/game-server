@@ -16,6 +16,7 @@ public class MatchOptions
     public string ready_setting { get; set; } = "Players";
     public string timeout_setting { get; set; } = "CoachAndPlayers";
     public string tech_timeout_setting { get; set; } = "CoachAndPlayers";
+    public bool use_playcast { get; set; } = false;
     public Dictionary<string, string> cfg_overrides { get; set; } =
         new Dictionary<string, string>();
 }
