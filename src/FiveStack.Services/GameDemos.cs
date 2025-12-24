@@ -71,11 +71,10 @@ public class GameDemos
 
         Directory.CreateDirectory(GetMatchDemoPath());
 
-        ConVar
-            .Find("tv_record")
-            ?.SetValue(
-                $"{GetMatchDemoPath()}/{MatchUtility.GetSafeMatchPrefix(match)}_{DateTime.Now.ToString("yyyyMMdd-HHmm")}-{Server.MapName}"
-            );
+        string demoPath =
+            $"{GetMatchDemoPath()}/{MatchUtility.GetSafeMatchPrefix(match)}_{DateTime.Now.ToString("yyyyMMdd-HHmm")}-{Server.MapName}";
+        _logger.LogInformation($"Recording demo to {demoPath}");
+        ConVar.Find("tv_record")?.SetValue(demoPath);
     }
 
     public void Stop()
@@ -93,6 +92,8 @@ public class GameDemos
 
     public async Task UploadDemos()
     {
+        _gameServer.SendCommands(["tv_broadcast 0"]);
+
         string demoPath = GetMatchDemoPath();
         _logger.LogInformation($"Uploading demos from {demoPath}");
 
