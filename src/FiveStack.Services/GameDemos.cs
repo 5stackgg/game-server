@@ -74,7 +74,8 @@ public class GameDemos
         string demoPath =
             $"{GetMatchDemoPath()}/{MatchUtility.GetSafeMatchPrefix(match)}_{DateTime.Now.ToString("yyyyMMdd-HHmm")}-{Server.MapName}";
         _logger.LogInformation($"Recording demo to {demoPath}");
-        ConVar.Find("tv_record")?.SetValue(demoPath);
+
+        _gameServer.SendCommands([$"tv_record {demoPath}"]);
     }
 
     public void Stop()
