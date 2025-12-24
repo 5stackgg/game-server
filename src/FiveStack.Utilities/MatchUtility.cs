@@ -98,7 +98,7 @@ namespace FiveStack.Utilities
         {
             return CounterStrikeSharp
                 .API.Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
-                ?.First()
+                ?.FirstOrDefault()
                 ?.GameRules;
         }
 
