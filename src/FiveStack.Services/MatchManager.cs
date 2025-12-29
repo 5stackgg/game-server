@@ -745,7 +745,7 @@ public class MatchManager
             return CsTeam.None;
         }
 
-        return TeamUtility.GetLineupSide(matchData, currentMap, lineup_id.Value, _gameServer.GetTotalRoundsPlayed());
+        return TeamUtility.GetLineupSide(matchData, currentMap, lineup_id.Value, _gameServer.CurrentRound());
     }
 
     private void KickBots()
