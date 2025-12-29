@@ -68,18 +68,18 @@ public class MatchEvents
                 return;
             }
 
-            int currentRound = _gameServer.GetTotalRoundsPlayed();
+            int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
             int lineup1Score = TeamUtility.GetTeamScore(
                 matchData,
                 currentMap,
                 matchData.lineup_1_id,
-                currentRound
+                totalRoundsPlayed
             );
             int lineup2Score = TeamUtility.GetTeamScore(
                 matchData,
                 currentMap,
                 matchData.lineup_2_id,
-                currentRound
+                totalRoundsPlayed
             );
 
             Guid winningLineupId =

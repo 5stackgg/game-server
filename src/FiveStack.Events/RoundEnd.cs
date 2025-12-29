@@ -79,19 +79,19 @@ public partial class FiveStackPlugin
             return;
         }
 
-        int currentRound = _gameServer.GetTotalRoundsPlayed();
+        int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
 
         CsTeam lineup1Side = TeamUtility.GetLineupSide(
             matchData,
             currentMap,
             matchData.lineup_1_id,
-            currentRound
+            totalRoundsPlayed
         );
         CsTeam lineup2Side = TeamUtility.GetLineupSide(
             matchData,
             currentMap,
             matchData.lineup_2_id,
-            currentRound
+            totalRoundsPlayed
         );
 
         _matchEvents.PublishGameEvent(
@@ -100,14 +100,14 @@ public partial class FiveStackPlugin
             {
                 { "time", DateTime.Now },
                 { "match_map_id", currentMap.id },
-                { "round", currentRound },
+                { "round", totalRoundsPlayed },
                 {
                     "lineup_1_score",
-                    $"{TeamUtility.GetTeamScore(matchData, currentMap, matchData.lineup_1_id, currentRound)}"
+                    $"{TeamUtility.GetTeamScore(matchData, currentMap, matchData.lineup_1_id, totalRoundsPlayed)}"
                 },
                 {
                     "lineup_1_money",
-                    $"{TeamUtility.GetTeamMoney(matchData, currentMap, matchData.lineup_1_id, currentRound)}"
+                    $"{TeamUtility.GetTeamMoney(matchData, currentMap, matchData.lineup_1_id, totalRoundsPlayed)}"
                 },
                 {
                     "lineup_1_timeouts_available",
@@ -115,11 +115,11 @@ public partial class FiveStackPlugin
                 },
                 {
                     "lineup_2_score",
-                    $"{TeamUtility.GetTeamScore(matchData, currentMap, matchData.lineup_2_id, currentRound)}"
+                    $"{TeamUtility.GetTeamScore(matchData, currentMap, matchData.lineup_2_id, totalRoundsPlayed)}"
                 },
                 {
                     "lineup_2_money",
-                    $"{TeamUtility.GetTeamMoney(matchData, currentMap, matchData.lineup_2_id, currentRound)}"
+                    $"{TeamUtility.GetTeamMoney(matchData, currentMap, matchData.lineup_2_id, totalRoundsPlayed)}"
                 },
                 {
                     "lineup_2_timeouts_available",
@@ -129,12 +129,12 @@ public partial class FiveStackPlugin
                 { "lineup_2_side", $"{TeamUtility.CSTeamToString(lineup2Side)}" },
                 {
                     "winning_side",
-                    currentRound == 0 ? "None" : $"{TeamUtility.CSTeamToString(roundWinner)}"
+                    totalRoundsPlayed == 0 ? "None" : $"{TeamUtility.CSTeamToString(roundWinner)}"
                 },
                 {
                     "backup_file",
                     SendBackupRound
-                        ? (_gameBackupRounds.GetBackupRoundFile(currentRound) ?? "")
+                        ? (_gameBackupRounds.GetBackupRoundFile(totalRoundsPlayed) ?? "")
                         : ""
                 },
             }
