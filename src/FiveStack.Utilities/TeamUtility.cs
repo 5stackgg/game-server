@@ -49,23 +49,18 @@ namespace FiveStack.Utilities
                 // Second half: on opposite side
                 return GetOppositeSide(startingSide);
             }
-            else
-            {
-                // Overtime: rounds >= MR*2
-                int overtimeRound = round - (mr * 2);
-                int overtimeMr =
-                    ConVar.Find("mp_overtime_maxrounds")?.GetPrimitiveValue<int>() ?? 6;
 
-                // Calculate which OT half (1-indexed) and position within that half
-                int overTimeNumber = (overtimeRound / overtimeMr) + 1;
-                int block = overtimeRound % overtimeMr;
+            // Overtime: rounds >= MR*2
+            int overtimeRound = round - (mr * 2);
+            int overtimeMr = ConVar.Find("mp_overtime_maxrounds")?.GetPrimitiveValue<int>() ?? 6;
 
-                return (
-                    overTimeNumber % 2 == 1 ? block < (overtimeMr / 2) : block >= (overtimeMr / 2)
-                )
-                    ? GetOppositeSide(startingSide)
-                    : startingSide;
-            }
+            // Calculate which OT half (1-indexed) and position within that half
+            int overTimeNumber = (overtimeRound / overtimeMr) + 1;
+            int block = overtimeRound % overtimeMr;
+
+            return (overTimeNumber % 2 == 1 ? block < (overtimeMr / 2) : block >= (overtimeMr / 2))
+                ? GetOppositeSide(startingSide)
+                : startingSide;
         }
 
         private static CsTeam GetOppositeSide(CsTeam side)
