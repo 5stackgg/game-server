@@ -97,19 +97,19 @@ public class GameBackUpRounds
             }
         );
 
-        int currentRound = _gameServer.GetTotalRoundsPlayed();
+        int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
 
         _logger.LogInformation(
-            $"Highest Backup Round: {highestNumber}, and current round is {currentRound}"
+            $"Highest Backup Round: {highestNumber}, and total rounds played is {totalRoundsPlayed}"
         );
 
-        if (currentRound > 0 && currentRound >= highestNumber)
+        if (totalRoundsPlayed > 0 && totalRoundsPlayed >= highestNumber)
         {
             // we are already live, do not restart the match accidently
             return;
         }
 
-        if (highestNumber > currentRound)
+        if (highestNumber > totalRoundsPlayed)
         {
             _logger.LogInformation("Server restarted, requires a vote to restore round");
             RequestRestoreBackupRound(highestNumber, null, true);

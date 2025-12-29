@@ -25,16 +25,19 @@ public class MatchEvents
     private readonly ILogger<MatchEvents> _logger;
     private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
+    private readonly GameServer _gameServer;
 
     public MatchEvents(
         ILogger<MatchEvents> logger,
         EnvironmentService environmentService,
-        MatchService matchService
+        MatchService matchService,
+        GameServer gameServer
     )
     {
         _logger = logger;
         _matchService = matchService;
         _environmentService = environmentService;
+        _gameServer = gameServer;
 
         _retryTimer = new System.Timers.Timer(RETRY_INTERVAL_MS);
         _retryTimer.Elapsed += async (sender, e) => await RetryPendingMessages();
@@ -62,13 +65,25 @@ public class MatchEvents
         {
             MatchManager? match = _matchService.GetCurrentMatch();
             MatchData? matchData = match?.GetMatchData();
-            if (matchData == null)
+            MatchMap? currentMap = match?.GetCurrentMap();
+            if (matchData == null || currentMap == null)
             {
                 return;
             }
 
-            int lineup1Score = TeamUtility.GetTeamScore(matchData.lineup_1.name);
-            int lineup2Score = TeamUtility.GetTeamScore(matchData.lineup_2.name);
+            int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
+            int lineup1Score = TeamUtility.GetTeamScore(
+                matchData,
+                currentMap,
+                matchData.lineup_1_id,
+                totalRoundsPlayed
+            );
+            int lineup2Score = TeamUtility.GetTeamScore(
+                matchData,
+                currentMap,
+                matchData.lineup_2_id,
+                totalRoundsPlayed
+            );
 
             Guid winningLineupId =
                 lineup1Score > lineup2Score ? matchData.lineup_1_id : matchData.lineup_2_id;
