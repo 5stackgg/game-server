@@ -68,7 +68,7 @@ public class MatchEvents
                 return;
             }
 
-            int currentRound = MatchUtility.Rules()?.TotalRoundsPlayed ?? (matchData.options.mr * 2);
+            int currentRound = _gameServer.GetTotalRoundsPlayed();
             int lineup1Score = TeamUtility.GetTeamScore(
                 matchData,
                 currentMap,
