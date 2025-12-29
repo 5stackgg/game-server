@@ -10,7 +10,7 @@ namespace FiveStack.Utilities
             MatchData matchData,
             MatchMap currentMap,
             Guid lineupId,
-            int currentRound
+            int round
         )
         {
             if (matchData == null || currentMap == null)
@@ -40,10 +40,10 @@ namespace FiveStack.Utilities
             // Overtime: rounds >= MR*2, alternates every 6 rounds (MR 6)
             int overtimeMr = 6; // Overtime always uses 6 rounds per side
 
-            if (currentRound < mr * 2)
+            if (round < mr * 2)
             {
                 // Regular time
-                if (currentRound < mr)
+                if (round < mr)
                 {
                     // First half: on starting side
                     return startingSide;
@@ -57,7 +57,7 @@ namespace FiveStack.Utilities
             else
             {
                 // Overtime: rounds >= MR*2
-                int overtimeRound = currentRound - (mr * 2);
+                int overtimeRound = round - (mr * 2);
                 int roundsPerOvertimeHalf = overtimeMr;
 
                 if ((overtimeRound / roundsPerOvertimeHalf) % 2 == 0)
@@ -149,10 +149,10 @@ namespace FiveStack.Utilities
             MatchData matchData,
             MatchMap currentMap,
             Guid lineupId,
-            int currentRound
+            int round
         )
         {
-            CsTeam expectedSide = GetLineupSide(matchData, currentMap, lineupId, currentRound);
+            CsTeam expectedSide = GetLineupSide(matchData, currentMap, lineupId, round);
             if (expectedSide == CsTeam.None)
             {
                 return 0;
@@ -173,10 +173,10 @@ namespace FiveStack.Utilities
             MatchData matchData,
             MatchMap currentMap,
             Guid lineupId,
-            int currentRound
+            int round
         )
         {
-            CsTeam expectedSide = GetLineupSide(matchData, currentMap, lineupId, currentRound);
+            CsTeam expectedSide = GetLineupSide(matchData, currentMap, lineupId, round);
             if (expectedSide == CsTeam.None)
             {
                 return 0;
