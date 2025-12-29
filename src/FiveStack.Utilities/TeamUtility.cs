@@ -1,10 +1,90 @@
 using System.Linq;
 using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.Entities;
 
 namespace FiveStack.Utilities
 {
     public static class TeamUtility
     {
+        public static CsTeam GetLineupSide(
+            MatchData matchData,
+            MatchMap currentMap,
+            Guid lineupId,
+            int currentRound
+        )
+        {
+            if (matchData == null || currentMap == null)
+            {
+                return CsTeam.None;
+            }
+
+            int mr = matchData.options.mr;
+            if (mr <= 0)
+            {
+                return CsTeam.None;
+            }
+
+            // Determine if this is lineup_1 or lineup_2
+            bool isLineup1 = matchData.lineup_1_id == lineupId;
+            CsTeam startingSide = TeamStringToCsTeam(
+                isLineup1 ? currentMap.lineup_1_side : currentMap.lineup_2_side
+            );
+
+            if (startingSide == CsTeam.None || startingSide == CsTeam.Spectator)
+            {
+                return CsTeam.None;
+            }
+
+            // Calculate which side based on round number
+            // Regular time: rounds 0 to (MR-1) on starting side, rounds MR to (MR*2-1) on opposite side
+            // Overtime: rounds >= MR*2, alternates every 6 rounds (MR 6)
+            int overtimeMr = 6; // Overtime always uses 6 rounds per side
+
+            if (currentRound < mr * 2)
+            {
+                // Regular time
+                if (currentRound < mr)
+                {
+                    // First half: on starting side
+                    return startingSide;
+                }
+                else
+                {
+                    // Second half: on opposite side
+                    return GetOppositeSide(startingSide);
+                }
+            }
+            else
+            {
+                // Overtime: rounds >= MR*2
+                int overtimeRound = currentRound - (mr * 2);
+                int roundsPerOvertimeHalf = overtimeMr;
+
+                if ((overtimeRound / roundsPerOvertimeHalf) % 2 == 0)
+                {
+                    // Even overtime half: on starting side
+                    return startingSide;
+                }
+                else
+                {
+                    // Odd overtime half: on opposite side
+                    return GetOppositeSide(startingSide);
+                }
+            }
+        }
+
+        private static CsTeam GetOppositeSide(CsTeam side)
+        {
+            switch (side)
+            {
+                case CsTeam.Terrorist:
+                    return CsTeam.CounterTerrorist;
+                case CsTeam.CounterTerrorist:
+                    return CsTeam.Terrorist;
+                default:
+                    return CsTeam.None;
+            }
+        }
         public static string TeamNumToString(int teamNum)
         {
             switch (teamNum)
@@ -65,11 +145,22 @@ namespace FiveStack.Utilities
             }
         }
 
-        public static int GetTeamScore(string teamName)
+        public static int GetTeamScore(
+            MatchData matchData,
+            MatchMap currentMap,
+            Guid lineupId,
+            int currentRound
+        )
         {
+            CsTeam expectedSide = GetLineupSide(matchData, currentMap, lineupId, currentRound);
+            if (expectedSide == CsTeam.None)
+            {
+                return 0;
+            }
+
             foreach (var team in MatchUtility.Teams())
             {
-                if (team.ClanTeamname == teamName)
+                if (TeamUtility.TeamNumToCSTeam(team.TeamNum) == expectedSide)
                 {
                     return team.Score;
                 }
@@ -78,13 +169,24 @@ namespace FiveStack.Utilities
             return 0;
         }
 
-        public static int GetTeamMoney(string teamName)
+        public static int GetTeamMoney(
+            MatchData matchData,
+            MatchMap currentMap,
+            Guid lineupId,
+            int currentRound
+        )
         {
+            CsTeam expectedSide = GetLineupSide(matchData, currentMap, lineupId, currentRound);
+            if (expectedSide == CsTeam.None)
+            {
+                return 0;
+            }
+
             int totalCash = 0;
 
             foreach (var team in MatchUtility.Teams())
             {
-                if (team.ClanTeamname == teamName)
+                if (TeamUtility.TeamNumToCSTeam(team.TeamNum) == expectedSide)
                 {
                     foreach (var player in team.PlayerControllers)
                     {
@@ -95,6 +197,7 @@ namespace FiveStack.Utilities
                             ?? 0
                         );
                     }
+                    break; // Found the team, no need to continue
                 }
             }
 

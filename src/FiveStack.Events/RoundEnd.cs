@@ -81,19 +81,18 @@ public partial class FiveStackPlugin
 
         int currentRound = _gameServer.GetTotalRoundsPlayed();
 
-        CsTeam lineup1Side = CsTeam.None;
-        CsTeam lineup2Side = CsTeam.None;
-        foreach (var team in MatchUtility.Teams())
-        {
-            if (team.ClanTeamname == matchData.lineup_1.name)
-            {
-                lineup1Side = TeamUtility.TeamNumToCSTeam(team.TeamNum);
-            }
-            else if (team.ClanTeamname == matchData.lineup_2.name)
-            {
-                lineup2Side = TeamUtility.TeamNumToCSTeam(team.TeamNum);
-            }
-        }
+        CsTeam lineup1Side = TeamUtility.GetLineupSide(
+            matchData,
+            currentMap,
+            matchData.lineup_1_id,
+            currentRound
+        );
+        CsTeam lineup2Side = TeamUtility.GetLineupSide(
+            matchData,
+            currentMap,
+            matchData.lineup_2_id,
+            currentRound
+        );
 
         _matchEvents.PublishGameEvent(
             "score",
@@ -102,14 +101,26 @@ public partial class FiveStackPlugin
                 { "time", DateTime.Now },
                 { "match_map_id", currentMap.id },
                 { "round", currentRound },
-                { "lineup_1_score", $"{TeamUtility.GetTeamScore(matchData.lineup_1.name)}" },
-                { "lineup_1_money", $"{TeamUtility.GetTeamMoney(matchData.lineup_1.name)}" },
+                {
+                    "lineup_1_score",
+                    $"{TeamUtility.GetTeamScore(matchData, currentMap, matchData.lineup_1_id, currentRound)}"
+                },
+                {
+                    "lineup_1_money",
+                    $"{TeamUtility.GetTeamMoney(matchData, currentMap, matchData.lineup_1_id, currentRound)}"
+                },
                 {
                     "lineup_1_timeouts_available",
                     $"{currentMap?.lineup_1_timeouts_available ?? 0}"
                 },
-                { "lineup_2_score", $"{TeamUtility.GetTeamScore(matchData.lineup_2.name)}" },
-                { "lineup_2_money", $"{TeamUtility.GetTeamMoney(matchData.lineup_2.name)}" },
+                {
+                    "lineup_2_score",
+                    $"{TeamUtility.GetTeamScore(matchData, currentMap, matchData.lineup_2_id, currentRound)}"
+                },
+                {
+                    "lineup_2_money",
+                    $"{TeamUtility.GetTeamMoney(matchData, currentMap, matchData.lineup_2_id, currentRound)}"
+                },
                 {
                     "lineup_2_timeouts_available",
                     $"{currentMap?.lineup_2_timeouts_available ?? 0}"

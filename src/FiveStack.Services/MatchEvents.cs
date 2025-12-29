@@ -62,13 +62,25 @@ public class MatchEvents
         {
             MatchManager? match = _matchService.GetCurrentMatch();
             MatchData? matchData = match?.GetMatchData();
-            if (matchData == null)
+            MatchMap? currentMap = match?.GetCurrentMap();
+            if (matchData == null || currentMap == null)
             {
                 return;
             }
 
-            int lineup1Score = TeamUtility.GetTeamScore(matchData.lineup_1.name);
-            int lineup2Score = TeamUtility.GetTeamScore(matchData.lineup_2.name);
+            int currentRound = MatchUtility.Rules()?.TotalRoundsPlayed ?? (matchData.options.mr * 2);
+            int lineup1Score = TeamUtility.GetTeamScore(
+                matchData,
+                currentMap,
+                matchData.lineup_1_id,
+                currentRound
+            );
+            int lineup2Score = TeamUtility.GetTeamScore(
+                matchData,
+                currentMap,
+                matchData.lineup_2_id,
+                currentRound
+            );
 
             Guid winningLineupId =
                 lineup1Score > lineup2Score ? matchData.lineup_1_id : matchData.lineup_2_id;

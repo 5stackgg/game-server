@@ -745,18 +745,8 @@ public class MatchManager
             return CsTeam.None;
         }
 
-        string lineupName =
-            matchData.lineup_1_id == lineup_id ? matchData.lineup_1.name : matchData.lineup_2.name;
-
-        foreach (var team in MatchUtility.Teams())
-        {
-            if (team.ClanTeamname == lineupName)
-            {
-                return TeamUtility.TeamNumToCSTeam(team.TeamNum);
-            }
-        }
-
-        return CsTeam.None;
+        int currentRound = _gameServer.GetTotalRoundsPlayed();
+        return TeamUtility.GetLineupSide(matchData, currentMap, lineup_id.Value, currentRound);
     }
 
     private void KickBots()
