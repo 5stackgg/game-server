@@ -115,11 +115,11 @@ public partial class FiveStackPlugin
                 },
                 {
                     "lineup_2_score",
-                    $"{TeamUtility.GetTeamScore(matchData, currentMap, matchData.lineup_2_id, totalRoundsPlayed)}"
+                    $"{TeamUtility.GetTeamScore(matchData, currentMap!, matchData.lineup_2_id, totalRoundsPlayed)}"
                 },
                 {
                     "lineup_2_money",
-                    $"{TeamUtility.GetTeamMoney(matchData, currentMap, matchData.lineup_2_id, totalRoundsPlayed)}"
+                    $"{TeamUtility.GetTeamMoney(matchData, currentMap!, matchData.lineup_2_id, totalRoundsPlayed)}"
                 },
                 {
                     "lineup_2_timeouts_available",

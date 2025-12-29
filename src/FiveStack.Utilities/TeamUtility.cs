@@ -1,4 +1,5 @@
 using System.Linq;
+using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 
@@ -37,39 +38,33 @@ namespace FiveStack.Utilities
 
             // Calculate which side based on round number
             // Regular time: rounds 0 to (MR-1) on starting side, rounds MR to (MR*2-1) on opposite side
-            // Overtime: rounds >= MR*2, alternates every 6 rounds (MR 6)
-            int overtimeMr = 6; // Overtime always uses 6 rounds per side
-
             if (round < mr * 2)
             {
-                // Regular time
                 if (round < mr)
                 {
                     // First half: on starting side
                     return startingSide;
                 }
-                else
-                {
-                    // Second half: on opposite side
-                    return GetOppositeSide(startingSide);
-                }
+
+                // Second half: on opposite side
+                return GetOppositeSide(startingSide);
             }
             else
             {
                 // Overtime: rounds >= MR*2
                 int overtimeRound = round - (mr * 2);
-                int roundsPerOvertimeHalf = overtimeMr;
+                int overtimeMr =
+                    ConVar.Find("mp_overtime_maxrounds")?.GetPrimitiveValue<int>() ?? 6;
 
-                if ((overtimeRound / roundsPerOvertimeHalf) % 2 == 0)
-                {
-                    // Even overtime half: on starting side
-                    return startingSide;
-                }
-                else
-                {
-                    // Odd overtime half: on opposite side
-                    return GetOppositeSide(startingSide);
-                }
+                // Calculate which OT half (1-indexed) and position within that half
+                int overTimeNumber = (overtimeRound / overtimeMr) + 1;
+                int block = overtimeRound % overtimeMr;
+
+                return (
+                    overTimeNumber % 2 == 1 ? block < (overtimeMr / 2) : block >= (overtimeMr / 2)
+                )
+                    ? GetOppositeSide(startingSide)
+                    : startingSide;
             }
         }
 
@@ -85,6 +80,7 @@ namespace FiveStack.Utilities
                     return CsTeam.None;
             }
         }
+
         public static string TeamNumToString(int teamNum)
         {
             switch (teamNum)

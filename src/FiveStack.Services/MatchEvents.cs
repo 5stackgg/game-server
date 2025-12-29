@@ -25,16 +25,19 @@ public class MatchEvents
     private readonly ILogger<MatchEvents> _logger;
     private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
+    private readonly GameServer _gameServer;
 
     public MatchEvents(
         ILogger<MatchEvents> logger,
         EnvironmentService environmentService,
-        MatchService matchService
+        MatchService matchService,
+        GameServer gameServer
     )
     {
         _logger = logger;
         _matchService = matchService;
         _environmentService = environmentService;
+        _gameServer = gameServer;
 
         _retryTimer = new System.Timers.Timer(RETRY_INTERVAL_MS);
         _retryTimer.Elapsed += async (sender, e) => await RetryPendingMessages();

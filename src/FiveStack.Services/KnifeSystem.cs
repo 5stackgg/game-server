@@ -3,6 +3,7 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Localization;
@@ -230,13 +231,19 @@ public class KnifeSystem
         _logger.LogInformation("Knife round confirming switch");
 
         MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+        MatchMap? currentMap = match?.GetCurrentMap();
 
-        if (match == null)
+        if (match == null || matchData == null || currentMap == null)
         {
             return;
         }
 
+        currentMap.lineup_1_side = currentMap.lineup_1_side == "CT" ? "TERRORIST" : "CT";
+        currentMap.lineup_2_side = currentMap.lineup_2_side == "CT" ? "TERRORIST" : "CT";
+
         _gameServer.SendCommands(["mp_swapteams"]);
+
         Server.NextFrame(() =>
         {
             match.UpdateMapStatus(eMapStatus.Live);
