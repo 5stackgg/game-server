@@ -284,6 +284,8 @@ public class MatchManager
         switch (status)
         {
             case eMapStatus.Scheduled:
+                UpdateMapStatus(eMapStatus.Warmup);
+                break;
             case eMapStatus.Warmup:
                 status = eMapStatus.Warmup;
                 StartWarmup();
@@ -509,7 +511,7 @@ public class MatchManager
             return;
         }
 
-        ConVar.Find("tv_broadcast")?.SetValue(0);
+        _gameServer.SendCommands(["tv_broadcast 0"]);
 
         _logger.LogInformation($"Changing Map {map.name}");
 
@@ -749,7 +751,7 @@ public class MatchManager
             matchData,
             currentMap,
             lineup_id.Value,
-            _gameServer.GetCurrentRound()
+            _gameServer.GetTotalRoundsPlayed()
         );
     }
 
