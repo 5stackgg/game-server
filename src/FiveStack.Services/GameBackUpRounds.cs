@@ -297,26 +297,33 @@ public class GameBackUpRounds
         );
 
         File.WriteAllText(backupRoundFilePath, backupRound.backup_file);
+        _gameServer.SendCommands(["mp_restartgame 1; mp_pause_match"]);
+
+        await Task.Delay(2 * 1000);
 
         _logger.LogInformation($"Loading backup round file {backupRoundFileName}");
-        _gameServer.SendCommands([$"mp_backup_restore_load_file {backupRoundFileName}"]);
 
-        _matchService.GetCurrentMatch()?.PauseMatch();
-
-        await Task.Delay(5 * 1000);
-
-        Server.NextFrame(() =>
+        Server.NextFrame(async () =>
         {
-            _logger.LogInformation($"Sending Message for Round {round}");
-            _gameServer.Message(
-                HudDestination.Alert,
-                _localizer[
-                    "backup.round_restored",
-                    ChatColors.Red,
-                    round,
-                    CommandUtility.PublicChatTrigger
-                ]
-            );
+            _gameServer.SendCommands([$"mp_backup_restore_load_file {backupRoundFileName}"]);
+            _matchService.GetCurrentMatch()?.PauseMatch();
+
+            await Task.Delay(5 * 1000);
+
+            Server.NextFrame(() =>
+            {
+                _logger.LogInformation($"Sending Message for Round {round}");
+
+                _gameServer.Message(
+                    HudDestination.Alert,
+                    _localizer[
+                        "backup.round_restored",
+                        ChatColors.Red,
+                        round,
+                        CommandUtility.PublicChatTrigger
+                    ]
+                );
+            });
         });
     }
 }
