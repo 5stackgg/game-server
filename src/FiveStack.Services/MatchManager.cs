@@ -106,7 +106,7 @@ public class MatchManager
 
     public bool IsWarmup()
     {
-        if (_currentMapStatus == eMapStatus.Warmup)
+        if (_currentMapStatus == eMapStatus.Warmup || _currentMapStatus == eMapStatus.Scheduled)
         {
             return true;
         }
@@ -262,7 +262,11 @@ public class MatchManager
 
         _logger.LogInformation($"Update Map Status {_currentMapStatus} -> {status}");
 
-        if (_currentMapStatus == eMapStatus.Unknown && status != eMapStatus.Live && status != eMapStatus.Overtime)
+        if (
+            _currentMapStatus == eMapStatus.Unknown
+            && status != eMapStatus.Live
+            && status != eMapStatus.Overtime
+        )
         {
             _backUpManagement.CheckForBackupRestore();
         }
@@ -278,8 +282,6 @@ public class MatchManager
         {
             SendUpdatedMatchLineups();
         }
-
-        SetupGameMode();
 
         switch (status)
         {
@@ -385,8 +387,6 @@ public class MatchManager
             return;
         }
 
-        SetupBroadcast();
-
         if (_matchData.options.cfg_overrides != null && _matchData.options.cfg_overrides.Count > 0)
         {
             string configDirectory = Path.Join(Server.GameDirectory, "csgo", "cfg");
@@ -413,23 +413,31 @@ public class MatchManager
             _gameServer.SendCommands(["exec 5stack.lan.cfg"]);
         }
 
-        if (_currentMapStatus == eMapStatus.Unknown)
+        Server.NextFrame(() =>
         {
-            SetupTeams();
-        }
+            SetupGameMode();
 
-        FiveStackPlugin.SetPasswordBuffer(_matchData.password);
-        ConVar.Find("sv_password")?.SetValue(_matchData.password);
+            if (_currentMapStatus == eMapStatus.Unknown)
+            {
+                SetupTeams();
+            }
 
-        if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
-        {
-            UpdateMapStatus(MatchUtility.MapStatusStringToEnum(_currentMap.status));
-        }
+            FiveStackPlugin.SetPasswordBuffer(_matchData.password);
+            ConVar.Find("sv_password")?.SetValue(_matchData.password);
 
-        if (IsWarmup())
-        {
-            _gameServer.Message(HudDestination.Alert, _localizer["match.received_data"]);
-        }
+            if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
+            {
+                UpdateMapStatus(MatchUtility.MapStatusStringToEnum(_currentMap.status));
+            }
+
+            if (IsWarmup())
+            {
+                _gameServer.Message(HudDestination.Alert, _localizer["match.received_data"]);
+            }
+
+            KickBots();
+            SetupBroadcast();
+        });
     }
 
     public void SetupTeams()
@@ -534,6 +542,7 @@ public class MatchManager
 
         int? gameMode = ConVar.Find("game_mode")?.GetPrimitiveValue<int>();
         int? gameType = ConVar.Find("game_type")?.GetPrimitiveValue<int>();
+
         _logger.LogInformation($"Current Game Mode {gameMode}");
         _logger.LogInformation($"Current Game Type {gameType}");
 
@@ -557,7 +566,6 @@ public class MatchManager
                 _gameServer.SendCommands(["mp_restartgame 1"]);
             }
         }
-        KickBots();
     }
 
     public int GetExpectedPlayerCount()
@@ -764,27 +772,10 @@ public class MatchManager
 
         if (_environmentService.AllowBots())
         {
+            _logger.LogInformation("Environment allows bots");
             int expectedPlayers = GetExpectedPlayerCount();
-            // we want to count the bots in this case
-            int currentPlayers = CounterStrikeSharp.API.Utilities.GetPlayers().Count;
 
-            if (currentPlayers >= expectedPlayers)
-            {
-                return;
-            }
-
-            string[] commands =
-            {
-                "bot_quota_mode normal",
-                $"bot_quota {Math.Max(0, expectedPlayers - currentPlayers)}",
-            };
-
-            if (currentPlayers < expectedPlayers)
-            {
-                commands.Append("bot_add expert");
-            }
-
-            _gameServer.SendCommands(commands);
+            _gameServer.SendCommands(["bot_quota_mode normal", $"bot_quota {expectedPlayers / 2}"]);
 
             return;
         }

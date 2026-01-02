@@ -105,13 +105,6 @@ public class CaptainSystem
 
     public void ShowCaptains()
     {
-        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
-
-        if (matchData != null && matchData.options.type == "Duel")
-        {
-            return;
-        }
-
         var captains = GetCaptains();
 
         foreach (CsTeam team in captains.Keys)
@@ -136,7 +129,7 @@ public class CaptainSystem
                 _localizer[
                     "captain.show",
                     TeamUtility.TeamNumToString((int)team),
-                    (team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue),
+                    team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue,
                     captain.PlayerName
                 ]
             );
@@ -145,18 +138,6 @@ public class CaptainSystem
 
     public void ClaimCaptain(CCSPlayerController player, CsTeam team)
     {
-        MatchManager? match = _matchService.GetCurrentMatch();
-
-        if (
-            team == CsTeam.None
-            || team == CsTeam.Spectator
-            || match == null
-            || (match.IsWarmup() == false && match.IsKnife() == false)
-        )
-        {
-            return;
-        }
-
         if (_captains[team] == null)
         {
             _captains[team] = player.SteamID.ToString();
