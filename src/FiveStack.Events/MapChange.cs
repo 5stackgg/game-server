@@ -21,6 +21,7 @@ public partial class FiveStackPlugin
                 await Task.Delay(1000 * 5);
                 Server.NextFrame(() =>
                 {
+                    _matchService.GetCurrentMatch()?.reset();
                     _matchService.GetMatchFromApi();
                 });
             }

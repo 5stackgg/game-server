@@ -524,6 +524,7 @@ public class MatchManager
         }
 
         _gameServer.SendCommands(["tv_broadcast 0"]);
+        reset();
 
         _logger.LogInformation($"Changing Map {map.name}");
 
@@ -948,5 +949,10 @@ public class MatchManager
                 _logger.LogInformation("Sending TV Broadcast command");
             });
         }
+    }
+
+    public void reset()
+    {
+        _currentMapStatus = eMapStatus.Unknown;
     }
 }
