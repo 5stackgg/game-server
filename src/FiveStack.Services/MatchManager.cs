@@ -285,7 +285,7 @@ public class MatchManager
         {
             case eMapStatus.Scheduled:
                 UpdateMapStatus(eMapStatus.Warmup);
-                break;
+                return;
             case eMapStatus.Warmup:
                 status = eMapStatus.Warmup;
                 StartWarmup();
