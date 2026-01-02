@@ -262,7 +262,7 @@ public class MatchManager
 
         _logger.LogInformation($"Update Map Status {_currentMapStatus} -> {status}");
 
-        if (_currentMapStatus == eMapStatus.Unknown && status != eMapStatus.Live)
+        if (_currentMapStatus == eMapStatus.Unknown && status != eMapStatus.Live && status != eMapStatus.Overtime)
         {
             _backUpManagement.CheckForBackupRestore();
         }
@@ -788,9 +788,6 @@ public class MatchManager
 
             return;
         }
-
-        ConVar.Find("bot_quota_mode")?.SetValue("competitive");
-        ConVar.Find("bot_quota")?.SetValue(0);
 
         _gameServer.SendCommands(["bot_kick"]);
     }
