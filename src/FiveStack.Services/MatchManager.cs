@@ -417,7 +417,11 @@ public class MatchManager
         {
             SetupGameMode();
 
-            if (_currentMapStatus == eMapStatus.Unknown)
+            if (
+                _currentMapStatus == eMapStatus.Unknown
+                || _currentMapStatus == eMapStatus.Scheduled
+                || _currentMapStatus == eMapStatus.Warmup
+            )
             {
                 SetupTeams();
             }
