@@ -334,10 +334,10 @@ public class MatchManager
             case eMapStatus.Surrendered:
             case eMapStatus.UploadingDemo:
                 _matchDemos.Stop();
-                _surrenderSystem.ResetSurrender();
+                _surrenderSystem.Reset();
                 break;
             case eMapStatus.Finished:
-                _surrenderSystem.ResetSurrender();
+                _surrenderSystem.Reset();
                 break;
         }
 
@@ -524,7 +524,7 @@ public class MatchManager
         }
 
         _gameServer.SendCommands(["tv_broadcast 0"]);
-        reset();
+        Reset();
 
         _logger.LogInformation($"Changing Map {map.name}");
 
@@ -598,7 +598,7 @@ public class MatchManager
         ConVar.Find("sv_disable_teamselect_menu")?.SetValue(0);
         _gameServer.SendCommands(["exec 5stack.warmup.cfg"]);
 
-        knifeSystem.ResetKnifeRound();
+        knifeSystem.Reset();
 
         if (_matchData == null)
         {
@@ -634,7 +634,7 @@ public class MatchManager
 
     private void StartLive()
     {
-        knifeSystem.ResetKnifeRound();
+        knifeSystem.Reset();
 
         if (_matchData == null)
         {
@@ -951,8 +951,16 @@ public class MatchManager
         }
     }
 
-    public void reset()
+    public void Reset()
     {
+        _resumeMessageTimer?.Kill();
+        _mapChangeCountdownTimer?.Kill();
+
         _currentMapStatus = eMapStatus.Unknown;
+
+        readySystem.Reset();
+        captainSystem.Reset();
+        knifeSystem.Reset();
+        _surrenderSystem.Reset();
     }
 }

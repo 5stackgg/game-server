@@ -49,11 +49,11 @@ public class ReadySystem
         }
 
         _logger.LogInformation("Setting up ready system");
-        ResetReady(true);
+        Reset(true);
         SendReadyStatusMessage();
     }
 
-    public void ResetReady(bool setupTimer = false)
+    public void Reset(bool setupTimer = false)
     {
         _readyStatusTimer?.Kill();
         _readyStatusTimer = null;
@@ -151,7 +151,7 @@ public class ReadySystem
 
         if (TotalReady() == expectedCount)
         {
-            ResetReady();
+            Reset();
             currentMatch?.UpdateMapStatus(eMapStatus.Knife);
             return;
         }
@@ -283,7 +283,7 @@ public class ReadySystem
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
-        ResetReady();
+        Reset();
 
         if (match == null || !match.IsWarmup())
         {
@@ -383,7 +383,7 @@ public class ReadySystem
 
         if (!match.IsWarmup())
         {
-            ResetReady();
+            Reset();
             return;
         }
 

@@ -116,6 +116,8 @@ public partial class FiveStackPlugin : BasePlugin
             }
         );
 
+        _matchService.GetCurrentMatch()?.Reset();
+
         _ = _matchEvents.Disconnect();
     }
 

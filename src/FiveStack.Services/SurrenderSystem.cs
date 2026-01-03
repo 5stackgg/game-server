@@ -33,7 +33,7 @@ public class SurrenderSystem
         _matchEvents = matchEvents;
         _matchService = matchService;
         _serviceProvider = serviceProvider;
-        ResetSurrender();
+        Reset();
     }
 
     public void SetupDisconnectTimer(CsTeam team, ulong steamId)
@@ -104,7 +104,7 @@ public class SurrenderSystem
             && currentPlayers == expectedPlayers
         )
         {
-            ResetSurrender();
+            Reset();
             _matchService.GetCurrentMatch()?.ResumeMatch();
         }
     }
@@ -133,19 +133,19 @@ public class SurrenderSystem
             {
                 _logger.LogInformation("surrender vote passed");
                 Surrender(team);
-                ResetSurrender();
+                Reset();
             },
             () =>
             {
                 _logger.LogInformation("surrender vote failed");
-                ResetSurrender();
+                Reset();
             },
             false,
             30
         );
     }
 
-    public void ResetSurrender()
+    public void Reset()
     {
         surrenderingVote = null;
 

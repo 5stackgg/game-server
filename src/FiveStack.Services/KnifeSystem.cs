@@ -146,7 +146,7 @@ public class KnifeSystem
             return;
         }
 
-        ResetKnifeRound();
+        Reset();
 
         _gameServer.Message(
             HudDestination.Alert,
@@ -176,7 +176,7 @@ public class KnifeSystem
             return;
         }
 
-        ResetKnifeRound();
+        Reset();
 
         _gameServer.Message(
             HudDestination.Alert,
@@ -212,7 +212,7 @@ public class KnifeSystem
             rules.RoundsPlayedThisPhase = 0;
         }
 
-        ResetKnifeRound();
+        Reset();
 
         if (match == null || !match.IsKnife())
         {
@@ -262,7 +262,7 @@ public class KnifeSystem
         return _winningTeam;
     }
 
-    public void ResetKnifeRound()
+    public void Reset()
     {
         _knifeRoundTimer?.Kill();
         _knifeRoundTimer = null;

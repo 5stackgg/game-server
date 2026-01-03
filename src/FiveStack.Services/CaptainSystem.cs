@@ -36,6 +36,13 @@ public class CaptainSystem
         _localizer = localizer;
     }
 
+    public void Reset()
+    {
+        _captains.Clear();
+        _captains[CsTeam.Terrorist] = null;
+        _captains[CsTeam.CounterTerrorist] = null;
+    }
+
     public void AutoSelectCaptains()
     {
         if (_captains[CsTeam.Terrorist] == null)
