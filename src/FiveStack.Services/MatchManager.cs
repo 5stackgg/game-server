@@ -273,15 +273,16 @@ public class MatchManager
 
         var currentMap = GetCurrentMap();
 
-        if (
-            _currentMapStatus == eMapStatus.Warmup
-            && status != eMapStatus.Warmup
-            && currentMap != null
-            && currentMap.order == 1
-        )
-        {
-            SendUpdatedMatchLineups();
-        }
+        // TODO - this should only happen discord matches
+        // if (
+        //     _currentMapStatus == eMapStatus.Warmup
+        //     && status != eMapStatus.Warmup
+        //     && currentMap != null
+        //     && currentMap.order == 1
+        // )
+        // {
+        //     SendUpdatedMatchLineups();
+        // }
 
         switch (status)
         {
@@ -289,6 +290,7 @@ public class MatchManager
                 UpdateMapStatus(eMapStatus.Warmup);
                 return;
             case eMapStatus.Warmup:
+                SetupTeams();
                 status = eMapStatus.Warmup;
                 StartWarmup();
                 break;
@@ -416,15 +418,6 @@ public class MatchManager
         Server.NextFrame(() =>
         {
             SetupGameMode();
-
-            if (
-                _currentMapStatus == eMapStatus.Unknown
-                || _currentMapStatus == eMapStatus.Scheduled
-                || _currentMapStatus == eMapStatus.Warmup
-            )
-            {
-                SetupTeams();
-            }
 
             FiveStackPlugin.SetPasswordBuffer(_matchData.password);
             ConVar.Find("sv_password")?.SetValue(_matchData.password);
