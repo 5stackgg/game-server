@@ -107,6 +107,13 @@ public class MatchService
             {
                 if (response.Length == 0)
                 {
+                    if (_currentMatch != null)
+                    {
+                        _currentMatch.Reset();
+                    }
+
+                    _currentMatch = null;
+
                     _logger.LogWarning("currenlty no match assigned to server");
                     return;
                 }
