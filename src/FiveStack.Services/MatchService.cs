@@ -124,6 +124,11 @@ public class MatchService
                     return;
                 }
 
+                if (_currentMatch != null)
+                {
+                    _currentMatch.Reset();
+                }
+
                 _currentMatch =
                     _serviceProvider.GetRequiredService(typeof(MatchManager)) as MatchManager;
 
