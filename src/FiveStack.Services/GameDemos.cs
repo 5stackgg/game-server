@@ -88,13 +88,15 @@ public class GameDemos
         }
 
         File.Delete(GetLockFilePath(match.id));
-        _gameServer.SendCommands(["tv_stoprecord"]);
+        _gameServer.SendCommands(["tv_broadcast 0"]);
+        Server.NextFrame(() =>
+        {
+            _gameServer.SendCommands(["tv_stoprecord"]);
+        });
     }
 
     public async Task UploadDemos()
     {
-        _gameServer.SendCommands(["tv_broadcast 0"]);
-
         string demoPath = GetMatchDemoPath();
         _logger.LogInformation($"Uploading demos from {demoPath}");
 
