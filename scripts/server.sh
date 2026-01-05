@@ -10,6 +10,6 @@ ${INSTANCE_SERVER_DIR}/game/bin/linuxsteamrt64/cs2 -ip 0.0.0.0 -port ${SERVER_PO
 
 CS_PID=$!
 
-trap 'exit 0' SIGUSR1
+trap 'echo "Received signal to stop the match"; exit 0' SIGUSR1
 
 wait $CS_PID
