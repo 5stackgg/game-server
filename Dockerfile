@@ -80,7 +80,7 @@ ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/re
 
 RUN apt-get update && \
 	apt-get install -y --no-install-recommends \
-	wget locales procps jq ca-certificates curl unzip \
+	wget locales procps jq ca-certificates curl unzip rsync \
 	lib32gcc-s1 lib32stdc++6 lib32z1 lsof libicu-dev && \
 	echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
 	locale-gen && \

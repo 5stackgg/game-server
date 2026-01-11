@@ -23,22 +23,30 @@ BUILD_TRACK_FILE="${BASE_SERVER_DIR}/.5stack.build"
 CURRENT_BUILD=""
 [ -f "${BUILD_TRACK_FILE}" ] && CURRENT_BUILD=$(cat "${BUILD_TRACK_FILE}" 2>/dev/null)
 
-if [ -n "${BUILD_MANIFESTS}" ] && ([ -z "${BUILD_ID}" ] || [ "${BUILD_ID}" != "${CURRENT_BUILD}" ]); then
-    rm -rf "${BASE_SERVER_DIR}/steamapps"
+echo "BUILD_ID: ${BUILD_ID}"
+echo "CURRENT_BUILD: ${CURRENT_BUILD}"
+echo "BUILD_MANIFESTS: ${BUILD_MANIFESTS}"
+
+if [ -n "${BUILD_MANIFESTS:-}" ]; then
+    echo "${BUILD_ID}" > "${BUILD_TRACK_FILE}"
+
+    if [ -z "${BUILD_ID:-}" ] || [ "${BUILD_ID}" != "${CURRENT_BUILD}" ]; then
+        rm -rf "${BASE_SERVER_DIR}/game"
+        rm -rf "${STEAMCMD_DIR}/linux32/steamapps"
+    fi
+else
+    if [ -f "${BUILD_TRACK_FILE}" ]; then
+        rm -f "${BUILD_TRACK_FILE}"
+        rm -rf "${STEAMCMD_DIR}/linux32/steamapps"
+    fi
 fi
 
-if [ -n "${BUILD_MANIFESTS}" ]; then
-    echo "${BUILD_ID}" > "${BUILD_TRACK_FILE}"
-elif [ -f "${BUILD_TRACK_FILE}" ]; then
-    rm -f "${BUILD_TRACK_FILE}"
-fi
+rm -rf "${BASE_SERVER_DIR}/steamapps"
 
 # Update Server
 if [ -n "${BUILD_MANIFESTS}" ]; then
-    echo "---Pinning Linux Server To Version ${BUILD_ID}---"
+    echo "---Pinning Server To Version ${BUILD_ID}---"
     STEAMCMD_ARGS="+force_install_dir \"${BASE_SERVER_DIR}\" +login \"${STEAM_USER}\" \"${STEAM_PASSWORD}\""
-
-    rm -rf "${BASE_SERVER_DIR}/serverfiles/*"
 
     declare -A depot_gids
     depots=()
@@ -57,29 +65,31 @@ if [ -n "${BUILD_MANIFESTS}" ]; then
         gid="${depot_gids[${depotId}]}"
         depotDir="${STEAMCMD_DIR}/linux32/steamapps/content/app_${GAME_ID}/depot_${depotId}"
 
-        if [ -d "${depotDir}" ] && [ "$(ls -A "${depotDir}")" ]; then
-            echo "---Depot ${depotId} already downloaded, skipping download---"
-        else
-            echo "---Updating Depot ${depotId} with Build ${gid}---"
-            LINUX_SERVER="${STEAMCMD_ARGS} +download_depot ${GAME_ID} ${depotId} ${gid} +quit"
-            echo "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
-            eval "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
-        fi
+        echo "---Updating Depot ${depotId} with Build ${gid}---"
+        LINUX_SERVER="${STEAMCMD_ARGS} +download_depot ${GAME_ID} ${depotId} ${gid} +quit"
+        echo "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
+        echo "Downloading depot ${depotId}, this may take a while..."
+        eval "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
+        echo "Done downloading depot ${depotId}"
     done
+
+    echo "---Syncing Depots to ServerFiles---"
 
     # sync downloaded depots to server files
     for depotId in "${depots[@]}"; do
         depotDir="${STEAMCMD_DIR}/linux32/steamapps/content/app_${GAME_ID}/depot_${depotId}"
         if [ -d "${depotDir}" ] && [ "$(ls -A "${depotDir}")" ]; then
             echo "---Syncing Depot ${depotId} to ServerFiles---"
-            cp -r "${depotDir}/"* "${BASE_SERVER_DIR}/"
+
+            rsync -a --delete \
+                "${depotDir}/" \
+                "${BASE_SERVER_DIR}/"
+
         else
             echo "Depot directory ${depotDir} does not exist or is empty. Exiting."
             exit 1
         fi
     done
-
-    rm -rf "${STEAMCMD_DIR}/linux32/steamapps/*"
 
     mkdir -p "${BASE_SERVER_DIR}/steamapps"
 
@@ -89,6 +99,8 @@ if [ -n "${BUILD_MANIFESTS}" ]; then
         "buildid"               "${BUILD_ID}"
 }
 EOF
+
+    echo "---Done Updating Server To Version ${BUILD_ID}---"
 
 else
     echo "---Update Server To Latest Version---"
