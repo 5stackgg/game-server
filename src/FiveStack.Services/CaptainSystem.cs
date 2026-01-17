@@ -48,11 +48,19 @@ public class CaptainSystem
 
     public void AutoSelectCaptains()
     {
+        // Avoid calling GetTeamCaptain() here:
+        // GetTeamCaptain() may call AutoSelectCaptains() when missing, which would recurse.
         foreach (CsTeam team in new[] { CsTeam.Terrorist, CsTeam.CounterTerrorist })
         {
-            CCSPlayerController? captain = GetTeamCaptain(team);
+            if (!_captains.ContainsKey(team))
+            {
+                _captains[team] = null;
+            }
+
+            CCSPlayerController? captain = _captains[team];
             if (captain == null || captain.IsBot || !captain.IsValid || captain.Team != team)
             {
+                _captains[team] = null;
                 AutoSelectCaptain(team);
             }
         }
@@ -106,13 +114,7 @@ public class CaptainSystem
         {
             return null;
         }
-
-        if (_captains[team] == null)
-        {
-            _logger.LogCritical($"missing team captain, auto selecting captains for {team}");
-            AutoSelectCaptains();
-        }
-
+        
         return _captains[team];
     }
 
@@ -205,6 +207,11 @@ public class CaptainSystem
         if (team != CsTeam.Terrorist && team != CsTeam.CounterTerrorist || player.Team != team)
         {
             return false;
+        }
+
+        if (!_captains.ContainsKey(team))
+        {
+            _captains[team] = null;
         }
 
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
