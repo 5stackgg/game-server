@@ -76,7 +76,7 @@ ENV STEAM_RELAY="false"
 ENV SERVER_TYPE="Ranked"
 
 ENV METAMOD_URL=https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1380-linux.tar.gz
-ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.355/counterstrikesharp-with-runtime-linux-1.0.355.zip
+ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.356/counterstrikesharp-with-runtime-linux-1.0.356.zip
 
 RUN apt-get update && \
 	apt-get install -y --no-install-recommends \
