@@ -48,27 +48,13 @@ public class CaptainSystem
 
     public void AutoSelectCaptains()
     {
-        var captains = GetCaptains();
-
-        foreach (CsTeam team in captains.Keys)
+        foreach (CsTeam team in new[] { CsTeam.Terrorist, CsTeam.CounterTerrorist })
         {
-            CCSPlayerController? captain = captains[team];
-
+            CCSPlayerController? captain = GetTeamCaptain(team);
             if (captain == null || captain.IsBot || !captain.IsValid || captain.Team != team)
             {
-                _captains[team] = null;
-                continue;
+                AutoSelectCaptain(team);
             }
-        }
-
-        if (_captains[CsTeam.Terrorist] == null)
-        {
-            AutoSelectCaptain(CsTeam.Terrorist);
-        }
-
-        if (_captains[CsTeam.CounterTerrorist] == null)
-        {
-            AutoSelectCaptain(CsTeam.CounterTerrorist);
         }
     }
 
