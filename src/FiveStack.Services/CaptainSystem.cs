@@ -211,8 +211,6 @@ public class CaptainSystem
 
     public bool IsCaptain(CCSPlayerController player, CsTeam team)
     {
-        AutoSelectCaptains();
-
         if (player == null || player.IsBot || !player.IsValid)
         {
             return false;
