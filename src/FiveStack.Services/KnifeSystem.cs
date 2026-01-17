@@ -107,8 +107,7 @@ public class KnifeSystem
 
         if (captain == null)
         {
-            _logger.LogCritical("missing team captain, auto selecting captains");
-            match?.captainSystem?.AutoSelectCaptains();
+            _logger.LogCritical("missing team captain, auto selecting captains failed");
             return;
         }
 

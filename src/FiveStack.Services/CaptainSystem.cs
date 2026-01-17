@@ -15,7 +15,10 @@ public class CaptainSystem
     private readonly ILogger<CaptainSystem> _logger;
     private readonly IStringLocalizer _localizer;
 
-    public Dictionary<CsTeam, string?> _captains = new Dictionary<CsTeam, string?>
+    public Dictionary<CsTeam, CCSPlayerController?> _captains = new Dictionary<
+        CsTeam,
+        CCSPlayerController?
+    >
     {
         { CsTeam.Terrorist, null },
         { CsTeam.CounterTerrorist, null },
@@ -45,6 +48,19 @@ public class CaptainSystem
 
     public void AutoSelectCaptains()
     {
+        var captains = GetCaptains();
+
+        foreach (CsTeam team in captains.Keys)
+        {
+            CCSPlayerController? captain = captains[team];
+
+            if (captain == null || captain.IsBot || !captain.IsValid || captain.Team != team)
+            {
+                _captains[team] = null;
+                continue;
+            }
+        }
+
         if (_captains[CsTeam.Terrorist] == null)
         {
             AutoSelectCaptain(CsTeam.Terrorist);
@@ -77,7 +93,7 @@ public class CaptainSystem
             || team == CsTeam.None
             || team == CsTeam.Spectator
             || _captains[team] == null
-            || _captains[team] != player.SteamID.ToString()
+            || _captains[team]?.SteamID.ToString() != player.SteamID.ToString()
         )
         {
             return;
@@ -105,9 +121,13 @@ public class CaptainSystem
             return null;
         }
 
-        List<CCSPlayerController> players = MatchUtility.Players();
+        if (_captains[team] == null)
+        {
+            _logger.LogCritical($"missing team captain, auto selecting captains for {team}");
+            AutoSelectCaptains();
+        }
 
-        return players.Find(player => player.SteamID.ToString() == _captains[team]);
+        return _captains[team];
     }
 
     public void ShowCaptains()
@@ -143,11 +163,28 @@ public class CaptainSystem
         }
     }
 
-    public void ClaimCaptain(CCSPlayerController player, CsTeam team)
+    public void ClaimCaptain(CCSPlayerController player, CsTeam team, bool force = false)
     {
-        if (_captains[team] == null)
+        if (player == null || player.IsBot || !player.IsValid)
         {
-            _captains[team] = player.SteamID.ToString();
+            _logger.LogWarning(
+                $"Unable to claim captain for playe because they are a bot or invalid"
+            );
+            return;
+        }
+
+        if (player.Team != team)
+        {
+            _logger.LogWarning(
+                $"Unable to claim captain for player {player.PlayerName} because they are not on the {team} team"
+            );
+            return;
+        }
+
+        if (_captains[team] == null || force)
+        {
+            _captains[team] = player;
+            _logger.LogInformation($"Captain {player.PlayerName} claimed captain spot for {team}");
 
             _gameServer.Message(
                 HudDestination.Alert,
@@ -174,17 +211,14 @@ public class CaptainSystem
 
     public bool IsCaptain(CCSPlayerController player, CsTeam team)
     {
+        AutoSelectCaptains();
+
         if (player == null || player.IsBot || !player.IsValid)
         {
             return false;
         }
 
-        if (team != CsTeam.Terrorist && team != CsTeam.CounterTerrorist)
-        {
-            return false;
-        }
-
-        if (player.Team != team)
+        if (team != CsTeam.Terrorist && team != CsTeam.CounterTerrorist || player.Team != team)
         {
             return false;
         }
@@ -198,14 +232,17 @@ public class CaptainSystem
                 player.PlayerName
             );
 
-            if (member?.captain == true && _captains[team] == null)
+            if (member?.captain == true)
             {
-                ClaimCaptain(player, team);
+                if (_captains[team]?.SteamID.ToString() != player.SteamID.ToString())
+                {
+                    ClaimCaptain(player, team, true);
+                }
                 return true;
             }
         }
 
-        return _captains[team] == player?.SteamID.ToString();
+        return _captains[team]?.SteamID.ToString() == player.SteamID.ToString();
     }
 
     private void AutoSelectCaptain(CsTeam team)
@@ -214,8 +251,17 @@ public class CaptainSystem
             .Players()
             .FindAll(player =>
             {
-                return player.Team == team && player.IsBot == false;
+                return player.Team == team && player.IsBot == false && player.IsValid;
             });
+
+        foreach (var _player in players)
+        {
+            if (IsCaptain(_player, team))
+            {
+                ClaimCaptain(_player, team, true);
+                return;
+            }
+        }
 
         if (players.Count == 0)
         {
@@ -224,6 +270,6 @@ public class CaptainSystem
 
         CCSPlayerController player = players[Random.Shared.Next(players.Count)];
 
-        ClaimCaptain(player, player.Team);
+        ClaimCaptain(player, player.Team, true);
     }
 }
