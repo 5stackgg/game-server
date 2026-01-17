@@ -270,6 +270,6 @@ public class CaptainSystem
 
         CCSPlayerController player = players[Random.Shared.Next(players.Count)];
 
-        ClaimCaptain(player, player.Team, true);
+        ClaimCaptain(player, team, true);
     }
 }
