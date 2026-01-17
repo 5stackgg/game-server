@@ -103,15 +103,8 @@ public class KnifeSystem
             return;
         }
 
+        match?.captainSystem?.AutoSelectCaptains();
         CCSPlayerController? captain = match?.captainSystem?.GetTeamCaptain(_winningTeam.Value);
-
-        if (captain == null)
-        {
-            _logger.LogCritical("missing team captain, auto selecting captains ...");
-            match?.captainSystem?.AutoSelectCaptains();
-        }
-
-        captain = match?.captainSystem?.GetTeamCaptain(_winningTeam.Value);
 
         if (captain == null)
         {
