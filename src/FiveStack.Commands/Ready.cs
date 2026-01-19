@@ -6,7 +6,12 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    [ConsoleCommand("css_r", "Toggles the player as ready")]
+    [
+        ConsoleCommand("css_r", "Toggles the player as ready"),
+        ConsoleCommand("css_ready", "Toggles the player as ready"),
+        ConsoleCommand("css_unready", "Toggles the player as ready"),
+        ConsoleCommand("css_ur", "Toggles the player as ready")
+    ]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnReady(CCSPlayerController? player, CommandInfo? command)
     {
