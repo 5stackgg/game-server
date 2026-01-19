@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Utils;
 
 namespace FiveStack;
 
@@ -47,6 +48,60 @@ public partial class FiveStackPlugin
         }
 
         match.knifeSystem.Skip();
+    }
+
+    [ConsoleCommand("css_t", "")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    public void OnT(CCSPlayerController? player, CommandInfo? command)
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (player == null || match == null)
+        {
+            return;
+        }
+
+        CsTeam winningTeam = match.knifeSystem.GetWinningTeam() ?? CsTeam.None;
+
+        if (player.Team != winningTeam)
+        {
+            return;
+        }
+
+        if (winningTeam == CsTeam.Terrorist)
+        {
+            match.knifeSystem.Stay(player);
+            return;
+        }
+
+        match.knifeSystem.Switch(player);
+    }
+
+    [ConsoleCommand("css_ct", "")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    public void OnCT(CCSPlayerController? player, CommandInfo? command)
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (player == null || match == null)
+        {
+            return;
+        }
+
+        CsTeam winningTeam = match.knifeSystem.GetWinningTeam() ?? CsTeam.None;
+
+        if (player.Team != winningTeam)
+        {
+            return;
+        }
+
+        if (winningTeam == CsTeam.CounterTerrorist)
+        {
+            match.knifeSystem.Stay(player);
+            return;
+        }
+
+        match.knifeSystem.Switch(player);
     }
 
     [ConsoleCommand(
