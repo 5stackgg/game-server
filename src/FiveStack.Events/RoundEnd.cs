@@ -4,6 +4,7 @@ using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -11,6 +12,8 @@ public partial class FiveStackPlugin
 {
     CsTeam roundWinner;
     int timeoutGivenForOvertime;
+
+    eWinReason? reason;
 
     [GameEventHandler]
     public HookResult OnRoundOfficiallyEnded(EventRoundOfficiallyEnded @event, GameEventInfo info)
@@ -49,6 +52,29 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info)
     {
+        switch (@event.Message)
+        {
+            case "#SFUI_Notice_Terrorists_Win":
+                reason = eWinReason.TerroristsWin;
+                break;
+            case "#SFUI_Notice_CTs_Win":
+                reason = eWinReason.CTsWin;
+                break;
+            case "#SFUI_Notice_Target_Bombed":
+                reason = eWinReason.BombExploded;
+                break;
+            case "#SFUI_Notice_Target_Saved":
+                reason = eWinReason.TimeRanOut;
+                break;
+            case "#SFUI_Notice_Bomb_Defused":
+                reason = eWinReason.BombDefused;
+                break;
+            default:
+                _logger.LogWarning($"Unknown round end reason: {@event.Message}");
+                reason = eWinReason.Unknown;
+                break;
+        }
+
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();
         MatchData? matchData = match?.GetMatchData();
@@ -131,6 +157,7 @@ public partial class FiveStackPlugin
                     "winning_side",
                     totalRoundsPlayed == 0 ? "None" : $"{TeamUtility.CSTeamToString(roundWinner)}"
                 },
+                { "winning_reason", $"{reason}" },
                 {
                     "backup_file",
                     SendBackupRound

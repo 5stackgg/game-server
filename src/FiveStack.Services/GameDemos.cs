@@ -91,6 +91,7 @@ public class GameDemos
         _gameServer.SendCommands(["tv_broadcast 0"]);
         Server.NextFrame(() =>
         {
+            _logger.LogInformation("Stopping demo recording");
             _gameServer.SendCommands(["tv_stoprecord"]);
         });
     }

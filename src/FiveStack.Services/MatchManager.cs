@@ -389,6 +389,13 @@ public class MatchManager
             return;
         }
 
+        if (_matchData == null || IsMapFinished())
+        {
+            _matchDemos.Stop();
+            _surrenderSystem.Reset();
+            return;
+        }
+
         if (_matchData.options.cfg_overrides != null && _matchData.options.cfg_overrides.Count > 0)
         {
             string configDirectory = Path.Join(Server.GameDirectory, "csgo", "cfg");
@@ -915,7 +922,7 @@ public class MatchManager
 
     public void SetupBroadcast()
     {
-        if (_matchData == null)
+        if (_matchData == null || IsMapFinished())
         {
             return;
         }
