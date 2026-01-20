@@ -92,7 +92,7 @@ public class GameDemos
         Server.NextFrame(() =>
         {
             _logger.LogInformation("Stopping demo recording");
-            _gameServer.SendCommands(["tv_stoprecord"]);
+            _gameServer.SendCommands(["tv_stoprecord", "tv_stop"]);
         });
     }
 
