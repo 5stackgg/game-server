@@ -16,6 +16,7 @@ public class VoteSystem
     private readonly MatchService _matchService;
     private readonly CaptainSystem _captainSystem;
     private readonly IStringLocalizer _localizer;
+    private readonly IMatchUtilityService _matchUtilityService;
 
     private CsTeam[]? _allowedTeamsToVote;
     private Action? _voteFailedCallback;
@@ -199,7 +200,7 @@ public class VoteSystem
 
         bool isCaptainVoteOnly = IsCaptainVoteOnly();
 
-        foreach (var player in MatchUtility.Players())
+        foreach (var player in _matchUtilityService.Players())
         {
             if (isCaptainVoteOnly && _captainSystem.IsCaptain(player, player.Team) == false)
             {

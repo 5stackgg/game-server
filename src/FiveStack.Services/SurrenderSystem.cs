@@ -15,6 +15,7 @@ public class SurrenderSystem
     private readonly MatchService _matchService;
     private readonly ILogger<ReadySystem> _logger;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IMatchUtilityService _matchUtilityService;
     public VoteSystem? surrenderingVote;
 
     private Dictionary<CsTeam, Dictionary<ulong, Timer>> _disconnectTimers =
@@ -26,13 +27,15 @@ public class SurrenderSystem
         ILogger<ReadySystem> logger,
         MatchEvents matchEvents,
         MatchService matchService,
-        IServiceProvider serviceProvider
+        IServiceProvider serviceProvider,
+        IMatchUtilityService matchUtilityService
     )
     {
         _logger = logger;
         _matchEvents = matchEvents;
         _matchService = matchService;
         _serviceProvider = serviceProvider;
+        _matchUtilityService = matchUtilityService;
         Reset();
     }
 
@@ -50,7 +53,7 @@ public class SurrenderSystem
             return;
         }
 
-        MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, steamId.ToString(), "");
+        MatchMember? member = _matchUtilityService.GetMemberFromLineup(matchData, steamId.ToString(), "");
         if (member == null)
         {
             return;
@@ -75,7 +78,7 @@ public class SurrenderSystem
     public void CancelDisconnectTimer(ulong steamId)
     {
         bool canceledTimer = false;
-        foreach (var _team in MatchUtility.Teams())
+        foreach (var _team in _matchUtilityService.Teams())
         {
             CsTeam team = TeamUtility.TeamNumToCSTeam(_team.TeamNum);
 
@@ -95,7 +98,7 @@ public class SurrenderSystem
             return;
         }
 
-        int currentPlayers = MatchUtility.Players().Count;
+        int currentPlayers = _matchUtilityService.Players().Count;
 
         int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
 
@@ -180,7 +183,7 @@ public class SurrenderSystem
 
         Guid? lineup_id = null;
 
-        foreach (var _team in MatchUtility.Teams())
+        foreach (var _team in _matchUtilityService.Teams())
         {
             if (TeamUtility.TeamNumToCSTeam(_team.TeamNum) == team)
             {

@@ -7,6 +7,7 @@ using CounterStrikeSharp.API.Modules.Utils;
 using CounterStrikeSharp.API.ValveConstants.Protobuf;
 using FiveStack.Entities;
 using FiveStack.Enums;
+using FiveStack.Services;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
@@ -33,6 +34,7 @@ public class MatchManager
 
     private readonly EnvironmentService _environmentService;
     private readonly TimeoutSystem _timeoutSystem;
+    private readonly IMatchUtilityService _matchUtilityService;
     public ReadySystem readySystem;
 
     // public CoachSystem _coachSystem;
@@ -56,7 +58,13 @@ public class MatchManager
         TimeoutSystem timeoutSystem,
         SurrenderSystem surrenderSystem,
         MatchService matchService,
-        IStringLocalizer localizer
+        IStringLocalizer localizer,
+        IGameStateService gameStateService,
+        IPlayerService playerService,
+        ICommandService commandService,
+        IConVarService convarService,
+        ITimerService timerService,
+        IMatchUtilityService matchUtilityService
     )
     {
         _logger = logger;
@@ -72,6 +80,12 @@ public class MatchManager
         _surrenderSystem = surrenderSystem;
         _matchService = matchService;
         _localizer = localizer;
+        _gameStateService = gameStateService;
+        _playerService = playerService;
+        _commandService = commandService;
+        _convarService = convarService;
+        _timerService = timerService;
+        _matchUtilityService = matchUtilityService;
     }
 
     public void Init(MatchData match)
@@ -111,7 +125,7 @@ public class MatchManager
             return true;
         }
 
-        return MatchUtility.Rules()?.WarmupPeriod ?? false;
+        return _gameStateService.IsWarmup();
     }
 
     public bool IsInProgress()
@@ -140,7 +154,7 @@ public class MatchManager
 
     public bool IsFreezePeriod()
     {
-        return MatchUtility.Rules()?.FreezePeriod ?? false;
+        return _gameStateService.IsFreezePeriod();
     }
 
     public bool isOverTime()
@@ -155,7 +169,7 @@ public class MatchManager
 
     public int GetOverTimeNumber()
     {
-        return MatchUtility.Rules()?.OvertimePlaying ?? 0;
+        return _gameStateService.GetOverTimeNumber();
     }
 
     public bool IsKnife()
@@ -165,7 +179,7 @@ public class MatchManager
 
     public void PauseMatch(string? message = null, bool skipUpdate = false)
     {
-        _gameServer.SendCommands(["mp_pause_match"]);
+        _commandService.SendCommands(["mp_pause_match"]);
 
         if (IsPaused())
         {
@@ -176,11 +190,11 @@ public class MatchManager
 
         if (message != null)
         {
-            _gameServer.Message(HudDestination.Alert, message);
+            _commandService.PrintToChatAll(message);
         }
 
         _resumeMessageTimer?.Kill();
-        _resumeMessageTimer = TimerUtility.AddTimer(
+        _resumeMessageTimer = _timerService.AddTimer(
             3,
             () =>
             {
@@ -189,8 +203,7 @@ public class MatchManager
                     return;
                 }
 
-                _gameServer.Message(
-                    HudDestination.Alert,
+                _commandService.PrintToChatAll(
                     _localizer["match.resume_hint", CommandUtility.PublicChatTrigger]
                 );
             },
@@ -220,7 +233,7 @@ public class MatchManager
         }
 
         _logger.LogInformation($"Resuming Match{(message != null ? $": {message}" : "")}");
-        _gameServer.SendCommands(["mp_unpause_match"]);
+        _commandService.SendCommands(["mp_unpause_match"]);
 
         _resumeMessageTimer?.Kill();
         if (_timeoutSystem.resumeVote != null)
@@ -242,7 +255,7 @@ public class MatchManager
 
         if (message != null)
         {
-            _gameServer.Message(HudDestination.Center, message);
+            _commandService.PrintToCenter(null, message);
         }
 
         if (skipUpdate)
@@ -429,9 +442,9 @@ public class MatchManager
             FiveStackPlugin.SetPasswordBuffer(_matchData.password);
             ConVar.Find("sv_password")?.SetValue(_matchData.password);
 
-            if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
+            if (_matchUtilityService.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
             {
-                UpdateMapStatus(MatchUtility.MapStatusStringToEnum(_currentMap.status));
+                UpdateMapStatus(_matchUtilityService.MapStatusStringToEnum(_currentMap.status));
             }
 
             if (IsWarmup())
@@ -454,8 +467,8 @@ public class MatchManager
 
         CsTeam lineup1StartingSide = TeamUtility.TeamStringToCsTeam(_currentMap.lineup_1_side);
 
-        string mp_teamname_1 = ConVar.Find("mp_teamname_1")?.StringValue ?? "";
-        string mp_teamname_2 = ConVar.Find("mp_teamname_2")?.StringValue ?? "";
+        string mp_teamname_1 = _convarService.Find("mp_teamname_1")?.StringValue ?? "";
+        string mp_teamname_2 = _convarService.Find("mp_teamname_2")?.StringValue ?? "";
 
         string expectedTeamname1 =
             lineup1StartingSide == CsTeam.CounterTerrorist
@@ -467,14 +480,14 @@ public class MatchManager
                 ? _matchData.lineup_2.name
                 : _matchData.lineup_1.name;
 
-        ConVar.Find("mp_teamname_1")!.StringValue = expectedTeamname1;
-        ConVar.Find("mp_teamname_2")!.StringValue = expectedTeamname2;
+        _convarService.SetValue("mp_teamname_1", expectedTeamname1);
+        _convarService.SetValue("mp_teamname_2", expectedTeamname2);
 
-        TimerUtility.AddTimer(
+        _timerService.AddTimer(
             1.0f,
             () =>
             {
-                foreach (var player in MatchUtility.Players())
+                foreach (var player in _gameStateService.Players())
                 {
                     EnforceMemberTeam(player);
                 }
@@ -523,18 +536,18 @@ public class MatchManager
             return;
         }
 
-        _gameServer.SendCommands(["tv_broadcast 0"]);
+        _commandService.SendCommands(["tv_broadcast 0"]);
         Reset();
 
         _logger.LogInformation($"Changing Map {map.name}");
 
         if (map.workshop_map_id == null && Server.IsMapValid(map.name))
         {
-            _gameServer.SendCommands([$"changelevel \"{map.name}\""]);
+            _commandService.SendCommands([$"changelevel \"{map.name}\""]);
         }
         else
         {
-            _gameServer.SendCommands([$"host_workshop_map {map.workshop_map_id}"]);
+            _commandService.SendCommands([$"host_workshop_map {map.workshop_map_id}"]);
         }
     }
 
@@ -545,8 +558,8 @@ public class MatchManager
             return;
         }
 
-        int? gameMode = ConVar.Find("game_mode")?.GetPrimitiveValue<int>();
-        int? gameType = ConVar.Find("game_type")?.GetPrimitiveValue<int>();
+        int? gameMode = _convarService.Find("game_mode")?.GetPrimitiveValue<int>();
+        int? gameType = _convarService.Find("game_type")?.GetPrimitiveValue<int>();
 
         _logger.LogInformation($"Current Game Mode {gameMode}");
         _logger.LogInformation($"Current Game Type {gameType}");
@@ -556,9 +569,9 @@ public class MatchManager
             if (gameMode != 2)
             {
                 _logger.LogInformation($"Setting Game Mode to {_matchData.options.type}");
-                ConVar.Find("game_type")?.SetValue(0);
-                ConVar.Find("game_mode")?.SetValue(2);
-                _gameServer.SendCommands(["mp_restartgame 1"]);
+                _convarService.SetValue("game_type", 0);
+                _convarService.SetValue("game_mode", 2);
+                _commandService.SendCommands(["mp_restartgame 1"]);
             }
         }
         else
@@ -566,9 +579,9 @@ public class MatchManager
             if (gameMode != 1)
             {
                 _logger.LogInformation($"Setting Game Mode to {_matchData.options.type}");
-                ConVar.Find("game_type")?.SetValue(0);
-                ConVar.Find("game_mode")?.SetValue(1);
-                _gameServer.SendCommands(["mp_restartgame 1"]);
+                _convarService.SetValue("game_type", 0);
+                _convarService.SetValue("game_mode", 1);
+                _commandService.SendCommands(["mp_restartgame 1"]);
             }
         }
     }
@@ -595,8 +608,8 @@ public class MatchManager
 
     private void StartWarmup()
     {
-        ConVar.Find("sv_disable_teamselect_menu")?.SetValue(0);
-        _gameServer.SendCommands(["exec 5stack.warmup.cfg"]);
+        _convarService.SetValue("sv_disable_teamselect_menu", 0);
+        _commandService.SendCommands(["exec 5stack.warmup.cfg"]);
 
         knifeSystem.Reset();
 
@@ -607,11 +620,11 @@ public class MatchManager
 
         Server.NextFrame(() =>
         {
-            bool isInWarmup = MatchUtility.Rules()?.WarmupPeriod ?? false;
+            bool isInWarmup = _gameStateService.IsWarmup();
 
             if (isInWarmup == false)
             {
-                _gameServer.SendCommands(["mp_warmup_start"]);
+                _commandService.SendCommands(["mp_warmup_start"]);
             }
 
             readySystem.Setup();
@@ -706,7 +719,7 @@ public class MatchManager
 
         if (
             IsWarmup()
-            || (MatchUtility.Rules()?.FreezePeriod == true) && expectedTeam != CsTeam.Spectator
+            || (_matchUtilityService.Rules()?.FreezePeriod == true) && expectedTeam != CsTeam.Spectator
         )
         {
             player.Respawn();
@@ -725,7 +738,7 @@ public class MatchManager
             return CsTeam.None;
         }
 
-        MatchMember? member = MatchUtility.GetMemberFromLineup(
+        MatchMember? member = _matchUtilityService.GetMemberFromLineup(
             matchData,
             player.SteamID.ToString(),
             player.PlayerName
@@ -753,7 +766,7 @@ public class MatchManager
             player.VoiceFlags = VoiceFlags.Normal;
         }
 
-        Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
+        Guid? lineup_id = _matchUtilityService.GetPlayerLineup(matchData, player);
 
         if (lineup_id == null)
         {
@@ -804,9 +817,9 @@ public class MatchManager
             { "lineup_2", new List<object>() },
         };
 
-        foreach (var player in MatchUtility.Players())
+        foreach (var player in _matchUtilityService.Players())
         {
-            MatchMember? member = MatchUtility.GetMemberFromLineup(
+            MatchMember? member = _matchUtilityService.GetMemberFromLineup(
                 _matchData,
                 player.SteamID.ToString(),
                 player.PlayerName
@@ -880,7 +893,7 @@ public class MatchManager
             MatchData? matchData = GetMatchData();
             if (matchData != null)
             {
-                tag = MatchUtility.GetPlayerLineupTag(matchData, player);
+                tag = _matchUtilityService.GetPlayerLineupTag(matchData, player);
             }
         }
 

@@ -18,6 +18,7 @@ public class TimeoutSystem
     private readonly GameBackUpRounds _backUpManagement;
     private readonly ILogger<TimeoutSystem> _logger;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IMatchUtilityService _matchUtilityService;
     private readonly CoachSystem _coachSystem;
     private readonly CaptainSystem _captainSystem;
     private readonly IStringLocalizer _localizer;
@@ -31,6 +32,7 @@ public class TimeoutSystem
         MatchService matchService,
         GameBackUpRounds backUpManagement,
         IServiceProvider serviceProvider,
+        IMatchUtilityService matchUtilityService,
         CoachSystem coachSystem,
         CaptainSystem captainSystem,
         IStringLocalizer localizer
@@ -41,6 +43,7 @@ public class TimeoutSystem
         _gameServer = gameServer;
         _matchService = matchService;
         _serviceProvider = serviceProvider;
+        _matchUtilityService = matchUtilityService;
         _backUpManagement = backUpManagement;
         _coachSystem = coachSystem;
         _captainSystem = captainSystem;
@@ -324,7 +327,7 @@ public class TimeoutSystem
                 return;
             }
 
-            Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
+            Guid? lineup_id = _matchUtilityService.GetPlayerLineup(matchData, player);
 
             if (lineup_id == null)
             {
@@ -471,7 +474,7 @@ public class TimeoutSystem
 
     public bool IsTimeoutActive()
     {
-        return MatchUtility.Rules()?.TerroristTimeOutActive == true
-            || MatchUtility.Rules()?.CTTimeOutActive == true;
+        return _matchUtilityService.Rules()?.TerroristTimeOutActive == true
+            || _matchUtilityService.Rules()?.CTTimeOutActive == true;
     }
 }

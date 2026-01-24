@@ -14,6 +14,7 @@ public class CaptainSystem
     private readonly MatchService _matchService;
     private readonly ILogger<CaptainSystem> _logger;
     private readonly IStringLocalizer _localizer;
+    private readonly IMatchUtilityService _matchUtilityService;
 
     public Dictionary<CsTeam, CCSPlayerController?> _captains = new Dictionary<
         CsTeam,
@@ -204,7 +205,7 @@ public class CaptainSystem
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
         if (matchData != null)
         {
-            MatchMember? member = MatchUtility.GetMemberFromLineup(
+            MatchMember? member = _matchUtilityService.GetMemberFromLineup(
                 matchData,
                 player.SteamID.ToString(),
                 player.PlayerName

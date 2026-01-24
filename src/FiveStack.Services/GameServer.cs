@@ -4,6 +4,7 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.Services;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
@@ -15,25 +16,28 @@ public class GameServer
     private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
     private readonly ILogger<GameServer> _logger;
+    private readonly ICommandService _commandService;
     private readonly bool _steamRelay;
 
     public GameServer(
         ILogger<GameServer> logger,
         SteamAPI steamAPI,
         EnvironmentService environmentService,
-        MatchService matchService
+        MatchService matchService,
+        ICommandService commandService
     )
     {
         _logger = logger;
         _steamAPI = steamAPI;
         _matchService = matchService;
         _environmentService = environmentService;
+        _commandService = commandService;
         _steamRelay = ConVar.Find("net_p2p_listen_dedicated")?.GetPrimitiveValue<bool>() ?? false;
     }
 
     public void SendCommands(string[] commands)
     {
-        Server.NextFrame(() => Server.ExecuteCommand(string.Join(";", commands)));
+        _commandService.SendCommands(commands);
     }
 
     public void Message(
@@ -44,27 +48,20 @@ public class GameServer
     {
         if (player != null)
         {
-            var parts = message.Split(["\r\n", "\r", "\n"], StringSplitOptions.None);
-            foreach (var part in parts)
-            {
-                player.PrintToChat($"{part}");
-            }
+            _commandService.PrintToChat(player, message);
         }
         else if (destination == HudDestination.Console)
         {
-            Server.PrintToConsole(message);
+            _commandService.PrintToConsole(message);
         }
         else if (destination == HudDestination.Alert || destination == HudDestination.Center)
         {
-            VirtualFunctions.ClientPrintAll(destination, $" {message}", 0, 0, 0, 0, 0);
+            // VirtualFunctions.ClientPrintAll(destination, $" {message}", 0, 0, 0, 0, 0);
+            _commandService.PrintToChatAll(message);
         }
         else
         {
-            var parts = message.Split(["\r\n", "\r", "\n"], StringSplitOptions.None);
-            foreach (var part in parts)
-            {
-                Server.PrintToChatAll($"{part}");
-            }
+            _commandService.PrintToChatAll(message);
         }
     }
 
@@ -73,9 +70,29 @@ public class GameServer
         return GetTotalRoundsPlayed() + 1;
     }
 
+    private readonly IGameStateService _gameStateService;
+
+    public GameServer(
+        ILogger<GameServer> logger,
+        SteamAPI steamAPI,
+        EnvironmentService environmentService,
+        MatchService matchService,
+        ICommandService commandService,
+        IGameStateService gameStateService
+    )
+    {
+        _logger = logger;
+        _steamAPI = steamAPI;
+        _matchService = matchService;
+        _environmentService = environmentService;
+        _commandService = commandService;
+        _gameStateService = gameStateService;
+        _steamRelay = ConVar.Find("net_p2p_listen_dedicated")?.GetPrimitiveValue<bool>() ?? false;
+    }
+
     public int GetTotalRoundsPlayed()
     {
-        return MatchUtility.Rules()?.TotalRoundsPlayed ?? 0;
+        return _gameStateService.GetTotalRoundsPlayed();
     }
 
     public void Ping(string pluginVersion)

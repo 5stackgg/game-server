@@ -26,5 +26,12 @@ public class FiveStackServiceCollection : IPluginServiceCollection<FiveStackPlug
         serviceCollection.AddTransient<KnifeSystem>();
         serviceCollection.AddTransient<ReadySystem>();
         serviceCollection.AddTransient<TimeoutSystem>();
+
+        serviceCollection.AddSingleton<IMatchUtilityService, MatchUtilityService>();
+        serviceCollection.AddSingleton<ICommandService, CommandService>();
+        serviceCollection.AddSingleton<IConVarService, ConVarService>();
+        serviceCollection.AddSingleton<IGameStateService, GameStateService>();
+        serviceCollection.AddSingleton<IPlayerService, PlayerService>();
+        serviceCollection.AddSingleton<ITimerService, TimerService>();
     }
 }
