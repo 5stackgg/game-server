@@ -6,3 +6,4 @@ src/Folder.DotSettings.user
 .env
 release
 5stack-server-mod.generated.sln
+.claude

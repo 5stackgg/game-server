@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using Microsoft.Extensions.DependencyInjection;
+using FiveStack.CounterStrikeSharp.Services;
 
 namespace FiveStack;
 
