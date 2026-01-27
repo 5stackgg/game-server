@@ -525,12 +525,12 @@ public class MatchManager
         if (map.workshop_map_id == null && Server.IsMapValid(map.name))
         {
             _logger.LogInformation($"Changing Map {map.name}");
-            // _gameServer.SendCommands([$"changelevel \"{map.name}\""]);
+            _gameServer.SendCommands([$"changelevel \"{map.name}\""]);
         }
         else
         {
             _logger.LogInformation($"Changing Map {map.name} / {map.workshop_map_id}");
-            // _gameServer.SendCommands([$"host_workshop_map {map.workshop_map_id}"]);
+            _gameServer.SendCommands([$"host_workshop_map {map.workshop_map_id}"]);
         }
     }
 

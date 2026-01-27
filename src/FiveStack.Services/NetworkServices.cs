@@ -22,9 +22,9 @@ public class INetworkServerService : NativeObject
     {
         IntPtr networkGameServer = GetIGameServerFunc.Invoke(Handle);
         IntPtr vtablePtr = Marshal.ReadIntPtr(networkGameServer);
-        IntPtr functionPtr = Marshal.ReadIntPtr(vtablePtr + (25 * IntPtr.Size));
+        IntPtr functionPtr = Marshal.ReadIntPtr(vtablePtr + (26 * IntPtr.Size));
         var getAddonName = Marshal.GetDelegateForFunctionPointer<GetAddonNameDelegate>(functionPtr);
         IntPtr result = getAddonName(networkGameServer);
-        return Marshal.PtrToStringAnsi(result)!.Split(',')[0];
+        return Marshal.PtrToStringAnsi(result)!;
     }
 }
