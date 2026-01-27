@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Cvars;
@@ -13,9 +12,6 @@ using Microsoft.Extensions.Logging;
 using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
 namespace FiveStack;
-
-[UnmanagedFunctionPointer(CallingConvention.ThisCall)]
-delegate IntPtr GetAddonNameDelegate(IntPtr self);
 
 public class MatchManager
 {
@@ -367,7 +363,7 @@ public class MatchManager
         }
 
         _logger.LogInformation(
-            $"Game State {_currentMap.status} on ({_currentMap.map.name}) / {Server.MapName}"
+            $"Game State {_currentMap.status} expected {_currentMap.map.name}, on {Server.MapName}"
         );
 
         if (_currentMap.map.workshop_map_id is not null)
@@ -526,15 +522,15 @@ public class MatchManager
         _gameServer.SendCommands(["tv_broadcast 0"]);
         Reset();
 
-        _logger.LogInformation($"Changing Map {map.name}");
-
         if (map.workshop_map_id == null && Server.IsMapValid(map.name))
         {
-            _gameServer.SendCommands([$"changelevel \"{map.name}\""]);
+            _logger.LogInformation($"Changing Map {map.name}");
+            // _gameServer.SendCommands([$"changelevel \"{map.name}\""]);
         }
         else
         {
-            _gameServer.SendCommands([$"host_workshop_map {map.workshop_map_id}"]);
+            _logger.LogInformation($"Changing Map {map.name} / {map.workshop_map_id}");
+            // _gameServer.SendCommands([$"host_workshop_map {map.workshop_map_id}"]);
         }
     }
 
