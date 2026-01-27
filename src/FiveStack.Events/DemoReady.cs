@@ -15,7 +15,7 @@ public partial class FiveStackPlugin
         OSPlatform.Linux
     )
         ? "55 48 89 E5 41 57 41 56 41 55 41 54 53 48 89 FB 48 81 EC ? ? ? ? 48 8B 7F 30 48 85 FF 0F 84 ? ? ? ?"
-        : "";
+        : "55 57 41 55 41 56 48 8D 6C 24 ? 48 81 EC F8 00 00 00 45 33 ED 4C 8B F2 48 8B F9 44 38 A9 F0 01 00 00";
 
     public MemoryFunctionVoid<IntPtr, IntPtr> RecordEnd = new(
         demoRecordEndSignature,
