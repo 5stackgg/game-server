@@ -44,9 +44,9 @@ create_symlinks() {
         destination_file="$destination_path/$relative_path"
 
         if [ -f "$file" ]; then
-          if [ ! -e "$destination_file" ]; then
-              ln -s "$file" "$destination_file"
-          fi
+            if [ ! -e "$destination_file" ]; then
+                ln -s "$file" "$destination_file"
+            fi
         elif [ -d "$file" ]; then
             if [ ! -e "$destination_file" ]; then
                 ln -s "$file" "$destination_file"
@@ -66,34 +66,41 @@ if [ "$SERVER_TYPE" = "Ranked" ]; then
   cp "/opt/server-cfg/5stack.wingman.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
 fi
 
+cp -r "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs/*" "/opt/custom-plugins/addons/counterstrikesharp/configs"
+rm -rf "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs"
+
+if [ ! -d "/opt/custom-plugins/addons/counterstrikesharp/configs" ]; then
+  mkdir -p "/opt/custom-plugins/addons/counterstrikesharp/configs"
+fi
+
+ln -s "/opt/custom-plugins/addons/counterstrikesharp/configs" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs"
+
 if [ "$SERVER_TYPE" != "Ranked" ]; then
-  if [ ! -d "/opt/custom-data" ]; then
-    mkdir -p "/opt/custom-data"
+  if [ ! -d "/opt/custom-plugins" ]; then
+    mkdir -p "/opt/custom-plugins"
   fi
 
-  if [ ! -d "/opt/custom-data/maps" ]; then
-    mkdir -p "/opt/custom-data/maps"
+  if [ ! -d "/opt/custom-plugins/maps" ]; then
+    mkdir -p "/opt/custom-plugins/maps"
   fi
 
-  if [ ! -e "/opt/custom-data/maps/mg_public.txt" ]; then
-    cp "/opt/server-cfg/mg_public.txt" "/opt/custom-data/maps/mg_public.txt"
+  if [ ! -e "/opt/custom-plugins/maps/mg_public.txt" ]; then
+    cp "/opt/server-cfg/mg_public.txt" "/opt/custom-plugins/maps/mg_public.txt"
   fi
 
-  if [ ! -d "/opt/custom-data/cfg" ]; then
-    mkdir -p "/opt/custom-data/cfg"
+  if [ ! -d "/opt/custom-plugins/cfg" ]; then
+    mkdir -p "/opt/custom-plugins/cfg"
   fi
 
-  if [ ! -e "/opt/custom-data/cfg/server.cfg" ]; then
-    cp "/opt/server-cfg/public.server.cfg" "/opt/custom-data/cfg/server.cfg"
+  if [ ! -e "/opt/custom-plugins/cfg/server.cfg" ]; then
+    cp "/opt/server-cfg/public.server.cfg" "/opt/custom-plugins/cfg/server.cfg"
   fi
 
-  if [ ! -e "/opt/custom-data/addons/counterstrikesharp/configs/core.json" ]; then
-    if [ ! -d "/opt/custom-data/addons/counterstrikesharp/configs" ]; then
-      mkdir -p "/opt/custom-data/addons/counterstrikesharp/configs"
-    fi
-    cp "/opt/server-cfg/core.json" "/opt/custom-data/addons/counterstrikesharp/configs/core.json"
+  if [ ! -e "/opt/custom-plugins/addons/counterstrikesharp/configs/core.json" ]; then
+    cp "/opt/server-cfg/core.json" "/opt/custom-plugins/addons/counterstrikesharp/configs/core.json"
   fi
-  create_symlinks "/opt/custom-data" "${INSTANCE_SERVER_DIR}/game/csgo"
+
+  create_symlinks "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
 fi
 
 if $AUTOLOAD_PLUGINS = true ; then
