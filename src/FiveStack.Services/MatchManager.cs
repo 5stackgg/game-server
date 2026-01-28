@@ -705,7 +705,10 @@ public class MatchManager
             || (MatchUtility.Rules()?.FreezePeriod == true) && expectedTeam != CsTeam.Spectator
         )
         {
-            player.Respawn();
+            Server.NextFrame(() =>
+            {
+                player.Respawn();
+            });
         }
 
         captainSystem.IsCaptain(player, expectedTeam);
