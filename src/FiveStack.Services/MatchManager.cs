@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Cvars;
@@ -260,8 +261,13 @@ public class MatchManager
 
         if (
             _currentMapStatus == eMapStatus.Unknown
-            && status != eMapStatus.Live
-            && status != eMapStatus.Overtime
+            && (
+                status != eMapStatus.Live
+                && status != eMapStatus.Overtime
+                && status != eMapStatus.Finished
+                && status != eMapStatus.Surrendered
+                && status != eMapStatus.UploadingDemo
+            )
         )
         {
             _backUpManagement.CheckForBackupRestore();
@@ -331,9 +337,15 @@ public class MatchManager
                 break;
             case eMapStatus.Finished:
             case eMapStatus.Surrendered:
-            case eMapStatus.UploadingDemo:
                 _matchDemos.Stop();
                 _surrenderSystem.Reset();
+                break;
+            case eMapStatus.UploadingDemo:
+                _surrenderSystem.Reset();
+                if (_currentMapStatus == eMapStatus.Unknown || IsMapFinished())
+                {
+                    return;
+                }
                 break;
         }
 

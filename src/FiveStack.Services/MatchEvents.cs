@@ -63,7 +63,11 @@ public class MatchEvents
         }
         PublishGameEvent(
             "mapStatus",
-            new Dictionary<string, object> { { "status", status.ToString() }, { "winning_lineup_id", winningLineupId?.ToString() ?? "" } }
+            new Dictionary<string, object>
+            {
+                { "status", status.ToString() },
+                { "winning_lineup_id", winningLineupId?.ToString() ?? "" },
+            }
         );
     }
 
