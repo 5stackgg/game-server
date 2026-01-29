@@ -62,6 +62,7 @@ public class GameDemos
         string lockFilePath = GetLockFilePath(match.id);
         if (File.Exists(lockFilePath))
         {
+            _logger.LogInformation("Demo is already recording");
             return;
         }
 
