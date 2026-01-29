@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Cvars;
@@ -249,7 +250,7 @@ public class MatchManager
         UpdateMapStatus(isOverTime() ? eMapStatus.Overtime : eMapStatus.Live);
     }
 
-    public void UpdateMapStatus(eMapStatus status)
+    public void UpdateMapStatus(eMapStatus status, Guid? winningLineupId = null)
     {
         if (_matchData == null)
         {
@@ -260,8 +261,13 @@ public class MatchManager
 
         if (
             _currentMapStatus == eMapStatus.Unknown
-            && status != eMapStatus.Live
-            && status != eMapStatus.Overtime
+            && (
+                status != eMapStatus.Live
+                && status != eMapStatus.Overtime
+                && status != eMapStatus.Finished
+                && status != eMapStatus.Surrendered
+                && status != eMapStatus.UploadingDemo
+            )
         )
         {
             _backUpManagement.CheckForBackupRestore();
@@ -329,17 +335,21 @@ public class MatchManager
             case eMapStatus.Live:
                 StartLive();
                 break;
+            case eMapStatus.Finished:
             case eMapStatus.Surrendered:
-            case eMapStatus.UploadingDemo:
                 _matchDemos.Stop();
                 _surrenderSystem.Reset();
                 break;
-            case eMapStatus.Finished:
+            case eMapStatus.UploadingDemo:
                 _surrenderSystem.Reset();
+                if (_currentMapStatus == eMapStatus.Unknown || IsMapFinished())
+                {
+                    return;
+                }
                 break;
         }
 
-        _matchEvents.PublishMapStatus(status);
+        _matchEvents.PublishMapStatus(status, winningLineupId);
         _currentMapStatus = status;
     }
 
