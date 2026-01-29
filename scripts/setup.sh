@@ -66,11 +66,13 @@ if [ "$SERVER_TYPE" = "Ranked" ]; then
   cp "/opt/server-cfg/5stack.wingman.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
 fi
 
-cp -r "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs/*" "/opt/custom-plugins/addons/counterstrikesharp/configs"
-rm -rf "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs"
-
 if [ ! -d "/opt/custom-plugins/addons/counterstrikesharp/configs" ]; then
   mkdir -p "/opt/custom-plugins/addons/counterstrikesharp/configs"
+fi
+
+if [ -d "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs" ]; then
+  cp -r "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs/*" "/opt/custom-plugins/addons/counterstrikesharp/configs"
+  rm -rf "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs"
 fi
 
 ln -s "/opt/custom-plugins/addons/counterstrikesharp/configs" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs"
