@@ -17,8 +17,6 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        _surrenderSystem.Reset();
-
         match.UpdateMapStatus(eMapStatus.UploadingDemo, _matchEvents.GetWinningLineupId());
 
         MatchData? matchData = match.GetMatchData();
