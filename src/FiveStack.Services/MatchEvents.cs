@@ -1,6 +1,7 @@
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
@@ -54,55 +55,15 @@ public class MatchEvents
         public T? data { get; set; }
     }
 
-    public void PublishMapStatus(eMapStatus status)
+    public void PublishMapStatus(eMapStatus status, Guid? winningLineupId)
     {
         if (_environmentService.IsOfflineMode())
         {
             return;
         }
-
-        if (status == eMapStatus.Finished)
-        {
-            MatchManager? match = _matchService.GetCurrentMatch();
-            MatchData? matchData = match?.GetMatchData();
-            MatchMap? currentMap = match?.GetCurrentMap();
-            if (matchData == null || currentMap == null)
-            {
-                return;
-            }
-
-            int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
-            int lineup1Score = TeamUtility.GetTeamScore(
-                matchData,
-                currentMap,
-                matchData.lineup_1_id,
-                totalRoundsPlayed
-            );
-            int lineup2Score = TeamUtility.GetTeamScore(
-                matchData,
-                currentMap,
-                matchData.lineup_2_id,
-                totalRoundsPlayed
-            );
-
-            Guid winningLineupId =
-                lineup1Score > lineup2Score ? matchData.lineup_1_id : matchData.lineup_2_id;
-
-            PublishGameEvent(
-                "mapStatus",
-                new Dictionary<string, object>
-                {
-                    { "status", status.ToString() },
-                    { "winning_lineup_id", winningLineupId },
-                }
-            );
-
-            return;
-        }
-
         PublishGameEvent(
             "mapStatus",
-            new Dictionary<string, object> { { "status", status.ToString() } }
+            new Dictionary<string, object> { { "status", status.ToString() }, { "winning_lineup_id", winningLineupId?.ToString() ?? "" } }
         );
     }
 
@@ -376,5 +337,76 @@ public class MatchEvents
         {
             _logger.LogCritical($"Error: {error.Message}");
         }
+    }
+
+    public (
+        int lineup1Score,
+        int lineup2Score,
+        CsTeam lineup1Side,
+        CsTeam lineup2Side,
+        int totalRoundsPlayed
+    ) GetRoundInformation()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+        MatchMap? currentMap = match?.GetCurrentMap();
+
+        if (match == null || matchData == null || currentMap == null)
+        {
+            return (0, 0, CsTeam.None, CsTeam.None, 0);
+        }
+
+        int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
+
+        CsTeam lineup1Side = TeamUtility.GetLineupSide(
+            matchData,
+            currentMap,
+            matchData.lineup_1_id,
+            totalRoundsPlayed
+        );
+        CsTeam lineup2Side = TeamUtility.GetLineupSide(
+            matchData,
+            currentMap,
+            matchData.lineup_2_id,
+            totalRoundsPlayed
+        );
+
+        int lineup1Score = TeamUtility.GetTeamScore(
+            matchData,
+            currentMap,
+            matchData.lineup_1_id,
+            totalRoundsPlayed
+        );
+
+        int lineup2Score = TeamUtility.GetTeamScore(
+            matchData,
+            currentMap,
+            matchData.lineup_2_id,
+            totalRoundsPlayed
+        );
+
+        return (lineup1Score, lineup2Score, lineup1Side, lineup2Side, totalRoundsPlayed);
+    }
+
+    public Guid? GetWinningLineupId()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+        MatchMap? currentMap = match?.GetCurrentMap();
+
+        if (match == null || matchData == null || currentMap == null)
+        {
+            return null;
+        }
+
+        (
+            int lineup1Score,
+            int lineup2Score,
+            CsTeam lineup1Side,
+            CsTeam lineup2Side,
+            int totalRoundsPlayed
+        ) = GetRoundInformation();
+
+        return lineup1Score > lineup2Score ? matchData.lineup_1_id : matchData.lineup_2_id;
     }
 }

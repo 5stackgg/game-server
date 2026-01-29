@@ -12,7 +12,6 @@ public partial class FiveStackPlugin
 {
     CsTeam roundWinner;
     int timeoutGivenForOvertime;
-
     eWinReason? reason;
 
     [GameEventHandler]
@@ -105,20 +104,13 @@ public partial class FiveStackPlugin
             return;
         }
 
-        int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
-
-        CsTeam lineup1Side = TeamUtility.GetLineupSide(
-            matchData,
-            currentMap,
-            matchData.lineup_1_id,
-            totalRoundsPlayed
-        );
-        CsTeam lineup2Side = TeamUtility.GetLineupSide(
-            matchData,
-            currentMap,
-            matchData.lineup_2_id,
-            totalRoundsPlayed
-        );
+        (
+            int lineup1Score,
+            int lineup2Score,
+            CsTeam lineup1Side,
+            CsTeam lineup2Side,
+            int totalRoundsPlayed
+        ) = _matchEvents.GetRoundInformation();
 
         _matchEvents.PublishGameEvent(
             "score",
@@ -127,10 +119,7 @@ public partial class FiveStackPlugin
                 { "time", DateTime.Now },
                 { "match_map_id", currentMap.id },
                 { "round", totalRoundsPlayed },
-                {
-                    "lineup_1_score",
-                    $"{TeamUtility.GetTeamScore(matchData, currentMap, matchData.lineup_1_id, totalRoundsPlayed)}"
-                },
+                { "lineup_1_score", lineup1Score },
                 {
                     "lineup_1_money",
                     $"{TeamUtility.GetTeamMoney(matchData, currentMap, matchData.lineup_1_id, totalRoundsPlayed)}"
@@ -139,10 +128,7 @@ public partial class FiveStackPlugin
                     "lineup_1_timeouts_available",
                     $"{currentMap?.lineup_1_timeouts_available ?? 0}"
                 },
-                {
-                    "lineup_2_score",
-                    $"{TeamUtility.GetTeamScore(matchData, currentMap!, matchData.lineup_2_id, totalRoundsPlayed)}"
-                },
+                { "lineup_2_score", $"{lineup2Score}" },
                 {
                     "lineup_2_money",
                     $"{TeamUtility.GetTeamMoney(matchData, currentMap!, matchData.lineup_2_id, totalRoundsPlayed)}"
