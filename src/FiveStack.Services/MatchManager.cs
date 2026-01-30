@@ -257,6 +257,11 @@ public class MatchManager
             return;
         }
 
+        if(_currentMapStatus == status)
+        {
+            return;
+        }
+
         _logger.LogInformation($"Update Map Status {_currentMapStatus} -> {status}");
 
         if (
