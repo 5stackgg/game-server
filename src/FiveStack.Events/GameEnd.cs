@@ -63,6 +63,10 @@ public partial class FiveStackPlugin
                     {
                         SendSurrender();
                     }
+                    else
+                    {
+                        match.UpdateMapStatus(eMapStatus.Finished);
+                    }
 
                     match.delayChangeMap(Math.Min(5, matchData.options.tv_delay - 15));
                 });
