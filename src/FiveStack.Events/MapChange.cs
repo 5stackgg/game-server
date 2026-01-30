@@ -12,7 +12,7 @@ public partial class FiveStackPlugin
         RegisterListener<Listeners.OnMapStart>(
             async (mapName) =>
             {
-                _logger.LogInformation("Precaching models for new map");
+                _logger.LogInformation("map changed: precaching models");
 
                 Server.PrecacheModel(ModelPathCtmSas);
                 Server.PrecacheModel(ModelPathTmPhoenix);

@@ -264,16 +264,7 @@ public class MatchManager
 
         _logger.LogInformation($"Update Map Status {_currentMapStatus} -> {status}");
 
-        if (
-            _currentMapStatus == eMapStatus.Unknown
-            && (
-                status != eMapStatus.Live
-                && status != eMapStatus.Overtime
-                && status != eMapStatus.Finished
-                && status != eMapStatus.Surrendered
-                && status != eMapStatus.UploadingDemo
-            )
-        )
+        if (_currentMapStatus == eMapStatus.Unknown)
         {
             _backUpManagement.CheckForBackupRestore();
         }
@@ -964,6 +955,7 @@ public class MatchManager
 
     public void Reset()
     {
+        _logger.LogInformation("resetting match state");
         _resumeMessageTimer?.Kill();
         _mapChangeCountdownTimer?.Kill();
 
