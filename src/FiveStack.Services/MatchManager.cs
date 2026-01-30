@@ -38,7 +38,7 @@ public class MatchManager
     public MatchService _matchService;
 
     private int _remainingMapChangeDelay = 0;
-    private Timer? _mapChangeCountdownTimer;
+    public Timer? _mapChangeCountdownTimer;
 
     public MatchManager(
         ILogger<MatchManager> logger,
@@ -257,7 +257,7 @@ public class MatchManager
             return;
         }
 
-        if(_currentMapStatus == status)
+        if (_currentMapStatus == status)
         {
             return;
         }
@@ -495,6 +495,7 @@ public class MatchManager
             delay,
             () =>
             {
+                _logger.LogInformation("map change delay complete");
                 _mapChangeCountdownTimer?.Kill();
                 _mapChangeCountdownTimer = null;
                 _matchService.GetMatchFromApi();

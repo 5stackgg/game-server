@@ -64,6 +64,15 @@ public class MatchService
 
     public async void GetMatchFromApi()
     {
+        MatchManager? matchManager = _currentMatch;
+        if (matchManager != null && matchManager._mapChangeCountdownTimer != null)
+        {
+            _logger.LogInformation(
+                "map change countdown timer is still active, skipping match fetch"
+            );
+            return;
+        }
+
         if (_environmentService.IsOfflineMode())
         {
             GetMatchFromOffline();
