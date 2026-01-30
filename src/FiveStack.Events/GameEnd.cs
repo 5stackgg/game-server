@@ -1,7 +1,9 @@
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using FiveStack.Entities;
 using FiveStack.Enums;
+using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -17,27 +19,55 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        match.UpdateMapStatus(eMapStatus.UploadingDemo, _matchEvents.GetWinningLineupId());
+        PublishRoundInformation();
 
         MatchData? matchData = match.GetMatchData();
         MatchMap? currentMap = match.GetCurrentMap();
-
-        if (currentMap == null || matchData?.current_match_map_id == null)
+        if (matchData == null || currentMap == null)
         {
             return HookResult.Continue;
         }
 
-        // Handle offline mode map progression
-        if (_environmentService.IsOfflineMode())
-        {
-            HandleOfflineMapProgression(match, matchData, currentMap);
-        }
-        else if (matchData.options.tv_delay > 0)
+        if (_environmentService.isOnGameServerNode())
         {
             match.delayChangeMap(matchData.options.tv_delay);
+
+            if (_environmentService.IsOfflineMode())
+            {
+                HandleOfflineMapProgression(match, matchData, currentMap);
+            }
+
+            if (match.isSurrendered())
+            {
+                SendSurrender();
+            }
+            else
+            {
+                match.UpdateMapStatus(eMapStatus.Finished, _matchEvents.GetWinningLineupId());
+            }
+
+            return HookResult.Continue;
         }
 
-        PublishRoundInformation();
+        match.UpdateMapStatus(eMapStatus.UploadingDemo, _matchEvents.GetWinningLineupId());
+
+        TimerUtility.AddTimer(
+            15.0f,
+            async () =>
+            {
+                await _gameDemos.UploadDemos();
+
+                Server.NextFrame(() =>
+                {
+                    if (match.isSurrendered())
+                    {
+                        SendSurrender();
+                    }
+
+                    match.delayChangeMap(Math.Min(5, matchData.options.tv_delay - 15));
+                });
+            }
+        );
 
         return HookResult.Continue;
     }
@@ -72,5 +102,29 @@ public partial class FiveStackPlugin
         nextMap.status = eMapStatus.Warmup.ToString();
 
         match.ChangeMap(nextMap.map);
+    }
+
+    private void SendSurrender()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        if (match == null)
+        {
+            return;
+        }
+
+        Guid? winningLineupId = _surrenderSystem.GetWinningLineupId();
+        if (winningLineupId != null)
+        {
+            _matchEvents.PublishGameEvent(
+                "surrender",
+                new Dictionary<string, object>
+                {
+                    { "time", DateTime.Now },
+                    { "winning_lineup_id", winningLineupId },
+                }
+            );
+        }
+
+        match.UpdateMapStatus(eMapStatus.Finished);
     }
 }
