@@ -13,6 +13,8 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnGameEnd(EventCsWinPanelMatch @event, GameEventInfo info)
     {
+        _logger.LogInformation("Game ended");
+
         MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null)
         {
@@ -30,6 +32,9 @@ public partial class FiveStackPlugin
 
         if (_environmentService.isOnGameServerNode())
         {
+            _logger.LogInformation(
+                "Game Server is on a game server node, skipping uploading demos"
+            );
             match.delayChangeMap(matchData.options.tv_delay);
 
             if (_environmentService.IsOfflineMode())
@@ -48,6 +53,8 @@ public partial class FiveStackPlugin
 
             return HookResult.Continue;
         }
+
+        _logger.LogInformation("delaying uploading demos for 15 seconds");
 
         match.UpdateMapStatus(eMapStatus.UploadingDemo, _matchEvents.GetWinningLineupId());
 

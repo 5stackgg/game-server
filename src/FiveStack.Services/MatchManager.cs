@@ -337,6 +337,7 @@ public class MatchManager
                 _surrenderSystem.Reset();
                 break;
             case eMapStatus.UploadingDemo:
+                _matchDemos.Stop();
                 _surrenderSystem.Reset();
                 if (_currentMapStatus == eMapStatus.Unknown || IsMapFinished())
                 {
