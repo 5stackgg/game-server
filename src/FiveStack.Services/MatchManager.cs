@@ -431,6 +431,7 @@ public class MatchManager
 
             FiveStackPlugin.SetPasswordBuffer(_matchData.password);
             ConVar.Find("sv_password")?.SetValue(_matchData.password);
+            ConVar.Find("mp_match_restart_delay")?.SetValue(_matchData.options.tv_delay);
 
             if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
             {

@@ -75,7 +75,7 @@ public partial class FiveStackPlugin
                         match.UpdateMapStatus(eMapStatus.Finished);
                     }
 
-                    match.delayChangeMap(Math.Min(5, matchData.options.tv_delay - 15));
+                    match.delayChangeMap(Math.Max(5, matchData.options.tv_delay - 15));
                 });
             }
         );
