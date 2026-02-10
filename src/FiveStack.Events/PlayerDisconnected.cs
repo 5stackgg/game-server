@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using FiveStack.Entities;
+using FiveStack.Utilities;
 
 namespace FiveStack;
 
@@ -11,19 +12,31 @@ public partial class FiveStackPlugin
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();
-
+        MatchData? matchData = match?.GetMatchData();
         if (
             @event.Userid == null
             || !@event.Userid.IsValid
             || @event.Userid.IsBot
             || match == null
             || currentMap == null
+            || matchData == null
         )
         {
             return HookResult.Continue;
         }
 
         CCSPlayerController player = @event.Userid;
+
+        MatchMember? member = MatchUtility.GetMemberFromLineup(
+            matchData,
+            player.SteamID.ToString(),
+            player.PlayerName
+        );
+
+        if (member == null)
+        {
+            return HookResult.Continue;
+        }
 
         _matchEvents.PublishGameEvent(
             "player-disconnected",
