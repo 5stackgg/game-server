@@ -71,7 +71,9 @@ if [ ! -d "/opt/custom-plugins/addons/counterstrikesharp/configs" ]; then
 fi
 
 if [ -d "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs" ]; then
-  cp -r "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs/*" "/opt/custom-plugins/addons/counterstrikesharp/configs"
+  if [ "$(ls -A "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs")" ]; then
+    cp -r "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs/." "/opt/custom-plugins/addons/counterstrikesharp/configs"
+  fi
   rm -rf "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs"
 fi
 
