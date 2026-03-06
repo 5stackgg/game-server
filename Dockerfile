@@ -52,7 +52,7 @@ ENV STEAMCMD_DIR="${DATA_DIR}/steamcmd"
 ENV BASE_SERVER_DIR="${DATA_DIR}/serverfiles"
 ENV INSTANCE_SERVER_DIR="/opt/instance"
 
-ENV LD_LIBRARY_PATH="/opt/instance/game/bin/linuxsteamrt64:"
+ENV LD_LIBRARY_PATH="/opt/instance/game/bin/linuxsteamrt64:/opt/instance/bin:"
 
 ENV AUTOLOAD_PLUGINS=true
 ENV PLUGINS_DIR="/opt/custom-plugins"
@@ -78,6 +78,10 @@ ENV SERVER_TYPE="Ranked"
 ENV METAMOD_URL=https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1389-linux.tar.gz
 ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.363/counterstrikesharp-with-runtime-linux-1.0.363.zip
 
+ENV METAMOD_CSGO_URL=https://mms.alliedmods.net/mmsdrop/1.12/mmsource-1.12.0-git1219-linux.tar.gz
+ENV SOURCEMOD_CSGO_URL=https://sm.alliedmods.net/smdrop/1.13/sourcemod-1.13.0-git7297-linux.tar.gz
+ENV NO_LOBBY_RESERVATION_URL=https://github.com/eldoradoel/NoLobbyReservation/archive/refs/heads/master.zip
+
 RUN apt-get update && \
 	apt-get install -y --no-install-recommends \
 	wget locales procps jq ca-certificates curl unzip rsync \
@@ -101,6 +105,18 @@ RUN mkdir -p /opt/metamod /opt/counterstrikesharp && \
 	wget -q $COUNTER_STRIKE_SHARP_URL -O /tmp/counterstrikesharp.zip && \
 	unzip -q /tmp/counterstrikesharp.zip -d /opt/counterstrikesharp && \
 	rm /tmp/counterstrikesharp.zip
+
+
+RUN mkdir -p /opt/csgo-metamod /opt/csgo-sourcemod /opt/csgo-no-lobby-reservation && \
+	wget -q $METAMOD_CSGO_URL -O /tmp/metamod-csgo.tar.gz && \
+	tar -xz -C /opt/csgo-metamod -f /tmp/metamod-csgo.tar.gz && \
+	rm /tmp/metamod-csgo.tar.gz && \
+	wget -q $SOURCEMOD_CSGO_URL -O /tmp/sourcemod-csgo.tar.gz && \
+	tar -xz -C /opt/csgo-sourcemod -f /tmp/sourcemod-csgo.tar.gz && \
+	rm /tmp/sourcemod-csgo.tar.gz && \
+	wget -q $NO_LOBBY_RESERVATION_URL -O /tmp/no-lobby-reservation.zip && \
+	unzip -q /tmp/no-lobby-reservation.zip -d /opt/csgo-no-lobby-reservation && \
+	rm /tmp/no-lobby-reservation.zip
 
 COPY /cfg /opt/server-cfg
 COPY /scripts /opt/scripts

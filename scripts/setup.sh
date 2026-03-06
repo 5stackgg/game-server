@@ -1,4 +1,14 @@
 #!/bin/bash
+
+if [ "${GAME_ID}" = "740" ]; then
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  bash "${SCRIPT_DIR}/setup-csgo.sh"
+  exit $?
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/util.sh"
+
 echo "---Setup Non Synlinkable Files and Directories---"
 
 make_directories=(
@@ -9,9 +19,7 @@ make_directories=(
   "game/bin/linuxsteamrt64"
 )
 
-for dir in "${make_directories[@]}"; do
-    mkdir -p "$INSTANCE_SERVER_DIR/$dir"
-done
+create_directories "$INSTANCE_SERVER_DIR" "${make_directories[@]}"
 
 cp -R "$BASE_SERVER_DIR/game/csgo/cfg" "$INSTANCE_SERVER_DIR/game/csgo"
 rm "$INSTANCE_SERVER_DIR/game/csgo/cfg/server.cfg"
@@ -34,27 +42,6 @@ echo "---Install Addons---"
 cp -r "/opt/addons" "${INSTANCE_SERVER_DIR}/game/csgo"
 
 echo "---Create Symbolic Links---"
-
-create_symlinks() {
-    local source_path="$1"
-    local destination_path="$2"
-
-    for file in "$source_path"/*; do
-        relative_path="${file#$source_path/}"
-        destination_file="$destination_path/$relative_path"
-
-        if [ -f "$file" ]; then
-            if [ ! -e "$destination_file" ]; then
-                ln -s "$file" "$destination_file"
-            fi
-        elif [ -d "$file" ]; then
-            if [ ! -e "$destination_file" ]; then
-                ln -s "$file" "$destination_file"
-            fi
-            create_symlinks "$file" "$destination_file"
-        fi
-    done
-}
 
 if [ "$SERVER_TYPE" = "Ranked" ]; then
   cp "/opt/server-cfg/ranked.server.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg/server.cfg"
