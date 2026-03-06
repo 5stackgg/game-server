@@ -32,12 +32,15 @@ public Action Event_CSWinPanelMatch(Event event, const char[] name, bool dontBro
     // Publish final scores
     PublishRoundInformation();
 
-    // Stop demo and transition status
+    // Stop demo recording before upload
+    Demo_Stop();
+
+    // Transition status
     char winningId[GUID_LENGTH];
     GetWinningLineupId(winningId, sizeof(winningId));
     MatchManager_UpdateMapStatus(MapStatus_UploadingDemo, winningId);
 
-    // Upload demo after a delay (wait for tv_delay)
+    // Upload demo after a delay (wait for tv_delay to flush)
     CreateTimer(15.0, Timer_UploadDemo);
 
     return Plugin_Continue;

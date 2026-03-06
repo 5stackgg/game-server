@@ -55,6 +55,7 @@ Handle g_hEventRetryTimer = INVALID_HANDLE;
 
 // Ping timer
 Handle g_hPingTimer = INVALID_HANDLE;
+HTTPClient g_hPingClient = null;
 
 // Map change
 Handle g_hMapChangeTimer = INVALID_HANDLE;

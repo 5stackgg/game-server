@@ -123,7 +123,7 @@ stock bool GetPlayerLineupId(int client, char[] lineupId, int maxlen)
         {
             if (StrEqual(g_MatchData.lineup_1.players[i].steam_id, steamId))
             {
-                strcopy(lineupId, maxlen, g_MatchData.lineup_1.players[i].match_lineup_id);
+                strcopy(lineupId, maxlen, g_MatchData.lineup_1_id);
                 return true;
             }
         }
@@ -132,7 +132,7 @@ stock bool GetPlayerLineupId(int client, char[] lineupId, int maxlen)
             if (strncmp(g_MatchData.lineup_1.players[i].placeholder_name, playerName,
                 strlen(g_MatchData.lineup_1.players[i].placeholder_name)) == 0)
             {
-                strcopy(lineupId, maxlen, g_MatchData.lineup_1.players[i].match_lineup_id);
+                strcopy(lineupId, maxlen, g_MatchData.lineup_1_id);
                 return true;
             }
         }
@@ -145,7 +145,7 @@ stock bool GetPlayerLineupId(int client, char[] lineupId, int maxlen)
         {
             if (StrEqual(g_MatchData.lineup_2.players[i].steam_id, steamId))
             {
-                strcopy(lineupId, maxlen, g_MatchData.lineup_2.players[i].match_lineup_id);
+                strcopy(lineupId, maxlen, g_MatchData.lineup_2_id);
                 return true;
             }
         }
@@ -154,7 +154,7 @@ stock bool GetPlayerLineupId(int client, char[] lineupId, int maxlen)
             if (strncmp(g_MatchData.lineup_2.players[i].placeholder_name, playerName,
                 strlen(g_MatchData.lineup_2.players[i].placeholder_name)) == 0)
             {
-                strcopy(lineupId, maxlen, g_MatchData.lineup_2.players[i].match_lineup_id);
+                strcopy(lineupId, maxlen, g_MatchData.lineup_2_id);
                 return true;
             }
         }

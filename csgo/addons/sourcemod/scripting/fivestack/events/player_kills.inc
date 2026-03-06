@@ -49,9 +49,12 @@ public Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadca
     bool headshot = event.GetBool("headshot");
     bool penetrated = event.GetInt("penetrated") > 0;
 
-    int hitgroup = 1; // default head for kills
+    // player_death doesn't carry hitgroup — infer from headshot flag
     char hitgroupStr[32];
-    HitGroupToString(hitgroup, hitgroupStr, sizeof(hitgroupStr));
+    if (headshot)
+        strcopy(hitgroupStr, sizeof(hitgroupStr), "Head");
+    else
+        strcopy(hitgroupStr, sizeof(hitgroupStr), "Generic");
 
     // Build kill event
     char data[2048];

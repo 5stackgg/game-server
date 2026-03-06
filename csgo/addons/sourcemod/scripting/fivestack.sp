@@ -144,7 +144,7 @@ public void OnPluginStart()
     HookEvent("decoy_detonate", Event_DecoyDetonate);
     HookEvent("hegrenade_detonate", Event_HEGrenadeDetonate);
     HookEvent("flashbang_detonate", Event_FlashbangDetonate);
-    HookEvent("molotov_detonate", Event_MolotovDetonate);
+    HookEvent("inferno_startburn", Event_InfernoStartBurn);
     HookEvent("smokegrenade_detonate", Event_SmokeDetonate);
     HookEvent("player_blind", Event_PlayerBlind);
 

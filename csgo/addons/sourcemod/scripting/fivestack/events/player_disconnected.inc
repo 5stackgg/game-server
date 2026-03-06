@@ -14,8 +14,13 @@ public Action Event_PlayerDisconnect(Event event, const char[] name, bool dontBr
     if (client <= 0 || client > MaxClients) return Plugin_Continue;
     if (IsFakeClient(client)) return Plugin_Continue;
 
+    // Use GetClientAuthId with IsClientConnected check — client may be partially disconnected
     char steamId[MAX_STEAMID_LENGTH];
-    GetClientAuthId(client, AuthId_SteamID64, steamId, sizeof(steamId));
+    if (!IsClientConnected(client) || !GetClientAuthId(client, AuthId_SteamID64, steamId, sizeof(steamId)))
+    {
+        // Fallback: get networkid from event (SteamID2 format)
+        event.GetString("networkid", steamId, sizeof(steamId));
+    }
 
     // Publish disconnect event
     char data[128];

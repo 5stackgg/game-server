@@ -19,11 +19,24 @@ public Action Event_PlayerConnectFull(Event event, const char[] name, bool dontB
     char playerName[MAX_NAME_LENGTH];
     GetClientName(client, playerName, sizeof(playerName));
 
+    // Escape quotes in player name for JSON
+    char escapedName[MAX_NAME_LENGTH * 2];
+    int j = 0;
+    for (int i = 0; playerName[i] != '\0' && j < sizeof(escapedName) - 2; i++)
+    {
+        if (playerName[i] == '"' || playerName[i] == '\\')
+        {
+            escapedName[j++] = '\\';
+        }
+        escapedName[j++] = playerName[i];
+    }
+    escapedName[j] = '\0';
+
     // Publish player connected event
-    char data[256];
+    char data[512];
     FormatEx(data, sizeof(data),
         "{\"player_name\":\"%s\",\"steam_id\":\"%s\"}",
-        playerName, steamId);
+        escapedName, steamId);
     PublishGameEvent("player-connected", data);
 
     // Enforce team assignment

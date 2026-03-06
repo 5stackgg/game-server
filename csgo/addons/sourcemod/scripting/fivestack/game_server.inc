@@ -84,8 +84,10 @@ public Action Timer_Ping(Handle timer)
         "game-server-node/ping/%s?map=%s&pluginVersion=%s",
         g_szServerId, mapName, FIVESTACK_VERSION);
 
-    HTTPClient client = CreateApiClient();
-    client.Get(endpoint, OnPingResponse);
+    if (g_hPingClient == null)
+        g_hPingClient = CreateApiClient();
+
+    g_hPingClient.Get(endpoint, OnPingResponse);
 
     return Plugin_Continue;
 }

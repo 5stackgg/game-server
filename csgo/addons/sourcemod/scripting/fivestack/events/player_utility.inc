@@ -23,7 +23,7 @@ public Action Event_FlashbangDetonate(Event event, const char[] name, bool dontB
     return PublishUtilityEvent(event, "Flash");
 }
 
-public Action Event_MolotovDetonate(Event event, const char[] name, bool dontBroadcast)
+public Action Event_InfernoStartBurn(Event event, const char[] name, bool dontBroadcast)
 {
     return PublishUtilityEvent(event, "Molotov");
 }
