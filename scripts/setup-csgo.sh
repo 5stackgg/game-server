@@ -35,7 +35,7 @@ done
 cp -R "/opt/csgo-sourcemod/cfg" "${INSTANCE_SERVER_DIR}/csgo"
 cp -R "/opt/csgo-sourcemod/addons" "${INSTANCE_SERVER_DIR}/csgo"
 cp -R "/opt/csgo-metamod/addons" "${INSTANCE_SERVER_DIR}/csgo"
-cp -R "/opt/csgo-no-lobby-reservation/NoLobbyReservation-master/csgo/addons" "${INSTANCE_SERVER_DIR}/csgo"
+cp -R "/opt/csgo-no-lobby-reservation/addons" "${INSTANCE_SERVER_DIR}/csgo"
 
 echo "---Create Symbolic Links---"
 create_symlinks "$BASE_SERVER_DIR" "$INSTANCE_SERVER_DIR"

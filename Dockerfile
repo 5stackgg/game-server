@@ -80,7 +80,7 @@ ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/re
 
 ENV METAMOD_CSGO_URL=https://mms.alliedmods.net/mmsdrop/1.12/mmsource-1.12.0-git1219-linux.tar.gz
 ENV SOURCEMOD_CSGO_URL=https://sm.alliedmods.net/smdrop/1.13/sourcemod-1.13.0-git7297-linux.tar.gz
-ENV NO_LOBBY_RESERVATION_URL=https://github.com/eldoradoel/NoLobbyReservation/archive/refs/heads/master.zip
+ENV NO_LOBBY_RESERVATION_URL=https://github.com/nuxencs/NoLobbyReservation/releases/download/v0.0.1/NoLobbyReservation.zip
 
 RUN apt-get update && \
 	apt-get install -y --no-install-recommends \
