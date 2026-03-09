@@ -31,11 +31,11 @@ public static class TestDataFactory
             lineup_2_id = Guid.NewGuid(),
             lineup_1 = new MatchLineUp
             {
-                lineup_players = Array.Empty<MatchMember>(),
+                lineup_players = new List<MatchMember>(),
             },
             lineup_2 = new MatchLineUp
             {
-                lineup_players = Array.Empty<MatchMember>(),
+                lineup_players = new List<MatchMember>(),
             },
             options = new MatchOptions
             {

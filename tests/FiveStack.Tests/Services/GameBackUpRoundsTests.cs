@@ -159,7 +159,7 @@ public class GameBackUpRoundsTests
     {
         var lineupId = Guid.NewGuid();
         var match = TestDataFactory.CreateMatchData();
-        match.lineup_1.lineup_players = new[]
+        match.lineup_1.lineup_players = new List<MatchMember>
         {
             TestDataFactory.CreateMatchMember(
                 steamId: "76561198000000001",
@@ -167,7 +167,7 @@ public class GameBackUpRoundsTests
                 matchLineupId: lineupId
             ),
         };
-        match.lineup_2.lineup_players = Array.Empty<MatchMember>();
+        match.lineup_2.lineup_players = new List<MatchMember>();
 
         var member = MatchUtility.GetMemberFromLineup(
             match, "76561198000000001", "SomePlayer");
@@ -180,8 +180,8 @@ public class GameBackUpRoundsTests
     public void GetMemberFromLineup_ReturnsNullWhenNotFound()
     {
         var match = TestDataFactory.CreateMatchData();
-        match.lineup_1.lineup_players = Array.Empty<MatchMember>();
-        match.lineup_2.lineup_players = Array.Empty<MatchMember>();
+        match.lineup_1.lineup_players = new List<MatchMember>();
+        match.lineup_2.lineup_players = new List<MatchMember>();
 
         var member = MatchUtility.GetMemberFromLineup(
             match, "99999999999999999", "Unknown");
