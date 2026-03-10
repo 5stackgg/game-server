@@ -1,0 +1,22 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "llama.cpp": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "llama-server (local)",
+      "options": {
+        "baseURL": "http://qumulex.llama/v1"
+      },
+      "models": {
+        "unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF": {
+          "name": "unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF",
+          "modalities": { "input": ["image", "text"], "output": ["text"] },
+          "limit": {
+            "context": 64000,
+            "output": 65536
+          }
+        }
+      }
+    }
+  }
+}
