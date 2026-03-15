@@ -42,10 +42,4 @@ create_symlinks "$BASE_SERVER_DIR" "$INSTANCE_SERVER_DIR"
 
 # Update steam.inf with correct app ID (4465480)
 STEAM_INF="${INSTANCE_SERVER_DIR}/csgo/steam.inf"
-if [ -f "$STEAM_INF" ]; then
-  if [ -L "$STEAM_INF" ]; then
-    cp "$STEAM_INF" "${STEAM_INF}.tmp" && mv "${STEAM_INF}.tmp" "$STEAM_INF"
-  fi
-  sed -i 's/appID=740/appID=4465480/' "$STEAM_INF"
-fi
-
+sed -i 's/appID=740/appID=4465480/' "$STEAM_INF"
