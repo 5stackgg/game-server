@@ -57,18 +57,18 @@ if [ ! -e "/opt/custom-plugins/cfg/server.cfg" ]; then
   cp "/opt/server-cfg/public.server.cfg" "/opt/custom-plugins/cfg/server.cfg"
 fi
 
-if [ ! -d "/opt/custom-plugins/addons/sourcemod/Configs" ]; then
-  mkdir -p "/opt/custom-plugins/addons/sourcemod/Configs"
+if [ ! -d "/opt/custom-plugins/addons/sourcemod/configs" ]; then
+  mkdir -p "/opt/custom-plugins/addons/sourcemod/configs"
 fi
 
-if [ -d "${INSTANCE_SERVER_DIR}/csgo/addons/sourcemod/Configs" ]; then
-  if [ "$(ls -A "${INSTANCE_SERVER_DIR}/csgo/addons/sourcemod/Configs")" ]; then
-    cp -r "${INSTANCE_SERVER_DIR}/csgo/addons/sourcemod/Configs/." "/opt/custom-plugins/addons/sourcemod/Configs"
+if [ -d "${INSTANCE_SERVER_DIR}/csgo/addons/sourcemod/configs" ]; then
+  if [ "$(ls -A "${INSTANCE_SERVER_DIR}/csgo/addons/sourcemod/configs")" ]; then
+    cp -r "${INSTANCE_SERVER_DIR}/csgo/addons/sourcemod/configs/." "/opt/custom-plugins/addons/sourcemod/configs"
   fi
-  rm -rf "${INSTANCE_SERVER_DIR}/csgo/addons/sourcemod/Configs"
+  rm -rf "${INSTANCE_SERVER_DIR}/csgo/addons/sourcemod/configs"
 fi
 
-ln -s "/opt/custom-plugins/addons/sourcemod/Configs" "${INSTANCE_SERVER_DIR}/csgo/addons/sourcemod/Configs"
+ln -s "/opt/custom-plugins/addons/sourcemod/configs" "${INSTANCE_SERVER_DIR}/csgo/addons/sourcemod/configs"
 
 create_symlinks "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/csgo"
 
