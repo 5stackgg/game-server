@@ -13,7 +13,8 @@ public partial class FiveStackPlugin
     ]
     public void OnPause(CCSPlayerController? player, CommandInfo? command)
     {
-        if (gameEnded)
+        MatchManager? match = _matchService.GetCurrentMatch();
+        if (match != null && match.gameEnded)
         {
             return;
         }
@@ -37,7 +38,8 @@ public partial class FiveStackPlugin
     ]
     public void OnTimeout(CCSPlayerController? player, CommandInfo? command)
     {
-        if (gameEnded)
+        MatchManager? match = _matchService.GetCurrentMatch();
+        if (match != null && match.gameEnded)
         {
             return;
         }
