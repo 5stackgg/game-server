@@ -168,7 +168,6 @@ public class MatchManager
         }
 
         int mr = _matchData.options.mr;
-        int regularWinsNeeded = mr + 1;
 
         int score1 = 0;
         int score2 = 0;
@@ -180,22 +179,22 @@ public class MatchManager
                 score2 = team.Score;
         }
 
+        int totalScore = score1 + score2;
+
         // Regular time: one team reached mr + 1 (e.g. 13 for MR12)
-        if (score1 >= regularWinsNeeded || score2 >= regularWinsNeeded)
+        if (totalScore <= mr * 2)
         {
-            return true;
+            return score1 >= mr + 1 || score2 >= mr + 1;
         }
 
-        // Overtime: both teams >= mr, check if at OT half boundary with a score lead
-        if (score1 >= mr && score2 >= mr && score1 != score2)
+        // Overtime: match ends after a full OT period if one team leads
+        if (score1 != score2)
         {
-            int totalScore = score1 + score2;
             int otScores = totalScore - (mr * 2);
             int overtimeMr =
                 ConVar.Find("mp_overtime_maxrounds")?.GetPrimitiveValue<int>() ?? 6;
-            int halfLength = overtimeMr / 2;
 
-            if (halfLength > 0 && otScores > 0 && otScores % halfLength == 0)
+            if (overtimeMr > 0 && otScores > 0 && otScores % overtimeMr == 0)
             {
                 return true;
             }
