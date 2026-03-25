@@ -10,10 +10,14 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
+    bool gameEnded = false;
+    
     [GameEventHandler]
     public HookResult OnGameEnd(EventCsWinPanelMatch @event, GameEventInfo info)
     {
         _logger.LogInformation("Game ended");
+
+        gameEnded = true;
 
         MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null)

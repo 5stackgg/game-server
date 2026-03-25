@@ -14,6 +14,8 @@ public partial class FiveStackPlugin
             {
                 _logger.LogInformation("map changed: precaching models");
 
+                gameEnded = false;
+
                 Server.PrecacheModel(ModelPathCtmSas);
                 Server.PrecacheModel(ModelPathTmPhoenix);
 
