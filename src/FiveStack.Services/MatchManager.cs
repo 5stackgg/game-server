@@ -160,8 +160,57 @@ public class MatchManager
         return _currentMapStatus == eMapStatus.Knife;
     }
 
+    public bool HasTeamReachedWinCondition()
+    {
+        if (_matchData == null)
+        {
+            return false;
+        }
+
+        int mr = _matchData.options.mr;
+        int regularWinsNeeded = mr + 1;
+
+        int score1 = 0;
+        int score2 = 0;
+        foreach (var team in MatchUtility.Teams())
+        {
+            if (team.TeamNum == 2)
+                score1 = team.Score;
+            else if (team.TeamNum == 3)
+                score2 = team.Score;
+        }
+
+        // Regular time: one team reached mr + 1 (e.g. 13 for MR12)
+        if (score1 >= regularWinsNeeded || score2 >= regularWinsNeeded)
+        {
+            return true;
+        }
+
+        // Overtime: both teams >= mr, check if at OT half boundary with a score lead
+        if (score1 >= mr && score2 >= mr && score1 != score2)
+        {
+            int totalScore = score1 + score2;
+            int otScores = totalScore - (mr * 2);
+            int overtimeMr =
+                ConVar.Find("mp_overtime_maxrounds")?.GetPrimitiveValue<int>() ?? 6;
+            int halfLength = overtimeMr / 2;
+
+            if (halfLength > 0 && otScores > 0 && otScores % halfLength == 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public void PauseMatch(string? message = null, bool skipUpdate = false)
     {
+        if (HasTeamReachedWinCondition() || IsMapFinished())
+        {
+            return;
+        }
+
         _gameServer.SendCommands(["mp_pause_match"]);
 
         if (IsPaused())

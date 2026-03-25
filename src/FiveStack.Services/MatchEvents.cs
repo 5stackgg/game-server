@@ -20,6 +20,7 @@ public class MatchEvents
         (EventData<Dictionary<string, object>> Event, DateTime Timestamp)
     > _pendingMessages = new();
     private System.Timers.Timer _retryTimer;
+    private readonly SemaphoreSlim _sendLock = new(1, 1);
     private const int RETRY_INTERVAL_MS = 5000;
     private const int MESSAGE_RETRY_THRESHOLD_SECONDS = 10;
 
@@ -283,6 +284,7 @@ public class MatchEvents
 
         foreach (var message in messagesToRetry)
         {
+            await _sendLock.WaitAsync();
             try
             {
                 var jsonMessage = JsonSerializer.Serialize(
@@ -306,6 +308,10 @@ public class MatchEvents
             {
                 _logger.LogError($"Error retrying message {message.Key}: {ex.Message}");
             }
+            finally
+            {
+                _sendLock.Release();
+            }
         }
     }
 
@@ -326,6 +332,7 @@ public class MatchEvents
             _pendingMessages[data.messageId] = (typedData, DateTime.UtcNow);
         }
 
+        await _sendLock.WaitAsync();
         try
         {
             var message = JsonSerializer.Serialize(new { @event = "events", data });
@@ -340,6 +347,10 @@ public class MatchEvents
         catch (Exception error)
         {
             _logger.LogCritical($"Error: {error.Message}");
+        }
+        finally
+        {
+            _sendLock.Release();
         }
     }
 
