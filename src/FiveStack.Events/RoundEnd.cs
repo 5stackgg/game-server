@@ -97,6 +97,9 @@ public partial class FiveStackPlugin
             int totalRoundsPlayed
         ) = _matchEvents.GetRoundInformation();
 
+        // Get timeout counts from CS2 game rules
+        (int lineup1Timeouts, int lineup2Timeouts) = _timeoutSystem.GetLineupTimeouts();
+
         _matchEvents.PublishGameEvent(
             "score",
             new Dictionary<string, object>
@@ -111,7 +114,7 @@ public partial class FiveStackPlugin
                 },
                 {
                     "lineup_1_timeouts_available",
-                    $"{currentMap?.lineup_1_timeouts_available ?? 0}"
+                    $"{lineup1Timeouts}"
                 },
                 { "lineup_2_score", $"{lineup2Score}" },
                 {
@@ -120,7 +123,7 @@ public partial class FiveStackPlugin
                 },
                 {
                     "lineup_2_timeouts_available",
-                    $"{currentMap?.lineup_2_timeouts_available ?? 0}"
+                    $"{lineup2Timeouts}"
                 },
                 { "lineup_1_side", $"{TeamUtility.CSTeamToString(lineup1Side)}" },
                 { "lineup_2_side", $"{TeamUtility.CSTeamToString(lineup2Side)}" },
