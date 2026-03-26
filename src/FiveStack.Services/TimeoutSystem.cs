@@ -302,14 +302,6 @@ public class TimeoutSystem
             return;
         }
 
-        MatchMap? currentMap = match.GetCurrentMap();
-        MatchData? matchData = match.GetMatchData();
-
-        if (matchData == null || currentMap == null)
-        {
-            return;
-        }
-
         if (IsTimeoutActive())
         {
             SendTimeoutAlreadyActiveMessage(player);
@@ -324,20 +316,13 @@ public class TimeoutSystem
                 return;
             }
 
-            Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
+            // Read timeout count from CS2's native game rules
+            var rules = MatchUtility.Rules();
+            int timeoutsAvailable = player.Team == CsTeam.Terrorist
+                ? rules?.TerroristTimeOuts ?? 0
+                : rules?.CTTimeOuts ?? 0;
 
-            if (lineup_id == null)
-            {
-                _logger.LogWarning("Unable to find player in lineup");
-                return;
-            }
-
-            int timeouts_available =
-                matchData.lineup_1_id == lineup_id
-                    ? currentMap.lineup_1_timeouts_available
-                    : currentMap.lineup_2_timeouts_available;
-
-            if (timeouts_available == 0)
+            if (timeoutsAvailable == 0)
             {
                 _gameServer.Message(
                     HudDestination.Chat,
@@ -347,66 +332,33 @@ public class TimeoutSystem
                 return;
             }
 
-            if (matchData.lineup_1_id == lineup_id)
+            // Let CS2 handle the timeout natively
+            _gameServer.SendCommands([
+                $"timeout_{(player.Team == CsTeam.Terrorist ? "terrorist" : "ct")}_start",
+            ]);
+
+            // After CS2 processes the timeout, sync state to DB
+            Server.NextFrame(() =>
             {
-                currentMap.lineup_1_timeouts_available--;
-            }
-            else
-            {
-                currentMap.lineup_2_timeouts_available--;
-            }
+                int remaining = timeoutsAvailable - 1;
 
-            timeouts_available--;
+                _gameServer.Message(
+                    HudDestination.Alert,
+                    _localizer[
+                        "timeout.called_tactical",
+                        player.PlayerName,
+                        ChatColors.Red,
+                        remaining
+                    ]
+                );
 
-            CallTimeout(player.Team);
-
-            _gameServer.Message(
-                HudDestination.Alert,
-                _localizer[
-                    "timeout.called_tactical",
-                    player.PlayerName,
-                    ChatColors.Red,
-                    timeouts_available
-                ]
-            );
-
-            _matchEvents.PublishGameEvent(
-                "techTimeout",
-                new Dictionary<string, object>
-                {
-                    { "map_id", currentMap.id },
-                    { "lineup_1_timeouts_available", currentMap.lineup_1_timeouts_available },
-                    { "lineup_2_timeouts_available", currentMap.lineup_2_timeouts_available },
-                }
-            );
+                PublishTimeoutState();
+            });
         }
         else
         {
             _gameServer.Message(HudDestination.Alert, _localizer["timeout.called_admin"]);
         }
-    }
-
-    private void CallTimeout(CsTeam team)
-    {
-        _gameServer.SendCommands([
-            $"timeout_{(team == CsTeam.Terrorist ? "terrorist" : "ct")}_start",
-        ]);
-
-        Server.NextFrame(() =>
-        {
-            if (IsTimeoutActive())
-            {
-                return;
-            }
-
-            _logger.LogInformation($"Adding timeout for team {team}");
-
-            _gameServer.SendCommands([
-                $"mp_modify_timeouts {(team == CsTeam.Terrorist ? "T" : "CT")} 1",
-            ]);
-
-            CallTimeout(team);
-        });
     }
 
     private eTimeoutSettings GetTechnicalPauseSetting()
@@ -473,5 +425,59 @@ public class TimeoutSystem
     {
         return MatchUtility.Rules()?.TerroristTimeOutActive == true
             || MatchUtility.Rules()?.CTTimeOutActive == true;
+    }
+
+    public (int lineup1Timeouts, int lineup2Timeouts) GetLineupTimeouts()
+    {
+        var rules = MatchUtility.Rules();
+        int tTimeouts = rules?.TerroristTimeOuts ?? 0;
+        int ctTimeouts = rules?.CTTimeOuts ?? 0;
+
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+        MatchMap? currentMap = match?.GetCurrentMap();
+
+        if (matchData == null || currentMap == null)
+        {
+            return (0, 0);
+        }
+
+        int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
+
+        CsTeam lineup1Side = TeamUtility.GetLineupSide(
+            matchData,
+            currentMap,
+            matchData.lineup_1_id,
+            totalRoundsPlayed
+        );
+
+        if (lineup1Side == CsTeam.Terrorist)
+        {
+            return (tTimeouts, ctTimeouts);
+        }
+
+        return (ctTimeouts, tTimeouts);
+    }
+
+    public void PublishTimeoutState()
+    {
+        MatchMap? currentMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
+
+        if (currentMap == null)
+        {
+            return;
+        }
+
+        (int lineup1Timeouts, int lineup2Timeouts) = GetLineupTimeouts();
+
+        _matchEvents.PublishGameEvent(
+            "techTimeout",
+            new Dictionary<string, object>
+            {
+                { "map_id", currentMap.id },
+                { "lineup_1_timeouts_available", lineup1Timeouts },
+                { "lineup_2_timeouts_available", lineup2Timeouts },
+            }
+        );
     }
 }
