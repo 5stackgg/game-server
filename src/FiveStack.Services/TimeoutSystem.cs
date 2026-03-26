@@ -474,4 +474,58 @@ public class TimeoutSystem
         return MatchUtility.Rules()?.TerroristTimeOutActive == true
             || MatchUtility.Rules()?.CTTimeOutActive == true;
     }
+
+    public (int lineup1Timeouts, int lineup2Timeouts) GetLineupTimeouts()
+    {
+        var rules = MatchUtility.Rules();
+        int tTimeouts = rules?.TerroristTimeOuts ?? 0;
+        int ctTimeouts = rules?.CTTimeOuts ?? 0;
+
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+        MatchMap? currentMap = match?.GetCurrentMap();
+
+        if (matchData == null || currentMap == null)
+        {
+            return (0, 0);
+        }
+
+        int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
+
+        CsTeam lineup1Side = TeamUtility.GetLineupSide(
+            matchData,
+            currentMap,
+            matchData.lineup_1_id,
+            totalRoundsPlayed
+        );
+
+        if (lineup1Side == CsTeam.Terrorist)
+        {
+            return (tTimeouts, ctTimeouts);
+        }
+
+        return (ctTimeouts, tTimeouts);
+    }
+
+    public void PublishTimeoutState()
+    {
+        MatchMap? currentMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
+
+        if (currentMap == null)
+        {
+            return;
+        }
+
+        (int lineup1Timeouts, int lineup2Timeouts) = GetLineupTimeouts();
+
+        _matchEvents.PublishGameEvent(
+            "techTimeout",
+            new Dictionary<string, object>
+            {
+                { "map_id", currentMap.id },
+                { "lineup_1_timeouts_available", lineup1Timeouts },
+                { "lineup_2_timeouts_available", lineup2Timeouts },
+            }
+        );
+    }
 }
