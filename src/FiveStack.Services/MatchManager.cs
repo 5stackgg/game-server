@@ -670,6 +670,12 @@ public class MatchManager
                 {
                     _gameServer.SendCommands(["mp_restartgame 1;mp_warmup_end;"]);
                 }
+
+                // Sync CS2's initial timeout state to DB after cfg loads
+                Server.NextFrame(() =>
+                {
+                    _timeoutSystem.PublishTimeoutState();
+                });
             });
         });
     }
