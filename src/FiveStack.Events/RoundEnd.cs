@@ -11,7 +11,6 @@ namespace FiveStack;
 public partial class FiveStackPlugin
 {
     CsTeam roundWinner;
-    int timeoutGivenForOvertime;
     eWinReason? reason;
 
     [GameEventHandler]
@@ -29,20 +28,6 @@ public partial class FiveStackPlugin
         if (match.isOverTime())
         {
             match.UpdateMapStatus(eMapStatus.Overtime);
-            if (timeoutGivenForOvertime != match.GetOverTimeNumber())
-            {
-                timeoutGivenForOvertime = match.GetOverTimeNumber();
-
-                _matchEvents.PublishGameEvent(
-                    "techTimeout",
-                    new Dictionary<string, object>
-                    {
-                        { "map_id", matchData.current_match_map_id },
-                        { "lineup_1_timeouts_available", 1 },
-                        { "lineup_2_timeouts_available", 1 },
-                    }
-                );
-            }
         }
 
         return HookResult.Continue;
