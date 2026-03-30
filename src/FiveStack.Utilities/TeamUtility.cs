@@ -51,7 +51,8 @@ namespace FiveStack.Utilities
 
             // Overtime: rounds >= MR*2
             int overtimeRound = round - (mr * 2);
-            int overtimeMr = Math.Max(1, ConVar.Find("mp_overtime_maxrounds")?.GetPrimitiveValue<int>() ?? 6);
+            int overtimeMr = ConVar.Find("mp_overtime_maxrounds")?.GetPrimitiveValue<int>() ?? 6;
+            if (overtimeMr <= 0) overtimeMr = 6;
 
             // Calculate which OT half (1-indexed) and position within that half
             int overTimeNumber = (overtimeRound / overtimeMr) + 1;
