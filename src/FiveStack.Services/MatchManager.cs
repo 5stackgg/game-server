@@ -83,14 +83,15 @@ public class MatchManager
 
     public MatchMap? GetCurrentMap()
     {
-        if (_matchData == null || _matchData.current_match_map_id == null)
+        var matchData = _matchData;
+        if (matchData == null || matchData.current_match_map_id == null)
         {
             return null;
         }
 
-        return _matchData?.match_maps.FirstOrDefault(match_map =>
+        return matchData.match_maps.FirstOrDefault(match_map =>
         {
-            return match_map.id == _matchData.current_match_map_id;
+            return match_map.id == matchData.current_match_map_id;
         });
     }
 

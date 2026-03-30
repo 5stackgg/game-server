@@ -233,7 +233,10 @@ public class ReadySystem
             return;
         }
 
-        bool isReady = _readyPlayers[player.UserId.Value];
+        if (!_readyPlayers.TryGetValue(player.UserId.Value, out bool isReady))
+        {
+            return;
+        }
 
         string readyWord = isReady ? _localizer["ready.ready"] : _localizer["ready.not_ready"];
         string colored = isReady
