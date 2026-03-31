@@ -196,7 +196,7 @@ public class CaptainSystem
             return false;
         }
 
-        if (team != CsTeam.Terrorist && team != CsTeam.CounterTerrorist || player.Team != team)
+        if ((team != CsTeam.Terrorist && team != CsTeam.CounterTerrorist) || player.Team != team)
         {
             return false;
         }
