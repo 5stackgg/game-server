@@ -57,7 +57,7 @@ namespace FiveStack.Utilities
                     ? matchData.lineup_1.tag
                     : matchData.lineup_2.tag;
 
-            if (tag == null || tag == "")
+            if (string.IsNullOrEmpty(tag))
             {
                 return null;
             }
