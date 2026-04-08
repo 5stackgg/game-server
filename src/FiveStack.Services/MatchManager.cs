@@ -83,7 +83,7 @@ public class MatchManager
             },
             { eMapStatus.UploadingDemo, new HashSet<eMapStatus> { eMapStatus.Finished } },
             { eMapStatus.Finished, new HashSet<eMapStatus>() },
-            { eMapStatus.Surrendered, new HashSet<eMapStatus>() },
+            { eMapStatus.Surrendered, new HashSet<eMapStatus> { eMapStatus.Finished } },
         };
 
     private MatchData? _matchData;
