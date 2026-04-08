@@ -335,11 +335,6 @@ public class MatchManager
 
         _logger.LogInformation($"Update Map Status {_currentMapStatus} -> {status}");
 
-        if (_currentMapStatus == eMapStatus.Unknown)
-        {
-            _backUpManagement.CheckForBackupRestore();
-        }
-
         if (
             _currentMapStatus != eMapStatus.Unknown
             && _allowedTransitions.TryGetValue(_currentMapStatus, out var allowed)
@@ -350,6 +345,11 @@ public class MatchManager
                 $"Illegal map status transition {_currentMapStatus} -> {status}, ignoring"
             );
             return;
+        }
+
+        if (_currentMapStatus == eMapStatus.Unknown)
+        {
+            _backUpManagement.CheckForBackupRestore();
         }
 
         var currentMap = GetCurrentMap();
