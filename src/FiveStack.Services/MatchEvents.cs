@@ -206,15 +206,17 @@ public class MatchEvents
             {
                 _logger.LogWarning($"Error closing existing WebSocket: {ex.Message}");
             }
+            _webSocket.Dispose();
             _webSocket = null;
         }
 
         _connectionCts?.Cancel();
         _connectionCts = new CancellationTokenSource();
 
+        ClientWebSocket? newWebSocket = null;
         try
         {
-            _webSocket = new ClientWebSocket();
+            newWebSocket = new ClientWebSocket();
 
             _environmentService.Load();
 
@@ -224,10 +226,11 @@ public class MatchEvents
             if (serverId == null || serverApiPassword == null)
             {
                 _logger.LogWarning("Cannot connect to WebSocket, Missing Server ID / API Password");
+                newWebSocket.Dispose();
                 return false;
             }
 
-            _webSocket.Options.SetRequestHeader(
+            newWebSocket.Options.SetRequestHeader(
                 "Authorization",
                 $"Basic {Convert.ToBase64String(
                 System.Text.Encoding.UTF8.GetBytes($"{serverId}:{serverApiPassword}")
@@ -235,7 +238,9 @@ public class MatchEvents
             );
 
             var uri = new Uri($"{_environmentService.GetWsUrl()}/matches");
-            await _webSocket.ConnectAsync(uri, _connectionCts.Token);
+            await newWebSocket.ConnectAsync(uri, _connectionCts.Token);
+
+            _webSocket = newWebSocket;
 
             _matchService.GetMatchFromApi();
 
@@ -244,11 +249,13 @@ public class MatchEvents
         catch (WebSocketException ex)
         {
             _logger.LogWarning("Failed to connect to WebSocket server: " + ex.Message);
+            newWebSocket?.Dispose();
             return false;
         }
         catch (Exception ex)
         {
             _logger.LogCritical("An error occurred: " + ex.Message);
+            newWebSocket?.Dispose();
             return false;
         }
     }
@@ -259,6 +266,7 @@ public class MatchEvents
         _connectionCts?.Cancel();
         _isMonitoring = false;
         _retryTimer.Stop();
+        _retryTimer?.Dispose();
 
         if (_webSocket != null && _webSocket.State == WebSocketState.Open)
         {
@@ -267,6 +275,7 @@ public class MatchEvents
                 "Disconnecting",
                 CancellationToken.None
             );
+            _webSocket.Dispose();
             _webSocket = null;
         }
     }
@@ -324,6 +333,12 @@ public class MatchEvents
         if (data is EventData<Dictionary<string, object>> typedData)
         {
             _pendingMessages[data.messageId] = (typedData, DateTime.UtcNow);
+
+            if (_pendingMessages.Count > 1000)
+            {
+                var oldest = _pendingMessages.OrderBy(p => p.Value.Timestamp).First();
+                _pendingMessages.Remove(oldest.Key);
+            }
         }
 
         try
