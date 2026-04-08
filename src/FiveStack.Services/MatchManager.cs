@@ -16,6 +16,76 @@ namespace FiveStack;
 
 public class MatchManager
 {
+    private static readonly Dictionary<eMapStatus, HashSet<eMapStatus>> _allowedTransitions =
+        new()
+        {
+            {
+                eMapStatus.Unknown,
+                new HashSet<eMapStatus>
+                {
+                    eMapStatus.Scheduled,
+                    eMapStatus.Warmup,
+                    eMapStatus.Knife,
+                    eMapStatus.Live,
+                    eMapStatus.Paused,
+                    eMapStatus.Overtime,
+                    eMapStatus.Finished,
+                    eMapStatus.Surrendered,
+                    eMapStatus.UploadingDemo,
+                }
+            },
+            { eMapStatus.Scheduled, new HashSet<eMapStatus> { eMapStatus.Warmup } },
+            {
+                eMapStatus.Warmup,
+                new HashSet<eMapStatus>
+                {
+                    eMapStatus.Knife,
+                    eMapStatus.Live,
+                    eMapStatus.Paused,
+                }
+            },
+            {
+                eMapStatus.Knife,
+                new HashSet<eMapStatus> { eMapStatus.Live, eMapStatus.Paused }
+            },
+            {
+                eMapStatus.Live,
+                new HashSet<eMapStatus>
+                {
+                    eMapStatus.Paused,
+                    eMapStatus.Finished,
+                    eMapStatus.Overtime,
+                    eMapStatus.Surrendered,
+                    eMapStatus.UploadingDemo,
+                }
+            },
+            {
+                eMapStatus.Overtime,
+                new HashSet<eMapStatus>
+                {
+                    eMapStatus.Paused,
+                    eMapStatus.Finished,
+                    eMapStatus.Surrendered,
+                    eMapStatus.UploadingDemo,
+                }
+            },
+            {
+                eMapStatus.Paused,
+                new HashSet<eMapStatus>
+                {
+                    eMapStatus.Live,
+                    eMapStatus.Warmup,
+                    eMapStatus.Overtime,
+                    eMapStatus.Knife,
+                    eMapStatus.Finished,
+                    eMapStatus.Surrendered,
+                }
+            },
+            { eMapStatus.UploadingDemo, new HashSet<eMapStatus> { eMapStatus.Finished } },
+            { eMapStatus.Finished, new HashSet<eMapStatus>() },
+            { eMapStatus.Surrendered, new HashSet<eMapStatus>() },
+        };
+
     private MatchData? _matchData;
     private eMapStatus _currentMapStatus = eMapStatus.Unknown;
     private Timer? _resumeMessageTimer;
@@ -268,6 +338,18 @@ public class MatchManager
         if (_currentMapStatus == eMapStatus.Unknown)
         {
             _backUpManagement.CheckForBackupRestore();
+        }
+
+        if (
+            _currentMapStatus != eMapStatus.Unknown
+            && _allowedTransitions.TryGetValue(_currentMapStatus, out var allowed)
+            && !allowed.Contains(status)
+        )
+        {
+            _logger.LogWarning(
+                $"Illegal map status transition {_currentMapStatus} -> {status}, ignoring"
+            );
+            return;
         }
 
         var currentMap = GetCurrentMap();
