@@ -318,9 +318,10 @@ public class TimeoutSystem
 
             // Read timeout count from CS2's native game rules
             var rules = MatchUtility.Rules();
-            int timeoutsAvailable = player.Team == CsTeam.Terrorist
-                ? rules?.TerroristTimeOuts ?? 0
-                : rules?.CTTimeOuts ?? 0;
+            int timeoutsAvailable =
+                player.Team == CsTeam.Terrorist
+                    ? rules?.TerroristTimeOuts ?? 0
+                    : rules?.CTTimeOuts ?? 0;
 
             if (timeoutsAvailable == 0)
             {

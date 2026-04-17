@@ -89,11 +89,18 @@ public class GameDemos
         }
 
         File.Delete(GetLockFilePath(match.id));
-        _gameServer.SendCommands(["tv_broadcast 0"]);
         Server.NextFrame(() =>
         {
             _logger.LogInformation("Stopping demo recording");
-            _gameServer.SendCommands(["tv_stoprecord", "tv_stop"]);
+            _gameServer.SendCommands(["tv_stoprecord"]);
+        });
+    }
+
+    public void StopTV() {
+        _gameServer.SendCommands(["tv_broadcast 0"]);
+        Server.NextFrame(() =>
+        {
+            _gameServer.SendCommands(["tv_stop"]);
         });
     }
 
