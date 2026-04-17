@@ -46,12 +46,19 @@ public class MatchManager
             },
             {
                 eMapStatus.Knife,
-                new HashSet<eMapStatus> { eMapStatus.Live, eMapStatus.Paused }
+                new HashSet<eMapStatus>
+                {
+                    eMapStatus.Warmup,
+                    eMapStatus.Live,
+                    eMapStatus.Paused,
+                }
             },
             {
                 eMapStatus.Live,
                 new HashSet<eMapStatus>
                 {
+                    eMapStatus.Warmup,
+                    eMapStatus.Knife,
                     eMapStatus.Paused,
                     eMapStatus.Finished,
                     eMapStatus.Overtime,
@@ -63,6 +70,9 @@ public class MatchManager
                 eMapStatus.Overtime,
                 new HashSet<eMapStatus>
                 {
+                    eMapStatus.Warmup,
+                    eMapStatus.Knife,
+                    eMapStatus.Live,
                     eMapStatus.Paused,
                     eMapStatus.Finished,
                     eMapStatus.Surrendered,
