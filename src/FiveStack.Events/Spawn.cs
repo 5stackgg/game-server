@@ -22,10 +22,10 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        // if ((match.GetMatchData()?.options.default_models ?? false) == false)
-        // {
-        //     return HookResult.Continue;
-        // }
+        if ((match.GetMatchData()?.options.default_models ?? false) == false)
+        {
+            return HookResult.Continue;
+        }
 
         _logger.LogInformation("Default skins are enabled, skipping spawn event");
 
