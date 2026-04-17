@@ -96,7 +96,8 @@ public class GameDemos
         });
     }
 
-    public void StopTV() {
+    public void StopTV()
+    {
         _gameServer.SendCommands(["tv_broadcast 0"]);
         Server.NextFrame(() =>
         {
