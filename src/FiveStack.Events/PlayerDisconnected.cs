@@ -49,7 +49,7 @@ public partial class FiveStackPlugin
             match.captainSystem.RemoveCaptain(@event.Userid);
         }
 
-        if (match.IsInProgress())
+        if (match.IsInProgress() && !match.gameEnded)
         {
             if (match.IsFreezePeriod())
             {

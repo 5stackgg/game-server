@@ -18,6 +18,7 @@ public class MatchManager
 {
     private MatchData? _matchData;
     private eMapStatus _currentMapStatus = eMapStatus.Unknown;
+    private eMapStatus _prePauseMapStatus = eMapStatus.Unknown;
     private Timer? _resumeMessageTimer;
 
     private readonly MatchEvents _matchEvents;
@@ -162,6 +163,13 @@ public class MatchManager
 
     public void PauseMatch(string? message = null, bool skipUpdate = false)
     {
+        if (gameEnded || IsMapFinished())
+        {
+            return;
+        }
+
+        _prePauseMapStatus = _currentMapStatus;
+
         _gameServer.SendCommands(["mp_pause_match"]);
 
         if (IsPaused())
@@ -204,6 +212,11 @@ public class MatchManager
 
     public void ResumeMatch(string? message = null, bool skipUpdate = false)
     {
+        if (gameEnded || IsMapFinished())
+        {
+            return;
+        }
+
         if (_timeoutSystem.IsTimeoutActive())
         {
             _logger.LogInformation("Timeout is active, cannot resume match");
@@ -247,13 +260,24 @@ public class MatchManager
             return;
         }
 
-        UpdateMapStatus(isOverTime() ? eMapStatus.Overtime : eMapStatus.Live);
+        eMapStatus resumeStatus = _prePauseMapStatus == eMapStatus.Overtime
+            ? eMapStatus.Overtime
+            : (isOverTime() ? eMapStatus.Overtime : eMapStatus.Live);
+        UpdateMapStatus(resumeStatus);
     }
 
     public void UpdateMapStatus(eMapStatus status, Guid? winningLineupId = null)
     {
         if (_matchData == null)
         {
+            return;
+        }
+
+        if (IsMapFinished() && status != eMapStatus.Finished
+            && status != eMapStatus.UploadingDemo
+            && status != eMapStatus.Surrendered)
+        {
+            _logger.LogWarning($"Ignoring status transition from {_currentMapStatus} to {status} - map is finished");
             return;
         }
 
@@ -963,6 +987,8 @@ public class MatchManager
         _mapChangeCountdownTimer?.Kill();
 
         _currentMapStatus = eMapStatus.Unknown;
+        _prePauseMapStatus = eMapStatus.Unknown;
+        gameEnded = false;
 
         readySystem.Reset();
         captainSystem.Reset();
