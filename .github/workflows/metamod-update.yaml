@@ -18,8 +18,9 @@ jobs:
 
       - name: Check latest release URL
         run: |
-          LATEST_VERSION=$(curl -s "https://mms.alliedmods.net/mmsdrop/2.0/?C=M;O=D" | grep -oP 'href="\K[^"]+\.tar\.gz' |head -n1)
-          LATEST_URL="https://mms.alliedmods.net/mmsdrop/2.0/${LATEST_VERSION}"
+          LATEST_URL=$(curl -sf -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/alliedmodders/metamod-source/releases?per_page=20" \
+            | jq -r '[.[] | select(.tag_name | startswith("2."))] | .[0].assets[] | select(.name | test("^mmsource-.*-linux\\.tar\\.gz$")) | .browser_download_url')
           echo "LATEST_URL=$LATEST_URL" >> $GITHUB_ENV
 
       - name: Compare URLs
