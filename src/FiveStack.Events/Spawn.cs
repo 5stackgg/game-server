@@ -8,9 +8,9 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    public static readonly string ModelPathCtmSas = "characters\\models\\ctm_sas\\ctm_sas.vmdl";
+    public static readonly string ModelPathCtmSas = "agents\\models\\ctm_sas\\ctm_sas.vmdl";
     public static readonly string ModelPathTmPhoenix =
-        "characters\\models\\tm_phoenix\\tm_phoenix.vmdl";
+        "agents\\models\\tm_phoenix\\tm_phoenix.vmdl";
 
     [GameEventHandler]
     public HookResult OnEventPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
