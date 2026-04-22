@@ -14,9 +14,6 @@ public partial class FiveStackPlugin
             {
                 _logger.LogInformation("map changed: precaching models");
 
-                Server.PrecacheModel(ModelPathCtmSas);
-                Server.PrecacheModel(ModelPathTmPhoenix);
-
                 // code smell: we have to wait till server exec's default cfgs
                 await Task.Delay(1000 * 5);
                 Server.NextFrame(() =>
