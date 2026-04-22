@@ -6,6 +6,7 @@ namespace FiveStack;
 
 public class SteamAPI
 {
+    private static bool _resolverRegistered;
     private IntPtr _gGameServer = IntPtr.Zero;
     private readonly ILogger<SteamAPI> _logger;
 
@@ -48,7 +49,11 @@ public class SteamAPI
     public SteamAPI(ILogger<SteamAPI> logger)
     {
         _logger = logger;
-        NativeLibrary.SetDllImportResolver(Assembly.GetExecutingAssembly(), DllImportResolver);
+        if (!_resolverRegistered)
+        {
+            NativeLibrary.SetDllImportResolver(Assembly.GetExecutingAssembly(), DllImportResolver);
+            _resolverRegistered = true;
+        }
     }
 
     public string? GetServerSteamIDFormatted()
