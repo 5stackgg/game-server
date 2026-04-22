@@ -15,6 +15,9 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnEventPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
     {
+        // TODO - default models broken
+        return HookResult.Continue;
+
         MatchManager? match = _matchService.GetCurrentMatch();
 
         if (@event.Userid == null || !@event.Userid.IsValid || @event.Userid.IsBot || match == null)
