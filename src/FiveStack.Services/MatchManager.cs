@@ -105,6 +105,7 @@ public class MatchManager
     public void SyncActiveMapAfterMapStart()
     {
         _activeMapId = GetCurrentMap()?.id;
+        gameEnded = false;
     }
 
     public bool IsMapFinished()
@@ -434,6 +435,8 @@ public class MatchManager
             _surrenderSystem.Reset();
             return;
         }
+
+        gameEnded = false;
 
         if (_matchData.options.cfg_overrides != null && _matchData.options.cfg_overrides.Count > 0)
         {
