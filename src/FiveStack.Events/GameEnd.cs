@@ -32,12 +32,47 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        if (matchData.options.use_playcast)
+        {
+            TimerUtility.AddTimer(
+                matchData.options.tv_delay,
+                () =>
+                {
+                    HandleEndOfMap();
+                }
+            );
+
+            return HookResult.Continue;
+        }
+
+        HandleEndOfMap();
+
+        return HookResult.Continue;
+    }
+
+    private void HandleEndOfMap()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        if (match == null)
+        {
+            return;
+        }
+
+        MatchData? matchData = match.GetMatchData();
+        MatchMap? currentMap = match.GetCurrentMap();
+        if (matchData == null || currentMap == null)
+        {
+            return;
+        }
+
+        bool usePlaycast = matchData.options.use_playcast;
+
         if (_environmentService.isOnGameServerNode())
         {
             _logger.LogInformation(
                 "Game Server is on a game server node, skipping uploading demos"
             );
-            match.delayChangeMap(matchData.options.tv_delay);
+            match.delayChangeMap(usePlaycast ? 5 : matchData.options.tv_delay);
 
             if (_environmentService.IsOfflineMode())
             {
@@ -53,36 +88,74 @@ public partial class FiveStackPlugin
                 match.UpdateMapStatus(eMapStatus.Finished, _matchEvents.GetWinningLineupId());
             }
 
-            return HookResult.Continue;
+            return;
         }
 
         _logger.LogInformation("delaying uploading demos for 15 seconds");
 
-        match.UpdateMapStatus(eMapStatus.UploadingDemo, _matchEvents.GetWinningLineupId());
+        Guid? winningLineupId = _matchEvents.GetWinningLineupId();
+        Guid expectedMatchId = matchData.id;
+        int tvDelay = matchData.options.tv_delay;
+
+        match.UpdateMapStatus(eMapStatus.UploadingDemo, winningLineupId);
 
         TimerUtility.AddTimer(
             15.0f,
             async () =>
             {
-                await _gameDemos.UploadDemos();
+                if (_matchService.GetCurrentMatch()?.GetMatchData()?.id != expectedMatchId)
+                {
+                    _logger.LogWarning(
+                        "Skipping demo upload: current match is no longer {MatchId} after pre-upload delay",
+                        expectedMatchId
+                    );
+                    return;
+                }
+
+                try
+                {
+                    await _gameDemos.UploadDemos();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "UploadDemos failed after map end for match {MatchId}",
+                        expectedMatchId
+                    );
+                }
 
                 Server.NextFrame(() =>
                 {
-                    if (match.isSurrendered())
+                    if (_matchService.GetCurrentMatch()?.GetMatchData()?.id != expectedMatchId)
+                    {
+                        _logger.LogWarning(
+                            "Skipping end-of-map transition: current match is not {MatchId} after demo upload",
+                            expectedMatchId
+                        );
+                        return;
+                    }
+
+                    MatchManager current = _matchService.GetCurrentMatch()!;
+
+                    if (current.isSurrendered())
                     {
                         SendSurrender();
                     }
                     else
                     {
-                        match.UpdateMapStatus(eMapStatus.Finished);
+                        current.UpdateMapStatus(
+                            eMapStatus.Finished,
+                            _matchEvents.GetWinningLineupId()
+                        );
                     }
 
-                    match.delayChangeMap(Math.Max(5, matchData.options.tv_delay - 15));
+                    int tailDelaySeconds = usePlaycast ? 5 : Math.Max(5, tvDelay - 15);
+
+                    current.delayChangeMap(tailDelaySeconds);
                 });
             }
         );
-
-        return HookResult.Continue;
     }
 
     private void HandleOfflineMapProgression(
@@ -138,6 +211,6 @@ public partial class FiveStackPlugin
             );
         }
 
-        match.UpdateMapStatus(eMapStatus.Finished);
+        match.UpdateMapStatus(eMapStatus.Finished, winningLineupId);
     }
 }

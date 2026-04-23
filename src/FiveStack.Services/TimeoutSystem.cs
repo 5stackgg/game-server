@@ -49,6 +49,12 @@ public class TimeoutSystem
         _localizer = localizer;
     }
 
+    public void RemovePlayerVoteOnDisconnect(ulong steamId)
+    {
+        pauseVote?.RemovePlayerVote(steamId);
+        resumeVote?.RemovePlayerVote(steamId);
+    }
+
     public void RequestPause(CCSPlayerController? player)
     {
         MatchManager? match = _matchService.GetCurrentMatch();

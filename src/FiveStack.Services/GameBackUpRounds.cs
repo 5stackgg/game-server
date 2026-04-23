@@ -52,6 +52,11 @@ public class GameBackUpRounds
         }
     }
 
+    public void RemovePlayerVoteOnDisconnect(ulong steamId)
+    {
+        restoreRoundVote?.RemovePlayerVote(steamId);
+    }
+
     public void Setup()
     {
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
@@ -257,20 +262,16 @@ public class GameBackUpRounds
         _logger.LogInformation($"Restoring Round {round}");
         MatchManager? matchManager = _matchService.GetCurrentMatch();
         MatchData? match = matchManager?.GetMatchData();
-        if (match?.current_match_map_id == null)
+        if (matchManager == null || match?.current_match_map_id == null)
         {
             return;
         }
 
-        Guid mapId = matchManager?.GetActiveMapId() ?? match.current_match_map_id.Value;
+        Guid mapId = matchManager.GetActiveMapId() ?? match.current_match_map_id.Value;
 
         _matchEvents.PublishGameEvent(
             "restoreRound",
-            new Dictionary<string, object>
-            {
-                { "round", round },
-                { "match_map_id", mapId },
-            }
+            new Dictionary<string, object> { { "round", round }, { "match_map_id", mapId } }
         );
     }
 
