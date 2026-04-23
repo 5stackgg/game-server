@@ -266,11 +266,7 @@ public class GameBackUpRounds
 
         _matchEvents.PublishGameEvent(
             "restoreRound",
-            new Dictionary<string, object>
-            {
-                { "round", round },
-                { "match_map_id", mapId },
-            }
+            new Dictionary<string, object> { { "round", round }, { "match_map_id", mapId } }
         );
     }
 

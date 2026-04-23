@@ -50,7 +50,8 @@ public partial class FiveStackPlugin
         return HookResult.Continue;
     }
 
-    private void HandleEndOfMap() {
+    private void HandleEndOfMap()
+    {
         MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null)
         {
@@ -109,11 +110,12 @@ public partial class FiveStackPlugin
                         match.UpdateMapStatus(eMapStatus.Finished);
                     }
 
-                    match.delayChangeMap(IsPlaycasting() ? 0 : Math.Max(5, matchData.options.tv_delay - 15));
+                    match.delayChangeMap(
+                        IsPlaycasting() ? 5 : Math.Max(5, matchData.options.tv_delay - 15)
+                    );
                 });
             }
         );
-
     }
 
     private void HandleOfflineMapProgression(
