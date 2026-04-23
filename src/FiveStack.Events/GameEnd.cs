@@ -32,17 +32,17 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        if(IsPlaycasting())
+        if (IsPlaycasting())
         {
             TimerUtility.AddTimer(
-            15.0f,
-            async () =>
-            {
-                HandleEndOfMap();
-            }
-        );
+                matchData.options.tv_delay,
+                () =>
+                {
+                    HandleEndOfMap();
+                }
+            );
 
-          return HookResult.Continue;    
+            return HookResult.Continue;
         }
 
         HandleEndOfMap();
@@ -172,7 +172,8 @@ public partial class FiveStackPlugin
         match.UpdateMapStatus(eMapStatus.Finished);
     }
 
-    private bool IsPlaycasting() {
-        return playcastSystem.IsPlaycasting();
+    private bool IsPlaycasting()
+    {
+        return _matchService.GetCurrentMatch()?.GetMatchData()?.options.use_playcast == true;
     }
 }
