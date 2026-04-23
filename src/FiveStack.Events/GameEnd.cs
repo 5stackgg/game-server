@@ -32,12 +32,44 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        if (IsPlaycasting())
+        {
+            TimerUtility.AddTimer(
+                matchData.options.tv_delay,
+                () =>
+                {
+                    HandleEndOfMap();
+                }
+            );
+
+            return HookResult.Continue;
+        }
+
+        HandleEndOfMap();
+
+        return HookResult.Continue;
+    }
+
+    private void HandleEndOfMap() {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        if (match == null)
+        {
+            return;
+        }
+
+        MatchData? matchData = match.GetMatchData();
+        MatchMap? currentMap = match.GetCurrentMap();
+        if (matchData == null || currentMap == null)
+        {
+            return;
+        }
+
         if (_environmentService.isOnGameServerNode())
         {
             _logger.LogInformation(
                 "Game Server is on a game server node, skipping uploading demos"
             );
-            match.delayChangeMap(matchData.options.tv_delay);
+            match.delayChangeMap(IsPlaycasting() ? 5 : matchData.options.tv_delay);
 
             if (_environmentService.IsOfflineMode())
             {
@@ -53,7 +85,7 @@ public partial class FiveStackPlugin
                 match.UpdateMapStatus(eMapStatus.Finished, _matchEvents.GetWinningLineupId());
             }
 
-            return HookResult.Continue;
+            return;
         }
 
         _logger.LogInformation("delaying uploading demos for 15 seconds");
@@ -77,12 +109,11 @@ public partial class FiveStackPlugin
                         match.UpdateMapStatus(eMapStatus.Finished);
                     }
 
-                    match.delayChangeMap(Math.Max(5, matchData.options.tv_delay - 15));
+                    match.delayChangeMap(IsPlaycasting() ? 0 : Math.Max(5, matchData.options.tv_delay - 15));
                 });
             }
         );
 
-        return HookResult.Continue;
     }
 
     private void HandleOfflineMapProgression(
@@ -139,5 +170,10 @@ public partial class FiveStackPlugin
         }
 
         match.UpdateMapStatus(eMapStatus.Finished);
+    }
+
+    private bool IsPlaycasting()
+    {
+        return _matchService.GetCurrentMatch()?.GetMatchData()?.options.use_playcast == true;
     }
 }
