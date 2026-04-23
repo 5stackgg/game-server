@@ -32,7 +32,7 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        if (IsPlaycasting())
+        if (matchData.options.use_playcast)
         {
             TimerUtility.AddTimer(
                 matchData.options.tv_delay,
@@ -65,12 +65,14 @@ public partial class FiveStackPlugin
             return;
         }
 
+        bool usePlaycast = matchData.options.use_playcast;
+
         if (_environmentService.isOnGameServerNode())
         {
             _logger.LogInformation(
                 "Game Server is on a game server node, skipping uploading demos"
             );
-            match.delayChangeMap(IsPlaycasting() ? 5 : matchData.options.tv_delay);
+            match.delayChangeMap(usePlaycast ? 5 : matchData.options.tv_delay);
 
             if (_environmentService.IsOfflineMode())
             {
@@ -91,7 +93,9 @@ public partial class FiveStackPlugin
 
         _logger.LogInformation("delaying uploading demos for 15 seconds");
 
-        match.UpdateMapStatus(eMapStatus.UploadingDemo, _matchEvents.GetWinningLineupId());
+        Guid? winningLineupId = _matchEvents.GetWinningLineupId();
+
+        match.UpdateMapStatus(eMapStatus.UploadingDemo, winningLineupId);
 
         TimerUtility.AddTimer(
             15.0f,
@@ -110,9 +114,11 @@ public partial class FiveStackPlugin
                         match.UpdateMapStatus(eMapStatus.Finished);
                     }
 
-                    match.delayChangeMap(
-                        IsPlaycasting() ? 5 : Math.Max(5, matchData.options.tv_delay - 15)
-                    );
+                    int tailDelaySeconds = usePlaycast
+                        ? 5
+                        : Math.Max(5, matchData.options.tv_delay - 15);
+
+                    match.delayChangeMap(tailDelaySeconds);
                 });
             }
         );
@@ -171,11 +177,6 @@ public partial class FiveStackPlugin
             );
         }
 
-        match.UpdateMapStatus(eMapStatus.Finished);
-    }
-
-    private bool IsPlaycasting()
-    {
-        return _matchService.GetCurrentMatch()?.GetMatchData()?.options.use_playcast == true;
+        match.UpdateMapStatus(eMapStatus.Finished, winningLineupId);
     }
 }
