@@ -198,7 +198,6 @@ public class CaptainSystem
                     TeamUtility.TeamNumToString((int)captainTeam)
                 ]
             );
-
         }
 
         ShowCaptains();
