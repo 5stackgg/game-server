@@ -150,9 +150,7 @@ public partial class FiveStackPlugin
                         );
                     }
 
-                    int tailDelaySeconds = usePlaycast
-                        ? 5
-                        : Math.Max(5, tvDelay - 15);
+                    int tailDelaySeconds = usePlaycast ? 5 : Math.Max(5, tvDelay - 15);
 
                     current.delayChangeMap(tailDelaySeconds);
                 });
