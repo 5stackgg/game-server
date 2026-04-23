@@ -319,7 +319,7 @@ public class VoteSystem
 
         if (IsCaptainVoteOnly())
         {
-            if (_votes.Count < 2)
+            if (_votes.Count < expectedVoteCount)
             {
                 if (fail)
                 {
@@ -338,7 +338,7 @@ public class VoteSystem
             return;
         }
 
-        if (totalYesVotes >= Math.Floor(expectedVoteCount / 2.0) + 1)
+        if (totalYesVotes >= Math.Ceiling(expectedVoteCount / 2.0))
         {
             VoteSuccess();
             return;

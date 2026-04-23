@@ -75,7 +75,7 @@ public class CaptainSystem
 
         if (
             match == null
-            || !match.IsWarmup()
+            || !(match.IsWarmup() || match.IsKnife())
             || team == CsTeam.None
             || team == CsTeam.Spectator
             || _captains[team] == null
@@ -86,6 +86,7 @@ public class CaptainSystem
         }
 
         _captains[team] = null;
+        ClearCaptainBySteamId(player.SteamID.ToString());
 
         _matchEvents.PublishGameEvent(
             "captain",
@@ -107,7 +108,14 @@ public class CaptainSystem
             return null;
         }
 
-        return _captains[team];
+        CCSPlayerController? captain = _captains[team];
+        if (!IsCaptainEntryValidForTeam(captain, team))
+        {
+            _captains[team] = null;
+            return null;
+        }
+
+        return captain;
     }
 
     public void ShowCaptains()
@@ -153,36 +161,42 @@ public class CaptainSystem
             return;
         }
 
-        if (player.Team != team)
+        CsTeam captainTeam = team;
+        CsTeam? expectedCaptainTeam = ResolveExpectedCaptainTeam(player);
+        if (expectedCaptainTeam.HasValue && expectedCaptainTeam.Value != team)
+        {
+            if (!force)
+            {
+                _logger.LogWarning(
+                    $"Unable to claim captain for player {player.PlayerName} because expected side is {expectedCaptainTeam.Value}, not {team}"
+                );
+                return;
+            }
+            captainTeam = expectedCaptainTeam.Value;
+        }
+
+        if (!force && player.Team != captainTeam)
         {
             _logger.LogWarning(
-                $"Unable to claim captain for player {player.PlayerName} because they are not on the {team} team"
+                $"Unable to claim captain for player {player.PlayerName} because they are not on the {captainTeam} team"
             );
             return;
         }
 
-        if (_captains[team] == null || force)
+        if (_captains[captainTeam] == null || force)
         {
-            _captains[team] = player;
-            _logger.LogInformation($"Captain {player.PlayerName} claimed captain spot for {team}");
+            SetCaptain(player, captainTeam, announce: true);
+            _logger.LogInformation(
+                $"Captain {player.PlayerName} claimed captain spot for {captainTeam}"
+            );
 
             _gameServer.Message(
                 HudDestination.Alert,
                 _localizer[
                     "captain.assigned",
                     player.PlayerName,
-                    TeamUtility.TeamNumToString((int)team)
+                    TeamUtility.TeamNumToString((int)captainTeam)
                 ]
-            );
-
-            _matchEvents.PublishGameEvent(
-                "captain",
-                new Dictionary<string, object>
-                {
-                    { "claim", true },
-                    { "steam_id", player.SteamID.ToString() },
-                    { "player_name", player.PlayerName },
-                }
             );
         }
 
@@ -196,31 +210,29 @@ public class CaptainSystem
             return false;
         }
 
-        if ((team != CsTeam.Terrorist && team != CsTeam.CounterTerrorist) || player.Team != team)
+        if (team != CsTeam.Terrorist && team != CsTeam.CounterTerrorist)
         {
             return false;
         }
 
-        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
-        if (matchData != null)
+        CsTeam? expectedCaptainTeam = ResolveExpectedCaptainTeam(player);
+        if (expectedCaptainTeam.HasValue)
         {
-            MatchMember? member = MatchUtility.GetMemberFromLineup(
-                matchData,
-                player.SteamID.ToString(),
-                player.PlayerName
-            );
-
-            if (member?.captain == true)
-            {
-                if (_captains[team]?.SteamID.ToString() != player.SteamID.ToString())
-                {
-                    ClaimCaptain(player, team, true);
-                }
-                return true;
-            }
+            SetCaptain(player, expectedCaptainTeam.Value, announce: false);
+            return expectedCaptainTeam.Value == team;
         }
 
-        return _captains[team]?.SteamID.ToString() == player.SteamID.ToString();
+        CCSPlayerController? teamCaptain = GetTeamCaptain(team);
+        if (
+            player.Team == team
+            && teamCaptain?.SteamID.ToString() == player.SteamID.ToString()
+            && IsCaptainEntryValidForTeam(teamCaptain, team)
+        )
+        {
+            return true;
+        }
+
+        return false;
     }
 
     private void AutoSelectCaptain(CsTeam team)
@@ -249,5 +261,101 @@ public class CaptainSystem
         CCSPlayerController player = players[Random.Shared.Next(players.Count)];
 
         ClaimCaptain(player, team, true);
+    }
+
+    private CsTeam? ResolveExpectedCaptainTeam(CCSPlayerController player)
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+        MatchMap? currentMap = match?.GetCurrentMap();
+
+        if (matchData == null || currentMap == null)
+        {
+            return null;
+        }
+
+        MatchMember? member = MatchUtility.GetMemberFromLineup(
+            matchData,
+            player.SteamID.ToString(),
+            player.PlayerName
+        );
+
+        if (member?.captain != true)
+        {
+            return null;
+        }
+
+        Guid? lineupId = MatchUtility.GetPlayerLineup(matchData, player);
+        if (!lineupId.HasValue)
+        {
+            return null;
+        }
+
+        CsTeam expectedTeam = TeamUtility.GetLineupSide(
+            matchData,
+            currentMap,
+            lineupId.Value,
+            _gameServer.GetTotalRoundsPlayed()
+        );
+
+        if (expectedTeam != CsTeam.Terrorist && expectedTeam != CsTeam.CounterTerrorist)
+        {
+            return null;
+        }
+
+        return expectedTeam;
+    }
+
+    private bool IsCaptainEntryValidForTeam(CCSPlayerController? player, CsTeam team)
+    {
+        if (player == null || !player.IsValid || player.IsBot)
+        {
+            return false;
+        }
+
+        CsTeam? expectedCaptainTeam = ResolveExpectedCaptainTeam(player);
+        if (expectedCaptainTeam.HasValue)
+        {
+            return expectedCaptainTeam.Value == team;
+        }
+
+        return player.Team == team;
+    }
+
+    private void SetCaptain(CCSPlayerController player, CsTeam team, bool announce)
+    {
+        ClearCaptainBySteamId(player.SteamID.ToString(), team);
+        _captains[team] = player;
+
+        if (!announce)
+        {
+            return;
+        }
+
+        _matchEvents.PublishGameEvent(
+            "captain",
+            new Dictionary<string, object>
+            {
+                { "claim", true },
+                { "steam_id", player.SteamID.ToString() },
+                { "player_name", player.PlayerName },
+            }
+        );
+    }
+
+    private void ClearCaptainBySteamId(string steamId, CsTeam? ignoreTeam = null)
+    {
+        foreach (CsTeam side in new[] { CsTeam.Terrorist, CsTeam.CounterTerrorist })
+        {
+            if (ignoreTeam.HasValue && ignoreTeam.Value == side)
+            {
+                continue;
+            }
+
+            if (_captains[side]?.SteamID.ToString() == steamId)
+            {
+                _captains[side] = null;
+            }
+        }
     }
 }

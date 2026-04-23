@@ -31,7 +31,7 @@ public partial class FiveStackPlugin
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", matchData.current_match_map_id },
+                { "match_map_id", match.GetActiveMapId() ?? matchData.current_match_map_id },
                 { "round", _gameServer.GetCurrentRound() },
                 { "type", "Decoy" },
                 { "attacker_steam_id", thrower.SteamID.ToString() },
@@ -67,7 +67,7 @@ public partial class FiveStackPlugin
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", matchData.current_match_map_id },
+                { "match_map_id", match.GetActiveMapId() ?? matchData.current_match_map_id },
                 { "round", _gameServer.GetCurrentRound() },
                 { "type", "HighExplosive" },
                 { "attacker_steam_id", thrower.SteamID.ToString() },
@@ -103,7 +103,7 @@ public partial class FiveStackPlugin
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", matchData.current_match_map_id },
+                { "match_map_id", match.GetActiveMapId() ?? matchData.current_match_map_id },
                 { "round", _gameServer.GetCurrentRound() },
                 { "type", "Flash" },
                 { "attacker_steam_id", thrower.SteamID.ToString() },
@@ -139,7 +139,7 @@ public partial class FiveStackPlugin
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", matchData.current_match_map_id },
+                { "match_map_id", match.GetActiveMapId() ?? matchData.current_match_map_id },
                 { "round", _gameServer.GetCurrentRound() },
                 { "type", "Molotov" },
                 { "attacker_steam_id", thrower.SteamID.ToString() },
@@ -175,7 +175,7 @@ public partial class FiveStackPlugin
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", matchData.current_match_map_id },
+                { "match_map_id", match.GetActiveMapId() ?? matchData.current_match_map_id },
                 { "round", _gameServer.GetCurrentRound() },
                 { "type", "Smoke" },
                 { "attacker_steam_id", thrower.SteamID.ToString() },
@@ -217,7 +217,7 @@ public partial class FiveStackPlugin
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", matchData.current_match_map_id },
+                { "match_map_id", match.GetActiveMapId() ?? matchData.current_match_map_id },
                 { "round", _gameServer.GetCurrentRound() },
                 { "attacker_steam_id", attacker.SteamID.ToString() },
                 { "attacked_steam_id", blindedPlayer.SteamID.ToString() },

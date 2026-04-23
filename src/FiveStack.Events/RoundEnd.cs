@@ -25,6 +25,11 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        if (match.IsMapFinished())
+        {
+            return HookResult.Continue;
+        }
+
         if (match.isOverTime())
         {
             match.UpdateMapStatus(eMapStatus.Overtime);
@@ -105,7 +110,7 @@ public partial class FiveStackPlugin
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", currentMap.id },
+                { "match_map_id", match.GetActiveMapId() ?? currentMap.id },
                 { "round", totalRoundsPlayed },
                 { "lineup_1_score", lineup1Score },
                 {

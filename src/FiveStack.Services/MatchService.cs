@@ -79,8 +79,6 @@ public class MatchService
             return;
         }
 
-        HttpClient httpClient = new HttpClient();
-
         string? serverId = _environmentService.GetServerId();
         string? apiPassword = _environmentService.GetServerApiPassword();
 
@@ -97,53 +95,57 @@ public class MatchService
 
         try
         {
-            string matchUri = $"{_environmentService.GetApiUrl()}/matches/current-match/{serverId}";
-
-            _logger.LogInformation($"Fetching Match Info for server : {serverId}");
-
-            httpClient.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiPassword);
-
-            string? response = await httpClient.GetStringAsync(matchUri);
-
-            Server.NextFrame(() =>
+            using (var httpClient = new HttpClient())
             {
-                if (response.Length == 0)
+                string matchUri =
+                    $"{_environmentService.GetApiUrl()}/matches/current-match/{serverId}";
+
+                _logger.LogInformation($"Fetching Match Info for server : {serverId}");
+
+                httpClient.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiPassword);
+
+                string? response = await httpClient.GetStringAsync(matchUri);
+
+                Server.NextFrame(() =>
                 {
+                    if (response.Length == 0)
+                    {
+                        if (_currentMatch != null)
+                        {
+                            _currentMatch.Reset();
+                        }
+
+                        _currentMatch = null;
+
+                        _logger.LogWarning("currenlty no match assigned to server");
+                        return;
+                    }
+
+                    MatchData? matchData = JsonSerializer.Deserialize<MatchData>(response);
+
+                    if (matchData == null)
+                    {
+                        return;
+                    }
+
+                    if (_currentMatch?.GetMatchData()?.id == matchData.id)
+                    {
+                        _currentMatch.SetupMatch(matchData);
+                        return;
+                    }
+
                     if (_currentMatch != null)
                     {
                         _currentMatch.Reset();
                     }
 
-                    _currentMatch = null;
+                    _currentMatch =
+                        _serviceProvider.GetRequiredService(typeof(MatchManager)) as MatchManager;
 
-                    _logger.LogWarning("currenlty no match assigned to server");
-                    return;
-                }
-
-                MatchData? matchData = JsonSerializer.Deserialize<MatchData>(response);
-
-                if (matchData == null)
-                {
-                    return;
-                }
-
-                if (_currentMatch?.GetMatchData()?.id == matchData.id)
-                {
-                    _currentMatch.SetupMatch(matchData);
-                    return;
-                }
-
-                if (_currentMatch != null)
-                {
-                    _currentMatch.Reset();
-                }
-
-                _currentMatch =
-                    _serviceProvider.GetRequiredService(typeof(MatchManager)) as MatchManager;
-
-                _currentMatch!.SetupMatch(matchData);
-            });
+                    _currentMatch!.SetupMatch(matchData);
+                });
+            }
         }
         catch (HttpRequestException ex)
         {

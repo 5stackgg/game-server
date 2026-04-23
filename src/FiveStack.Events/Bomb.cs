@@ -30,7 +30,7 @@ public partial class FiveStackPlugin
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", matchData.current_match_map_id },
+                { "match_map_id", match.GetActiveMapId() ?? matchData.current_match_map_id },
                 { "round", _gameServer.GetCurrentRound() },
                 { "type", "Planted" },
                 { "player_steam_id", planter.SteamID.ToString() },
@@ -64,7 +64,7 @@ public partial class FiveStackPlugin
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", matchData.current_match_map_id },
+                { "match_map_id", match.GetActiveMapId() ?? matchData.current_match_map_id },
                 { "round", _gameServer.GetCurrentRound() },
                 { "type", "Defused" },
                 { "player_steam_id", defuser.SteamID.ToString() },
@@ -98,7 +98,7 @@ public partial class FiveStackPlugin
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", matchData.current_match_map_id },
+                { "match_map_id", match.GetActiveMapId() ?? matchData.current_match_map_id },
                 { "round", _gameServer.GetCurrentRound() },
                 { "type", "Exploded" },
                 { "site", @event.Site },

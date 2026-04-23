@@ -27,8 +27,6 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        _logger.LogInformation("Default skins are enabled, skipping spawn event");
-
         CCSPlayerController player = @event.Userid;
 
         if (

@@ -18,6 +18,7 @@ public class MatchManager
 {
     private MatchData? _matchData;
     private eMapStatus _currentMapStatus = eMapStatus.Unknown;
+    private Guid? _activeMapId;
     private Timer? _resumeMessageTimer;
     public bool gameEnded = false;
 
@@ -94,6 +95,17 @@ public class MatchManager
         {
             return match_map.id == matchData.current_match_map_id;
         });
+    }
+
+    public Guid? GetActiveMapId()
+    {
+        return _activeMapId;
+    }
+
+    public void SyncActiveMapAfterMapStart()
+    {
+        _activeMapId = GetCurrentMap()?.id;
+        gameEnded = false;
     }
 
     public bool IsMapFinished()
@@ -234,6 +246,8 @@ public class MatchManager
             _backUpManagement.restoreRoundVote = null;
         }
 
+        _timeoutSystem.ClearPendingTeamResumes();
+
         if (!IsPaused())
         {
             return;
@@ -261,6 +275,24 @@ public class MatchManager
 
         if (_currentMapStatus == status)
         {
+            return;
+        }
+
+        if (
+            IsMapFinished()
+            && (
+                status == eMapStatus.Live
+                || status == eMapStatus.Overtime
+                || status == eMapStatus.Paused
+                || status == eMapStatus.Knife
+                || status == eMapStatus.Warmup
+                || status == eMapStatus.Scheduled
+            )
+        )
+        {
+            _logger.LogInformation(
+                $"Ignoring map status transition {_currentMapStatus} -> {status} because current map is already terminal"
+            );
             return;
         }
 
@@ -395,12 +427,16 @@ public class MatchManager
             return;
         }
 
+        _activeMapId = _currentMap.id;
+
         if (_matchData == null || IsMapFinished())
         {
             _matchDemos.Stop();
             _surrenderSystem.Reset();
             return;
         }
+
+        gameEnded = false;
 
         if (_matchData.options.cfg_overrides != null && _matchData.options.cfg_overrides.Count > 0)
         {
