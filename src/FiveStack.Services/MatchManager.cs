@@ -19,6 +19,7 @@ public class MatchManager
     private MatchData? _matchData;
     private eMapStatus _currentMapStatus = eMapStatus.Unknown;
     private Timer? _resumeMessageTimer;
+    public bool gameEnded = false;
 
     private readonly MatchEvents _matchEvents;
     private readonly GameServer _gameServer;
@@ -971,6 +972,8 @@ public class MatchManager
         _mapChangeCountdownTimer?.Kill();
 
         _currentMapStatus = eMapStatus.Unknown;
+
+        gameEnded = false;
 
         readySystem.Reset();
         captainSystem.Reset();
