@@ -257,12 +257,12 @@ public class GameBackUpRounds
         _logger.LogInformation($"Restoring Round {round}");
         MatchManager? matchManager = _matchService.GetCurrentMatch();
         MatchData? match = matchManager?.GetMatchData();
-        if (match?.current_match_map_id == null)
+        if (matchManager == null || match?.current_match_map_id == null)
         {
             return;
         }
 
-        Guid mapId = matchManager?.GetActiveMapId() ?? match.current_match_map_id.Value;
+        Guid mapId = matchManager.GetActiveMapId() ?? match.current_match_map_id.Value;
 
         _matchEvents.PublishGameEvent(
             "restoreRound",
