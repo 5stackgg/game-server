@@ -255,7 +255,8 @@ public class GameBackUpRounds
     public void SendRestoreRoundToBackend(int round)
     {
         _logger.LogInformation($"Restoring Round {round}");
-        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchManager? matchManager = _matchService.GetCurrentMatch();
+        MatchData? match = matchManager?.GetMatchData();
         if (match?.current_match_map_id == null)
         {
             return;
@@ -266,7 +267,10 @@ public class GameBackUpRounds
             new Dictionary<string, object>
             {
                 { "round", round },
-                { "match_map_id", match.current_match_map_id },
+                {
+                    "match_map_id",
+                    matchManager?.GetActiveMapId() ?? match.current_match_map_id
+                },
             }
         );
     }

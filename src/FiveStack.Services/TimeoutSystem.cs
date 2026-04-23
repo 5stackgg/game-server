@@ -549,12 +549,13 @@ public class TimeoutSystem
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();
-        Guid? loadedMapId = match?.GetLoadedMapIdForEvents();
 
         if (currentMap == null)
         {
             return;
         }
+
+        Guid mapId = match!.GetActiveMapId() ?? currentMap.id;
 
         (int lineup1Timeouts, int lineup2Timeouts) = GetLineupTimeouts();
 
@@ -562,7 +563,7 @@ public class TimeoutSystem
             "techTimeout",
             new Dictionary<string, object>
             {
-                { "map_id", loadedMapId.Value },
+                { "map_id", mapId },
                 { "lineup_1_timeouts_available", lineup1Timeouts },
                 { "lineup_2_timeouts_available", lineup2Timeouts },
             }

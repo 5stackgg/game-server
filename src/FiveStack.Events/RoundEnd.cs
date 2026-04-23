@@ -110,7 +110,7 @@ public partial class FiveStackPlugin
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },
-                { "match_map_id", currentMap.id },
+                { "match_map_id", match.GetActiveMapId() ?? currentMap.id },
                 { "round", totalRoundsPlayed },
                 { "lineup_1_score", lineup1Score },
                 {

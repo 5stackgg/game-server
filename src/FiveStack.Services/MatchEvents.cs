@@ -84,7 +84,7 @@ public class MatchEvents
             return;
         }
 
-        Guid mapId = _matchService.GetCurrentMatch()?.GetLoadedMapIdForEvents() ?? Guid.Empty;
+        Guid mapId = _matchService.GetCurrentMatch()?.GetActiveMapId() ?? Guid.Empty;
         if (mapId == Guid.Empty)
         {
             return;

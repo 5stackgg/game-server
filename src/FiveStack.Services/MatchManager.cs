@@ -18,8 +18,7 @@ public class MatchManager
 {
     private MatchData? _matchData;
     private eMapStatus _currentMapStatus = eMapStatus.Unknown;
-    private Guid? _loadedMapIdForEvents;
-    private Guid? _pendingMapIdForEvents;
+    private Guid? _activeMapId;
     private Timer? _resumeMessageTimer;
     public bool gameEnded = false;
 
@@ -98,20 +97,14 @@ public class MatchManager
         });
     }
 
-    public Guid? GetLoadedMapIdForEvents()
+    public Guid? GetActiveMapId()
     {
-        return _loadedMapIdForEvents;
+        return _activeMapId;
     }
 
-    public void CommitLoadedMapAfterMapStart()
+    public void SyncActiveMapAfterMapStart()
     {
-        if (_pendingMapIdForEvents == null)
-        {
-            return;
-        }
-
-        _loadedMapIdForEvents = _pendingMapIdForEvents;
-        _pendingMapIdForEvents = null;
+        _activeMapId = GetCurrentMap()?.id;
     }
 
     public bool IsMapFinished()
@@ -423,20 +416,17 @@ public class MatchManager
 
             if (_currentMap.map.workshop_map_id != currentWorkshopID)
             {
-                _pendingMapIdForEvents = _currentMap.id;
                 ChangeMap(_currentMap.map);
                 return;
             }
         }
         else if (!Server.MapName.ToLower().Contains(_currentMap.map.name.ToLower()))
         {
-            _pendingMapIdForEvents = _currentMap.id;
             ChangeMap(_currentMap.map);
             return;
         }
 
-        _loadedMapIdForEvents = _currentMap.id;
-        _pendingMapIdForEvents = null;
+        _activeMapId = _currentMap.id;
 
         if (_matchData == null || IsMapFinished())
         {
@@ -572,12 +562,6 @@ public class MatchManager
         if (_mapChangeCountdownTimer != null)
         {
             return;
-        }
-
-        MatchMap? currentMap = GetCurrentMap();
-        if (currentMap != null)
-        {
-            _pendingMapIdForEvents = currentMap.id;
         }
 
         _gameServer.SendCommands(["tv_broadcast 0"]);

@@ -22,7 +22,7 @@ public partial class FiveStackPlugin
                 Server.NextFrame(() =>
                 {
                     MatchManager? match = _matchService.GetCurrentMatch();
-                    match?.CommitLoadedMapAfterMapStart();
+                    match?.SyncActiveMapAfterMapStart();
                     match?.Reset();
                     _matchService.GetMatchFromApi();
                 });
