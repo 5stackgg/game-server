@@ -155,8 +155,8 @@ public class SurrenderSystem
             {
                 timer?.Kill();
             }
-            _disconnectTimers[team].Clear();
         }
+        _disconnectTimers.Clear();
     }
 
     public bool IsSurrendering()
