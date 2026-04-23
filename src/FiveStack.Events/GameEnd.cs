@@ -21,6 +21,8 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        match.gameEnded = true;
+
         PublishRoundInformation();
 
         MatchData? matchData = match.GetMatchData();
