@@ -255,7 +255,7 @@ public class TimeoutSystem
                     return;
                 }
 
-                if (_teamsPendingResume.Contains(player.Team) == false)
+                if (!_teamsPendingResume.Contains(player.Team))
                 {
                     _gameServer.Message(
                         HudDestination.Chat,
@@ -551,7 +551,7 @@ public class TimeoutSystem
         MatchMap? currentMap = match?.GetCurrentMap();
         Guid? loadedMapId = match?.GetLoadedMapIdForEvents();
 
-        if (currentMap == null || loadedMapId == null)
+        if (currentMap == null)
         {
             return;
         }
