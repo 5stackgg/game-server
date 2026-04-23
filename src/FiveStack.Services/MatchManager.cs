@@ -368,7 +368,6 @@ public class MatchManager
             case eMapStatus.Finished:
             case eMapStatus.Surrendered:
                 _matchDemos.Stop();
-                _matchDemos.StopTV();
                 _surrenderSystem.Reset();
                 break;
             case eMapStatus.UploadingDemo:
@@ -536,6 +535,7 @@ public class MatchManager
             delay,
             () =>
             {
+                _matchDemos.StopTV();
                 _logger.LogInformation("map change delay complete");
                 _mapChangeCountdownTimer?.Kill();
                 _mapChangeCountdownTimer = null;

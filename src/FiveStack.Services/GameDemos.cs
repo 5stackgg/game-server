@@ -98,6 +98,7 @@ public class GameDemos
 
     public void StopTV()
     {
+        _logger.LogInformation("Stopping TV broadcast");
         _gameServer.SendCommands(["tv_broadcast 0"]);
         Server.NextFrame(() =>
         {

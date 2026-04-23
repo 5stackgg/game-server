@@ -267,10 +267,7 @@ public class GameBackUpRounds
             new Dictionary<string, object>
             {
                 { "round", round },
-                {
-                    "match_map_id",
-                    matchManager?.GetActiveMapId() ?? match.current_match_map_id
-                },
+                { "match_map_id", matchManager?.GetActiveMapId() ?? match.current_match_map_id },
             }
         );
     }
