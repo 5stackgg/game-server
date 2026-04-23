@@ -164,6 +164,11 @@ public class SurrenderSystem
         return surrenderingVote != null && surrenderingVote.IsVoteActive();
     }
 
+    public void RemovePlayerVoteOnDisconnect(ulong steamId)
+    {
+        surrenderingVote?.RemovePlayerVote(steamId);
+    }
+
     public void Surrender(CsTeam team)
     {
         MatchManager? match = _matchService.GetCurrentMatch();

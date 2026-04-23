@@ -49,10 +49,9 @@ public partial class FiveStackPlugin
             match.captainSystem.RemoveCaptain(@event.Userid);
         }
 
-        _surrenderSystem.surrenderingVote?.RemovePlayerVote(player.SteamID);
-        _timeoutSystem.pauseVote?.RemovePlayerVote(player.SteamID);
-        _timeoutSystem.resumeVote?.RemovePlayerVote(player.SteamID);
-        _gameBackupRounds.restoreRoundVote?.RemovePlayerVote(player.SteamID);
+        _surrenderSystem.RemovePlayerVoteOnDisconnect(player.SteamID);
+        _timeoutSystem.RemovePlayerVoteOnDisconnect(player.SteamID);
+        _gameBackupRounds.RemovePlayerVoteOnDisconnect(player.SteamID);
 
         if (match.IsInProgress())
         {

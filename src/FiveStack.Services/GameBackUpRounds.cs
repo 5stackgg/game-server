@@ -52,6 +52,11 @@ public class GameBackUpRounds
         }
     }
 
+    public void RemovePlayerVoteOnDisconnect(ulong steamId)
+    {
+        restoreRoundVote?.RemovePlayerVote(steamId);
+    }
+
     public void Setup()
     {
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
