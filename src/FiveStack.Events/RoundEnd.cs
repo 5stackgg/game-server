@@ -25,6 +25,11 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        if (match.IsMapFinished())
+        {
+            return HookResult.Continue;
+        }
+
         if (match.isOverTime())
         {
             match.UpdateMapStatus(eMapStatus.Overtime);

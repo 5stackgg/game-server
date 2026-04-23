@@ -128,6 +128,11 @@ public class GameBackUpRounds
             return;
         }
 
+        if (!CanRestoreRound(round))
+        {
+            return;
+        }
+
         MatchMap? matchMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
 
         if (matchMap == null)
@@ -268,6 +273,11 @@ public class GameBackUpRounds
 
     public async void RestoreRound(int round)
     {
+        if (!CanRestoreRound(round))
+        {
+            return;
+        }
+
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
         MatchMap? matchMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
 
@@ -325,5 +335,26 @@ public class GameBackUpRounds
                 );
             });
         });
+    }
+
+    private bool CanRestoreRound(int round)
+    {
+        int connectedPlayers = MatchUtility.Players().Count;
+        int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
+
+        if (connectedPlayers >= expectedPlayers)
+        {
+            return true;
+        }
+
+        _logger.LogWarning(
+            $"Restore round {round} blocked: waiting for all players to reconnect ({connectedPlayers}/{expectedPlayers})"
+        );
+        _gameServer.Message(
+            HudDestination.Alert,
+            $" Restore round blocked: waiting for all players to reconnect ({connectedPlayers}/{expectedPlayers})."
+        );
+
+        return false;
     }
 }
