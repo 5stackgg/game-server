@@ -75,7 +75,7 @@ public class CaptainSystem
 
         if (
             match == null
-            || !match.IsWarmup()
+            || !(match.IsWarmup() || match.IsKnife())
             || team == CsTeam.None
             || team == CsTeam.Spectator
             || _captains[team] == null
