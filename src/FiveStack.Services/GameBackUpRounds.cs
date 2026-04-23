@@ -262,12 +262,14 @@ public class GameBackUpRounds
             return;
         }
 
+        Guid mapId = matchManager?.GetActiveMapId() ?? match.current_match_map_id.Value;
+
         _matchEvents.PublishGameEvent(
             "restoreRound",
             new Dictionary<string, object>
             {
                 { "round", round },
-                { "match_map_id", matchManager?.GetActiveMapId() ?? match.current_match_map_id },
+                { "match_map_id", mapId },
             }
         );
     }
