@@ -28,8 +28,7 @@ public partial class FiveStackPlugin
 
         if (currentPlayers < expectedPlayers)
         {
-            
-            // matchManager.PauseMatch("Waiting for players to reconnect");
+            matchManager.PauseMatch("Waiting for players to reconnect");
         }
 
         return HookResult.Continue;
