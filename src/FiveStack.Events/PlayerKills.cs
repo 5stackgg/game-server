@@ -100,7 +100,10 @@ public partial class FiveStackPlugin
                     new Dictionary<string, object>
                     {
                         { "time", DateTime.Now },
-                        { "match_map_id", match.GetActiveMapId() ?? matchData.current_match_map_id },
+                        {
+                            "match_map_id",
+                            match.GetActiveMapId() ?? matchData.current_match_map_id
+                        },
                         { "round", _gameServer.GetCurrentRound() },
                         { "attacker_steam_id", assister.SteamID.ToString() },
                         { "attacker_team", $"{TeamUtility.TeamNumToString(attacker.TeamNum)}" },
