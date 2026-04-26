@@ -999,6 +999,10 @@ public class MatchManager
                 _logger.LogInformation("Sending TV Broadcast command");
             });
         }
+        else
+        {
+            ConVar.Find("sv_deltaticks_enforce")?.SetValue(0);
+        }
     }
 
     public void Reset()
