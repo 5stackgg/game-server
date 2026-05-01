@@ -169,7 +169,7 @@ public class SurrenderSystem
         surrenderingVote?.RemovePlayerVote(steamId);
     }
 
-    public void Surrender(CsTeam team)
+    public void Surrender(CsTeam surrenderingTeam)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null)
@@ -183,29 +183,32 @@ public class SurrenderSystem
             return;
         }
 
-        Guid? lineup_id = null;
+        (_, _, CsTeam lineup1Side, CsTeam lineup2Side, _) = _matchEvents.GetRoundInformation();
 
-        foreach (var _team in MatchUtility.Teams())
+        Guid? winnerLineupId = null;
+        if (lineup1Side == surrenderingTeam)
         {
-            if (TeamUtility.TeamNumToCSTeam(_team.TeamNum) == team)
-            {
-                lineup_id =
-                    matchData.lineup_1.name == TeamUtility.CSTeamToString(team)
-                        ? matchData.lineup_1_id
-                        : matchData.lineup_2_id;
-                break;
-            }
+            winnerLineupId = matchData.lineup_2_id;
+        }
+        else if (lineup2Side == surrenderingTeam)
+        {
+            winnerLineupId = matchData.lineup_1_id;
         }
 
-        if (lineup_id == null)
+        if (winnerLineupId == null)
         {
-            _logger.LogWarning($"No lineup id found for {team}");
+            _logger.LogWarning(
+                $"Could not resolve winning lineup for surrender by {surrenderingTeam} "
+                    + $"(lineup1Side={lineup1Side}, lineup2Side={lineup2Side})"
+            );
             return;
         }
 
-        _logger.LogInformation($"Surrendering ${team}:{lineup_id.Value}");
+        _logger.LogInformation(
+            $"Surrender by {surrenderingTeam}, winner={winnerLineupId.Value}"
+        );
 
-        winningLineupId = lineup_id.Value;
+        winningLineupId = winnerLineupId.Value;
 
         _matchService.GetCurrentMatch()?.UpdateMapStatus(eMapStatus.Surrendered);
     }
