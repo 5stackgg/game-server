@@ -377,17 +377,19 @@ public class MatchEvents
 
         int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
 
+        int recordedRoundIndex = Math.Max(0, totalRoundsPlayed - 1);
+
         CsTeam lineup1Side = TeamUtility.GetLineupSide(
             matchData,
             currentMap,
             matchData.lineup_1_id,
-            totalRoundsPlayed
+            recordedRoundIndex
         );
         CsTeam lineup2Side = TeamUtility.GetLineupSide(
             matchData,
             currentMap,
             matchData.lineup_2_id,
-            totalRoundsPlayed
+            recordedRoundIndex
         );
 
         int lineup1Score = TeamUtility.GetTeamScore(
