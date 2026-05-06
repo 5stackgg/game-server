@@ -74,6 +74,7 @@ public partial class FiveStackPlugin
 
         if (token == matchPassword)
         {
+            PendingPlayers[steamId] = "streamer";
             return HookResult.Continue;
         }
 
