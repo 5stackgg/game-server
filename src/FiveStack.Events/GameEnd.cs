@@ -32,25 +32,31 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        // Capture the winner now, while the CS2 team scores still reflect this map.
+        // Any later recompute is unsafe because mp_match_restart_delay (== tv_delay)
+        // can reset the scoreboard before our deferred handlers run, which would
+        // collapse to a 0-0 read and silently default to lineup_2.
+        Guid? winningLineupId = _matchEvents.GetWinningLineupId();
+
         if (matchData.options.use_playcast)
         {
             TimerUtility.AddTimer(
                 matchData.options.tv_delay,
                 () =>
                 {
-                    HandleEndOfMap();
+                    HandleEndOfMap(winningLineupId);
                 }
             );
 
             return HookResult.Continue;
         }
 
-        HandleEndOfMap();
+        HandleEndOfMap(winningLineupId);
 
         return HookResult.Continue;
     }
 
-    private void HandleEndOfMap()
+    private void HandleEndOfMap(Guid? winningLineupId)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null)
@@ -85,7 +91,7 @@ public partial class FiveStackPlugin
             }
             else
             {
-                match.UpdateMapStatus(eMapStatus.Finished, _matchEvents.GetWinningLineupId());
+                match.UpdateMapStatus(eMapStatus.Finished, winningLineupId);
             }
 
             return;
@@ -93,7 +99,6 @@ public partial class FiveStackPlugin
 
         _logger.LogInformation("delaying uploading demos for 15 seconds");
 
-        Guid? winningLineupId = _matchEvents.GetWinningLineupId();
         Guid expectedMatchId = matchData.id;
         int tvDelay = matchData.options.tv_delay;
 
@@ -144,10 +149,11 @@ public partial class FiveStackPlugin
                     }
                     else
                     {
-                        current.UpdateMapStatus(
-                            eMapStatus.Finished,
-                            _matchEvents.GetWinningLineupId()
-                        );
+                        // Reuse the winner captured at game end. Recomputing here is
+                        // unsafe because by now the CS2 server may have hit
+                        // mp_match_restart_delay and reset team scores to 0, which
+                        // would make GetWinningLineupId() fall through to lineup_2.
+                        current.UpdateMapStatus(eMapStatus.Finished, winningLineupId);
                     }
 
                     int tailDelaySeconds = usePlaycast ? 5 : Math.Max(5, tvDelay - 15);
