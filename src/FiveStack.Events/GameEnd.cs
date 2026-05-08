@@ -32,10 +32,7 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        // Capture the winner now, while the CS2 team scores still reflect this map.
-        // Any later recompute is unsafe because mp_match_restart_delay (== tv_delay)
-        // can reset the scoreboard before our deferred handlers run, which would
-        // collapse to a 0-0 read and silently default to lineup_2.
+        // Capture before mp_match_restart_delay can reset the scoreboard.
         Guid? winningLineupId = _matchEvents.GetWinningLineupId();
 
         if (matchData.options.use_playcast)
@@ -149,10 +146,6 @@ public partial class FiveStackPlugin
                     }
                     else
                     {
-                        // Reuse the winner captured at game end. Recomputing here is
-                        // unsafe because by now the CS2 server may have hit
-                        // mp_match_restart_delay and reset team scores to 0, which
-                        // would make GetWinningLineupId() fall through to lineup_2.
                         current.UpdateMapStatus(eMapStatus.Finished, winningLineupId);
                     }
 
