@@ -32,7 +32,6 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        // Capture before mp_match_restart_delay can reset the scoreboard.
         Guid? winningLineupId = _matchEvents.GetWinningLineupId();
 
         if (matchData.options.use_playcast)
