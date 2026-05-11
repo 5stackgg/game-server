@@ -61,11 +61,7 @@ public class MatchEvents
         {
             return;
         }
-        _logger.LogInformation(
-            "PublishMapStatus status={Status} winning_lineup_id={WinningLineupId}",
-            status,
-            winningLineupId?.ToString() ?? "<null>"
-        );
+        _logger.LogInformation($"PublishMapStatus status={status} winning_lineup_id={winningLineupId?.ToString() ?? "<null>"}");
         PublishGameEvent(
             "mapStatus",
             new Dictionary<string, object>
@@ -377,18 +373,12 @@ public class MatchEvents
 
         if (match == null || matchData == null || currentMap == null)
         {
-            _logger.LogWarning(
-                "GetRoundInformation: null state (match={MatchNull}, matchData={MatchDataNull}, currentMap={CurrentMapNull}) - returning zeros",
-                match == null,
-                matchData == null,
-                currentMap == null
-            );
+            _logger.LogWarning($"GetRoundInformation: null state, returning zeros (match={match == null}, matchData={matchData == null}, currentMap={currentMap == null})");
             return (0, 0, CsTeam.None, CsTeam.None, 0);
         }
 
-        var rules = MatchUtility.Rules();
+        bool rulesNull = MatchUtility.Rules() == null;
         int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
-
         int recordedRoundIndex = Math.Max(0, totalRoundsPlayed - 1);
 
         CsTeam lineup1Side = TeamUtility.GetLineupSide(
@@ -410,7 +400,6 @@ public class MatchEvents
             matchData.lineup_1_id,
             recordedRoundIndex
         );
-
         int lineup2Score = TeamUtility.GetTeamScore(
             matchData,
             currentMap,
@@ -418,50 +407,15 @@ public class MatchEvents
             recordedRoundIndex
         );
 
-        CsTeam lineup1ScoreSide = lineup1Side;
-        CsTeam lineup2ScoreSide = lineup2Side;
-
         int liveTScore = 0;
         int liveCtScore = 0;
         foreach (var team in MatchUtility.Teams())
         {
-            if (team.TeamNum == (int)CsTeam.Terrorist)
-            {
-                liveTScore = team.Score;
-            }
-            else if (team.TeamNum == (int)CsTeam.CounterTerrorist)
-            {
-                liveCtScore = team.Score;
-            }
+            if (team.TeamNum == (int)CsTeam.Terrorist) liveTScore = team.Score;
+            else if (team.TeamNum == (int)CsTeam.CounterTerrorist) liveCtScore = team.Score;
         }
 
-        _logger.LogInformation(
-            "GetRoundInformation match={MatchId} map={MapId} active_map={ActiveMapId} gameEnded={GameEnded} "
-                + "rules_null={RulesNull} totalRoundsPlayed={TotalRoundsPlayed} recordedRoundIndex={RecordedRoundIndex} mr={Mr} "
-                + "map_lineup_1_side={MapL1Side} map_lineup_2_side={MapL2Side} "
-                + "l1_display_side={L1DisplaySide} l1_score_side={L1ScoreSide} l1_score={L1Score} "
-                + "l2_display_side={L2DisplaySide} l2_score_side={L2ScoreSide} l2_score={L2Score} "
-                + "live_t={LiveT} live_ct={LiveCt} side_skew={SideSkew}",
-            matchData.id,
-            currentMap.id,
-            match.GetActiveMapId(),
-            match.gameEnded,
-            rules == null,
-            totalRoundsPlayed,
-            recordedRoundIndex,
-            matchData.options.mr,
-            currentMap.lineup_1_side,
-            currentMap.lineup_2_side,
-            lineup1Side,
-            lineup1ScoreSide,
-            lineup1Score,
-            lineup2Side,
-            lineup2ScoreSide,
-            lineup2Score,
-            liveTScore,
-            liveCtScore,
-            lineup1Side != lineup1ScoreSide || lineup2Side != lineup2ScoreSide
-        );
+        _logger.LogInformation($"GetRoundInformation match={matchData.id} map={currentMap.id} active_map={match.GetActiveMapId()} gameEnded={match.gameEnded} rules_null={rulesNull} totalRoundsPlayed={totalRoundsPlayed} recordedRoundIndex={recordedRoundIndex} mr={matchData.options.mr} map_l1_side={currentMap.lineup_1_side} map_l2_side={currentMap.lineup_2_side} l1_side={lineup1Side} l1_score={lineup1Score} l2_side={lineup2Side} l2_score={lineup2Score} live_t={liveTScore} live_ct={liveCtScore}");
 
         return (lineup1Score, lineup2Score, lineup1Side, lineup2Side, totalRoundsPlayed);
     }
@@ -474,12 +428,7 @@ public class MatchEvents
 
         if (match == null || matchData == null || currentMap == null)
         {
-            _logger.LogWarning(
-                "GetWinningLineupId called with null state (match={MatchNull}, matchData={MatchDataNull}, currentMap={CurrentMapNull}) - returning null",
-                match == null,
-                matchData == null,
-                currentMap == null
-            );
+            _logger.LogWarning($"GetWinningLineupId: null state, returning null (match={match == null}, matchData={matchData == null}, currentMap={currentMap == null})");
             return null;
         }
 
@@ -522,28 +471,7 @@ public class MatchEvents
             }
         }
 
-        _logger.LogInformation(
-            "GetWinningLineupId match={MatchId} map={MapId} mr={Mr} totalRoundsPlayed={TotalRoundsPlayed} "
-                + "lineup_1_id={Lineup1Id} lineup_1_starting_side={Lineup1StartSide} lineup_1_resolved_side={Lineup1Side} lineup_1_score={Lineup1Score} "
-                + "lineup_2_id={Lineup2Id} lineup_2_starting_side={Lineup2StartSide} lineup_2_resolved_side={Lineup2Side} lineup_2_score={Lineup2Score} "
-                + "live_t_score={LiveTScore} live_ct_score={LiveCtScore} decision={Decision} winner={WinnerId}",
-            matchData.id,
-            currentMap.id,
-            matchData.options.mr,
-            totalRoundsPlayed,
-            matchData.lineup_1_id,
-            currentMap.lineup_1_side,
-            lineup1Side,
-            lineup1Score,
-            matchData.lineup_2_id,
-            currentMap.lineup_2_side,
-            lineup2Side,
-            lineup2Score,
-            liveTScore,
-            liveCtScore,
-            winnerLabel,
-            winnerId
-        );
+        _logger.LogInformation($"GetWinningLineupId match={matchData.id} map={currentMap.id} mr={matchData.options.mr} totalRoundsPlayed={totalRoundsPlayed} l1_id={matchData.lineup_1_id} l1_starting_side={currentMap.lineup_1_side} l1_resolved_side={lineup1Side} l1_score={lineup1Score} l2_id={matchData.lineup_2_id} l2_starting_side={currentMap.lineup_2_side} l2_resolved_side={lineup2Side} l2_score={lineup2Score} live_t={liveTScore} live_ct={liveCtScore} decision={winnerLabel} winner={winnerId}");
 
         return winnerId;
     }

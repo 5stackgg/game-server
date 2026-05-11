@@ -24,22 +24,7 @@ public partial class FiveStackPlugin
         {
             MatchData? snapMatchData = match.GetMatchData();
             MatchMap? snapCurrentMap = match.GetCurrentMap();
-            _logger.LogInformation(
-                "OnGameEnd entry: match={MatchId} current_match_map_id={CurrentMatchMapId} active_map_id={ActiveMapId} "
-                    + "currentMap.id={CurrentMapId} currentMap.lineup_1_side={L1Side} currentMap.lineup_2_side={L2Side} "
-                    + "lineup_1_id={L1Id} lineup_2_id={L2Id} mr={Mr} isSurrendered={IsSurrendered} gameEnded={GameEnded}",
-                snapMatchData?.id,
-                snapMatchData?.current_match_map_id,
-                match.GetActiveMapId(),
-                snapCurrentMap?.id,
-                snapCurrentMap?.lineup_1_side,
-                snapCurrentMap?.lineup_2_side,
-                snapMatchData?.lineup_1_id,
-                snapMatchData?.lineup_2_id,
-                snapMatchData?.options?.mr,
-                match.isSurrendered(),
-                match.gameEnded
-            );
+            _logger.LogInformation($"OnGameEnd entry: match={snapMatchData?.id} status={match.CurrentMapStatus} previous={match.PreviousMapStatus} current_match_map_id={snapMatchData?.current_match_map_id} active_map_id={match.GetActiveMapId()} currentMap.id={snapCurrentMap?.id} currentMap.lineup_1_side={snapCurrentMap?.lineup_1_side} currentMap.lineup_2_side={snapCurrentMap?.lineup_2_side} lineup_1_id={snapMatchData?.lineup_1_id} lineup_2_id={snapMatchData?.lineup_2_id} mr={snapMatchData?.options?.mr} isSurrendered={match.isSurrendered()} gameEnded={match.gameEnded}");
         }
 
         match.gameEnded = true;
@@ -61,11 +46,7 @@ public partial class FiveStackPlugin
         MatchMap? currentMap = match.GetCurrentMap();
         if (matchData == null || currentMap == null)
         {
-            _logger.LogWarning(
-                "OnGameEnd: matchData or currentMap became null after PublishRoundInformation (matchData={MatchDataNull}, currentMap={CurrentMapNull})",
-                matchData == null,
-                currentMap == null
-            );
+            _logger.LogWarning($"OnGameEnd: matchData or currentMap became null after PublishPendingRound (matchData={matchData == null}, currentMap={currentMap == null})");
             return HookResult.Continue;
         }
 
