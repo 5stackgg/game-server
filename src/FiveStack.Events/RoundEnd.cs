@@ -58,13 +58,6 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        eMapStatus current = match.CurrentMapStatus;
-        if (current != eMapStatus.Live && current != eMapStatus.Overtime)
-        {
-            _logger.LogInformation($"OnRoundOfficiallyEnded skipping capture: current={current} previous={match.PreviousMapStatus}");
-            return HookResult.Continue;
-        }
-
         CaptureRoundResult(match, matchData, currentMap);
 
         return HookResult.Continue;
@@ -75,7 +68,9 @@ public partial class FiveStackPlugin
     {
         if (_gameBackupRounds.IsResettingRound())
         {
-            _logger.LogInformation($"OnRoundEnd ignored (restoring round): message={@event.Message}");
+            _logger.LogInformation(
+                $"OnRoundEnd ignored (restoring round): message={@event.Message}"
+            );
             return HookResult.Continue;
         }
 
@@ -128,10 +123,14 @@ public partial class FiveStackPlugin
         int liveCtScoreAtEnd = 0;
         foreach (var team in MatchUtility.Teams())
         {
-            if (team.TeamNum == (int)CsTeam.Terrorist) liveTScoreAtEnd = team.Score;
-            else if (team.TeamNum == (int)CsTeam.CounterTerrorist) liveCtScoreAtEnd = team.Score;
+            if (team.TeamNum == (int)CsTeam.Terrorist)
+                liveTScoreAtEnd = team.Score;
+            else if (team.TeamNum == (int)CsTeam.CounterTerrorist)
+                liveCtScoreAtEnd = team.Score;
         }
-        _logger.LogInformation($"OnRoundEnd totalRoundsPlayed={_gameServer.GetTotalRoundsPlayed()} status={match.CurrentMapStatus} previous={match.PreviousMapStatus} winner={roundWinner} reason={reason} live_t={liveTScoreAtEnd} live_ct={liveCtScoreAtEnd} isKnife={match.IsKnife()}");
+        _logger.LogInformation(
+            $"OnRoundEnd totalRoundsPlayed={_gameServer.GetTotalRoundsPlayed()} winner={roundWinner} reason={reason} live_t={liveTScoreAtEnd} live_ct={liveCtScoreAtEnd} isKnife={match.IsKnife()}"
+        );
 
         return HookResult.Continue;
     }
@@ -144,8 +143,10 @@ public partial class FiveStackPlugin
         int liveCt = 0;
         foreach (var team in MatchUtility.Teams())
         {
-            if (team.TeamNum == (int)CsTeam.Terrorist) liveT = team.Score;
-            else if (team.TeamNum == (int)CsTeam.CounterTerrorist) liveCt = team.Score;
+            if (team.TeamNum == (int)CsTeam.Terrorist)
+                liveT = team.Score;
+            else if (team.TeamNum == (int)CsTeam.CounterTerrorist)
+                liveCt = team.Score;
         }
 
         (int l1Timeouts, int l2Timeouts) = _timeoutSystem.GetLineupTimeouts();
@@ -173,7 +174,9 @@ public partial class FiveStackPlugin
             WinReason = reason ?? eWinReason.Unknown,
         };
 
-        _logger.LogInformation($"CaptureRoundResult round={totalRoundsPlayed} match_map={_pendingRoundResult.MatchMapId} live_t={liveT} live_ct={liveCt} winner={roundWinner} reason={reason}");
+        _logger.LogInformation(
+            $"CaptureRoundResult round={totalRoundsPlayed} match_map={_pendingRoundResult.MatchMapId} live_t={liveT} live_ct={liveCt} winner={roundWinner} reason={reason}"
+        );
     }
 
     public void PublishPendingRound(bool SendBackupRound)
@@ -181,7 +184,9 @@ public partial class FiveStackPlugin
         RoundResultSnapshot? snap = _pendingRoundResult;
         if (snap == null)
         {
-            _logger.LogInformation($"PublishPendingRound skipped: no pending round (sendBackup={SendBackupRound})");
+            _logger.LogInformation(
+                $"PublishPendingRound skipped: no pending round (sendBackup={SendBackupRound})"
+            );
             return;
         }
 
@@ -191,7 +196,9 @@ public partial class FiveStackPlugin
 
         if (match == null || matchData == null || currentMap == null)
         {
-            _logger.LogWarning($"PublishPendingRound skipped: null state (match={match == null} matchData={matchData == null} currentMap={currentMap == null})");
+            _logger.LogWarning(
+                $"PublishPendingRound skipped: null state (match={match == null} matchData={matchData == null} currentMap={currentMap == null})"
+            );
             return;
         }
 
@@ -213,12 +220,13 @@ public partial class FiveStackPlugin
         int l1Score = ScoreForSide(snap, l1Side);
         int l2Score = ScoreForSide(snap, l2Side);
 
-        string backupFile =
-            SendBackupRound
-                ? (_gameBackupRounds.GetBackupRoundFile(_gameServer.GetTotalRoundsPlayed()) ?? "")
-                : "";
+        string backupFile = SendBackupRound
+            ? (_gameBackupRounds.GetBackupRoundFile(_gameServer.GetTotalRoundsPlayed()) ?? "")
+            : "";
 
-        _logger.LogInformation($"PublishPendingRound round={snap.Round} captured_t={snap.LiveTScore} captured_ct={snap.LiveCtScore} l1_side={l1Side} l1_score={l1Score} l2_side={l2Side} l2_score={l2Score} winning_side={snap.Winner} reason={snap.WinReason} backup_file_present={!string.IsNullOrEmpty(backupFile)}");
+        _logger.LogInformation(
+            $"PublishPendingRound round={snap.Round} captured_t={snap.LiveTScore} captured_ct={snap.LiveCtScore} l1_side={l1Side} l1_score={l1Score} l2_side={l2Side} l2_score={l2Score} winning_side={snap.Winner} reason={snap.WinReason} backup_file_present={!string.IsNullOrEmpty(backupFile)}"
+        );
 
         _matchEvents.PublishGameEvent(
             "score",
@@ -246,8 +254,10 @@ public partial class FiveStackPlugin
 
     private static int ScoreForSide(RoundResultSnapshot snap, CsTeam side)
     {
-        if (side == CsTeam.Terrorist) return snap.LiveTScore;
-        if (side == CsTeam.CounterTerrorist) return snap.LiveCtScore;
+        if (side == CsTeam.Terrorist)
+            return snap.LiveTScore;
+        if (side == CsTeam.CounterTerrorist)
+            return snap.LiveCtScore;
         return 0;
     }
 }

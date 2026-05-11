@@ -24,7 +24,9 @@ public partial class FiveStackPlugin
         {
             MatchData? snapMatchData = match.GetMatchData();
             MatchMap? snapCurrentMap = match.GetCurrentMap();
-            _logger.LogInformation($"OnGameEnd entry: match={snapMatchData?.id} status={match.CurrentMapStatus} previous={match.PreviousMapStatus} current_match_map_id={snapMatchData?.current_match_map_id} active_map_id={match.GetActiveMapId()} currentMap.id={snapCurrentMap?.id} currentMap.lineup_1_side={snapCurrentMap?.lineup_1_side} currentMap.lineup_2_side={snapCurrentMap?.lineup_2_side} lineup_1_id={snapMatchData?.lineup_1_id} lineup_2_id={snapMatchData?.lineup_2_id} mr={snapMatchData?.options?.mr} isSurrendered={match.isSurrendered()} gameEnded={match.gameEnded}");
+            _logger.LogInformation(
+                $"OnGameEnd entry: match={snapMatchData?.id} current_match_map_id={snapMatchData?.current_match_map_id} active_map_id={match.GetActiveMapId()} currentMap.id={snapCurrentMap?.id} currentMap.lineup_1_side={snapCurrentMap?.lineup_1_side} currentMap.lineup_2_side={snapCurrentMap?.lineup_2_side} lineup_1_id={snapMatchData?.lineup_1_id} lineup_2_id={snapMatchData?.lineup_2_id} mr={snapMatchData?.options?.mr} isSurrendered={match.isSurrendered()} gameEnded={match.gameEnded}"
+            );
         }
 
         match.gameEnded = true;
@@ -32,7 +34,12 @@ public partial class FiveStackPlugin
         {
             MatchData? capData = match.GetMatchData();
             MatchMap? capMap = match.GetCurrentMap();
-            if (_pendingRoundResult == null && capData != null && capMap != null && !match.IsKnife())
+            if (
+                _pendingRoundResult == null
+                && capData != null
+                && capMap != null
+                && !match.IsKnife()
+            )
             {
                 _logger.LogInformation(
                     "OnGameEnd: no pending round captured yet, capturing now from live engine state"
@@ -46,7 +53,9 @@ public partial class FiveStackPlugin
         MatchMap? currentMap = match.GetCurrentMap();
         if (matchData == null || currentMap == null)
         {
-            _logger.LogWarning($"OnGameEnd: matchData or currentMap became null after PublishPendingRound (matchData={matchData == null}, currentMap={currentMap == null})");
+            _logger.LogWarning(
+                $"OnGameEnd: matchData or currentMap became null after PublishPendingRound (matchData={matchData == null}, currentMap={currentMap == null})"
+            );
             return HookResult.Continue;
         }
 

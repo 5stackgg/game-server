@@ -61,7 +61,9 @@ public class MatchEvents
         {
             return;
         }
-        _logger.LogInformation($"PublishMapStatus status={status} winning_lineup_id={winningLineupId?.ToString() ?? "<null>"}");
+        _logger.LogInformation(
+            $"PublishMapStatus status={status} winning_lineup_id={winningLineupId?.ToString() ?? "<null>"}"
+        );
         PublishGameEvent(
             "mapStatus",
             new Dictionary<string, object>
@@ -373,7 +375,9 @@ public class MatchEvents
 
         if (match == null || matchData == null || currentMap == null)
         {
-            _logger.LogWarning($"GetRoundInformation: null state, returning zeros (match={match == null}, matchData={matchData == null}, currentMap={currentMap == null})");
+            _logger.LogWarning(
+                $"GetRoundInformation: null state, returning zeros (match={match == null}, matchData={matchData == null}, currentMap={currentMap == null})"
+            );
             return (0, 0, CsTeam.None, CsTeam.None, 0);
         }
 
@@ -411,11 +415,15 @@ public class MatchEvents
         int liveCtScore = 0;
         foreach (var team in MatchUtility.Teams())
         {
-            if (team.TeamNum == (int)CsTeam.Terrorist) liveTScore = team.Score;
-            else if (team.TeamNum == (int)CsTeam.CounterTerrorist) liveCtScore = team.Score;
+            if (team.TeamNum == (int)CsTeam.Terrorist)
+                liveTScore = team.Score;
+            else if (team.TeamNum == (int)CsTeam.CounterTerrorist)
+                liveCtScore = team.Score;
         }
 
-        _logger.LogInformation($"GetRoundInformation match={matchData.id} map={currentMap.id} active_map={match.GetActiveMapId()} gameEnded={match.gameEnded} rules_null={rulesNull} totalRoundsPlayed={totalRoundsPlayed} recordedRoundIndex={recordedRoundIndex} mr={matchData.options.mr} map_l1_side={currentMap.lineup_1_side} map_l2_side={currentMap.lineup_2_side} l1_side={lineup1Side} l1_score={lineup1Score} l2_side={lineup2Side} l2_score={lineup2Score} live_t={liveTScore} live_ct={liveCtScore}");
+        _logger.LogInformation(
+            $"GetRoundInformation match={matchData.id} map={currentMap.id} active_map={match.GetActiveMapId()} gameEnded={match.gameEnded} rules_null={rulesNull} totalRoundsPlayed={totalRoundsPlayed} recordedRoundIndex={recordedRoundIndex} mr={matchData.options.mr} map_l1_side={currentMap.lineup_1_side} map_l2_side={currentMap.lineup_2_side} l1_side={lineup1Side} l1_score={lineup1Score} l2_side={lineup2Side} l2_score={lineup2Score} live_t={liveTScore} live_ct={liveCtScore}"
+        );
 
         return (lineup1Score, lineup2Score, lineup1Side, lineup2Side, totalRoundsPlayed);
     }
@@ -428,7 +436,9 @@ public class MatchEvents
 
         if (match == null || matchData == null || currentMap == null)
         {
-            _logger.LogWarning($"GetWinningLineupId: null state, returning null (match={match == null}, matchData={matchData == null}, currentMap={currentMap == null})");
+            _logger.LogWarning(
+                $"GetWinningLineupId: null state, returning null (match={match == null}, matchData={matchData == null}, currentMap={currentMap == null})"
+            );
             return null;
         }
 
@@ -471,7 +481,9 @@ public class MatchEvents
             }
         }
 
-        _logger.LogInformation($"GetWinningLineupId match={matchData.id} map={currentMap.id} mr={matchData.options.mr} totalRoundsPlayed={totalRoundsPlayed} l1_id={matchData.lineup_1_id} l1_starting_side={currentMap.lineup_1_side} l1_resolved_side={lineup1Side} l1_score={lineup1Score} l2_id={matchData.lineup_2_id} l2_starting_side={currentMap.lineup_2_side} l2_resolved_side={lineup2Side} l2_score={lineup2Score} live_t={liveTScore} live_ct={liveCtScore} decision={winnerLabel} winner={winnerId}");
+        _logger.LogInformation(
+            $"GetWinningLineupId match={matchData.id} map={currentMap.id} mr={matchData.options.mr} totalRoundsPlayed={totalRoundsPlayed} l1_id={matchData.lineup_1_id} l1_starting_side={currentMap.lineup_1_side} l1_resolved_side={lineup1Side} l1_score={lineup1Score} l2_id={matchData.lineup_2_id} l2_starting_side={currentMap.lineup_2_side} l2_resolved_side={lineup2Side} l2_score={lineup2Score} live_t={liveTScore} live_ct={liveCtScore} decision={winnerLabel} winner={winnerId}"
+        );
 
         return winnerId;
     }

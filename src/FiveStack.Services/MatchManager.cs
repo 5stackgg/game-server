@@ -18,10 +18,6 @@ public class MatchManager
 {
     private MatchData? _matchData;
     private eMapStatus _currentMapStatus = eMapStatus.Unknown;
-    private eMapStatus _previousMapStatus = eMapStatus.Unknown;
-
-    public eMapStatus CurrentMapStatus => _currentMapStatus;
-    public eMapStatus PreviousMapStatus => _previousMapStatus;
     private Guid? _activeMapId;
     private Timer? _resumeMessageTimer;
     public bool gameEnded = false;
@@ -385,7 +381,6 @@ public class MatchManager
         }
 
         _matchEvents.PublishMapStatus(status, winningLineupId);
-        _previousMapStatus = _currentMapStatus;
         _currentMapStatus = status;
     }
 

@@ -22,7 +22,9 @@ public partial class FiveStackPlugin
         bool isKnife = matchManager.IsKnife();
         bool isWarmup = matchManager.IsWarmup();
 
-        _logger.LogInformation($"OnRoundStart totalRoundsPlayed={totalRoundsPlayed} status={matchManager.CurrentMapStatus} previous={matchManager.PreviousMapStatus} isInProgress={isInProgress} isWarmup={isWarmup} isKnife={isKnife}");
+        _logger.LogInformation(
+            $"OnRoundStart totalRoundsPlayed={totalRoundsPlayed} isInProgress={isInProgress} isWarmup={isWarmup} isKnife={isKnife}"
+        );
 
         if (!isInProgress)
         {
