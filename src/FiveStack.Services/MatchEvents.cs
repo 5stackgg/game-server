@@ -55,12 +55,43 @@ public class MatchEvents
         public T? data { get; set; }
     }
 
+    public class RoundResultSnapshot
+    {
+        public int Round { get; set; }
+        public Guid MatchMapId { get; set; }
+        public DateTime CapturedAt { get; set; }
+        public int LiveTScore { get; set; }
+        public int LiveCtScore { get; set; }
+        public string Lineup1Money { get; set; } = "0";
+        public string Lineup2Money { get; set; } = "0";
+        public int Lineup1Timeouts { get; set; }
+        public int Lineup2Timeouts { get; set; }
+        public CsTeam Winner { get; set; }
+        public eWinReason WinReason { get; set; }
+    }
+
+    public RoundResultSnapshot? PendingRoundResult { get; set; }
+
+    public void ClearPendingRoundResult()
+    {
+        if (PendingRoundResult != null)
+        {
+            _logger.LogInformation(
+                $"Clearing pending round result (round={PendingRoundResult.Round} match_map={PendingRoundResult.MatchMapId})"
+            );
+        }
+        PendingRoundResult = null;
+    }
+
     public void PublishMapStatus(eMapStatus status, Guid? winningLineupId)
     {
         if (_environmentService.IsOfflineMode())
         {
             return;
         }
+        _logger.LogInformation(
+            $"PublishMapStatus status={status} winning_lineup_id={winningLineupId?.ToString() ?? "<null>"}"
+        );
         PublishGameEvent(
             "mapStatus",
             new Dictionary<string, object>
@@ -372,11 +403,14 @@ public class MatchEvents
 
         if (match == null || matchData == null || currentMap == null)
         {
+            _logger.LogWarning(
+                $"GetRoundInformation: null state, returning zeros (match={match == null}, matchData={matchData == null}, currentMap={currentMap == null})"
+            );
             return (0, 0, CsTeam.None, CsTeam.None, 0);
         }
 
+        bool rulesNull = MatchUtility.Rules() == null;
         int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
-
         int recordedRoundIndex = Math.Max(0, totalRoundsPlayed - 1);
 
         CsTeam lineup1Side = TeamUtility.GetLineupSide(
@@ -396,14 +430,27 @@ public class MatchEvents
             matchData,
             currentMap,
             matchData.lineup_1_id,
-            totalRoundsPlayed
+            recordedRoundIndex
         );
-
         int lineup2Score = TeamUtility.GetTeamScore(
             matchData,
             currentMap,
             matchData.lineup_2_id,
-            totalRoundsPlayed
+            recordedRoundIndex
+        );
+
+        int liveTScore = 0;
+        int liveCtScore = 0;
+        foreach (var team in MatchUtility.Teams())
+        {
+            if (team.TeamNum == (int)CsTeam.Terrorist)
+                liveTScore = team.Score;
+            else if (team.TeamNum == (int)CsTeam.CounterTerrorist)
+                liveCtScore = team.Score;
+        }
+
+        _logger.LogInformation(
+            $"GetRoundInformation match={matchData.id} map={currentMap.id} active_map={match.GetActiveMapId()} gameEnded={match.gameEnded} rules_null={rulesNull} totalRoundsPlayed={totalRoundsPlayed} recordedRoundIndex={recordedRoundIndex} mr={matchData.options.mr} map_l1_side={currentMap.lineup_1_side} map_l2_side={currentMap.lineup_2_side} l1_side={lineup1Side} l1_score={lineup1Score} l2_side={lineup2Side} l2_score={lineup2Score} live_t={liveTScore} live_ct={liveCtScore}"
         );
 
         return (lineup1Score, lineup2Score, lineup1Side, lineup2Side, totalRoundsPlayed);
@@ -417,6 +464,9 @@ public class MatchEvents
 
         if (match == null || matchData == null || currentMap == null)
         {
+            _logger.LogWarning(
+                $"GetWinningLineupId: null state, returning null (match={match == null}, matchData={matchData == null}, currentMap={currentMap == null})"
+            );
             return null;
         }
 
@@ -428,6 +478,41 @@ public class MatchEvents
             int totalRoundsPlayed
         ) = GetRoundInformation();
 
-        return lineup1Score > lineup2Score ? matchData.lineup_1_id : matchData.lineup_2_id;
+        Guid? winnerId =
+            lineup1Score > lineup2Score ? matchData.lineup_1_id : matchData.lineup_2_id;
+
+        string winnerLabel;
+        if (lineup1Score == lineup2Score)
+        {
+            winnerLabel = "TIE_DEFAULT_LINEUP_2";
+        }
+        else if (lineup1Score > lineup2Score)
+        {
+            winnerLabel = "LINEUP_1";
+        }
+        else
+        {
+            winnerLabel = "LINEUP_2";
+        }
+
+        int liveTScore = 0;
+        int liveCtScore = 0;
+        foreach (var team in MatchUtility.Teams())
+        {
+            if (team.TeamNum == (int)CsTeam.Terrorist)
+            {
+                liveTScore = team.Score;
+            }
+            else if (team.TeamNum == (int)CsTeam.CounterTerrorist)
+            {
+                liveCtScore = team.Score;
+            }
+        }
+
+        _logger.LogInformation(
+            $"GetWinningLineupId match={matchData.id} map={currentMap.id} mr={matchData.options.mr} totalRoundsPlayed={totalRoundsPlayed} l1_id={matchData.lineup_1_id} l1_starting_side={currentMap.lineup_1_side} l1_resolved_side={lineup1Side} l1_score={lineup1Score} l2_id={matchData.lineup_2_id} l2_starting_side={currentMap.lineup_2_side} l2_resolved_side={lineup2Side} l2_score={lineup2Score} live_t={liveTScore} live_ct={liveCtScore} decision={winnerLabel} winner={winnerId}"
+        );
+
+        return winnerId;
     }
 }

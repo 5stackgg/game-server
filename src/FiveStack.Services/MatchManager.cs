@@ -369,6 +369,7 @@ public class MatchManager
             case eMapStatus.Surrendered:
                 _matchDemos.Stop();
                 _surrenderSystem.Reset();
+                _matchEvents.ClearPendingRoundResult();
                 break;
             case eMapStatus.UploadingDemo:
                 _matchDemos.Stop();

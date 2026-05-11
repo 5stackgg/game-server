@@ -21,16 +21,49 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        {
+            MatchData? snapMatchData = match.GetMatchData();
+            MatchMap? snapCurrentMap = match.GetCurrentMap();
+            _logger.LogInformation(
+                $"OnGameEnd entry: match={snapMatchData?.id} current_match_map_id={snapMatchData?.current_match_map_id} active_map_id={match.GetActiveMapId()} currentMap.id={snapCurrentMap?.id} currentMap.lineup_1_side={snapCurrentMap?.lineup_1_side} currentMap.lineup_2_side={snapCurrentMap?.lineup_2_side} lineup_1_id={snapMatchData?.lineup_1_id} lineup_2_id={snapMatchData?.lineup_2_id} mr={snapMatchData?.options?.mr} isSurrendered={match.isSurrendered()} gameEnded={match.gameEnded}"
+            );
+        }
+
         match.gameEnded = true;
 
-        PublishRoundInformation();
+        {
+            // Belt-and-suspenders: OnRoundOfficiallyEnded normally fires for the final round
+            // and captures the snapshot. If for any reason it didn't (engine quirk, surrender
+            // racing the win panel), capture now from live engine state so the final row gets
+            // published below.
+            MatchData? capData = match.GetMatchData();
+            MatchMap? capMap = match.GetCurrentMap();
+            if (
+                _matchEvents.PendingRoundResult == null
+                && capData != null
+                && capMap != null
+                && !match.IsKnife()
+            )
+            {
+                _logger.LogInformation(
+                    "OnGameEnd: no pending round captured yet, capturing now from live engine state"
+                );
+                CaptureRoundResult(match, capData, capMap);
+            }
+        }
+        PublishPendingRound(SendBackupRound: false);
 
         MatchData? matchData = match.GetMatchData();
         MatchMap? currentMap = match.GetCurrentMap();
         if (matchData == null || currentMap == null)
         {
+            _logger.LogWarning(
+                $"OnGameEnd: matchData or currentMap became null after PublishPendingRound (matchData={matchData == null}, currentMap={currentMap == null})"
+            );
             return HookResult.Continue;
         }
+
+        Guid? winningLineupId = _matchEvents.GetWinningLineupId();
 
         if (matchData.options.use_playcast)
         {
@@ -38,19 +71,19 @@ public partial class FiveStackPlugin
                 matchData.options.tv_delay,
                 () =>
                 {
-                    HandleEndOfMap();
+                    HandleEndOfMap(winningLineupId);
                 }
             );
 
             return HookResult.Continue;
         }
 
-        HandleEndOfMap();
+        HandleEndOfMap(winningLineupId);
 
         return HookResult.Continue;
     }
 
-    private void HandleEndOfMap()
+    private void HandleEndOfMap(Guid? winningLineupId)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null)
@@ -85,7 +118,7 @@ public partial class FiveStackPlugin
             }
             else
             {
-                match.UpdateMapStatus(eMapStatus.Finished, _matchEvents.GetWinningLineupId());
+                match.UpdateMapStatus(eMapStatus.Finished, winningLineupId);
             }
 
             return;
@@ -93,7 +126,6 @@ public partial class FiveStackPlugin
 
         _logger.LogInformation("delaying uploading demos for 15 seconds");
 
-        Guid? winningLineupId = _matchEvents.GetWinningLineupId();
         Guid expectedMatchId = matchData.id;
         int tvDelay = matchData.options.tv_delay;
 
@@ -144,10 +176,7 @@ public partial class FiveStackPlugin
                     }
                     else
                     {
-                        current.UpdateMapStatus(
-                            eMapStatus.Finished,
-                            _matchEvents.GetWinningLineupId()
-                        );
+                        current.UpdateMapStatus(eMapStatus.Finished, winningLineupId);
                     }
 
                     int tailDelaySeconds = usePlaycast ? 5 : Math.Max(5, tvDelay - 15);
