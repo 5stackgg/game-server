@@ -13,23 +13,6 @@ public partial class FiveStackPlugin
     CsTeam roundWinner;
     eWinReason? reason;
 
-    private class RoundResultSnapshot
-    {
-        public int Round { get; set; }
-        public Guid MatchMapId { get; set; }
-        public DateTime CapturedAt { get; set; }
-        public int LiveTScore { get; set; }
-        public int LiveCtScore { get; set; }
-        public string Lineup1Money { get; set; } = "0";
-        public string Lineup2Money { get; set; } = "0";
-        public int Lineup1Timeouts { get; set; }
-        public int Lineup2Timeouts { get; set; }
-        public CsTeam Winner { get; set; }
-        public eWinReason WinReason { get; set; }
-    }
-
-    private RoundResultSnapshot? _pendingRoundResult;
-
     [GameEventHandler]
     public HookResult OnRoundOfficiallyEnded(EventRoundOfficiallyEnded @event, GameEventInfo info)
     {
@@ -82,6 +65,9 @@ public partial class FiveStackPlugin
 
         if (@event.Message == "#SFUI_Notice_Game_Commencing")
         {
+            // Pseudo round-end fired by mp_restartgame / warmup→live transitions.
+            // We intentionally don't update roundWinner/reason here; OnRoundOfficiallyEnded's
+            // IsKnife() guard still blocks capture during knife→live transitions.
             _logger.LogInformation("OnRoundEnd ignored (Game_Commencing): not a real round end");
             return HookResult.Continue;
         }
@@ -165,7 +151,7 @@ public partial class FiveStackPlugin
             .GetTeamMoney(matchData, currentMap, matchData.lineup_2_id, currentSideIndex)
             .ToString();
 
-        _pendingRoundResult = new RoundResultSnapshot
+        _matchEvents.PendingRoundResult = new MatchEvents.RoundResultSnapshot
         {
             Round = totalRoundsPlayed,
             MatchMapId = match.GetActiveMapId() ?? currentMap.id,
@@ -181,13 +167,13 @@ public partial class FiveStackPlugin
         };
 
         _logger.LogInformation(
-            $"CaptureRoundResult round={totalRoundsPlayed} match_map={_pendingRoundResult.MatchMapId} live_t={liveT} live_ct={liveCt} winner={roundWinner} reason={reason}"
+            $"CaptureRoundResult round={totalRoundsPlayed} match_map={_matchEvents.PendingRoundResult.MatchMapId} live_t={liveT} live_ct={liveCt} winner={roundWinner} reason={reason}"
         );
     }
 
     public void PublishPendingRound(bool SendBackupRound)
     {
-        RoundResultSnapshot? snap = _pendingRoundResult;
+        MatchEvents.RoundResultSnapshot? snap = _matchEvents.PendingRoundResult;
         if (snap == null)
         {
             _logger.LogInformation(
@@ -244,7 +230,7 @@ public partial class FiveStackPlugin
                 { "lineup_1_score", l1Score },
                 { "lineup_1_money", snap.Lineup1Money },
                 { "lineup_1_timeouts_available", $"{snap.Lineup1Timeouts}" },
-                { "lineup_2_score", $"{l2Score}" },
+                { "lineup_2_score", l2Score },
                 { "lineup_2_money", snap.Lineup2Money },
                 { "lineup_2_timeouts_available", $"{snap.Lineup2Timeouts}" },
                 { "lineup_1_side", $"{TeamUtility.CSTeamToString(l1Side)}" },
@@ -255,10 +241,10 @@ public partial class FiveStackPlugin
             }
         );
 
-        _pendingRoundResult = null;
+        _matchEvents.PendingRoundResult = null;
     }
 
-    private static int ScoreForSide(RoundResultSnapshot snap, CsTeam side)
+    private static int ScoreForSide(MatchEvents.RoundResultSnapshot snap, CsTeam side)
     {
         if (side == CsTeam.Terrorist)
             return snap.LiveTScore;

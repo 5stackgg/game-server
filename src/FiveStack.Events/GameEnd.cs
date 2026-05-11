@@ -32,10 +32,14 @@ public partial class FiveStackPlugin
         match.gameEnded = true;
 
         {
+            // Belt-and-suspenders: OnRoundOfficiallyEnded normally fires for the final round
+            // and captures the snapshot. If for any reason it didn't (engine quirk, surrender
+            // racing the win panel), capture now from live engine state so the final row gets
+            // published below.
             MatchData? capData = match.GetMatchData();
             MatchMap? capMap = match.GetCurrentMap();
             if (
-                _pendingRoundResult == null
+                _matchEvents.PendingRoundResult == null
                 && capData != null
                 && capMap != null
                 && !match.IsKnife()

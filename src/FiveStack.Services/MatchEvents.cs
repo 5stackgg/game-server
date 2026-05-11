@@ -55,6 +55,34 @@ public class MatchEvents
         public T? data { get; set; }
     }
 
+    public class RoundResultSnapshot
+    {
+        public int Round { get; set; }
+        public Guid MatchMapId { get; set; }
+        public DateTime CapturedAt { get; set; }
+        public int LiveTScore { get; set; }
+        public int LiveCtScore { get; set; }
+        public string Lineup1Money { get; set; } = "0";
+        public string Lineup2Money { get; set; } = "0";
+        public int Lineup1Timeouts { get; set; }
+        public int Lineup2Timeouts { get; set; }
+        public CsTeam Winner { get; set; }
+        public eWinReason WinReason { get; set; }
+    }
+
+    public RoundResultSnapshot? PendingRoundResult { get; set; }
+
+    public void ClearPendingRoundResult()
+    {
+        if (PendingRoundResult != null)
+        {
+            _logger.LogInformation(
+                $"Clearing pending round result (round={PendingRoundResult.Round} match_map={PendingRoundResult.MatchMapId})"
+            );
+        }
+        PendingRoundResult = null;
+    }
+
     public void PublishMapStatus(eMapStatus status, Guid? winningLineupId)
     {
         if (_environmentService.IsOfflineMode())

@@ -24,7 +24,7 @@ public partial class FiveStackPlugin
                     MatchManager? match = _matchService.GetCurrentMatch();
                     match?.SyncActiveMapAfterMapStart();
                     match?.Reset();
-                    _pendingRoundResult = null;
+                    _matchEvents.ClearPendingRoundResult();
                     _matchService.GetMatchFromApi();
                 });
             }
