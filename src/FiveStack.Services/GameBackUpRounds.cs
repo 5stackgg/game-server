@@ -275,8 +275,14 @@ public class GameBackUpRounds
         );
     }
 
-    public async void RestoreRound(int round)
+    public void RestoreRound(int round)
     {
+        if (IsResettingRound())
+        {
+            _logger.LogWarning($"Restore already in progress, ignoring RestoreRound({round})");
+            return;
+        }
+
         if (!CanRestoreRound(round))
         {
             return;
@@ -311,9 +317,8 @@ public class GameBackUpRounds
         );
 
         File.WriteAllText(backupRoundFilePath, backupRound.backup_file);
-        _gameServer.SendCommands(["mp_restartgame 1; mp_pause_match"]);
 
-        await Task.Delay(2 * 1000);
+        _resetRound = round;
 
         _logger.LogInformation($"Loading backup round file {backupRoundFileName}");
 
@@ -326,6 +331,8 @@ public class GameBackUpRounds
 
             Server.NextFrame(() =>
             {
+                _resetRound = null;
+
                 _logger.LogInformation($"Sending Message for Round {round}");
 
                 _gameServer.Message(

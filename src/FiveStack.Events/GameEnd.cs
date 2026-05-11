@@ -21,14 +21,51 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        {
+            MatchData? snapMatchData = match.GetMatchData();
+            MatchMap? snapCurrentMap = match.GetCurrentMap();
+            _logger.LogInformation(
+                "OnGameEnd entry: match={MatchId} current_match_map_id={CurrentMatchMapId} active_map_id={ActiveMapId} "
+                    + "currentMap.id={CurrentMapId} currentMap.lineup_1_side={L1Side} currentMap.lineup_2_side={L2Side} "
+                    + "lineup_1_id={L1Id} lineup_2_id={L2Id} mr={Mr} isSurrendered={IsSurrendered} gameEnded={GameEnded}",
+                snapMatchData?.id,
+                snapMatchData?.current_match_map_id,
+                match.GetActiveMapId(),
+                snapCurrentMap?.id,
+                snapCurrentMap?.lineup_1_side,
+                snapCurrentMap?.lineup_2_side,
+                snapMatchData?.lineup_1_id,
+                snapMatchData?.lineup_2_id,
+                snapMatchData?.options?.mr,
+                match.isSurrendered(),
+                match.gameEnded
+            );
+        }
+
         match.gameEnded = true;
 
-        PublishRoundInformation();
+        {
+            MatchData? capData = match.GetMatchData();
+            MatchMap? capMap = match.GetCurrentMap();
+            if (_pendingRoundResult == null && capData != null && capMap != null && !match.IsKnife())
+            {
+                _logger.LogInformation(
+                    "OnGameEnd: no pending round captured yet, capturing now from live engine state"
+                );
+                CaptureRoundResult(match, capData, capMap);
+            }
+        }
+        PublishPendingRound(SendBackupRound: false);
 
         MatchData? matchData = match.GetMatchData();
         MatchMap? currentMap = match.GetCurrentMap();
         if (matchData == null || currentMap == null)
         {
+            _logger.LogWarning(
+                "OnGameEnd: matchData or currentMap became null after PublishRoundInformation (matchData={MatchDataNull}, currentMap={CurrentMapNull})",
+                matchData == null,
+                currentMap == null
+            );
             return HookResult.Continue;
         }
 
