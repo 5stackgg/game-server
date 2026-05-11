@@ -58,6 +58,12 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        if (match.IsKnife())
+        {
+            _logger.LogInformation("OnRoundOfficiallyEnded skipping capture: knife round");
+            return HookResult.Continue;
+        }
+
         CaptureRoundResult(match, matchData, currentMap);
 
         return HookResult.Continue;
