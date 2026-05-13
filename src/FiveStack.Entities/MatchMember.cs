@@ -11,4 +11,5 @@ public class MatchMember
     public bool is_banned { get; set; } = false;
     public bool is_gagged { get; set; } = false;
     public bool is_muted { get; set; } = false;
+    public int? elo { get; set; }
 }

@@ -38,6 +38,7 @@ public class MatchManager
     public KnifeSystem knifeSystem;
     public CaptainSystem captainSystem;
     public MatchService _matchService;
+    private readonly RankSystem _rankSystem;
 
     private int _remainingMapChangeDelay = 0;
     public Timer? _mapChangeCountdownTimer;
@@ -55,6 +56,7 @@ public class MatchManager
         TimeoutSystem timeoutSystem,
         SurrenderSystem surrenderSystem,
         MatchService matchService,
+        RankSystem rankSystem,
         IStringLocalizer localizer
     )
     {
@@ -70,6 +72,7 @@ public class MatchManager
         _timeoutSystem = timeoutSystem;
         _surrenderSystem = surrenderSystem;
         _matchService = matchService;
+        _rankSystem = rankSystem;
         _localizer = localizer;
     }
 
@@ -395,6 +398,8 @@ public class MatchManager
         }
 
         _logger.LogInformation($"Setup Match {_matchData.id}");
+
+        _rankSystem.OnMatchSetup(_matchData);
 
         MatchMap? _currentMap = GetCurrentMap();
 

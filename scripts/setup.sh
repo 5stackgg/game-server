@@ -120,6 +120,12 @@ if [ ! -e "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs/core
     cp "/opt/server-cfg/core.json" "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs"
 fi
 
+if [ "$SHOW_ELO_RANKS" = "true" ]; then
+    echo "---Disabling CS2 Server Guidelines (required for Elo Ranks to render)---"
+    core_json="$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs/core.json"
+    sed -i --follow-symlinks 's/"FollowCS2ServerGuidelines"[[:space:]]*:[[:space:]]*true/"FollowCS2ServerGuidelines": false/' "$core_json"
+fi
+
 echo "---Check Metamod Install---"
 gameinfo_path="${INSTANCE_SERVER_DIR}/game/csgo/gameinfo.gi"
 new_line="                        Game    csgo/addons/metamod"

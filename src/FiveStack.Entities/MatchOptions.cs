@@ -17,6 +17,7 @@ public class MatchOptions
     public string timeout_setting { get; set; } = "CoachAndPlayers";
     public string tech_timeout_setting { get; set; } = "CoachAndPlayers";
     public bool use_playcast { get; set; } = false;
+    public bool show_elo_ranks { get; set; } = false;
     public Dictionary<string, string> cfg_overrides { get; set; } =
         new Dictionary<string, string>();
 }

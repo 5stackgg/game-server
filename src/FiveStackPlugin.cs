@@ -17,6 +17,7 @@ public partial class FiveStackPlugin : BasePlugin
     private readonly TimeoutSystem _timeoutSystem;
     private readonly MatchService _matchService;
     private readonly CaptainSystem _captainSystem;
+    private readonly RankSystem _rankSystem;
     private readonly SurrenderSystem _surrenderSystem;
     private readonly IStringLocalizer _localizer;
     private readonly ILogger<FiveStackPlugin> _logger;
@@ -36,6 +37,7 @@ public partial class FiveStackPlugin : BasePlugin
         MatchEvents matchEvents,
         MatchService matchService,
         CaptainSystem captainSystem,
+        RankSystem rankSystem,
         ReadySystem readySystem,
         TimeoutSystem timeoutSystem,
         ILogger<FiveStackPlugin> logger,
@@ -54,6 +56,7 @@ public partial class FiveStackPlugin : BasePlugin
         _readySystem = readySystem;
         _matchService = matchService;
         _captainSystem = captainSystem;
+        _rankSystem = rankSystem;
         _timeoutSystem = timeoutSystem;
         _surrenderSystem = surrenderSystem;
         _gameBackupRounds = backUpManagement;
@@ -70,6 +73,8 @@ public partial class FiveStackPlugin : BasePlugin
         RegisterListener<Listeners.OnGameServerSteamAPIDeactivated>(
             _steamAPI.OnSteamAPIDeactivated
         );
+
+        RegisterListener<Listeners.OnTick>(_rankSystem.OnTick);
 
         if (hotReload)
         {
