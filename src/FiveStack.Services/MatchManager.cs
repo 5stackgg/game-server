@@ -590,32 +590,9 @@ public class MatchManager
             return;
         }
 
-        int? gameMode = ConVar.Find("game_mode")?.GetPrimitiveValue<int>();
-        int? gameType = ConVar.Find("game_type")?.GetPrimitiveValue<int>();
-
-        _logger.LogInformation($"Current Game Mode {gameMode}");
-        _logger.LogInformation($"Current Game Type {gameType}");
-
-        if (_matchData.options.type == "Wingman" || _matchData.options.type == "Duel")
-        {
-            if (gameMode != 2)
-            {
-                _logger.LogInformation($"Setting Game Mode to {_matchData.options.type}");
-                ConVar.Find("game_type")?.SetValue(0);
-                ConVar.Find("game_mode")?.SetValue(2);
-                _gameServer.SendCommands(["mp_restartgame 1"]);
-            }
-        }
-        else
-        {
-            if (gameMode != 1)
-            {
-                _logger.LogInformation($"Setting Game Mode to {_matchData.options.type}");
-                ConVar.Find("game_type")?.SetValue(0);
-                ConVar.Find("game_mode")?.SetValue(1);
-                _gameServer.SendCommands(["mp_restartgame 1"]);
-            }
-        }
+        ConVar.Find("game_type")?.SetValue(0);
+        ConVar.Find("game_mode")?.SetValue(1);
+        _gameServer.SendCommands(["mp_restartgame 1"]);
     }
 
     public int GetExpectedPlayerCount()
