@@ -12,8 +12,6 @@ public class RankSystem
     private const int CompetitiveWinsForVisibility = 10;
 
     private const int RankTypeCompetitive = 11;
-    private const int RankTypeWingman = 7;
-    private const int RankTypeDuel = 12;
 
     private readonly ILogger<RankSystem> _logger;
     private readonly MatchService _matchService;
@@ -128,7 +126,6 @@ public class RankSystem
                 return;
             }
 
-            string matchType = matchData.options.type;
             int applied = 0;
 
             foreach (var player in MatchUtility.Players())
@@ -138,10 +135,8 @@ public class RankSystem
                     continue;
                 }
 
-                var (rankValue, rankType) = ComputeRankValueAndType(elo, matchType);
-
-                player.CompetitiveRanking = rankValue;
-                player.CompetitiveRankType = (sbyte)rankType;
+                player.CompetitiveRanking = elo;
+                player.CompetitiveRankType = (sbyte)RankTypeCompetitive;
                 player.CompetitiveWins = CompetitiveWinsForVisibility;
 
                 CounterStrikeSharp.API.Utilities.SetStateChanged(
@@ -181,28 +176,4 @@ public class RankSystem
         }
     }
 
-    private static (int rankValue, int rankType) ComputeRankValueAndType(int elo, string matchType)
-    {
-        if (string.Equals(matchType, "Wingman", StringComparison.OrdinalIgnoreCase))
-        {
-            return (MapPointsToRank(elo), RankTypeWingman);
-        }
-
-        if (string.Equals(matchType, "Duel", StringComparison.OrdinalIgnoreCase))
-        {
-            return (MapPointsToRank(elo), RankTypeDuel);
-        }
-
-        return (elo, RankTypeCompetitive);
-    }
-
-    // 0–1999 → 1, 2000–2999 → 2, ..., 18000+ → 18
-    private static int MapPointsToRank(int points)
-    {
-        if (points < 0) points = 0;
-        int rank = (points / 1000) + 1;
-        if (rank < 1) rank = 1;
-        if (rank > 18) rank = 18;
-        return rank;
-    }
 }
