@@ -39,7 +39,7 @@ public class SurrenderSystem
     public void SetupDisconnectTimer(CsTeam team, ulong steamId)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
-        if (match == null || !match.IsInProgress())
+        if (match == null || !match.IsInPlay())
         {
             return;
         }

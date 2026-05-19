@@ -37,7 +37,7 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        if (!match.IsInProgress())
+        if (!match.IsInPlay())
         {
             return HookResult.Continue;
         }

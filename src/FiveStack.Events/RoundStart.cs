@@ -18,15 +18,15 @@ public partial class FiveStackPlugin
         }
 
         int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
-        bool isInProgress = matchManager.IsInProgress();
+        bool isInPlay = matchManager.IsInPlay();
         bool isKnife = matchManager.IsKnife();
         bool isWarmup = matchManager.IsWarmup();
 
         _logger.LogInformation(
-            $"OnRoundStart totalRoundsPlayed={totalRoundsPlayed} isInProgress={isInProgress} isWarmup={isWarmup} isKnife={isKnife}"
+            $"OnRoundStart totalRoundsPlayed={totalRoundsPlayed} isInPlay={isInPlay} isWarmup={isWarmup} isKnife={isKnife}"
         );
 
-        if (!isInProgress)
+        if (!isInPlay)
         {
             return HookResult.Continue;
         }

@@ -128,9 +128,14 @@ public class MatchManager
         return MatchUtility.Rules()?.WarmupPeriod ?? false;
     }
 
-    public bool IsInProgress()
+    public bool IsInPlay()
     {
         if (IsWarmup() == true || IsKnife() == true)
+        {
+            return false;
+        }
+
+        if (gameEnded)
         {
             return false;
         }

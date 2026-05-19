@@ -58,7 +58,7 @@ public class TimeoutSystem
     public void RequestPause(CCSPlayerController? player)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
-        if (match == null || !match.IsInProgress() || _backUpManagement.IsResettingRound())
+        if (match == null || !match.IsInPlay() || _backUpManagement.IsResettingRound())
         {
             _gameServer.Message(
                 HudDestination.Chat,
@@ -355,7 +355,7 @@ public class TimeoutSystem
     public void CallTacTimeout(CCSPlayerController? player)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
-        if (match == null || !match.IsInProgress() || _backUpManagement.IsResettingRound())
+        if (match == null || !match.IsInPlay() || _backUpManagement.IsResettingRound())
         {
             _gameServer.Message(
                 HudDestination.Chat,
@@ -429,7 +429,7 @@ public class TimeoutSystem
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (match == null || !match.IsInProgress() && _backUpManagement.IsResettingRound() == false)
+        if (match == null || !match.IsInPlay() && _backUpManagement.IsResettingRound() == false)
         {
             return eTimeoutSettings.Admin;
         }
@@ -452,7 +452,7 @@ public class TimeoutSystem
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (match == null || !match.IsInProgress() && _backUpManagement.IsResettingRound() == false)
+        if (match == null || !match.IsInPlay() && _backUpManagement.IsResettingRound() == false)
         {
             return eTimeoutSettings.Admin;
         }

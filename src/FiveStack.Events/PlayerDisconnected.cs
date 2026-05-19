@@ -53,7 +53,7 @@ public partial class FiveStackPlugin
         _timeoutSystem.RemovePlayerVoteOnDisconnect(player.SteamID);
         _gameBackupRounds.RemovePlayerVoteOnDisconnect(player.SteamID);
 
-        if (match.IsInProgress())
+        if (match.IsInPlay())
         {
             if (match.IsFreezePeriod())
             {
