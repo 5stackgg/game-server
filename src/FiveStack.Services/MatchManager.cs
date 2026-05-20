@@ -601,7 +601,15 @@ public class MatchManager
         }
 
         ConVar.Find("game_type")?.SetValue(0);
-        ConVar.Find("game_mode")?.SetValue(1);
+        if (_matchData.options.type == "Duel" || _matchData.options.type == "Wingman")
+        {
+            ConVar.Find("game_mode")?.SetValue(2);
+        }
+        else
+        {
+            ConVar.Find("game_mode")?.SetValue(1);
+        }
+
         _gameServer.SendCommands(["mp_restartgame 1"]);
     }
 
