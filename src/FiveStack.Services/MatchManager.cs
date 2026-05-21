@@ -437,6 +437,7 @@ public class MatchManager
             return;
         }
 
+        bool wasAlreadySetup = _activeMapId == _currentMap.id;
         _activeMapId = _currentMap.id;
 
         if (_matchData == null || IsMapFinished())
@@ -467,16 +468,22 @@ public class MatchManager
             }
         }
 
-        _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
-
-        if (_matchData.is_lan)
+        if (!wasAlreadySetup)
         {
-            _gameServer.SendCommands(["exec 5stack.lan.cfg"]);
+            _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
+
+            if (_matchData.is_lan)
+            {
+                _gameServer.SendCommands(["exec 5stack.lan.cfg"]);
+            }
         }
 
         Server.NextFrame(() =>
         {
-            SetupGameMode();
+            if (!wasAlreadySetup)
+            {
+                SetupGameMode();
+            }
 
             FiveStackPlugin.SetPasswordBuffer(_matchData.password);
             ConVar.Find("sv_password")?.SetValue(_matchData.password);
