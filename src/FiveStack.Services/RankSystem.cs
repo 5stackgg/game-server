@@ -117,11 +117,7 @@ public class RankSystem
         try
         {
             MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
-            if (
-                matchData == null
-                || !matchData.options.show_elo_ranks
-                || _eloBySteamId == null
-            )
+            if (matchData == null || !matchData.options.show_elo_ranks || _eloBySteamId == null)
             {
                 return;
             }
@@ -175,5 +171,4 @@ public class RankSystem
             _logger.LogError(ex, "RankSystem.OnTick: bad argument from upstream data");
         }
     }
-
 }

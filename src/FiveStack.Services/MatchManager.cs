@@ -24,7 +24,7 @@ public class MatchManager
 
     private readonly MatchEvents _matchEvents;
     private readonly GameServer _gameServer;
-    private readonly GameDemos _matchDemos;
+    private readonly GameDemos _gameDemos;
     private readonly ILogger<MatchManager> _logger;
     private readonly GameBackUpRounds _backUpManagement;
     private readonly SurrenderSystem _surrenderSystem;
@@ -48,7 +48,7 @@ public class MatchManager
         MatchEvents matchEvents,
         GameServer gameServer,
         GameBackUpRounds backUpManagement,
-        GameDemos matchDemos,
+        GameDemos gameDemos,
         KnifeSystem KnifeSystem,
         ReadySystem ReadySystem,
         CaptainSystem CaptainSystem,
@@ -61,7 +61,7 @@ public class MatchManager
     )
     {
         _logger = logger;
-        _matchDemos = matchDemos;
+        _gameDemos = gameDemos;
         _matchEvents = matchEvents;
         _gameServer = gameServer;
         knifeSystem = KnifeSystem;
@@ -373,14 +373,15 @@ public class MatchManager
             case eMapStatus.Live:
                 StartLive();
                 break;
+            case eMapStatus.WaitingForTV:
+                // GameEnd.cs owns the demo lifecycle from here.
+                break;
             case eMapStatus.Finished:
             case eMapStatus.Surrendered:
-                _matchDemos.Stop();
                 _surrenderSystem.Reset();
                 _matchEvents.ClearPendingRoundResult();
                 break;
             case eMapStatus.UploadingDemo:
-                _matchDemos.Stop();
                 _surrenderSystem.Reset();
                 if (_currentMapStatus == eMapStatus.Unknown || IsMapFinished())
                 {
@@ -440,9 +441,15 @@ public class MatchManager
         bool wasAlreadySetup = _activeMapId == _currentMap.id;
         _activeMapId = _currentMap.id;
 
+        if (_currentMapStatus == eMapStatus.WaitingForTV)
+        {
+            // Load-bearing: prevents IsMapFinished safety net below from stopping the demo mid-window.
+            return;
+        }
+
         if (_matchData == null || IsMapFinished())
         {
-            _matchDemos.Stop();
+            _gameDemos.Stop();
             _surrenderSystem.Reset();
             return;
         }
@@ -553,7 +560,7 @@ public class MatchManager
             delay,
             () =>
             {
-                _matchDemos.StopTV();
+                _gameDemos.StopTV();
                 _logger.LogInformation("map change delay complete");
                 _mapChangeCountdownTimer?.Kill();
                 _mapChangeCountdownTimer = null;
@@ -701,7 +708,7 @@ public class MatchManager
 
         Server.NextFrame(() =>
         {
-            _matchDemos.Start();
+            _gameDemos.Start();
             _backUpManagement.Setup();
 
             Server.NextFrame(() =>

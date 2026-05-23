@@ -22,6 +22,9 @@ public enum eMapStatus
     [Description("Overtime")]
     Overtime,
 
+    [Description("WaitingForTV")]
+    WaitingForTV,
+
     [Description("UploadingDemo")]
     UploadingDemo,
 

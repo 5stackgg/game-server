@@ -83,6 +83,8 @@ namespace FiveStack.Utilities
                     return eMapStatus.Paused;
                 case "Warmup":
                     return eMapStatus.Warmup;
+                case "WaitingForTV":
+                    return eMapStatus.WaitingForTV;
                 case "UploadingDemo":
                     return eMapStatus.UploadingDemo;
                 case "Surrendered":
