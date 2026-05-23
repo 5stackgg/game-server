@@ -32,7 +32,7 @@ public partial class FiveStackPlugin : BasePlugin
 
     public FiveStackPlugin(
         SteamAPI steamAPI,
-        GameDemos matchDemos,
+        GameDemos gameDemos,
         GameServer gameServer,
         MatchEvents matchEvents,
         MatchService matchService,
@@ -50,7 +50,7 @@ public partial class FiveStackPlugin : BasePlugin
         _logger = logger;
         _steamAPI = steamAPI;
         _localizer = localizer;
-        _gameDemos = matchDemos;
+        _gameDemos = gameDemos;
         _gameServer = gameServer;
         _matchEvents = matchEvents;
         _readySystem = readySystem;
