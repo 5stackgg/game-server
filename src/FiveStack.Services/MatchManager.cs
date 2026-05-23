@@ -374,9 +374,7 @@ public class MatchManager
                 StartLive();
                 break;
             case eMapStatus.WaitingForTV:
-                // Transitional state after game end. Demo keeps recording so the
-                // post-round / win panel / scoreboard get captured. GameEnd.cs
-                // owns the demo lifecycle and transitions us out of here.
+                // GameEnd.cs owns the demo lifecycle from here.
                 break;
             case eMapStatus.Finished:
             case eMapStatus.Surrendered:
@@ -445,13 +443,7 @@ public class MatchManager
 
         if (_currentMapStatus == eMapStatus.WaitingForTV)
         {
-            // LOAD-BEARING: GameEnd.cs's WaitingForTV path does NOT call
-            // delayChangeMap upfront, so _mapChangeCountdownTimer is null and
-            // GetMatchFromApi is not gated during the recording window. Any
-            // stray refresh (websocket reconnect, .match command) would land
-            // here and would otherwise re-exec the cfg and call
-            // _matchDemos.Stop() via the IsMapFinished safety net below,
-            // cutting the demo short. This early-return prevents both.
+            // Load-bearing: prevents IsMapFinished safety net below from stopping the demo mid-window.
             return;
         }
 

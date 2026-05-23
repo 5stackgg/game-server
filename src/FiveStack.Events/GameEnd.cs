@@ -100,17 +100,11 @@ public partial class FiveStackPlugin
 
         bool usePlaycast = matchData.options.use_playcast;
         int tvDelay = matchData.options.tv_delay;
-        // Keep the demo recording for the full tv_delay window after game end so the
-        // win panel / scoreboard / end-of-match camera get captured.
         int recordingDelay = usePlaycast ? 5 : tvDelay;
         Guid expectedMatchId = matchData.id;
-        // Capture before we transition out of Surrendered into WaitingForTV.
         bool wasSurrendered = match.isSurrendered();
         bool onGameNode = _environmentService.isOnGameServerNode();
 
-        // Transitional state: gameplay is over, but the demo is still recording the
-        // tv_delay tail. Dashboards / API see the map is no longer Live without us
-        // marking it Finished yet.
         match.UpdateMapStatus(eMapStatus.WaitingForTV, winningLineupId);
 
         _logger.LogInformation(
@@ -136,8 +130,6 @@ public partial class FiveStackPlugin
                 _gameDemos.Stop();
 
                 MatchManager current = _matchService.GetCurrentMatch()!;
-                // Re-check surrender state in case the match was surrendered during
-                // the WaitingForTV window — wasSurrendered alone goes stale.
                 bool isSurrendered = wasSurrendered || current.isSurrendered();
 
                 if (onGameNode)
@@ -153,9 +145,6 @@ public partial class FiveStackPlugin
 
                     if (_environmentService.IsOfflineMode())
                     {
-                        // Offline mode advances maps in-process. Run it after the demo
-                        // is stopped and the current map is marked terminal so the next
-                        // map's gameplay isn't appended to this map's demo file.
                         HandleOfflineMapProgression(current, matchData, currentMap);
                     }
                     else
@@ -208,8 +197,6 @@ public partial class FiveStackPlugin
                             }
 
                             MatchManager next = _matchService.GetCurrentMatch()!;
-                            // Re-check; surrender could have landed after the recording
-                            // window if a late surrender command raced the upload.
                             bool isSurrenderedNow = wasSurrendered || next.isSurrendered();
 
                             if (isSurrenderedNow)
