@@ -120,13 +120,13 @@ public partial class FiveStackPlugin
                 if (_matchService.GetCurrentMatch()?.GetMatchData()?.id != expectedMatchId)
                 {
                     _logger.LogWarning(
-                        "Skipping demo stop: current match is no longer {MatchId} after tv_delay window",
+                        "Skipping demo stop: current match is no longer {MatchId} after recording window",
                         expectedMatchId
                     );
                     return;
                 }
 
-                _logger.LogInformation("tv_delay elapsed, stopping demo recording");
+                _logger.LogInformation("recording window elapsed, stopping demo recording");
                 _gameDemos.Stop();
 
                 MatchManager current = _matchService.GetCurrentMatch()!;
