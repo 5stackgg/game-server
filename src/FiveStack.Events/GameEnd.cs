@@ -99,78 +99,50 @@ public partial class FiveStackPlugin
         }
 
         bool usePlaycast = matchData.options.use_playcast;
-
-        if (_environmentService.isOnGameServerNode())
-        {
-            _logger.LogInformation(
-                "Game Server is on a game server node, skipping uploading demos"
-            );
-            match.delayChangeMap(usePlaycast ? 5 : matchData.options.tv_delay);
-
-            if (_environmentService.IsOfflineMode())
-            {
-                HandleOfflineMapProgression(match, matchData, currentMap);
-            }
-
-            if (match.isSurrendered())
-            {
-                SendSurrender();
-            }
-            else
-            {
-                match.UpdateMapStatus(eMapStatus.Finished, winningLineupId);
-            }
-
-            return;
-        }
-
-        _logger.LogInformation("delaying uploading demos for 15 seconds");
-
-        Guid expectedMatchId = matchData.id;
         int tvDelay = matchData.options.tv_delay;
+        // Keep the demo recording for the full tv_delay window after game end so the
+        // win panel / scoreboard / end-of-match camera get captured.
+        int recordingDelay = usePlaycast ? 5 : tvDelay;
+        Guid expectedMatchId = matchData.id;
+        // Capture before we transition out of Surrendered into WaitingForTV.
+        bool wasSurrendered = match.isSurrendered();
+        bool onGameNode = _environmentService.isOnGameServerNode();
 
-        match.UpdateMapStatus(eMapStatus.UploadingDemo, winningLineupId);
+        // Transitional state: gameplay is over, but the demo is still recording the
+        // tv_delay tail. Dashboards / API see the map is no longer Live without us
+        // marking it Finished yet.
+        match.UpdateMapStatus(eMapStatus.WaitingForTV, winningLineupId);
+
+        _logger.LogInformation(
+            "WaitingForTV for {RecordingDelay}s then {NextAction}",
+            recordingDelay,
+            onGameNode ? "Finished (game node, no upload)" : "stop + 15s flush + upload"
+        );
 
         TimerUtility.AddTimer(
-            15.0f,
-            async () =>
+            recordingDelay,
+            () =>
             {
                 if (_matchService.GetCurrentMatch()?.GetMatchData()?.id != expectedMatchId)
                 {
                     _logger.LogWarning(
-                        "Skipping demo upload: current match is no longer {MatchId} after pre-upload delay",
+                        "Skipping demo stop: current match is no longer {MatchId} after tv_delay window",
                         expectedMatchId
                     );
                     return;
                 }
 
-                try
-                {
-                    await _gameDemos.UploadDemos();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(
-                        ex,
-                        "UploadDemos failed after map end for match {MatchId}",
-                        expectedMatchId
-                    );
-                }
+                _logger.LogInformation("tv_delay elapsed, stopping demo recording");
+                _gameDemos.Stop();
 
-                Server.NextFrame(() =>
+                MatchManager current = _matchService.GetCurrentMatch()!;
+                // Re-check surrender state in case the match was surrendered during
+                // the WaitingForTV window — wasSurrendered alone goes stale.
+                bool isSurrendered = wasSurrendered || current.isSurrendered();
+
+                if (onGameNode)
                 {
-                    if (_matchService.GetCurrentMatch()?.GetMatchData()?.id != expectedMatchId)
-                    {
-                        _logger.LogWarning(
-                            "Skipping end-of-map transition: current match is not {MatchId} after demo upload",
-                            expectedMatchId
-                        );
-                        return;
-                    }
-
-                    MatchManager current = _matchService.GetCurrentMatch()!;
-
-                    if (current.isSurrendered())
+                    if (isSurrendered)
                     {
                         SendSurrender();
                     }
@@ -179,10 +151,80 @@ public partial class FiveStackPlugin
                         current.UpdateMapStatus(eMapStatus.Finished, winningLineupId);
                     }
 
-                    int tailDelaySeconds = usePlaycast ? 5 : Math.Max(5, tvDelay - 15);
+                    if (_environmentService.IsOfflineMode())
+                    {
+                        // Offline mode advances maps in-process. Run it after the demo
+                        // is stopped and the current map is marked terminal so the next
+                        // map's gameplay isn't appended to this map's demo file.
+                        HandleOfflineMapProgression(current, matchData, currentMap);
+                    }
+                    else
+                    {
+                        current.delayChangeMap(5);
+                    }
+                    return;
+                }
 
-                    current.delayChangeMap(tailDelaySeconds);
-                });
+                current.UpdateMapStatus(eMapStatus.UploadingDemo, winningLineupId);
+
+                TimerUtility.AddTimer(
+                    15.0f,
+                    async () =>
+                    {
+                        if (_matchService.GetCurrentMatch()?.GetMatchData()?.id != expectedMatchId)
+                        {
+                            _logger.LogWarning(
+                                "Skipping demo upload: current match is no longer {MatchId} after pre-upload delay",
+                                expectedMatchId
+                            );
+                            return;
+                        }
+
+                        try
+                        {
+                            await _gameDemos.UploadDemos();
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(
+                                ex,
+                                "UploadDemos failed after map end for match {MatchId}",
+                                expectedMatchId
+                            );
+                        }
+
+                        Server.NextFrame(() =>
+                        {
+                            if (
+                                _matchService.GetCurrentMatch()?.GetMatchData()?.id
+                                != expectedMatchId
+                            )
+                            {
+                                _logger.LogWarning(
+                                    "Skipping end-of-map transition: current match is not {MatchId} after demo upload",
+                                    expectedMatchId
+                                );
+                                return;
+                            }
+
+                            MatchManager next = _matchService.GetCurrentMatch()!;
+                            // Re-check; surrender could have landed after the recording
+                            // window if a late surrender command raced the upload.
+                            bool isSurrenderedNow = wasSurrendered || next.isSurrendered();
+
+                            if (isSurrenderedNow)
+                            {
+                                SendSurrender();
+                            }
+                            else
+                            {
+                                next.UpdateMapStatus(eMapStatus.Finished, winningLineupId);
+                            }
+
+                            next.delayChangeMap(5);
+                        });
+                    }
+                );
             }
         );
     }
