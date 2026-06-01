@@ -1,13 +1,13 @@
 FROM registry.gitlab.steamos.cloud/steamrt/sniper/platform:latest-container-runtime-depot AS build
 
-# Install .NET SDK 8.0
+# Install .NET SDK 10.0
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     wget \
     ca-certificates \
     && wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh \
     && chmod +x dotnet-install.sh \
-    && ./dotnet-install.sh --channel 8.0 --install-dir /usr/share/dotnet \
+    && ./dotnet-install.sh --channel 10.0 --install-dir /usr/share/dotnet \
     && rm -f dotnet-install.sh \
     && rm -rf /var/lib/apt/lists/*
 
@@ -76,7 +76,7 @@ ENV STEAM_RELAY="false"
 ENV SERVER_TYPE="Ranked"
 
 ENV METAMOD_URL=https://github.com/alliedmodders/metamod-source/releases/download/2.0.0.1401/mmsource-2.0.0-git1401-linux.tar.gz
-ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.368/counterstrikesharp-with-runtime-linux-1.0.368.zip
+ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.369/counterstrikesharp-with-runtime-linux-1.0.369.zip
 
 ENV METAMOD_CSGO_URL=https://mms.alliedmods.net/mmsdrop/1.12/mmsource-1.12.0-git1219-linux.tar.gz
 ENV SOURCEMOD_CSGO_URL=https://sm.alliedmods.net/smdrop/1.13/sourcemod-1.13.0-git7297-linux.tar.gz
