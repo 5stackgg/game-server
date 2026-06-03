@@ -105,6 +105,17 @@ public partial class FiveStackPlugin
         bool wasSurrendered = match.isSurrendered();
         bool onGameNode = _environmentService.isOnGameServerNode();
 
+        _logger.LogInformation(
+            "End of map: match={MatchId} map={MapId} onGameNode={OnGameNode} usePlaycast={UsePlaycast} tvDelay={TvDelay} recordingDelay={RecordingDelay} surrendered={Surrendered}",
+            matchData.id,
+            currentMap.id,
+            onGameNode,
+            usePlaycast,
+            tvDelay,
+            recordingDelay,
+            wasSurrendered
+        );
+
         match.UpdateMapStatus(eMapStatus.WaitingForTV, winningLineupId);
 
         _logger.LogInformation(
@@ -134,6 +145,11 @@ public partial class FiveStackPlugin
 
                 if (onGameNode)
                 {
+                    _logger.LogInformation(
+                        "Game node: skipping upload, marking Finished (match {MatchId})",
+                        expectedMatchId
+                    );
+
                     if (isSurrendered)
                     {
                         SendSurrender();
@@ -156,6 +172,12 @@ public partial class FiveStackPlugin
 
                 current.UpdateMapStatus(eMapStatus.UploadingDemo, winningLineupId);
 
+                _logger.LogInformation(
+                    "Scheduling demo upload in 15s (match={MatchId} map={MapId})",
+                    expectedMatchId,
+                    currentMap.id
+                );
+
                 TimerUtility.AddTimer(
                     15.0f,
                     async () =>
@@ -169,9 +191,19 @@ public partial class FiveStackPlugin
                             return;
                         }
 
+                        _logger.LogInformation(
+                            "Starting demo upload (match={MatchId} map={MapId})",
+                            expectedMatchId,
+                            currentMap.id
+                        );
+
                         try
                         {
                             await _gameDemos.UploadDemos();
+                            _logger.LogInformation(
+                                "Demo upload finished (match={MatchId})",
+                                expectedMatchId
+                            );
                         }
                         catch (Exception ex)
                         {
@@ -198,6 +230,11 @@ public partial class FiveStackPlugin
 
                             MatchManager next = _matchService.GetCurrentMatch()!;
                             bool isSurrenderedNow = wasSurrendered || next.isSurrendered();
+
+                            _logger.LogInformation(
+                                "Demo upload done — finishing map and switching (match={MatchId})",
+                                expectedMatchId
+                            );
 
                             if (isSurrenderedNow)
                             {

@@ -88,10 +88,15 @@ public class GameDemos
             return;
         }
 
+        string demoPath = GetMatchDemoPath();
+        int demoCount = Directory.Exists(demoPath) ? Directory.GetFiles(demoPath, "*").Length : 0;
+
         File.Delete(GetLockFilePath(match.id));
         Server.NextFrame(() =>
         {
-            _logger.LogInformation("Stopping demo recording");
+            _logger.LogInformation(
+                $"Stopping demo recording (match {match.id}): {demoCount} file(s) in {demoPath}"
+            );
             _gameServer.SendCommands(["tv_stoprecord"]);
         });
     }
@@ -119,9 +124,18 @@ public class GameDemos
 
         string[] files = Directory.GetFiles(demoPath, "*");
 
+        if (files.Length == 0)
+        {
+            _logger.LogWarning($"No demo files found in {demoPath}");
+            return;
+        }
+
+        _logger.LogInformation($"Found {files.Length} demo file(s) in {demoPath}");
+
         foreach (string file in files)
         {
-            _logger.LogInformation($"Uploading demo {file}");
+            long size = new FileInfo(file).Length;
+            _logger.LogInformation($"Uploading demo {file} ({size} bytes)");
             await UploadDemo(file);
         }
         _logger.LogInformation("Uploaded all demos");
@@ -146,10 +160,14 @@ public class GameDemos
                 return;
             }
 
+            string demoName = Path.GetFileName(filePath);
+
             string? presignedUrl = await GetPresignedUrl(filePath);
             if (string.IsNullOrEmpty(presignedUrl))
             {
-                _logger.LogCritical("Failed to get presigned URL");
+                _logger.LogCritical(
+                    $"Failed to get presigned URL (match {match.id} map {match.current_match_map_id} demo {demoName})"
+                );
                 return;
             }
 
@@ -166,16 +184,25 @@ public class GameDemos
                 );
                 request.Content.Headers.ContentLength = fileInfo.Length;
 
+                _logger.LogInformation(
+                    $"PUT demo {demoName} ({fileInfo.Length} bytes) for match {match.id}"
+                );
+
                 var response = await httpClient.SendAsync(request);
+
+                _logger.LogInformation(
+                    $"demo PUT response {(int)response.StatusCode} {response.StatusCode} (match {match.id} demo {demoName})"
+                );
+
                 if (response.IsSuccessStatusCode)
                 {
-                    _logger.LogInformation("demo uploaded");
+                    _logger.LogInformation($"demo uploaded (match {match.id} demo {demoName})");
 
                     var notifyEndpoint =
                         $"{_environmentService.GetDemosUrl()}/demos/{match.id}/uploaded";
                     var notifyRequest = new
                     {
-                        demo = Path.GetFileName(filePath),
+                        demo = demoName,
                         mapId = match.current_match_map_id,
                         size = fileInfo.Length,
                     };
@@ -186,6 +213,10 @@ public class GameDemos
                     var notifyResponse = await notifyClient.PostAsJsonAsync(
                         notifyEndpoint,
                         notifyRequest
+                    );
+
+                    _logger.LogInformation(
+                        $"demo uploaded notify response {(int)notifyResponse.StatusCode} {notifyResponse.StatusCode} (match {match.id} demo {demoName})"
                     );
 
                     if (notifyResponse.IsSuccessStatusCode)
@@ -241,6 +272,10 @@ public class GameDemos
         };
 
         var response = await httpClient.PostAsJsonAsync(endpoint, requestBody);
+
+        _logger.LogInformation(
+            $"presigned url response {(int)response.StatusCode} {response.StatusCode} (match {match.id} map {match.current_match_map_id} demo {Path.GetFileName(filePath)})"
+        );
 
         switch (response.StatusCode)
         {

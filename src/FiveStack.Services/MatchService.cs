@@ -109,6 +109,8 @@ public class MatchService
 
                 Server.NextFrame(() =>
                 {
+                    Guid? previousMatchId = _currentMatch?.GetMatchData()?.id;
+
                     if (response.Length == 0)
                     {
                         if (_currentMatch != null)
@@ -118,7 +120,9 @@ public class MatchService
 
                         _currentMatch = null;
 
-                        _logger.LogWarning("currenlty no match assigned to server");
+                        _logger.LogWarning(
+                            $"No match assigned — clearing match {previousMatchId?.ToString() ?? "none"}"
+                        );
                         return;
                     }
 
@@ -129,11 +133,16 @@ public class MatchService
                         return;
                     }
 
-                    if (_currentMatch?.GetMatchData()?.id == matchData.id)
+                    if (previousMatchId == matchData.id)
                     {
-                        _currentMatch.SetupMatch(matchData);
+                        _logger.LogInformation($"Match {matchData.id} still assigned — re-running setup");
+                        _currentMatch!.SetupMatch(matchData);
                         return;
                     }
+
+                    _logger.LogInformation(
+                        $"New match incoming: {previousMatchId?.ToString() ?? "none"} -> {matchData.id}"
+                    );
 
                     if (_currentMatch != null)
                     {

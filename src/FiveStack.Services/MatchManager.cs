@@ -428,12 +428,18 @@ public class MatchManager
 
             if (_currentMap.map.workshop_map_id != currentWorkshopID)
             {
+                _logger.LogInformation(
+                    $"Map switch required: workshop {currentWorkshopID} -> {_currentMap.map.workshop_map_id} (match {_matchData.id})"
+                );
                 ChangeMap(_currentMap.map);
                 return;
             }
         }
         else if (!Server.MapName.ToLower().Contains(_currentMap.map.name.ToLower()))
         {
+            _logger.LogInformation(
+                $"Map switch required: on {Server.MapName}, need {_currentMap.map.name} (match {_matchData.id})"
+            );
             ChangeMap(_currentMap.map);
             return;
         }
@@ -552,7 +558,9 @@ public class MatchManager
     public void delayChangeMap(int delay)
     {
         _remainingMapChangeDelay = delay;
-        _logger.LogInformation($"Delaying map change by {delay} seconds");
+        _logger.LogInformation(
+            $"Map change in {delay}s then fetching next match (match {_matchData?.id.ToString() ?? "none"})"
+        );
 
         _mapChangeCountdownTimer?.Kill();
 
@@ -597,12 +605,16 @@ public class MatchManager
 
         if (map.workshop_map_id == null && Server.IsMapValid(map.name))
         {
-            _logger.LogInformation($"Changing Map {map.name}");
+            _logger.LogInformation(
+                $"Changing Map {map.name} (match {_matchData?.id.ToString() ?? "none"})"
+            );
             _gameServer.SendCommands([$"changelevel \"{map.name}\""]);
         }
         else
         {
-            _logger.LogInformation($"Changing Map {map.name} / {map.workshop_map_id}");
+            _logger.LogInformation(
+                $"Changing Map {map.name} / {map.workshop_map_id} (match {_matchData?.id.ToString() ?? "none"})"
+            );
             _gameServer.SendCommands([$"host_workshop_map {map.workshop_map_id}"]);
         }
     }
