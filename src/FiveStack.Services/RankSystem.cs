@@ -1,6 +1,8 @@
 using System.Text.Json;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.UserMessages;
+using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
@@ -19,6 +21,13 @@ public class RankSystem
     private Dictionary<ulong, int>? _eloBySteamId;
 
     private const int TickLogInterval = 640;
+
+    private const string RankRevealAllMessage = "CCSUsrMsg_ServerRankRevealAll";
+
+    private const int RevealWhileOpenTickInterval = 16;
+
+    private readonly Dictionary<int, bool> _scoreboardOpen = new();
+
     private long _tickCount;
     private long _ticksApplied;
     private int _lastAppliedPlayerCount;
@@ -126,6 +135,8 @@ public class RankSystem
 
             foreach (var player in MatchUtility.Players())
             {
+                RevealRanksToScoreboardViewer(player);
+
                 if (!_eloBySteamId.TryGetValue(player.SteamID, out var elo))
                 {
                     continue;
@@ -169,6 +180,42 @@ public class RankSystem
         catch (ArgumentException ex)
         {
             _logger.LogError(ex, "RankSystem.OnTick: bad argument from upstream data");
+        }
+    }
+
+    private void RevealRanksToScoreboardViewer(CCSPlayerController player)
+    {
+        CPlayer_MovementServices? movementServices = player.Pawn.Value?.MovementServices;
+        if (movementServices == null || movementServices.Buttons.ButtonStates.Length == 0)
+        {
+            return;
+        }
+
+        bool isOpen =
+            (movementServices.Buttons.ButtonStates[0] & (ulong)PlayerButtons.Scoreboard) != 0;
+
+        _scoreboardOpen.TryGetValue(player.Slot, out bool wasOpen);
+        _scoreboardOpen[player.Slot] = isOpen;
+
+        if (!isOpen)
+        {
+            return;
+        }
+
+        bool justOpened = !wasOpen;
+        if (!justOpened && _tickCount % RevealWhileOpenTickInterval != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            using UserMessage message = UserMessage.FromPartialName(RankRevealAllMessage);
+            message.Send(player);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "RankSystem: failed to send {Message}", RankRevealAllMessage);
         }
     }
 }
