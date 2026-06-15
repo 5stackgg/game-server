@@ -43,5 +43,4 @@ jobs:
         with:
           package-name: gamedata-validator
           package-type: container
-          min-versions-to-keep: 5
-          ignore-versions: '^buildcache-*'
+          delete-only-untagged-versions: 'true'
