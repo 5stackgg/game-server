@@ -390,8 +390,50 @@ public class MatchManager
                 break;
         }
 
+        if (
+            (status == eMapStatus.Knife || status == eMapStatus.Live)
+            && MatchUtility.HasPlaceholderMembers(_matchData)
+        )
+        {
+            PublishConnectedPlayers(status);
+        }
+
         _matchEvents.PublishMapStatus(status, winningLineupId);
         _currentMapStatus = status;
+    }
+
+    private void PublishConnectedPlayers(eMapStatus status)
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        var players = new List<Dictionary<string, object>>();
+
+        foreach (var player in MatchUtility.Players())
+        {
+            Guid? lineupId = MatchUtility.GetPlayerLineup(_matchData, player);
+
+            players.Add(
+                new Dictionary<string, object>
+                {
+                    { "steam_id", player.SteamID.ToString() },
+                    { "player_name", player.PlayerName },
+                    { "team", TeamUtility.CSTeamToString(player.Team) },
+                    { "lineup_id", lineupId?.ToString() ?? "" },
+                }
+            );
+        }
+
+        _matchEvents.PublishGameEvent(
+            "players-connected",
+            new Dictionary<string, object>
+            {
+                { "status", status.ToString() },
+                { "players", players },
+            }
+        );
     }
 
     public void SetupMatch(MatchData match)
@@ -501,6 +543,7 @@ public class MatchManager
             FiveStackPlugin.SetPasswordBuffer(_matchData.password);
             ConVar.Find("sv_password")?.SetValue(_matchData.password);
             ConVar.Find("mp_match_restart_delay")?.SetValue(_matchData.options.tv_delay);
+            ConVar.Find("hostname")?.SetValue("5Stack.gg");
 
             if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
             {

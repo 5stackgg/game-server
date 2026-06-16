@@ -74,6 +74,12 @@ public partial class FiveStackPlugin
 
         if (token == matchPassword)
         {
+            if (MatchUtility.HasPlaceholderMembers(match))
+            {
+                hook.SetParam(5, PasswordBuffer);
+                return HookResult.Continue;
+            }
+
             PendingPlayers[steamId] = "streamer";
             return HookResult.Continue;
         }

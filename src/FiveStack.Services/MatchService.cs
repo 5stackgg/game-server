@@ -135,7 +135,9 @@ public class MatchService
 
                     if (previousMatchId == matchData.id)
                     {
-                        _logger.LogInformation($"Match {matchData.id} still assigned — re-running setup");
+                        _logger.LogInformation(
+                            $"Match {matchData.id} still assigned — re-running setup"
+                        );
                         _currentMatch!.SetupMatch(matchData);
                         return;
                     }

@@ -11,6 +11,13 @@ namespace FiveStack.Utilities
             return $"{matchData.id}_{matchData.current_match_map_id}".Replace("-", "");
         }
 
+        public static bool HasPlaceholderMembers(MatchData matchData)
+        {
+            return matchData
+                .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
+                .Any(member => member.steam_id == null);
+        }
+
         public static MatchMember? GetMemberFromLineup(
             MatchData matchData,
             string steamId,
