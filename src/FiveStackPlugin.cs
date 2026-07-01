@@ -103,6 +103,22 @@ public partial class FiveStackPlugin : BasePlugin
         {
             _matchService.GetMatchFromOffline();
         }
+
+        // Recover any demos left on disk by a previous crash/restart. Deferred so
+        // env + API connectivity have settled, and off the main thread since it is
+        // pure file IO + HTTP and never touches game state.
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(15));
+            try
+            {
+                await _gameDemos.UploadOrphanedDemos();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to recover orphaned demos: {ex.Message}");
+            }
+        });
     }
 
     public override void Unload(bool hotReload)

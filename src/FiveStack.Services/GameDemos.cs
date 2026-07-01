@@ -141,6 +141,69 @@ public class GameDemos
         _logger.LogInformation("Uploaded all demos");
     }
 
+    // Scans the demos directory for leftover .dem files and attempts to upload
+    // them. Demos are normally uploaded by the GameEnd timer chain, but that
+    // lives entirely in memory — a server crash/restart during the post-match
+    // window drops the pending upload and orphans the file on disk. Running this
+    // on startup self-heals those cases. Safe to retry: the API rejects demos
+    // for maps that aren't finished (409) and cleans up ones already uploaded
+    // (406) or whose map is gone (410).
+    public async Task UploadOrphanedDemos()
+    {
+        if (_environmentService.IsOfflineMode())
+        {
+            return;
+        }
+
+        string demosRoot = $"{_rootDir}/demos";
+        if (!Directory.Exists(demosRoot))
+        {
+            return;
+        }
+
+        string[] files;
+        try
+        {
+            files = Directory.GetFiles(demosRoot, "*.dem", SearchOption.AllDirectories);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Failed to scan for orphaned demos: {ex.Message}");
+            return;
+        }
+
+        if (files.Length == 0)
+        {
+            return;
+        }
+
+        _logger.LogInformation(
+            $"Found {files.Length} demo(s) on disk, attempting to recover uploads"
+        );
+
+        foreach (string file in files)
+        {
+            // Skip a demo that belongs to a match that is actively recording right
+            // now, so we never upload a partially-written file.
+            string? matchId = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(file)));
+            if (
+                Guid.TryParse(matchId, out Guid parsedMatchId)
+                && File.Exists(GetLockFilePath(parsedMatchId))
+            )
+            {
+                _logger.LogInformation(
+                    $"Skipping demo for actively recording match {matchId}: {file}"
+                );
+                continue;
+            }
+
+            _logger.LogInformation($"Recovering orphaned demo {file}");
+            await UploadDemo(file);
+        }
+
+        _logger.LogInformation("Finished recovering orphaned demos");
+    }
+
     public async Task UploadDemo(string filePath)
     {
         try
@@ -150,24 +213,37 @@ public class GameDemos
                 return;
             }
 
-            MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
-
             string? serverId = _environmentService.GetServerId();
             string? apiPassword = _environmentService.GetServerApiPassword();
 
-            if (serverId == null || apiPassword == null || match == null)
+            if (serverId == null || apiPassword == null)
             {
                 return;
             }
 
+            // Demos live at {_rootDir}/demos/{matchId}/{mapId}/{demo}.dem — derive
+            // the ids from the path rather than GetCurrentMatch() so uploads work
+            // even when the demo belongs to a match that is no longer current
+            // (e.g. recovered on startup after a crash/restart).
             string demoName = Path.GetFileName(filePath);
+            string? mapId = Path.GetFileName(Path.GetDirectoryName(filePath));
+            string? matchId = Path.GetFileName(
+                Path.GetDirectoryName(Path.GetDirectoryName(filePath))
+            );
 
-            string? presignedUrl = await GetPresignedUrl(filePath);
+            if (!Guid.TryParse(matchId, out _) || !Guid.TryParse(mapId, out _))
+            {
+                _logger.LogWarning(
+                    $"Skipping demo with unexpected path (cannot derive match/map ids): {filePath}"
+                );
+                return;
+            }
+
+            string? presignedUrl = await GetPresignedUrl(matchId, mapId, filePath);
             if (string.IsNullOrEmpty(presignedUrl))
             {
-                _logger.LogCritical(
-                    $"Failed to get presigned URL (match {match.id} map {match.current_match_map_id} demo {demoName})"
-                );
+                // GetPresignedUrl already logs the reason (and cleans up the file
+                // when the map is already uploaded or gone).
                 return;
             }
 
@@ -185,25 +261,25 @@ public class GameDemos
                 request.Content.Headers.ContentLength = fileInfo.Length;
 
                 _logger.LogInformation(
-                    $"PUT demo {demoName} ({fileInfo.Length} bytes) for match {match.id}"
+                    $"PUT demo {demoName} ({fileInfo.Length} bytes) for match {matchId}"
                 );
 
                 var response = await httpClient.SendAsync(request);
 
                 _logger.LogInformation(
-                    $"demo PUT response {(int)response.StatusCode} {response.StatusCode} (match {match.id} demo {demoName})"
+                    $"demo PUT response {(int)response.StatusCode} {response.StatusCode} (match {matchId} demo {demoName})"
                 );
 
                 if (response.IsSuccessStatusCode)
                 {
-                    _logger.LogInformation($"demo uploaded (match {match.id} demo {demoName})");
+                    _logger.LogInformation($"demo uploaded (match {matchId} demo {demoName})");
 
                     var notifyEndpoint =
-                        $"{_environmentService.GetDemosUrl()}/demos/{match.id}/uploaded";
+                        $"{_environmentService.GetDemosUrl()}/demos/{matchId}/uploaded";
                     var notifyRequest = new
                     {
                         demo = demoName,
-                        mapId = match.current_match_map_id,
+                        mapId = mapId,
                         size = fileInfo.Length,
                     };
 
@@ -216,7 +292,7 @@ public class GameDemos
                     );
 
                     _logger.LogInformation(
-                        $"demo uploaded notify response {(int)notifyResponse.StatusCode} {notifyResponse.StatusCode} (match {match.id} demo {demoName})"
+                        $"demo uploaded notify response {(int)notifyResponse.StatusCode} {notifyResponse.StatusCode} (match {matchId} demo {demoName})"
                     );
 
                     if (notifyResponse.IsSuccessStatusCode)
@@ -242,22 +318,16 @@ public class GameDemos
         }
     }
 
-    private async Task<string?> GetPresignedUrl(string filePath)
+    private async Task<string?> GetPresignedUrl(string matchId, string mapId, string filePath)
     {
-        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
-
-        if (match == null)
-        {
-            return null;
-        }
-
         string? apiPassword = _environmentService.GetServerApiPassword();
         if (apiPassword == null)
         {
             return null;
         }
 
-        string endpoint = $"{_environmentService.GetDemosUrl()}/demos/{match.id}/pre-signed";
+        string demoName = Path.GetFileName(filePath);
+        string endpoint = $"{_environmentService.GetDemosUrl()}/demos/{matchId}/pre-signed";
 
         using var httpClient = new HttpClient();
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
@@ -267,14 +337,14 @@ public class GameDemos
 
         var requestBody = new
         {
-            demo = Path.GetFileName(filePath),
-            mapId = _matchService.GetCurrentMatch()?.GetMatchData()?.current_match_map_id,
+            demo = demoName,
+            mapId = mapId,
         };
 
         var response = await httpClient.PostAsJsonAsync(endpoint, requestBody);
 
         _logger.LogInformation(
-            $"presigned url response {(int)response.StatusCode} {response.StatusCode} (match {match.id} map {match.current_match_map_id} demo {Path.GetFileName(filePath)})"
+            $"presigned url response {(int)response.StatusCode} {response.StatusCode} (match {matchId} map {mapId} demo {demoName})"
         );
 
         switch (response.StatusCode)
