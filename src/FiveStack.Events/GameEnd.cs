@@ -197,19 +197,69 @@ public partial class FiveStackPlugin
                             currentMap.id
                         );
 
-                        try
+                        // Only finish the map once the demo is confirmed uploaded, so
+                        // the server stays reserved until it's safe. If the budget
+                        // runs out, give up loudly and finish anyway (retried on next
+                        // startup) so the match never gets stuck.
+                        int uploadTimeLimit =
+                            _environmentService.GetDemoUploadTimeLimitSeconds();
+                        using var uploadCts = new System.Threading.CancellationTokenSource(
+                            TimeSpan.FromSeconds(uploadTimeLimit)
+                        );
+
+                        // Upload the specific map that just ended, not whatever the
+                        // current match/map resolves to when the timer fires.
+                        string uploadMatchId = expectedMatchId.ToString();
+                        string uploadMapId = currentMap.id.ToString();
+
+                        bool uploaded = false;
+                        int attempt = 0;
+                        while (!uploadCts.IsCancellationRequested)
                         {
-                            await _gameDemos.UploadDemos();
-                            _logger.LogInformation(
-                                "Demo upload finished (match={MatchId})",
-                                expectedMatchId
-                            );
+                            attempt++;
+                            try
+                            {
+                                uploaded = await _gameDemos.UploadDemos(
+                                    uploadMatchId,
+                                    uploadMapId,
+                                    uploadCts.Token
+                                );
+                                if (uploaded)
+                                {
+                                    _logger.LogInformation(
+                                        "Demo upload finished (match={MatchId} attempts={Attempts})",
+                                        expectedMatchId,
+                                        attempt
+                                    );
+                                    break;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(
+                                    ex,
+                                    "UploadDemos failed (match={MatchId} attempt={Attempt})",
+                                    expectedMatchId,
+                                    attempt
+                                );
+                            }
+
+                            try
+                            {
+                                await Task.Delay(TimeSpan.FromSeconds(10), uploadCts.Token);
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                break;
+                            }
                         }
-                        catch (Exception ex)
+
+                        if (!uploaded)
                         {
-                            _logger.LogError(
-                                ex,
-                                "UploadDemos failed after map end for match {MatchId}",
+                            _logger.LogCritical(
+                                "Demo upload did NOT complete within {Limit}s ({Attempts} attempt(s)) — this server may be too slow to upload demos. Finishing the map without a confirmed upload (match={MatchId}); the demo remains on disk and will be retried on next startup.",
+                                uploadTimeLimit,
+                                attempt,
                                 expectedMatchId
                             );
                         }
@@ -232,8 +282,9 @@ public partial class FiveStackPlugin
                             bool isSurrenderedNow = wasSurrendered || next.isSurrendered();
 
                             _logger.LogInformation(
-                                "Demo upload done — finishing map and switching (match={MatchId})",
-                                expectedMatchId
+                                "Finishing map and switching (match={MatchId} demoUploaded={Uploaded})",
+                                expectedMatchId,
+                                uploaded
                             );
 
                             if (isSurrenderedNow)

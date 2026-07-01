@@ -66,6 +66,7 @@ public partial class FiveStackPlugin : BasePlugin
     }
 
     private Timer _pingTimer;
+    private readonly System.Threading.CancellationTokenSource _shutdownCts = new();
 
     public override void Load(bool hotReload)
     {
@@ -103,10 +104,36 @@ public partial class FiveStackPlugin : BasePlugin
         {
             _matchService.GetMatchFromOffline();
         }
+
+        // On a fresh start (not a hot reload, where a recording may still be
+        // live) any recording lock left on disk is stale from a crash.
+        if (!hotReload)
+        {
+            _gameDemos.ClearStaleRecordingLocks();
+        }
+
+        // Recover demos left on disk by a previous crash/restart, once env/API have settled.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(15), _shutdownCts.Token);
+                await _gameDemos.UploadOrphanedDemos(_shutdownCts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // plugin unloaded before/while recovering
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to recover orphaned demos: {ex.Message}");
+            }
+        });
     }
 
     public override void Unload(bool hotReload)
     {
+        _shutdownCts.Cancel();
         _pingTimer?.Dispose();
         ConnectClientFunc.Unhook(ConnectClientHook, HookMode.Pre);
 

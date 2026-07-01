@@ -49,6 +49,18 @@ public class EnvironmentService
         return Environment.GetEnvironmentVariable("ALLOW_BOTS") == "true";
     }
 
+    // Total budget for uploading a map's demos after it ends, across retries.
+    public int GetDemoUploadTimeLimitSeconds()
+    {
+        var raw = Environment.GetEnvironmentVariable("DEMO_UPLOAD_TIME_LIMIT_SECONDS");
+        if (int.TryParse(raw, out int seconds) && seconds > 0)
+        {
+            return seconds;
+        }
+
+        return 300;
+    }
+
     public bool isOnGameServerNode()
     {
         return Environment.GetEnvironmentVariable("GAME_NODE_SERVER") == "true";

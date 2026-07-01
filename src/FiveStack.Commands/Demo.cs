@@ -19,7 +19,10 @@ public partial class FiveStackPlugin
 
         match.UpdateMapStatus(eMapStatus.UploadingDemo);
 
-        await _gameDemos.UploadDemos();
+        using var cts = new System.Threading.CancellationTokenSource(
+            TimeSpan.FromSeconds(_environmentService.GetDemoUploadTimeLimitSeconds())
+        );
+        await _gameDemos.UploadDemos(cts.Token);
     }
 
     [ConsoleCommand("test_start_demo", "start demo recording")]
