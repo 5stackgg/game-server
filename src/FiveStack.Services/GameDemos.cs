@@ -70,12 +70,12 @@ public class GameDemos
     {
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
-        if (match == null)
+        if (match == null || match.current_match_map_id == null)
         {
             return;
         }
 
-        string lockFilePath = GetLockFilePath(match.id);
+        string lockFilePath = GetLockFilePath(match.current_match_map_id.Value);
         if (File.Exists(lockFilePath))
         {
             _logger.LogInformation("Demo is already recording");
@@ -99,7 +99,7 @@ public class GameDemos
     {
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
-        if (match == null)
+        if (match == null || match.current_match_map_id == null)
         {
             return;
         }
@@ -109,7 +109,7 @@ public class GameDemos
             ? Directory.GetFiles(demoPath, "*.dem").Length
             : 0;
 
-        File.Delete(GetLockFilePath(match.id));
+        File.Delete(GetLockFilePath(match.current_match_map_id.Value));
         Server.NextFrame(() =>
         {
             _logger.LogInformation(
@@ -256,13 +256,14 @@ public class GameDemos
             cts.Token.ThrowIfCancellationRequested();
 
             // Skip anything still being recorded: an active recording holds a lock
-            // for its match, and a finalized demo hasn't been written since
+            // for its map, and a finalized demo hasn't been written since
             // tv_stoprecord. The lock check covers the case where an active
-            // recording simply hasn't flushed within the freshness window.
-            string? matchId = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(file)));
+            // recording simply hasn't flushed within the freshness window. Keyed
+            // per-map so a finished map isn't skipped while a later map records.
+            string? mapId = Path.GetFileName(Path.GetDirectoryName(file));
             bool activelyRecording =
-                Guid.TryParse(matchId, out Guid parsedMatchId)
-                && File.Exists(GetLockFilePath(parsedMatchId));
+                Guid.TryParse(mapId, out Guid parsedMapId)
+                && File.Exists(GetLockFilePath(parsedMapId));
             bool recentlyWritten =
                 File.GetLastWriteTimeUtc(file)
                 > DateTime.UtcNow.AddSeconds(-RecordingFinalizeWindowSeconds);
@@ -501,8 +502,8 @@ public class GameDemos
         return $"{_rootDir}/demos/{match.id}/{match.current_match_map_id}";
     }
 
-    private string GetLockFilePath(Guid matchId)
+    private string GetLockFilePath(Guid mapId)
     {
-        return $"{_rootDir}/.recording-demo-{matchId}";
+        return $"{_rootDir}/.recording-demo-{mapId}";
     }
 }
