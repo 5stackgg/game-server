@@ -129,12 +129,29 @@ public class GameDemos
         });
     }
 
-    // Returns false if any demo still needs another attempt.
-    public async Task<bool> UploadDemos(
+    // Uploads the current match/map's demos.
+    public Task<bool> UploadDemos(System.Threading.CancellationToken cancellationToken = default)
+    {
+        return UploadDemosFromPath(GetMatchDemoPath(), cancellationToken);
+    }
+
+    // Uploads a specific match/map's demos, independent of the current match
+    // state (which can change during the post-match upload window).
+    public Task<bool> UploadDemos(
+        string matchId,
+        string mapId,
         System.Threading.CancellationToken cancellationToken = default
     )
     {
-        string demoPath = GetMatchDemoPath();
+        return UploadDemosFromPath($"{_rootDir}/demos/{matchId}/{mapId}", cancellationToken);
+    }
+
+    // Returns false if any demo still needs another attempt.
+    private async Task<bool> UploadDemosFromPath(
+        string demoPath,
+        System.Threading.CancellationToken cancellationToken
+    )
+    {
         _logger.LogInformation($"Uploading demos from {demoPath}");
 
         if (!Directory.Exists(demoPath))
@@ -227,30 +244,36 @@ public class GameDemos
             $"Found {files.Length} demo(s) on disk, attempting to recover uploads"
         );
 
-        int timeLimit = _environmentService.GetDemoUploadTimeLimitSeconds();
+        // One overall budget for the whole pass so a backlog can't run for
+        // N × timeLimit; whatever isn't reached is retried on the next start.
+        using var cts = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken
+        );
+        cts.CancelAfter(TimeSpan.FromSeconds(_environmentService.GetDemoUploadTimeLimitSeconds()));
 
         foreach (string file in files)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            cts.Token.ThrowIfCancellationRequested();
 
-            // Skip a file that's still being written (an active recording); a
-            // finalized demo hasn't been touched since tv_stoprecord.
-            if (
+            // Skip anything still being recorded: an active recording holds a lock
+            // for its match, and a finalized demo hasn't been written since
+            // tv_stoprecord. The lock check covers the case where an active
+            // recording simply hasn't flushed within the freshness window.
+            string? matchId = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(file)));
+            bool activelyRecording =
+                Guid.TryParse(matchId, out Guid parsedMatchId)
+                && File.Exists(GetLockFilePath(parsedMatchId));
+            bool recentlyWritten =
                 File.GetLastWriteTimeUtc(file)
-                > DateTime.UtcNow.AddSeconds(-RecordingFinalizeWindowSeconds)
-            )
+                > DateTime.UtcNow.AddSeconds(-RecordingFinalizeWindowSeconds);
+
+            if (activelyRecording || recentlyWritten)
             {
-                _logger.LogInformation(
-                    $"Skipping recently-written demo (may still be recording): {file}"
-                );
+                _logger.LogInformation($"Skipping demo that may still be recording: {file}");
                 continue;
             }
 
             _logger.LogInformation($"Recovering orphaned demo {file}");
-            using var cts = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(
-                cancellationToken
-            );
-            cts.CancelAfter(TimeSpan.FromSeconds(timeLimit));
             await UploadDemo(file, cts.Token);
         }
 
@@ -269,13 +292,12 @@ public class GameDemos
             return true;
         }
 
-        string? serverId = _environmentService.GetServerId();
         string? apiPassword = _environmentService.GetServerApiPassword();
 
-        if (serverId == null || apiPassword == null)
+        if (apiPassword == null)
         {
-            _logger.LogWarning("Cannot upload demo: server id / api password not configured");
-            return true;
+            _logger.LogWarning("Cannot upload demo: server api password not configured");
+            return false;
         }
 
         // Derive ids from the path ({root}/demos/{matchId}/{mapId}/{demo}.dem)
@@ -296,8 +318,10 @@ public class GameDemos
         {
             if (!_uploadsInProgress.Add(filePath))
             {
+                // Another path owns this upload; report not-done so the caller
+                // retries rather than treating it as a confirmed success.
                 _logger.LogInformation($"Demo already being uploaded, skipping: {demoName}");
-                return true;
+                return false;
             }
         }
 
@@ -318,9 +342,8 @@ public class GameDemos
 
             if (string.IsNullOrEmpty(presignedUrl))
             {
-                _logger.LogCritical(
-                    $"Failed to get presigned URL (match {matchId} map {mapId} demo {demoName})"
-                );
+                // GetPresignedUrl already logged the specific reason (e.g. 409
+                // "not finished yet", which is a normal retry, not an error).
                 return false;
             }
 

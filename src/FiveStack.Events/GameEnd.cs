@@ -207,6 +207,11 @@ public partial class FiveStackPlugin
                             TimeSpan.FromSeconds(uploadTimeLimit)
                         );
 
+                        // Upload the specific map that just ended, not whatever the
+                        // current match/map resolves to when the timer fires.
+                        string uploadMatchId = expectedMatchId.ToString();
+                        string uploadMapId = currentMap.id.ToString();
+
                         bool uploaded = false;
                         int attempt = 0;
                         while (!uploadCts.IsCancellationRequested)
@@ -214,7 +219,11 @@ public partial class FiveStackPlugin
                             attempt++;
                             try
                             {
-                                uploaded = await _gameDemos.UploadDemos(uploadCts.Token);
+                                uploaded = await _gameDemos.UploadDemos(
+                                    uploadMatchId,
+                                    uploadMapId,
+                                    uploadCts.Token
+                                );
                                 if (uploaded)
                                 {
                                     _logger.LogInformation(
@@ -224,10 +233,6 @@ public partial class FiveStackPlugin
                                     );
                                     break;
                                 }
-                            }
-                            catch (OperationCanceledException)
-                            {
-                                break;
                             }
                             catch (Exception ex)
                             {
