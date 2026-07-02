@@ -1,0 +1,13 @@
+{
+  "FiveStack": {
+    "Version": 1,
+    "WS_DOMAIN": "wss://ws.5stack.gg",
+    "API_DOMAIN": "https://api.5stack.gg",
+    "RELAY_DOMAIN": "https://tv.5stack.gg",
+    "DEMOS_DOMAIN": "https://demos.5stack.gg",
+    "SERVER_ID": "your-server-id",
+    "SERVER_API_PASSWORD": "your-api-password",
+    "PUBLIC_CHAT_TRIGGER": ".",
+    "SILENT_CHAT_TRIGGER": "/"
+  }
+}

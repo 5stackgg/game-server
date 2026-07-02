@@ -1,0 +1,10 @@
+src/bin/
+src/obj/
+src/build/
+test/bin/
+test/obj/
+.git/
+Folder.DotSettings.user
+src/src.sln
+src/src.generated.sln
+5stack-server-mod.generated.sln
