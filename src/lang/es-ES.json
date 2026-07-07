@@ -65,7 +65,7 @@
   "captain.assigned": "{0} fue asignado capitán de {1}",
   "demos.recording": "Grabando demo",
   "player.join.help_hint": " Escribe {0}{1}help {2} para ver comandos disponibles",
-  "player.join.ready_hint": " ¡Escribe {1}{2}r{3} para estar listo!",
+  "player.join.ready_hint": " ¡Escribe {0}{1}r{2} para estar listo!",
   "match.resume_hint": "para reanudar escribe {0}resume",
   "match.received_data": "Datos del partido recibidos",
   "match.tv_delay": "Retraso de TV ({0}s restantes)",

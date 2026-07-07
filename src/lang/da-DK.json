@@ -65,7 +65,7 @@
   "captain.assigned": "{0} blev udpeget som kaptajn for {1}",
   "demos.recording": "Optager demo",
   "player.join.help_hint": " Skriv {0}{1}help {2} for tilgængelige kommandoer",
-  "player.join.ready_hint": " Skriv {1}{2}r{3} for at blive klar!",
+  "player.join.ready_hint": " Skriv {0}{1}r{2} for at blive klar!",
   "match.resume_hint": "for at genoptage skriv {0}resume",
   "match.received_data": "Modtog kampdata",
   "match.tv_delay": "TV-forsinkelse ({0}s tilbage)",

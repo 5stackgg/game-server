@@ -65,7 +65,7 @@
   "captain.assigned": "{0} назначен капитаном {1}",
   "demos.recording": "Запись демо",
   "player.join.help_hint": " Введите {0}{1}help {2} для доступных команд",
-  "player.join.ready_hint": " Введите {1}{2}r{3}, чтобы быть готовым!",
+  "player.join.ready_hint": " Введите {0}{1}r{2}, чтобы быть готовым!",
   "match.resume_hint": "для возобновления введите {0}resume",
   "match.received_data": "Данные матча получены",
   "match.tv_delay": "Задержка ТВ ({0}с осталось)",

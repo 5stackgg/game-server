@@ -16,6 +16,10 @@ namespace FiveStack;
 
 public class MatchManager
 {
+    // Extra seconds added to mp_match_restart_delay on dedicated servers so CS2's
+    // auto-restart stays behind the plugin's stop-recording + demo-upload flow.
+    private const int DemoUploadRestartBufferSeconds = 300;
+
     private MatchData? _matchData;
     private eMapStatus _currentMapStatus = eMapStatus.Unknown;
     private Guid? _activeMapId;
@@ -542,7 +546,17 @@ public class MatchManager
 
             FiveStackPlugin.SetPasswordBuffer(_matchData.password);
             ConVar.Find("sv_password")?.SetValue(_matchData.password);
-            ConVar.Find("mp_match_restart_delay")?.SetValue(_matchData.options.tv_delay);
+            // On a dedicated server the plugin runs a longer end-of-map flow (wait
+            // for GOTV, stop recording, upload the demo) and changes the map itself,
+            // so push CS2's auto-restart out past that flow — otherwise the map
+            // rotates mid-upload. Game-server nodes skip the upload, so tv_delay is
+            // enough there.
+            int matchRestartDelay = _matchData.options.tv_delay;
+            if (!_environmentService.isOnGameServerNode())
+            {
+                matchRestartDelay += DemoUploadRestartBufferSeconds;
+            }
+            ConVar.Find("mp_match_restart_delay")?.SetValue(matchRestartDelay);
             ConVar.Find("hostname")?.SetValue("5Stack.gg");
 
             if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
@@ -677,6 +691,15 @@ public class MatchManager
         else
         {
             ConVar.Find("game_mode")?.SetValue(1);
+        }
+
+        // game_type/game_mode only take effect after a restart, but restarting an
+        // in-progress match (e.g. on a plugin reload) would wrongly reset it. Only
+        // restart during warmup, when a fresh game start is expected.
+        if (!IsWarmup())
+        {
+            _logger.LogInformation("SetupGameMode: not in warmup, skipping mp_restartgame");
+            return;
         }
 
         _gameServer.SendCommands(["mp_restartgame 1"]);

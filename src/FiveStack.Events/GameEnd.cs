@@ -65,6 +65,11 @@ public partial class FiveStackPlugin
 
         Guid? winningLineupId = _matchEvents.GetWinningLineupId();
 
+        // Move the map off Live immediately so it reflects WaitingForTV during the
+        // tv_delay window (HandleEndOfMap may be deferred by use_playcast). This is
+        // deduped in UpdateMapStatus, so HandleEndOfMap re-setting it is a no-op.
+        match.UpdateMapStatus(eMapStatus.WaitingForTV, winningLineupId);
+
         if (matchData.options.use_playcast)
         {
             TimerUtility.AddTimer(
