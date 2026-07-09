@@ -123,10 +123,12 @@ if [ -n "${BUILD_MANIFESTS}" ]; then
     echo "---Syncing Depots to ServerFiles---"
 
     # sync downloaded depots to server files
+    depotIndex=0
     for depotId in "${depots[@]}"; do
+        depotIndex=$((depotIndex + 1))
         depotDir="${STEAMCMD_DIR}/linux32/steamapps/content/app_${GAME_ID}/depot_${depotId}"
         if [ -d "${depotDir}" ] && [ "$(ls -A "${depotDir}")" ]; then
-            echo "---Syncing Depot ${depotId} ($(du -sh "${depotDir}" 2>/dev/null | cut -f1)) to ServerFiles---"
+            echo "---Syncing Depot ${depotId} (${depotIndex}/${depotTotal}, $(du -sh "${depotDir}" 2>/dev/null | cut -f1)) to ServerFiles---"
 
             # no --delete: depots merge into the same dir, and it would remove
             # the other depots' files plus the .5stack.build track file
