@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "main"
+      - "beta"
+  workflow_dispatch:
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      css: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.css == 'true' }}
+      sw: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.sw == 'true' }}
+      validator: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.validator == 'true' }}
+      channel: ${{ steps.channel.outputs.channel }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: channel
+        run: |
+          if [ "$GITHUB_REF_NAME" = "beta" ]; then
+            echo "channel=beta" >> "$GITHUB_OUTPUT"
+          else
+            echo "channel=latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      # skipped on workflow_dispatch: there is no base commit to diff against,
+      # and the outputs above force every app to build.
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name != 'workflow_dispatch'
+        with:
+          filters: |
+            shared: &shared
+              - 'shared/**'
+              - 'Directory.Build.props'
+              - '.github/workflows/ci.yaml'
+              - '.github/workflows/plugin-build.yaml'
+            css:
+              - *shared
+              - 'apps/counterstrikesharp/**'
+            sw:
+              - *shared
+              - 'apps/swiftly/**'
+            validator:
+              - 'apps/gamedata-validator/**'
+              - 'shared/gamedata/**'
+              - '.github/workflows/validator-build.yaml'
+              # CCS_GAMEDATA_REF is baked from this Dockerfile's CounterStrikeSharp URL
+              - 'apps/counterstrikesharp/Dockerfile'
+
+  counterstrikesharp:
+    needs: changes
+    if: needs.changes.outputs.css == 'true'
+    uses: ./.github/workflows/plugin-build.yaml
+    with:
+      app_dir: apps/counterstrikesharp
+      image: game-server-css
+      legacy_image: game-server
+      tag_prefix: css
+      # legacy releases are bare v0.0.N; matching them keeps the counter from resetting
+      version_tag_regex: '^(?:css-)?v0\.0\.(\d+)$'
+      channel: ${{ needs.changes.outputs.channel }}
+    secrets: inherit
+
+  swiftly:
+    needs: changes
+    if: needs.changes.outputs.sw == 'true'
+    uses: ./.github/workflows/plugin-build.yaml
+    with:
+      app_dir: apps/swiftly
+      image: game-server-sw
+      legacy_image: swiftly-game-server
+      tag_prefix: sw
+      version_tag_regex: '^sw-v0\.0\.(\d+)$'
+      channel: ${{ needs.changes.outputs.channel }}
+      run_tests: true
+    secrets: inherit
+
+  gamedata-validator:
+    needs: changes
+    if: needs.changes.outputs.validator == 'true'
+    uses: ./.github/workflows/validator-build.yaml
+    with:
+      channel: ${{ needs.changes.outputs.channel }}
+    secrets: inherit

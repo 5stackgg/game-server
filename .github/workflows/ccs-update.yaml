@@ -13,7 +13,7 @@ jobs:
 
       - name: Extract current URL from Dockerfile
         run: |
-          CURRENT_URL=$(grep 'ENV COUNTER_STRIKE_SHARP_URL' Dockerfile | cut -d'=' -f2)
+          CURRENT_URL=$(grep 'ENV COUNTER_STRIKE_SHARP_URL' apps/counterstrikesharp/Dockerfile | cut -d'=' -f2)
           echo "CURRENT_URL=$CURRENT_URL" >> $GITHUB_ENV
 
       - name: Check latest release URL
@@ -49,11 +49,11 @@ jobs:
         if: env.CURRENT_URL != env.LATEST_URL
         run: |
           VERSION_NUMBER=$(echo ${{ env.LATEST_URL }} | grep -oP 'v\K\d+\.\d+\.\d+')
-          sed -i 's|ENV COUNTER_STRIKE_SHARP_URL=.*|ENV COUNTER_STRIKE_SHARP_URL=${{ env.LATEST_URL }}|' Dockerfile
-          sed -i "s|<PackageReference Include=\"CounterStrikeSharp.API\" Version=\".*\"|<PackageReference Include=\"CounterStrikeSharp.API\" Version=\"${VERSION_NUMBER}\"|" src/FiveStack.csproj
+          sed -i 's|ENV COUNTER_STRIKE_SHARP_URL=.*|ENV COUNTER_STRIKE_SHARP_URL=${{ env.LATEST_URL }}|' apps/counterstrikesharp/Dockerfile
+          sed -i "s|<PackageReference Include=\"CounterStrikeSharp.API\" Version=\".*\"|<PackageReference Include=\"CounterStrikeSharp.API\" Version=\"${VERSION_NUMBER}\"|" apps/counterstrikesharp/src/FiveStack.csproj
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add Dockerfile
-          git add src/FiveStack.csproj
+          git add apps/counterstrikesharp/Dockerfile
+          git add apps/counterstrikesharp/src/FiveStack.csproj
           git commit -m "chore: update counter-strike sharp version to ${VERSION_NUMBER}"
           git push

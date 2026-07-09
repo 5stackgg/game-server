@@ -1,0 +1,206 @@
+name: Plugin Build
+
+on:
+  workflow_call:
+    inputs:
+      app_dir:
+        required: true
+        type: string
+      image:
+        required: true
+        type: string
+      legacy_image:
+        description: "old package name, still published during the rename window"
+        required: true
+        type: string
+      tag_prefix:
+        description: "git/release tag prefix; the two plugins share one release namespace"
+        required: true
+        type: string
+      version_tag_regex:
+        description: "matches this plugin's release tags, capturing the counter"
+        required: true
+        type: string
+      channel:
+        required: true
+        type: string
+      run_tests:
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        if: inputs.run_tests
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Test
+        if: inputs.run_tests
+        run: dotnet test ${{ inputs.app_dir }}/test/FiveStack.Tests.csproj -c Release
+
+      - name: Resolve version and tags
+        id: resolve
+        uses: actions/github-script@v7
+        env:
+          # read through process.env, never interpolated into the script body:
+          # `${{ }}` inside a JS string literal would eat the regex backslashes
+          # ("\d" -> "d"), silently matching nothing and resetting the counter to 1.
+          CHANNEL: ${{ inputs.channel }}
+          TAG_PREFIX: ${{ inputs.tag_prefix }}
+          IMAGE: ${{ inputs.image }}
+          LEGACY_IMAGE: ${{ inputs.legacy_image }}
+          VERSION_TAG_REGEX: ${{ inputs.version_tag_regex }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const { CHANNEL: channel, TAG_PREFIX: prefix, IMAGE: image, LEGACY_IMAGE: legacy } = process.env;
+            const sha = context.sha;
+
+            const repoTag = (name, tag) => `ghcr.io/${owner}/${name}:${tag}`;
+
+            if (channel === 'beta') {
+              // one push to beta builds both plugins, so a bare <sha> release tag would
+              // collide on the second one.
+              core.setOutput('release_version', sha);
+              core.setOutput('release_tag', `${prefix}-${sha}`);
+              core.setOutput('release_name', `Build ${prefix} ${sha}`);
+              core.setOutput('zip', `FiveStack-${prefix}-${sha}.zip`);
+              core.setOutput('draft', 'true');
+              core.setOutput('tags', [
+                repoTag(image, 'beta'), repoTag(image, `beta-${sha}`),
+                repoTag(legacy, 'beta'), repoTag(legacy, `beta-${sha}`),
+              ].join('\n'));
+              return;
+            }
+
+            const re = new RegExp(process.env.VERSION_TAG_REGEX);
+            const releases = await github.paginate(github.rest.repos.listReleases, { owner, repo: context.repo.repo });
+            const counters = releases
+              .map((r) => re.exec(r.tag_name))
+              .filter(Boolean)
+              .map((m) => parseInt(m[1], 10))
+              .filter((n) => Number.isFinite(n));
+            const next = counters.length ? Math.max(...counters) + 1 : 1;
+            const version = `0.0.${next}`;
+
+            core.info(`matched ${counters.length} ${prefix} releases, next=${version}`);
+
+            core.setOutput('release_version', version);
+            core.setOutput('release_tag', `${prefix}-v${version}`);
+            core.setOutput('release_name', `${prefix}-v${version}`);
+            core.setOutput('zip', `FiveStack-${prefix}-v${version}.zip`);
+            core.setOutput('draft', 'false');
+            // the image is namespaced by package, so its version tag stays bare.
+            core.setOutput('tags', [
+              repoTag(image, 'latest'), repoTag(image, sha), repoTag(image, `v${version}`),
+              repoTag(legacy, 'latest'), repoTag(legacy, sha), repoTag(legacy, `v${version}`),
+            ].join('\n'));
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build plugin zip
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ inputs.app_dir }}/Dockerfile
+          target: zip-creator
+          push: false
+          load: true
+          tags: mod-builder:latest
+          build-args: |
+            RELEASE_VERSION=${{ steps.resolve.outputs.release_version }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ inputs.image }}:buildcache
+
+      - name: Extract zip file
+        run: |
+          docker create --name temp mod-builder:latest
+          docker cp temp:/mod-release.zip ./${{ steps.resolve.outputs.zip }}
+          docker rm temp
+
+      - name: Build and Push server Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ inputs.app_dir }}/Dockerfile
+          push: true
+          tags: ${{ steps.resolve.outputs.tags }}
+          build-args: |
+            RELEASE_VERSION=${{ steps.resolve.outputs.release_version }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ inputs.image }}:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ inputs.image }}:buildcache,mode=max
+
+      - name: Create Release and Upload Asset
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.resolve.outputs.release_tag }}
+          name: ${{ steps.resolve.outputs.release_name }}
+          draft: ${{ steps.resolve.outputs.draft }}
+          prerelease: ${{ steps.resolve.outputs.draft }}
+          files: |
+            ./${{ steps.resolve.outputs.zip }}
+
+      # only beta is pruned. the latest channel's v0.0.N image tags are what
+      # game_server_nodes.pin_plugin_version resolves against; deleting them
+      # strands pinned nodes.
+      - name: Prune old beta images
+        if: inputs.channel == 'beta'
+        uses: actions/github-script@v7
+        env:
+          IMAGE: ${{ inputs.image }}
+          LEGACY_IMAGE: ${{ inputs.legacy_image }}
+        with:
+          script: |
+            const keep = 5;
+            const owner = context.repo.owner;
+            const packages = [process.env.IMAGE, process.env.LEGACY_IMAGE];
+            const isBeta = (t) => t === 'beta' || t.startsWith('beta-');
+            const { data: ownerInfo } = await github.rest.users.getByUsername({ username: owner });
+            const isOrg = ownerInfo.type === 'Organization';
+            const listFn = isOrg
+              ? github.rest.packages.getAllPackageVersionsForPackageOwnedByOrg
+              : github.rest.packages.getAllPackageVersionsForPackageOwnedByUser;
+
+            for (const pkg of packages) {
+              const listArgs = isOrg
+                ? { package_type: 'container', package_name: pkg, org: owner, per_page: 100 }
+                : { package_type: 'container', package_name: pkg, username: owner, per_page: 100 };
+              let versions;
+              try {
+                versions = await github.paginate(listFn, listArgs);
+              } catch (e) {
+                core.info(`skipping ${pkg}: ${e.message}`);
+                continue;
+              }
+              const beta = versions.filter((v) => {
+                const tags = v.metadata?.container?.tags || [];
+                return tags.length > 0 && tags.some(isBeta);
+              });
+              beta.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+              const toDelete = beta.slice(keep);
+              for (const v of toDelete) {
+                await (isOrg
+                  ? github.rest.packages.deletePackageVersionForOrg({ package_type: 'container', package_name: pkg, org: owner, package_version_id: v.id })
+                  : github.rest.packages.deletePackageVersionForUser({ package_type: 'container', package_name: pkg, username: owner, package_version_id: v.id }));
+                core.info(`deleted ${pkg} ${v.id} [${(v.metadata?.container?.tags || []).join(', ')}]`);
+              }
+              core.info(`${pkg}: beta candidates=${beta.length} deleted=${toDelete.length}`);
+            }
