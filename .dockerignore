@@ -1,0 +1,16 @@
+.git/
+.github/
+.conductor/
+.DS_Store
+.env
+
+**/bin/
+**/obj/
+**/build/
+**/*.generated.sln
+**/Folder.DotSettings.user
+
+**/__pycache__/
+**/*.pyc
+
+apps/gamedata-validator/gamedata/ccs.gamedata.json
