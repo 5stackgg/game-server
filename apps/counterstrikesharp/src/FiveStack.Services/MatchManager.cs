@@ -825,9 +825,7 @@ public class MatchManager
             return;
         }
 
-        _gameServer.SendCommands(
-            [$"cs2fow_enable {(_matchData.options.anti_wallhack ? 1 : 0)}"]
-        );
+        _gameServer.SendCommands([$"cs2fow_enable {(_matchData.options.anti_wallhack ? 1 : 0)}"]);
     }
 
     private void PublishAntiWallhackStatus()
@@ -849,8 +847,7 @@ public class MatchManager
             $"{Server.MapName}.bvh8"
         );
 
-        bool active =
-            _matchData.options.anti_wallhack && pluginLoaded && File.Exists(bakePath);
+        bool active = _matchData.options.anti_wallhack && pluginLoaded && File.Exists(bakePath);
 
         _matchEvents.PublishGameEvent(
             "antiWallhackStatus",

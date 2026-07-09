@@ -43,9 +43,9 @@ cp -r "/opt/addons" "${INSTANCE_SERVER_DIR}/game/csgo"
 
 echo "---Setup CS2FOW---"
 if grep -qw avx /proc/cpuinfo; then
-  mkdir -p "${DATA_DIR}/cs2fow/maps"
+  mkdir -p "${BASE_SERVER_DIR}/.cs2fow/maps"
   rm -rf "${INSTANCE_SERVER_DIR}/game/csgo/addons/cs2fow/data/maps"
-  ln -s "${DATA_DIR}/cs2fow/maps" "${INSTANCE_SERVER_DIR}/game/csgo/addons/cs2fow/data/maps"
+  ln -s "${BASE_SERVER_DIR}/.cs2fow/maps" "${INSTANCE_SERVER_DIR}/game/csgo/addons/cs2fow/data/maps"
 
   mkdir -p "${INSTANCE_SERVER_DIR}/game/csgo/tools"
   for cs2fow_tool in /opt/cs2fow-tools/*; do

@@ -174,15 +174,17 @@ EOF
     echo "${BUILD_ID}" > "${BUILD_TRACK_FILE}"
 
     echo "---Done Updating Server To Version ${BUILD_ID}---"
+    UPDATE_RC=0
 
 else
     echo "---Update Server To Latest Version---"
     "${STEAMCMD_DIR}/steamcmd.sh" +force_install_dir "${BASE_SERVER_DIR}" +login anonymous +app_update "${GAME_ID}" ${VALIDATE:+validate} +quit
+    UPDATE_RC=$?
 fi
 
-if [ "${GAME_ID}" = "730" ] && [ -n "${CS2FOW_PREBAKE_URL:-}" ]; then
-    CS2FOW_MAPS_DIR="${DATA_DIR}/cs2fow/maps"
-    CS2FOW_MARKER="${DATA_DIR}/cs2fow/.prebake-version"
+if [ "${GAME_ID}" = "730" ] && [ -n "${CS2FOW_PREBAKE_URL:-}" ] && grep -qw avx /proc/cpuinfo; then
+    CS2FOW_MAPS_DIR="${BASE_SERVER_DIR}/.cs2fow/maps"
+    CS2FOW_MARKER="${BASE_SERVER_DIR}/.cs2fow/.prebake-version"
 
     if [ ! -f "${CS2FOW_MARKER}" ] || [ "$(cat "${CS2FOW_MARKER}" 2>/dev/null)" != "${CS2FOW_PREBAKE_VERSION}" ]; then
         echo "---Downloading CS2FOW Official Map Prebakes (${CS2FOW_PREBAKE_VERSION})---"
@@ -202,3 +204,5 @@ if [ "${GAME_ID}" = "730" ] && [ -n "${CS2FOW_PREBAKE_URL:-}" ]; then
         rm -f /tmp/cs2fow-prebakes.zip
     fi
 fi
+
+exit ${UPDATE_RC:-0}

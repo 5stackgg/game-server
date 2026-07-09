@@ -119,7 +119,6 @@ RUN mkdir -p /opt/cs2fow && \
 	unzip -q /tmp/cs2fow.zip -d /opt/cs2fow && \
 	rm /tmp/cs2fow.zip
 
-
 RUN mkdir -p /opt/csgo-metamod /opt/csgo-sourcemod /opt/csgo-no-lobby-reservation && \
 	wget -q $METAMOD_CSGO_URL -O /tmp/metamod-csgo.tar.gz && \
 	tar -xz -C /opt/csgo-metamod -f /tmp/metamod-csgo.tar.gz && \
