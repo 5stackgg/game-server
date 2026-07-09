@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 #
+# Tail the game server's logs. The pod also runs codepier's `dev` container and a
+# secrets sidecar, so the server container has to be named explicitly.
+#
 #   ./scripts/tail.sh            pick interactively
 #   ./scripts/tail.sh swiftly
 set -euo pipefail
 
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
-container_for() {
+workload_for() {
   case "$1" in
     counterstrikesharp | css) echo "dev-game-server" ;;
     swiftly | sw) echo "dev-swiftly-game-server" ;;
@@ -23,9 +24,10 @@ if [ -z "$plugin" ]; then
   done
 fi
 
-if ! container="$(container_for "$plugin")"; then
+if ! workload="$(workload_for "$plugin")"; then
   echo "usage: $0 [counterstrikesharp|swiftly]" >&2
   exit 1
 fi
 
-exec codepier tail --container "$container"
+# the container carries the same name as its workload
+exec codepier tail --deployment "$workload" --container "$workload"
