@@ -79,19 +79,32 @@ if [ -n "${BUILD_MANIFESTS}" ]; then
         LINUX_SERVER="${STEAMCMD_ARGS} +download_depot ${GAME_ID} ${depotId} ${gid} +quit"
         echo "steamcmd.sh +force_install_dir \"${BASE_SERVER_DIR}\" +login \"${STEAM_USER}\" [redacted] +download_depot ${GAME_ID} ${depotId} ${gid} +quit"
 
+        depotLog="${STEAMCMD_DIR}/depot_${depotId}_download.log"
+        rm -f "${depotLog}"
+
         # steamcmd prints nothing while download_depot runs, so report
-        # progress from the depot dir size until it finishes
+        # progress from the depot dir size until it finishes; the total comes
+        # from steamcmd's "Downloading depot X (N files, M MB)" line in the log
         (
+            totalMB=""
             while true; do
                 sleep 15
-                size=$(du -sh "${depotDir}" 2>/dev/null | cut -f1)
+                if [ -z "${totalMB}" ]; then
+                    totalMB=$(sed -nE "s/.*Downloading depot ${depotId} \(([0-9]+) files, ([0-9]+) MB\).*/\2/p" "${depotLog}" 2>/dev/null | head -n1)
+                fi
+                curMB=$(du -sm "${depotDir}" 2>/dev/null | cut -f1)
                 fileCount=$(find "${depotDir}" -type f 2>/dev/null | wc -l | tr -d ' ')
-                echo "[depot ${depotId}] ${size:-0} downloaded so far (${fileCount} files)..."
+                if [ -n "${totalMB}" ] && [ "${totalMB}" -gt 0 ] 2>/dev/null; then
+                    pct=$(( ${curMB:-0} * 100 / totalMB ))
+                    [ "${pct}" -gt 100 ] && pct=100
+                    echo "[depot ${depotId}] ${curMB:-0} MB / ${totalMB} MB (${pct}%) downloaded (${fileCount} files)..."
+                else
+                    echo "[depot ${depotId}] ${curMB:-0} MB downloaded so far (${fileCount} files)..."
+                fi
             done
         ) &
         progressPid=$!
 
-        depotLog="${STEAMCMD_DIR}/depot_${depotId}_download.log"
         eval "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER} 2>&1 | tee "${depotLog}"
 
         kill "${progressPid}" 2>/dev/null
@@ -117,10 +130,28 @@ if [ -n "${BUILD_MANIFESTS}" ]; then
 
             # no --delete: depots merge into the same dir, and it would remove
             # the other depots' files plus the .5stack.build track file
+            # progress2 emits \r-updated lines; convert to one line per 5%
             syncStart=$(date +%s)
-            rsync -a --info=stats1 \
+            rsync -a --info=progress2,stats1 --no-inc-recursive \
                 "${depotDir}/" \
-                "${BASE_SERVER_DIR}/"
+                "${BASE_SERVER_DIR}/" \
+                | tr '\r' '\n' \
+                | awk -v depot="${depotId}" '
+                    $2 ~ /^[0-9]+%$/ {
+                        pct = $2; sub(/%/, "", pct)
+                        if (pct + 0 >= last + 5 || (pct + 0 == 100 && last != 100)) {
+                            last = pct + 0
+                            printf "[depot %s sync] %s%% (%s, %s)\n", depot, pct, $1, $3
+                            fflush()
+                        }
+                        next
+                    }
+                    NF { print; fflush() }
+                '
+            if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+                echo "Failed syncing depot ${depotId} to server files. Exiting."
+                exit 1
+            fi
             echo "---Synced Depot ${depotId} in $(( $(date +%s) - syncStart ))s---"
 
         else
