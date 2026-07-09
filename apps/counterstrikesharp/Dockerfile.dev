@@ -63,4 +63,4 @@ WORKDIR /opt/5stack
 
 COPY . .
 
-ENTRYPOINT ["./scripts/dev.sh"]
+ENTRYPOINT ["./apps/counterstrikesharp/scripts/dev.sh"]

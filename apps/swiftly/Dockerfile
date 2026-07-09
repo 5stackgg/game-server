@@ -15,18 +15,20 @@ ENV DOTNET_ROOT="/usr/share/dotnet"
 
 WORKDIR /mod
 
-COPY src/FiveStack.csproj src/
+COPY Directory.Build.props ./
+COPY apps/swiftly/src/FiveStack.csproj apps/swiftly/src/
 
-RUN dotnet restore src/FiveStack.csproj
+RUN dotnet restore apps/swiftly/src/FiveStack.csproj
 
-COPY . .
+COPY shared shared
+COPY apps/swiftly apps/swiftly
 
 ARG RELEASE_VERSION
 ENV RELEASE_VERSION=${RELEASE_VERSION}
 
-RUN sed -i "s/__RELEASE_VERSION__/${RELEASE_VERSION}/" src/FiveStack.cs
+RUN sed -i "s/__RELEASE_VERSION__/${RELEASE_VERSION}/" apps/swiftly/src/FiveStack.cs
 
-RUN dotnet publish -c Release src/FiveStack.csproj -o /mod/release
+RUN dotnet publish -c Release apps/swiftly/src/FiveStack.csproj -o /mod/release
 
 FROM debian:bookworm-slim AS zip-creator
 
@@ -107,8 +109,10 @@ RUN mkdir -p /opt/csgo-metamod /opt/csgo-sourcemod /opt/csgo-no-lobby-reservatio
 	unzip -q /tmp/no-lobby-reservation.zip -d /opt/csgo-no-lobby-reservation && \
 	rm /tmp/no-lobby-reservation.zip
 
-COPY /cfg /opt/server-cfg
-COPY /scripts /opt/scripts
+COPY shared/cfg /opt/server-cfg
+COPY apps/swiftly/cfg /opt/server-cfg
+COPY shared/scripts /opt/scripts
+COPY apps/swiftly/scripts /opt/scripts
 COPY --from=build /mod/release /opt/mod
 
 RUN cp -R /opt/swiftlys2/swiftlys2-linux-${SWIFTLYS2_VERSION}-with-runtimes/addons /opt/addons && \

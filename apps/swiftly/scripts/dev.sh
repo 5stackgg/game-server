@@ -8,12 +8,12 @@
 # (see scripts/setup.sh). SwiftlyS2 "AutoHotReload" (cfg/core.jsonc) then
 # reloads the plugin when FiveStack.dll changes.
 #
-# Chain: dotnet watch build -> src/build/net10.0 -> cp -> /opt/dev -> SwiftlyS2 reload
+# Chain: dotnet watch build -> apps/swiftly/src/build/net10.0 -> cp -> /opt/dev -> SwiftlyS2 reload
 
 log() { echo "[dev.sh $(date '+%H:%M:%S')] $*"; }
 
-PROJECT="/opt/5stack/src/FiveStack.csproj"
-BUILD_OUTPUT="/opt/5stack/src/build/net10.0"
+PROJECT="/opt/5stack/apps/swiftly/src/FiveStack.csproj"
+BUILD_OUTPUT="/opt/5stack/apps/swiftly/src/build/net10.0"
 DEV_DIR="/opt/dev"
 
 log "starting dev hot-reload"

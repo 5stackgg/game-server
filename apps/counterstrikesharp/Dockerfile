@@ -16,22 +16,24 @@ ENV DOTNET_ROOT="/usr/share/dotnet"
 
 WORKDIR /mod
 
-COPY src/*.csproj .
+COPY Directory.Build.props ./
+COPY apps/counterstrikesharp/src/FiveStack.csproj apps/counterstrikesharp/src/
 
-RUN dotnet restore
+RUN dotnet restore apps/counterstrikesharp/src/FiveStack.csproj
 
-COPY . .
+COPY shared shared
+COPY apps/counterstrikesharp apps/counterstrikesharp
 
 ARG RELEASE_VERSION
-ENV RELEASE_VERSION ${RELEASE_VERSION}
+ENV RELEASE_VERSION=${RELEASE_VERSION}
 
-RUN sed -i 's/__RELEASE_VERSION__/'${RELEASE_VERSION}'/' src/FiveStackPlugin.cs
+RUN sed -i "s/__RELEASE_VERSION__/${RELEASE_VERSION}/" apps/counterstrikesharp/src/FiveStackPlugin.cs
 
-RUN dotnet build -c Release -o release
+RUN dotnet build -c Release apps/counterstrikesharp/src/FiveStack.csproj -o release
 
 RUN rm /mod/release/CounterStrikeSharp.API.dll
 
-COPY src/lang /mod/release/lang
+COPY apps/counterstrikesharp/src/lang /mod/release/lang
 
 # New stage for creating the zip file
 FROM debian:bookworm-slim AS zip-creator
@@ -118,8 +120,10 @@ RUN mkdir -p /opt/csgo-metamod /opt/csgo-sourcemod /opt/csgo-no-lobby-reservatio
 	unzip -q /tmp/no-lobby-reservation.zip -d /opt/csgo-no-lobby-reservation && \
 	rm /tmp/no-lobby-reservation.zip
 
-COPY /cfg /opt/server-cfg
-COPY /scripts /opt/scripts
+COPY shared/cfg /opt/server-cfg
+COPY apps/counterstrikesharp/cfg /opt/server-cfg
+COPY shared/scripts /opt/scripts
+COPY apps/counterstrikesharp/scripts /opt/scripts
 COPY --from=build /mod/release /opt/mod
 
 RUN mv /opt/metamod/addons /opt/addons && \

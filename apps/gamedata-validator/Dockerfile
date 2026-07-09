@@ -8,9 +8,9 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     pip install --no-cache-dir json5
 
-COPY lib/s2binlib.so ./lib/s2binlib.so
-COPY main.py s2binlib.py ./
-COPY gamedata ./gamedata
+COPY apps/gamedata-validator/lib/s2binlib.so ./lib/s2binlib.so
+COPY apps/gamedata-validator/main.py apps/gamedata-validator/s2binlib.py ./
+COPY shared/gamedata ./gamedata
 
 ARG CCS_GAMEDATA_REF=main
 RUN python -c "import urllib.request; urllib.request.urlretrieve('https://raw.githubusercontent.com/roflmuffin/CounterStrikeSharp/${CCS_GAMEDATA_REF}/configs/addons/counterstrikesharp/gamedata/gamedata.json', 'gamedata/ccs.gamedata.json')"

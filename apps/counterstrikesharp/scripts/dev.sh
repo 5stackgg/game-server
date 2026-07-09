@@ -11,15 +11,15 @@ kill_dotnet_watch() {
     exit
   fi
 }
-dotnet build src
+dotnet build apps/counterstrikesharp/src
 
-dotnet watch build --project src &
+dotnet watch build --project apps/counterstrikesharp/src &
 dotnet_watch_pid=$!
 
 # Set up trap to kill dotnet watch process on script exit
 trap kill_dotnet_watch EXIT
 
-directory_to_watch="/opt/5stack/src/bin/Debug/net10.0"
+directory_to_watch="/opt/5stack/apps/counterstrikesharp/src/bin/Debug/net10.0"
 
 while true; do
   rm -f "$directory_to_watch/CounterStrikeSharp.API.dll"

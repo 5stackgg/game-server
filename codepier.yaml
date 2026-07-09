@@ -1,16 +1,15 @@
 namespaces: [5stack]
 image: mcr.microsoft.com/dotnet/sdk:10.0
 container: dev
-deployment: dev-swiftly-game-server
+deployment: dev-game-server
 supplemental: true
 workdir: /opt/5stack
 sync:
   - .:/opt/5stack
 ignore:
-  - "src/bin/"
-  - "src/obj/"
-  - "src/build/"
+  - "**/bin/"
+  - "**/obj/"
+  - "**/build/"
+  - "**/__pycache__/"
   - "Folder.DotSettings.user"
-  - "src/src.sln"
-  - "src/src.generated.sln"
-  - "5stack-server-mod.generated.sln"
+  - "*.generated.sln"
