@@ -16,9 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # the CounterStrikeSharp release apps/counterstrikesharp actually ships. Validating
-      # gamedata from a release we don't run reports breaks we don't have, and hides the
-      # ones we do. The SwiftlyS2 version is resolved at run time, not baked here.
       - name: Resolve upstream refs
         run: bash apps/gamedata-validator/scripts/resolve-refs.sh >> "$GITHUB_ENV"
 

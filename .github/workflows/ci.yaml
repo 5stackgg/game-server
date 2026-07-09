@@ -20,20 +20,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # the channel IS the published tag, and workflow_dispatch runs from any branch,
+      # so refuse rather than default an unreviewed ref onto :latest
       - id: channel
         run: |
-          if [ "$GITHUB_REF_NAME" = "beta" ]; then
-            echo "channel=beta" >> "$GITHUB_OUTPUT"
-          else
-            echo "channel=latest" >> "$GITHUB_OUTPUT"
-          fi
+          case "$GITHUB_REF_NAME" in
+            main) echo "channel=latest" >> "$GITHUB_OUTPUT" ;;
+            beta) echo "channel=beta" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "::error::refusing to publish from '$GITHUB_REF_NAME'; run this workflow from main or beta"
+              exit 1
+              ;;
+          esac
 
-      # skipped on workflow_dispatch: there is no base commit to diff against,
-      # and the outputs above force every app to build.
       - uses: dorny/paths-filter@v3
         id: filter
         if: github.event_name != 'workflow_dispatch'
         with:
+          # naming the pushed branch is what makes this diff against the commit before
+          # the push; unset it defaults to the repo's default branch
+          base: ${{ github.ref_name }}
           filters: |
             shared: &shared
               - 'shared/**'
@@ -77,6 +83,8 @@ jobs:
       legacy_image: swiftly-game-server
       tag_prefix: sw
       version_tag_regex: '^sw-v0\.0\.(\d+)$'
+      # swiftly's releases were cut in the old repo up to v0.0.41 and did not travel
+      version_floor: 41
       channel: ${{ needs.changes.outputs.channel }}
       run_tests: true
     secrets: inherit

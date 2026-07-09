@@ -21,6 +21,11 @@ on:
         description: "matches this plugin's release tags, capturing the counter"
         required: true
         type: string
+      version_floor:
+        description: "counter to resume from when no matching release exists yet"
+        required: false
+        default: 0
+        type: number
       channel:
         required: true
         type: string
@@ -52,14 +57,14 @@ jobs:
         id: resolve
         uses: actions/github-script@v7
         env:
-          # read through process.env, never interpolated into the script body:
-          # `${{ }}` inside a JS string literal would eat the regex backslashes
-          # ("\d" -> "d"), silently matching nothing and resetting the counter to 1.
+          # never interpolate these into the script body: `${{ }}` inside a JS
+          # string literal eats the regex backslashes ("\d" -> "d").
           CHANNEL: ${{ inputs.channel }}
           TAG_PREFIX: ${{ inputs.tag_prefix }}
           IMAGE: ${{ inputs.image }}
           LEGACY_IMAGE: ${{ inputs.legacy_image }}
           VERSION_TAG_REGEX: ${{ inputs.version_tag_regex }}
+          VERSION_FLOOR: ${{ inputs.version_floor }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -70,8 +75,7 @@ jobs:
             const repoTag = (name, tag) => `ghcr.io/${owner}/${name}:${tag}`;
 
             if (channel === 'beta') {
-              // one push to beta builds both plugins, so a bare <sha> release tag would
-              // collide on the second one.
+              // one push to beta builds both plugins; a bare <sha> tag collides on the second
               core.setOutput('release_version', sha);
               core.setOutput('release_tag', `${prefix}-${sha}`);
               core.setOutput('release_name', `Build ${prefix} ${sha}`);
@@ -91,17 +95,20 @@ jobs:
               .filter(Boolean)
               .map((m) => parseInt(m[1], 10))
               .filter((n) => Number.isFinite(n));
-            const next = counters.length ? Math.max(...counters) + 1 : 1;
+            // carries the counter across a repo move; restarting at 1 would re-publish
+            // version tags that already point at other images
+            const floor = parseInt(process.env.VERSION_FLOOR || '0', 10);
+            const next = Math.max(floor, ...counters) + 1;
             const version = `0.0.${next}`;
 
-            core.info(`matched ${counters.length} ${prefix} releases, next=${version}`);
+            core.info(`matched ${counters.length} ${prefix} releases, floor=${floor}, next=${version}`);
 
             core.setOutput('release_version', version);
             core.setOutput('release_tag', `${prefix}-v${version}`);
             core.setOutput('release_name', `${prefix}-v${version}`);
             core.setOutput('zip', `FiveStack-${prefix}-v${version}.zip`);
             core.setOutput('draft', 'false');
-            // the image is namespaced by package, so its version tag stays bare.
+            // the package name already namespaces the image, so its version tag stays bare
             core.setOutput('tags', [
               repoTag(image, 'latest'), repoTag(image, sha), repoTag(image, `v${version}`),
               repoTag(legacy, 'latest'), repoTag(legacy, sha), repoTag(legacy, `v${version}`),
@@ -158,9 +165,8 @@ jobs:
           files: |
             ./${{ steps.resolve.outputs.zip }}
 
-      # only beta is pruned. the latest channel's v0.0.N image tags are what
-      # game_server_nodes.pin_plugin_version resolves against; deleting them
-      # strands pinned nodes.
+      # never prune the latest channel: game_server_nodes.pin_plugin_version resolves
+      # against its v0.0.N image tags
       - name: Prune old beta images
         if: inputs.channel == 'beta'
         uses: actions/github-script@v7

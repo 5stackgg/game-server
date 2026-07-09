@@ -14,9 +14,7 @@ RUNTIME_SWIFTLY = "swiftlys2"
 
 BASE_DIR = path.dirname(path.abspath(__file__))
 
-# Sets that don't depend on the running SwiftlyS2 version. The upstream-swiftly
-# set is added at runtime (see resolve_swiftly_sets), keyed off the SwiftlyS2.CS2
-# version the swiftly plugin pins.
+# our own signatures; the upstream-swiftly set is added by resolve_swiftly_sets
 SETS = [
     {
         "name": "fivestack",
@@ -39,11 +37,9 @@ SWIFTLY_GAMEDATA = [
     ("patches", "swiftly-patches"),
 ]
 
-# The SwiftlyS2 version we ship is pinned by the SwiftlyS2.CS2 <PackageReference> in
-# apps/swiftly's FiveStack.csproj — the authoritative "what we run", independent of any
-# particular game install. Read it straight from the repo so the validator tracks the
-# source of truth rather than a value pinned at image build, which would go stale the
-# next time swiftly-update.yaml bumps the pin.
+# SwiftlyS2's signatures live in the framework release we ship, which is pinned by the
+# SwiftlyS2.CS2 <PackageReference> in apps/swiftly/src/FiveStack.csproj. Read at runtime,
+# never baked: swiftly-update.yaml bumps that pin without rebuilding this image.
 FIVESTACK_CSPROJ = (
     "https://raw.githubusercontent.com/5stackgg/game-server/"
     "{ref}/apps/swiftly/src/FiveStack.csproj"
