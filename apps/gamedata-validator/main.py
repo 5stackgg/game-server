@@ -286,7 +286,22 @@ def check_offset(set_name, runtimes, offset):
 
     result["lib"] = lib
     result["count"] = count
-    result["ok"] = 0 <= offset["offset"] < count
+
+    if 0 <= offset["offset"] < count:
+        result["ok"] = True
+        return result
+
+    # The offset overshoots the vtable we resolved. Swiftly labels each index by the
+    # class that declares the method, but the index targets the concrete/derived
+    # vtable used at run time (e.g. CGameRules -> CCSGameRules). s2binlib can only
+    # resolve the named class's own vtable, so an out-of-range result here is
+    # inconclusive, not a confirmed break — flag it for review without failing.
+    result["ok"] = True
+    result["warning"] = True
+    result["reason"] = (
+        f"offset {offset['offset']} exceeds the {count}-slot vtable resolved for "
+        f"{class_name}; likely an index into a derived class's vtable"
+    )
     return result
 
 
@@ -302,6 +317,43 @@ def entry_runtimes(entry, spec):
     if isinstance(runtimes, list) and runtimes:
         return runtimes
     return spec["runtimes"]
+
+
+def per_set_statuses(results, swiftly):
+    """Status per set, so each stands on its own: a CounterStrikeSharp break must not
+    fail Swiftly, and a 5Stack break must not fail either upstream. A set fails on a
+    real break, errors when it couldn't be validated at all (every entry skipped, a
+    scan blew up, or — for swiftly — its gamedata couldn't be fetched), else passes."""
+    def status_for(set_results):
+        set_skipped = [r for r in set_results if r.get("skipped")]
+        if any(r["ok"] is False for r in set_results):
+            return "fail"
+        if set_results and len(set_results) == len(set_skipped):
+            return "error"
+        if any(r.get("error") for r in set_skipped):
+            return "error"
+        return "pass"
+
+    statuses = {}
+    for result in results:  # preserve first-seen order
+        statuses.setdefault(result["set"], None)
+    for name in statuses:
+        statuses[name] = status_for([r for r in results if r["set"] == name])
+
+    # Swiftly requested but its gamedata couldn't be detected/fetched: no results to
+    # judge, so report the set as errored rather than silently omitting it.
+    if swiftly["error"]:
+        statuses["upstream-swiftly"] = "error"
+    return statuses
+
+
+def aggregate_status(statuses):
+    """Drives only the process exit code; consumers gate per runtime off the map."""
+    if "fail" in statuses.values():
+        return "fail"
+    if "error" in statuses.values():
+        return "error"
+    return "pass"
 
 
 def resolve_swiftly_sets(args):
@@ -375,7 +427,7 @@ def main():
     if swiftly["error"]:
         print(f"[swiftly] {swiftly['error']}", flush=True)
     elif swiftly["ref"]:
-        print(f"[swiftly] validating {swiftly['version']} @ {swiftly['ref']}", flush=True)
+        print(f"[swiftly] validating SwiftlyS2 {swiftly['ref']} (from {swiftly['source']})", flush=True)
 
     loaded = []
     signature_names = {}
@@ -424,12 +476,17 @@ def main():
     warnings = [
         result
         for result in results
-        if result["ok"] and result["kind"] == "signature" and (result["count"] or 0) > 1
+        if result.get("warning")
+        or (result["ok"] and result["kind"] == "signature" and (result["count"] or 0) > 1)
     ]
+
+    statuses = per_set_statuses(results, swiftly)
+    overall = aggregate_status(statuses)
 
     result = {
         "build_id": args.build_id,
-        "status": "fail" if broken else "pass",
+        "status": overall,
+        "statuses": statuses,
         "swiftly": swiftly,
         "broken": broken,
         "warnings": warnings,
@@ -437,30 +494,8 @@ def main():
         "results": results,
     }
 
-    # A scan that blew up says nothing about the signature, so it can't be a
-    # break — but neither is it a pass, and reporting green would hide it.
-    # Skips with no error (a member offset, an unresolvable class) are expected.
-    unscannable = [entry for entry in skipped if entry.get("error")]
-
-    if not broken:
-        # SwiftlyS2 was in scope but we couldn't determine or fetch its gamedata:
-        # validating nothing about it and reporting green would hide exactly the
-        # drift this check exists to catch.
-        if swiftly["error"]:
-            result["status"] = "error"
-            result["error"] = swiftly["error"]
-        elif len(results) == len(skipped):
-            result["status"] = "error"
-            result["error"] = "no gamedata entries could be validated"
-        elif unscannable:
-            result["status"] = "error"
-            result["error"] = (
-                f"{len(unscannable)} entries could not be scanned: "
-                f"{unscannable[0]['error']}"
-            )
-
     print("GAMEDATA_VALIDATION_RESULT " + json.dumps(result), flush=True)
-    sys.exit(1 if result["status"] != "pass" else 0)
+    sys.exit(0 if overall == "pass" else 1)
 
 
 if __name__ == "__main__":

@@ -35,10 +35,18 @@ truth rather than a ref that could drift. This needs network access during the r
 the version can't be read, the run reports `error`. The version, resolved git ref, and
 source are reported under `swiftly` in the result JSON.
 
-Results print as a single `GAMEDATA_VALIDATION_RESULT {json}` line, and the process exits
-nonzero unless every checked entry passed. Entries that can't be checked — a member offset
-rather than a vtable index, or a class with no resolvable vtable — land in `skipped` and
-never fail the run.
+Results print as a single `GAMEDATA_VALIDATION_RESULT {json}` line. Each set is judged on
+its own under `statuses` (`{"fivestack": "pass", "upstream-ccs": "fail", "upstream-swiftly":
+"pass"}`) so a break in one runtime never taints another — a CounterStrikeSharp break won't
+fail Swiftly, and a 5Stack break won't fail either upstream. A set is `fail` on a real
+break, `error` when nothing in it could be validated, else `pass`. The top-level `status` is
+the aggregate (`fail` > `error` > `pass`) and drives only the process exit code (nonzero
+unless every set passed); consumers gate per runtime off `statuses`.
+
+Entries that can't be checked — a member offset rather than a vtable index, or a class with
+no resolvable vtable — land in `skipped` and never fail a set. A vtable offset that overshoots
+its resolved (base-class) vtable is reported as a `warning`, not a break: the index targets
+the concrete/derived vtable used at run time, which s2binlib can't resolve from the base.
 
 ## Credits
 
