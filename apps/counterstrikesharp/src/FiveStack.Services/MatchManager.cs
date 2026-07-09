@@ -537,6 +537,9 @@ public class MatchManager
             }
         }
 
+        ApplyAntiWallhack();
+        PublishAntiWallhackStatus();
+
         Server.NextFrame(() =>
         {
             if (!wasAlreadySetup)
@@ -784,6 +787,9 @@ public class MatchManager
 
         _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
 
+        ApplyAntiWallhack();
+        PublishAntiWallhackStatus();
+
         Server.NextFrame(() =>
         {
             _gameDemos.Start();
@@ -805,6 +811,56 @@ public class MatchManager
                 });
             });
         });
+    }
+
+    private void ApplyAntiWallhack()
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        if (ConVar.Find("cs2fow_enable") == null)
+        {
+            _logger.LogInformation("CS2FOW is not loaded; skipping anti-wallhack apply");
+            return;
+        }
+
+        _gameServer.SendCommands([$"cs2fow_enable {(_matchData.options.anti_wallhack ? 1 : 0)}"]);
+    }
+
+    private void PublishAntiWallhackStatus()
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        bool pluginLoaded = ConVar.Find("cs2fow_enable") != null;
+
+        string mapsDir = Path.Join(
+            Server.GameDirectory,
+            "csgo",
+            "addons",
+            "cs2fow",
+            "data",
+            "maps"
+        );
+        string bakePath = Path.Join(mapsDir, $"{Server.MapName}.bvh8");
+
+        if (pluginLoaded && !Directory.Exists(mapsDir))
+        {
+            _logger.LogWarning(
+                $"CS2FOW maps directory missing at {mapsDir}; bake layout may have changed"
+            );
+        }
+
+        bool active = _matchData.options.anti_wallhack && pluginLoaded && File.Exists(bakePath);
+
+        _matchEvents.PublishGameEvent(
+            "antiWallhackStatus",
+            new Dictionary<string, object> { { "active", active } }
+        );
     }
 
     public void EnforceMemberTeam(CCSPlayerController player, CsTeam? currentTeam = null)

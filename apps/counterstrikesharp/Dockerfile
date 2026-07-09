@@ -79,6 +79,12 @@ ENV SERVER_TYPE="Ranked"
 
 ENV METAMOD_URL=https://github.com/alliedmodders/metamod-source/releases/download/2.0.0.1402/mmsource-2.0.0-git1402-linux.tar.gz
 ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.369/counterstrikesharp-with-runtime-linux-1.0.369.zip
+ENV CS2FOW_URL=https://github.com/karola3vax/CS2FOW/releases/download/v0.1.1-preview/cs2fow-0.1.1-preview-linux-x86_64.zip
+ENV CS2FOW_SHA256=517eff95d5bae15b0aa9fb79c47a6eebe3bb7033228bfe9d7d397fc9446750d6
+# prebake pack v0.1.0-preview is upstream-declared compatible with plugin v0.1.1-preview; bump both pins together after checking upstream release notes
+ENV CS2FOW_PREBAKE_URL=https://github.com/karola3vax/CS2FOW/releases/download/v0.1.0-preview/cs2fow-0.1.0-preview-official-maps.zip
+ENV CS2FOW_PREBAKE_SHA256=66114d74a13f933f38f81a79d2fa10ad89e2cf254b45afc5c589c8782067215c
+ENV CS2FOW_PREBAKE_VERSION=0.1.0-preview
 
 ENV METAMOD_CSGO_URL=https://mms.alliedmods.net/mmsdrop/1.12/mmsource-1.12.0-git1219-linux.tar.gz
 ENV SOURCEMOD_CSGO_URL=https://sm.alliedmods.net/smdrop/1.13/sourcemod-1.13.0-git7297-linux.tar.gz
@@ -108,7 +114,6 @@ RUN mkdir -p /opt/metamod /opt/counterstrikesharp && \
 	unzip -q /tmp/counterstrikesharp.zip -d /opt/counterstrikesharp && \
 	rm /tmp/counterstrikesharp.zip
 
-
 RUN mkdir -p /opt/csgo-metamod /opt/csgo-sourcemod /opt/csgo-no-lobby-reservation && \
 	wget -q $METAMOD_CSGO_URL -O /tmp/metamod-csgo.tar.gz && \
 	tar -xz -C /opt/csgo-metamod -f /tmp/metamod-csgo.tar.gz && \
@@ -131,5 +136,15 @@ RUN mv /opt/metamod/addons /opt/addons && \
 	cp -R /opt/counterstrikesharp/addons/counterstrikesharp /opt/addons && \
 	mkdir -p /opt/addons/counterstrikesharp/plugins && \
 	rm -rf /opt/metamod /opt/counterstrikesharp
+
+RUN mkdir -p /opt/cs2fow /opt/cs2fow-tools && \
+	wget -q $CS2FOW_URL -O /tmp/cs2fow.zip && \
+	echo "${CS2FOW_SHA256}  /tmp/cs2fow.zip" | sha256sum -c - && \
+	unzip -q /tmp/cs2fow.zip -d /opt/cs2fow && \
+	rm /tmp/cs2fow.zip && \
+	cp -R /opt/cs2fow/addons/cs2fow /opt/addons && \
+	cp /opt/cs2fow/addons/metamod/cs2fow.vdf /opt/addons/metamod/ && \
+	cp -R /opt/cs2fow/tools/. /opt/cs2fow-tools/ && \
+	rm -rf /opt/cs2fow
 
 ENTRYPOINT ["/bin/bash", "-c", "/opt/scripts/setup.sh && /opt/scripts/server.sh"]
