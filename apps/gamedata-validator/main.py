@@ -55,7 +55,7 @@ SWIFTLY_RAW = (
 
 
 def detect_swiftly_version(fivestack_ref):
-    """Read the pinned SwiftlyS2.CS2 version from swiftly-game-server's csproj, or None."""
+    """Read the pinned SwiftlyS2.CS2 version from apps/swiftly's csproj, or None."""
     try:
         with urllib.request.urlopen(FIVESTACK_CSPROJ.format(ref=fivestack_ref), timeout=20) as resp:
             text = resp.read().decode("utf-8", "replace")
