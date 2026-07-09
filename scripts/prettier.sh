@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Define the path to the dotnet-csharpier executable
 csharpier_dir="$HOME/.dotnet/tools"
 csharpier_executable="$csharpier_dir/csharpier"
@@ -26,5 +28,5 @@ if [ ! -x "$csharpier_executable" ]; then
     exit 1
 fi
 
-# Execute the csharpier command
-$csharpier_executable format /opt/5stack
+# Execute the csharpier command against the repo root, wherever it is checked out
+$csharpier_executable format "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

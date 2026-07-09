@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "main"
+      - "beta"
+  workflow_dispatch:
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      css: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.css == 'true' }}
+      sw: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.sw == 'true' }}
+      validator: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.validator == 'true' }}
+      channel: ${{ steps.channel.outputs.channel }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # the channel IS the published tag, and workflow_dispatch runs from any branch,
+      # so refuse rather than default an unreviewed ref onto :latest
+      - id: channel
+        run: |
+          case "$GITHUB_REF_NAME" in
+            main) echo "channel=latest" >> "$GITHUB_OUTPUT" ;;
+            beta) echo "channel=beta" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "::error::refusing to publish from '$GITHUB_REF_NAME'; run this workflow from main or beta"
+              exit 1
+              ;;
+          esac
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name != 'workflow_dispatch'
+        with:
+          # naming the pushed branch is what makes this diff against the commit before
+          # the push; unset it defaults to the repo's default branch
+          base: ${{ github.ref_name }}
+          filters: |
+            shared: &shared
+              - 'shared/**'
+              - 'Directory.Build.props'
+              - '.github/workflows/ci.yaml'
+              - '.github/workflows/plugin-build.yaml'
+            css:
+              - *shared
+              - 'apps/counterstrikesharp/**'
+            sw:
+              - *shared
+              - 'apps/swiftly/**'
+            validator:
+              - 'apps/gamedata-validator/**'
+              - 'shared/gamedata/**'
+              - '.github/workflows/validator-build.yaml'
+              # CCS_GAMEDATA_REF is baked from this Dockerfile's CounterStrikeSharp URL
+              - 'apps/counterstrikesharp/Dockerfile'
+
+  counterstrikesharp:
+    needs: changes
+    if: needs.changes.outputs.css == 'true'
+    uses: ./.github/workflows/plugin-build.yaml
+    with:
+      app_dir: apps/counterstrikesharp
+      image: game-server-css
+      tag_prefix: css
+      # legacy releases are bare v0.0.N; matching them keeps the counter from resetting
+      version_tag_regex: '^(?:css-)?v0\.0\.(\d+)$'
+      channel: ${{ needs.changes.outputs.channel }}
+    secrets: inherit
+
+  swiftly:
+    needs: changes
+    if: needs.changes.outputs.sw == 'true'
+    uses: ./.github/workflows/plugin-build.yaml
+    with:
+      app_dir: apps/swiftly
+      image: game-server-sw
+      tag_prefix: sw
+      version_tag_regex: '^sw-v0\.0\.(\d+)$'
+      # swiftly's releases were cut in the old repo up to v0.0.41 and did not travel
+      version_floor: 41
+      channel: ${{ needs.changes.outputs.channel }}
+      run_tests: true
+    secrets: inherit
+
+  gamedata-validator:
+    needs: changes
+    if: needs.changes.outputs.validator == 'true'
+    uses: ./.github/workflows/validator-build.yaml
+    with:
+      channel: ${{ needs.changes.outputs.channel }}
+    secrets: inherit

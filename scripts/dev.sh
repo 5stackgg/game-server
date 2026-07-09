@@ -1,28 +1,22 @@
-apt update
-apt-get install inotify-tools -y
+#!/usr/bin/env bash
+#
+# Run inside the pod, after `codepier up` picked a workload. Builds and hot-reloads
+# whichever plugin that pod serves — codepier exports CODEPIER_DEPLOYMENT into the shell.
+set -euo pipefail
 
-# Variable to store the PID of dotnet watch process
-dotnet_watch_pid=""
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Function to kill the dotnet watch build process
-kill_dotnet_watch() {
-  if [ -n "$dotnet_watch_pid" ]; then
-    kill "$dotnet_watch_pid"
-    exit
-  fi
-}
-dotnet build src
+case "${CODEPIER_DEPLOYMENT:-}" in
+  dev-game-server) app="counterstrikesharp" ;;
+  dev-swiftly-game-server) app="swiftly" ;;
+  "")
+    echo "not inside a codepier pod; run 'codepier up' from the repo root first" >&2
+    exit 1
+    ;;
+  *)
+    echo "no plugin for workload '${CODEPIER_DEPLOYMENT}'" >&2
+    exit 1
+    ;;
+esac
 
-dotnet watch build --project src &
-dotnet_watch_pid=$!
-
-# Set up trap to kill dotnet watch process on script exit
-trap kill_dotnet_watch EXIT
-
-directory_to_watch="/opt/5stack/src/bin/Debug/net10.0"
-
-while true; do
-  rm -f "$directory_to_watch/CounterStrikeSharp.API.dll"
-  inotifywait -r -e modify,create,delete,move "$directory_to_watch"
-  cp -r "$directory_to_watch"/* "/opt/dev"
-done
+exec bash "apps/${app}/scripts/dev.sh"
