@@ -179,3 +179,26 @@ else
     echo "---Update Server To Latest Version---"
     "${STEAMCMD_DIR}/steamcmd.sh" +force_install_dir "${BASE_SERVER_DIR}" +login anonymous +app_update "${GAME_ID}" ${VALIDATE:+validate} +quit
 fi
+
+if [ "${GAME_ID}" = "730" ] && [ -n "${CS2FOW_PREBAKE_URL:-}" ]; then
+    CS2FOW_MAPS_DIR="${DATA_DIR}/cs2fow/maps"
+    CS2FOW_MARKER="${DATA_DIR}/cs2fow/.prebake-version"
+
+    if [ ! -f "${CS2FOW_MARKER}" ] || [ "$(cat "${CS2FOW_MARKER}" 2>/dev/null)" != "${CS2FOW_PREBAKE_VERSION}" ]; then
+        echo "---Downloading CS2FOW Official Map Prebakes (${CS2FOW_PREBAKE_VERSION})---"
+        mkdir -p "${CS2FOW_MAPS_DIR}"
+        if curl -sSL -o /tmp/cs2fow-prebakes.zip "${CS2FOW_PREBAKE_URL}" \
+            && echo "${CS2FOW_PREBAKE_SHA256}  /tmp/cs2fow-prebakes.zip" | sha256sum -c - ; then
+            # -j flattens paths so this works regardless of the zip's internal layout
+            if unzip -o -j -q /tmp/cs2fow-prebakes.zip "*.bvh8" -d "${CS2FOW_MAPS_DIR}"; then
+                echo "${CS2FOW_PREBAKE_VERSION}" > "${CS2FOW_MARKER}"
+                echo "---CS2FOW prebakes installed: $(ls "${CS2FOW_MAPS_DIR}" | wc -l) files---"
+            else
+                echo "---CS2FOW prebake unzip failed; auto-bake will cover maps---"
+            fi
+        else
+            echo "---CS2FOW prebake download failed; auto-bake will cover maps---"
+        fi
+        rm -f /tmp/cs2fow-prebakes.zip
+    fi
+fi
