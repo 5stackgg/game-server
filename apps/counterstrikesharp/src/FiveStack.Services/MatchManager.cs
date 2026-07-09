@@ -538,6 +538,7 @@ public class MatchManager
         }
 
         ApplyAntiWallhack();
+        PublishAntiWallhackStatus();
 
         Server.NextFrame(() =>
         {
@@ -821,7 +822,7 @@ public class MatchManager
 
         if (ConVar.Find("cs2fow_enable") == null)
         {
-            // CS2FOW is not loaded (no AVX, removed, or failed); nothing to apply
+            _logger.LogInformation("CS2FOW is not loaded; skipping anti-wallhack apply");
             return;
         }
 
@@ -837,15 +838,22 @@ public class MatchManager
 
         bool pluginLoaded = ConVar.Find("cs2fow_enable") != null;
 
-        string bakePath = Path.Join(
+        string mapsDir = Path.Join(
             Server.GameDirectory,
             "csgo",
             "addons",
             "cs2fow",
             "data",
-            "maps",
-            $"{Server.MapName}.bvh8"
+            "maps"
         );
+        string bakePath = Path.Join(mapsDir, $"{Server.MapName}.bvh8");
+
+        if (pluginLoaded && !Directory.Exists(mapsDir))
+        {
+            _logger.LogWarning(
+                $"CS2FOW maps directory missing at {mapsDir}; bake layout may have changed"
+            );
+        }
 
         bool active = _matchData.options.anti_wallhack && pluginLoaded && File.Exists(bakePath);
 

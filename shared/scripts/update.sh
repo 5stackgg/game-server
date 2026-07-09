@@ -205,4 +205,4 @@ if [ "${GAME_ID}" = "730" ] && [ -n "${CS2FOW_PREBAKE_URL:-}" ] && grep -qw avx 
     fi
 fi
 
-exit ${UPDATE_RC:-0}
+exit ${UPDATE_RC:-1}
