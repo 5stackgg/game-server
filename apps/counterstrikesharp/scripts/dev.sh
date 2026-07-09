@@ -1,3 +1,5 @@
+#!/bin/bash
+
 apt update
 apt-get install inotify-tools -y
 

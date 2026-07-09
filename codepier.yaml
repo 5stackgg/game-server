@@ -1,13 +1,11 @@
 namespaces: [5stack]
 image: mcr.microsoft.com/dotnet/sdk:10.0
 container: dev
-deployment: dev-swiftly-game-server
+deployment: dev-game-server
 supplemental: true
 workdir: /opt/5stack
 sync:
-  # the repo root, not this app: FiveStack.csproj compiles shared/dotnet and
-  # inherits Directory.Build.props, both of which live above apps/
-  - ../../:/opt/5stack
+  - .:/opt/5stack
 ignore:
   - "**/bin/"
   - "**/obj/"
