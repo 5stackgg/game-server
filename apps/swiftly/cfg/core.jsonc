@@ -1,0 +1,67 @@
+{
+    "CS2ServerGuidelines": "https://blog.counter-strike.net/index.php/server_guidelines/",
+    "CommandPrefixes": [
+        ".",
+        "!"
+    ],
+    "CommandSilentPrefixes": [
+        "/"
+    ],
+    "AutoHotReload": true,
+    "ConsoleFilter": true,
+    "FollowCS2ServerGuidelines": true,
+    "Language": "en",
+    "ManualLoadPlugins": false,
+    "PluginLoadOrder": [],
+    "DotnetCrashTracerLevel": 0,
+    "Menu": {
+        "AvailableInputModes": [
+            "button",
+            "wasd"
+        ],
+        "Buttons": {
+            "Exit": "tab",
+            "Scroll": "shift",
+            "ScrollBack": "f",
+            "Use": "e"
+        },
+        "InputMode": "button",
+        // "KindSettings": {
+        //     "Center": {
+        //         "ItemsPerPage": 4
+        //     }
+        // },
+        "NavigationPrefix": "➤",
+        "Sound": {
+            "Exit": {
+                "Name": "Vote.Failed",
+                "Volume": 0.75
+            },
+            "Scroll": {
+                "Name": "UI.ContractType",
+                "Volume": 0.75
+            },
+            "Use": {
+                "Name": "Vote.Cast.Yes",
+                "Volume": 0.75
+            }
+        },
+        "ItemsPerPage": 5
+    },
+    "PatchesToPerform": [],
+    "SteamAuth": {
+        "AvailableModes": [
+            "flexible",
+            "strict"
+        ],
+        "Mode": "flexible"
+    },
+    "UsePlayerLanguage": true,
+    "VGUI": {
+        "TextBackground": {
+            "PaddingX": 0.1,
+            "PaddingY": 0.1,
+            "TextSize": 35
+        }
+    }
+}

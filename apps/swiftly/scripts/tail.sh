@@ -1,0 +1,1 @@
+codepier tail --container dev-swiftly-game-server
