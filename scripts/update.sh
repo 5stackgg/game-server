@@ -61,23 +61,42 @@ if [ -n "${BUILD_MANIFESTS}" ]; then
     done < <(echo "${BUILD_MANIFESTS}" | jq -c '.[]')
 
     # download depots
+    depotTotal="${#depots[@]}"
+    depotIndex=0
     for depotId in "${depots[@]}"; do
+        depotIndex=$((depotIndex + 1))
         gid="${depot_gids[${depotId}]}"
         depotDir="${STEAMCMD_DIR}/linux32/steamapps/content/app_${GAME_ID}/depot_${depotId}"
         depotMarker="${depotDir}.complete"
 
         if [ -f "${depotMarker}" ] && [ "$(cat "${depotMarker}" 2>/dev/null)" = "${gid}" ] && [ -d "${depotDir}" ] && [ "$(ls -A "${depotDir}")" ]; then
-            echo "---Depot ${depotId} with Build ${gid} already downloaded, skipping---"
+            echo "---Depot ${depotId} (${depotIndex}/${depotTotal}) already downloaded (manifest ${gid}), skipping---"
             continue
         fi
         rm -f "${depotMarker}"
 
-        echo "---Updating Depot ${depotId} with Build ${gid}---"
+        echo "---Downloading Depot ${depotId} (${depotIndex}/${depotTotal}) manifest ${gid}---"
         LINUX_SERVER="${STEAMCMD_ARGS} +download_depot ${GAME_ID} ${depotId} ${gid} +quit"
-        echo "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
-        echo "Downloading depot ${depotId}, this may take a while..."
+        echo "steamcmd.sh +force_install_dir \"${BASE_SERVER_DIR}\" +login \"${STEAM_USER}\" [redacted] +download_depot ${GAME_ID} ${depotId} ${gid} +quit"
+
+        # steamcmd prints nothing while download_depot runs, so report
+        # progress from the depot dir size until it finishes
+        (
+            while true; do
+                sleep 15
+                size=$(du -sh "${depotDir}" 2>/dev/null | cut -f1)
+                fileCount=$(find "${depotDir}" -type f 2>/dev/null | wc -l | tr -d ' ')
+                echo "[depot ${depotId}] ${size:-0} downloaded so far (${fileCount} files)..."
+            done
+        ) &
+        progressPid=$!
+
         depotLog="${STEAMCMD_DIR}/depot_${depotId}_download.log"
         eval "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER} 2>&1 | tee "${depotLog}"
+
+        kill "${progressPid}" 2>/dev/null
+        wait "${progressPid}" 2>/dev/null
+
         if ! grep -q "Depot download complete" "${depotLog}"; then
             echo "Depot ${depotId} download did not complete. Exiting."
             rm -f "${depotLog}"
@@ -85,7 +104,7 @@ if [ -n "${BUILD_MANIFESTS}" ]; then
         fi
         rm -f "${depotLog}"
         echo "${gid}" > "${depotMarker}"
-        echo "Done downloading depot ${depotId}"
+        echo "---Depot ${depotId} (${depotIndex}/${depotTotal}) complete: $(du -sh "${depotDir}" 2>/dev/null | cut -f1)---"
     done
 
     echo "---Syncing Depots to ServerFiles---"
@@ -94,11 +113,15 @@ if [ -n "${BUILD_MANIFESTS}" ]; then
     for depotId in "${depots[@]}"; do
         depotDir="${STEAMCMD_DIR}/linux32/steamapps/content/app_${GAME_ID}/depot_${depotId}"
         if [ -d "${depotDir}" ] && [ "$(ls -A "${depotDir}")" ]; then
-            echo "---Syncing Depot ${depotId} to ServerFiles---"
+            echo "---Syncing Depot ${depotId} ($(du -sh "${depotDir}" 2>/dev/null | cut -f1)) to ServerFiles---"
 
-            rsync -a --delete \
+            # no --delete: depots merge into the same dir, and it would remove
+            # the other depots' files plus the .5stack.build track file
+            syncStart=$(date +%s)
+            rsync -a --info=stats1 \
                 "${depotDir}/" \
                 "${BASE_SERVER_DIR}/"
+            echo "---Synced Depot ${depotId} in $(( $(date +%s) - syncStart ))s---"
 
         else
             echo "Depot directory ${depotDir} does not exist or is empty. Exiting."
@@ -114,6 +137,8 @@ if [ -n "${BUILD_MANIFESTS}" ]; then
         "buildid"               "${BUILD_ID}"
 }
 EOF
+
+    echo "${BUILD_ID}" > "${BUILD_TRACK_FILE}"
 
     echo "---Done Updating Server To Version ${BUILD_ID}---"
 
