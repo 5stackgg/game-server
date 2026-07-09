@@ -41,6 +41,27 @@ done
 echo "---Install Addons---"
 cp -r "/opt/addons" "${INSTANCE_SERVER_DIR}/game/csgo"
 
+echo "---Setup CS2FOW---"
+if grep -qw avx /proc/cpuinfo; then
+  mkdir -p "${DATA_DIR}/cs2fow/maps"
+  rm -rf "${INSTANCE_SERVER_DIR}/game/csgo/addons/cs2fow/data/maps"
+  ln -s "${DATA_DIR}/cs2fow/maps" "${INSTANCE_SERVER_DIR}/game/csgo/addons/cs2fow/data/maps"
+
+  mkdir -p "${INSTANCE_SERVER_DIR}/game/csgo/tools"
+  for cs2fow_tool in /opt/cs2fow-tools/*; do
+    cs2fow_tool_name="$(basename "${cs2fow_tool}")"
+    if [ ! -e "${INSTANCE_SERVER_DIR}/game/csgo/tools/${cs2fow_tool_name}" ]; then
+      ln -s "${cs2fow_tool}" "${INSTANCE_SERVER_DIR}/game/csgo/tools/${cs2fow_tool_name}"
+    fi
+  done
+
+  cp "/opt/server-cfg/cs2fow.cfg" "${INSTANCE_SERVER_DIR}/game/csgo/cfg/cs2fow.cfg"
+else
+  echo "---CS2FOW disabled: CPU lacks AVX support---"
+  rm -f "${INSTANCE_SERVER_DIR}/game/csgo/addons/metamod/cs2fow.vdf"
+  rm -rf "${INSTANCE_SERVER_DIR}/game/csgo/addons/cs2fow"
+fi
+
 echo "---Create Symbolic Links---"
 
 if [ "$SERVER_TYPE" = "Ranked" ]; then
