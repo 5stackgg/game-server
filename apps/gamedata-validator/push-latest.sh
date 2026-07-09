@@ -12,7 +12,9 @@ else
   TAGS=( ${TAGS:-latest} )
 fi
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../.."
+
+eval "$(apps/gamedata-validator/scripts/resolve-refs.sh)"
 
 tag_args=()
 for t in "${TAGS[@]}"; do
@@ -25,6 +27,8 @@ docker buildx build \
   --platform linux/amd64 \
   --push \
   "${tag_args[@]}" \
+  --file apps/gamedata-validator/Dockerfile \
+  --build-arg "CCS_GAMEDATA_REF=${CCS_GAMEDATA_REF}" \
   --cache-from "type=registry,ref=${CACHE_REF}" \
   --cache-to "type=registry,ref=${CACHE_REF},mode=max" \
   .

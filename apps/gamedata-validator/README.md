@@ -12,9 +12,9 @@ runtimes, since 5Stack runs Swiftly and CounterStrikeSharp side by side:
 
 | Set | Runtime | Source |
 | --- | --- | --- |
-| `fivestack` | both | `gamedata/fivestack.gamedata.json` (vendored from `game-server/`) |
+| `fivestack` | both | `shared/gamedata/fivestack.gamedata.json` |
 | `upstream-ccs` | CounterStrikeSharp | fetched at image build from CounterStrikeSharp |
-| `upstream-swiftly` | Swiftly | fetched at run time for the version pinned in `swiftly-game-server` |
+| `upstream-swiftly` | Swiftly | fetched at run time for the version `apps/swiftly` pins |
 
 Entries in `fivestack.gamedata.json` may carry a `runtimes` key naming the runtimes that
 actually use them — the Swiftly port hooks `ConnectClient` but not the two vtable offsets.
@@ -26,14 +26,16 @@ Everything else defaults to its set's runtime.
 
 The `upstream-swiftly` gamedata is not pinned at image build. When the `swiftlys2` runtime
 is in scope, the validator reads the `SwiftlyS2.CS2` `<PackageReference>` version from
-`swiftly-game-server`'s `src/FiveStack.csproj` on GitHub — the release we actually ship —
-and fetches that version's gamedata from SwiftlyS2 at run time, so it tracks the source of
-truth rather than a ref that could drift. This needs network access during the run.
+`apps/swiftly/src/FiveStack.csproj` on GitHub — the release we actually ship — and fetches
+that version's gamedata from SwiftlyS2 at run time, so it tracks the source of truth rather
+than a value that could drift. `swiftly-update.yaml` bumps that pin on a schedule and its
+`GITHUB_TOKEN` push does not rebuild this image, so baking the version in would go stale.
+Fetching the gamedata needs network access during the run either way.
 
-`--fivestack-ref <ref>` reads the csproj from a different branch/tag (default `main`);
-`--swiftly-ref <tag>` skips csproj detection and validates a specific SwiftlyS2 release. If
-the version can't be read, the run reports `error`. The version, resolved git ref, and
-source are reported under `swiftly` in the result JSON.
+Resolution order: `--swiftly-ref <tag>` (validate a specific SwiftlyS2 release) beats
+`--swiftly-version <ver>`, which beats reading the csproj over HTTP at `--fivestack-ref <ref>`
+(default `main`). If none resolve, the run reports `error`. The version, resolved git ref,
+and source are reported under `swiftly` in the result JSON.
 
 Results print as a single `GAMEDATA_VALIDATION_RESULT {json}` line. Each set is judged on
 its own under `statuses` (`{"fivestack": "pass", "upstream-ccs": "fail", "upstream-swiftly":

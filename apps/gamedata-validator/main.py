@@ -12,19 +12,21 @@ import s2binlib
 RUNTIME_CCS = "counterstrikesharp"
 RUNTIME_SWIFTLY = "swiftlys2"
 
+BASE_DIR = path.dirname(path.abspath(__file__))
+
 # Sets that don't depend on the running SwiftlyS2 version. The upstream-swiftly
-# set is added at runtime (see resolve_swiftly_sets): its gamedata is fetched for
-# the version swiftly-game-server pins, not a version pinned at image build.
+# set is added at runtime (see resolve_swiftly_sets), keyed off the SwiftlyS2.CS2
+# version the swiftly plugin pins.
 SETS = [
     {
         "name": "fivestack",
-        "path": "gamedata/fivestack.gamedata.json",
+        "path": path.join(BASE_DIR, "gamedata/fivestack.gamedata.json"),
         "format": "ccs",
         "runtimes": [RUNTIME_CCS, RUNTIME_SWIFTLY],
     },
     {
         "name": "upstream-ccs",
-        "path": "gamedata/ccs.gamedata.json",
+        "path": path.join(BASE_DIR, "gamedata/ccs.gamedata.json"),
         "format": "ccs",
         "runtimes": [RUNTIME_CCS],
     },
@@ -38,12 +40,13 @@ SWIFTLY_GAMEDATA = [
 ]
 
 # The SwiftlyS2 version we ship is pinned by the SwiftlyS2.CS2 <PackageReference> in
-# swiftly-game-server's FiveStack.csproj — the authoritative "what we run", independent
-# of any particular game install. Read it straight from the repo so the validator
-# tracks the source of truth rather than a copy that can drift.
+# apps/swiftly's FiveStack.csproj — the authoritative "what we run", independent of any
+# particular game install. Read it straight from the repo so the validator tracks the
+# source of truth rather than a value pinned at image build, which would go stale the
+# next time swiftly-update.yaml bumps the pin.
 FIVESTACK_CSPROJ = (
-    "https://raw.githubusercontent.com/5stackgg/swiftly-game-server/"
-    "{ref}/src/FiveStack.csproj"
+    "https://raw.githubusercontent.com/5stackgg/game-server/"
+    "{ref}/apps/swiftly/src/FiveStack.csproj"
 )
 SWIFTLY_RAW = (
     "https://raw.githubusercontent.com/swiftly-solution/swiftlys2/"
@@ -367,15 +370,18 @@ def resolve_swiftly_sets(args):
     if args.swiftly_ref:
         info["version"] = args.swiftly_ref
         info["source"] = "override"
+    elif args.swiftly_version:
+        info["version"] = args.swiftly_version
+        info["source"] = "explicit"
     else:
         info["version"] = detect_swiftly_version(args.fivestack_ref)
         info["source"] = f"FiveStack.csproj@{args.fivestack_ref}"
 
     if not info["version"]:
         info["error"] = (
-            "could not read the SwiftlyS2.CS2 version from swiftly-game-server "
-            f"FiveStack.csproj@{args.fivestack_ref}; pass --swiftly-ref to validate "
-            "against a specific release"
+            "could not read the SwiftlyS2.CS2 version from apps/swiftly "
+            f"FiveStack.csproj@{args.fivestack_ref}; pass --swiftly-version or "
+            "--swiftly-ref to validate against a specific release"
         )
         return [], info
 
@@ -410,9 +416,14 @@ def main():
         help="only validate gamedata used by this game server runtime",
     )
     parser.add_argument(
+        "--swiftly-version",
+        default=None,
+        help="skip csproj detection and validate this SwiftlyS2.CS2 version",
+    )
+    parser.add_argument(
         "--fivestack-ref",
         default="main",
-        help="git ref of swiftly-game-server to read the pinned SwiftlyS2.CS2 version from",
+        help="git ref of game-server to read the pinned SwiftlyS2.CS2 version from",
     )
     parser.add_argument(
         "--swiftly-ref",
