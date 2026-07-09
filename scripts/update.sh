@@ -64,12 +64,27 @@ if [ -n "${BUILD_MANIFESTS}" ]; then
     for depotId in "${depots[@]}"; do
         gid="${depot_gids[${depotId}]}"
         depotDir="${STEAMCMD_DIR}/linux32/steamapps/content/app_${GAME_ID}/depot_${depotId}"
+        depotMarker="${depotDir}.complete"
+
+        if [ -f "${depotMarker}" ] && [ "$(cat "${depotMarker}" 2>/dev/null)" = "${gid}" ] && [ -d "${depotDir}" ] && [ "$(ls -A "${depotDir}")" ]; then
+            echo "---Depot ${depotId} with Build ${gid} already downloaded, skipping---"
+            continue
+        fi
+        rm -f "${depotMarker}"
 
         echo "---Updating Depot ${depotId} with Build ${gid}---"
         LINUX_SERVER="${STEAMCMD_ARGS} +download_depot ${GAME_ID} ${depotId} ${gid} +quit"
         echo "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
         echo "Downloading depot ${depotId}, this may take a while..."
-        eval "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER}
+        depotLog="${STEAMCMD_DIR}/depot_${depotId}_download.log"
+        eval "${STEAMCMD_DIR}/steamcmd.sh" ${LINUX_SERVER} 2>&1 | tee "${depotLog}"
+        if ! grep -q "Depot download complete" "${depotLog}"; then
+            echo "Depot ${depotId} download did not complete. Exiting."
+            rm -f "${depotLog}"
+            exit 1
+        fi
+        rm -f "${depotLog}"
+        echo "${gid}" > "${depotMarker}"
         echo "Done downloading depot ${depotId}"
     done
 
