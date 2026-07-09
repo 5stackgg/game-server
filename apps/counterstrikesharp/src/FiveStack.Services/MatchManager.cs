@@ -537,6 +537,8 @@ public class MatchManager
             }
         }
 
+        ApplyAntiWallhack();
+
         Server.NextFrame(() =>
         {
             if (!wasAlreadySetup)
@@ -784,6 +786,9 @@ public class MatchManager
 
         _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
 
+        ApplyAntiWallhack();
+        PublishAntiWallhackStatus();
+
         Server.NextFrame(() =>
         {
             _gameDemos.Start();
@@ -805,6 +810,52 @@ public class MatchManager
                 });
             });
         });
+    }
+
+    private void ApplyAntiWallhack()
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        if (ConVar.Find("cs2fow_enable") == null)
+        {
+            // CS2FOW is not loaded (no AVX, removed, or failed); nothing to apply
+            return;
+        }
+
+        _gameServer.SendCommands(
+            [$"cs2fow_enable {(_matchData.options.anti_wallhack ? 1 : 0)}"]
+        );
+    }
+
+    private void PublishAntiWallhackStatus()
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        bool pluginLoaded = ConVar.Find("cs2fow_enable") != null;
+
+        string bakePath = Path.Join(
+            Server.GameDirectory,
+            "csgo",
+            "addons",
+            "cs2fow",
+            "data",
+            "maps",
+            $"{Server.MapName}.bvh8"
+        );
+
+        bool active =
+            _matchData.options.anti_wallhack && pluginLoaded && File.Exists(bakePath);
+
+        _matchEvents.PublishGameEvent(
+            "antiWallhackStatus",
+            new Dictionary<string, object> { { "active", active } }
+        );
     }
 
     public void EnforceMemberTeam(CCSPlayerController player, CsTeam? currentTeam = null)
