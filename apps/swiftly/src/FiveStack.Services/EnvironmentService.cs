@@ -121,14 +121,25 @@ public class EnvironmentService
 
         foreach (var line in File.ReadAllLines(filePath))
         {
-            var parts = line.Split('=', StringSplitOptions.RemoveEmptyEntries);
-
-            if (parts.Length != 2)
+            // Skip blanks and comments.
+            if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith("#"))
             {
                 continue;
             }
 
-            Environment.SetEnvironmentVariable(parts[0], parts[1]);
+            // Split on the FIRST '=' only. The previous Split('=', RemoveEmptyEntries)
+            // dropped any value that itself contained '=' (base64 secrets, tokens,
+            // connection strings all do) and any empty value, silently losing them.
+            var separatorIndex = line.IndexOf('=');
+            if (separatorIndex <= 0)
+            {
+                continue;
+            }
+
+            var key = line.Substring(0, separatorIndex).Trim();
+            var value = line.Substring(separatorIndex + 1);
+
+            Environment.SetEnvironmentVariable(key, value);
         }
     }
 }

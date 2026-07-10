@@ -135,11 +135,11 @@ public class TimeoutSystem
         bool isCoach = _coachSystem.IsCoach(player, player.Team);
         bool isCaptain = _captainSystem.IsCaptain(player, player.Team);
 
-        if (
-            player.Clan == "[administrator]"
-            || player.Clan == "[match_organizer]"
-            || player.Clan == "[tournament_organizer]"
-        )
+        // Match the clan tags actually assigned on connect (PlayerConnected sets
+        // player.Clan = "[admin]" / "[organizer]" from InitConnect's role map).
+        // The old "[administrator]"/"[match_organizer]"/"[tournament_organizer]"
+        // strings never matched, so privileged pause/resume never worked.
+        if (player.Clan == "[admin]" || player.Clan == "[organizer]")
         {
             return true;
         }
@@ -473,11 +473,11 @@ public class TimeoutSystem
 
     private bool IsAdminOrOrganizer(CCSPlayerController player, MatchData matchData)
     {
-        if (
-            player.Clan == "[administrator]"
-            || player.Clan == "[match_organizer]"
-            || player.Clan == "[tournament_organizer]"
-        )
+        // Match the clan tags actually assigned on connect (PlayerConnected sets
+        // player.Clan = "[admin]" / "[organizer]" from InitConnect's role map).
+        // The old "[administrator]"/"[match_organizer]"/"[tournament_organizer]"
+        // strings never matched, so privileged pause/resume never worked.
+        if (player.Clan == "[admin]" || player.Clan == "[organizer]")
         {
             return true;
         }

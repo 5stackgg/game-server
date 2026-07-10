@@ -117,7 +117,14 @@ public partial class FiveStackPlugin
         password = password.Replace("-", "+");
         password = password.Replace("_", "/");
 
-        if (computedToken != password)
+        // Constant-time comparison so verifying the connect token does not leak
+        // the correct value through response timing.
+        bool tokenMatches = CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(computedToken),
+            Encoding.UTF8.GetBytes(password)
+        );
+
+        if (!tokenMatches)
         {
             if (type == "tv")
             {
@@ -143,7 +150,7 @@ public partial class FiveStackPlugin
             {
                 PendingPlayers[steamId] = "admin";
             }
-            if (playerRole == ePlayerRoles.Streamer)
+            else if (playerRole == ePlayerRoles.Streamer)
             {
                 PendingPlayers[steamId] = "streamer";
             }

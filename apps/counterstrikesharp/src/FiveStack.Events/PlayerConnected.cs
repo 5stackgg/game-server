@@ -149,7 +149,14 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        CsTeam joiningTeam = TeamUtility.TeamNumToCSTeam(int.Parse(info.ArgByIndex(1)));
+        if (!int.TryParse(info.ArgByIndex(1), out int joiningTeamNum))
+        {
+            // Team number comes from a client command argument; a non-numeric
+            // value must not throw out of the hook.
+            return HookResult.Continue;
+        }
+
+        CsTeam joiningTeam = TeamUtility.TeamNumToCSTeam(joiningTeamNum);
 
         MatchManager? match = _matchService.GetCurrentMatch();
 
