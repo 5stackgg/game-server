@@ -60,10 +60,9 @@ public partial class FiveStackPlugin : BasePlugin
                 builder.AddJsonFile("config.jsonc", optional: true, reloadOnChange: true);
             });
 
-        IConfiguration configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("config.jsonc", optional: true, reloadOnChange: true)
-            .Build();
+        // The manager is rooted at addons/swiftlys2/configs/plugins/FiveStack;
+        // reading from the process CWD would miss the user's config file.
+        IConfiguration configuration = Core.Configuration.Manager;
 
         ServiceCollection services = new();
         services

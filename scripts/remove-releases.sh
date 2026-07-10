@@ -2,15 +2,16 @@
 
 # gh auth login --scopes read:packages,write:packages,delete:packages
 
-package="$1"
-prefix="$2"
+read -p "Which plugin to prune? (css/sw): " prefix
 
-if [[ -z "$package" || -z "$prefix" ]]; then
-  echo "usage: $0 <ghcr-package> <tag-prefix>"
-  echo "  e.g. $0 game-server-css css"
-  echo "       $0 game-server-sw  sw"
-  exit 1
-fi
+case "$prefix" in
+  css) package="game-server-css" ;;
+  sw)  package="game-server-sw" ;;
+  *)
+    echo "Invalid plugin: pick css or sw"
+    exit 1
+    ;;
+esac
 
 latest_tag=$(gh release list | grep "^${prefix}-v" | head -n 1 | awk '{print $1}')
 
