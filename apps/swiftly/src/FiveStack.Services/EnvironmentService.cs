@@ -139,6 +139,13 @@ public class EnvironmentService
             var key = line.Substring(0, separatorIndex).Trim();
             var value = line.Substring(separatorIndex + 1);
 
+            // A whitespace-only key (e.g. " =value") would collapse to "" here,
+            // and SetEnvironmentVariable("", ...) throws; skip such lines.
+            if (string.IsNullOrEmpty(key))
+            {
+                continue;
+            }
+
             Environment.SetEnvironmentVariable(key, value);
         }
     }
