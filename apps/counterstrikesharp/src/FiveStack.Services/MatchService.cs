@@ -46,10 +46,17 @@ public class MatchService
             {
                 _logger.LogInformation($"Downloading Config: {file}");
                 string url =
-                    $"https://raw.githubusercontent.com/5stackgg/game-server/main/cfg/{file}";
+                    $"https://raw.githubusercontent.com/5stackgg/game-server/main/shared/cfg/{file}";
                 using (var client = new HttpClient())
                 {
                     var response = await client.GetAsync(url);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        _logger.LogError(
+                            $"Failed to download config {file}: {response.StatusCode}"
+                        );
+                        continue;
+                    }
                     var content = await response.Content.ReadAsStringAsync();
                     File.WriteAllText(Path.Join(directoryPath, file), content);
                 }
