@@ -6,7 +6,7 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    [Command("stay", registerRaw: true, permission: "")]
+    [Command("stay", registerRaw: false, permission: "")]
     public void OnStay(ICommandContext context)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -21,8 +21,8 @@ public partial class FiveStackPlugin
         match.knifeSystem.Stay(player);
     }
 
-    [Command("swap", registerRaw: true, permission: "")]
-    [CommandAlias("switch", registerRaw: true)]
+    [Command("swap", registerRaw: false, permission: "")]
+    [CommandAlias("switch", registerRaw: false)]
     public void OnSwitch(ICommandContext context)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -55,7 +55,7 @@ public partial class FiveStackPlugin
         match.knifeSystem.Skip();
     }
 
-    [Command("t", registerRaw: true, permission: "")]
+    [Command("t", registerRaw: false, permission: "")]
     public void OnT(ICommandContext context)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -83,7 +83,7 @@ public partial class FiveStackPlugin
         match.knifeSystem.Switch(player);
     }
 
-    [Command("ct", registerRaw: true, permission: "")]
+    [Command("ct", registerRaw: false, permission: "")]
     public void OnCT(ICommandContext context)
     {
         MatchManager? match = _matchService.GetCurrentMatch();

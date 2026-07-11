@@ -4,9 +4,9 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    [Command("tech", registerRaw: true, permission: "")]
-    [CommandAlias("pause", registerRaw: true)]
-    [CommandAlias("p", registerRaw: true)]
+    [Command("tech", registerRaw: false, permission: "")]
+    [CommandAlias("pause", registerRaw: false)]
+    [CommandAlias("p", registerRaw: false)]
     public void OnPause(ICommandContext context)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -18,16 +18,16 @@ public partial class FiveStackPlugin
         match?.timeoutSystem.RequestPause(context.Sender);
     }
 
-    [Command("resume", registerRaw: true, permission: "")]
-    [CommandAlias("unpause", registerRaw: true)]
-    [CommandAlias("up", registerRaw: true)]
+    [Command("resume", registerRaw: false, permission: "")]
+    [CommandAlias("unpause", registerRaw: false)]
+    [CommandAlias("up", registerRaw: false)]
     public void OnResume(ICommandContext context)
     {
         _matchService.GetCurrentMatch()?.timeoutSystem.RequestResume(context.Sender);
     }
 
-    [Command("tac", registerRaw: true, permission: "")]
-    [CommandAlias("timeout", registerRaw: true)]
+    [Command("tac", registerRaw: false, permission: "")]
+    [CommandAlias("timeout", registerRaw: false)]
     public void OnTimeout(ICommandContext context)
     {
         MatchManager? match = _matchService.GetCurrentMatch();

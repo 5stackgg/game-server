@@ -218,12 +218,13 @@ public partial class FiveStackPlugin
         int l1Score = ScoreForSide(snap, l1Side);
         int l2Score = ScoreForSide(snap, l2Side);
 
+        int backupRoundNumber = _gameServer.GetTotalRoundsPlayed();
         string backupFile = SendBackupRound
-            ? (_gameBackupRounds.GetBackupRoundFile(_gameServer.GetTotalRoundsPlayed()) ?? "")
+            ? (_gameBackupRounds.GetBackupRoundFile(backupRoundNumber) ?? "")
             : "";
 
         _logger.LogInformation(
-            $"PublishPendingRound round={snap.Round} captured_t={snap.LiveTScore} captured_ct={snap.LiveCtScore} l1_side={l1Side} l1_score={l1Score} l2_side={l2Side} l2_score={l2Score} winning_side={snap.Winner} reason={snap.WinReason} backup_file_present={!string.IsNullOrEmpty(backupFile)}"
+            $"PublishPendingRound published_round={snap.Round} backup_lookup_round={backupRoundNumber} sendBackup={SendBackupRound} captured_t={snap.LiveTScore} captured_ct={snap.LiveCtScore} l1_side={l1Side} l1_score={l1Score} l2_side={l2Side} l2_score={l2Score} winning_side={snap.Winner} reason={snap.WinReason} backup_file_present={!string.IsNullOrEmpty(backupFile)}"
         );
 
         _matchEvents.PublishGameEvent(

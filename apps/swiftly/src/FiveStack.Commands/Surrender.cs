@@ -6,7 +6,7 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    [Command("surrender", registerRaw: true, permission: "")]
+    [Command("surrender", registerRaw: false, permission: "")]
     public void Surrender(ICommandContext context)
     {
         IPlayer? player = context.Sender;

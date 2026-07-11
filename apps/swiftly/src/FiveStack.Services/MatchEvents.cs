@@ -113,18 +113,21 @@ public class MatchEvents
     {
         if (_environmentService.IsOfflineMode())
         {
+            _logger.LogWarning($"Game event '{Event}' dropped: offline mode");
             return;
         }
 
         Guid matchId = _matchService.GetCurrentMatch()?.GetMatchData()?.id ?? Guid.Empty;
         if (matchId == Guid.Empty)
         {
+            _logger.LogWarning($"Game event '{Event}' dropped: no current match id");
             return;
         }
 
         Guid mapId = _matchService.GetCurrentMatch()?.GetActiveMapId() ?? Guid.Empty;
         if (mapId == Guid.Empty)
         {
+            _logger.LogWarning($"Game event '{Event}' dropped: no active map id");
             return;
         }
 
@@ -339,6 +342,13 @@ public class MatchEvents
 
                 if (_webSocket?.State == WebSocketState.Open)
                 {
+                    _logger.LogWarning(
+                        "Retrying unacked game event '{Event}' (messageId={MessageId} age={Age:F0}s)",
+                        DescribeEvent(message.Value.Event),
+                        message.Key,
+                        (currentTime - message.Value.Timestamp).TotalSeconds
+                    );
+
                     await _webSocket.SendAsync(
                         new ArraySegment<byte>(buffer),
                         WebSocketMessageType.Text,
@@ -348,6 +358,15 @@ public class MatchEvents
 
                     _pendingMessages[message.Key] = (message.Value.Event, currentTime);
                 }
+                else
+                {
+                    _logger.LogWarning(
+                        "Cannot retry game event '{Event}' (messageId={MessageId}) - websocket not connected (state={State})",
+                        DescribeEvent(message.Value.Event),
+                        message.Key,
+                        _webSocket?.State.ToString() ?? "<no socket>"
+                    );
+                }
             }
             catch (Exception ex)
             {
@@ -356,12 +375,34 @@ public class MatchEvents
         }
     }
 
+    private static string DescribeEvent<T>(EventData<T> data)
+    {
+        if (
+            data is EventData<Dictionary<string, object>> typedData
+            && typedData.data != null
+            && typedData.data.TryGetValue("event", out object? eventName)
+        )
+        {
+            return eventName?.ToString() ?? "<unknown>";
+        }
+
+        return "<unknown>";
+    }
+
     private async Task Publish<T>(Guid matchId, Guid mapId, EventData<T> data)
     {
-        if (_webSocket == null || _webSocket.State == WebSocketState.Closed)
+        string eventName = DescribeEvent(data);
+
+        // Any non-Open state (Closed, Aborted, Connecting, None) cannot send;
+        // the message stays in _pendingMessages and goes out via the retry timer
+        // once reconnected.
+        if (_webSocket == null || _webSocket.State != WebSocketState.Open)
         {
-            _logger.LogWarning($"Trying to publish but not connected");
-            return;
+            _logger.LogWarning(
+                "Cannot publish game event '{Event}' - websocket not connected (state={State}); queued for retry",
+                eventName,
+                _webSocket?.State.ToString() ?? "<no socket>"
+            );
         }
 
         data.mapId = mapId;
@@ -379,6 +420,11 @@ public class MatchEvents
             }
         }
 
+        if (_webSocket == null || _webSocket.State != WebSocketState.Open)
+        {
+            return;
+        }
+
         try
         {
             var message = JsonSerializer.Serialize(new { @event = "events", data });
@@ -389,10 +435,20 @@ public class MatchEvents
                 true,
                 _connectionCts?.Token ?? CancellationToken.None
             );
+            _logger.LogDebug(
+                "Published game event '{Event}' (messageId={MessageId})",
+                eventName,
+                data.messageId
+            );
         }
         catch (Exception error)
         {
-            _logger.LogCritical($"Error: {error.Message}");
+            _logger.LogCritical(
+                "Failed to publish game event '{Event}' (messageId={MessageId}): {Message}",
+                eventName,
+                data.messageId,
+                error.Message
+            );
         }
     }
 

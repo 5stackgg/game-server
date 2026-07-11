@@ -10,9 +10,11 @@ namespace FiveStack;
 
 public class RankSystem
 {
-    private const int CompetitiveWinsForVisibility = 10;
-
     private const int RankTypeCompetitive = 11;
+
+    private const int MinWinsForVisibility = 10;
+
+    private const float RevealAllInterval = 3.0f;
 
     private readonly ISwiftlyCore _core;
     private readonly ILogger<RankSystem> _logger;
@@ -20,19 +22,9 @@ public class RankSystem
 
     private Dictionary<ulong, int>? _eloBySteamId;
 
-    private const int TickLogInterval = 640;
+    private readonly Dictionary<ulong, (int Ranking, int RankType, int Wins)> _lastNotified = new();
 
-    private const string RankRevealAllMessage = "CCSUsrMsg_ServerRankRevealAll";
-
-    private const int RevealWhileOpenTickInterval = 16;
-
-    private const ulong ScoreboardButton = 1UL << 33;
-
-    private readonly Dictionary<int, bool> _scoreboardOpen = new();
-
-    private long _tickCount;
-    private long _ticksApplied;
-    private int _lastAppliedPlayerCount;
+    private CancellationTokenSource? _revealAllTimer;
 
     public RankSystem(ISwiftlyCore core, ILogger<RankSystem> logger, MatchService matchService)
     {
@@ -41,8 +33,23 @@ public class RankSystem
         _matchService = matchService;
     }
 
+    public void Start()
+    {
+        _core.Event.OnTick += OnTick;
+        _revealAllTimer = _core.Scheduler.RepeatBySeconds(RevealAllInterval, SendRevealAll);
+    }
+
+    public void Stop()
+    {
+        _core.Event.OnTick -= OnTick;
+        _revealAllTimer?.Cancel();
+        _revealAllTimer = null;
+    }
+
     public void OnMatchSetup(MatchData matchData)
     {
+        _lastNotified.Clear();
+
         if (!matchData.options.show_elo_ranks)
         {
             _eloBySteamId = null;
@@ -57,6 +64,8 @@ public class RankSystem
         _logger.LogInformation(
             $"Elo rank display enabled for match {matchData.id} (mode={matchData.options.type}, {_eloBySteamId.Count} player(s) with elo)"
         );
+
+        SendRevealAll();
     }
 
     private static Dictionary<ulong, int> BuildEloLookup(MatchData matchData)
@@ -81,17 +90,38 @@ public class RankSystem
         return lookup;
     }
 
-    public void OnTick()
+    public void SendRevealAll()
     {
+        if (_eloBySteamId == null)
+        {
+            return;
+        }
+
+        try
+        {
+            using var message = _core.NetMessage.Create<CCSUsrMsg_ServerRankRevealAll>();
+            message.SendToAllPlayers();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "RankSystem: failed to send reveal-all");
+        }
+    }
+
+    private void OnTick()
+    {
+        if (_eloBySteamId == null)
+        {
+            return;
+        }
+
         try
         {
             MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
-            if (matchData == null || !matchData.options.show_elo_ranks || _eloBySteamId == null)
+            if (matchData == null || !matchData.options.show_elo_ranks)
             {
                 return;
             }
-
-            int applied = 0;
 
             foreach (IPlayer player in _core.PlayerManager.GetAllPlayers())
             {
@@ -106,47 +136,12 @@ public class RankSystem
                     continue;
                 }
 
-                RevealRanksToScoreboardViewer(player);
-
                 if (!_eloBySteamId.TryGetValue(player.SteamID, out var elo))
                 {
                     continue;
                 }
 
-                CCSPlayerController controller = player.Controller;
-
-                if (
-                    controller.CompetitiveRanking == elo
-                    && controller.CompetitiveRankType == (byte)RankTypeCompetitive
-                    && controller.CompetitiveWins == CompetitiveWinsForVisibility
-                )
-                {
-                    continue;
-                }
-
-                controller.CompetitiveRanking = elo;
-                controller.CompetitiveRankType = (byte)RankTypeCompetitive;
-                controller.CompetitiveWins = CompetitiveWinsForVisibility;
-
-                controller.CompetitiveRankingUpdated();
-                controller.CompetitiveRankTypeUpdated();
-                controller.CompetitiveWinsUpdated();
-
-                applied++;
-            }
-
-            _tickCount++;
-            if (applied > 0)
-            {
-                _ticksApplied++;
-                _lastAppliedPlayerCount = applied;
-            }
-
-            if (_tickCount % TickLogInterval == 0)
-            {
-                _logger.LogInformation(
-                    $"RankSystem.OnTick heartbeat: ticks={_tickCount} applied_ticks={_ticksApplied} last_player_count={_lastAppliedPlayerCount}"
-                );
+                SetCompetitiveRank(player, elo);
             }
         }
         catch (InvalidOperationException ex)
@@ -163,41 +158,34 @@ public class RankSystem
         }
     }
 
-    private void RevealRanksToScoreboardViewer(IPlayer target)
+    private void SetCompetitiveRank(IPlayer player, int elo)
     {
-        CCSPlayerController player = target.Controller;
+        CCSPlayerController controller = player.Controller;
 
-        CPlayer_MovementServices? movementServices = player.Pawn.Value?.MovementServices;
-        if (movementServices == null || movementServices.Buttons.ButtonStates.ElementCount == 0)
+        int rankValue = elo;
+        int rankType = RankTypeCompetitive;
+        int wins = MinWinsForVisibility;
+        var intended = (rankValue, rankType, wins);
+
+        if (
+            _lastNotified.TryGetValue(player.SteamID, out var last)
+            && last == intended
+            && controller.CompetitiveRanking == rankValue
+            && controller.CompetitiveRankType == (byte)rankType
+            && controller.CompetitiveWins == wins
+        )
         {
             return;
         }
 
-        bool isOpen =
-            (movementServices.Buttons.ButtonStates[0] & ScoreboardButton) != 0;
+        controller.CompetitiveRankType = (byte)rankType;
+        controller.CompetitiveRanking = rankValue;
+        controller.CompetitiveWins = wins;
 
-        _scoreboardOpen.TryGetValue(target.Slot, out bool wasOpen);
-        _scoreboardOpen[target.Slot] = isOpen;
+        controller.CompetitiveRankTypeUpdated();
+        controller.CompetitiveRankingUpdated();
+        controller.CompetitiveWinsUpdated();
 
-        if (!isOpen)
-        {
-            return;
-        }
-
-        bool justOpened = !wasOpen;
-        if (!justOpened && _tickCount % RevealWhileOpenTickInterval != 0)
-        {
-            return;
-        }
-
-        try
-        {
-            using var message = _core.NetMessage.Create<CCSUsrMsg_ServerRankRevealAll>();
-            message.SendToPlayer(target.Slot);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "RankSystem: failed to send {Message}", RankRevealAllMessage);
-        }
+        _lastNotified[player.SteamID] = intended;
     }
 }

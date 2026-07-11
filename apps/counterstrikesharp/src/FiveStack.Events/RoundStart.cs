@@ -17,6 +17,8 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        _rankSystem.SendRevealAll();
+
         int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
         bool isInPlay = matchManager.IsInPlay();
         bool isKnife = matchManager.IsKnife();

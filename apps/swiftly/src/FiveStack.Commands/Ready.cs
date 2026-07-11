@@ -6,10 +6,10 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    [Command("r", registerRaw: true, permission: "")]
-    [CommandAlias("ready", registerRaw: true)]
-    [CommandAlias("unready", registerRaw: true)]
-    [CommandAlias("ur", registerRaw: true)]
+    [Command("r", registerRaw: false, permission: "")]
+    [CommandAlias("ready", registerRaw: false)]
+    [CommandAlias("unready", registerRaw: false)]
+    [CommandAlias("ur", registerRaw: false)]
     public void OnReady(ICommandContext context)
     {
         MatchManager? match = _matchService.GetCurrentMatch();

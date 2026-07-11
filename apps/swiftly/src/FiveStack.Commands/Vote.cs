@@ -6,13 +6,13 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    [Command("y", registerRaw: true, permission: "")]
+    [Command("y", registerRaw: false, permission: "")]
     public void OnVoteYes(ICommandContext context)
     {
         CastVoteAnswer(context, true);
     }
 
-    [Command("n", registerRaw: true, permission: "")]
+    [Command("n", registerRaw: false, permission: "")]
     public void OnVoteNo(ICommandContext context)
     {
         CastVoteAnswer(context, false);

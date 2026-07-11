@@ -55,11 +55,9 @@ public class GameBackUpRounds
         }
     }
 
-    // CS2 resolves mp_backup_round_file / mp_backup_restore_load_file relative to
-    // SwiftlyS2's DEFAULT_WRITE_PATH (csgo/addons/swiftlys2). We want the files in
-    // csgo/ instead, so we hand CS2 a value prefixed with this to climb back out,
-    // while the plugin reads the resolved files directly from csgo/.
-    private const string WritePathToBackupDir = "../../";
+    // SwiftlyS2 sets DEFAULT_WRITE_PATH to csgo/ (src/engine/fixes/entrypoint.cpp),
+    // so mp_backup_round_file / mp_backup_restore_load_file resolve relative to
+    // csgo/ — the same as vanilla CS2. Pass the bare prefix/filename.
     private string BackupDirectory => Path.Join(_core.GameDirectory, "csgo");
 
     public void RemovePlayerVoteOnDisconnect(ulong steamId)
@@ -105,8 +103,7 @@ public class GameBackUpRounds
         var fileConVar = _core.ConVar.FindAsString("mp_backup_round_file");
         if (fileConVar != null)
         {
-            // Prefix so CS2 writes into csgo/ rather than csgo/addons/swiftlys2/.
-            fileConVar.ValueAsString = WritePathToBackupDir + prefix;
+            fileConVar.ValueAsString = prefix;
         }
 
         if (!TrySetConVar("mp_backup_round_auto", true) && !TrySetConVar("mp_backup_round_auto", 1))
@@ -233,6 +230,49 @@ public class GameBackUpRounds
         return highest;
     }
 
+    // Diagnostic: lists every backup file for this match's prefix with size and
+    // seconds-since-write, so the logs reveal at a glance whether a missing round
+    // is a race (file present but written <1s ago / a newer file exists) vs a
+    // number mismatch (wrong round present) vs a prefix/path problem.
+    private string DescribeBackupFiles(string csgoDir, string prefix)
+    {
+        try
+        {
+            if (!Directory.Exists(csgoDir))
+            {
+                return $"<dir missing: {csgoDir}>";
+            }
+
+            var forPrefix = Directory.GetFiles(csgoDir, $"{prefix}_round*.txt");
+            if (forPrefix.Length == 0)
+            {
+                var anyRound = Directory
+                    .GetFiles(csgoDir, "*_round*.txt")
+                    .Select(Path.GetFileName)
+                    .ToArray();
+                return anyRound.Length > 0
+                    ? $"<none for prefix; other prefixes present: {string.Join(", ", anyRound)}>"
+                    : "<none>";
+            }
+
+            DateTime now = DateTime.UtcNow;
+            return string.Join(
+                ", ",
+                forPrefix
+                    .OrderBy(f => f)
+                    .Select(f =>
+                    {
+                        var info = new FileInfo(f);
+                        return $"{info.Name}({info.Length}b,{(now - info.LastWriteTimeUtc).TotalSeconds:F1}s)";
+                    })
+            );
+        }
+        catch (Exception ex)
+        {
+            return $"<error: {ex.Message}>";
+        }
+    }
+
     public void RequestRestoreBackupRound(
         int round,
         IPlayer? player = null,
@@ -336,35 +376,31 @@ public class GameBackUpRounds
                 return null;
             }
 
+            string prefix = MatchUtility.GetSafeMatchPrefix(match);
             string backupRoundFilePath = Path.Join(
                 BackupDirectory,
-                $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.ToString().PadLeft(2, '0')}.txt"
+                $"{prefix}_round{round.ToString().PadLeft(2, '0')}.txt"
             );
 
-            if (!File.Exists(backupRoundFilePath))
-            {
-                string csgoDir = BackupDirectory;
-                string existing = "<none>";
-                try
-                {
-                    existing = string.Join(
-                        ", ",
-                        Directory
-                            .GetFiles(csgoDir, "*_round*.txt")
-                            .Select(Path.GetFileName)
-                    );
-                    if (string.IsNullOrEmpty(existing))
-                    {
-                        existing = "<none>";
-                    }
-                }
-                catch { }
+            bool exists = File.Exists(backupRoundFilePath);
 
+            _logger.LogInformation(
+                "GetBackupRoundFile: round={Round} totalRoundsPlayed={Total} exists={Exists} path={Path} dir={Dir} files=[{Files}]",
+                round,
+                _gameServer.GetTotalRoundsPlayed(),
+                exists,
+                backupRoundFilePath,
+                BackupDirectory,
+                DescribeBackupFiles(BackupDirectory, prefix)
+            );
+
+            if (!exists)
+            {
                 _logger.LogCritical(
-                    "Unable to publish backup round {Round}: missing {Path}. Backup files present: {Existing}",
+                    "Unable to publish backup round {Round}: file not on disk at read time ({Path}). "
+                        + "If a higher-numbered file exists this is a round-number mismatch; if none/newer exists it is a write/read race.",
                     round,
-                    backupRoundFilePath,
-                    existing
+                    backupRoundFilePath
                 );
                 return null;
             }
@@ -402,10 +438,23 @@ public class GameBackUpRounds
         MatchData? match = matchManager?.GetMatchData();
         if (matchManager == null || match?.current_match_map_id == null)
         {
+            _logger.LogWarning(
+                "Restore round {Round} dropped: no current match or match map (match={HasMatch} current_match_map_id={MapId})",
+                round,
+                match != null,
+                match?.current_match_map_id?.ToString() ?? "<null>"
+            );
             return;
         }
 
         Guid mapId = matchManager.GetActiveMapId() ?? match.current_match_map_id.Value;
+
+        _logger.LogInformation(
+            "Publishing restoreRound event to backend (round={Round} match_map_id={MapId} active_map_id={ActiveMapId})",
+            round,
+            mapId,
+            matchManager.GetActiveMapId()?.ToString() ?? "<null>"
+        );
 
         _matchEvents.PublishGameEvent(
             "restoreRound",
@@ -431,6 +480,12 @@ public class GameBackUpRounds
 
         if (match == null || matchMap == null)
         {
+            _logger.LogWarning(
+                "RestoreRound({Round}) dropped: no current match/map (match={HasMatch} map={HasMap})",
+                round,
+                match != null,
+                matchMap != null
+            );
             return;
         }
 
@@ -443,7 +498,11 @@ public class GameBackUpRounds
 
         if (backupRound == null)
         {
-            _logger.LogWarning($"missing backup round: {round}");
+            _logger.LogWarning(
+                "missing backup round: {Round} (known rounds: [{Rounds}])",
+                round,
+                string.Join(", ", matchMap.rounds.Select(r => r.round))
+            );
             return;
         }
 
@@ -462,10 +521,8 @@ public class GameBackUpRounds
 
         _core.Scheduler.NextTick(() =>
         {
-            // Same write-path prefix as mp_backup_round_file so CS2 reads the file
-            // from csgo/ (where we wrote it), not csgo/addons/swiftlys2/.
             _gameServer.SendCommands(
-                [$"mp_backup_restore_load_file {WritePathToBackupDir}{backupRoundFileName}"]
+                [$"mp_backup_restore_load_file {backupRoundFileName}"]
             );
             _matchService.GetCurrentMatch()?.PauseMatch();
 

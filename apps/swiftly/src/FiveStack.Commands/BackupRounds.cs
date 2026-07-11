@@ -56,7 +56,7 @@ public partial class FiveStackPlugin
         _gameBackupRounds.RestoreRound(round);
     }
 
-    [Command("reset", registerRaw: true, permission: "")]
+    [Command("reset", registerRaw: false, permission: "")]
     public void OnRestoreRound(ICommandContext context)
     {
         string _round = context.Args.Length > 0 ? context.Args[0] : "";

@@ -6,7 +6,7 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    [Command("help", registerRaw: true, permission: "")]
+    [Command("help", registerRaw: false, permission: "")]
     public void OnHelp(ICommandContext context)
     {
         if (context.Sender == null)
@@ -49,7 +49,7 @@ public partial class FiveStackPlugin
         context.Reply(_localizer["help.restore_round", CommandUtility.PublicChatTrigger]);
     }
 
-    [Command("rules", registerRaw: true, permission: "")]
+    [Command("rules", registerRaw: false, permission: "")]
     public void OnRules(ICommandContext context)
     {
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();

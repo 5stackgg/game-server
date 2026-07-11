@@ -76,6 +76,12 @@ public partial class FiveStackPlugin : BasePlugin
 
         RegisterListener<Listeners.OnTick>(_rankSystem.OnTick);
 
+        TimerUtility.AddTimer(
+            RankSystem.RevealAllInterval,
+            _rankSystem.SendRevealAll,
+            CounterStrikeSharp.API.Modules.Timers.TimerFlags.REPEAT
+        );
+
         if (hotReload)
         {
             _steamAPI.OnSteamAPIActivated();

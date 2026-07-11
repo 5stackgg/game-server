@@ -6,7 +6,7 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    [Command("captain", registerRaw: true, permission: "")]
+    [Command("captain", registerRaw: false, permission: "")]
     public void OnCaptain(ICommandContext context)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -21,7 +21,7 @@ public partial class FiveStackPlugin
         match.captainSystem.ClaimCaptain(player, player.Controller.Team);
     }
 
-    [Command("captains", registerRaw: true, permission: "")]
+    [Command("captains", registerRaw: false, permission: "")]
     public void OnShowCaptains(ICommandContext context)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -36,7 +36,7 @@ public partial class FiveStackPlugin
         match.captainSystem.ShowCaptains();
     }
 
-    [Command("release-captain", registerRaw: true, permission: "")]
+    [Command("release-captain", registerRaw: false, permission: "")]
     public void OnReleaseCaptain(ICommandContext context)
     {
         MatchManager? match = _matchService.GetCurrentMatch();

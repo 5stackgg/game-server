@@ -2,7 +2,6 @@ using System.Text.Json;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.UserMessages;
-using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
@@ -11,26 +10,20 @@ namespace FiveStack;
 
 public class RankSystem
 {
-    private const int CompetitiveWinsForVisibility = 10;
+    private const int MinWinsForVisibility = 10;
 
     private const int RankTypeCompetitive = 11;
+
+    public const float RevealAllInterval = 3.0f;
+
+    private const string RankRevealAllMessage = "CCSUsrMsg_ServerRankRevealAll";
 
     private readonly ILogger<RankSystem> _logger;
     private readonly MatchService _matchService;
 
     private Dictionary<ulong, int>? _eloBySteamId;
 
-    private const int TickLogInterval = 640;
-
-    private const string RankRevealAllMessage = "CCSUsrMsg_ServerRankRevealAll";
-
-    private const int RevealWhileOpenTickInterval = 16;
-
-    private readonly Dictionary<int, bool> _scoreboardOpen = new();
-
-    private long _tickCount;
-    private long _ticksApplied;
-    private int _lastAppliedPlayerCount;
+    private readonly Dictionary<ulong, (int Ranking, int RankType, int Wins)> _lastNotified = new();
 
     public RankSystem(ILogger<RankSystem> logger, MatchService matchService)
     {
@@ -40,6 +33,8 @@ public class RankSystem
 
     public void OnMatchSetup(MatchData matchData)
     {
+        _lastNotified.Clear();
+
         if (!matchData.options.show_elo_ranks)
         {
             _eloBySteamId = null;
@@ -61,6 +56,8 @@ public class RankSystem
                 "Elo ranks will not render: FollowCS2ServerGuidelines is true in CounterStrikeSharp core.json. Set it to false (or SHOW_ELO_RANKS=true on the host and restart so setup.sh can patch it)."
             );
         }
+
+        SendRevealAll();
     }
 
     private static Dictionary<ulong, int> BuildEloLookup(MatchData matchData)
@@ -121,52 +118,48 @@ public class RankSystem
         }
     }
 
+    public void SendRevealAll()
+    {
+        if (_eloBySteamId == null)
+        {
+            return;
+        }
+
+        try
+        {
+            using UserMessage message = UserMessage.FromPartialName(RankRevealAllMessage);
+            message.Recipients.AddAllPlayers();
+            message.Send();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "RankSystem: failed to send {Message}", RankRevealAllMessage);
+        }
+    }
+
     public void OnTick()
     {
+        if (_eloBySteamId == null)
+        {
+            return;
+        }
+
         try
         {
             MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
-            if (matchData == null || !matchData.options.show_elo_ranks || _eloBySteamId == null)
+            if (matchData == null || !matchData.options.show_elo_ranks)
             {
                 return;
             }
 
-            int applied = 0;
-
             foreach (var player in MatchUtility.Players())
             {
-                RevealRanksToScoreboardViewer(player);
-
                 if (!_eloBySteamId.TryGetValue(player.SteamID, out var elo))
                 {
                     continue;
                 }
 
-                player.CompetitiveRanking = elo;
-                player.CompetitiveRankType = (sbyte)RankTypeCompetitive;
-                player.CompetitiveWins = CompetitiveWinsForVisibility;
-
-                CounterStrikeSharp.API.Utilities.SetStateChanged(
-                    player,
-                    "CCSPlayerController",
-                    "m_iCompetitiveRankType"
-                );
-
-                applied++;
-            }
-
-            _tickCount++;
-            if (applied > 0)
-            {
-                _ticksApplied++;
-                _lastAppliedPlayerCount = applied;
-            }
-
-            if (_tickCount % TickLogInterval == 0)
-            {
-                _logger.LogInformation(
-                    $"RankSystem.OnTick heartbeat: ticks={_tickCount} applied_ticks={_ticksApplied} last_player_count={_lastAppliedPlayerCount}"
-                );
+                SetCompetitiveRank(player, elo);
             }
         }
         catch (InvalidOperationException ex)
@@ -183,39 +176,44 @@ public class RankSystem
         }
     }
 
-    private void RevealRanksToScoreboardViewer(CCSPlayerController player)
+    private void SetCompetitiveRank(CCSPlayerController player, int elo)
     {
-        CPlayer_MovementServices? movementServices = player.Pawn.Value?.MovementServices;
-        if (movementServices == null || movementServices.Buttons.ButtonStates.Length == 0)
+        int rankValue = elo;
+        int rankType = RankTypeCompetitive;
+        int wins = MinWinsForVisibility;
+        var intended = (rankValue, rankType, wins);
+
+        if (
+            _lastNotified.TryGetValue(player.SteamID, out var last)
+            && last == intended
+            && player.CompetitiveRanking == rankValue
+            && player.CompetitiveRankType == (sbyte)rankType
+            && player.CompetitiveWins == wins
+        )
         {
             return;
         }
 
-        bool isOpen =
-            (movementServices.Buttons.ButtonStates[0] & (ulong)PlayerButtons.Scoreboard) != 0;
+        player.CompetitiveRankType = (sbyte)rankType;
+        player.CompetitiveRanking = rankValue;
+        player.CompetitiveWins = wins;
 
-        _scoreboardOpen.TryGetValue(player.Slot, out bool wasOpen);
-        _scoreboardOpen[player.Slot] = isOpen;
+        CounterStrikeSharp.API.Utilities.SetStateChanged(
+            player,
+            "CCSPlayerController",
+            "m_iCompetitiveRankType"
+        );
+        CounterStrikeSharp.API.Utilities.SetStateChanged(
+            player,
+            "CCSPlayerController",
+            "m_iCompetitiveRanking"
+        );
+        CounterStrikeSharp.API.Utilities.SetStateChanged(
+            player,
+            "CCSPlayerController",
+            "m_iCompetitiveWins"
+        );
 
-        if (!isOpen)
-        {
-            return;
-        }
-
-        bool justOpened = !wasOpen;
-        if (!justOpened && _tickCount % RevealWhileOpenTickInterval != 0)
-        {
-            return;
-        }
-
-        try
-        {
-            using UserMessage message = UserMessage.FromPartialName(RankRevealAllMessage);
-            message.Send(player);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "RankSystem: failed to send {Message}", RankRevealAllMessage);
-        }
+        _lastNotified[player.SteamID] = intended;
     }
 }

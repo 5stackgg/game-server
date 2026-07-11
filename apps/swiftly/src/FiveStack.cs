@@ -119,7 +119,7 @@ public partial class FiveStackPlugin : BasePlugin
 
         InitializeConnectClientHook();
 
-        Core.Event.OnTick += _rankSystem.OnTick;
+        _rankSystem.Start();
 
         Core.Event.OnMapLoad += OnMapLoad;
 
@@ -189,7 +189,7 @@ public partial class FiveStackPlugin : BasePlugin
     {
         try
         {
-            Core.Event.OnTick -= _rankSystem.OnTick;
+            _rankSystem.Stop();
             Core.Event.OnMapLoad -= OnMapLoad;
 
             if (_precacheHandler != null)

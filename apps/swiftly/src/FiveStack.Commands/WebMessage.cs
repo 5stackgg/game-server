@@ -5,7 +5,7 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    [Command("web_chat", registerRaw: true, permission: "")]
+    [Command("web_chat", registerRaw: false, permission: "")]
     public void OnWebMessage(ICommandContext context)
     {
         if (context.IsSentByPlayer)
