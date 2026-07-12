@@ -135,11 +135,7 @@ public class TimeoutSystem
         bool isCoach = _coachSystem.IsCoach(player, player.Team);
         bool isCaptain = _captainSystem.IsCaptain(player, player.Team);
 
-        if (
-            player.Clan == "[administrator]"
-            || player.Clan == "[match_organizer]"
-            || player.Clan == "[tournament_organizer]"
-        )
+        if (player.Clan == "[admin]" || player.Clan == "[organizer]" || player.Clan == "admin" || player.Clan == "organizer")
         {
             return true;
         }
@@ -473,11 +469,7 @@ public class TimeoutSystem
 
     private bool IsAdminOrOrganizer(CCSPlayerController player, MatchData matchData)
     {
-        if (
-            player.Clan == "[administrator]"
-            || player.Clan == "[match_organizer]"
-            || player.Clan == "[tournament_organizer]"
-        )
+        if (player.Clan == "[admin]" || player.Clan == "[organizer]" || player.Clan == "admin" || player.Clan == "organizer")
         {
             return true;
         }
