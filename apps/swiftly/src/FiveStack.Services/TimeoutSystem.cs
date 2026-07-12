@@ -139,11 +139,7 @@ public class TimeoutSystem
         bool isCoach = _coachSystem.IsCoach(player, player.Controller.Team);
         bool isCaptain = _captainSystem.IsCaptain(player, player.Controller.Team);
 
-        // Match the clan tags actually assigned on connect (PlayerConnected sets
-        // player.Controller.Clan = "[admin]" / "[organizer]" from InitConnect's
-        // role map). The old "[administrator]"/"[match_organizer]"/
-        // "[tournament_organizer]" strings never matched.
-        if (player.Controller.Clan == "[admin]" || player.Controller.Clan == "[organizer]")
+        if (player.Controller.Clan == "[admin]" || player.Controller.Clan == "[organizer]" || player.Controller.Clan == "admin" || player.Controller.Clan == "organizer")
         {
             return true;
         }
@@ -474,11 +470,7 @@ public class TimeoutSystem
 
     private bool IsAdminOrOrganizer(IPlayer player, MatchData matchData)
     {
-        // Match the clan tags actually assigned on connect (PlayerConnected sets
-        // player.Controller.Clan = "[admin]" / "[organizer]" from InitConnect's
-        // role map). The old "[administrator]"/"[match_organizer]"/
-        // "[tournament_organizer]" strings never matched.
-        if (player.Controller.Clan == "[admin]" || player.Controller.Clan == "[organizer]")
+        if (player.Controller.Clan == "[admin]" || player.Controller.Clan == "[organizer]" || player.Controller.Clan == "admin" || player.Controller.Clan == "organizer")
         {
             return true;
         }
