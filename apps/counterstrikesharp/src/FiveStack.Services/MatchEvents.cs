@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Channels;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
@@ -27,6 +28,18 @@ public class MatchEvents
     // ClientWebSocket forbids concurrent SendAsync.
     private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
 
+    // Single-consumer queue: keeps serialization off the game thread while
+    // preserving event order.
+    private readonly Channel<(
+        Guid MatchId,
+        Guid MapId,
+        EventData<Dictionary<string, object>> Payload
+    )> _publishQueue = Channel.CreateUnbounded<(
+        Guid,
+        Guid,
+        EventData<Dictionary<string, object>>
+    )>(new UnboundedChannelOptions { SingleReader = true });
+
     private readonly ILogger<MatchEvents> _logger;
     private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
@@ -47,7 +60,23 @@ public class MatchEvents
         _retryTimer = new System.Timers.Timer(RETRY_INTERVAL_MS);
         _retryTimer.Elapsed += async (sender, e) => await RetryPendingMessages();
 
+        _ = Task.Run(ProcessPublishQueue);
         _ = ConnectAndMonitor();
+    }
+
+    private async Task ProcessPublishQueue()
+    {
+        await foreach (var (matchId, mapId, payload) in _publishQueue.Reader.ReadAllAsync())
+        {
+            try
+            {
+                await Publish(matchId, mapId, payload);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed publishing game event");
+            }
+        }
     }
 
     public class EventData<T>
@@ -130,7 +159,7 @@ public class MatchEvents
             data = new Dictionary<string, object> { { "event", Event }, { "data", Data } },
         };
 
-        _ = Task.Run(() => Publish(matchId, mapId, payload));
+        _publishQueue.Writer.TryWrite((matchId, mapId, payload));
     }
 
     private async Task ConnectAndMonitor()
@@ -300,6 +329,7 @@ public class MatchEvents
         _isMonitoring = false;
         _retryTimer.Stop();
         _retryTimer?.Dispose();
+        _publishQueue.Writer.TryComplete();
 
         if (_webSocket != null && _webSocket.State == WebSocketState.Open)
         {
@@ -361,16 +391,12 @@ public class MatchEvents
 
     private async Task Publish<T>(Guid matchId, Guid mapId, EventData<T> data)
     {
-        if (_webSocket == null || _webSocket.State == WebSocketState.Closed)
-        {
-            _logger.LogWarning($"Trying to publish but not connected");
-            return;
-        }
-
         data.mapId = mapId;
         data.matchId = matchId;
         data.messageId = Guid.NewGuid();
 
+        // Queue before the connectivity check so events sent while disconnected
+        // go out via the retry timer once reconnected.
         if (data is EventData<Dictionary<string, object>> typedData)
         {
             _pendingMessages[data.messageId] = (typedData, DateTime.UtcNow);
@@ -380,6 +406,14 @@ public class MatchEvents
                 var oldest = _pendingMessages.MinBy(p => p.Value.Timestamp);
                 _pendingMessages.TryRemove(oldest.Key, out _);
             }
+        }
+
+        if (_webSocket == null || _webSocket.State != WebSocketState.Open)
+        {
+            _logger.LogWarning(
+                $"Cannot publish game event - websocket not connected; queued for retry"
+            );
+            return;
         }
 
         try

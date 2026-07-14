@@ -129,7 +129,7 @@ public class GameServer
                 );
                 response.EnsureSuccessStatusCode();
             }
-            catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+            catch (OperationCanceledException)
             {
                 _logger.LogWarning("Ping request timed out after 5 seconds");
             }

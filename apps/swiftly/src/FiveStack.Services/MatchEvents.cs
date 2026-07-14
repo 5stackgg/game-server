@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Channels;
 using SwiftlyS2.Shared.Players;
 using FiveStack.Entities;
 using FiveStack.Enums;
@@ -27,6 +28,18 @@ public class MatchEvents
     // ClientWebSocket forbids concurrent SendAsync.
     private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
 
+    // Single-consumer queue: keeps serialization off the game thread while
+    // preserving event order.
+    private readonly Channel<(
+        Guid MatchId,
+        Guid MapId,
+        EventData<Dictionary<string, object>> Payload
+    )> _publishQueue = Channel.CreateUnbounded<(
+        Guid,
+        Guid,
+        EventData<Dictionary<string, object>>
+    )>(new UnboundedChannelOptions { SingleReader = true });
+
     private readonly ILogger<MatchEvents> _logger;
     private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
@@ -47,7 +60,23 @@ public class MatchEvents
         _retryTimer = new System.Timers.Timer(RETRY_INTERVAL_MS);
         _retryTimer.Elapsed += async (sender, e) => await RetryPendingMessages();
 
+        _ = Task.Run(ProcessPublishQueue);
         _ = ConnectAndMonitor();
+    }
+
+    private async Task ProcessPublishQueue()
+    {
+        await foreach (var (matchId, mapId, payload) in _publishQueue.Reader.ReadAllAsync())
+        {
+            try
+            {
+                await Publish(matchId, mapId, payload);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed publishing game event");
+            }
+        }
     }
 
     public class EventData<T>
@@ -139,7 +168,7 @@ public class MatchEvents
             data = new Dictionary<string, object> { { "event", Event }, { "data", Data } },
         };
 
-        _ = Task.Run(() => Publish(matchId, mapId, payload));
+        _publishQueue.Writer.TryWrite((matchId, mapId, payload));
     }
 
     private async Task ConnectAndMonitor()
@@ -309,6 +338,7 @@ public class MatchEvents
         _isMonitoring = false;
         _retryTimer.Stop();
         _retryTimer?.Dispose();
+        _publishQueue.Writer.TryComplete();
 
         if (_webSocket != null && _webSocket.State == WebSocketState.Open)
         {

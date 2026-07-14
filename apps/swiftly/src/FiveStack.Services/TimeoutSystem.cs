@@ -475,10 +475,6 @@ public class TimeoutSystem
             return true;
         }
 
-
-
-
-
         MatchMember? lineupPlayer = MatchUtility.GetMemberFromLineup(
             matchData,
             player.SteamID.ToString(),

@@ -20,9 +20,7 @@ public partial class FiveStackPlugin
         if (
             @event.UserIdPlayer == null
             || !@event.UserIdPlayer.IsValid
-            // TEMP(perf-testing): allow bot damage so bots generate load for profiling.
-            // The API will reject bot steam ids — that's expected. Restore this line after.
-            // || @event.UserIdPlayer.IsFakeClient
+            || @event.UserIdPlayer.IsFakeClient
             || match == null
             || matchData?.current_match_map_id == null
             || !match.IsInPlay()
