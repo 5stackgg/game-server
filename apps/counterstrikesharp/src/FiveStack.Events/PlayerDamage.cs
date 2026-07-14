@@ -7,6 +7,10 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
+    // Victim health before their next hit, per round (cleared on round start).
+    // Lets us report exact applied damage instead of raw overkill damage.
+    private readonly Dictionary<ulong, int> _victimHealth = new();
+
     [GameEventHandler]
     public HookResult OnPlayerDamage(EventPlayerHurt @event, GameEventInfo info)
     {
@@ -36,17 +40,13 @@ public partial class FiveStackPlugin
         }
 
         var attackerLocation = attacker?.PlayerPawn.Value?.AbsOrigin;
-        var attackedLocation = attacked?.PlayerPawn?.Value?.AbsOrigin;
+        var attackedLocation = attacked.PlayerPawn.Value?.AbsOrigin;
 
-        var damageDealt = @event.DmgHealth;
-
-        if (attacked != null)
-        {
-            if (attacked.PlayerPawn.Value.Health < 0)
-            {
-                damageDealt = damageDealt + attacked.PlayerPawn.Value.Health;
-            }
-        }
+        int priorHealth = _victimHealth.TryGetValue(attacked.SteamID, out int tracked)
+            ? tracked
+            : 100;
+        var damageDealt = Math.Min(@event.DmgHealth, priorHealth);
+        _victimHealth[attacked.SteamID] = @event.Health;
 
         _matchEvents.PublishGameEvent(
             "damage",
@@ -73,12 +73,9 @@ public partial class FiveStackPlugin
                 { "hitgroup", $"{DamageUtility.HitGroupToString(@event.Hitgroup)}" },
                 { "health", @event.Health },
                 { "armor", @event.Armor },
-                { "attacked_steam_id", attacked != null ? attacked.SteamID.ToString() : "" },
-                {
-                    "attacked_team",
-                    attacked != null ? $"{TeamUtility.TeamNumToString(attacked.TeamNum)}" : ""
-                },
-                { "attacked_location", $"{attacked?.PlayerPawn.Value.LastPlaceName}" },
+                { "attacked_steam_id", attacked.SteamID.ToString() },
+                { "attacked_team", $"{TeamUtility.TeamNumToString(attacked.TeamNum)}" },
+                { "attacked_location", $"{attacked.PlayerPawn.Value?.LastPlaceName}" },
                 {
                     "attacked_location_coordinates",
                     attackedLocation != null

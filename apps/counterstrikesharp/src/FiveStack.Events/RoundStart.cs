@@ -10,6 +10,8 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
     {
+        _victimHealth.Clear();
+
         MatchManager? matchManager = _matchService.GetCurrentMatch();
         if (matchManager == null)
         {

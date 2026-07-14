@@ -10,6 +10,10 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
+    // Victim health before their next hit, per round (cleared on round start).
+    // Lets us report exact applied damage instead of raw overkill damage.
+    private readonly Dictionary<ulong, int> _victimHealth = new();
+
 #pragma warning disable CS0618
     [GameEventHandler(HookMode.Post)]
     public HookResult OnPlayerDamage(EventPlayerHurt @event)
@@ -47,12 +51,11 @@ public partial class FiveStackPlugin
         var attackerLocation = attackerPawn?.AbsOrigin;
         var attackedLocation = attackedPawn.AbsOrigin;
 
-        int damageDealt = @event.DmgHealth;
-
-        if (attackedPawn.Health < 0)
-        {
-            damageDealt = damageDealt + attackedPawn.Health;
-        }
+        int priorHealth = _victimHealth.TryGetValue(attacked.SteamID, out int tracked)
+            ? tracked
+            : 100;
+        int damageDealt = Math.Min(@event.DmgHealth, priorHealth);
+        _victimHealth[attacked.SteamID] = @event.Health;
 
         _matchEvents.PublishGameEvent(
             "damage",
