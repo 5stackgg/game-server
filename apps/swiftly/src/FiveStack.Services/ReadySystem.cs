@@ -75,8 +75,7 @@ public class ReadySystem
 
             if (
                 player.Controller.Clan != ""
-                && player.Controller.Clan != "[ready]"
-                && player.Controller.Clan != "[not ready]"
+                && !player.Controller.Clan.EndsWith(" |")
             )
             {
                 continue;

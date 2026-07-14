@@ -115,32 +115,31 @@ public class GameServer
                 endpoint += $"&steamID={serverSteamID}";
             }
 
-            using (HttpClient httpClient = new HttpClient())
+            try
             {
-                httpClient.Timeout = TimeSpan.FromSeconds(5);
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
+                request.Headers.Authorization = new AuthenticationHeaderValue(
                     "Bearer",
                     apiPassword
                 );
-
-                try
-                {
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-                    HttpResponseMessage response = await httpClient.GetAsync(endpoint, cts.Token);
-                    response.EnsureSuccessStatusCode();
-                }
-                catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
-                {
-                    _logger.LogWarning("Ping request timed out after 5 seconds");
-                }
-                catch (HttpRequestException ex)
-                {
-                    _logger.LogCritical($"Unable to ping: {ex.Message}");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogCritical($"Unexpected error during ping: {ex.Message}");
-                }
+                HttpResponseMessage response = await HttpClientProvider.Client.SendAsync(
+                    request,
+                    cts.Token
+                );
+                response.EnsureSuccessStatusCode();
+            }
+            catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+            {
+                _logger.LogWarning("Ping request timed out after 5 seconds");
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogCritical($"Unable to ping: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogCritical($"Unexpected error during ping: {ex.Message}");
             }
         });
     }

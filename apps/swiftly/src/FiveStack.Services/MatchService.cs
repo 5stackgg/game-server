@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FiveStack.Entities;
+using FiveStack.Utilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
@@ -47,19 +48,14 @@ public class MatchService
                 _logger.LogInformation($"Downloading Config: {file}");
                 string url =
                     $"https://raw.githubusercontent.com/5stackgg/game-server/main/shared/cfg/{file}";
-                using (var client = new HttpClient())
+                var response = await HttpClientProvider.Client.GetAsync(url);
+                if (!response.IsSuccessStatusCode)
                 {
-                    var response = await client.GetAsync(url);
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        _logger.LogError(
-                            $"Failed to download config {file}: {response.StatusCode}"
-                        );
-                        continue;
-                    }
-                    var content = await response.Content.ReadAsStringAsync();
-                    File.WriteAllText(Path.Join(directoryPath, file), content);
+                    _logger.LogError($"Failed to download config {file}: {response.StatusCode}");
+                    continue;
                 }
+                var content = await response.Content.ReadAsStringAsync();
+                File.WriteAllText(Path.Join(directoryPath, file), content);
             }
         }
     }
@@ -102,17 +98,19 @@ public class MatchService
 
         try
         {
-            using (var httpClient = new HttpClient())
             {
                 string matchUri =
                     $"{_environmentService.GetApiUrl()}/matches/current-match/{serverId}";
 
                 _logger.LogInformation($"Fetching Match Info for server : {serverId}");
 
-                httpClient.DefaultRequestHeaders.Authorization =
+                var request = new HttpRequestMessage(HttpMethod.Get, matchUri);
+                request.Headers.Authorization =
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiPassword);
 
-                string? response = await httpClient.GetStringAsync(matchUri);
+                var httpResponse = await HttpClientProvider.Client.SendAsync(request);
+                httpResponse.EnsureSuccessStatusCode();
+                string? response = await httpResponse.Content.ReadAsStringAsync();
 
                 _core.Scheduler.NextTick(() =>
                 {

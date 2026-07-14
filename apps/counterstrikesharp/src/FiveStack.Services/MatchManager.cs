@@ -727,7 +727,7 @@ public class MatchManager
 
     private void StartWarmup()
     {
-        ConVar.Find("sv_disable_teamselect_menu")?.SetValue(0);
+        ConVar.Find("sv_disable_teamselect_menu")?.SetValue(false);
         _gameServer.SendCommands(["exec 5stack.warmup.cfg"]);
 
         knifeSystem.Reset();
@@ -752,7 +752,7 @@ public class MatchManager
 
     private void StartKnife()
     {
-        ConVar.Find("sv_disable_teamselect_menu")?.SetValue(1);
+        ConVar.Find("sv_disable_teamselect_menu")?.SetValue(true);
 
         if (_matchData == null || IsKnife())
         {
@@ -775,7 +775,7 @@ public class MatchManager
 
         _logger.LogInformation("Starting Live Match");
 
-        ConVar.Find("sv_disable_teamselect_menu")?.SetValue(1);
+        ConVar.Find("sv_disable_teamselect_menu")?.SetValue(true);
 
         ConVar.Find("mp_backup_round_auto")?.SetValue(1);
 
