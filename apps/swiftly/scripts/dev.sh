@@ -16,13 +16,14 @@ PROJECT="/opt/5stack/apps/swiftly/src/FiveStack.csproj"
 BUILD_OUTPUT="/opt/5stack/apps/swiftly/src/build/net10.0"
 
 # Write straight into the shared plugin-dir mount when the pod provides it
-# (the game server's AutoHotReload watches that directory); otherwise the
-# classic /opt/dev volume.
+# (the game server's AutoHotReload watches that directory); otherwise the sw
+# subfolder of the dev volume (css and sw dev builds share the volume).
 PLUGIN_MOUNT="/opt/instance/game/csgo/addons/swiftlys2/plugins/FiveStack"
 if mountpoint -q "$PLUGIN_MOUNT" 2>/dev/null; then
   DEV_DIR="$PLUGIN_MOUNT"
 else
-  DEV_DIR="/opt/dev"
+  DEV_DIR="/opt/dev/sw"
+  mkdir -p "$DEV_DIR"
 fi
 
 log "starting dev hot-reload"

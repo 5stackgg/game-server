@@ -23,8 +23,12 @@ trap kill_dotnet_watch EXIT
 
 directory_to_watch="/opt/5stack/apps/counterstrikesharp/src/bin/Debug/net10.0"
 
+# css and sw dev builds share the dev volume; each uses its own subfolder
+DEV_DIR="/opt/dev/css"
+mkdir -p "$DEV_DIR"
+
 while true; do
   rm -f "$directory_to_watch/CounterStrikeSharp.API.dll"
   inotifywait -r -e modify,create,delete,move "$directory_to_watch"
-  cp -r "$directory_to_watch"/* "/opt/dev"
+  cp -r "$directory_to_watch"/* "$DEV_DIR"
 done

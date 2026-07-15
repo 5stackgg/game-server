@@ -133,9 +133,11 @@ if $INSTALL_5STACK_PLUGIN = true ; then
     if mountpoint -q "$FIVESTACK_PLUGIN_DIR"; then
       echo "---5Stack dev: plugin dir is a mounted volume (hot reload enabled)---"
     else
+      # css and sw dev builds share the dev volume; each uses its own subfolder
       rmdir "$FIVESTACK_PLUGIN_DIR" 2>/dev/null
-      ln -s "/opt/dev" "$FIVESTACK_PLUGIN_DIR"
-      echo "---5Stack dev: symlinked /opt/dev (hot reload OFF; use 'sw plugins reload FiveStack')---"
+      mkdir -p "/opt/dev/sw"
+      ln -s "/opt/dev/sw" "$FIVESTACK_PLUGIN_DIR"
+      echo "---5Stack dev: symlinked /opt/dev/sw (hot reload OFF; use 'sw plugins reload FiveStack')---"
     fi
   else
     ln -s "/opt/mod" "$FIVESTACK_PLUGIN_DIR"
