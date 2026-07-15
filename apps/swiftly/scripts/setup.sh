@@ -139,8 +139,11 @@ if $INSTALL_5STACK_PLUGIN = true ; then
       ln -s "/opt/dev/sw" "$FIVESTACK_PLUGIN_DIR"
       echo "---5Stack dev: symlinked /opt/dev/sw (hot reload OFF; use 'sw plugins reload FiveStack')---"
     fi
-  else
+  elif [ ! -e "$FIVESTACK_PLUGIN_DIR" ]; then
     ln -s "/opt/mod" "$FIVESTACK_PLUGIN_DIR"
+  else
+    # dir pre-exists (dev volume mount without DEV_SWAPPED); don't plant /opt/mod inside it
+    echo "---5Stack: plugin dir already present, skipping /opt/mod symlink---"
   fi
 fi
 
