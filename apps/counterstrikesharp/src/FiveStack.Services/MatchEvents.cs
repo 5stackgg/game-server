@@ -1,6 +1,8 @@
+using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Channels;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
@@ -15,13 +17,28 @@ public class MatchEvents
     private ClientWebSocket? _webSocket;
     private CancellationTokenSource? _connectionCts;
     private bool _manualDisconnect = false;
-    private Dictionary<
+    private ConcurrentDictionary<
         Guid,
         (EventData<Dictionary<string, object>> Event, DateTime Timestamp)
     > _pendingMessages = new();
     private System.Timers.Timer _retryTimer;
     private const int RETRY_INTERVAL_MS = 5000;
     private const int MESSAGE_RETRY_THRESHOLD_SECONDS = 10;
+
+    // ClientWebSocket forbids concurrent SendAsync.
+    private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
+
+    // Single-consumer queue: keeps serialization off the game thread while
+    // preserving event order.
+    private readonly Channel<(
+        Guid MatchId,
+        Guid MapId,
+        EventData<Dictionary<string, object>> Payload
+    )> _publishQueue = Channel.CreateUnbounded<(
+        Guid,
+        Guid,
+        EventData<Dictionary<string, object>>
+    )>(new UnboundedChannelOptions { SingleReader = true });
 
     private readonly ILogger<MatchEvents> _logger;
     private readonly MatchService _matchService;
@@ -43,7 +60,23 @@ public class MatchEvents
         _retryTimer = new System.Timers.Timer(RETRY_INTERVAL_MS);
         _retryTimer.Elapsed += async (sender, e) => await RetryPendingMessages();
 
+        _ = Task.Run(ProcessPublishQueue);
         _ = ConnectAndMonitor();
+    }
+
+    private async Task ProcessPublishQueue()
+    {
+        await foreach (var (matchId, mapId, payload) in _publishQueue.Reader.ReadAllAsync())
+        {
+            try
+            {
+                await Publish(matchId, mapId, payload);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed publishing game event");
+            }
+        }
     }
 
     public class EventData<T>
@@ -102,7 +135,7 @@ public class MatchEvents
         );
     }
 
-    public async void PublishGameEvent(string Event, Dictionary<string, object> Data)
+    public void PublishGameEvent(string Event, Dictionary<string, object> Data)
     {
         if (_environmentService.IsOfflineMode())
         {
@@ -121,14 +154,12 @@ public class MatchEvents
             return;
         }
 
-        await Publish(
-            matchId,
-            mapId,
-            new EventData<Dictionary<string, object>>
-            {
-                data = new Dictionary<string, object> { { "event", Event }, { "data", Data } },
-            }
-        );
+        var payload = new EventData<Dictionary<string, object>>
+        {
+            data = new Dictionary<string, object> { { "event", Event }, { "data", Data } },
+        };
+
+        _publishQueue.Writer.TryWrite((matchId, mapId, payload));
     }
 
     private async Task ConnectAndMonitor()
@@ -186,7 +217,7 @@ public class MatchEvents
                     try
                     {
                         var messageId = Guid.Parse(messageIdStr.Trim('"'));
-                        _pendingMessages.Remove(messageId);
+                        _pendingMessages.TryRemove(messageId, out _);
                     }
                     catch (Exception ex)
                     {
@@ -298,6 +329,7 @@ public class MatchEvents
         _isMonitoring = false;
         _retryTimer.Stop();
         _retryTimer?.Dispose();
+        _publishQueue.Writer.TryComplete();
 
         if (_webSocket != null && _webSocket.State == WebSocketState.Open)
         {
@@ -332,12 +364,20 @@ public class MatchEvents
 
                 if (_webSocket?.State == WebSocketState.Open)
                 {
-                    await _webSocket.SendAsync(
-                        new ArraySegment<byte>(buffer),
-                        WebSocketMessageType.Text,
-                        true,
-                        _connectionCts?.Token ?? CancellationToken.None
-                    );
+                    await _sendLock.WaitAsync(_connectionCts?.Token ?? CancellationToken.None);
+                    try
+                    {
+                        await _webSocket.SendAsync(
+                            new ArraySegment<byte>(buffer),
+                            WebSocketMessageType.Text,
+                            true,
+                            _connectionCts?.Token ?? CancellationToken.None
+                        );
+                    }
+                    finally
+                    {
+                        _sendLock.Release();
+                    }
 
                     _pendingMessages[message.Key] = (message.Value.Event, currentTime);
                 }
@@ -351,37 +391,49 @@ public class MatchEvents
 
     private async Task Publish<T>(Guid matchId, Guid mapId, EventData<T> data)
     {
-        if (_webSocket == null || _webSocket.State == WebSocketState.Closed)
-        {
-            _logger.LogWarning($"Trying to publish but not connected");
-            return;
-        }
-
         data.mapId = mapId;
         data.matchId = matchId;
         data.messageId = Guid.NewGuid();
 
+        // Queue before the connectivity check so events sent while disconnected
+        // go out via the retry timer once reconnected.
         if (data is EventData<Dictionary<string, object>> typedData)
         {
             _pendingMessages[data.messageId] = (typedData, DateTime.UtcNow);
 
             if (_pendingMessages.Count > 1000)
             {
-                var oldest = _pendingMessages.OrderBy(p => p.Value.Timestamp).First();
-                _pendingMessages.Remove(oldest.Key);
+                var oldest = _pendingMessages.MinBy(p => p.Value.Timestamp);
+                _pendingMessages.TryRemove(oldest.Key, out _);
             }
+        }
+
+        if (_webSocket == null || _webSocket.State != WebSocketState.Open)
+        {
+            _logger.LogWarning(
+                $"Cannot publish game event - websocket not connected; queued for retry"
+            );
+            return;
         }
 
         try
         {
             var message = JsonSerializer.Serialize(new { @event = "events", data });
             var buffer = Encoding.UTF8.GetBytes(message);
-            await _webSocket!.SendAsync(
-                new ArraySegment<byte>(buffer),
-                WebSocketMessageType.Text,
-                true,
-                _connectionCts?.Token ?? CancellationToken.None
-            );
+            await _sendLock.WaitAsync(_connectionCts?.Token ?? CancellationToken.None);
+            try
+            {
+                await _webSocket!.SendAsync(
+                    new ArraySegment<byte>(buffer),
+                    WebSocketMessageType.Text,
+                    true,
+                    _connectionCts?.Token ?? CancellationToken.None
+                );
+            }
+            finally
+            {
+                _sendLock.Release();
+            }
         }
         catch (Exception error)
         {

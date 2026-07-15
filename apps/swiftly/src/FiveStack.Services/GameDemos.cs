@@ -173,6 +173,7 @@ public class GameDemos
                 return;
             }
 
+            // dedicated client: the S3 PUT needs an unbounded timeout
             using var httpClient = new HttpClient();
             httpClient.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
 
@@ -209,12 +210,16 @@ public class GameDemos
                         size = fileInfo.Length,
                     };
 
-                    using var notifyClient = new HttpClient();
-                    notifyClient.DefaultRequestHeaders.Authorization =
-                        new AuthenticationHeaderValue("Bearer", apiPassword);
-                    var notifyResponse = await notifyClient.PostAsJsonAsync(
-                        notifyEndpoint,
-                        notifyRequest
+                    var notifyHttpRequest = new HttpRequestMessage(HttpMethod.Post, notifyEndpoint)
+                    {
+                        Content = JsonContent.Create(notifyRequest),
+                    };
+                    notifyHttpRequest.Headers.Authorization = new AuthenticationHeaderValue(
+                        "Bearer",
+                        apiPassword
+                    );
+                    var notifyResponse = await HttpClientProvider.Client.SendAsync(
+                        notifyHttpRequest
                     );
 
                     _logger.LogInformation(
@@ -261,19 +266,19 @@ public class GameDemos
 
         string endpoint = $"{_environmentService.GetDemosUrl()}/demos/{match.id}/pre-signed";
 
-        using var httpClient = new HttpClient();
-        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            apiPassword
-        );
-
         var requestBody = new
         {
             demo = Path.GetFileName(filePath),
             mapId = _matchService.GetCurrentMatch()?.GetMatchData()?.current_match_map_id,
         };
 
-        var response = await httpClient.PostAsJsonAsync(endpoint, requestBody);
+        var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
+        {
+            Content = JsonContent.Create(requestBody),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiPassword);
+
+        var response = await HttpClientProvider.Client.SendAsync(request);
 
         _logger.LogInformation(
             $"presigned url response {(int)response.StatusCode} {response.StatusCode} (match {match.id} map {match.current_match_map_id} demo {Path.GetFileName(filePath)})"

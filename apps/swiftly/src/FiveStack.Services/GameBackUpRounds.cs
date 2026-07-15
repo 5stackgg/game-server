@@ -513,38 +513,56 @@ public class GameBackUpRounds
             backupRoundFileName
         );
 
-        File.WriteAllText(backupRoundFilePath, backupRound.backup_file);
-
         _resetRound = round;
 
         _logger.LogInformation($"Loading backup round file {backupRoundFileName}");
 
-        _core.Scheduler.NextTick(() =>
+        string backupFileContents = backupRound.backup_file;
+
+        _ = Task.Run(() =>
         {
-            _gameServer.SendCommands(
-                [$"mp_backup_restore_load_file {backupRoundFileName}"]
-            );
-            _matchService.GetCurrentMatch()?.PauseMatch();
+            try
+            {
+                File.WriteAllText(backupRoundFilePath, backupFileContents);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Failed writing restore backup round file {File}",
+                    backupRoundFileName
+                );
+                _core.Scheduler.NextTick(() => _resetRound = null);
+                return;
+            }
 
-            TimerUtility.AddTimer(
-                5,
-                () =>
-                {
-                    _resetRound = null;
+            _core.Scheduler.NextTick(() =>
+            {
+                _gameServer.SendCommands(
+                    [$"mp_backup_restore_load_file {backupRoundFileName}"]
+                );
+                _matchService.GetCurrentMatch()?.PauseMatch();
 
-                    _logger.LogInformation($"Sending Message for Round {round}");
+                TimerUtility.AddTimer(
+                    5,
+                    () =>
+                    {
+                        _resetRound = null;
 
-                    _gameServer.Message(
-                        MessageType.Alert,
-                        _localizer[
-                            "backup.round_restored",
-                            ChatColors.Red,
-                            round,
-                            CommandUtility.PublicChatTrigger
-                        ]
-                    );
-                }
-            );
+                        _logger.LogInformation($"Sending Message for Round {round}");
+
+                        _gameServer.Message(
+                            MessageType.Alert,
+                            _localizer[
+                                "backup.round_restored",
+                                ChatColors.Red,
+                                round,
+                                CommandUtility.PublicChatTrigger
+                            ]
+                        );
+                    }
+                );
+            });
         });
     }
 

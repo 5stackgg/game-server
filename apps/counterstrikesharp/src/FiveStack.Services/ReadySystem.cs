@@ -77,7 +77,8 @@ public class ReadySystem
                 continue;
             }
 
-            if (player.Clan != "" && player.Clan != "[ready]" && player.Clan != "[not ready]")
+            // ready tags end in " |"; leave real "[..]" clan tags alone
+            if (player.Clan != "" && !player.Clan.EndsWith(" |"))
             {
                 continue;
             }

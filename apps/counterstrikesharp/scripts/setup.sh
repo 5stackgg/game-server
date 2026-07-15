@@ -110,7 +110,9 @@ create_symlinks "$BASE_SERVER_DIR" "$INSTANCE_SERVER_DIR"
 if $INSTALL_5STACK_PLUGIN = true ; then
   echo "---Install 5Stack---"
   if [ "${DEV_SWAPPED}" == "1" ]; then
-    ln -s "/opt/dev" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/FiveStack"
+    # css and sw dev builds share the dev volume; each uses its own subfolder
+    mkdir -p "/opt/dev/css"
+    ln -s "/opt/dev/css" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/FiveStack"
   else
     ln -s "/opt/mod" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/FiveStack"
   fi

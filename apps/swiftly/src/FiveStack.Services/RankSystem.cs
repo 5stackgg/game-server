@@ -35,15 +35,19 @@ public class RankSystem
 
     public void Start()
     {
-        _core.Event.OnTick += OnTick;
-        _revealAllTimer = _core.Scheduler.RepeatBySeconds(RevealAllInterval, SendRevealAll);
+        _revealAllTimer = _core.Scheduler.RepeatBySeconds(RevealAllInterval, OnRevealInterval);
     }
 
     public void Stop()
     {
-        _core.Event.OnTick -= OnTick;
         _revealAllTimer?.Cancel();
         _revealAllTimer = null;
+    }
+
+    private void OnRevealInterval()
+    {
+        ApplyAllRanks();
+        SendRevealAll();
     }
 
     public void OnMatchSetup(MatchData matchData)
@@ -65,6 +69,7 @@ public class RankSystem
             $"Elo rank display enabled for match {matchData.id} (mode={matchData.options.type}, {_eloBySteamId.Count} player(s) with elo)"
         );
 
+        ApplyAllRanks();
         SendRevealAll();
     }
 
@@ -108,7 +113,7 @@ public class RankSystem
         }
     }
 
-    private void OnTick()
+    private void ApplyAllRanks()
     {
         if (_eloBySteamId == null)
         {
@@ -146,15 +151,15 @@ public class RankSystem
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "RankSystem.OnTick: invalid state during iteration");
+            _logger.LogError(ex, "RankSystem.ApplyAllRanks: invalid state during iteration");
         }
         catch (NullReferenceException ex)
         {
-            _logger.LogError(ex, "RankSystem.OnTick: unexpected null from external API");
+            _logger.LogError(ex, "RankSystem.ApplyAllRanks: unexpected null from external API");
         }
         catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "RankSystem.OnTick: bad argument from upstream data");
+            _logger.LogError(ex, "RankSystem.ApplyAllRanks: bad argument from upstream data");
         }
     }
 

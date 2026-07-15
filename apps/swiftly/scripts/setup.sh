@@ -126,20 +126,24 @@ if $INSTALL_5STACK_PLUGIN = true ; then
   echo "---Install 5Stack---"
   FIVESTACK_PLUGIN_DIR="${INSTANCE_SERVER_DIR}/game/csgo/addons/swiftlys2/plugins/FiveStack"
   if [ "${DEV_SWAPPED}" == "1" ]; then
-    # Bind-mount /opt/dev rather than symlink it: SwiftlyS2's AutoHotReload
-    # FileSystemWatcher (inotify) does not follow symlinked plugin dirs, so a
-    # symlink here silently disables hot reload. Fall back to a symlink if the
-    # container can't mount (then use "sw plugins reload FiveStack" manually).
+    # AutoHotReload's recursive FileSystemWatcher does not follow symlinked plugin
+    # dirs, so hot reload needs the dev volume mounted straight onto this path
+    # (see the dev deployment). Without the mount, fall back to a symlink.
     mkdir -p "$FIVESTACK_PLUGIN_DIR"
-    if mount --bind "/opt/dev" "$FIVESTACK_PLUGIN_DIR" 2>/dev/null; then
-      echo "---5Stack dev: bind-mounted /opt/dev (hot reload enabled)---"
+    if mountpoint -q "$FIVESTACK_PLUGIN_DIR"; then
+      echo "---5Stack dev: plugin dir is a mounted volume (hot reload enabled)---"
     else
+      # css and sw dev builds share the dev volume; each uses its own subfolder
       rmdir "$FIVESTACK_PLUGIN_DIR" 2>/dev/null
-      ln -s "/opt/dev" "$FIVESTACK_PLUGIN_DIR"
-      echo "---5Stack dev: mount unavailable, symlinked /opt/dev (hot reload OFF; use 'sw plugins reload FiveStack')---"
+      mkdir -p "/opt/dev/sw"
+      ln -s "/opt/dev/sw" "$FIVESTACK_PLUGIN_DIR"
+      echo "---5Stack dev: symlinked /opt/dev/sw (hot reload OFF; use 'sw plugins reload FiveStack')---"
     fi
-  else
+  elif [ ! -e "$FIVESTACK_PLUGIN_DIR" ]; then
     ln -s "/opt/mod" "$FIVESTACK_PLUGIN_DIR"
+  else
+    # dir pre-exists (dev volume mount without DEV_SWAPPED); don't plant /opt/mod inside it
+    echo "---5Stack: plugin dir already present, skipping /opt/mod symlink---"
   fi
 fi
 
