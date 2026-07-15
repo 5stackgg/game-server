@@ -70,6 +70,7 @@ jobs:
       # legacy releases are bare v0.0.N; matching them keeps the counter from resetting
       version_tag_regex: '^(?:css-)?v0\.0\.(\d+)$'
       channel: ${{ needs.changes.outputs.channel }}
+      run_tests: true
     secrets: inherit
 
   swiftly:
