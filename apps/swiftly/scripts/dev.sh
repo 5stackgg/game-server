@@ -14,7 +14,16 @@ log() { echo "[dev.sh $(date '+%H:%M:%S')] $*"; }
 
 PROJECT="/opt/5stack/apps/swiftly/src/FiveStack.csproj"
 BUILD_OUTPUT="/opt/5stack/apps/swiftly/src/build/net10.0"
-DEV_DIR="/opt/dev"
+
+# Write straight into the shared plugin-dir mount when the pod provides it
+# (the game server's AutoHotReload watches that directory); otherwise the
+# classic /opt/dev volume.
+PLUGIN_MOUNT="/opt/instance/game/csgo/addons/swiftlys2/plugins/FiveStack"
+if mountpoint -q "$PLUGIN_MOUNT" 2>/dev/null; then
+  DEV_DIR="$PLUGIN_MOUNT"
+else
+  DEV_DIR="/opt/dev"
+fi
 
 log "starting dev hot-reload"
 log "  project:      $PROJECT"

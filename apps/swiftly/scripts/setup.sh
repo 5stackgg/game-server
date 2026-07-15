@@ -127,13 +127,11 @@ if $INSTALL_5STACK_PLUGIN = true ; then
   FIVESTACK_PLUGIN_DIR="${INSTANCE_SERVER_DIR}/game/csgo/addons/swiftlys2/plugins/FiveStack"
   if [ "${DEV_SWAPPED}" == "1" ]; then
     # AutoHotReload's recursive FileSystemWatcher does not follow symlinked plugin
-    # dirs, so this must be a real directory. Prefer a volume mounted straight onto
-    # it; else bind-mount /opt/dev; else fall back to a symlink (hot reload off).
+    # dirs, so hot reload needs the dev volume mounted straight onto this path
+    # (see the dev deployment). Without the mount, fall back to a symlink.
     mkdir -p "$FIVESTACK_PLUGIN_DIR"
     if mountpoint -q "$FIVESTACK_PLUGIN_DIR"; then
       echo "---5Stack dev: plugin dir is a mounted volume (hot reload enabled)---"
-    elif mount --bind "/opt/dev" "$FIVESTACK_PLUGIN_DIR" 2>/dev/null; then
-      echo "---5Stack dev: bind-mounted /opt/dev (hot reload enabled)---"
     else
       rmdir "$FIVESTACK_PLUGIN_DIR" 2>/dev/null
       ln -s "/opt/dev" "$FIVESTACK_PLUGIN_DIR"
