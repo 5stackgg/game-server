@@ -1,0 +1,115 @@
+"Phrases"
+{
+    "match.received_data"
+    {
+        "en"    "Match data received"
+    }
+    "match.resume_hint"
+    {
+        "#format"   "{1:s}"
+        "en"        "Type {1}resume in chat to unpause"
+    }
+    "match.tv_delay"
+    {
+        "#format"   "{1:d}"
+        "en"        "Next map in {1} seconds..."
+    }
+    "ready.ready"
+    {
+        "en"    "[ready]"
+    }
+    "ready.not_ready"
+    {
+        "en"    "[not ready]"
+    }
+    "ready.marked"
+    {
+        "en"    "You are now ready."
+    }
+    "ready.type_to_ready"
+    {
+        "en"    "Type .ready in chat when you are ready to play."
+    }
+    "ready.waiting_for_players"
+    {
+        "#format"   "{1:d},{2:d}"
+        "en"        "Players ready: {1}/{2}"
+    }
+    "ready.forced_start"
+    {
+        "en"    "Admin has force-started the match."
+    }
+    "knife.start"
+    {
+        "en"    "Knife round! Winner picks side."
+    }
+    "knife.captain_prompt"
+    {
+        "en"    "Your team won the knife round!\nType .stay or .switch to pick a side\nOr type .ct / .t"
+    }
+    "knife.captain_picked_stay"
+    {
+        "en"    "Captain has chosen to stay on the current side."
+    }
+    "knife.captain_picked_swap"
+    {
+        "en"    "Captain has chosen to switch sides."
+    }
+    "knife.not_captain"
+    {
+        "en"    "Only the captain of the winning team can decide."
+    }
+    "knife.skipping"
+    {
+        "en"    "Knife round has been skipped."
+    }
+    "captain.assigned"
+    {
+        "#format"   "{1:N},{2:s}"
+        "en"        "{1} is now captain of {2}."
+    }
+    "timeout.cannot_pause_not_live"
+    {
+        "en"    "Cannot pause: match is not live."
+    }
+    "timeout.not_allowed"
+    {
+        "en"    "You don't have permission to call a timeout."
+    }
+    "timeout.no_timeouts_left"
+    {
+        "en"    "Your team has no timeouts remaining."
+    }
+    "timeout.called_tactical"
+    {
+        "#format"   "{1:N},{2:d}"
+        "en"        "{1} called a tactical timeout ({2} remaining)."
+    }
+    "vote.prompt_options"
+    {
+        "#format"   "{1:s}"
+        "en"        "Vote: {1} — Type .y or .n"
+    }
+    "vote.success"
+    {
+        "#format"   "{1:s}"
+        "en"        "Vote passed: {1}"
+    }
+    "vote.failed"
+    {
+        "#format"   "{1:s}"
+        "en"        "Vote failed: {1}"
+    }
+    "player.join.ready_hint"
+    {
+        "en"    "Type .ready in chat when you are ready to play."
+    }
+    "player.join.help_hint"
+    {
+        "en"    "Type .help for available commands."
+    }
+    "gag.you_are_gagged"
+    {
+        "en"    "You are gagged in this match."
+    }
+}
