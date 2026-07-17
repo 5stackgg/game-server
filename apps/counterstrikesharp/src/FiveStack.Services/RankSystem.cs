@@ -16,12 +16,18 @@ public class RankSystem
 
     public const float RevealAllInterval = 3.0f;
 
+    // Competitive rank fields only need periodic re-pinning; sweeping every tick
+    // is needless main-thread work (native entity enumeration + allocations).
+    private const float RankApplyInterval = 1.0f;
+
     private const string RankRevealAllMessage = "CCSUsrMsg_ServerRankRevealAll";
 
     private readonly ILogger<RankSystem> _logger;
     private readonly MatchService _matchService;
 
     private Dictionary<ulong, int>? _eloBySteamId;
+
+    private float _nextRankApply;
 
     private readonly Dictionary<ulong, (int Ranking, int RankType, int Wins)> _lastNotified = new();
 
@@ -143,6 +149,12 @@ public class RankSystem
         {
             return;
         }
+
+        if (Server.CurrentTime < _nextRankApply)
+        {
+            return;
+        }
+        _nextRankApply = Server.CurrentTime + RankApplyInterval;
 
         try
         {

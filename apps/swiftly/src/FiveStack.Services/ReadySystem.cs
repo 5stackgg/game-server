@@ -74,7 +74,7 @@ public class ReadySystem
             int userId = player.UserID;
 
             if (
-                player.Controller.Clan != ""
+                !string.IsNullOrEmpty(player.Controller.Clan)
                 && !player.Controller.Clan.EndsWith(" |")
             )
             {

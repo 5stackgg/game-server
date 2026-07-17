@@ -78,7 +78,7 @@ public class ReadySystem
             }
 
             // ready tags end in " |"; leave real "[..]" clan tags alone
-            if (player.Clan != "" && !player.Clan.EndsWith(" |"))
+            if (!string.IsNullOrEmpty(player.Clan) && !player.Clan.EndsWith(" |"))
             {
                 continue;
             }
