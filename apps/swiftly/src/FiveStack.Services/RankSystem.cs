@@ -14,7 +14,9 @@ public class RankSystem
 
     private const int MinWinsForVisibility = 10;
 
-    private const float RevealAllInterval = 3.0f;
+    // How often the tracked-player list is rebuilt. The pin itself has to run every
+    // tick (see OnTick), so the expensive roster sweep is kept off the tick path.
+    private const float RosterRefreshInterval = 1.0f;
 
     private readonly ISwiftlyCore _core;
     private readonly ILogger<RankSystem> _logger;
@@ -22,9 +24,9 @@ public class RankSystem
 
     private Dictionary<ulong, int>? _eloBySteamId;
 
-    private readonly Dictionary<ulong, (int Ranking, int RankType, int Wins)> _lastNotified = new();
+    private (IPlayer Player, int Elo)[] _tracked = [];
 
-    private CancellationTokenSource? _revealAllTimer;
+    private CancellationTokenSource? _rosterTimer;
 
     public RankSystem(ISwiftlyCore core, ILogger<RankSystem> logger, MatchService matchService)
     {
@@ -35,25 +37,58 @@ public class RankSystem
 
     public void Start()
     {
-        _revealAllTimer = _core.Scheduler.RepeatBySeconds(RevealAllInterval, OnRevealInterval);
+        _rosterTimer = _core.Scheduler.RepeatBySeconds(RosterRefreshInterval, RefreshRoster);
+        _core.Event.OnTick += OnTick;
     }
 
     public void Stop()
     {
-        _revealAllTimer?.Cancel();
-        _revealAllTimer = null;
+        _core.Event.OnTick -= OnTick;
+        _rosterTimer?.Cancel();
+        _rosterTimer = null;
+        _tracked = [];
     }
 
-    private void OnRevealInterval()
+    // The engine reverts the competitive rank netvars almost immediately, so the
+    // value has to be re-pinned every tick to stay visible. Pinning on an interval
+    // instead makes the rank blink on for a frame once per interval.
+    private void OnTick()
     {
-        ApplyAllRanks();
+        var tracked = _tracked;
+        if (tracked.Length == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (var (player, elo) in tracked)
+            {
+                if (!player.IsValid || player.Controller == null)
+                {
+                    continue;
+                }
+
+                SetCompetitiveRank(player, elo);
+            }
+        }
+        catch (Exception ex)
+        {
+            _tracked = [];
+            _eloBySteamId = null;
+            _logger.LogError(ex, "RankSystem.OnTick failed; disabling elo rank display");
+        }
+    }
+
+    public void Refresh()
+    {
+        RefreshRoster();
+        OnTick();
         SendRevealAll();
     }
 
     public void OnMatchSetup(MatchData matchData)
     {
-        _lastNotified.Clear();
-
         if (!matchData.options.show_elo_ranks)
         {
             _eloBySteamId = null;
@@ -69,8 +104,7 @@ public class RankSystem
             $"Elo rank display enabled for match {matchData.id} (mode={matchData.options.type}, {_eloBySteamId.Count} player(s) with elo)"
         );
 
-        ApplyAllRanks();
-        SendRevealAll();
+        Refresh();
     }
 
     private static Dictionary<ulong, int> BuildEloLookup(MatchData matchData)
@@ -113,10 +147,11 @@ public class RankSystem
         }
     }
 
-    private void ApplyAllRanks()
+    private void RefreshRoster()
     {
         if (_eloBySteamId == null)
         {
+            _tracked = [];
             return;
         }
 
@@ -125,8 +160,11 @@ public class RankSystem
             MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
             if (matchData == null || !matchData.options.show_elo_ranks)
             {
+                _tracked = [];
                 return;
             }
+
+            var tracked = new List<(IPlayer, int)>();
 
             foreach (IPlayer player in _core.PlayerManager.GetAllPlayers())
             {
@@ -146,51 +184,42 @@ public class RankSystem
                     continue;
                 }
 
-                SetCompetitiveRank(player, elo);
+                tracked.Add((player, elo));
             }
+
+            _tracked = tracked.ToArray();
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            _logger.LogError(ex, "RankSystem.ApplyAllRanks: invalid state during iteration");
-        }
-        catch (NullReferenceException ex)
-        {
-            _logger.LogError(ex, "RankSystem.ApplyAllRanks: unexpected null from external API");
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogError(ex, "RankSystem.ApplyAllRanks: bad argument from upstream data");
+            // This runs on a repeating timer, so a recurring failure would spam the
+            // log and burn CPU every interval. Report it once and stay off.
+            _tracked = [];
+            _eloBySteamId = null;
+            _logger.LogError(ex, "RankSystem.RefreshRoster failed; disabling elo rank display");
         }
     }
 
-    private void SetCompetitiveRank(IPlayer player, int elo)
+    private static void SetCompetitiveRank(IPlayer player, int elo)
     {
         CCSPlayerController controller = player.Controller;
 
-        int rankValue = elo;
-        int rankType = RankTypeCompetitive;
-        int wins = MinWinsForVisibility;
-        var intended = (rankValue, rankType, wins);
-
+        // Reading first keeps the common case to three schema reads; the write plus
+        // the three *Updated() network flushes only happen once the engine reverts.
         if (
-            _lastNotified.TryGetValue(player.SteamID, out var last)
-            && last == intended
-            && controller.CompetitiveRanking == rankValue
-            && controller.CompetitiveRankType == (byte)rankType
-            && controller.CompetitiveWins == wins
+            controller.CompetitiveRanking == elo
+            && controller.CompetitiveRankType == (byte)RankTypeCompetitive
+            && controller.CompetitiveWins == MinWinsForVisibility
         )
         {
             return;
         }
 
-        controller.CompetitiveRankType = (byte)rankType;
-        controller.CompetitiveRanking = rankValue;
-        controller.CompetitiveWins = wins;
+        controller.CompetitiveRankType = (byte)RankTypeCompetitive;
+        controller.CompetitiveRanking = elo;
+        controller.CompetitiveWins = MinWinsForVisibility;
 
         controller.CompetitiveRankTypeUpdated();
         controller.CompetitiveRankingUpdated();
         controller.CompetitiveWinsUpdated();
-
-        _lastNotified[player.SteamID] = intended;
     }
 }

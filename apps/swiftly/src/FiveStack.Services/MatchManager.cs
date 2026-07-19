@@ -775,6 +775,12 @@ public class MatchManager
 
         SetConVar("mp_maxrounds", _matchData.options.mr * 2);
         SetConVar("mp_overtime_enable", _matchData.options.overtime);
+        SetConVar("mp_halftime_pausematch", _matchData.options.halftime_pausematch);
+
+        if (_matchData.options.round_restart_delay.HasValue)
+        {
+            SetConVar("mp_round_restart_delay", _matchData.options.round_restart_delay.Value);
+        }
 
         _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
 
@@ -814,17 +820,50 @@ public class MatchManager
             currentTeam = player.Controller.Team;
         }
 
+        bool shouldRespawn =
+            IsWarmup()
+            || (MatchUtility.Rules()?.FreezePeriod == true) && expectedTeam != Team.Spectator;
+
         if (currentTeam != expectedTeam)
         {
             _logger.LogInformation(
-                $"Changing Team {player.Name} {currentTeam} -> {expectedTeam}"
+                $"[team] Changing Team {player.Name} ({player.SteamID}) {currentTeam} -> {expectedTeam} (respawn: {shouldRespawn})"
             );
 
             TimerUtility.AddTimer(
                 0.1f,
                 () =>
                 {
+                    if (!player.IsValid)
+                    {
+                        return;
+                    }
+
                     player.ChangeTeam(expectedTeam);
+
+                    _logger.LogInformation(
+                        $"[team] ChangeTeam applied {player.Name} ({player.SteamID}) -> {expectedTeam}"
+                    );
+
+                    // Respawn only once the team change has landed. Respawning
+                    // first spawns the player while still unassigned, and the
+                    // weapons a spawn creates are what the inventory plugin
+                    // skins — a spawn on the wrong team wastes that one shot.
+                    if (shouldRespawn)
+                    {
+                        _core.Scheduler.NextTick(() =>
+                        {
+                            if (!player.IsValid)
+                            {
+                                return;
+                            }
+
+                            _logger.LogInformation(
+                                $"[team] Respawning {player.Name} ({player.SteamID}) after team change -> {expectedTeam}"
+                            );
+                            player.Respawn();
+                        });
+                    }
                 }
             );
 
@@ -834,12 +873,11 @@ public class MatchManager
                 player
             );
         }
-
-        if (
-            IsWarmup()
-            || (MatchUtility.Rules()?.FreezePeriod == true) && expectedTeam != Team.Spectator
-        )
+        else if (shouldRespawn)
         {
+            _logger.LogInformation(
+                $"[team] Respawning {player.Name} ({player.SteamID}) (already on {expectedTeam})"
+            );
             player.Respawn();
         }
 
@@ -1000,10 +1038,13 @@ public class MatchManager
             return;
         }
 
+        bool changed = false;
+
         if (player.Name != name)
         {
             player.Controller.PlayerName = name;
             player.Controller.PlayerNameUpdated();
+            changed = true;
         }
 
         if (tag != null)
@@ -1023,22 +1064,26 @@ public class MatchManager
         {
             player.Controller.Clan = tag ?? "";
             player.Controller.ClanUpdated();
+            changed = true;
 
             var gameRules = _core
                 .EntitySystem.GetAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
                 .FirstOrDefault();
 
-            if (gameRules?.GameRules == null)
+            if (gameRules?.GameRules != null)
             {
-                return;
+                gameRules.GameRules.NextUpdateTeamClanNamesTime =
+                    _core.Engine.GlobalVars.CurrentTime - 0.01f;
+                gameRules.GameRulesUpdated();
             }
-
-            gameRules.GameRules.NextUpdateTeamClanNamesTime =
-                _core.Engine.GlobalVars.CurrentTime - 0.01f;
-            gameRules.GameRulesUpdated();
         }
 
-        _core.GameEvent.FireToPlayer<EventNextlevelChanged>(player.Slot);
+        // force the client to update the player name; firing this unconditionally
+        // rebuilds every scoreboard on each call, which strobes under repeating timers
+        if (changed)
+        {
+            _core.GameEvent.FireToPlayer<EventNextlevelChanged>(player.Slot);
+        }
     }
 
     public void SetupBroadcast()

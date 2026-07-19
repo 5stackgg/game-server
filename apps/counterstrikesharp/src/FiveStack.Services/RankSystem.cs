@@ -14,11 +14,9 @@ public class RankSystem
 
     private const int RankTypeCompetitive = 11;
 
-    public const float RevealAllInterval = 3.0f;
-
-    // Competitive rank fields only need periodic re-pinning; sweeping every tick
-    // is needless main-thread work (native entity enumeration + allocations).
-    private const float RankApplyInterval = 1.0f;
+    // How often the tracked-player list is rebuilt. The pin itself has to run every
+    // tick (see OnTick), so the expensive roster sweep is kept off the tick path.
+    public const float RosterRefreshInterval = 1.0f;
 
     private const string RankRevealAllMessage = "CCSUsrMsg_ServerRankRevealAll";
 
@@ -27,9 +25,7 @@ public class RankSystem
 
     private Dictionary<ulong, int>? _eloBySteamId;
 
-    private float _nextRankApply;
-
-    private readonly Dictionary<ulong, (int Ranking, int RankType, int Wins)> _lastNotified = new();
+    private (CCSPlayerController Player, int Elo)[] _tracked = [];
 
     public RankSystem(ILogger<RankSystem> logger, MatchService matchService)
     {
@@ -39,13 +35,22 @@ public class RankSystem
 
     public void OnMatchSetup(MatchData matchData)
     {
-        _lastNotified.Clear();
-
         if (!matchData.options.show_elo_ranks)
         {
             _eloBySteamId = null;
             _logger.LogInformation(
                 $"Elo rank display disabled for match {matchData.id} (show_elo_ranks=false)"
+            );
+            return;
+        }
+
+        // Touching the competitive rank fields throws when this is enabled, so stay
+        // off entirely rather than throwing out of every interval callback.
+        if (IsFollowCS2ServerGuidelinesBlocking())
+        {
+            _eloBySteamId = null;
+            _logger.LogWarning(
+                "Elo ranks will not render: FollowCS2ServerGuidelines is true in CounterStrikeSharp core.json. Set it to false (or SHOW_ELO_RANKS=true on the host and restart so setup.sh can patch it)."
             );
             return;
         }
@@ -56,14 +61,45 @@ public class RankSystem
             $"Elo rank display enabled for match {matchData.id} (mode={matchData.options.type}, {_eloBySteamId.Count} player(s) with elo)"
         );
 
-        if (IsFollowCS2ServerGuidelinesBlocking())
+        Refresh();
+    }
+
+    public void Refresh()
+    {
+        RefreshRoster();
+        OnTick();
+        SendRevealAll();
+    }
+
+    // The engine reverts the competitive rank netvars almost immediately, so the
+    // value has to be re-pinned every tick to stay visible. Pinning on an interval
+    // instead makes the rank blink on for a frame once per interval.
+    public void OnTick()
+    {
+        var tracked = _tracked;
+        if (tracked.Length == 0)
         {
-            _logger.LogWarning(
-                "Elo ranks will not render: FollowCS2ServerGuidelines is true in CounterStrikeSharp core.json. Set it to false (or SHOW_ELO_RANKS=true on the host and restart so setup.sh can patch it)."
-            );
+            return;
         }
 
-        SendRevealAll();
+        try
+        {
+            foreach (var (player, elo) in tracked)
+            {
+                if (!player.IsValid)
+                {
+                    continue;
+                }
+
+                SetCompetitiveRank(player, elo);
+            }
+        }
+        catch (Exception ex)
+        {
+            _tracked = [];
+            _eloBySteamId = null;
+            _logger.LogError(ex, "RankSystem.OnTick failed; disabling elo rank display");
+        }
     }
 
     private static Dictionary<ulong, int> BuildEloLookup(MatchData matchData)
@@ -143,26 +179,24 @@ public class RankSystem
         }
     }
 
-    public void OnTick()
+    public void RefreshRoster()
     {
         if (_eloBySteamId == null)
         {
+            _tracked = [];
             return;
         }
-
-        if (Server.CurrentTime < _nextRankApply)
-        {
-            return;
-        }
-        _nextRankApply = Server.CurrentTime + RankApplyInterval;
 
         try
         {
             MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
             if (matchData == null || !matchData.options.show_elo_ranks)
             {
+                _tracked = [];
                 return;
             }
+
+            var tracked = new List<(CCSPlayerController, int)>();
 
             foreach (var player in MatchUtility.Players())
             {
@@ -171,44 +205,37 @@ public class RankSystem
                     continue;
                 }
 
-                SetCompetitiveRank(player, elo);
+                tracked.Add((player, elo));
             }
+
+            _tracked = tracked.ToArray();
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            _logger.LogError(ex, "RankSystem.OnTick: invalid state during iteration");
-        }
-        catch (NullReferenceException ex)
-        {
-            _logger.LogError(ex, "RankSystem.OnTick: unexpected null from external API");
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogError(ex, "RankSystem.OnTick: bad argument from upstream data");
+            // This runs on a repeating timer, so a recurring failure would spam the
+            // log and burn CPU every interval. Report it once and stay off.
+            _tracked = [];
+            _eloBySteamId = null;
+            _logger.LogError(ex, "RankSystem.RefreshRoster failed; disabling elo rank display");
         }
     }
 
-    private void SetCompetitiveRank(CCSPlayerController player, int elo)
+    private static void SetCompetitiveRank(CCSPlayerController player, int elo)
     {
-        int rankValue = elo;
-        int rankType = RankTypeCompetitive;
-        int wins = MinWinsForVisibility;
-        var intended = (rankValue, rankType, wins);
-
+        // Reading first keeps the common case to three schema reads; the write plus
+        // the three SetStateChanged network flushes only happen once the engine reverts.
         if (
-            _lastNotified.TryGetValue(player.SteamID, out var last)
-            && last == intended
-            && player.CompetitiveRanking == rankValue
-            && player.CompetitiveRankType == (sbyte)rankType
-            && player.CompetitiveWins == wins
+            player.CompetitiveRanking == elo
+            && player.CompetitiveRankType == (sbyte)RankTypeCompetitive
+            && player.CompetitiveWins == MinWinsForVisibility
         )
         {
             return;
         }
 
-        player.CompetitiveRankType = (sbyte)rankType;
-        player.CompetitiveRanking = rankValue;
-        player.CompetitiveWins = wins;
+        player.CompetitiveRankType = (sbyte)RankTypeCompetitive;
+        player.CompetitiveRanking = elo;
+        player.CompetitiveWins = MinWinsForVisibility;
 
         CounterStrikeSharp.API.Utilities.SetStateChanged(
             player,
@@ -225,7 +252,5 @@ public class RankSystem
             "CCSPlayerController",
             "m_iCompetitiveWins"
         );
-
-        _lastNotified[player.SteamID] = intended;
     }
 }

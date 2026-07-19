@@ -77,8 +77,8 @@ public partial class FiveStackPlugin : BasePlugin
         RegisterListener<Listeners.OnTick>(_rankSystem.OnTick);
 
         TimerUtility.AddTimer(
-            RankSystem.RevealAllInterval,
-            _rankSystem.SendRevealAll,
+            RankSystem.RosterRefreshInterval,
+            _rankSystem.RefreshRoster,
             CounterStrikeSharp.API.Modules.Timers.TimerFlags.REPEAT
         );
 

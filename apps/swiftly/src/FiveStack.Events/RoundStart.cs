@@ -20,7 +20,7 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        _rankSystem.SendRevealAll();
+        _rankSystem.Refresh();
 
         int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
         bool isInPlay = matchManager.IsInPlay();

@@ -781,6 +781,16 @@ public class MatchManager
 
         ConVar.Find("mp_maxrounds")?.SetValue(_matchData.options.mr * 2);
         ConVar.Find("mp_overtime_enable")?.SetValue(_matchData.options.overtime);
+        ConVar.Find("mp_halftime_pausematch")?.SetValue(
+            _matchData.options.halftime_pausematch
+        );
+
+        if (_matchData.options.round_restart_delay.HasValue)
+        {
+            ConVar.Find("mp_round_restart_delay")?.SetValue(
+                _matchData.options.round_restart_delay.Value
+            );
+        }
 
         _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
 
@@ -821,17 +831,50 @@ public class MatchManager
             currentTeam = player.Team;
         }
 
+        bool shouldRespawn =
+            IsWarmup()
+            || (MatchUtility.Rules()?.FreezePeriod == true) && expectedTeam != CsTeam.Spectator;
+
         if (currentTeam != expectedTeam)
         {
             _logger.LogInformation(
-                $"Changing Team {player.PlayerName} {currentTeam} -> {expectedTeam}"
+                $"[team] Changing Team {player.PlayerName} ({player.SteamID}) {currentTeam} -> {expectedTeam} (respawn: {shouldRespawn})"
             );
 
             TimerUtility.AddTimer(
                 0.1f,
                 () =>
                 {
+                    if (!player.IsValid)
+                    {
+                        return;
+                    }
+
                     player.ChangeTeam(expectedTeam);
+
+                    _logger.LogInformation(
+                        $"[team] ChangeTeam applied {player.PlayerName} ({player.SteamID}) -> {expectedTeam}"
+                    );
+
+                    // Respawn only once the team change has landed. Respawning
+                    // first spawns the player while still unassigned, and the
+                    // weapons a spawn creates are what the inventory plugin
+                    // skins — a spawn on the wrong team wastes that one shot.
+                    if (shouldRespawn)
+                    {
+                        Server.NextFrame(() =>
+                        {
+                            if (!player.IsValid)
+                            {
+                                return;
+                            }
+
+                            _logger.LogInformation(
+                                $"[team] Respawning {player.PlayerName} ({player.SteamID}) after team change -> {expectedTeam}"
+                            );
+                            player.Respawn();
+                        });
+                    }
                 }
             );
 
@@ -841,12 +884,11 @@ public class MatchManager
                 player
             );
         }
-
-        if (
-            IsWarmup()
-            || (MatchUtility.Rules()?.FreezePeriod == true) && expectedTeam != CsTeam.Spectator
-        )
+        else if (shouldRespawn)
         {
+            _logger.LogInformation(
+                $"[team] Respawning {player.PlayerName} ({player.SteamID}) (already on {expectedTeam})"
+            );
             player.Respawn();
         }
 
@@ -999,6 +1041,8 @@ public class MatchManager
             return;
         }
 
+        bool changed = false;
+
         if (player.PlayerName != name)
         {
             player.PlayerName = name;
@@ -1007,6 +1051,7 @@ public class MatchManager
                 "CBasePlayerController",
                 "m_iszPlayerName"
             );
+            changed = true;
         }
 
         if (tag != null)
@@ -1025,6 +1070,7 @@ public class MatchManager
         if (player.Clan != tag)
         {
             player.Clan = tag ?? "";
+            changed = true;
 
             CounterStrikeSharp.API.Utilities.SetStateChanged(
                 player,
@@ -1041,21 +1087,23 @@ public class MatchManager
                 .API.Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
                 .FirstOrDefault();
 
-            if (gameRules is null)
+            if (gameRules is not null)
             {
-                return;
+                gameRules.GameRules!.NextUpdateTeamClanNamesTime = Server.CurrentTime - 0.01f;
+                CounterStrikeSharp.API.Utilities.SetStateChanged(
+                    gameRules,
+                    "CCSGameRules",
+                    "m_fNextUpdateTeamClanNamesTime"
+                );
             }
-
-            gameRules.GameRules!.NextUpdateTeamClanNamesTime = Server.CurrentTime - 0.01f;
-            CounterStrikeSharp.API.Utilities.SetStateChanged(
-                gameRules,
-                "CCSGameRules",
-                "m_fNextUpdateTeamClanNamesTime"
-            );
         }
 
-        // force the client to update the player name
-        new EventNextlevelChanged(false).FireEventToClient(player);
+        // force the client to update the player name; firing this unconditionally
+        // rebuilds every scoreboard on each call, which strobes under repeating timers
+        if (changed)
+        {
+            new EventNextlevelChanged(false).FireEventToClient(player);
+        }
     }
 
     public void SetupBroadcast()

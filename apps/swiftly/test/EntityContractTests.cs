@@ -19,6 +19,8 @@ public class EntityContractTests
             "overtime": true,
             "best_of": 3,
             "tv_delay": 105,
+            "round_restart_delay": 7,
+            "halftime_pausematch": true,
             "coaches": true,
             "number_of_substitutes": 2,
             "knife_round": true,
@@ -94,6 +96,8 @@ public class EntityContractTests
         Assert.Equal("CoachAndPlayers", options.tech_timeout_setting);
         Assert.True(options.show_elo_ranks);
         Assert.False(options.default_models);
+        Assert.Equal(7, options.round_restart_delay);
+        Assert.True(options.halftime_pausematch);
         Assert.Equal("0", options.cfg_overrides["sv_cheats"]);
     }
 
