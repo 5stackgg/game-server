@@ -18,9 +18,14 @@ jobs:
 
       - name: Check latest release URL
         run: |
+          # not every release ships a linux tarball, so take the newest one that does
           LATEST_URL=$(curl -sf -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/alliedmodders/metamod-source/releases?per_page=20" \
-            | jq -r '[.[] | select(.tag_name | startswith("2."))] | .[0].assets[] | select(.name | test("^mmsource-.*-linux\\.tar\\.gz$")) | .browser_download_url')
+            | jq -r '[.[] | select(.tag_name | startswith("2.")) | .assets[] | select(.name | test("^mmsource-.*-linux\\.tar\\.gz$")) | .browser_download_url] | first // ""')
+          if [ -z "$LATEST_URL" ]; then
+            echo "::error::No linux release asset found for metamod-source 2.x"
+            exit 1
+          fi
           echo "LATEST_URL=$LATEST_URL" >> $GITHUB_ENV
 
       - name: Compare URLs
@@ -33,10 +38,10 @@ jobs:
       - name: Update Dockerfile (optional)
         if: env.CURRENT_URL != env.LATEST_URL
         run: |
-          sed -i 's|ENV METAMOD_URL=.*|ENV METAMOD_URL=${{ env.LATEST_URL }}|' apps/counterstrikesharp/Dockerfile
+          sed -i "s|ENV METAMOD_URL=.*|ENV METAMOD_URL=${LATEST_URL}|" apps/counterstrikesharp/Dockerfile
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add apps/counterstrikesharp/Dockerfile
-          BUILD_ID=$(echo ${{ env.LATEST_URL }} | grep -oP '(?<=mmsource-)[^/]+(?=-linux)')
+          BUILD_ID=$(echo "$LATEST_URL" | grep -oP '(?<=mmsource-)[^/]+(?=-linux)')
           git commit -m "chore: update metamod to version ${BUILD_ID}"
           git push

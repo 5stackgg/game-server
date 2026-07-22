@@ -109,6 +109,11 @@ public class MatchManager
         return _activeMapId;
     }
 
+    public eMapStatus GetCurrentMapStatus()
+    {
+        return _currentMapStatus;
+    }
+
     public void SyncActiveMapAfterMapStart()
     {
         _activeMapId = GetCurrentMap()?.id;

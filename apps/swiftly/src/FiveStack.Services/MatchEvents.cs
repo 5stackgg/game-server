@@ -105,6 +105,11 @@ public class MatchEvents
 
     public RoundResultSnapshot? PendingRoundResult { get; set; }
 
+    public bool IsConnected()
+    {
+        return _webSocket?.State == WebSocketState.Open;
+    }
+
     public void ClearPendingRoundResult()
     {
         if (PendingRoundResult != null)
