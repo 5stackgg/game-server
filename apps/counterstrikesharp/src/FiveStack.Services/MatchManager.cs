@@ -24,6 +24,7 @@ public class MatchManager
     private eMapStatus _currentMapStatus = eMapStatus.Unknown;
     private Guid? _activeMapId;
     private Timer? _resumeMessageTimer;
+    private Timer? _playcastWindowTimer;
     public bool gameEnded = false;
 
     private readonly MatchEvents _matchEvents;
@@ -617,6 +618,53 @@ public class MatchManager
         );
     }
 
+    private const int PlaycastHeartbeatIntervalSeconds = 15;
+
+    // The playcast window is the only stretch of a match where the plugin goes
+    // silent for minutes with the map's result still unwritten. Without a
+    // heartbeat, a timer that never fired and a process that was killed leave
+    // the exact same trace: nothing.
+    public void StartPlaycastWindowHeartbeat(int tvDelay)
+    {
+        StopPlaycastWindowHeartbeat();
+
+        // Anchored to a clock, not a tick count: CSS timers first fire after the
+        // interval and Swiftly's fire immediately, so counting down would report
+        // a different number on each runtime.
+        DateTime startedAt = DateTime.UtcNow;
+
+        _playcastWindowTimer = TimerUtility.AddTimer(
+            PlaycastHeartbeatIntervalSeconds,
+            () =>
+            {
+                int remaining = tvDelay - (int)(DateTime.UtcNow - startedAt).TotalSeconds;
+
+                if (remaining <= 0)
+                {
+                    StopPlaycastWindowHeartbeat();
+                    return;
+                }
+
+                _logger.LogInformation(
+                    "playcast window: {Remaining}s until HandleEndOfMap (match={MatchId} map={MapId} status={Status} gameEnded={GameEnded} players={Players})",
+                    remaining,
+                    _matchData?.id,
+                    _activeMapId,
+                    _currentMapStatus,
+                    gameEnded,
+                    MatchUtility.Players().Count
+                );
+            },
+            TimerFlags.REPEAT
+        );
+    }
+
+    public void StopPlaycastWindowHeartbeat()
+    {
+        _playcastWindowTimer?.Kill();
+        _playcastWindowTimer = null;
+    }
+
     public void delayChangeMap(int delay)
     {
         _remainingMapChangeDelay = delay;
@@ -1151,6 +1199,7 @@ public class MatchManager
         _logger.LogInformation("resetting match state");
         _resumeMessageTimer?.Kill();
         _mapChangeCountdownTimer?.Kill();
+        StopPlaycastWindowHeartbeat();
 
         _currentMapStatus = eMapStatus.Unknown;
 

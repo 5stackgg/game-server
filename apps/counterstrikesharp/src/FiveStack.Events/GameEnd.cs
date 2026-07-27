@@ -65,6 +65,14 @@ public partial class FiveStackPlugin
 
         Guid? winningLineupId = _matchEvents.GetWinningLineupId();
 
+        _logger.LogInformation(
+            "OnGameEnd: dispatching end-of-map (use_playcast={UsePlaycast} tv_delay={TvDelay} onGameNode={OnGameNode} winningLineupId={WinningLineupId})",
+            matchData.options.use_playcast,
+            matchData.options.tv_delay,
+            _environmentService.isOnGameServerNode(),
+            winningLineupId
+        );
+
         // Move the map off Live immediately so it reflects WaitingForTV during the
         // tv_delay window (HandleEndOfMap may be deferred by use_playcast). This is
         // deduped in UpdateMapStatus, so HandleEndOfMap re-setting it is a no-op.
@@ -72,10 +80,21 @@ public partial class FiveStackPlugin
 
         if (matchData.options.use_playcast)
         {
+            _logger.LogInformation(
+                "OnGameEnd: use_playcast enabled, deferring HandleEndOfMap by {TvDelay}s",
+                matchData.options.tv_delay
+            );
+
+            match.StartPlaycastWindowHeartbeat(matchData.options.tv_delay);
+
             TimerUtility.AddTimer(
                 matchData.options.tv_delay,
                 () =>
                 {
+                    _logger.LogInformation(
+                        "OnGameEnd: playcast tv_delay elapsed, running HandleEndOfMap"
+                    );
+                    match.StopPlaycastWindowHeartbeat();
                     HandleEndOfMap(winningLineupId);
                 }
             );
