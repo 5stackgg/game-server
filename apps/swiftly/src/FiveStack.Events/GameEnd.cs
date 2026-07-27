@@ -79,6 +79,8 @@ public partial class FiveStackPlugin
                 "OnGameEnd: use_playcast enabled, deferring HandleEndOfMap by {TvDelay}s",
                 matchData.options.tv_delay
             );
+            StartPlaycastWindowHeartbeat(match, matchData.options.tv_delay);
+
             TimerUtility.AddTimer(
                 matchData.options.tv_delay,
                 () =>
@@ -96,6 +98,45 @@ public partial class FiveStackPlugin
         HandleEndOfMap(winningLineupId);
 
         return HookResult.Continue;
+    }
+
+    private const int PlaycastHeartbeatIntervalSeconds = 15;
+
+    // The playcast window is the only stretch of a match where the plugin goes
+    // silent for minutes with the map's result still unwritten. Without a
+    // heartbeat, a timer that never fired and a process that was killed leave
+    // the exact same trace: nothing.
+    private void StartPlaycastWindowHeartbeat(MatchManager match, int tvDelay)
+    {
+        // Anchored to a clock, not a tick count: CSS timers first fire after the
+        // interval and Swiftly's fire immediately, so counting down would report
+        // a different number on each runtime.
+        DateTime startedAt = DateTime.UtcNow;
+        CancellationTokenSource? heartbeat = null;
+
+        heartbeat = TimerUtility.Repeat(
+            PlaycastHeartbeatIntervalSeconds,
+            () =>
+            {
+                int remaining = tvDelay - (int)(DateTime.UtcNow - startedAt).TotalSeconds;
+
+                if (remaining <= 0)
+                {
+                    TimerUtility.Kill(heartbeat);
+                    return;
+                }
+
+                _logger.LogInformation(
+                    "playcast window: {Remaining}s until HandleEndOfMap (match={MatchId} map={MapId} status={Status} gameEnded={GameEnded} players={Players})",
+                    remaining,
+                    match.GetMatchData()?.id,
+                    match.GetActiveMapId(),
+                    match.GetCurrentMapStatus(),
+                    match.gameEnded,
+                    MatchUtility.Players().Count
+                );
+            }
+        );
     }
 
     private void HandleEndOfMap(Guid? winningLineupId)

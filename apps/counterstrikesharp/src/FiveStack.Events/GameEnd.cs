@@ -1,10 +1,12 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Modules.Timers;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
+using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
 namespace FiveStack;
 
@@ -72,10 +74,20 @@ public partial class FiveStackPlugin
 
         if (matchData.options.use_playcast)
         {
+            _logger.LogInformation(
+                "OnGameEnd: use_playcast enabled, deferring HandleEndOfMap by {TvDelay}s",
+                matchData.options.tv_delay
+            );
+
+            StartPlaycastWindowHeartbeat(match, matchData.options.tv_delay);
+
             TimerUtility.AddTimer(
                 matchData.options.tv_delay,
                 () =>
                 {
+                    _logger.LogInformation(
+                        "OnGameEnd: playcast tv_delay elapsed, running HandleEndOfMap"
+                    );
                     HandleEndOfMap(winningLineupId);
                 }
             );
@@ -86,6 +98,46 @@ public partial class FiveStackPlugin
         HandleEndOfMap(winningLineupId);
 
         return HookResult.Continue;
+    }
+
+    private const int PlaycastHeartbeatIntervalSeconds = 15;
+
+    // The playcast window is the only stretch of a match where the plugin goes
+    // silent for minutes with the map's result still unwritten. Without a
+    // heartbeat, a timer that never fired and a process that was killed leave
+    // the exact same trace: nothing.
+    private void StartPlaycastWindowHeartbeat(MatchManager match, int tvDelay)
+    {
+        // Anchored to a clock, not a tick count: CSS timers first fire after the
+        // interval and Swiftly's fire immediately, so counting down would report
+        // a different number on each runtime.
+        DateTime startedAt = DateTime.UtcNow;
+        Timer? heartbeat = null;
+
+        heartbeat = TimerUtility.AddTimer(
+            PlaycastHeartbeatIntervalSeconds,
+            () =>
+            {
+                int remaining = tvDelay - (int)(DateTime.UtcNow - startedAt).TotalSeconds;
+
+                if (remaining <= 0)
+                {
+                    heartbeat?.Kill();
+                    return;
+                }
+
+                _logger.LogInformation(
+                    "playcast window: {Remaining}s until HandleEndOfMap (match={MatchId} map={MapId} status={Status} gameEnded={GameEnded} players={Players})",
+                    remaining,
+                    match.GetMatchData()?.id,
+                    match.GetActiveMapId(),
+                    match.GetCurrentMapStatus(),
+                    match.gameEnded,
+                    MatchUtility.Players().Count
+                );
+            },
+            TimerFlags.REPEAT
+        );
     }
 
     private void HandleEndOfMap(Guid? winningLineupId)
