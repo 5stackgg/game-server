@@ -21,6 +21,13 @@ public class MatchManager
     private MatchData? _matchData;
     private eMapStatus _currentMapStatus = eMapStatus.Unknown;
     private Guid? _activeMapId;
+
+    // Distinct from _activeMapId, which is stamped at map start for event
+    // attribution: this only moves once the server-side setup (cfg exec +
+    // game mode) has actually run for that map. Gating setup on _activeMapId
+    // instead means every map the plugin itself loads is already "active"
+    // before setup runs, so maps 2+ silently skip their cfg.
+    private Guid? _configuredMapId;
     private CancellationTokenSource? _resumeMessageTimer;
     private CancellationTokenSource? _playcastWindowTimer;
     public bool gameEnded = false;
@@ -484,7 +491,7 @@ public class MatchManager
             return;
         }
 
-        bool wasAlreadySetup = _activeMapId == _currentMap.id;
+        bool wasAlreadySetup = _configuredMapId == _currentMap.id;
         _activeMapId = _currentMap.id;
 
         if (_currentMapStatus == eMapStatus.WaitingForTV)
@@ -522,6 +529,8 @@ public class MatchManager
 
         if (!wasAlreadySetup)
         {
+            _configuredMapId = _currentMap.id;
+
             _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
 
             if (_matchData.is_lan)
@@ -706,20 +715,47 @@ public class MatchManager
         _gameServer.SendCommands(["tv_broadcast 0"]);
         Reset();
 
+        // The mode decides which layout the map loads with (Wingman gets the
+        // 2v2 version), so it ships in the same batch as the level change and
+        // ahead of it — Valve's documented form is "game_type 0; game_mode 2;
+        // map <name>". Setting it after the load leaves the map on whatever
+        // the previous map's mode was.
+        string[] gameModeCommands = GetGameModeCommands();
+
         if (map.workshop_map_id == null && _core.Engine.IsMapValid(map.name))
         {
             _logger.LogInformation(
                 $"Changing Map {map.name} (match {_matchData?.id.ToString() ?? "none"})"
             );
-            _gameServer.SendCommands([$"changelevel \"{map.name}\""]);
+            _gameServer.SendCommands([.. gameModeCommands, $"changelevel \"{map.name}\""]);
         }
         else
         {
             _logger.LogInformation(
                 $"Changing Map {map.name} / {map.workshop_map_id} (match {_matchData?.id.ToString() ?? "none"})"
             );
-            _gameServer.SendCommands([$"host_workshop_map {map.workshop_map_id}"]);
+            _gameServer.SendCommands(
+                [.. gameModeCommands, $"host_workshop_map {map.workshop_map_id}"]
+            );
         }
+    }
+
+    // game_type/game_mode are integers, not mode names: game_type 0 (Classic)
+    // with game_mode 1 = Competitive, game_mode 2 = Wingman/2v2. Sent as console
+    // commands rather than typed convar writes — a convar lookup that misses or
+    // comes back differently typed would silently leave the server in the wrong
+    // mode.
+    private string[] GetGameModeCommands()
+    {
+        if (_matchData == null)
+        {
+            return [];
+        }
+
+        int gameMode =
+            _matchData.options.type == "Duel" || _matchData.options.type == "Wingman" ? 2 : 1;
+
+        return ["game_type 0", $"game_mode {gameMode}"];
     }
 
     private void SetupGameMode()
@@ -729,26 +765,19 @@ public class MatchManager
             return;
         }
 
-        SetConVar("game_type", 0);
-        if (_matchData.options.type == "Duel" || _matchData.options.type == "Wingman")
-        {
-            SetConVar("game_mode", 2);
-        }
-        else
-        {
-            SetConVar("game_mode", 1);
-        }
+        string[] gameModeCommands = GetGameModeCommands();
 
         // game_type/game_mode only take effect after a restart, but restarting an
         // in-progress match (e.g. on a plugin reload) would wrongly reset it. Only
         // restart during warmup, when a fresh game start is expected.
         if (!IsWarmup())
         {
+            _gameServer.SendCommands(gameModeCommands);
             _logger.LogInformation("SetupGameMode: not in warmup, skipping mp_restartgame");
             return;
         }
 
-        _gameServer.SendCommands(["mp_restartgame 1"]);
+        _gameServer.SendCommands([.. gameModeCommands, "mp_restartgame 1"]);
     }
 
     public int GetExpectedPlayerCount()
@@ -1177,6 +1206,7 @@ public class MatchManager
         StopPlaycastWindowHeartbeat();
 
         _currentMapStatus = eMapStatus.Unknown;
+        _configuredMapId = null;
 
         gameEnded = false;
 
