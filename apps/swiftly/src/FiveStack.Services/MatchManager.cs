@@ -201,7 +201,16 @@ public class MatchManager
         return _currentMapStatus == eMapStatus.Knife;
     }
 
-    public void PauseMatch(string? message = null, bool skipUpdate = false, int retriesLeft = 20)
+    // Long enough to outlast a full tactical timeout (mp_team_timeout_time is
+    // 31s, and the freeze time either side of it counts too) -- a shorter
+    // budget silently drops the pause for a player who crashed during one.
+    private const int PauseRetryAttempts = 45;
+
+    public void PauseMatch(
+        string? message = null,
+        bool skipUpdate = false,
+        int retriesLeft = PauseRetryAttempts
+    )
     {
         // CS2 will not hold mp_pause_match while its own tactical timeout is
         // running -- the command is accepted and silently does nothing, so the
@@ -898,15 +907,33 @@ public class MatchManager
         // An override replaces the whole cfg file, so its values are the ones
         // that should win -- but it is exec'd the same way and therefore just
         // as blocked. Read the convar back out of the override text.
-        string? overrideCfg = null;
-        _matchData.options.cfg_overrides?.TryGetValue(
-            _matchData.options.type.ToLower(),
-            out overrideCfg
-        );
+        // Matched case-insensitively: the write path above lowercases the key
+        // when naming the cfg file, which it would not need to do if incoming
+        // keys were already lowercase -- and this dictionary compares by
+        // ordinal, so a "Competitive" key would never match a "competitive"
+        // lookup and the admin's override would be silently ignored.
+        string? overrideCfg = _matchData
+            .options.cfg_overrides?.FirstOrDefault(entry =>
+                string.Equals(
+                    entry.Key,
+                    _matchData.options.type,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+            .Value;
 
         foreach (var cvar in WorkshopBlockedCvars)
         {
             string value = cvar.Value;
+
+            // A per-match option beats the shared default. StartLive sets this
+            // one from the match config, and re-asserting the table value here
+            // would silently turn the halftime break back off for every match
+            // that asked for it.
+            if (cvar.Key == "mp_halftime_pausematch")
+            {
+                value = _matchData.options.halftime_pausematch ? "1" : "0";
+            }
 
             if (!string.IsNullOrEmpty(overrideCfg))
             {

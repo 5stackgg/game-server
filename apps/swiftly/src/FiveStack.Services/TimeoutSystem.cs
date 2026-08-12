@@ -247,8 +247,10 @@ public class TimeoutSystem
         // Refuse while a side has nobody in the server. The match pauses itself
         // when it goes short-handed, and resuming into an empty team just plays
         // rounds out against nobody -- free rounds for whoever is still here.
-        // Console/RCON is unaffected; this only gates the chat command.
-        if (player != null && IsATeamEmpty())
+        // Console/RCON is unaffected; this only gates the chat command, and
+        // admins keep their override -- they are the ones who have to unstick a
+        // match nobody is coming back to.
+        if (player != null && !IsAdminOrOrganizer(player, matchData) && IsATeamEmpty())
         {
             _gameServer.Message(
                 MessageType.Chat,
@@ -352,7 +354,7 @@ public class TimeoutSystem
         _requiresTeamResumeForCurrentPause = false;
     }
 
-    private bool ShouldRequireTeamResume()
+    public bool ShouldRequireTeamResume()
     {
         return _requiresTeamResumeForCurrentPause && _teamsPendingResume.Count > 0;
     }

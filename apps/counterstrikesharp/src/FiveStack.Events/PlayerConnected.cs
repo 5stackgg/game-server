@@ -33,7 +33,16 @@ public partial class FiveStackPlugin
         // timer, which is never the case for someone who left during warmup or
         // knife, or when the pause came from RoundStart going short-handed. If
         // the roster is whole again there is nothing left to wait for.
-        if (match.IsPaused() && MatchUtility.Players().Count >= match.GetExpectedPlayerCount())
+        //
+        // Counted across the roster rather than Players(), which also returns
+        // casters, admins and the client kicked further down this handler -- a
+        // spectator joining would otherwise resume a match still a man down. A
+        // pause the teams have to release themselves is never auto-resumed.
+        if (
+            match.IsPaused()
+            && !match.timeoutSystem.ShouldRequireTeamResume()
+            && ConnectedRosterCount(matchData) >= match.GetExpectedPlayerCount()
+        )
         {
             match.ResumeMatch();
         }
@@ -182,5 +191,20 @@ public partial class FiveStackPlugin
         }
 
         return HookResult.Continue;
+    }
+
+    // How many of the two lineups are actually in the server right now.
+    private static int ConnectedRosterCount(MatchData matchData)
+    {
+        HashSet<string> roster = matchData
+            .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
+            .Select(member => member.steam_id)
+            .Where(steamId => !string.IsNullOrEmpty(steamId))
+            .Select(steamId => steamId!)
+            .ToHashSet();
+
+        return MatchUtility
+            .Players()
+            .Count(controller => roster.Contains(controller.SteamID.ToString()));
     }
 }

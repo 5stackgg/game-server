@@ -130,7 +130,7 @@ public partial class FiveStackPlugin
         bool wasSurrendered = match.isSurrendered();
         bool onGameNode = _environmentService.isOnGameServerNode();
 
-        AnnounceMapConclusion(matchData, currentMap);
+        AnnounceMapConclusion(matchData, currentMap, winningLineupId);
 
         _logger.LogInformation(
             "End of map: match={MatchId} map={MapId} onGameNode={OnGameNode} usePlaycast={UsePlaycast} tvDelay={TvDelay} recordingDelay={RecordingDelay} surrendered={Surrendered}",
@@ -290,7 +290,11 @@ public partial class FiveStackPlugin
     // Deliberately no time estimate: how long the demo takes depends on
     // tv_delay and transfer speed, so a number here would be a guess that reads
     // as a promise.
-    private void AnnounceMapConclusion(MatchData matchData, MatchMap currentMap)
+    private void AnnounceMapConclusion(
+        MatchData matchData,
+        MatchMap currentMap,
+        Guid? winningLineupId
+    )
     {
         try
         {
@@ -298,9 +302,33 @@ public partial class FiveStackPlugin
                 .match_maps.Where(m => m.order == currentMap.order + 1)
                 .Any();
 
+            // match_maps holds every vetoed map, including ones a decided
+            // series will never play -- a 2-0 best of three still has a third
+            // slot sitting there. Count the wins instead, including this map's,
+            // which is not on matchData yet at this point.
+            int mapsToWin = (matchData.options.best_of / 2) + 1;
+
+            int lineup1Wins = matchData.match_maps.Count(m =>
+                m.winning_lineup_id == matchData.lineup_1_id
+            );
+            int lineup2Wins = matchData.match_maps.Count(m =>
+                m.winning_lineup_id == matchData.lineup_2_id
+            );
+
+            if (winningLineupId == matchData.lineup_1_id)
+            {
+                lineup1Wins++;
+            }
+            else if (winningLineupId == matchData.lineup_2_id)
+            {
+                lineup2Wins++;
+            }
+
+            bool seriesDecided = lineup1Wins >= mapsToWin || lineup2Wins >= mapsToWin;
+
             _gameServer.Message(
                 HudDestination.Chat,
-                hasNextMap
+                hasNextMap && !seriesDecided
                     ? _localizer["match.map_over_next_map"]
                     : _localizer["match.map_over_series_done"]
             );
