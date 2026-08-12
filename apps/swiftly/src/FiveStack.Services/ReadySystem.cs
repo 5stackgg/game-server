@@ -18,6 +18,7 @@ public class ReadySystem
     private readonly ILogger<ReadySystem> _logger;
     private readonly CoachSystem _coachSystem;
     private readonly CaptainSystem _captainSystem;
+    private readonly CameraSystem _cameraSystem;
     private readonly ILocalizer _localizer;
 
     private Dictionary<int, bool> _readyPlayers = new Dictionary<int, bool>();
@@ -28,6 +29,7 @@ public class ReadySystem
         MatchService matchService,
         CoachSystem coachSystem,
         CaptainSystem captainSystem,
+        CameraSystem cameraSystem,
         ILocalizer localizer
     )
     {
@@ -36,6 +38,7 @@ public class ReadySystem
         _matchService = matchService;
         _coachSystem = coachSystem;
         _captainSystem = captainSystem;
+        _cameraSystem = cameraSystem;
         _localizer = localizer;
     }
 
@@ -107,6 +110,12 @@ public class ReadySystem
 
     public void ToggleReady(IPlayer player)
     {
+        if (_cameraSystem.IsPlayerBlocked(player))
+        {
+            _gameServer.Message(MessageType.Chat, _localizer["camera.cannot_ready"], player);
+            return;
+        }
+
         if (!CanVote(player))
         {
             _gameServer.Message(MessageType.Chat, _localizer["ready.not_allowed"], player);

@@ -21,6 +21,9 @@ public class FiveStackServiceCollection : IPluginServiceCollection<FiveStackPlug
         serviceCollection.AddSingleton<CoachSystem>();
         serviceCollection.AddSingleton<CaptainSystem>();
         serviceCollection.AddSingleton<RankSystem>();
+        // Singleton: the offline set has to outlive the transient MatchManager
+        // that gets rebuilt on every match refresh.
+        serviceCollection.AddSingleton<CameraSystem>();
 
         serviceCollection.AddTransient<MatchManager>();
         serviceCollection.AddTransient<VoteSystem>();

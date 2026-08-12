@@ -11,6 +11,7 @@ public class MatchOptions
     public int tv_delay { get; set; } = 115;
     public int? round_restart_delay { get; set; } = null;
     public bool halftime_pausematch { get; set; } = false;
+    public bool camera_required { get; set; } = false;
     public bool coaches { get; set; } = true;
     public int number_of_substitutes { get; set; } = 0;
     public bool knife_round { get; set; } = true;
