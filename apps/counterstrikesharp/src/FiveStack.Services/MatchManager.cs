@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Cvars;
@@ -44,6 +45,7 @@ public class MatchManager
 
     private readonly EnvironmentService _environmentService;
     private readonly TimeoutSystem _timeoutSystem;
+    public TimeoutSystem timeoutSystem => _timeoutSystem;
     public ReadySystem readySystem;
 
     // public CoachSystem _coachSystem;
@@ -199,8 +201,42 @@ public class MatchManager
         return _currentMapStatus == eMapStatus.Knife;
     }
 
-    public void PauseMatch(string? message = null, bool skipUpdate = false)
+    // Long enough to outlast a full tactical timeout (mp_team_timeout_time is
+    // 31s, and the freeze time either side of it counts too) -- a shorter
+    // budget silently drops the pause for a player who crashed during one.
+    private const int PauseRetryAttempts = 45;
+
+    public void PauseMatch(
+        string? message = null,
+        bool skipUpdate = false,
+        int retriesLeft = PauseRetryAttempts
+    )
     {
+        // CS2 will not hold mp_pause_match while its own tactical timeout is
+        // running -- the command is accepted and silently does nothing, so the
+        // match resumes as soon as the timeout ends. Wait it out instead.
+        // ResumeMatch already refuses in the same situation.
+        if (_timeoutSystem.IsTimeoutActive())
+        {
+            if (retriesLeft <= 0)
+            {
+                _logger.LogWarning(
+                    "Timeout still active, giving up on pausing the match"
+                );
+                return;
+            }
+
+            _logger.LogInformation(
+                $"Timeout is active, retrying pause in 1s ({retriesLeft} attempts left)"
+            );
+
+            TimerUtility.AddTimer(
+                1,
+                () => PauseMatch(message, skipUpdate, retriesLeft - 1)
+            );
+            return;
+        }
+
         _gameServer.SendCommands(["mp_pause_match"]);
 
         if (IsPaused())
@@ -550,6 +586,8 @@ public class MatchManager
             {
                 _gameServer.SendCommands(["exec 5stack.lan.cfg"]);
             }
+
+            ApplyWorkshopBlockedCvars();
         }
 
         Server.NextFrame(() =>
@@ -845,6 +883,83 @@ public class MatchManager
         knifeSystem.Start();
     }
 
+    // CS2 treats a cfg exec'd on a workshop map as an untrusted "workshop
+    // config" and silently drops a set of convars from it, logging
+    // "DISALLOWED WORKSHOP CONVAR: <name>". The block only applies to values
+    // coming from a cfg file -- setting the same convar directly is fine --
+    // so anything on that list has to be re-asserted here or it never takes
+    // effect on a workshop map, leaving CS2's built-in defaults in place.
+    //
+    // Values mirror shared/cfg/5stack.{competitive,duel,wingman}.cfg, which
+    // all agree on these. Keep them in step; an admin cfg override is read
+    // back out of the override text below so it still wins.
+    private static readonly Dictionary<string, string> WorkshopBlockedCvars =
+        new()
+        {
+            { "mp_team_timeout_time", "31" },
+            { "mp_team_timeout_max", "3" },
+            { "mp_overtime_limit", "0" },
+            { "mp_halftime_pausematch", "0" },
+            { "mp_competitive_endofmatch_extra_time", "155" },
+            { "sv_pausable", "1" },
+        };
+
+    private void ApplyWorkshopBlockedCvars()
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        // An override replaces the whole cfg file, so its values are the ones
+        // that should win -- but it is exec'd the same way and therefore just
+        // as blocked. Read the convar back out of the override text.
+        // Matched case-insensitively: the write path above lowercases the key
+        // when naming the cfg file, which it would not need to do if incoming
+        // keys were already lowercase -- and this dictionary compares by
+        // ordinal, so a "Competitive" key would never match a "competitive"
+        // lookup and the admin's override would be silently ignored.
+        string? overrideCfg = _matchData
+            .options.cfg_overrides?.FirstOrDefault(entry =>
+                string.Equals(
+                    entry.Key,
+                    _matchData.options.type,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+            .Value;
+
+        foreach (var cvar in WorkshopBlockedCvars)
+        {
+            string value = cvar.Value;
+
+            // A per-match option beats the shared default. StartLive sets this
+            // one from the match config, and re-asserting the table value here
+            // would silently turn the halftime break back off for every match
+            // that asked for it.
+            if (cvar.Key == "mp_halftime_pausematch")
+            {
+                value = _matchData.options.halftime_pausematch ? "1" : "0";
+            }
+
+            if (!string.IsNullOrEmpty(overrideCfg))
+            {
+                var match = Regex.Match(
+                    overrideCfg,
+                    $@"^\s*{Regex.Escape(cvar.Key)}\s+(\S+)",
+                    RegexOptions.Multiline
+                );
+
+                if (match.Success)
+                {
+                    value = match.Groups[1].Value;
+                }
+            }
+
+            _gameServer.SendCommands([$"{cvar.Key} {value}"]);
+        }
+    }
+
     private void StartLive()
     {
         knifeSystem.Reset();
@@ -874,6 +989,8 @@ public class MatchManager
         }
 
         _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
+
+        ApplyWorkshopBlockedCvars();
 
         Server.NextFrame(() =>
         {
