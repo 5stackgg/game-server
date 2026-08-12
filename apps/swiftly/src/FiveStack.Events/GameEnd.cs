@@ -2,6 +2,8 @@ using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
+using SwiftlyS2.Shared;
+using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.GameEventDefinitions;
 using SwiftlyS2.Shared.GameEvents;
 using SwiftlyS2.Shared.Misc;
@@ -123,6 +125,8 @@ public partial class FiveStackPlugin
         Guid expectedMatchId = matchData.id;
         bool wasSurrendered = match.isSurrendered();
         bool onGameNode = _environmentService.isOnGameServerNode();
+
+        AnnounceMapConclusion(matchData, currentMap);
 
         _logger.LogInformation(
             "End of map: match={MatchId} map={MapId} onGameNode={OnGameNode} usePlaycast={UsePlaycast} tvDelay={TvDelay} recordingDelay={RecordingDelay} surrendered={Surrendered}",
@@ -270,6 +274,38 @@ public partial class FiveStackPlugin
                 );
             }
         );
+    }
+
+    // Tells the server what happens next once a map wraps. Without it the round
+    // just ends and players are left guessing whether to stay connected.
+    //
+    // Keyed on whether another map is queued -- the same check the map
+    // progression itself uses -- rather than on who won, which the game-server
+    // does not track per map.
+    //
+    // Deliberately no time estimate: how long the demo takes depends on
+    // tv_delay and transfer speed, so a number here would be a guess that reads
+    // as a promise.
+    private void AnnounceMapConclusion(MatchData matchData, MatchMap currentMap)
+    {
+        try
+        {
+            bool hasNextMap = matchData
+                .match_maps.Where(m => m.order == currentMap.order + 1)
+                .Any();
+
+            _gameServer.Message(
+                MessageType.Chat,
+                hasNextMap
+                    ? _localizer["match.map_over_next_map"]
+                    : _localizer["match.map_over_series_done"]
+            );
+        }
+        catch (Exception error)
+        {
+            // Never let a chat message interfere with ending the map.
+            _logger.LogWarning(error, "failed to announce map conclusion");
+        }
     }
 
     private void HandleOfflineMapProgression(

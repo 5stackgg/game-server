@@ -12,6 +12,7 @@ public class SurrenderSystem
 {
     private readonly MatchEvents _matchEvents;
     private readonly MatchService _matchService;
+    private readonly GameServer _gameServer;
     private readonly ILogger<ReadySystem> _logger;
     private readonly IServiceProvider _serviceProvider;
     public VoteSystem? surrenderingVote;
@@ -25,12 +26,14 @@ public class SurrenderSystem
         ILogger<ReadySystem> logger,
         MatchEvents matchEvents,
         MatchService matchService,
+        GameServer gameServer,
         IServiceProvider serviceProvider
     )
     {
         _logger = logger;
         _matchEvents = matchEvents;
         _matchService = matchService;
+        _gameServer = gameServer;
         _serviceProvider = serviceProvider;
         Reset();
     }
@@ -126,6 +129,9 @@ public class SurrenderSystem
             return;
         }
 
+        // Surrender() takes the team that WINS, not the one giving up.
+        Team winningTeam = team == Team.CT ? Team.T : Team.CT;
+
         _logger.LogInformation($"Starting Surrender Vote for {team}");
         surrenderingVote.StartVote(
             "Surrender",
@@ -133,7 +139,7 @@ public class SurrenderSystem
             () =>
             {
                 _logger.LogInformation("surrender vote passed");
-                Surrender(team);
+                Surrender(winningTeam);
                 Reset();
             },
             () =>
@@ -170,6 +176,7 @@ public class SurrenderSystem
         surrenderingVote?.RemovePlayerVote(steamId);
     }
 
+    // `team` is the side that WINS the forfeit, not the one giving up.
     public void Surrender(Team team)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -179,23 +186,34 @@ public class SurrenderSystem
         }
 
         MatchData? matchData = match.GetMatchData();
-        if (matchData == null)
+        MatchMap? currentMap = match.GetCurrentMap();
+        if (matchData == null || currentMap == null)
         {
             return;
         }
 
+        // Resolve which lineup is currently playing as `team`, side swaps
+        // included. The previous comparison was against lineup.name, which is
+        // the team's display name ("Theft's Team") and never literally
+        // "CT"/"TERRORIST" -- so it was always false and every surrender fell
+        // through to lineup_2, handing the win to whichever side happened to
+        // be lineup 2 regardless of who actually forfeited.
+        int roundsPlayed = _gameServer.GetTotalRoundsPlayed();
         Guid? lineup_id = null;
 
-        foreach (var _team in MatchUtility.Teams())
+        if (
+            TeamUtility.GetLineupSide(matchData, currentMap, matchData.lineup_1_id, roundsPlayed)
+            == team
+        )
         {
-            if (TeamUtility.TeamNumToTeam(_team.TeamNum) == team)
-            {
-                lineup_id =
-                    matchData.lineup_1.name == TeamUtility.TeamToString(team)
-                        ? matchData.lineup_1_id
-                        : matchData.lineup_2_id;
-                break;
-            }
+            lineup_id = matchData.lineup_1_id;
+        }
+        else if (
+            TeamUtility.GetLineupSide(matchData, currentMap, matchData.lineup_2_id, roundsPlayed)
+            == team
+        )
+        {
+            lineup_id = matchData.lineup_2_id;
         }
 
         if (lineup_id == null)
@@ -204,11 +222,13 @@ public class SurrenderSystem
             return;
         }
 
-        _logger.LogInformation($"Surrendering ${team}:{lineup_id.Value}");
+        _logger.LogInformation($"Surrendering to {team}:{lineup_id.Value}");
 
         winningLineupId = lineup_id.Value;
 
-        _matchService.GetCurrentMatch()?.UpdateMapStatus(eMapStatus.Surrendered);
+        // The winner has to travel with the status. Without it the API records
+        // the map as Surrendered with no winner at all.
+        match.UpdateMapStatus(eMapStatus.Surrendered, lineup_id.Value);
     }
 
     public Guid? GetWinningLineupId()

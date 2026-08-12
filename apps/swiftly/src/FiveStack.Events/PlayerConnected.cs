@@ -29,6 +29,15 @@ public partial class FiveStackPlugin
 
         _surrenderSystem.CancelDisconnectTimer(@event.UserIdPlayer.SteamID);
 
+        // CancelDisconnectTimer only resumes when that player actually had a
+        // timer, which is never the case for someone who left during warmup or
+        // knife, or when the pause came from RoundStart going short-handed. If
+        // the roster is whole again there is nothing left to wait for.
+        if (match.IsPaused() && MatchUtility.Players().Count >= match.GetExpectedPlayerCount())
+        {
+            match.ResumeMatch();
+        }
+
         IPlayer player = @event.UserIdPlayer;
 
         Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
