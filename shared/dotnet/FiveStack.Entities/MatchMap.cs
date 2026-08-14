@@ -11,5 +11,8 @@ public class MatchMap
     public string lineup_1_side { get; set; } = "";
     public string lineup_2_side { get; set; } = "";
 
+    // Null until the map is decided. Sent by the API on current-match/:serverId.
+    public Guid? winning_lineup_id { get; set; } = null;
+
     public BackupRound[] rounds { get; set; } = new BackupRound[0];
 }

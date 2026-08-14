@@ -47,6 +47,9 @@
   "timeout.vote.technical_passed": "Technical Timeout Vote Passed",
   "timeout.player_paused": "{0} {1}paused the match",
   "timeout.not_allowed": " {0}you are not allowed to call a {1} the match!",
+  "match.map_over_next_map": "Map complete — the next map is coming up, stay connected.",
+  "match.map_over_series_done": "Match complete — stats will appear on the match page once the demo finishes processing.",
+  "timeout.cannot_resume_empty_team": "Cannot resume while a team has no players connected",
   "timeout.admin_resumed": "Admin Resumed the Match",
   "timeout.vote.resume": "Resume",
   "timeout.vote.resume_passed": "Resume Vote Passed",
@@ -77,5 +80,15 @@
   "vote.prompt_count": " Vote to {0}",
   "vote.prompt_options": " Vote to {0} ({1}y or {2}n)",
   "vote.prompt_count_timer": " Vote to {0} ({1}s)",
-  "vote.prompt_options_timer": " Vote to {0} ({1}y or {2}n) ({3}s)"
+  "vote.prompt_options_timer": " Vote to {0} ({1}y or {2}n) ({3}s)",
+
+  "camera.paused": "Match paused - no camera from: {0}",
+  "camera.waiting": "Waiting for camera: {0}",
+  "camera.restored": "All cameras are back - type {0}resume to continue",
+  "camera.cannot_resume": "Cannot resume, still waiting on a camera from: {0}",
+  "camera.cannot_ready": "You cannot ready up until your camera is connected",
+  "camera.tag": "no cam",
+  "camera.not_required": "This match does not require a camera",
+  "camera.yours_ok": "Your camera is connected",
+  "camera.yours_down": "Your camera is NOT connected - reconnect it from the match page"
 }

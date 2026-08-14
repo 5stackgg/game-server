@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
@@ -128,6 +129,8 @@ public partial class FiveStackPlugin
         Guid expectedMatchId = matchData.id;
         bool wasSurrendered = match.isSurrendered();
         bool onGameNode = _environmentService.isOnGameServerNode();
+
+        AnnounceMapConclusion(matchData, currentMap, winningLineupId);
 
         _logger.LogInformation(
             "End of map: match={MatchId} map={MapId} onGameNode={OnGameNode} usePlaycast={UsePlaycast} tvDelay={TvDelay} recordingDelay={RecordingDelay} surrendered={Surrendered}",
@@ -275,6 +278,66 @@ public partial class FiveStackPlugin
                 );
             }
         );
+    }
+
+    // Tells the server what happens next once a map wraps. Without it the round
+    // just ends and players are left guessing whether to stay connected.
+    //
+    // Keyed on whether another map is queued -- the same check the map
+    // progression itself uses -- rather than on who won, which the game-server
+    // does not track per map.
+    //
+    // Deliberately no time estimate: how long the demo takes depends on
+    // tv_delay and transfer speed, so a number here would be a guess that reads
+    // as a promise.
+    private void AnnounceMapConclusion(
+        MatchData matchData,
+        MatchMap currentMap,
+        Guid? winningLineupId
+    )
+    {
+        try
+        {
+            bool hasNextMap = matchData
+                .match_maps.Where(m => m.order == currentMap.order + 1)
+                .Any();
+
+            // match_maps holds every vetoed map, including ones a decided
+            // series will never play -- a 2-0 best of three still has a third
+            // slot sitting there. Count the wins instead, including this map's,
+            // which is not on matchData yet at this point.
+            int mapsToWin = (matchData.options.best_of / 2) + 1;
+
+            int lineup1Wins = matchData.match_maps.Count(m =>
+                m.winning_lineup_id == matchData.lineup_1_id
+            );
+            int lineup2Wins = matchData.match_maps.Count(m =>
+                m.winning_lineup_id == matchData.lineup_2_id
+            );
+
+            if (winningLineupId == matchData.lineup_1_id)
+            {
+                lineup1Wins++;
+            }
+            else if (winningLineupId == matchData.lineup_2_id)
+            {
+                lineup2Wins++;
+            }
+
+            bool seriesDecided = lineup1Wins >= mapsToWin || lineup2Wins >= mapsToWin;
+
+            _gameServer.Message(
+                HudDestination.Chat,
+                hasNextMap && !seriesDecided
+                    ? _localizer["match.map_over_next_map"]
+                    : _localizer["match.map_over_series_done"]
+            );
+        }
+        catch (Exception error)
+        {
+            // Never let a chat message interfere with ending the map.
+            _logger.LogWarning(error, "failed to announce map conclusion");
+        }
     }
 
     private void HandleOfflineMapProgression(

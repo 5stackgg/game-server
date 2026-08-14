@@ -124,6 +124,58 @@ public class KnifeSystem
         );
     }
 
+    // A knife round that runs out of time with nobody dead is reported by CS2 as
+    // a CT win -- that is just the "target saved" rule, and it hands the side
+    // decision to CT for doing nothing. Resolve it on the round's actual state
+    // instead: most players alive, then most total health, then a coin flip.
+    public CsTeam ResolveTimedOutKnifeWinner(CsTeam reported)
+    {
+        int tAlive = 0;
+        int ctAlive = 0;
+        int tHealth = 0;
+        int ctHealth = 0;
+
+        foreach (CCSPlayerController player in MatchUtility.Players())
+        {
+            int health = player.PlayerPawn?.Value?.Health ?? 0;
+
+            if (health <= 0)
+            {
+                continue;
+            }
+
+            if (player.Team == CsTeam.Terrorist)
+            {
+                tAlive++;
+                tHealth += health;
+            }
+            else if (player.Team == CsTeam.CounterTerrorist)
+            {
+                ctAlive++;
+                ctHealth += health;
+            }
+        }
+
+        if (tAlive != ctAlive)
+        {
+            return tAlive > ctAlive ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
+        }
+
+        if (tHealth != ctHealth)
+        {
+            return tHealth > ctHealth ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
+        }
+
+        CsTeam coinFlip =
+            Random.Shared.Next(2) == 0 ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
+
+        _logger.LogInformation(
+            $"knife round tied on players and health -- coin flip gave it to {coinFlip} (CS2 reported {reported})"
+        );
+
+        return coinFlip;
+    }
+
     public void Stay(CCSPlayerController player)
     {
         _logger.LogInformation("Knife round staying");

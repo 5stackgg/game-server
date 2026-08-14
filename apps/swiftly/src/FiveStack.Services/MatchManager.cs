@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Threading;
 using FiveStack.Entities;
 using FiveStack.Enums;
@@ -21,6 +22,13 @@ public class MatchManager
     private MatchData? _matchData;
     private eMapStatus _currentMapStatus = eMapStatus.Unknown;
     private Guid? _activeMapId;
+
+    // Distinct from _activeMapId, which is stamped at map start for event
+    // attribution: this only moves once the server-side setup (cfg exec +
+    // game mode) has actually run for that map. Gating setup on _activeMapId
+    // instead means every map the plugin itself loads is already "active"
+    // before setup runs, so maps 2+ silently skip their cfg.
+    private Guid? _configuredMapId;
     private CancellationTokenSource? _resumeMessageTimer;
     private CancellationTokenSource? _playcastWindowTimer;
     public bool gameEnded = false;
@@ -193,8 +201,42 @@ public class MatchManager
         return _currentMapStatus == eMapStatus.Knife;
     }
 
-    public void PauseMatch(string? message = null, bool skipUpdate = false)
+    // Long enough to outlast a full tactical timeout (mp_team_timeout_time is
+    // 31s, and the freeze time either side of it counts too) -- a shorter
+    // budget silently drops the pause for a player who crashed during one.
+    private const int PauseRetryAttempts = 45;
+
+    public void PauseMatch(
+        string? message = null,
+        bool skipUpdate = false,
+        int retriesLeft = PauseRetryAttempts
+    )
     {
+        // CS2 will not hold mp_pause_match while its own tactical timeout is
+        // running -- the command is accepted and silently does nothing, so the
+        // match resumes as soon as the timeout ends. Wait it out instead.
+        // ResumeMatch already refuses in the same situation.
+        if (_timeoutSystem.IsTimeoutActive())
+        {
+            if (retriesLeft <= 0)
+            {
+                _logger.LogWarning(
+                    "Timeout still active, giving up on pausing the match"
+                );
+                return;
+            }
+
+            _logger.LogInformation(
+                $"Timeout is active, retrying pause in 1s ({retriesLeft} attempts left)"
+            );
+
+            TimerUtility.AddTimer(
+                1,
+                () => PauseMatch(message, skipUpdate, retriesLeft - 1)
+            );
+            return;
+        }
+
         _gameServer.SendCommands(["mp_pause_match"]);
 
         if (IsPaused())
@@ -484,7 +526,7 @@ public class MatchManager
             return;
         }
 
-        bool wasAlreadySetup = _activeMapId == _currentMap.id;
+        bool wasAlreadySetup = _configuredMapId == _currentMap.id;
         _activeMapId = _currentMap.id;
 
         if (_currentMapStatus == eMapStatus.WaitingForTV)
@@ -522,12 +564,16 @@ public class MatchManager
 
         if (!wasAlreadySetup)
         {
+            _configuredMapId = _currentMap.id;
+
             _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
 
             if (_matchData.is_lan)
             {
                 _gameServer.SendCommands(["exec 5stack.lan.cfg"]);
             }
+
+            ApplyWorkshopBlockedCvars();
         }
 
         _core.Scheduler.NextTick(() =>
@@ -706,20 +752,47 @@ public class MatchManager
         _gameServer.SendCommands(["tv_broadcast 0"]);
         Reset();
 
+        // The mode decides which layout the map loads with (Wingman gets the
+        // 2v2 version), so it ships in the same batch as the level change and
+        // ahead of it — Valve's documented form is "game_type 0; game_mode 2;
+        // map <name>". Setting it after the load leaves the map on whatever
+        // the previous map's mode was.
+        string[] gameModeCommands = GetGameModeCommands();
+
         if (map.workshop_map_id == null && _core.Engine.IsMapValid(map.name))
         {
             _logger.LogInformation(
                 $"Changing Map {map.name} (match {_matchData?.id.ToString() ?? "none"})"
             );
-            _gameServer.SendCommands([$"changelevel \"{map.name}\""]);
+            _gameServer.SendCommands([.. gameModeCommands, $"changelevel \"{map.name}\""]);
         }
         else
         {
             _logger.LogInformation(
                 $"Changing Map {map.name} / {map.workshop_map_id} (match {_matchData?.id.ToString() ?? "none"})"
             );
-            _gameServer.SendCommands([$"host_workshop_map {map.workshop_map_id}"]);
+            _gameServer.SendCommands(
+                [.. gameModeCommands, $"host_workshop_map {map.workshop_map_id}"]
+            );
         }
+    }
+
+    // game_type/game_mode are integers, not mode names: game_type 0 (Classic)
+    // with game_mode 1 = Competitive, game_mode 2 = Wingman/2v2. Sent as console
+    // commands rather than typed convar writes — a convar lookup that misses or
+    // comes back differently typed would silently leave the server in the wrong
+    // mode.
+    private string[] GetGameModeCommands()
+    {
+        if (_matchData == null)
+        {
+            return [];
+        }
+
+        int gameMode =
+            _matchData.options.type == "Duel" || _matchData.options.type == "Wingman" ? 2 : 1;
+
+        return ["game_type 0", $"game_mode {gameMode}"];
     }
 
     private void SetupGameMode()
@@ -729,26 +802,19 @@ public class MatchManager
             return;
         }
 
-        SetConVar("game_type", 0);
-        if (_matchData.options.type == "Duel" || _matchData.options.type == "Wingman")
-        {
-            SetConVar("game_mode", 2);
-        }
-        else
-        {
-            SetConVar("game_mode", 1);
-        }
+        string[] gameModeCommands = GetGameModeCommands();
 
         // game_type/game_mode only take effect after a restart, but restarting an
         // in-progress match (e.g. on a plugin reload) would wrongly reset it. Only
         // restart during warmup, when a fresh game start is expected.
         if (!IsWarmup())
         {
+            _gameServer.SendCommands(gameModeCommands);
             _logger.LogInformation("SetupGameMode: not in warmup, skipping mp_restartgame");
             return;
         }
 
-        _gameServer.SendCommands(["mp_restartgame 1"]);
+        _gameServer.SendCommands([.. gameModeCommands, "mp_restartgame 1"]);
     }
 
     public int GetExpectedPlayerCount()
@@ -810,6 +876,83 @@ public class MatchManager
         knifeSystem.Start();
     }
 
+    // CS2 treats a cfg exec'd on a workshop map as an untrusted "workshop
+    // config" and silently drops a set of convars from it, logging
+    // "DISALLOWED WORKSHOP CONVAR: <name>". The block only applies to values
+    // coming from a cfg file -- setting the same convar directly is fine --
+    // so anything on that list has to be re-asserted here or it never takes
+    // effect on a workshop map, leaving CS2's built-in defaults in place.
+    //
+    // Values mirror shared/cfg/5stack.{competitive,duel,wingman}.cfg, which
+    // all agree on these. Keep them in step; an admin cfg override is read
+    // back out of the override text below so it still wins.
+    private static readonly Dictionary<string, string> WorkshopBlockedCvars =
+        new()
+        {
+            { "mp_team_timeout_time", "31" },
+            { "mp_team_timeout_max", "3" },
+            { "mp_overtime_limit", "0" },
+            { "mp_halftime_pausematch", "0" },
+            { "mp_competitive_endofmatch_extra_time", "155" },
+            { "sv_pausable", "1" },
+        };
+
+    private void ApplyWorkshopBlockedCvars()
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        // An override replaces the whole cfg file, so its values are the ones
+        // that should win -- but it is exec'd the same way and therefore just
+        // as blocked. Read the convar back out of the override text.
+        // Matched case-insensitively: the write path above lowercases the key
+        // when naming the cfg file, which it would not need to do if incoming
+        // keys were already lowercase -- and this dictionary compares by
+        // ordinal, so a "Competitive" key would never match a "competitive"
+        // lookup and the admin's override would be silently ignored.
+        string? overrideCfg = _matchData
+            .options.cfg_overrides?.FirstOrDefault(entry =>
+                string.Equals(
+                    entry.Key,
+                    _matchData.options.type,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+            .Value;
+
+        foreach (var cvar in WorkshopBlockedCvars)
+        {
+            string value = cvar.Value;
+
+            // A per-match option beats the shared default. StartLive sets this
+            // one from the match config, and re-asserting the table value here
+            // would silently turn the halftime break back off for every match
+            // that asked for it.
+            if (cvar.Key == "mp_halftime_pausematch")
+            {
+                value = _matchData.options.halftime_pausematch ? "1" : "0";
+            }
+
+            if (!string.IsNullOrEmpty(overrideCfg))
+            {
+                var match = Regex.Match(
+                    overrideCfg,
+                    $@"^\s*{Regex.Escape(cvar.Key)}\s+(\S+)",
+                    RegexOptions.Multiline
+                );
+
+                if (match.Success)
+                {
+                    value = match.Groups[1].Value;
+                }
+            }
+
+            _gameServer.SendCommands([$"{cvar.Key} {value}"]);
+        }
+    }
+
     private void StartLive()
     {
         knifeSystem.Reset();
@@ -835,6 +978,8 @@ public class MatchManager
         }
 
         _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
+
+        ApplyWorkshopBlockedCvars();
 
         _core.Scheduler.NextTick(() =>
         {
@@ -1177,6 +1322,7 @@ public class MatchManager
         StopPlaycastWindowHeartbeat();
 
         _currentMapStatus = eMapStatus.Unknown;
+        _configuredMapId = null;
 
         gameEnded = false;
 

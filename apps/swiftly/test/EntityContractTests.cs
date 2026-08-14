@@ -21,6 +21,7 @@ public class EntityContractTests
             "tv_delay": 105,
             "round_restart_delay": 7,
             "halftime_pausematch": true,
+            "camera_required": true,
             "coaches": true,
             "number_of_substitutes": 2,
             "knife_round": true,
@@ -38,7 +39,7 @@ public class EntityContractTests
             "tag": "A",
             "coach_steam_id": "76561198000000009",
             "lineup_players": [
-              { "name": "p1", "role": "verified_user", "steam_id": "76561198000000001", "captain": true, "elo": 1500, "is_gagged": true },
+              { "name": "p1", "role": "verified_user", "steam_id": "76561198000000001", "captain": true, "elo": 1500, "is_gagged": true, "camera_ok": false },
               { "name": "p2", "role": "", "placeholder_name": "Bot", "steam_id": null, "captain": false, "elo": null }
             ]
           },
@@ -98,6 +99,7 @@ public class EntityContractTests
         Assert.False(options.default_models);
         Assert.Equal(7, options.round_restart_delay);
         Assert.True(options.halftime_pausematch);
+        Assert.True(options.camera_required);
         Assert.Equal("0", options.cfg_overrides["sv_cheats"]);
     }
 
@@ -115,11 +117,15 @@ public class EntityContractTests
         Assert.True(captain.captain);
         Assert.Equal(1500, captain.elo);
         Assert.True(captain.is_gagged);
+        Assert.False(captain.camera_ok);
 
         MatchMember placeholder = lineup.lineup_players[1];
         Assert.Null(placeholder.steam_id);
         Assert.Null(placeholder.elo);
         Assert.Equal("Bot", placeholder.placeholder_name);
+        // Absent from the payload: a plugin talking to an older API must not
+        // decide every player is uncompliant.
+        Assert.True(placeholder.camera_ok);
     }
 
     [Fact]

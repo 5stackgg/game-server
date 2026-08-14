@@ -22,6 +22,7 @@ public class TimeoutSystem
     private readonly IServiceProvider _serviceProvider;
     private readonly CoachSystem _coachSystem;
     private readonly CaptainSystem _captainSystem;
+    private readonly CameraSystem _cameraSystem;
     private readonly IStringLocalizer _localizer;
     public VoteSystem? pauseVote;
     public VoteSystem? resumeVote;
@@ -35,6 +36,7 @@ public class TimeoutSystem
         IServiceProvider serviceProvider,
         CoachSystem coachSystem,
         CaptainSystem captainSystem,
+        CameraSystem cameraSystem,
         IStringLocalizer localizer
     )
     {
@@ -46,6 +48,7 @@ public class TimeoutSystem
         _backUpManagement = backUpManagement;
         _coachSystem = coachSystem;
         _captainSystem = captainSystem;
+        _cameraSystem = cameraSystem;
         _localizer = localizer;
     }
 
@@ -240,6 +243,40 @@ public class TimeoutSystem
 
         string resumeMessage = _localizer["timeout.admin_resumed"];
 
+        // Refuse while a required camera is still down, on the same terms as the
+        // empty-team gate below: the pause exists because someone is unwatched,
+        // so resuming before that is fixed defeats the whole point. Admins keep
+        // their override for a camera that is never coming back.
+        if (
+            player != null
+            && !IsAdminOrOrganizer(player, matchData)
+            && _cameraSystem.IsBlocking()
+        )
+        {
+            _gameServer.Message(
+                HudDestination.Chat,
+                _localizer["camera.cannot_resume", _cameraSystem.OfflineNames()],
+                player
+            );
+            return;
+        }
+
+        // Refuse while a side has nobody in the server. The match pauses itself
+        // when it goes short-handed, and resuming into an empty team just plays
+        // rounds out against nobody -- free rounds for whoever is still here.
+        // Console/RCON is unaffected; this only gates the chat command, and
+        // admins keep their override -- they are the ones who have to unstick a
+        // match nobody is coming back to.
+        if (player != null && !IsAdminOrOrganizer(player, matchData) && IsATeamEmpty())
+        {
+            _gameServer.Message(
+                HudDestination.Chat,
+                _localizer["timeout.cannot_resume_empty_team"],
+                player
+            );
+            return;
+        }
+
         if (player != null)
         {
             if (ShouldRequireTeamResume())
@@ -334,9 +371,38 @@ public class TimeoutSystem
         _requiresTeamResumeForCurrentPause = false;
     }
 
-    private bool ShouldRequireTeamResume()
+    public bool ShouldRequireTeamResume()
     {
         return _requiresTeamResumeForCurrentPause && _teamsPendingResume.Count > 0;
+    }
+
+    // Only meaningful once the match is actually being played -- during warmup
+    // a team being empty is normal and resuming is how the match gets going.
+    private bool IsATeamEmpty()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (match == null || (!match.IsInPlay() && !match.IsKnife()))
+        {
+            return false;
+        }
+
+        int ts = 0;
+        int cts = 0;
+
+        foreach (CCSPlayerController player in MatchUtility.Players())
+        {
+            if (player.Team == CsTeam.Terrorist)
+            {
+                ts++;
+            }
+            else if (player.Team == CsTeam.CounterTerrorist)
+            {
+                cts++;
+            }
+        }
+
+        return ts == 0 || cts == 0;
     }
 
     private void PauseTechMatch(string pauseMessage)
