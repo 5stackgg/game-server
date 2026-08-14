@@ -47,9 +47,36 @@ public class CameraSystem
         {
             _matchId = matchData?.id ?? Guid.Empty;
             Reset();
+            SeedFromMatchData(matchData);
         }
 
         return matchData?.options.camera_required == true;
+    }
+
+    // Updates are edge-triggered, so the API stays quiet for as long as the
+    // offending set holds. A plugin that lost its state mid-match -- a restart,
+    // a fresh map load -- would never be told who is still offline, and would
+    // let a blocked player ready up or a paused match resume. The match payload
+    // carries the API's current answer, so pick it back up from there.
+    private void SeedFromMatchData(MatchData? matchData)
+    {
+        if (matchData?.options.camera_required != true)
+        {
+            return;
+        }
+
+        foreach (MatchLineUp lineup in new[] { matchData.lineup_1, matchData.lineup_2 })
+        {
+            foreach (MatchMember member in lineup.lineup_players)
+            {
+                if (member.camera_ok || !ulong.TryParse(member.steam_id, out ulong steamId))
+                {
+                    continue;
+                }
+
+                _offline.Add(steamId);
+            }
+        }
     }
 
     public bool IsBlocking()
@@ -106,7 +133,6 @@ public class CameraSystem
             return;
         }
 
-        bool wasBlocking = _offline.Count > 0;
         _offline = offline;
 
         _logger.LogInformation(
@@ -117,7 +143,7 @@ public class CameraSystem
 
         if (_offline.Count > 0)
         {
-            OnCamerasLost(!wasBlocking);
+            OnCamerasLost();
             return;
         }
 
@@ -159,7 +185,7 @@ public class CameraSystem
         _reminderTimer = null;
     }
 
-    private void OnCamerasLost(bool firstBreach)
+    private void OnCamerasLost()
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
@@ -170,7 +196,10 @@ public class CameraSystem
 
         string message = _localizer["camera.paused", OfflineNames()];
 
-        if (firstBreach)
+        // Gated on play actually being stopped rather than on whether anyone
+        // was already offline: an organizer can resume over a breach, and the
+        // next player to lose their camera has to stop play again.
+        if (!match.IsPaused())
         {
             match.PauseMatch(message);
         }
