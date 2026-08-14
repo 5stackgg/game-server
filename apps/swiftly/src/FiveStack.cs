@@ -35,6 +35,7 @@ public partial class FiveStackPlugin : BasePlugin
     private CaptainSystem _captainSystem = null!;
     private CoachSystem _coachSystem = null!;
     private RankSystem _rankSystem = null!;
+    private CameraSystem _cameraSystem = null!;
     private SurrenderSystem _surrenderSystem = null!;
     private GameBackUpRounds _gameBackupRounds = null!;
     private EnvironmentService _environmentService = null!;
@@ -82,6 +83,9 @@ public partial class FiveStackPlugin : BasePlugin
             .AddSingleton<CoachSystem>()
             .AddSingleton<CaptainSystem>()
             .AddSingleton<RankSystem>()
+            // Singleton: the offline set has to outlive the transient
+            // MatchManager that gets rebuilt on every match refresh.
+            .AddSingleton<CameraSystem>()
             .AddTransient<MatchManager>()
             .AddTransient<VoteSystem>()
             .AddTransient<KnifeSystem>()
@@ -107,6 +111,7 @@ public partial class FiveStackPlugin : BasePlugin
         _coachSystem = _serviceProvider.GetRequiredService<CoachSystem>();
         _captainSystem = _serviceProvider.GetRequiredService<CaptainSystem>();
         _rankSystem = _serviceProvider.GetRequiredService<RankSystem>();
+        _cameraSystem = _serviceProvider.GetRequiredService<CameraSystem>();
 
         _environmentService.Load();
 

@@ -80,5 +80,15 @@
   "vote.prompt_count": " Vote to {0}",
   "vote.prompt_options": " Vote to {0} ({1}y or {2}n)",
   "vote.prompt_count_timer": " Vote to {0} ({1}s)",
-  "vote.prompt_options_timer": " Vote to {0} ({1}y or {2}n) ({3}s)"
+  "vote.prompt_options_timer": " Vote to {0} ({1}y or {2}n) ({3}s)",
+
+  "camera.paused": "Match paused - no camera from: {0}",
+  "camera.waiting": "Waiting for camera: {0}",
+  "camera.restored": "All cameras are back - type {0}resume to continue",
+  "camera.cannot_resume": "Cannot resume, still waiting on a camera from: {0}",
+  "camera.cannot_ready": "You cannot ready up until your camera is connected",
+  "camera.tag": "no cam",
+  "camera.not_required": "This match does not require a camera",
+  "camera.yours_ok": "Your camera is connected",
+  "camera.yours_down": "Your camera is NOT connected - reconnect it from the match page"
 }
