@@ -41,6 +41,11 @@ done
 echo "---Install Addons---"
 cp -r "/opt/addons" "${INSTANCE_SERVER_DIR}/game/csgo"
 
+if [ "$ENABLE_CSS_COMPAT" = "true" ] && [ -d "/opt/addons-css" ]; then
+  echo "---Install CounterStrikeSharp Compatibility Addons---"
+  cp -r "/opt/addons-css/." "${INSTANCE_SERVER_DIR}/game/csgo/addons"
+fi
+
 echo "---Create Symbolic Links---"
 
 if [ "$SERVER_TYPE" = "Ranked" ]; then
@@ -69,6 +74,21 @@ fi
 
 ln -s "/opt/custom-plugins/addons/swiftlys2/configs" "${INSTANCE_SERVER_DIR}/game/csgo/addons/swiftlys2/configs"
 
+if [ "$ENABLE_CSS_COMPAT" = "true" ]; then
+  if [ ! -d "/opt/custom-plugins/addons/counterstrikesharp/configs" ]; then
+    mkdir -p "/opt/custom-plugins/addons/counterstrikesharp/configs"
+  fi
+
+  if [ -d "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs" ]; then
+    if [ "$(ls -A "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs")" ]; then
+      cp -r "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs/." "/opt/custom-plugins/addons/counterstrikesharp/configs"
+    fi
+    rm -rf "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs"
+  fi
+
+  ln -s "/opt/custom-plugins/addons/counterstrikesharp/configs" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs"
+fi
+
 if [ "$SERVER_TYPE" != "Ranked" ]; then
   if [ ! -d "/opt/custom-plugins" ]; then
     mkdir -p "/opt/custom-plugins"
@@ -94,12 +114,23 @@ if [ "$SERVER_TYPE" != "Ranked" ]; then
     cp "/opt/server-cfg/core.jsonc" "/opt/custom-plugins/addons/swiftlys2/configs/core.jsonc"
   fi
 
-  create_symlinks "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
+  link_plugins "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
+
+  # Only mounted for a dedicated server, whose /opt/custom-plugins is its own
+  # directory rather than the node's. Linked second so anything the server
+  # carries itself wins over the node-wide copy.
+  link_plugins "/opt/node-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
 fi
 
 if $AUTOLOAD_PLUGINS = true ; then
   echo "---Install Custom Plugins---"
-  create_symlinks "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
+  link_plugins "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
+
+  # Only mounted for a dedicated server, whose /opt/custom-plugins is its own
+  # directory rather than the node's. Linked second so anything the server
+  # carries itself wins over the node-wide copy.
+  link_plugins "/opt/node-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
+
 
   if [ -e "/opt/custom-plugins/addons/swiftlys2/gamedata/cs2/core/offsets.jsonc" ]; then
     echo "---Install Custom Gamedata---"
@@ -151,8 +182,11 @@ if [ ! -e "$INSTANCE_SERVER_DIR/game/csgo/addons/swiftlys2/configs/core.jsonc" ]
     cp "/opt/server-cfg/core.jsonc" "$INSTANCE_SERVER_DIR/game/csgo/addons/swiftlys2/configs"
 fi
 
-if [ "$SHOW_ELO_RANKS" = "true" ]; then
-    echo "---Disabling CS2 Server Guidelines (required for Elo Ranks to render)---"
+# Elo ranks and any plugin the panel says needs it both land here: the
+# framework refuses the calls they make while this is true, and it can only be
+# changed before the server starts.
+if [ "$SHOW_ELO_RANKS" = "true" ] || [ "$DISABLE_SERVER_GUIDELINES" = "true" ]; then
+    echo "---Disabling CS2 Server Guidelines---"
     core_json="$INSTANCE_SERVER_DIR/game/csgo/addons/swiftlys2/configs/core.jsonc"
     sed -i --follow-symlinks 's/"FollowCS2ServerGuidelines"[[:space:]]*:[[:space:]]*true/"FollowCS2ServerGuidelines": false/' "$core_json"
 fi
@@ -165,6 +199,18 @@ if ! grep -qFx "$new_line" "$gameinfo_path"; then
     echo "---Adding swiftlys2 Loader ---"
     line_number=$(awk '/Game_LowViolence/{print NR; exit}' "$gameinfo_path")
     sed -i "${line_number}a\\$new_line" "$gameinfo_path"
+fi
+
+if [ "$ENABLE_CSS_COMPAT" = "true" ]; then
+    metamod_line="                        Game    csgo/addons/metamod"
+
+    # SwiftlyS2 requires its own entry to come FIRST; metamod (and therefore
+    # CounterStrikeSharp) is anchored after it, not after Game_LowViolence.
+    if ! grep -qFx "$metamod_line" "$gameinfo_path"; then
+        echo "---Adding Metamod Loader (CSS compatibility) ---"
+        line_number=$(grep -nFx "$new_line" "$gameinfo_path" | cut -d: -f1 | head -n 1)
+        sed -i "${line_number}a\\$metamod_line" "$gameinfo_path"
+    fi
 fi
 
 gameinfo_branchspecific_path="${INSTANCE_SERVER_DIR}/game/csgo/gameinfo_branchspecific.gi"
@@ -192,3 +238,5 @@ echo '"GameInfo"
     }
 }' > "$gameinfo_branchspecific_path"  
 fi
+
+write_plugin_configs "${INSTANCE_SERVER_DIR}/game/csgo"

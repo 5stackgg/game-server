@@ -74,6 +74,11 @@ ENV SERVER_TYPE="Ranked"
 ENV SWIFTLYS2_VERSION="v1.4.4"
 ENV SWIFTLYS2_URL=https://github.com/swiftly-solution/swiftlys2/releases/download/${SWIFTLYS2_VERSION}/swiftlys2-linux-${SWIFTLYS2_VERSION}-with-runtimes.zip
 
+ENV ENABLE_CSS_COMPAT=false
+
+ENV METAMOD_URL=https://github.com/alliedmodders/metamod-source/releases/download/2.0.0.1410/mmsource-2.0.0-git1410-linux.tar.gz
+ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.371/counterstrikesharp-with-runtime-linux-1.0.371.zip
+
 ENV METAMOD_CSGO_URL=https://mms.alliedmods.net/mmsdrop/1.12/mmsource-1.12.0-git1219-linux.tar.gz
 ENV SOURCEMOD_CSGO_URL=https://sm.alliedmods.net/smdrop/1.13/sourcemod-1.13.0-git7297-linux.tar.gz
 ENV NO_LOBBY_RESERVATION_URL=https://github.com/nuxencs/NoLobbyReservation/releases/download/v0.0.1/NoLobbyReservation.zip
@@ -97,6 +102,19 @@ RUN mkdir -p $DATA_DIR $STEAMCMD_DIR $BASE_SERVER_DIR $INSTANCE_SERVER_DIR && \
 RUN wget -q $SWIFTLYS2_URL -O /tmp/swiftlys2.zip && \
 	unzip -q /tmp/swiftlys2.zip -d /opt/swiftlys2 && \
 	rm /tmp/swiftlys2.zip
+
+RUN mkdir -p /opt/metamod /opt/counterstrikesharp && \
+	wget -q $METAMOD_URL -O /tmp/metamod.tar.gz && \
+	tar -xz -C /opt/metamod -f /tmp/metamod.tar.gz && \
+	rm /tmp/metamod.tar.gz && \
+	wget -q $COUNTER_STRIKE_SHARP_URL -O /tmp/counterstrikesharp.zip && \
+	unzip -q /tmp/counterstrikesharp.zip -d /opt/counterstrikesharp && \
+	rm /tmp/counterstrikesharp.zip && \
+	mv /opt/metamod/addons /opt/addons-css && \
+	cp -R /opt/counterstrikesharp/addons/metamod /opt/addons-css && \
+	cp -R /opt/counterstrikesharp/addons/counterstrikesharp /opt/addons-css && \
+	mkdir -p /opt/addons-css/counterstrikesharp/plugins && \
+	rm -rf /opt/metamod /opt/counterstrikesharp
 
 RUN mkdir -p /opt/csgo-metamod /opt/csgo-sourcemod /opt/csgo-no-lobby-reservation && \
 	wget -q $METAMOD_CSGO_URL -O /tmp/metamod-csgo.tar.gz && \

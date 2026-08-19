@@ -91,12 +91,23 @@ if [ "$SERVER_TYPE" != "Ranked" ]; then
     cp "/opt/server-cfg/core.json" "/opt/custom-plugins/addons/counterstrikesharp/configs/core.json"
   fi
 
-  create_symlinks "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
+  link_plugins "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
+
+  # Only mounted for a dedicated server, whose /opt/custom-plugins is its own
+  # directory rather than the node's. Linked second so anything the server
+  # carries itself wins over the node-wide copy.
+  link_plugins "/opt/node-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
 fi
 
 if $AUTOLOAD_PLUGINS = true ; then
   echo "---Install Custom Plugins---"
-  create_symlinks "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
+  link_plugins "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
+
+  # Only mounted for a dedicated server, whose /opt/custom-plugins is its own
+  # directory rather than the node's. Linked second so anything the server
+  # carries itself wins over the node-wide copy.
+  link_plugins "/opt/node-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
+
 
   if [ -e "/opt/custom-plugins/addons/counterstrikesharp/gamedata/gamedata.json" ]; then
     echo "---Install Custom Gamedata---"
@@ -122,8 +133,11 @@ if [ ! -e "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs/core
     cp "/opt/server-cfg/core.json" "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs"
 fi
 
-if [ "$SHOW_ELO_RANKS" = "true" ]; then
-    echo "---Disabling CS2 Server Guidelines (required for Elo Ranks to render)---"
+# Elo ranks and any plugin the panel says needs it both land here: the
+# framework refuses the calls they make while this is true, and it can only be
+# changed before the server starts.
+if [ "$SHOW_ELO_RANKS" = "true" ] || [ "$DISABLE_SERVER_GUIDELINES" = "true" ]; then
+    echo "---Disabling CS2 Server Guidelines---"
     core_json="$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs/core.json"
     sed -i --follow-symlinks 's/"FollowCS2ServerGuidelines"[[:space:]]*:[[:space:]]*true/"FollowCS2ServerGuidelines": false/' "$core_json"
 fi
@@ -163,3 +177,5 @@ echo '"GameInfo"
     }
 }' > "$gameinfo_branchspecific_path"  
 fi
+
+write_plugin_configs "${INSTANCE_SERVER_DIR}/game/csgo"
