@@ -125,6 +125,23 @@ assert_equals "$(cat "$workdir/plugins/addons/swiftlys2/configs/plugins/Existing
   "SHARED-ORIGINAL" "wrote through a directory symlink into the shared volume"
 teardown
 
+# A dedicated server mounts its own directory at /opt/custom-plugins and the
+# node's at /opt/node-plugins. Its own copy has to win, or installing something
+# node-wide would silently replace a file an operator put on one server.
+echo "link_plugins lets a server's own copy win over the node-wide one"
+setup
+mkdir -p "$workdir/server-plugins/addons/swiftlys2/plugins/HandPlaced"
+echo "SERVER-OWN" > "$workdir/server-plugins/addons/swiftlys2/plugins/HandPlaced/HandPlaced.dll"
+ENABLED_PLUGINS="inventory-simulator@3.1.0" \
+  link_plugins "$workdir/server-plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
+ENABLED_PLUGINS="inventory-simulator@3.1.0" \
+  link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
+assert_equals "$(cat "$workdir/instance/game/csgo/addons/swiftlys2/plugins/HandPlaced/HandPlaced.dll")" \
+  "SERVER-OWN" "node-wide copy overrode the server's own"
+assert_equals "$(cat "$workdir/instance/game/csgo/addons/swiftlys2/plugins/InventorySimulator/InventorySimulator.dll")" \
+  "INVSIM" "node-wide plugin did not reach the dedicated server"
+teardown
+
 # A plugin writes its own config on first load, inside the running server. That
 # has to land on the node volume or it is lost when the pod goes away and is
 # regenerated from scratch every match. Before managed installs this worked

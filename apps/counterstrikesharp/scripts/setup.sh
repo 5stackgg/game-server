@@ -92,11 +92,21 @@ if [ "$SERVER_TYPE" != "Ranked" ]; then
   fi
 
   link_plugins "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
+
+  # Only mounted for a dedicated server, whose /opt/custom-plugins is its own
+  # directory rather than the node's. Linked second so anything the server
+  # carries itself wins over the node-wide copy.
+  link_plugins "/opt/node-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
 fi
 
 if $AUTOLOAD_PLUGINS = true ; then
   echo "---Install Custom Plugins---"
   link_plugins "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
+
+  # Only mounted for a dedicated server, whose /opt/custom-plugins is its own
+  # directory rather than the node's. Linked second so anything the server
+  # carries itself wins over the node-wide copy.
+  link_plugins "/opt/node-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
 
 
   if [ -e "/opt/custom-plugins/addons/counterstrikesharp/gamedata/gamedata.json" ]; then
