@@ -37,6 +37,15 @@ create_symlinks() {
 # later pass descend through an earlier directory symlink and write into whatever
 # it points at -- the node-wide custom-plugins volume, or another plugin's store
 # directory. Keeping every directory real keeps every write inside the instance.
+# True when any gated path lives beneath this directory.
+subtree_has_skips() {
+  case "${LINK_TREE_SKIP:-}" in
+    *"|$1/"*) return 0 ;;
+  esac
+
+  return 1
+}
+
 # LINK_TREE_SKIP is "|a/b|c/d|" -- paths relative to the ROOT of this walk that
 # must not be linked. A directory named in it is skipped whole.
 link_tree() {
@@ -61,13 +70,41 @@ link_tree() {
     fi
 
     if [ -d "$file" ]; then
+      # Nothing under here is gated, so the directory can stay a symlink. That
+      # is what lets a plugin write a config at runtime and have it land on the
+      # node volume instead of dying with the pod -- the behaviour this
+      # directory has always had. Only split one into a real directory when
+      # something inside it has to be left out.
+      if ! subtree_has_skips "$rooted_path"; then
+        if [ ! -e "$destination_file" ]; then
+          ln -s "$file" "$destination_file"
+          continue
+        fi
+
+        # Already points out of the instance. Leaving it alone keeps the
+        # write-through; descending into it is what used to corrupt the shared
+        # volume.
+        if [ -L "$destination_file" ]; then
+          continue
+        fi
+      fi
+
+      local created_here=false
       if [ -L "$destination_file" ]; then
         materialize_dir "$destination_file"
       elif [ ! -d "$destination_file" ]; then
         mkdir -p "$destination_file"
+        created_here=true
       fi
 
       link_tree "$file" "$destination_file" "$rooted_path"
+
+      # A directory whose every entry was gated out leaves an empty shell the
+      # runtime would scan and complain about. rmdir only succeeds when it is
+      # genuinely empty, and only a directory this pass created is a candidate.
+      if [ "$created_here" = true ]; then
+        rmdir "$destination_file" 2>/dev/null || true
+      fi
     elif [ ! -e "$destination_file" ]; then
       ln -s "$file" "$destination_file"
     fi

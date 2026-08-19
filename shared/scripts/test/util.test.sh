@@ -83,6 +83,10 @@ ENABLED_PLUGINS="inventory-simulator@3.1.0" \
   link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
 assert_missing "$workdir/instance/game/csgo/addons/swiftlys2/plugins/Retakes/Retakes.dll" \
   "unselected plugin was linked anyway"
+# An empty plugin directory is still a directory the runtime scans and warns
+# about, so a fully gated plugin should leave nothing behind at all.
+assert_missing "$workdir/instance/game/csgo/addons/swiftlys2/plugins/Retakes" \
+  "gated plugin left an empty directory behind"
 teardown
 
 echo "link_plugins links nothing managed when no mode is selected"
@@ -119,6 +123,31 @@ ENABLED_PLUGINS="inventory-simulator@3.1.0" \
   link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
 assert_equals "$(cat "$workdir/plugins/addons/swiftlys2/configs/plugins/Existing/config.jsonc")" \
   "SHARED-ORIGINAL" "wrote through a directory symlink into the shared volume"
+teardown
+
+# A plugin writes its own config on first load, inside the running server. That
+# has to land on the node volume or it is lost when the pod goes away and is
+# regenerated from scratch every match. Before managed installs this worked
+# because whole directories were symlinked out; it must keep working.
+echo "link_plugins lets a plugin's runtime config reach the node volume"
+setup
+ENABLED_PLUGINS="inventory-simulator@3.1.0" \
+  link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
+echo "WRITTEN-AT-RUNTIME" \
+  > "$workdir/instance/game/csgo/addons/swiftlys2/configs/plugins/Existing/generated.jsonc"
+assert_equals "$(cat "$workdir/plugins/addons/swiftlys2/configs/plugins/Existing/generated.jsonc" 2>/dev/null)" \
+  "WRITTEN-AT-RUNTIME" "runtime config did not reach the node volume"
+teardown
+
+echo "link_plugins lets a plugin create a new config directory on the node"
+setup
+ENABLED_PLUGINS="inventory-simulator@3.1.0" \
+  link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
+mkdir -p "$workdir/instance/game/csgo/addons/swiftlys2/configs/plugins/Fresh"
+echo "NEW-PLUGIN-CONFIG" \
+  > "$workdir/instance/game/csgo/addons/swiftlys2/configs/plugins/Fresh/config.jsonc"
+assert_equals "$(cat "$workdir/plugins/addons/swiftlys2/configs/plugins/Fresh/config.jsonc" 2>/dev/null)" \
+  "NEW-PLUGIN-CONFIG" "a new plugin config directory did not reach the node volume"
 teardown
 
 echo "write_plugin_configs keeps per-match config inside the instance"
