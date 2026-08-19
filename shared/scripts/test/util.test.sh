@@ -30,17 +30,35 @@ assert_missing() {
 setup() {
   workdir="$(mktemp -d)"
 
-  mkdir -p "$workdir/shared/addons/swiftlys2/configs/plugins/Existing"
-  echo "SHARED-ORIGINAL" > "$workdir/shared/addons/swiftlys2/configs/plugins/Existing/config.jsonc"
+  # Stands in for /opt/5stack/custom-plugins: managed installs and hand-placed
+  # files share this one directory now, which is what the index exists to tell
+  # apart.
+  mkdir -p "$workdir/plugins/addons/swiftlys2/configs/plugins/Existing"
+  echo "SHARED-ORIGINAL" > "$workdir/plugins/addons/swiftlys2/configs/plugins/Existing/config.jsonc"
 
-  mkdir -p "$workdir/store/inventory-simulator/3.1.0/addons/swiftlys2/plugins/InventorySimulator"
-  echo "INVSIM" > "$workdir/store/inventory-simulator/3.1.0/addons/swiftlys2/plugins/InventorySimulator/InventorySimulator.dll"
+  mkdir -p "$workdir/plugins/addons/swiftlys2/plugins/InventorySimulator"
+  echo "INVSIM" > "$workdir/plugins/addons/swiftlys2/plugins/InventorySimulator/InventorySimulator.dll"
 
-  mkdir -p "$workdir/store/retakes/1.2.0/addons/swiftlys2/plugins/Retakes"
-  echo "RETAKES" > "$workdir/store/retakes/1.2.0/addons/swiftlys2/plugins/Retakes/Retakes.dll"
+  mkdir -p "$workdir/plugins/addons/swiftlys2/plugins/Retakes"
+  echo "RETAKES" > "$workdir/plugins/addons/swiftlys2/plugins/Retakes/Retakes.dll"
 
-  mkdir -p "$workdir/instance/game/csgo/addons"
-  create_symlinks "$workdir/shared" "$workdir/instance/game/csgo"
+  # Absent from the index: dropped in by hand, so it always loads.
+  mkdir -p "$workdir/plugins/addons/swiftlys2/plugins/HandPlaced"
+  echo "HAND" > "$workdir/plugins/addons/swiftlys2/plugins/HandPlaced/HandPlaced.dll"
+
+  mkdir -p "$workdir/plugins/.5stack-plugins"
+  printf 'inventory-simulator\t3.1.0\taddons/swiftlys2/plugins/InventorySimulator/InventorySimulator.dll\n' \
+    > "$workdir/plugins/.5stack-plugins/index"
+  printf 'retakes\t1.2.0\taddons/swiftlys2/plugins/Retakes/Retakes.dll\n' \
+    >> "$workdir/plugins/.5stack-plugins/index"
+
+  # The instance starts with a directory symlink pointing back at the shared
+  # volume, which is the shape that used to let a later pass write through it
+  # and mutate node-wide state. Only this one directory is pre-linked -- linking
+  # the whole tree up front would mask whether link_plugins gates anything.
+  mkdir -p "$workdir/instance/game/csgo/addons/swiftlys2"
+  ln -s "$workdir/plugins/addons/swiftlys2/configs" \
+    "$workdir/instance/game/csgo/addons/swiftlys2/configs"
 }
 
 teardown() {
@@ -49,42 +67,58 @@ teardown() {
   fi
 }
 
-echo "install_store_plugins links every installed entry"
+echo "link_plugins links a managed plugin the mode selected"
 setup
-ENABLED_PLUGINS="inventory-simulator@3.1.0,retakes@1.2.0" \
-  install_store_plugins "$workdir/store" "$workdir/instance/game/csgo" > /dev/null 2>&1
+ENABLED_PLUGINS="inventory-simulator@3.1.0" \
+  link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
 assert_equals "$(cat "$workdir/instance/game/csgo/addons/swiftlys2/plugins/InventorySimulator/InventorySimulator.dll")" \
-  "INVSIM" "InventorySimulator.dll not reachable"
-assert_equals "$(cat "$workdir/instance/game/csgo/addons/swiftlys2/plugins/Retakes/Retakes.dll")" \
-  "RETAKES" "Retakes.dll not reachable"
+  "INVSIM" "selected plugin was not linked"
 teardown
 
-echo "install_store_plugins never writes into the node-wide volume or the store"
+# The whole reason the index exists: a ranked match must not inherit whatever
+# happens to be installed on the node.
+echo "link_plugins leaves out a managed plugin the mode did not select"
 setup
-ENABLED_PLUGINS="inventory-simulator@3.1.0,retakes@1.2.0" \
-  install_store_plugins "$workdir/store" "$workdir/instance/game/csgo" > /dev/null 2>&1
-assert_missing "$workdir/shared/addons/swiftlys2/plugins" \
-  "wrote through a directory symlink into the shared custom-plugins volume"
-assert_missing "$workdir/store/inventory-simulator/3.1.0/addons/swiftlys2/plugins/Retakes" \
-  "one plugin's tree leaked into another plugin's store directory"
+ENABLED_PLUGINS="inventory-simulator@3.1.0" \
+  link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
+assert_missing "$workdir/instance/game/csgo/addons/swiftlys2/plugins/Retakes/Retakes.dll" \
+  "unselected plugin was linked anyway"
 teardown
 
-echo "install_store_plugins rejects traversal and malformed entries"
+echo "link_plugins links nothing managed when no mode is selected"
 setup
-output="$(ENABLED_PLUGINS="../evil@1,malformed,ghost@9.9.9" \
-  install_store_plugins "$workdir/store" "$workdir/instance/game/csgo" 2>&1)"
-case "$output" in
-  *"refusing unsafe entry ../evil@1"*) ;;
-  *) fail "traversal entry was not refused" ;;
-esac
-case "$output" in
-  *"malformed entry malformed"*) ;;
-  *) fail "malformed entry was not reported" ;;
-esac
-case "$output" in
-  *"ghost@9.9.9 is not installed"*) ;;
-  *) fail "missing plugin was not reported" ;;
-esac
+ENABLED_PLUGINS="" \
+  link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
+assert_missing "$workdir/instance/game/csgo/addons/swiftlys2/plugins/InventorySimulator/InventorySimulator.dll" \
+  "managed plugin linked with no mode selected"
+assert_missing "$workdir/instance/game/csgo/addons/swiftlys2/plugins/Retakes/Retakes.dll" \
+  "managed plugin linked with no mode selected"
+teardown
+
+# Anything absent from the index predates managed installs or was placed by
+# hand. It has always loaded and must keep loading.
+echo "link_plugins always links a hand-placed plugin"
+setup
+ENABLED_PLUGINS="" \
+  link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
+assert_equals "$(cat "$workdir/instance/game/csgo/addons/swiftlys2/plugins/HandPlaced/HandPlaced.dll")" \
+  "HAND" "hand-placed plugin was not linked"
+teardown
+
+echo "link_plugins keeps its own bookkeeping out of the game directory"
+setup
+ENABLED_PLUGINS="inventory-simulator@3.1.0" \
+  link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
+assert_missing "$workdir/instance/game/csgo/.5stack-plugins" \
+  "plugin index was linked into the game directory"
+teardown
+
+echo "link_plugins never writes back through a directory symlink"
+setup
+ENABLED_PLUGINS="inventory-simulator@3.1.0" \
+  link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
+assert_equals "$(cat "$workdir/plugins/addons/swiftlys2/configs/plugins/Existing/config.jsonc")" \
+  "SHARED-ORIGINAL" "wrote through a directory symlink into the shared volume"
 teardown
 
 echo "write_plugin_configs keeps per-match config inside the instance"
@@ -93,7 +127,7 @@ PLUGIN_CONFIGS="$(printf '%s' '{"addons/swiftlys2/configs/plugins/Existing/confi
   write_plugin_configs "$workdir/instance/game/csgo" > /dev/null 2>&1
 assert_equals "$(cat "$workdir/instance/game/csgo/addons/swiftlys2/configs/plugins/Existing/config.jsonc")" \
   "PER-MATCH" "instance did not receive the override"
-assert_equals "$(cat "$workdir/shared/addons/swiftlys2/configs/plugins/Existing/config.jsonc")" \
+assert_equals "$(cat "$workdir/plugins/addons/swiftlys2/configs/plugins/Existing/config.jsonc")" \
   "SHARED-ORIGINAL" "per-match config leaked onto the shared node volume"
 teardown
 

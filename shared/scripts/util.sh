@@ -42,7 +42,7 @@ create_symlinks() {
 link_tree() {
   local source_path="$1"
   local destination_path="$2"
-  local prefix="$3"
+  local prefix="${3:-}"
 
   local file
   for file in "$source_path"/* "$source_path"/.[!.]*; do
@@ -54,7 +54,7 @@ link_tree() {
     local rooted_path="${prefix:+$prefix/}$relative_path"
     local destination_file="$destination_path/$relative_path"
 
-    if [ -n "$LINK_TREE_SKIP" ]; then
+    if [ -n "${LINK_TREE_SKIP:-}" ]; then
       case "$LINK_TREE_SKIP" in
         *"|$rooted_path|"*) continue ;;
       esac
@@ -74,45 +74,6 @@ link_tree() {
   done
 }
 
-# ENABLED_PLUGINS is "slug@version,slug@version", ordered by the mode's load order.
-# create_symlinks never overwrites an existing destination, so earlier entries --
-# and anything hand-placed in custom-plugins -- win any collision.
-install_store_plugins() {
-  local store_root="$1"
-  local destination="$2"
-
-  if [ -z "$ENABLED_PLUGINS" ]; then
-    return 0
-  fi
-
-  local entry
-  for entry in ${ENABLED_PLUGINS//,/ }; do
-    local slug="${entry%@*}"
-    local version="${entry#*@}"
-
-    case "$slug/$version" in
-      *..*)
-        echo "---Plugin Store: refusing unsafe entry ${entry}---" >&2
-        continue
-        ;;
-    esac
-
-    if [ -z "$slug" ] || [ -z "$version" ] || [ "$slug" = "$entry" ]; then
-      echo "---Plugin Store: malformed entry ${entry}, expected slug@version---" >&2
-      continue
-    fi
-
-    local plugin_path="$store_root/$slug/$version"
-
-    if [ ! -d "$plugin_path" ]; then
-      echo "---Plugin Store: ${slug}@${version} is not installed on this node---" >&2
-      continue
-    fi
-
-    echo "---Plugin Store: linking ${slug}@${version}---"
-    link_tree "$plugin_path" "$destination"
-  done
-}
 
 # A directory reached through custom-plugins is a symlink onto the node-wide
 # volume, so writing under it leaks into every other server on the node and
