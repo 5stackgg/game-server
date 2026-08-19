@@ -60,7 +60,14 @@ public partial class FiveStackPlugin
         {
             if (match.IsFreezePeriod())
             {
-                match.PauseMatch("Player disconnected, pausing match");
+                // Re-checked on each retry if a tactical timeout is holding the
+                // pause off -- they may be back before it ends.
+                match.PauseMatch(
+                    "Player disconnected, pausing match",
+                    stillRequired: () =>
+                        ConnectedRosterCount(match.GetMatchData() ?? matchData)
+                        < match.GetExpectedPlayerCount()
+                );
             }
 
             _surrenderSystem.SetupDisconnectTimer(
