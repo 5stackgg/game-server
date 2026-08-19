@@ -179,27 +179,27 @@ if $INSTALL_5STACK_PLUGIN = true ; then
 fi
 
 # A practice server runs this instead of the match plugin, never alongside it.
-if $INSTALL_NADE_PRACTICE_PLUGIN = true ; then
-  echo "---Install Nade Practice---"
-  NADE_PRACTICE_PLUGIN_DIR="${INSTANCE_SERVER_DIR}/game/csgo/addons/swiftlys2/plugins/NadePractice"
+if $INSTALL_UTILITY_PRACTICE_PLUGIN = true ; then
+  echo "---Install Utility Practice---"
+  UTILITY_PRACTICE_PLUGIN_DIR="${INSTANCE_SERVER_DIR}/game/csgo/addons/swiftlys2/plugins/UtilityPractice"
   if [ "${DEV_SWAPPED}" == "1" ]; then
     # AutoHotReload's recursive FileSystemWatcher does not follow symlinked plugin
     # dirs, so hot reload needs the dev volume mounted straight onto this path
     # (see the dev deployment). Without the mount, fall back to a symlink.
-    mkdir -p "$NADE_PRACTICE_PLUGIN_DIR"
-    if mountpoint -q "$NADE_PRACTICE_PLUGIN_DIR"; then
-      echo "---Nade Practice dev: plugin dir is a mounted volume (hot reload enabled)---"
+    mkdir -p "$UTILITY_PRACTICE_PLUGIN_DIR"
+    if mountpoint -q "$UTILITY_PRACTICE_PLUGIN_DIR"; then
+      echo "---Utility Practice dev: plugin dir is a mounted volume (hot reload enabled)---"
     else
       # css and sw dev builds share the dev volume; each uses its own subfolder
-      rmdir "$NADE_PRACTICE_PLUGIN_DIR" 2>/dev/null
-      mkdir -p "/opt/dev/nades-sw"
-      ln -s "/opt/dev/nades-sw" "$NADE_PRACTICE_PLUGIN_DIR"
-      echo "---Nade Practice dev: symlinked /opt/dev/nades-sw (hot reload OFF; use 'sw plugins reload NadePractice')---"
+      rmdir "$UTILITY_PRACTICE_PLUGIN_DIR" 2>/dev/null
+      mkdir -p "/opt/dev/utility-sw"
+      ln -s "/opt/dev/utility-sw" "$UTILITY_PRACTICE_PLUGIN_DIR"
+      echo "---Utility Practice dev: symlinked /opt/dev/utility-sw (hot reload OFF; use 'sw plugins reload UtilityPractice')---"
     fi
-  elif [ ! -e "$NADE_PRACTICE_PLUGIN_DIR" ]; then
-    ln -s "/opt/nade-practice" "$NADE_PRACTICE_PLUGIN_DIR"
+  elif [ ! -e "$UTILITY_PRACTICE_PLUGIN_DIR" ]; then
+    ln -s "/opt/utility-practice" "$UTILITY_PRACTICE_PLUGIN_DIR"
   else
-    echo "---Nade Practice: plugin dir already present, skipping /opt/nade-practice symlink---"
+    echo "---Utility Practice: plugin dir already present, skipping /opt/utility-practice symlink---"
   fi
 fi
 

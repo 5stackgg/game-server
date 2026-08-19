@@ -340,7 +340,7 @@ public static class PracticeSolverUtility
         };
     }
 
-    // nade_solver_solve is driven over RCON, where a positional argument list is
+    // utility_solver_solve is driven over RCON, where a positional argument list is
     // a silent misfire waiting to happen. Named arguments make a wrong call an
     // error rather than a lineup for the wrong place.
     public static bool TryParse(

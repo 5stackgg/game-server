@@ -13,7 +13,7 @@ namespace FiveStack.Utilities;
 // into a coin flip.
 public static class PracticeSignalUtility
 {
-    public const string Prefix = "[nade-practice]";
+    public const string Prefix = "[utility-practice]";
 
     // A grenade the plugin emitted has gone off. Deliberately not raised for a
     // grenade a player threw: that one is observable from the demo, from the

@@ -1,6 +1,6 @@
 namespace FiveStack.Enums;
 
-// Mirrors public.e_nade_visibility.
+// Mirrors public.e_utility_visibility.
 public enum eLineupVisibility
 {
     Private,

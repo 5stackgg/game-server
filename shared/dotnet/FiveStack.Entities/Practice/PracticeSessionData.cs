@@ -12,5 +12,5 @@ public class PracticeSessionData
     public List<string> allowed_steam_ids { get; set; } = new List<string>();
 
     // Null unless the panel has loaded an execute onto this session.
-    public NadePlaybook? playbook { get; set; }
+    public UtilityPlaybook? playbook { get; set; }
 }

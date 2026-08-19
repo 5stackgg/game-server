@@ -219,7 +219,7 @@ public class DrillProgress
 
     public float Rate => Attempts == 0 ? 0f : (float)Successes / Attempts;
 
-    public static DrillProgress From(NadePracticeResult result)
+    public static DrillProgress From(UtilityPracticeResult result)
     {
         return new DrillProgress
         {
@@ -239,7 +239,7 @@ public class DrillProgressBook
     private readonly Dictionary<ulong, Dictionary<string, DrillProgress>> _progress =
         new Dictionary<ulong, Dictionary<string, DrillProgress>>();
 
-    public void Record(ulong steamId, string? lineupId, NadePracticeResult? result)
+    public void Record(ulong steamId, string? lineupId, UtilityPracticeResult? result)
     {
         if (result == null || string.IsNullOrEmpty(lineupId))
         {

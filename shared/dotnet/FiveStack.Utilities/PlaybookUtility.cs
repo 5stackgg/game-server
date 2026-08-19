@@ -16,11 +16,11 @@ public static class PlaybookUtility
     // lands late is still part of the same run.
     public const int TailMs = 3000;
 
-    public static List<NadePlaybookStep> Ordered(NadePlaybook? playbook)
+    public static List<UtilityPlaybookStep> Ordered(UtilityPlaybook? playbook)
     {
         if (playbook == null)
         {
-            return new List<NadePlaybookStep>();
+            return new List<UtilityPlaybookStep>();
         }
 
         return playbook
@@ -34,8 +34,8 @@ public static class PlaybookUtility
     // Half open on purpose: the cursor a caller keeps is the last elapsed time
     // it has already fired, so passing -1 first fires a step at offset zero
     // exactly once.
-    public static List<NadePlaybookStep> Due(
-        IReadOnlyList<NadePlaybookStep> steps,
+    public static List<UtilityPlaybookStep> Due(
+        IReadOnlyList<UtilityPlaybookStep> steps,
         int afterMs,
         int throughMs
     )
@@ -45,19 +45,19 @@ public static class PlaybookUtility
             .ToList();
     }
 
-    public static int DurationMs(IReadOnlyList<NadePlaybookStep> steps)
+    public static int DurationMs(IReadOnlyList<UtilityPlaybookStep> steps)
     {
         return steps.Count == 0 ? 0 : steps.Max(step => step.offset_ms);
     }
 
-    public static bool IsAssigned(NadePlaybookStep step)
+    public static bool IsAssigned(UtilityPlaybookStep step)
     {
         return !string.IsNullOrWhiteSpace(step.assigned_steam_id);
     }
 
     // An unassigned step belongs to whoever is standing there, so it prompts
     // everyone rather than nobody.
-    public static bool IsFor(NadePlaybookStep step, ulong steamId)
+    public static bool IsFor(UtilityPlaybookStep step, ulong steamId)
     {
         return !IsAssigned(step)
             || step.assigned_steam_id!.Trim() == steamId.ToString();

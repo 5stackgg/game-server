@@ -51,11 +51,11 @@ jobs:
             css:
               - *shared
               - 'apps/counterstrikesharp/**'
-              - 'apps/nades-css/**'
+              - 'apps/utility-css/**'
             sw:
               - *shared
               - 'apps/swiftly/**'
-              - 'apps/nades-sw/**'
+              - 'apps/utility-sw/**'
             validator:
               - 'apps/gamedata-validator/**'
               - 'shared/gamedata/**'
@@ -75,7 +75,7 @@ jobs:
       version_tag_regex: '^(?:css-)?v0\.0\.(\d+)$'
       channel: ${{ needs.changes.outputs.channel }}
       run_tests: true
-      extra_test_dir: apps/nades-css
+      extra_test_dir: apps/utility-css
     secrets: inherit
 
   swiftly:
@@ -91,7 +91,7 @@ jobs:
       version_floor: 41
       channel: ${{ needs.changes.outputs.channel }}
       run_tests: true
-      extra_test_dir: apps/nades-sw
+      extra_test_dir: apps/utility-sw
     secrets: inherit
 
   gamedata-validator:

@@ -39,25 +39,25 @@ COPY apps/counterstrikesharp/src/lang /mod/release/lang
 
 # The practice plugin is the other half of this image: a server runs either it
 # or the match plugin, never both, so it is built here and symlinked into place
-# only when INSTALL_NADE_PRACTICE_PLUGIN is set.
-FROM dotnet-sdk AS nades-build
+# only when INSTALL_UTILITY_PRACTICE_PLUGIN is set.
+FROM dotnet-sdk AS utility-build
 
 WORKDIR /mod
 
 COPY Directory.Build.props ./
-COPY apps/nades-css/src/NadePractice.csproj apps/nades-css/src/
+COPY apps/utility-css/src/UtilityPractice.csproj apps/utility-css/src/
 
-RUN dotnet restore apps/nades-css/src/NadePractice.csproj
+RUN dotnet restore apps/utility-css/src/UtilityPractice.csproj
 
 COPY shared shared
-COPY apps/nades-css apps/nades-css
+COPY apps/utility-css apps/utility-css
 
 ARG RELEASE_VERSION
 ENV RELEASE_VERSION=${RELEASE_VERSION}
 
-RUN sed -i "s/__RELEASE_VERSION__/${RELEASE_VERSION}/" apps/nades-css/src/NadePracticePlugin.cs
+RUN sed -i "s/__RELEASE_VERSION__/${RELEASE_VERSION}/" apps/utility-css/src/UtilityPracticePlugin.cs
 
-RUN dotnet build -c Release apps/nades-css/src/NadePractice.csproj -o release
+RUN dotnet build -c Release apps/utility-css/src/UtilityPractice.csproj -o release
 
 RUN rm -f /mod/release/CounterStrikeSharp.API.dll
 
@@ -86,7 +86,7 @@ ENV AUTOLOAD_PLUGINS=true
 ENV PLUGINS_DIR="/opt/custom-plugins"
 
 ENV INSTALL_5STACK_PLUGIN=true
-ENV INSTALL_NADE_PRACTICE_PLUGIN=false
+ENV INSTALL_UTILITY_PRACTICE_PLUGIN=false
 
 ENV GAME_ID="730"
 ENV GAME_PARAMS=""
@@ -152,7 +152,7 @@ COPY apps/counterstrikesharp/cfg /opt/server-cfg
 COPY shared/scripts /opt/scripts
 COPY apps/counterstrikesharp/scripts /opt/scripts
 COPY --from=build /mod/release /opt/mod
-COPY --from=nades-build /mod/release /opt/nade-practice
+COPY --from=utility-build /mod/release /opt/utility-practice
 
 RUN mv /opt/metamod/addons /opt/addons && \
 	cp -R /opt/counterstrikesharp/addons/metamod /opt/addons && \

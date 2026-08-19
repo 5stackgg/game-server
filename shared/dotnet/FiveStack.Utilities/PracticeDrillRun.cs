@@ -131,7 +131,7 @@ public class PracticeDrillRun
 
     // The panel has answered. A null result is "not scored", which is not the
     // same as a miss and does not break a streak nobody has disproved.
-    public bool Score(string? lineupId, NadePracticeResult? result)
+    public bool Score(string? lineupId, UtilityPracticeResult? result)
     {
         if (
             _pending == null
