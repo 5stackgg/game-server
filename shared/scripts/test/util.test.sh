@@ -1,5 +1,5 @@
 #!/bin/bash
-# Regression tests for the plugin-store helpers in util.sh.
+# Regression tests for the managed-plugin helpers in util.sh.
 # Run: bash shared/scripts/test/util.test.sh
 
 set -u

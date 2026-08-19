@@ -133,8 +133,11 @@ if [ ! -e "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs/core
     cp "/opt/server-cfg/core.json" "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs"
 fi
 
-if [ "$SHOW_ELO_RANKS" = "true" ]; then
-    echo "---Disabling CS2 Server Guidelines (required for Elo Ranks to render)---"
+# Elo ranks and any plugin the panel says needs it both land here: the
+# framework refuses the calls they make while this is true, and it can only be
+# changed before the server starts.
+if [ "$SHOW_ELO_RANKS" = "true" ] || [ "$DISABLE_SERVER_GUIDELINES" = "true" ]; then
+    echo "---Disabling CS2 Server Guidelines---"
     core_json="$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs/core.json"
     sed -i --follow-symlinks 's/"FollowCS2ServerGuidelines"[[:space:]]*:[[:space:]]*true/"FollowCS2ServerGuidelines": false/' "$core_json"
 fi

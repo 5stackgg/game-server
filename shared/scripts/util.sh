@@ -35,8 +35,8 @@ create_symlinks() {
 # create_symlinks symlinks whole directories, which is correct for the read-only
 # game files but not here: composing several plugin sources into one tree makes a
 # later pass descend through an earlier directory symlink and write into whatever
-# it points at -- the node-wide custom-plugins volume, or another plugin's store
-# directory. Keeping every directory real keeps every write inside the instance.
+# it points at -- the node-wide custom-plugins volume itself. Keeping every
+# directory real keeps every write inside the instance.
 # True when any gated path lives beneath this directory.
 subtree_has_skips() {
   case "${LINK_TREE_SKIP:-}" in
