@@ -114,14 +114,13 @@ if [ "$SERVER_TYPE" != "Ranked" ]; then
     cp "/opt/server-cfg/core.jsonc" "/opt/custom-plugins/addons/swiftlys2/configs/core.jsonc"
   fi
 
-  create_symlinks "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
+  link_plugins "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
 fi
 
 if $AUTOLOAD_PLUGINS = true ; then
   echo "---Install Custom Plugins---"
-  create_symlinks "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
+  link_plugins "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
 
-  install_store_plugins "/opt/plugin-store" "${INSTANCE_SERVER_DIR}/game/csgo"
 
   if [ -e "/opt/custom-plugins/addons/swiftlys2/gamedata/cs2/core/offsets.jsonc" ]; then
     echo "---Install Custom Gamedata---"

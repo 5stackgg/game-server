@@ -37,9 +37,12 @@ create_symlinks() {
 # later pass descend through an earlier directory symlink and write into whatever
 # it points at -- the node-wide custom-plugins volume, or another plugin's store
 # directory. Keeping every directory real keeps every write inside the instance.
+# LINK_TREE_SKIP is "|a/b|c/d|" -- paths relative to the ROOT of this walk that
+# must not be linked. A directory named in it is skipped whole.
 link_tree() {
   local source_path="$1"
   local destination_path="$2"
+  local prefix="$3"
 
   local file
   for file in "$source_path"/* "$source_path"/.[!.]*; do
@@ -48,7 +51,14 @@ link_tree() {
     fi
 
     local relative_path="${file#$source_path/}"
+    local rooted_path="${prefix:+$prefix/}$relative_path"
     local destination_file="$destination_path/$relative_path"
+
+    if [ -n "$LINK_TREE_SKIP" ]; then
+      case "$LINK_TREE_SKIP" in
+        *"|$rooted_path|"*) continue ;;
+      esac
+    fi
 
     if [ -d "$file" ]; then
       if [ -L "$destination_file" ]; then
@@ -57,7 +67,7 @@ link_tree() {
         mkdir -p "$destination_file"
       fi
 
-      link_tree "$file" "$destination_file"
+      link_tree "$file" "$destination_file" "$rooted_path"
     elif [ ! -e "$destination_file" ]; then
       ln -s "$file" "$destination_file"
     fi
@@ -193,4 +203,59 @@ write_plugin_configs() {
     printf '%s' "$decoded" | jq -r --arg key "$relative" '.[$key]' > "$destination"
     echo "---Plugin Configs: wrote ${relative}---"
   done <<< "$paths"
+}
+
+
+# Links a plugins directory into a server instance, leaving out managed plugins
+# the match's mode did not ask for. Managed and hand-placed files share this
+# directory, so the index written at install time is the only way to tell them
+# apart -- anything absent from it is hand-placed and always links, which is
+# exactly how this directory behaved before plugins were managed at all.
+plugin_skip_list() {
+  local plugins_root="$1"
+  local index="$plugins_root/.5stack-plugins/index"
+
+  if [ ! -f "$index" ]; then
+    return 0
+  fi
+
+  local enabled=",${ENABLED_PLUGINS},"
+  local slug version file
+  while IFS="$(printf '\t')" read -r slug version file; do
+    if [ -z "$file" ]; then
+      continue
+    fi
+
+    case "$enabled" in
+      *",$slug@$version,"*) continue ;;
+    esac
+
+    printf '%s\n' "$file"
+  done < "$index"
+}
+
+link_plugins() {
+  local plugins_root="$1"
+  local destination="$2"
+
+  if [ ! -d "$plugins_root" ]; then
+    return 0
+  fi
+
+  # The index describes the directory; it is not a plugin file itself.
+  LINK_TREE_SKIP="|.5stack-plugins|"
+
+  local file
+  while IFS= read -r file; do
+    if [ -n "$file" ]; then
+      LINK_TREE_SKIP="${LINK_TREE_SKIP}${file}|"
+      echo "---Plugin not selected by this mode, skipping: ${file}---"
+    fi
+  done <<EOF
+$(plugin_skip_list "$plugins_root")
+EOF
+
+  link_tree "$plugins_root" "$destination"
+
+  LINK_TREE_SKIP=""
 }
