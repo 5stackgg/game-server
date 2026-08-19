@@ -129,6 +129,18 @@ if $INSTALL_5STACK_PLUGIN = true ; then
   fi
 fi
 
+# A practice server runs this instead of the match plugin, never alongside it.
+if $INSTALL_NADE_PRACTICE_PLUGIN = true ; then
+  echo "---Install Nade Practice---"
+  if [ "${DEV_SWAPPED}" == "1" ]; then
+    # css and sw dev builds share the dev volume; each uses its own subfolder
+    mkdir -p "/opt/dev/nades-css"
+    ln -s "/opt/dev/nades-css" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/NadePractice"
+  else
+    ln -s "/opt/nade-practice" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/NadePractice"
+  fi
+fi
+
 if [ ! -e "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs/core.json" ]; then
     cp "/opt/server-cfg/core.json" "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs"
 fi

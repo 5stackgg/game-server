@@ -1,0 +1,197 @@
+using FiveStack.Entities.Practice;
+
+namespace FiveStack.Utilities;
+
+// Name tables and lookup helpers shared by both plugin runtimes.
+public static class PracticeLineupUtility
+{
+    // designer name of the projectile entity -> e_utility_types value
+    private static readonly Dictionary<string, string> ProjectileToUtility =
+        new()
+        {
+            { "smokegrenade_projectile", "Smoke" },
+            { "flashbang_projectile", "Flash" },
+            { "hegrenade_projectile", "HighExplosive" },
+            { "molotov_projectile", "Molotov" },
+            { "incendiarygrenade_projectile", "Molotov" },
+            { "decoy_projectile", "Decoy" },
+        };
+
+    // e_utility_types value -> the item a player is given to reproduce it
+    private static readonly Dictionary<string, string> UtilityToWeapon =
+        new()
+        {
+            { "Smoke", "weapon_smokegrenade" },
+            { "Flash", "weapon_flashbang" },
+            { "HighExplosive", "weapon_hegrenade" },
+            { "Molotov", "weapon_molotov" },
+            { "Decoy", "weapon_decoy" },
+        };
+
+    private static readonly HashSet<string> GrenadeWeapons =
+        new()
+        {
+            "weapon_smokegrenade",
+            "weapon_flashbang",
+            "weapon_hegrenade",
+            "weapon_molotov",
+            "weapon_incgrenade",
+            "weapon_decoy",
+        };
+
+    public static string? UtilityTypeForProjectile(string designerName)
+    {
+        return ProjectileToUtility.TryGetValue(designerName, out string? type) ? type : null;
+    }
+
+    public static string? WeaponForUtilityType(string utilityType)
+    {
+        return UtilityToWeapon.TryGetValue(utilityType, out string? weapon) ? weapon : null;
+    }
+
+    public static bool IsGrenadeWeapon(string designerName)
+    {
+        return GrenadeWeapons.Contains(designerName);
+    }
+
+    // What the grenade in a player's hand would record as, so a command that
+    // takes no utility argument can read the intent off the loadout instead of
+    // guessing at a smoke. weapon_incgrenade has no entry in the table above --
+    // it is the CT molotov, and it is a Molotov lineup either way.
+    public static string? UtilityTypeForWeapon(string designerName)
+    {
+        if (designerName == "weapon_incgrenade")
+        {
+            return "Molotov";
+        }
+
+        foreach ((string utilityType, string weapon) in UtilityToWeapon)
+        {
+            if (weapon == designerName)
+            {
+                return utilityType;
+            }
+        }
+
+        return null;
+    }
+
+    // The API's spelling is the one that counts, and the mismatch that matters
+    // is "HE": the demo parser emits it, the panel's enum does not have it, and
+    // a wrong value here stores a lineup nobody can find rather than failing.
+    private static readonly Dictionary<string, string> UtilityTypeAliases =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            { "HE", "HighExplosive" },
+            { "HEGrenade", "HighExplosive" },
+            { "HighExplosive", "HighExplosive" },
+            { "Smoke", "Smoke" },
+            { "SmokeGrenade", "Smoke" },
+            { "Flash", "Flash" },
+            { "Flashbang", "Flash" },
+            { "Molotov", "Molotov" },
+            { "Incendiary", "Molotov" },
+            { "Decoy", "Decoy" },
+        };
+
+    public static string NormalizeUtilityType(string utilityType)
+    {
+        return UtilityTypeAliases.TryGetValue(utilityType, out string? normalized)
+            ? normalized
+            : utilityType;
+    }
+
+    // Everything a query could have meant, nearest first, so .next and .prev
+    // walk the same set the player was thinking of. Resolve picks one out of
+    // this; it does not narrow it further.
+    public static List<LineupRecord> Filter(
+        IEnumerable<LineupRecord> lineups,
+        string query,
+        Vec3? near = null
+    )
+    {
+        IEnumerable<LineupRecord> matches = lineups;
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            matches = matches.Where(lineup =>
+                lineup.name.Contains(query, StringComparison.OrdinalIgnoreCase)
+            );
+        }
+
+        if (near == null)
+        {
+            return matches.ToList();
+        }
+
+        Vec3 from = near.Value;
+
+        return matches
+            .OrderBy(lineup => (lineup.release.feet_position - from).Length())
+            .ToList();
+    }
+
+    // Exact name, then unique prefix, then nearest to the player. Resolution
+    // order matters: a player who typed the whole name should never be handed
+    // something else because they happen to be standing next to another lineup.
+    public static LineupRecord? Resolve(
+        IEnumerable<LineupRecord> lineups,
+        string query,
+        Vec3? near = null
+    )
+    {
+        var candidates = lineups.ToList();
+        if (candidates.Count == 0)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            LineupRecord? exact = candidates.FirstOrDefault(lineup =>
+                string.Equals(lineup.name, query, StringComparison.OrdinalIgnoreCase)
+            );
+            if (exact != null)
+            {
+                return exact;
+            }
+
+            var prefixed = candidates
+                .Where(lineup =>
+                    lineup.name.StartsWith(query, StringComparison.OrdinalIgnoreCase)
+                )
+                .ToList();
+            if (prefixed.Count == 1)
+            {
+                return prefixed[0];
+            }
+
+            var contained = candidates
+                .Where(lineup =>
+                    lineup.name.Contains(query, StringComparison.OrdinalIgnoreCase)
+                )
+                .ToList();
+            if (contained.Count == 1)
+            {
+                return contained[0];
+            }
+
+            candidates = prefixed.Count > 0 ? prefixed : contained;
+        }
+
+        if (candidates.Count == 0)
+        {
+            return null;
+        }
+
+        if (near == null)
+        {
+            return candidates[0];
+        }
+
+        Vec3 from = near.Value;
+        return candidates
+            .OrderBy(lineup => (lineup.release.feet_position - from).Length())
+            .First();
+    }
+}
