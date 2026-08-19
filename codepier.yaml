@@ -4,6 +4,8 @@ container: dev
 workload:
   - dev-game-server
   - dev-swiftly-game-server
+  - dev-nades-game-server
+  - dev-nades-swiftly-game-server
 supplemental: true
 workdir: /opt/5stack
 sync:
