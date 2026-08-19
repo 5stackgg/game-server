@@ -206,9 +206,17 @@ public class MatchManager
     // budget silently drops the pause for a player who crashed during one.
     private const int PauseRetryAttempts = 45;
 
+    // stillRequired is consulted before each retry, not on the initial call:
+    // a pause queued behind a tactical timeout can stop being wanted before
+    // the timeout ends (the disconnected player reconnects), and without the
+    // check the retry lands on a full roster once the timeout clears, with
+    // nothing left to resume it. Skipping the initial call matters because
+    // the caller's own precondition may not be observable yet -- a
+    // disconnecting player is still in Players() during player_disconnect.
     public void PauseMatch(
         string? message = null,
         bool skipUpdate = false,
+        Func<bool>? stillRequired = null,
         int retriesLeft = PauseRetryAttempts
     )
     {
@@ -232,7 +240,16 @@ public class MatchManager
 
             TimerUtility.AddTimer(
                 1,
-                () => PauseMatch(message, skipUpdate, retriesLeft - 1)
+                () =>
+                {
+                    if (stillRequired != null && !stillRequired())
+                    {
+                        _logger.LogInformation("Pause no longer required, dropping retry");
+                        return;
+                    }
+
+                    PauseMatch(message, skipUpdate, stillRequired, retriesLeft - 1);
+                }
             );
             return;
         }
