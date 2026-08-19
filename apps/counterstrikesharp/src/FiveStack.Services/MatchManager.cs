@@ -580,12 +580,7 @@ public class MatchManager
         {
             _configuredMapId = _currentMap.id;
 
-            _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
-
-            if (_matchData.is_lan)
-            {
-                _gameServer.SendCommands(["exec 5stack.lan.cfg"]);
-            }
+            _gameServer.SendCommands(MatchConfigExecCommands());
 
             ApplyWorkshopBlockedCvars();
         }
@@ -904,6 +899,33 @@ public class MatchManager
             { "sv_pausable", "1" },
         };
 
+    // A game mode's cvars ride in as the "Mode" cfg override and must be exec'd
+    // after the type cfg everywhere it is exec'd -- returning from a knife round
+    // and going live both re-exec it, and would otherwise revert the mode.
+    public string[] MatchConfigExecCommands()
+    {
+        List<string> commands = new List<string>
+        {
+            $"exec 5stack.{_matchData?.options.type.ToLower()}.cfg",
+        };
+
+        if (_matchData?.is_lan == true)
+        {
+            commands.Add("exec 5stack.lan.cfg");
+        }
+
+        if (
+            _matchData?.options.cfg_overrides != null
+            && _matchData.options.cfg_overrides.TryGetValue("Mode", out var modeCfg)
+            && !string.IsNullOrEmpty(modeCfg)
+        )
+        {
+            commands.Add("exec 5stack.mode.cfg");
+        }
+
+        return commands.ToArray();
+    }
+
     private void ApplyWorkshopBlockedCvars()
     {
         if (_matchData == null)
@@ -919,15 +941,17 @@ public class MatchManager
         // keys were already lowercase -- and this dictionary compares by
         // ordinal, so a "Competitive" key would never match a "competitive"
         // lookup and the admin's override would be silently ignored.
-        string? overrideCfg = _matchData
-            .options.cfg_overrides?.FirstOrDefault(entry =>
-                string.Equals(
-                    entry.Key,
-                    _matchData.options.type,
-                    StringComparison.OrdinalIgnoreCase
+        string? OverrideFor(string key) =>
+            _matchData
+                .options.cfg_overrides?.FirstOrDefault(entry =>
+                    string.Equals(entry.Key, key, StringComparison.OrdinalIgnoreCase)
                 )
-            )
-            .Value;
+                .Value;
+
+        // Highest precedence first. The mode cfg is exec'd after the type cfg,
+        // so where both set a blocked cvar the mode's value is the one the
+        // server would have ended up with had CS2 not dropped it.
+        string?[] overridesByPrecedence = [OverrideFor("Mode"), OverrideFor(_matchData.options.type)];
 
         foreach (var cvar in WorkshopBlockedCvars)
         {
@@ -942,8 +966,13 @@ public class MatchManager
                 value = _matchData.options.halftime_pausematch ? "1" : "0";
             }
 
-            if (!string.IsNullOrEmpty(overrideCfg))
+            foreach (var overrideCfg in overridesByPrecedence)
             {
+                if (string.IsNullOrEmpty(overrideCfg))
+                {
+                    continue;
+                }
+
                 var match = Regex.Match(
                     overrideCfg,
                     $@"^\s*{Regex.Escape(cvar.Key)}\s+(\S+)",
@@ -953,6 +982,7 @@ public class MatchManager
                 if (match.Success)
                 {
                     value = match.Groups[1].Value;
+                    break;
                 }
             }
 
@@ -988,7 +1018,7 @@ public class MatchManager
             );
         }
 
-        _gameServer.SendCommands([$"exec 5stack.{_matchData.options.type.ToLower()}.cfg"]);
+        _gameServer.SendCommands(MatchConfigExecCommands());
 
         ApplyWorkshopBlockedCvars();
 

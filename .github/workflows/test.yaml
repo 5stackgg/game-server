@@ -8,6 +8,14 @@ on:
       - "beta"
 
 jobs:
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test setup scripts
+        run: bash shared/scripts/test/util.test.sh
+
   test:
     runs-on: ubuntu-latest
     strategy:

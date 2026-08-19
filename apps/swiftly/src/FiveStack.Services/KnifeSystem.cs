@@ -60,9 +60,7 @@ public class KnifeSystem
 
         if (match != null)
         {
-            _gameServer.SendCommands([
-                $"exec 5stack.{match.GetMatchData()?.options.type.ToLower()}.cfg",
-            ]);
+            _gameServer.SendCommands(match.MatchConfigExecCommands());
         }
 
         var rules = MatchUtility.Rules();
@@ -250,9 +248,7 @@ public class KnifeSystem
 
         if (match != null)
         {
-            _gameServer.SendCommands([
-                $"exec 5stack.{match.GetMatchData()?.options.type.ToLower()}.cfg",
-            ]);
+            _gameServer.SendCommands(match.MatchConfigExecCommands());
         }
 
         var rules = MatchUtility.Rules();

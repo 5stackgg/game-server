@@ -41,6 +41,11 @@ done
 echo "---Install Addons---"
 cp -r "/opt/addons" "${INSTANCE_SERVER_DIR}/game/csgo"
 
+if [ "$ENABLE_CSS_COMPAT" = "true" ] && [ -d "/opt/addons-css" ]; then
+  echo "---Install CounterStrikeSharp Compatibility Addons---"
+  cp -r "/opt/addons-css/." "${INSTANCE_SERVER_DIR}/game/csgo/addons"
+fi
+
 echo "---Create Symbolic Links---"
 
 if [ "$SERVER_TYPE" = "Ranked" ]; then
@@ -68,6 +73,21 @@ if [ -d "${INSTANCE_SERVER_DIR}/game/csgo/addons/swiftlys2/configs" ]; then
 fi
 
 ln -s "/opt/custom-plugins/addons/swiftlys2/configs" "${INSTANCE_SERVER_DIR}/game/csgo/addons/swiftlys2/configs"
+
+if [ "$ENABLE_CSS_COMPAT" = "true" ]; then
+  if [ ! -d "/opt/custom-plugins/addons/counterstrikesharp/configs" ]; then
+    mkdir -p "/opt/custom-plugins/addons/counterstrikesharp/configs"
+  fi
+
+  if [ -d "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs" ]; then
+    if [ "$(ls -A "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs")" ]; then
+      cp -r "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs/." "/opt/custom-plugins/addons/counterstrikesharp/configs"
+    fi
+    rm -rf "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs"
+  fi
+
+  ln -s "/opt/custom-plugins/addons/counterstrikesharp/configs" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs"
+fi
 
 if [ "$SERVER_TYPE" != "Ranked" ]; then
   if [ ! -d "/opt/custom-plugins" ]; then
@@ -100,6 +120,8 @@ fi
 if $AUTOLOAD_PLUGINS = true ; then
   echo "---Install Custom Plugins---"
   create_symlinks "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
+
+  install_store_plugins "/opt/plugin-store" "${INSTANCE_SERVER_DIR}/game/csgo"
 
   if [ -e "/opt/custom-plugins/addons/swiftlys2/gamedata/cs2/core/offsets.jsonc" ]; then
     echo "---Install Custom Gamedata---"
@@ -167,6 +189,18 @@ if ! grep -qFx "$new_line" "$gameinfo_path"; then
     sed -i "${line_number}a\\$new_line" "$gameinfo_path"
 fi
 
+if [ "$ENABLE_CSS_COMPAT" = "true" ]; then
+    metamod_line="                        Game    csgo/addons/metamod"
+
+    # SwiftlyS2 requires its own entry to come FIRST; metamod (and therefore
+    # CounterStrikeSharp) is anchored after it, not after Game_LowViolence.
+    if ! grep -qFx "$metamod_line" "$gameinfo_path"; then
+        echo "---Adding Metamod Loader (CSS compatibility) ---"
+        line_number=$(grep -nFx "$new_line" "$gameinfo_path" | cut -d: -f1 | head -n 1)
+        sed -i "${line_number}a\\$metamod_line" "$gameinfo_path"
+    fi
+fi
+
 gameinfo_branchspecific_path="${INSTANCE_SERVER_DIR}/game/csgo/gameinfo_branchspecific.gi"
 
 if [ "$STEAM_RELAY" = "true" ]; then
@@ -192,3 +226,5 @@ echo '"GameInfo"
     }
 }' > "$gameinfo_branchspecific_path"  
 fi
+
+write_plugin_configs "${INSTANCE_SERVER_DIR}/game/csgo"

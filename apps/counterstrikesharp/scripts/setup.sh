@@ -98,6 +98,8 @@ if $AUTOLOAD_PLUGINS = true ; then
   echo "---Install Custom Plugins---"
   create_symlinks "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
 
+  install_store_plugins "/opt/plugin-store" "${INSTANCE_SERVER_DIR}/game/csgo"
+
   if [ -e "/opt/custom-plugins/addons/counterstrikesharp/gamedata/gamedata.json" ]; then
     echo "---Install Custom Gamedata---"
     rm "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/gamedata/gamedata.json"  
@@ -163,3 +165,5 @@ echo '"GameInfo"
     }
 }' > "$gameinfo_branchspecific_path"  
 fi
+
+write_plugin_configs "${INSTANCE_SERVER_DIR}/game/csgo"
