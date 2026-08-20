@@ -48,6 +48,28 @@ public class PracticeRecorder
     // FL_ONGROUND, the same flag the snapshot itself records.
     private const uint FlOnGround = 1 << 0;
 
+    // Horizontal units/sec that still counts as standing still. Not zero: a
+    // player settling onto a lineup leaves small residual velocity behind.
+    private const float StationarySpeed = 12f;
+
+    // 64 ticks/sec. A run-up that began five seconds ago is not a run-up.
+    private const int StationaryMaxAgeTicks = 64 * 5;
+
+    // Consecutive still ticks before a position counts as a standstill. A
+    // strafe that reverses (S then D) drags velocity through zero for a tick
+    // or two, and that instant is mid-run-up, not a place anyone stood.
+    private const int StationarySettleTicks = 4;
+
+    // Where a throw is set up from, which is not where the player leaves the
+    // ground. A run- or jump-throw is aimed from a standstill and then walked
+    // into, so the last grounded tick is the takeoff point: teleporting to it
+    // drops the player mid-run-up with the run-up already spent.
+    private struct StationaryAnchor
+    {
+        public Vec3 Position;
+        public int Tick;
+    }
+
     private class TrackedProjectile
     {
         public required ulong ThrowerSteamId;
@@ -61,6 +83,8 @@ public class PracticeRecorder
     }
 
     private readonly Dictionary<ulong, ArmedState> _armed = new();
+    private readonly Dictionary<ulong, StationaryAnchor> _stationary = new();
+    private readonly Dictionary<ulong, int> _settling = new();
     private readonly Dictionary<ulong, ThrowSnapshot> _pending = new();
     private readonly Dictionary<uint, TrackedProjectile> _tracked = new();
     private readonly Dictionary<ulong, List<LineupRecord>> _history = new();
@@ -109,6 +133,8 @@ public class PracticeRecorder
     public void Reset()
     {
         _armed.Clear();
+        _stationary.Clear();
+        _settling.Clear();
         _pending.Clear();
         _tracked.Clear();
     }
@@ -133,9 +159,18 @@ public class PracticeRecorder
             }
 
             CCSPlayerPawn? pawn = player.PlayerPawn;
-            CBasePlayerWeapon? active = pawn?.WeaponServices?.ActiveWeapon.Value;
 
-            if (pawn == null || !pawn.IsValid || active == null || !active.IsValid)
+            if (pawn == null || !pawn.IsValid)
+            {
+                _armed.Remove(player.SteamID);
+                continue;
+            }
+
+            TrackStationary(player.SteamID, pawn);
+
+            CBasePlayerWeapon? active = pawn.WeaponServices?.ActiveWeapon.Value;
+
+            if (active == null || !active.IsValid)
             {
                 _armed.Remove(player.SteamID);
                 continue;
@@ -175,7 +210,7 @@ public class PracticeRecorder
             if (state.PinPulled && !state.Released && grenade.ThrowTime.Value > 0)
             {
                 state.Released = true;
-                state.Frozen = Snapshot(pawn, grenade, state.Stance);
+                state.Frozen = Snapshot(pawn, grenade, StanceFor(player.SteamID, state));
                 _pending[player.SteamID] = state.Frozen;
             }
         }
@@ -197,6 +232,55 @@ public class PracticeRecorder
         {
             return null;
         }
+    }
+
+    private void TrackStationary(ulong steamId, CCSPlayerPawn pawn)
+    {
+        Vector velocity = pawn.AbsVelocity;
+
+        bool still =
+            (pawn.Flags & FlOnGround) != 0
+            && new Vec3(velocity.X, velocity.Y, 0f).LengthXY() <= StationarySpeed;
+
+        if (!still)
+        {
+            _settling.Remove(steamId);
+            return;
+        }
+
+        if (!_settling.TryGetValue(steamId, out int since))
+        {
+            _settling[steamId] = _tick;
+            return;
+        }
+
+        if (_tick - since < StationarySettleTicks)
+        {
+            return;
+        }
+
+        Vector here = pawn.AbsOrigin ?? new Vector(0, 0, 0);
+
+        _stationary[steamId] = new StationaryAnchor
+        {
+            Position = new Vec3(here.X, here.Y, here.Z),
+            Tick = _tick,
+        };
+    }
+
+    // Past the window there is no standstill worth returning to, so the last
+    // grounded position is the better of two imperfect answers.
+    private Vec3? StanceFor(ulong steamId, ArmedState state)
+    {
+        if (
+            _stationary.TryGetValue(steamId, out StationaryAnchor anchor)
+            && _tick - anchor.Tick <= StationaryMaxAgeTicks
+        )
+        {
+            return anchor.Position;
+        }
+
+        return state.Stance;
     }
 
     private ThrowSnapshot Snapshot(CCSPlayerPawn pawn, CBaseCSGrenade grenade, Vec3? stance)
