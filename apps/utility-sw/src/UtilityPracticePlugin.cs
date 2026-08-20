@@ -235,6 +235,13 @@ public partial class UtilityPracticePlugin : BasePlugin
         _recorder.OnTick();
         _solver.OnTick();
         AimFeedback();
+
+        // Cheap: it only redraws when the set of lineups under the player's
+        // feet actually changes, which is when they step onto or off a spot.
+        if (_aimTick % SpotWatchEveryTicks == 0)
+        {
+            SpotWatch();
+        }
     }
 
     // Dead on, not nearly. A tenth of a degree is inside one mouse count at
@@ -252,11 +259,68 @@ public partial class UtilityPracticePlugin : BasePlugin
     // readout tracks the mouse instead of lagging behind it.
     private const int AimFeedbackEveryTicks = 4;
 
+    // Walking pace does not need sixty-four checks a second.
+    private const int SpotWatchEveryTicks = 16;
+
     private int _aimTick;
 
     // Lining a crosshair up is the part of a lineup that cannot be shown by
     // standing somewhere, so the moment it IS lined up is the moment to say
     // how to throw -- while they are still looking at the reticle.
+    // Which spot each player is standing in, so walking into a stance ring can
+    // light up everything throwable from it without redrawing every tick.
+    private readonly Dictionary<ulong, string> _standingIn = new();
+
+    // A spot is identified by the set of lineups thrown from it, so stepping
+    // between two overlapping spots counts as a change.
+    private void SpotWatch()
+    {
+        foreach (IPlayer player in Core.PlayerManager.GetAllPlayers())
+        {
+            if (player == null || !player.IsValid || player.IsFakeClient)
+            {
+                continue;
+            }
+
+            CCSPlayerPawn? pawn = player.PlayerPawn;
+
+            if (pawn == null || !pawn.IsValid)
+            {
+                continue;
+            }
+
+            Vector origin = pawn.AbsOrigin ?? new Vector(0, 0, 0);
+            var at = new Vec3(origin.X, origin.Y, origin.Z);
+
+            IReadOnlyList<LineupRecord> library = _library.For(player.SteamID);
+            List<LineupRecord> here = PracticeReplay.SpotAt(library, at);
+
+            string key = string.Join(",", here.Select(entry => entry.client_id).OrderBy(id => id));
+
+            if (_standingIn.TryGetValue(player.SteamID, out string? was) && was == key)
+            {
+                continue;
+            }
+
+            _standingIn[player.SteamID] = key;
+
+            if (here.Count == 0)
+            {
+                continue;
+            }
+
+            // Standing on a spot is the ask: show every throw off it at once,
+            // each crosshair named so they can be told apart.
+            _replay.ShowAllMarkers(library, here, at);
+
+            player.SendCenter(
+                here.Count == 1
+                    ? here[0].name
+                    : $"{here.Count} throws from here"
+            );
+        }
+    }
+
     private void AimFeedback()
     {
         if (++_aimTick % AimFeedbackEveryTicks != 0)
@@ -535,6 +599,13 @@ public partial class UtilityPracticePlugin : BasePlugin
         // A calibration is a statement about one map's collision mesh, so it
         // does not survive the mesh being replaced.
         _solver.Reset();
+
+        // Beams and world text do not survive a map change as anything useful:
+        // the handles go stale while the tracked lists still hold them, so
+        // nothing ever clears them and the next load draws on top of a list
+        // that can never be emptied.
+        _replay.ForgetMarkers();
+
         _library.SetMap(mapName);
 
         ApplyPracticeCfg();

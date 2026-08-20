@@ -72,7 +72,11 @@ public class PracticeReplay
     // Only used when the ray leaves the map without hitting anything -- aiming
     // up over open ground has no surface to mark, and a ring hung out at the
     // full trace length would be a speck against the skybox.
-    private const float AimFallbackRange = 420f;
+    // Deliberately far. A crosshair marker hung close to the player shifts
+    // across the skyline with every step, so standing a few units off the spot
+    // aims you somewhere else entirely. Far away it behaves like the horizon:
+    // the direction is what matters and small stance errors stop mattering.
+    private const float AimFallbackRange = 2400f;
 
     // A jump tops out around 54 units, so anything further below a recorded
     // position is a different floor and must not be snapped to.
@@ -194,11 +198,18 @@ public class PracticeReplay
             // Everything on the map, with this one in focus.
             IReadOnlyList<LineupRecord> everything = All(player.SteamID);
 
-            ShowAllMarkers(
-                everything.Count > 0 ? everything : new[] { lineup },
-                lineup,
-                standing
-            );
+            IReadOnlyList<LineupRecord> library =
+                everything.Count > 0 ? everything : new[] { lineup };
+
+            // Whatever else is throwable from this spot comes up with it.
+            List<LineupRecord> here = SpotAt(library, standing);
+
+            if (!here.Any(entry => entry.client_id == lineup.client_id))
+            {
+                here.Add(lineup);
+            }
+
+            ShowAllMarkers(library, here, standing);
         });
 
         player.SendCenter(Describe(lineup));
@@ -835,11 +846,18 @@ public class PracticeReplay
         Vector feet = pawn.AbsOrigin ?? new Vector(0, 0, 0);
         IReadOnlyList<LineupRecord> everything = All(player.SteamID);
 
-        ShowAllMarkers(
-            everything.Count > 0 ? everything : new[] { lineup },
-            lineup,
-            new Vec3(feet.X, feet.Y, feet.Z)
-        );
+        var standing = new Vec3(feet.X, feet.Y, feet.Z);
+        IReadOnlyList<LineupRecord> library =
+            everything.Count > 0 ? everything : new[] { lineup };
+
+        List<LineupRecord> here = SpotAt(library, standing);
+
+        if (!here.Any(entry => entry.client_id == lineup.client_id))
+        {
+            here.Add(lineup);
+        }
+
+        ShowAllMarkers(library, here, standing);
     }
 
     // Every lineup on the map at once. Loading one and cycling with .next hides
@@ -847,17 +865,27 @@ public class PracticeReplay
     // walking between them. The focused one gets the full treatment; the rest
     // stay as a stance ring and a landing ring so a map full of them is still
     // readable and still cheap.
+    // How close a player has to be to a stance ring to be "in" it. A little
+    // wider than the ring itself so stepping onto the marker counts.
+    public const float SpotRadius = 40f;
+
+    // Every lineup on the map, plus the full crosshair treatment for the ones
+    // the player can actually throw from where they are standing. One spot
+    // often has several throws off it, and the whole point of standing there is
+    // to see all of them at once.
     public void ShowAllMarkers(
         IEnumerable<LineupRecord> lineups,
-        LineupRecord? focused,
-        Vec3 focusedStance
+        IReadOnlyCollection<LineupRecord> active,
+        Vec3 stance
     )
     {
         ClearMarkers();
 
+        var live = new HashSet<string>(active.Select(entry => entry.client_id));
+
         foreach (LineupRecord lineup in lineups)
         {
-            if (focused != null && lineup.client_id == focused.client_id)
+            if (live.Contains(lineup.client_id))
             {
                 continue;
             }
@@ -871,10 +899,29 @@ public class PracticeReplay
             Label(new Vec3(feet.x, feet.y, feet.z + 10f), lineup.name, quiet);
         }
 
-        if (focused != null)
+        foreach (LineupRecord lineup in active)
         {
-            ShowMarkers(focused, focusedStance, false);
+            ShowMarkers(lineup, stance, false);
         }
+    }
+
+    // The lineups throwable from where this player is standing, which is what
+    // decides whose crosshairs get drawn.
+    public static List<LineupRecord> SpotAt(
+        IEnumerable<LineupRecord> lineups,
+        Vec3 at
+    )
+    {
+        return lineups
+            .Where(lineup =>
+            {
+                Vec3 feet = lineup.release.feet_position;
+
+                return new Vec3(feet.x - at.x, feet.y - at.y, 0f).LengthXY()
+                        <= SpotRadius
+                    && Math.Abs(feet.z - at.z) <= 72f;
+            })
+            .ToList();
     }
 
     private void ShowMarkers(LineupRecord lineup, Vec3 stance, bool clear = true)
@@ -904,14 +951,14 @@ public class PracticeReplay
             color
         );
 
-        AimReticle(lineup, stance);
+        AimReticle(lineup, stance, lineup.name);
     }
 
     // Where to point. The aim ray is traced until it hits something, so the
     // reticle lands ON the surface being aimed at rather than hanging in the
     // air short of it -- for an arcing smoke the crosshair sits well above the
     // landing spot, so distance-to-landing was never the right answer.
-    private void AimReticle(LineupRecord lineup, Vec3 stance)
+    private void AimReticle(LineupRecord lineup, Vec3 stance, string label)
     {
         // From where the player's eye WILL BE after .load, not from where the
         // grenade left the hand. Those stopped being the same point when the
@@ -981,7 +1028,7 @@ public class PracticeReplay
         // wall is ten units away or two thousand.
         // Tighter than a "look over there" marker: this is a point to cover
         // with the crosshair, so it subtends a few degrees and no more.
-        float size = Math.Clamp(away * 0.045f, 9f, 40f);
+        float size = Math.Clamp(away * 0.045f, 9f, 110f);
 
         // Deliberately not the utility's colour: this is the only marker that
         // is not a place the utility goes, and it has to separate from the
@@ -991,7 +1038,15 @@ public class PracticeReplay
         // this: you are always standing on them.
         float weight = Math.Clamp(away * 0.0018f, MarkerWidth, 2.2f);
 
-        Reticle(center, dir, size, AimColor, weight);
+        Reticle(center, dir, size, ColorFor(lineup.utility_type), weight);
+
+        // Named at the crosshair itself: several throws off one spot are only
+        // useful if you can tell which crosshair belongs to which.
+        Label(
+            new Vec3(center.x, center.y, center.z + size + 8f),
+            label,
+            ColorFor(lineup.utility_type)
+        );
     }
 
     // A box with a ring inside it, drawn in the plane facing back down the aim
@@ -1212,6 +1267,15 @@ public class PracticeReplay
         {
             _logger.LogError(error, "unable to place a lineup marker");
         }
+    }
+
+    // For a map change only. The entities died with the map, so their handles
+    // are stale -- and a stale handle can be recycled into a NEW entity, which
+    // makes despawning it actively harmful. Drop the references instead.
+    public void ForgetMarkers()
+    {
+        _markerBeams.Clear();
+        _markerTexts.Clear();
     }
 
     public void ClearMarkers()
