@@ -217,8 +217,22 @@ public class PracticeRecorder
         string designer = entity.DesignerName ?? "";
         string? utilityType = PracticeLineupUtility.UtilityTypeForProjectile(designer);
 
-        if (utilityType == null || _tracked.Count >= MaxTrackedProjectiles)
+        // Anything that is not a grenade leaves silently: every entity in the
+        // map comes through here. Past this line it IS a throw, so a drop is
+        // worth saying out loud -- a silently dropped throw is what makes
+        // ".save" claim you never threw anything.
+        if (utilityType == null)
         {
+            return;
+        }
+
+        if (_tracked.Count >= MaxTrackedProjectiles)
+        {
+            _logger.LogWarning(
+                "dropped a {type}: already tracking {count} projectiles",
+                utilityType,
+                _tracked.Count
+            );
             return;
         }
 

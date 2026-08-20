@@ -7,6 +7,7 @@ using SwiftlyS2.Shared.Events;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Plugins;
 using static SwiftlyS2.Shared.Helper;
+using SwiftlyS2.Shared.SchemaDefinitions;
 
 namespace UtilityPractice;
 
@@ -105,7 +106,20 @@ public partial class UtilityPracticePlugin : BasePlugin
         _tickHandler = OnGameTick;
         Core.Event.OnTick += _tickHandler;
 
-        _entityCreatedHandler = @event => _recorder.OnProjectileCreated(@event.Entity);
+        // A grenade's thrower and initial velocity are not populated at the
+        // moment the entity is created -- read them there and every throw is
+        // dropped for having no thrower. One tick later they are set.
+        _entityCreatedHandler = @event =>
+        {
+            CEntityInstance entity = @event.Entity;
+            Core.Scheduler.NextTick(() =>
+            {
+                if (entity.IsValid)
+                {
+                    _recorder.OnProjectileCreated(entity);
+                }
+            });
+        };
         Core.Event.OnEntityCreated += _entityCreatedHandler;
 
         _mapLoadHandler = @event => OnMapLoad(@event.MapName);
@@ -381,6 +395,8 @@ public partial class UtilityPracticePlugin : BasePlugin
     // than a game mode cfg: a practice server may be a third-party dedicated
     // box that no mode was ever selected for, and without this it sits in
     // warmup with no money and no utility.
+    private const float CfgReapplySeconds = 3f;
+
     private static readonly string[] PracticeCfg = new[]
     {
         "sv_cheats 1",
@@ -410,9 +426,25 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void ApplyPracticeCfg()
     {
-        Core.Scheduler.NextTick(
-            () => Core.Engine.ExecuteCommand(string.Join(";", PracticeCfg))
-        );
+        // Twice, and the second one is the one that usually takes. On a map
+        // change the tick after load is before warmup has begun, so
+        // mp_warmup_end there ends nothing and the server sits in a countdown.
+        Core.Scheduler.NextTick(() => RunPracticeCfg());
+        Core.Scheduler.DelayBySeconds(CfgReapplySeconds, () => RunPracticeCfg());
+    }
+
+    private void RunPracticeCfg()
+    {
+        Core.Engine.ExecuteCommand(string.Join(";", PracticeCfg));
+
+        // The map change did not take the session with it, and sv_password is
+        // the one thing here that is per-session rather than per-map.
+        PracticeSessionData? session = _session.Current;
+
+        if (session != null && !string.IsNullOrEmpty(session.password))
+        {
+            TrySetConVar("sv_password", session.password);
+        }
     }
 
     private bool TrySetConVar(string name, string value)

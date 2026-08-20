@@ -81,7 +81,18 @@ public partial class UtilityPracticePlugin : BasePlugin
         WireDrill();
 
         RegisterListener<Listeners.OnTick>(_recorder.OnTick);
-        RegisterListener<Listeners.OnEntityCreated>(_recorder.OnProjectileCreated);
+        // A grenade's thrower and initial velocity are not populated at the
+        // moment the entity is created -- read them there and every throw is
+        // dropped for having no thrower. One frame later they are set.
+        RegisterListener<Listeners.OnEntityCreated>(entity =>
+            Server.NextFrame(() =>
+            {
+                if (entity != null && entity.IsValid)
+                {
+                    _recorder.OnProjectileCreated(entity);
+                }
+            })
+        );
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
         RegisterListener<Listeners.OnClientAuthorized>(OnClientAuthorized);
         RegisterListener<Listeners.OnClientDisconnect>(OnClientDisconnect);
@@ -242,6 +253,8 @@ public partial class UtilityPracticePlugin : BasePlugin
     // than a game mode cfg: a practice server may be a third-party dedicated
     // box that no mode was ever selected for, and without this it sits in
     // warmup with no money and no utility.
+    private const float CfgReapplySeconds = 3f;
+
     private static readonly string[] PracticeCfg = new[]
     {
         "sv_cheats 1",
@@ -271,7 +284,28 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void ApplyPracticeCfg()
     {
-        Server.NextFrame(() => Server.ExecuteCommand(string.Join(";", PracticeCfg)));
+        // Twice, and the second one is the one that usually takes. On a map
+        // change the frame after load is before warmup has begun, so
+        // mp_warmup_end there ends nothing and the server sits in a countdown.
+        Server.NextFrame(() => RunPracticeCfg());
+        AddTimer(CfgReapplySeconds, () => RunPracticeCfg());
+    }
+
+    private void RunPracticeCfg()
+    {
+        Server.ExecuteCommand(string.Join(";", PracticeCfg));
+
+        // The map change did not take the session with it, and sv_password is
+        // the one thing here that is per-session rather than per-map.
+        PracticeSessionData? session = _session.Current;
+
+        if (session == null || string.IsNullOrEmpty(session.password))
+        {
+            return;
+        }
+
+        var password = ConVar.Find("sv_password");
+        password?.SetValue(session.password);
     }
 
     private void OnSessionRefreshed(PracticeSessionData session)
