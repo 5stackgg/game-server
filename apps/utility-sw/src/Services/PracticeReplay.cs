@@ -66,6 +66,10 @@ public class PracticeReplay
     // in which case it lands on the wall.
     private const float AimTraceRange = 420f;
 
+    // A jump tops out around 54 units, so anything further below a recorded
+    // position is a different floor and must not be snapped to.
+    private const float GroundSnapRange = 96f;
+
     // Thinner than the ghost line at 1.6: a marker is an outline, and a ring
     // is a dozen overlapping segments whose glow compounds into a blob at
     // anything heavier.
@@ -129,7 +133,9 @@ public class PracticeReplay
             return;
         }
 
-        Vec3 feet = lineup.release.feet_position;
+        // The same floor the stance marker is drawn on, so .load puts the
+        // player standing on the ring rather than dropping into it.
+        Vec3 feet = Grounded(lineup.release.feet_position);
         var position = new Vector(feet.x, feet.y, feet.z);
 
         // Yaw for the body, pitch for the eyes, and never the two together: a
@@ -775,7 +781,7 @@ public class PracticeReplay
         }
 
         Color color = ColorFor(lineup.utility_type);
-        Vec3 stance = lineup.release.feet_position;
+        Vec3 stance = Grounded(lineup.release.feet_position);
         Vec3 landing = lineup.detonation_position;
 
         Ring(stance, 24f, color, MarkerWidth);
@@ -807,7 +813,7 @@ public class PracticeReplay
         // jump-throw releases a whole run-up away from where it is set up, and
         // tracing from the release point puts the reticle that far off from
         // what the player sees standing on the marker.
-        Vec3 stance = lineup.release.feet_position;
+        Vec3 stance = Grounded(lineup.release.feet_position);
 
         var eye = new Vec3(
             stance.x,
@@ -921,6 +927,35 @@ public class PracticeReplay
                 color,
                 width
             );
+        }
+    }
+
+    // Where a player would be STANDING at this spot. Lineups recorded before
+    // the recorder learned to keep the standstill hold the release origin,
+    // which for a jump throw is a jump height up in the air -- and a marker
+    // floating at head height is not somewhere anyone can stand.
+    private Vec3 Grounded(Vec3 position)
+    {
+        try
+        {
+            var from = new Vector(position.x, position.y, position.z);
+            var to = new Vector(
+                position.x,
+                position.y,
+                position.z - GroundSnapRange
+            );
+
+            var trace = _core.Trace.TraceShapeLine(from, to, null);
+
+            // Already standing on it: the trace hits at once and changes nothing.
+            return trace.DidHit
+                ? new Vec3(position.x, position.y, trace.EndPos.Z)
+                : position;
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to find the floor under a lineup");
+            return position;
         }
     }
 
