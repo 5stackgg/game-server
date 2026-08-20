@@ -321,15 +321,25 @@ public class PracticeSystem
 
     public static void TeleportTo(IPlayer player, ThrowSnapshot position)
     {
+        // Yaw only for the body. A pawn's rotation is which way it faces, and
+        // a lineup's pitch is where the player is LOOKING -- feeding -63 into
+        // the body lies the model on its back. The aim goes on the eyes below.
         player.Teleport(
             new Vector(
                 position.feet_position.x,
                 position.feet_position.y,
                 position.feet_position.z
             ),
-            new QAngle(position.pitch, position.yaw, 0),
+            new QAngle(0, position.yaw, 0),
             new Vector(0, 0, 0)
         );
+
+        CCSPlayerPawn? pawn = player.PlayerPawn;
+
+        if (pawn != null && pawn.IsValid)
+        {
+            pawn.EyeAngles = new QAngle(position.pitch, position.yaw, 0);
+        }
     }
 
     public List<ThrowSnapshot> SpawnPoints()
