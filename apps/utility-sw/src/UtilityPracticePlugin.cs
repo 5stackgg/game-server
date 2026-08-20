@@ -262,6 +262,11 @@ public partial class UtilityPracticePlugin : BasePlugin
     // Walking pace does not need sixty-four checks a second.
     private const int SpotWatchEveryTicks = 16;
 
+    // How near the crosshair has to be to a ring to count as pointing at it.
+    // Tight enough that two rings a stride apart are separable at the distance
+    // you would stand to look at them.
+    private const double RingHoverDegrees = 7.0;
+
     private int _aimTick;
 
     // Lining a crosshair up is the part of a lineup that cannot be shown by
@@ -295,7 +300,26 @@ public partial class UtilityPracticePlugin : BasePlugin
             IReadOnlyList<LineupRecord> library = _library.For(player.SteamID);
             List<LineupRecord> here = PracticeReplay.SpotAt(library, at);
 
-            string key = string.Join(",", here.Select(entry => entry.client_id).OrderBy(id => id));
+            // Which ring the player is LOOKING at. Where two stances overlap,
+            // walking in cannot say which throw is meant -- and picking one by
+            // arrival order means the aim marker changes depending on which
+            // side you stepped in from. Pointing at a ring is unambiguous.
+            LineupRecord? aimedAt = LookingAtRing(pawn, at, library);
+
+            // One throw off this spot needs no choosing. Several do, and until
+            // one is chosen nothing draws an aim point at all: a crosshair for
+            // the wrong throw is worse than none.
+            List<LineupRecord> show =
+                aimedAt != null
+                    ? new List<LineupRecord> { aimedAt }
+                    : here.Count == 1
+                        ? here
+                        : new List<LineupRecord>();
+
+            string key = string.Join(
+                ",",
+                show.Select(entry => entry.client_id).OrderBy(id => id)
+            );
 
             if (_standingIn.TryGetValue(player.SteamID, out string? was) && was == key)
             {
@@ -304,21 +328,69 @@ public partial class UtilityPracticePlugin : BasePlugin
 
             _standingIn[player.SteamID] = key;
 
-            if (here.Count == 0)
+            _replay.ShowAllMarkers(library, show, at);
+
+            if (show.Count == 1)
+            {
+                player.SendCenter(show[0].name);
+            }
+            else if (here.Count > 1)
+            {
+                player.SendCenter($"{here.Count} throws here - look at a ring");
+            }
+        }
+    }
+
+    // The stance ring the player's crosshair is nearest to, by angle rather
+    // than distance so a ring across the room can be picked as easily as one
+    // underfoot.
+    private static LineupRecord? LookingAtRing(
+        CCSPlayerPawn pawn,
+        Vec3 at,
+        IReadOnlyList<LineupRecord> library
+    )
+    {
+        QAngle eyes = pawn.EyeAngles;
+
+        double yaw = eyes.Y * Math.PI / 180.0;
+        double pitch = eyes.X * Math.PI / 180.0;
+        double flat = Math.Cos(pitch);
+
+        var view = new Vec3(
+            (float)(Math.Cos(yaw) * flat),
+            (float)(Math.Sin(yaw) * flat),
+            (float)(-Math.Sin(pitch))
+        );
+
+        var eye = new Vec3(at.x, at.y, at.z + 64f);
+
+        LineupRecord? best = null;
+        double bestAngle = RingHoverDegrees;
+
+        foreach (LineupRecord lineup in library)
+        {
+            Vec3 feet = lineup.release.feet_position;
+            var toRing = new Vec3(feet.x - eye.x, feet.y - eye.y, feet.z - eye.z);
+            float length = toRing.Length();
+
+            if (length < 1f)
             {
                 continue;
             }
 
-            // Standing on a spot is the ask: show every throw off it at once,
-            // each crosshair named so they can be told apart.
-            _replay.ShowAllMarkers(library, here, at);
+            double dot =
+                (view.x * toRing.x + view.y * toRing.y + view.z * toRing.z) / length;
 
-            player.SendCenter(
-                here.Count == 1
-                    ? here[0].name
-                    : $"{here.Count} throws from here"
-            );
+            double angle = Math.Acos(Math.Clamp(dot, -1.0, 1.0)) * 180.0 / Math.PI;
+
+            if (angle < bestAngle)
+            {
+                bestAngle = angle;
+                best = lineup;
+            }
         }
+
+        return best;
     }
 
     private void AimFeedback()
