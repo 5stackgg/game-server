@@ -1,5 +1,6 @@
 using System.Reflection;
 using FiveStack.Entities.Practice;
+using FiveStack.Utilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
@@ -47,6 +48,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     private readonly HashSet<ulong> _welcomed = new();
     private EventDelegates.OnMapLoad? _mapLoadHandler;
     private EventDelegates.OnClientDisconnected? _disconnectHandler;
+    private EventDelegates.OnPrecacheResource? _precacheHandler;
     private EventDelegates.OnClientSteamAuthorize? _authorizeHandler;
 
     public UtilityPracticePlugin(ISwiftlyCore core)
@@ -128,6 +130,19 @@ public partial class UtilityPracticePlugin : BasePlugin
         _mapLoadHandler = @event => OnMapLoad(@event.MapName);
         Core.Event.OnMapLoad += _mapLoadHandler;
 
+        // The grenade models floated over each lineup have to be in the map's
+        // precache list or they render as ERROR. This fires at map load, which
+        // is why a plugin hot-reloaded mid-map cannot show them until the next
+        // map change.
+        _precacheHandler = @event =>
+        {
+            foreach (string model in PracticeLineupUtility.AllUtilityModels())
+            {
+                @event.AddItem(model);
+            }
+        };
+        Core.Event.OnPrecacheResource += _precacheHandler;
+
         _disconnectHandler = @event =>
             ForPlayer(
                 @event.PlayerId,
@@ -195,6 +210,11 @@ public partial class UtilityPracticePlugin : BasePlugin
         if (_disconnectHandler != null)
         {
             Core.Event.OnClientDisconnected -= _disconnectHandler;
+
+            if (_precacheHandler != null)
+            {
+                Core.Event.OnPrecacheResource -= _precacheHandler;
+            }
         }
 
         if (_authorizeHandler != null)

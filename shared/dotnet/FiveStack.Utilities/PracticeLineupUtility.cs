@@ -40,6 +40,15 @@ public static class PracticeLineupUtility
             { "Decoy", "models/weapons/w_eq_decoy_dropped.vmdl" },
         };
 
+    // Everything that has to be in the map's precache list. A model the server
+    // did not precache renders as the ERROR model, and precache only runs at
+    // map load -- so this list has to be handed over from the precache hook,
+    // not at the moment something wants to draw one.
+    public static IEnumerable<string> AllUtilityModels()
+    {
+        return UtilityToModel.Values;
+    }
+
     public static string? ModelForUtilityType(string utilityType)
     {
         return UtilityToModel.TryGetValue(utilityType, out string? model)
