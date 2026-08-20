@@ -138,3 +138,63 @@ public class PracticeLineupUtilityTests
         Assert.Equal("Banana", PracticeLineupUtility.NormalizeUtilityType("Banana"));
     }
 }
+
+public class UtilityBySpotTests
+{
+    private static List<(float, float, float, List<string>)> Group(
+        params (float x, float y, float z, string type)[] throws
+    )
+    {
+        return PracticeLineupUtility.UtilityBySpot(throws, 40f, 72f);
+    }
+
+    [Fact]
+    public void TwoSmokesFromOneSpotAreOneSmoke()
+    {
+        var spots = Group((100f, 100f, 0f, "Smoke"), (108f, 96f, 0f, "Smoke"));
+
+        Assert.Single(spots);
+        Assert.Equal(new[] { "Smoke" }, spots[0].Item4);
+    }
+
+    [Fact]
+    public void ASpotWithTwoKindsShowsBoth()
+    {
+        var spots = Group((100f, 100f, 0f, "Smoke"), (110f, 100f, 0f, "Flash"));
+
+        Assert.Single(spots);
+        Assert.Equal(new[] { "Smoke", "Flash" }, spots[0].Item4);
+    }
+
+    [Fact]
+    public void SpotsFurtherApartThanTheRadiusStaySeparate()
+    {
+        var spots = Group((100f, 100f, 0f, "Smoke"), (200f, 100f, 0f, "Smoke"));
+
+        Assert.Equal(2, spots.Count);
+    }
+
+    [Fact]
+    public void TheSamePositionOnAnotherFloorIsAnotherSpot()
+    {
+        var spots = Group((100f, 100f, 0f, "Smoke"), (100f, 100f, 128f, "Smoke"));
+
+        Assert.Equal(2, spots.Count);
+    }
+
+    [Fact]
+    public void GroupingIsByDistanceNotByAGrid()
+    {
+        // Two throws either side of a grid line are one spot; a naive round()
+        // would split them and draw the model twice.
+        var spots = Group((39f, 0f, 0f, "Smoke"), (41f, 0f, 0f, "Smoke"));
+
+        Assert.Single(spots);
+    }
+
+    [Fact]
+    public void NothingInNothingOut()
+    {
+        Assert.Empty(PracticeLineupUtility.UtilityBySpot([], 40f, 72f));
+    }
+}

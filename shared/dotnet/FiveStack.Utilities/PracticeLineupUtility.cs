@@ -94,6 +94,52 @@ public static class PracticeLineupUtility
         return ProjectileToUtility.TryGetValue(designerName, out string? type) ? type : null;
     }
 
+    // Groups stance positions that are close enough to be the same place to
+    // stand, and reports the distinct kinds of grenade thrown from each. What
+    // floats over a spot answers "what do I bring here" -- so two smokes from
+    // one position are one smoke, and a smoke plus a flash are two.
+    public static List<(float x, float y, float z, List<string> types)> UtilityBySpot(
+        IEnumerable<(float x, float y, float z, string utilityType)> throws,
+        float radius,
+        float height
+    )
+    {
+        var spots = new List<(float x, float y, float z, List<string> types)>();
+
+        foreach ((float x, float y, float z, string utilityType) throwFrom in throws)
+        {
+            List<string>? types = null;
+
+            foreach ((float x, float y, float z, List<string> types) spot in spots)
+            {
+                float dx = spot.x - throwFrom.x;
+                float dy = spot.y - throwFrom.y;
+
+                if (
+                    Math.Sqrt((dx * dx) + (dy * dy)) <= radius
+                    && Math.Abs(spot.z - throwFrom.z) <= height
+                )
+                {
+                    types = spot.types;
+                    break;
+                }
+            }
+
+            if (types == null)
+            {
+                types = new List<string>();
+                spots.Add((throwFrom.x, throwFrom.y, throwFrom.z, types));
+            }
+
+            if (!types.Contains(throwFrom.utilityType))
+            {
+                types.Add(throwFrom.utilityType);
+            }
+        }
+
+        return spots;
+    }
+
     // Type paired with the weapon that carries its model, for the map-load
     // harvest. Spawning the real weapon is the only way to get a path that is
     // certainly correct AND certainly precached -- our own precache list can

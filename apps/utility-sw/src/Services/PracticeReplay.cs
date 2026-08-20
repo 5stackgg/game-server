@@ -99,6 +99,9 @@ public class PracticeReplay
 
     // Roughly where the grenade sits in a player's hand, so it reads as "this
     // is what you throw from here" rather than as litter on the floor.
+    // Side by side when one spot wants more than one kind of grenade.
+    private const float UtilityModelSpacing = 16f;
+
     // Above standing eye height (64) on purpose. .load stands the player ON
     // the ring, and at chest height the grenade is inside their camera.
     private const float UtilityModelHeight = 80f;
@@ -907,6 +910,9 @@ public class PracticeReplay
     // wider than the ring itself so stepping onto the marker counts.
     public const float SpotRadius = 40f;
 
+    // How far above or below a spot still counts as the same place to stand.
+    public const float SpotHeight = 72f;
+
     // Every lineup on the map, plus the full crosshair treatment for the ones
     // the player can actually throw from where they are standing. One spot
     // often has several throws off it, and the whole point of standing there is
@@ -939,7 +945,40 @@ public class PracticeReplay
             Ring(lineup.detonation_position, 26f, quiet, MarkerWidth, QuietSegments);
             AddMarkerBeam(feet, lineup.detonation_position, quiet, 0.3f);
             Label(new Vec3(feet.x, feet.y, feet.z + 10f), lineup.name, quiet);
-            UtilityModel(lineup, feet);
+        }
+
+        ShowSpotUtility(lineups);
+    }
+
+    // What to bring, not which throw to make. A model belongs to the SPOT: two
+    // smokes thrown from one position want ONE smoke floating over it, or the
+    // spot reads as six grenades rather than one place to stand. A spot holding
+    // a smoke and a flash still shows both, because that is a real choice about
+    // what to equip.
+    private void ShowSpotUtility(IEnumerable<LineupRecord> lineups)
+    {
+        List<(float x, float y, float z, List<string> types)> spots =
+            PracticeLineupUtility.UtilityBySpot(
+                lineups.Select(lineup =>
+                {
+                    Vec3 feet = Grounded(lineup.release.feet_position);
+
+                    return (feet.x, feet.y, feet.z, lineup.utility_type);
+                }),
+                SpotRadius,
+                SpotHeight
+            );
+
+        foreach ((float x, float y, float z, List<string> types) spot in spots)
+        {
+            for (int index = 0; index < spot.types.Count; index += 1)
+            {
+                // Centred row, so a single grenade sits over the middle of the
+                // ring and two straddle it rather than one sitting off to a side.
+                float offset = (index - ((spot.types.Count - 1) / 2f)) * UtilityModelSpacing;
+
+                UtilityModel(spot.types[index], new Vec3(spot.x + offset, spot.y, spot.z));
+            }
         }
     }
 
@@ -962,7 +1001,7 @@ public class PracticeReplay
 
             foreach (LineupRecord lineup in active)
             {
-                ShowMarkers(lineup, stance, false);
+                ShowMarkers(lineup, stance);
             }
 
             return;
@@ -984,7 +1023,7 @@ public class PracticeReplay
         {
             foreach (LineupRecord lineup in active)
             {
-                ShowMarkers(lineup, stance, false);
+                ShowMarkers(lineup, stance);
             }
         }
         finally
@@ -1099,18 +1138,13 @@ public class PracticeReplay
 
                 return new Vec3(feet.x - at.x, feet.y - at.y, 0f).LengthXY()
                         <= SpotRadius
-                    && Math.Abs(feet.z - at.z) <= 72f;
+                    && Math.Abs(feet.z - at.z) <= SpotHeight;
             })
             .ToList();
     }
 
-    private void ShowMarkers(LineupRecord lineup, Vec3 stance, bool clear = true)
+    private void ShowMarkers(LineupRecord lineup, Vec3 stance)
     {
-        if (clear)
-        {
-            ClearMarkers();
-        }
-
         // Deliberately not gated behind the ghost preview: a preview is an
         // optional extra, but where to stand and where to point IS the lineup.
         // There is no useful state where a loaded lineup shows neither.
@@ -1123,7 +1157,6 @@ public class PracticeReplay
             $"STAND\n{lineup.name}",
             color
         );
-        UtilityModel(lineup, stance);
 
         Ring(landing, 34f, color, MarkerWidth);
         Label(
@@ -1426,9 +1459,9 @@ public class PracticeReplay
         }
     }
 
-    private void UtilityModel(LineupRecord lineup, Vec3 stance)
+    private void UtilityModel(string utilityType, Vec3 at)
     {
-        string? model = PracticeLineupUtility.ModelForUtilityType(lineup.utility_type);
+        string? model = PracticeLineupUtility.ModelForUtilityType(utilityType);
 
         if (model == null)
         {
@@ -1458,7 +1491,7 @@ public class PracticeReplay
             // model, and before it the entity is still in the staging list,
             // which trips the SetupModel assertion in skeletoninstance.cpp.
             var keys = new CEntityKeyValues();
-            var origin = new Vector(stance.x, stance.y, stance.z + UtilityModelHeight);
+            var origin = new Vector(at.x, at.y, at.z + UtilityModelHeight);
 
             keys.SetString("model", model);
             keys.SetString("solid", "0");
