@@ -23,4 +23,9 @@ public class MatchOptions
     public bool show_elo_ranks { get; set; } = false;
     public Dictionary<string, string> cfg_overrides { get; set; } =
         new Dictionary<string, string>();
+
+    // The extra layers to exec after the type cfg, in order. cfg_overrides only
+    // says which files to write, and a dictionary has no order to read the
+    // last-wins precedence out of, so the panel states it here instead.
+    public List<string> cfg_execs { get; set; } = new List<string>();
 }

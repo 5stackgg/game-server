@@ -571,6 +571,12 @@ public class MatchManager
                     continue;
                 }
 
+                if (!IsSafeConfigKey(overrideEntry.Key))
+                {
+                    _logger.LogWarning($"Refusing config override key: {overrideEntry.Key}");
+                    continue;
+                }
+
                 string configFileName = $"5stack.{overrideEntry.Key.ToLower()}.cfg";
                 string configFilePath = Path.Join(configDirectory, configFileName);
 
@@ -909,31 +915,97 @@ public class MatchManager
             { "sv_pausable", "1" },
         };
 
-    // A game mode's cvars ride in as the "Mode" cfg override and must be exec'd
-    // after the type cfg everywhere it is exec'd -- returning from a knife round
-    // and going live both re-exec it, and would otherwise revert the mode.
-    public string[] MatchConfigExecCommands()
+    // The key becomes a filename, and one of them now carries a plugin slug
+    // chosen by whoever published the plugin.
+    private static bool IsSafeConfigKey(string? key)
     {
-        List<string> commands = new List<string>
-        {
-            $"exec 5stack.{_matchData?.options.type.ToLower()}.cfg",
-        };
+        return !string.IsNullOrEmpty(key)
+            && key.Length <= 64
+            && Regex.IsMatch(key, @"\A[A-Za-z0-9._-]+\z");
+    }
 
-        if (_matchData?.is_lan == true)
+    // cfg_overrides is deserialized with the default ordinal comparer, and the
+    // panel sends capitalised override keys ("Global", "Mode") against
+    // lowercased exec keys ("global", "mode"). Looking a layer up by its exec
+    // key therefore has to ignore case or it never matches anything.
+    private string? OverrideCfgFor(string key) => OverrideCfgFor(_matchData, key);
+
+    private static string? OverrideCfgFor(MatchData? matchData, string key)
+    {
+        return matchData
+            ?.options.cfg_overrides?.FirstOrDefault(entry =>
+                string.Equals(entry.Key, key, StringComparison.OrdinalIgnoreCase)
+            )
+            .Value;
+    }
+
+    // The config stack in the order it applies: the match type, then LAN
+    // tuning, then every extra layer the panel named -- global, per-plugin, the
+    // game mode -- so the more specific one lands last and wins. They must be
+    // exec'd together everywhere the type cfg is: returning from a knife round
+    // and going live both re-exec it, and would otherwise revert the layers.
+    private List<string> ConfigLayerKeys()
+    {
+        return ConfigLayerKeys(
+            _matchData,
+            (key) => _logger.LogWarning($"Refusing config layer: {key}")
+        );
+    }
+
+    public static List<string> ConfigLayerKeys(
+        MatchData? _matchData,
+        Action<string>? onRefused = null
+    )
+    {
+        if (_matchData == null)
         {
-            commands.Add("exec 5stack.lan.cfg");
+            return [];
         }
 
+        List<string> keys = IsSafeConfigKey(_matchData.options.type)
+            ? [_matchData.options.type]
+            : [];
+
+        if (_matchData.is_lan)
+        {
+            keys.Add("lan");
+        }
+
+        foreach (string layer in _matchData.options.cfg_execs ?? [])
+        {
+            if (!IsSafeConfigKey(layer))
+            {
+                onRefused?.Invoke(layer);
+                continue;
+            }
+
+            // An empty layer was never written, so exec'ing it would only log a
+            // missing file.
+            if (string.IsNullOrEmpty(OverrideCfgFor(_matchData, layer)))
+            {
+                continue;
+            }
+
+            keys.Add(layer);
+        }
+
+        // A panel older than cfg_execs still sends a mode's cvars as the "Mode"
+        // override and expects them exec'd. Without this the game mode silently
+        // stops applying the moment this build rolls ahead of the API.
         if (
-            _matchData?.options.cfg_overrides != null
-            && _matchData.options.cfg_overrides.TryGetValue("Mode", out var modeCfg)
-            && !string.IsNullOrEmpty(modeCfg)
+            (_matchData.options.cfg_execs == null || _matchData.options.cfg_execs.Count == 0)
+            && !string.IsNullOrEmpty(OverrideCfgFor(_matchData, "Mode"))
         )
         {
-            commands.Add("exec 5stack.mode.cfg");
+            keys.Add("mode");
         }
 
-        return commands.ToArray();
+        return keys;
+    }
+
+    public string[] MatchConfigExecCommands()
+    {
+        return ConfigLayerKeys().Select(key => $"exec 5stack.{key.ToLower()}.cfg").ToArray();
     }
 
     private void ApplyWorkshopBlockedCvars()
@@ -951,17 +1023,14 @@ public class MatchManager
         // keys were already lowercase -- and this dictionary compares by
         // ordinal, so a "Competitive" key would never match a "competitive"
         // lookup and the admin's override would be silently ignored.
-        string? OverrideFor(string key) =>
-            _matchData
-                .options.cfg_overrides?.FirstOrDefault(entry =>
-                    string.Equals(entry.Key, key, StringComparison.OrdinalIgnoreCase)
-                )
-                .Value;
-
-        // Highest precedence first. The mode cfg is exec'd after the type cfg,
-        // so where both set a blocked cvar the mode's value is the one the
-        // server would have ended up with had CS2 not dropped it.
-        string?[] overridesByPrecedence = [OverrideFor("Mode"), OverrideFor(_matchData.options.type)];
+        // Highest precedence first: the reverse of the exec order, because the
+        // layer exec'd last is the value the server would have ended up with
+        // had CS2 not dropped it on a workshop map.
+        string?[] overridesByPrecedence = ConfigLayerKeys()
+            .AsEnumerable()
+            .Reverse()
+            .Select(OverrideCfgFor)
+            .ToArray();
 
         foreach (var cvar in WorkshopBlockedCvars)
         {
