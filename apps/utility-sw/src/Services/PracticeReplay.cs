@@ -796,7 +796,19 @@ public class PracticeReplay
     // landing spot, so distance-to-landing was never the right answer.
     private void AimReticle(LineupRecord lineup)
     {
-        Vec3 eye = lineup.release.eye_position;
+        // From where the player's eye WILL BE after .load, not from where the
+        // grenade left the hand. Those stopped being the same point when the
+        // recorder started storing the standstill as feet_position: a run- or
+        // jump-throw releases a whole run-up away from where it is set up, and
+        // tracing from the release point puts the reticle that far off from
+        // what the player sees standing on the marker.
+        Vec3 stance = lineup.release.feet_position;
+
+        var eye = new Vec3(
+            stance.x,
+            stance.y,
+            stance.z + PracticeSolverUtility.StandingEyeHeight
+        );
 
         double yaw = lineup.release.yaw * Math.PI / 180.0;
         double pitch = lineup.release.pitch * Math.PI / 180.0;
