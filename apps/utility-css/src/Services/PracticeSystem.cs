@@ -192,6 +192,50 @@ public class PracticeSystem
         }
     }
 
+    // The whole bag, every time somebody is alive without it. A practice
+    // server that makes you buy your utility before every throw is a practice
+    // server nobody uses; mp_maxmoney only helps if you remember to go and buy.
+    private static readonly string[] Loadout = new[]
+    {
+        "weapon_smokegrenade",
+        "weapon_flashbang",
+        "weapon_hegrenade",
+        "weapon_molotov",
+        "weapon_incgrenade",
+        "weapon_decoy",
+    };
+
+    public void GiveUtility(CCSPlayerController player)
+    {
+        if (!player.IsValid || !player.PawnIsAlive)
+        {
+            return;
+        }
+
+        bool isCt = player.Team == CsTeam.CounterTerrorist;
+
+        foreach (string weapon in Loadout)
+        {
+            // One firebomb per side, and it is not the same one.
+            if (weapon == "weapon_molotov" && isCt)
+            {
+                continue;
+            }
+
+            if (weapon == "weapon_incgrenade" && !isCt)
+            {
+                continue;
+            }
+
+            if (HasWeapon(player, weapon))
+            {
+                continue;
+            }
+
+            player.GiveNamedItem(weapon);
+        }
+    }
+
     public List<ulong> ConnectedSteamIds()
     {
         return Utilities

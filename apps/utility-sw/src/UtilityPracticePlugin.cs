@@ -236,10 +236,47 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void OnSecond()
     {
+        RespawnTheDead();
+        KeepEveryoneStocked();
         _system.Tick();
         _playbook.Second();
         _drill.Second();
         _solver.RefreshVisibility();
+    }
+
+    // Nobody stays dead on a practice server. Rejoining while dead, falling off
+    // something, or a stray molotov all leave a player spectating a map they
+    // came here to throw on -- and no round ever ends to bring them back.
+    private void RespawnTheDead()
+    {
+        foreach (IPlayer player in Core.PlayerManager.GetAllPlayers())
+        {
+            if (player == null || !player.IsValid || player.IsFakeClient || player.IsAlive)
+            {
+                continue;
+            }
+
+            if (player.Controller.Team is Team.CT or Team.T)
+            {
+                player.Respawn();
+            }
+        }
+    }
+
+    // Every second rather than only on spawn: a respawn, a team switch and a
+    // round reset all hand a player an empty bag, and the cost of checking is
+    // one loop over the weapons they already have.
+    private void KeepEveryoneStocked()
+    {
+        foreach (IPlayer player in Core.PlayerManager.GetAllPlayers())
+        {
+            if (player == null || !player.IsValid || player.IsFakeClient)
+            {
+                continue;
+            }
+
+            _system.GiveUtility(player);
+        }
     }
 
     private void OnFastTick()
