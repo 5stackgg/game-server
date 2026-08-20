@@ -69,13 +69,20 @@ public class PracticeReplay
 
         Vec3 feet = lineup.release.feet_position;
         var position = new Vector(feet.x, feet.y, feet.z);
-        var angles = new QAngle(lineup.release.pitch, lineup.release.yaw, 0);
+        // Yaw for the body, pitch for the eyes, and never the two together: a
+        // pawn's rotation is which way it faces, so a lineup's -63 pitch fed
+        // into it lies the player on their back.
+        var facing = new QAngle(0, lineup.release.yaw, 0);
+        var aim = new QAngle(lineup.release.pitch, lineup.release.yaw, 0);
 
-        pawn.Teleport(position, angles, new Vector(0, 0, 0));
+        pawn.Teleport(position, facing, new Vector(0, 0, 0));
+        pawn.EyeAngles.X = aim.X;
+        pawn.EyeAngles.Y = aim.Y;
+        pawn.EyeAngles.Z = 0;
 
         // A single application is not enough: the client re-predicts from the
         // command it had in flight and snaps the view back.
-        ReapplyAngles(player, angles, 2);
+        ReapplyAngles(player, facing, aim, 2);
 
         GiveUtility(player, lineup.utility_type);
 
@@ -362,7 +369,12 @@ public class PracticeReplay
         return false;
     }
 
-    private static void ReapplyAngles(CCSPlayerController player, QAngle angles, int frames)
+    private static void ReapplyAngles(
+        CCSPlayerController player,
+        QAngle facing,
+        QAngle aim,
+        int frames
+    )
     {
         if (frames <= 0)
         {
@@ -378,8 +390,12 @@ public class PracticeReplay
                 return;
             }
 
-            pawn.Teleport(null, angles, new Vector(0, 0, 0));
-            ReapplyAngles(player, angles, frames - 1);
+            pawn.Teleport(null, facing, new Vector(0, 0, 0));
+            pawn.EyeAngles.X = aim.X;
+            pawn.EyeAngles.Y = aim.Y;
+            pawn.EyeAngles.Z = 0;
+
+            ReapplyAngles(player, facing, aim, frames - 1);
         });
     }
 
