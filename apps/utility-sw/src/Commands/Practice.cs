@@ -96,6 +96,35 @@ public partial class UtilityPracticePlugin
 
         if (lineup == null)
         {
+            // An empty library and a query that matches nothing are different
+            // problems, and saying "no lineup matches" for both sends people
+            // hunting for a typo when the library never loaded at all.
+            if (_library.For(player.SteamID).Count == 0)
+            {
+                Reply(
+                    context,
+                    $" {ChatColors.Red}no lineups loaded for this map. "
+                        + $"{ChatColors.Default}fetching..."
+                );
+
+                ulong steamId = player.SteamID;
+
+                _library.Refresh(
+                    steamId,
+                    count =>
+                        Tell(
+                            steamId,
+                            count < 0
+                                ? $" {ChatColors.Red}could not reach the library (check the server logs)"
+                                : count == 0
+                                    ? $" {ChatColors.Red}you have no lineups saved for this map"
+                                    : $" {ChatColors.Green}loaded {count} lineup(s) -- try .load again"
+                        )
+                );
+
+                return;
+            }
+
             Reply(context, $" {ChatColors.Red}no lineup matches \"{query}\"");
             return;
         }

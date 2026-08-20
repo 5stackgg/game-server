@@ -412,11 +412,26 @@ public class UtilityApiClient
 
             if (!response.IsSuccessStatusCode)
             {
+                // The status alone says a request failed; the body says why.
+                // "player is not in this match lineup" and "this server has no
+                // live match" are both 400 and mean completely different things.
+                string reason = "";
+
+                try
+                {
+                    reason = await response.Content.ReadAsStringAsync();
+                }
+                catch
+                {
+                    // A failure we cannot read is still a failure worth logging.
+                }
+
                 _logger.LogWarning(
-                    "{method} {path} returned {status}",
+                    "{method} {path} returned {status}: {reason}",
                     method.Method,
                     path,
-                    (int)response.StatusCode
+                    (int)response.StatusCode,
+                    reason.Length > 500 ? reason.Substring(0, 500) : reason
                 );
                 return null;
             }
