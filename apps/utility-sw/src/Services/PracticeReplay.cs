@@ -1,7 +1,9 @@
+using System.Globalization;
 using FiveStack.Entities.Practice;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
+using SwiftlyS2.Shared.EntitySystem;
 using SwiftlyS2.Shared.Natives;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.SchemaDefinitions;
@@ -1392,10 +1394,6 @@ public class PracticeReplay
             // propdata which means that it be used on a prop_physics" -- so the
             // engine's own answer is the class to use. prop_dynamic_override
             // does NOT bypass that check here the way it did in Source 1.
-            //
-            // The model is set BEFORE DispatchSpawn: a prop spawned first is
-            // networked with no model and stays the ERROR model however late
-            // the real one arrives.
             CPhysicsProp prop =
                 _core.EntitySystem.CreateEntityByDesignerName<CPhysicsProp>(
                     "prop_physics_override"
@@ -1406,15 +1404,26 @@ public class PracticeReplay
                 return;
             }
 
-            prop.SetModel(model);
+            // The model arrives as a spawn KEYVALUE, never through SetModel.
+            // Both orderings of SetModel are wrong: after DispatchSpawn the
+            // entity is already networked without a model and stays the ERROR
+            // model, and before it the entity is still in the staging list,
+            // which trips the SetupModel assertion in skeletoninstance.cpp.
+            var keys = new CEntityKeyValues();
+            var origin = new Vector(stance.x, stance.y, stance.z + UtilityModelHeight);
 
-            prop.Teleport(
-                new Vector(stance.x, stance.y, stance.z + UtilityModelHeight),
-                new QAngle(0, 0, 0),
-                new Vector(0, 0, 0)
+            keys.SetString("model", model);
+            keys.SetString("solid", "0");
+            keys.SetString(
+                "origin",
+                $"{origin.X.ToString(CultureInfo.InvariantCulture)} "
+                    + $"{origin.Y.ToString(CultureInfo.InvariantCulture)} "
+                    + $"{origin.Z.ToString(CultureInfo.InvariantCulture)}"
             );
 
-            prop.DispatchSpawn();
+            prop.DispatchSpawn(keys);
+
+            prop.Teleport(origin, new QAngle(0, 0, 0), new Vector(0, 0, 0));
 
             // Otherwise it is a physics object: it falls off the marker, and a
             // player can shoot it across the map.
