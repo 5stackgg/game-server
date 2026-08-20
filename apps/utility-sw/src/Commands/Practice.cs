@@ -2,6 +2,7 @@ using FiveStack.Entities.Practice;
 using FiveStack.Enums;
 using FiveStack.Utilities;
 using SwiftlyS2.Shared;
+using SwiftlyS2.Core.Menus.OptionsBase;
 using SwiftlyS2.Shared.Commands;
 using SwiftlyS2.Shared.Natives;
 using SwiftlyS2.Shared.Players;
@@ -412,6 +413,70 @@ public partial class UtilityPracticePlugin
     // Prints where the player actually is next to what the loaded lineup says,
     // because every disagreement so far has been between those two numbers and
     // no amount of looking at the marker tells you which one is wrong.
+    // A list you choose from, for the case looking at a ring cannot settle:
+    // several throws off one spot, stacked closely enough that pointing at one
+    // is fiddly. Deliberately a command rather than something that opens itself
+    // -- the menu binds shift and e, which are walk and use, and a menu that
+    // appeared when you stepped onto a spot would eat walk-throws.
+    [Command("pick", registerRaw: false, permission: "")]
+    public void OnPick(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        CCSPlayerPawn? pawn = player.PlayerPawn;
+
+        if (pawn == null || !pawn.IsValid)
+        {
+            return;
+        }
+
+        Vector origin = pawn.AbsOrigin ?? new Vector(0, 0, 0);
+        var at = new Vec3(origin.X, origin.Y, origin.Z);
+
+        IReadOnlyList<LineupRecord> library = _library.For(player.SteamID);
+        List<LineupRecord> here = PracticeReplay.SpotAt(library, at);
+
+        if (here.Count == 0)
+        {
+            Reply(context, $" {ChatColors.Red}nothing to pick from where you are standing");
+            return;
+        }
+
+        var builder = Core.MenusAPI.CreateBuilder();
+
+        builder.Design.SetMenuTitle($"{here.Count} throws from here");
+        // Never frozen: this is a practice server and the player may well want
+        // to step off the spot to dismiss it.
+        builder.SetPlayerFrozen(false);
+        builder.EnableExit();
+
+        foreach (LineupRecord lineup in here)
+        {
+            LineupRecord chosen = lineup;
+
+            var option = new ButtonMenuOption(lineup.name)
+            {
+                Comment = $"{lineup.utility_type} - {lineup.technique}",
+                CloseAfterClick = true,
+            };
+
+            option.Click += (_, _) =>
+            {
+                Apply(player, chosen);
+                return ValueTask.CompletedTask;
+            };
+
+            builder.AddOption(option);
+        }
+
+        Core.MenusAPI.OpenMenuForPlayer(player, builder.Build());
+    }
+
     [Command("where", registerRaw: false, permission: "")]
     public void OnWhere(ICommandContext context)
     {
@@ -819,6 +884,7 @@ public partial class UtilityPracticePlugin
         $" {ChatColors.Default}.last / .back <n> {ChatColors.Grey}back to a throw you made",
         $" {ChatColors.Default}.list / .reload / .delete {ChatColors.Grey}manage your library",
         $" {ChatColors.Default}.pos save <name> / .pos <name> {ChatColors.Grey}saved positions",
+        $" {ChatColors.Default}.pick {ChatColors.Grey}choose between the throws on this spot",
         $" {ChatColors.Default}.where {ChatColors.Grey}where you are vs what the loaded lineup says",
         $" {ChatColors.Default}.spawn <n> {ChatColors.Grey}teleports to a spawn point",
         $" {ChatColors.Default}.bloom {ChatColors.Grey}outlines where the loaded smoke lands",
