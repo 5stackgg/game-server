@@ -35,6 +35,12 @@ public class LineupRecord
     public string technique { get; set; } = nameof(eThrowTechnique.Stationary);
     public string? strength { get; set; }
 
+    // How close the crosshair has to be, in degrees, before this throw counts
+    // as lined up. Per lineup: a tight one wants a green zone you can only
+    // reach deliberately, a forgiving one wants a green zone you can find at a
+    // glance. Zero or missing means fall back to the plugin's own default.
+    public float aim_tolerance { get; set; }
+
     // The panel's word for how this lineup was arrived at: exact, derived or
     // low. Null for a lineup recorded in this session, which has not been
     // through the panel yet, and for anything an older panel returned.

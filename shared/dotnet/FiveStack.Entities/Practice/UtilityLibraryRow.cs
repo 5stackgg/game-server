@@ -19,6 +19,8 @@ public class UtilityLibraryRow
     public string? throw_strength { get; set; }
     public bool? jump_throw_bind { get; set; }
 
+    public double? aim_tolerance { get; set; }
+
     public float? origin_x { get; set; }
     public float? origin_y { get; set; }
     public float? origin_z { get; set; }
@@ -64,6 +66,7 @@ public class UtilityLibraryRow
             side = side ?? "TERRORIST",
             technique = technique ?? "",
             strength = throw_strength,
+            aim_tolerance = (float)(aim_tolerance ?? 0d),
             visibility = visibility ?? "Private",
             confidence = confidence,
             author_steam_id = author_steam_id ?? "",

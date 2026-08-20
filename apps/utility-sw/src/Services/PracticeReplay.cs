@@ -125,7 +125,23 @@ public class PracticeReplay
     {
         public readonly List<CEnvBeam> Beams = new();
         public readonly List<CPointWorldText> Texts = new();
+
+        // The crosshairs, kept per throw so they can be recoloured as the
+        // player moves the mouse instead of being torn down and redrawn.
+        public readonly List<Aim> Aims = new();
     }
+
+    private class Aim
+    {
+        public LineupRecord Lineup = null!;
+        public readonly List<CEnvBeam> Beams = new();
+        public CPointWorldText? Label;
+        public float Miss = -1f;
+    }
+
+    // The reticle currently being drawn, so its beams can be collected apart
+    // from the rest of the selection.
+    private Aim? _aimInto;
 
     private readonly Dictionary<ulong, Selection> _selections = new();
 
@@ -1274,28 +1290,96 @@ public class PracticeReplay
         // this: you are always standing on them.
         float weight = Math.Clamp(away * 0.0018f, MarkerWidth, 2.2f);
 
-        bool isFocused =
-            _focused == null || _focused.client_id == lineup.client_id;
+        // Every throw off the spot is drawn at the same size and weight. Which
+        // one you are on is said in COLOUR, not in scale: a smaller crosshair
+        // reads as "further away", which is exactly the wrong thing to say
+        // about a point you are being asked to cover precisely.
+        var aim = new Aim { Lineup = lineup };
 
-        // A sibling throw is drawn, but quietly: half the weight and two thirds
-        // the size, so the one being looked toward reads as the answer without
-        // the others disappearing.
-        if (!isFocused)
+        _aimInto = aim;
+
+        try
         {
-            Reticle(center, dir, size * 0.66f, ColorFor(lineup.utility_type), weight * 0.5f);
-            return;
+            Reticle(center, dir, size, MissColor(1f), weight);
         }
-
-        Reticle(center, dir, size, ColorFor(lineup.utility_type), weight);
+        finally
+        {
+            _aimInto = null;
+        }
 
         // Named at the crosshair itself: several throws off one spot are only
         // useful if you can tell which crosshair belongs to which.
-        Label(
+        aim.Label = Label(
             new Vec3(center.x, center.y, center.z + size + 8f),
             label,
-            ColorFor(lineup.utility_type),
+            MissColor(1f),
             eye
         );
+
+        _drawingInto?.Aims.Add(aim);
+    }
+
+    // Red at a glance, green when the throw is on. Amber through the middle so
+    // the last fraction of a degree still has somewhere to go -- a hard
+    // two-colour switch gives no sense of getting warmer.
+    private static Color MissColor(float miss)
+    {
+        miss = Math.Clamp(miss, 0f, 1f);
+
+        return new Color(
+            (int)(60f + (195f * miss)),
+            (int)(230f - (190f * miss)),
+            (int)(90f * (1f - miss)),
+            255
+        );
+    }
+
+    // Called as the player moves, not as they walk onto a spot: the crosshairs
+    // are already drawn, and all that changes is how wrong each one is.
+    public void TintAim(IPlayer player, float eyeYaw, float eyePitch)
+    {
+        if (!_selections.TryGetValue(player.SteamID, out Selection? selection))
+        {
+            return;
+        }
+
+        foreach (Aim aim in selection.Aims)
+        {
+            float miss = PracticeLineupUtility.AimMiss(
+                PracticeLineupUtility.AimError(
+                    eyeYaw,
+                    eyePitch,
+                    aim.Lineup.release.yaw,
+                    aim.Lineup.release.pitch
+                ),
+                aim.Lineup.aim_tolerance
+            );
+
+            // Beams are networked on change, so only send one when the colour
+            // would actually differ. At sixteen updates a second across every
+            // throw on a spot, repainting unconditionally is real traffic.
+            if (Math.Abs(miss - aim.Miss) < 0.02f)
+            {
+                continue;
+            }
+
+            aim.Miss = miss;
+
+            Color color = MissColor(miss);
+
+            foreach (CEnvBeam beam in aim.Beams)
+            {
+                if (beam.IsValid)
+                {
+                    beam.Render = color;
+                }
+            }
+
+            if (aim.Label != null && aim.Label.IsValid)
+            {
+                aim.Label.Color = color;
+            }
+        }
     }
 
     // A box with a ring inside it, drawn in the plane facing back down the aim
@@ -1539,6 +1623,8 @@ public class PracticeReplay
             return;
         }
 
+        _aimInto?.Beams.Add(beam);
+
         if (_drawingInto != null)
         {
             _drawingInto.Beams.Add(beam);
@@ -1612,7 +1698,7 @@ public class PracticeReplay
     // facing: where the text should read from, normally the spot the player is
     // standing on. Passing null keeps the auto-reorient, which is right for a
     // label lying on the floor and wrong for one on a wall.
-    private void Label(Vec3 at, string text, Color color, Vec3? facing = null)
+    private CPointWorldText? Label(Vec3 at, string text, Color color, Vec3? facing = null)
     {
         try
         {
@@ -1623,7 +1709,7 @@ public class PracticeReplay
 
             if (!label.IsValid)
             {
-                return;
+                return null;
             }
 
             label.MessageText = text;
@@ -1679,10 +1765,14 @@ public class PracticeReplay
             {
                 _markerTexts.Add(label);
             }
+
+            return label;
         }
         catch (Exception error)
         {
             _logger.LogError(error, "unable to place a lineup marker");
+
+            return null;
         }
     }
 

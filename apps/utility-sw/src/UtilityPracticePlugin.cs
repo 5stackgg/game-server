@@ -265,10 +265,14 @@ public partial class UtilityPracticePlugin : BasePlugin
         }
     }
 
-    // Dead on, not nearly. A tenth of a degree is inside one mouse count at
-    // normal sensitivity, so this only reads LINED UP when the crosshair is
-    // genuinely on the recorded angle rather than somewhere near it.
-    private const float AimToleranceDegrees = 0.1f;
+    // What LINED UP means is the lineup's own business -- the same number that
+    // turns its crosshair green, so the two can never disagree.
+    private static float ToleranceFor(LineupRecord lineup)
+    {
+        return lineup.aim_tolerance > 0f
+            ? lineup.aim_tolerance
+            : PracticeLineupUtility.DefaultAimTolerance;
+    }
 
     // Centre text has to be re-sent to stay on screen. Four ticks is sixteen
     // updates a second, which is fast enough that a hundredth-of-a-degree
@@ -398,9 +402,11 @@ public partial class UtilityPracticePlugin : BasePlugin
 
             foreach (LineupRecord lineup in here)
             {
-                float off = Math.Max(
-                    AngleGap(eyes.Y, lineup.release.yaw),
-                    AngleGap(eyes.X, lineup.release.pitch)
+                float off = PracticeLineupUtility.AimError(
+                    eyes.Y,
+                    eyes.X,
+                    lineup.release.yaw,
+                    lineup.release.pitch
                 );
 
                 if (off < bestOff)
@@ -487,6 +493,10 @@ public partial class UtilityPracticePlugin : BasePlugin
                 continue;
             }
 
+            QAngle eyes = pawn.EyeAngles;
+
+            _replay.TintAim(player, eyes.Y, eyes.X);
+
             string? message = CentreText(player, pawn);
 
             if (message != null)
@@ -508,8 +518,12 @@ public partial class UtilityPracticePlugin : BasePlugin
             QAngle eyes = pawn.EyeAngles;
 
             if (
-                AngleGap(eyes.Y, lineup.release.yaw) <= AimToleranceDegrees
-                && AngleGap(eyes.X, lineup.release.pitch) <= AimToleranceDegrees
+                PracticeLineupUtility.AimError(
+                    eyes.Y,
+                    eyes.X,
+                    lineup.release.yaw,
+                    lineup.release.pitch
+                ) <= ToleranceFor(lineup)
             )
             {
                 return PracticeReplay.ThrowHint(lineup);
@@ -550,12 +564,6 @@ public partial class UtilityPracticePlugin : BasePlugin
     }
 
     // Shortest way round the circle, so 359 and 1 are two degrees apart.
-    private static float AngleGap(float a, float b)
-    {
-        float gap = Math.Abs(a - b) % 360f;
-
-        return gap > 180f ? 360f - gap : gap;
-    }
 
     private void OnSecond()
     {

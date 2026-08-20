@@ -198,3 +198,69 @@ public class UtilityBySpotTests
         Assert.Empty(PracticeLineupUtility.UtilityBySpot([], 40f, 72f));
     }
 }
+
+public class AimMissTests
+{
+    [Fact]
+    public void InsideToleranceIsFullyOn()
+    {
+        Assert.Equal(0f, PracticeLineupUtility.AimMiss(0.2f, 0.35f));
+        Assert.Equal(0f, PracticeLineupUtility.AimMiss(0.35f, 0.35f));
+    }
+
+    [Fact]
+    public void JustOutsideToleranceIsNotYetRed()
+    {
+        float miss = PracticeLineupUtility.AimMiss(0.4f, 0.35f);
+
+        Assert.True(miss > 0f);
+        Assert.True(miss < 0.1f);
+    }
+
+    [Fact]
+    public void FarOffIsFullyRed()
+    {
+        Assert.Equal(1f, PracticeLineupUtility.AimMiss(90f, 0.35f));
+    }
+
+    [Fact]
+    public void AWiderToleranceStaysGreenLonger()
+    {
+        Assert.Equal(0f, PracticeLineupUtility.AimMiss(1.5f, 2f));
+        Assert.True(PracticeLineupUtility.AimMiss(1.5f, 0.35f) > 0f);
+    }
+
+    [Fact]
+    public void ALineupThatNeverSaidFallsBackToTheDefault()
+    {
+        Assert.Equal(
+            PracticeLineupUtility.AimMiss(0.5f, PracticeLineupUtility.DefaultAimTolerance),
+            PracticeLineupUtility.AimMiss(0.5f, 0f)
+        );
+    }
+
+    [Fact]
+    public void ErrorIsTheWorseOfTheTwoAxes()
+    {
+        Assert.Equal(3f, PracticeLineupUtility.AimError(0f, 3f, 0f, 0f));
+        Assert.Equal(3f, PracticeLineupUtility.AimError(3f, 0f, 0f, 0f));
+    }
+
+    [Fact]
+    public void ErrorTakesTheShortWayRoundTheCircle()
+    {
+        // 359 and 1 are two degrees apart, not 358.
+        Assert.Equal(2f, PracticeLineupUtility.AimError(359f, 0f, 1f, 0f));
+    }
+
+    [Fact]
+    public void MissNeverLeavesTheZeroToOneRange()
+    {
+        foreach (float error in new[] { 0f, 0.01f, 1f, 5f, 50f, 179f })
+        {
+            float miss = PracticeLineupUtility.AimMiss(error, 0.35f);
+
+            Assert.InRange(miss, 0f, 1f);
+        }
+    }
+}

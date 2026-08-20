@@ -94,6 +94,51 @@ public static class PracticeLineupUtility
         return ProjectileToUtility.TryGetValue(designerName, out string? type) ? type : null;
     }
 
+    // Shortest way round the circle between two angles.
+    public static float AngleGap(float a, float b)
+    {
+        float gap = Math.Abs(a - b) % 360f;
+
+        return gap > 180f ? 360f - gap : gap;
+    }
+
+    // How wrong the crosshair is for this throw, in degrees: the worse of the
+    // two axes, because being dead on the yaw does not help if the pitch is off.
+    public static float AimError(float eyeYaw, float eyePitch, float yaw, float pitch)
+    {
+        return Math.Max(AngleGap(eyeYaw, yaw), AngleGap(eyePitch, pitch));
+    }
+
+    // 0 when the crosshair is inside the lineup's tolerance, 1 when it is a
+    // long way outside, and a ramp between the two. What the reticle's colour
+    // is a picture of: green means throw it, red means keep looking.
+    public static float AimMiss(float error, float tolerance)
+    {
+        if (tolerance <= 0f)
+        {
+            tolerance = DefaultAimTolerance;
+        }
+
+        if (error <= tolerance)
+        {
+            return 0f;
+        }
+
+        // Red at the point where the crosshair is nowhere near, not at some
+        // multiple of a tolerance that may itself be tiny -- otherwise a 0.1
+        // degree lineup would read fully red one degree off, which is where
+        // almost every attempt starts.
+        float span = Math.Max(AimMissSpanDegrees - tolerance, 0.01f);
+
+        return Math.Clamp((error - tolerance) / span, 0f, 1f);
+    }
+
+    // A lineup that never said how precise it is.
+    public const float DefaultAimTolerance = 0.35f;
+
+    // Fully red this far off the recorded angle.
+    public const float AimMissSpanDegrees = 6f;
+
     // Groups stance positions that are close enough to be the same place to
     // stand, and reports the distinct kinds of grenade thrown from each. What
     // floats over a spot answers "what do I bring here" -- so two smokes from
