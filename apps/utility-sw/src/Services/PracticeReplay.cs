@@ -153,7 +153,29 @@ public class PracticeReplay
 
         GiveUtility(player, lineup.utility_type);
 
-        ShowMarkers(lineup, feet);
+        // Drawn a tick later, from where the player ACTUALLY ended up. The
+        // engine resolves the floor by standing them on it, which beats any
+        // trace we could run: a stored origin can be a jump height off (an
+        // editor-authored lineup has no way to know the floor) and the marker
+        // still lands under their feet.
+        _core.Scheduler.NextTick(() =>
+        {
+            if (!player.IsValid)
+            {
+                return;
+            }
+
+            CCSPlayerPawn? settled = player.PlayerPawn;
+            Vec3 standing = feet;
+
+            if (settled != null && settled.IsValid)
+            {
+                Vector landed = settled.AbsOrigin ?? new Vector(feet.x, feet.y, feet.z);
+                standing = new Vec3(landed.X, landed.Y, landed.Z);
+            }
+
+            ShowMarkers(lineup, standing);
+        });
 
         player.SendCenter(Describe(lineup));
     }
