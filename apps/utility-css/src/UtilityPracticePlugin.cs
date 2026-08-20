@@ -381,6 +381,11 @@ public partial class UtilityPracticePlugin : BasePlugin
         "mp_solid_teammates 0",
         "mp_teammates_are_enemies 0",
         "sv_grenade_trajectory_prac_pipreview 1",
+        // Valve's own map-guide editor. Every annotation_* command is client
+        // side, so a plugin can never draw one for a player -- but this cvar
+        // decides whether they may draw their own, and it ships at view-only.
+        // On a practice server there is no reason to withhold the editor.
+        "sv_allow_annotations_access_level 2",
         "sv_infinite_ammo 1",
         "ammo_grenade_limit_total 5",
         "sv_full_alltalk 1",
