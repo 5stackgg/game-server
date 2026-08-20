@@ -153,7 +153,7 @@ public class PracticeReplay
 
         GiveUtility(player, lineup.utility_type);
 
-        ShowMarkers(lineup);
+        ShowMarkers(lineup, feet);
 
         player.SendCenter(Describe(lineup));
     }
@@ -771,7 +771,11 @@ public class PracticeReplay
     // these mirror it. It is drawn from entities the server owns rather than
     // the annotation system, which is client-side and cannot be driven from
     // here at all.
-    private void ShowMarkers(LineupRecord lineup)
+    // The stance is passed in rather than traced again: by the time markers are
+    // drawn the player is standing on the spot, and a downward trace from
+    // inside their own hull hits them instead of the floor. Load works it out
+    // before the teleport, while the spot is still empty.
+    private void ShowMarkers(LineupRecord lineup, Vec3 stance)
     {
         ClearMarkers();
 
@@ -781,7 +785,6 @@ public class PracticeReplay
         }
 
         Color color = ColorFor(lineup.utility_type);
-        Vec3 stance = Grounded(lineup.release.feet_position);
         Vec3 landing = lineup.detonation_position;
 
         Ring(stance, 24f, color, MarkerWidth);
@@ -798,14 +801,14 @@ public class PracticeReplay
             color
         );
 
-        AimReticle(lineup);
+        AimReticle(lineup, stance);
     }
 
     // Where to point. The aim ray is traced until it hits something, so the
     // reticle lands ON the surface being aimed at rather than hanging in the
     // air short of it -- for an arcing smoke the crosshair sits well above the
     // landing spot, so distance-to-landing was never the right answer.
-    private void AimReticle(LineupRecord lineup)
+    private void AimReticle(LineupRecord lineup, Vec3 stance)
     {
         // From where the player's eye WILL BE after .load, not from where the
         // grenade left the hand. Those stopped being the same point when the
@@ -813,8 +816,6 @@ public class PracticeReplay
         // jump-throw releases a whole run-up away from where it is set up, and
         // tracing from the release point puts the reticle that far off from
         // what the player sees standing on the marker.
-        Vec3 stance = Grounded(lineup.release.feet_position);
-
         var eye = new Vec3(
             stance.x,
             stance.y,
