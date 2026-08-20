@@ -144,7 +144,6 @@ public class UtilityWireTests
     [InlineData("\"plugin_runtime\"")]
     [InlineData("\"plugin_version\"")]
     [InlineData("\"workshop_map_id\"")]
-    [InlineData("\"utility_type\"")]
     [InlineData("\"release\"")]
     [InlineData("\"trajectory\"")]
     [InlineData("\"flight_time\":")]

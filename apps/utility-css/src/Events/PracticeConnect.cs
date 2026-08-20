@@ -5,6 +5,7 @@ using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using FiveStack.Enums;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Logging;
 
 namespace UtilityPractice;
 
@@ -64,6 +65,18 @@ public partial class UtilityPracticePlugin
         {
             PendingPlayers[steamId] = decision.pending_role;
         }
+
+        // Never the token itself -- it is the server password. Everything else
+        // about the decision, because a connect that fails silently is the
+        // hardest thing here to diagnose from the outside.
+        _logger.LogInformation(
+            "connect {steamId}: {action} (token: {hasToken}, roster: {roster}, password ready: {ready})",
+            steamId,
+            decision.action,
+            token != null,
+            _session.Current?.allowed_steam_ids.Count ?? -1,
+            PasswordBuffer != nint.Zero
+        );
 
         switch (decision.action)
         {

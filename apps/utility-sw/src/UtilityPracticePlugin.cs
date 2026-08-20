@@ -126,8 +126,15 @@ public partial class UtilityPracticePlugin : BasePlugin
         _secondTimer = Core.Scheduler.RepeatBySeconds(1, OnSecond);
         _refillTimer = Core.Scheduler.RepeatBySeconds(0.1f, OnFastTick);
 
-        _library.SetMap(Core.Engine.GlobalVars.MapName.ToString());
-        RefreshEverything();
+        // Only on a hot reload. A cold boot has no engine globals yet -- asking
+        // for the map here is what stopped the plugin loading at all -- and the
+        // map arrives moments later with OnMapLoad, which does both of these.
+        // A hot reload has already missed that event, so this is its only chance.
+        if (hotReload)
+        {
+            _library.SetMap(Core.Engine.GlobalVars.MapName.ToString());
+            RefreshEverything();
+        }
 
         _logger.LogInformation(
             "utility practice {version} loaded (connected: {connected})",
@@ -338,9 +345,53 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void OnSessionRefreshed(PracticeSessionData session)
     {
-        if (!string.IsNullOrEmpty(session.password))
+        if (string.IsNullOrEmpty(session.password))
         {
-            SetPasswordBuffer(session.password);
+            _logger.LogWarning(
+                "practice session {session} carries no password; the connect hook has nothing to present",
+                session.id
+            );
+            return;
+        }
+
+        SetPasswordBuffer(session.password);
+
+        // The buffer only substitutes this password into the connect call --
+        // the server still has to be the one asking for it. Without this the
+        // hook hands over a password sv_password never heard of, and every
+        // assigned player is turned away with "bad password".
+        if (!TrySetConVar("sv_password", session.password))
+        {
+            _logger.LogError(
+                "could not set sv_password; assigned players will be rejected"
+            );
+            return;
+        }
+
+        _logger.LogInformation(
+            "practice session {session} password applied to sv_password",
+            session.id
+        );
+    }
+
+    private bool TrySetConVar(string name, string value)
+    {
+        try
+        {
+            var conVar = Core.ConVar.Find<string>(name);
+
+            if (conVar == null)
+            {
+                return false;
+            }
+
+            conVar.Value = value;
+            return true;
+        }
+        catch (Exception error)
+        {
+            _logger.LogWarning(error, "failed setting convar {Name}", name);
+            return false;
         }
     }
 }

@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes;
+using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
@@ -93,8 +94,13 @@ public partial class UtilityPracticePlugin : BasePlugin
         _secondTimer = AddTimer(1f, OnSecond, TimerFlags.REPEAT);
         _refillTimer = AddTimer(0.1f, OnFastTick, TimerFlags.REPEAT);
 
-        _library.SetMap(Server.MapName);
-        RefreshEverything();
+        // Only on a hot reload -- see the swiftly plugin: a cold boot has no map
+        // yet, and OnMapChange does both of these when it arrives.
+        if (hotReload)
+        {
+            _library.SetMap(Server.MapName);
+            RefreshEverything();
+        }
 
         _logger.LogInformation(
             "utility practice {version} loaded (connected: {connected})",
@@ -231,9 +237,36 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void OnSessionRefreshed(PracticeSessionData session)
     {
-        if (!string.IsNullOrEmpty(session.password))
+        if (string.IsNullOrEmpty(session.password))
         {
-            SetPasswordBuffer(session.password);
+            _logger.LogWarning(
+                "practice session {session} carries no password; the connect hook has nothing to present",
+                session.id
+            );
+            return;
         }
+
+        SetPasswordBuffer(session.password);
+
+        // The buffer only substitutes this password into the connect call --
+        // the server still has to be the one asking for it. Without this the
+        // hook hands over a password sv_password never heard of, and every
+        // assigned player is turned away with "bad password".
+        var password = ConVar.Find("sv_password");
+
+        if (password is null)
+        {
+            _logger.LogError(
+                "could not find sv_password; assigned players will be rejected"
+            );
+            return;
+        }
+
+        password.SetValue(session.password);
+
+        _logger.LogInformation(
+            "practice session {session} password applied to sv_password",
+            session.id
+        );
     }
 }

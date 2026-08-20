@@ -81,6 +81,8 @@ public partial class UtilityPracticePlugin
                 return;
             }
 
+            _logger.LogInformation("ConnectClient hook installed");
+
             _connectClientHookId = _connectClientFunc.AddHook(
                 (next) =>
                 {
@@ -118,6 +120,19 @@ public partial class UtilityPracticePlugin
                         {
                             PendingPlayers[steamId] = decision.pending_role;
                         }
+
+                        // Never the token itself -- it is the server password.
+                        // Everything else about the decision, because a connect
+                        // that fails silently is the hardest thing here to
+                        // diagnose from the outside.
+                        _logger.LogInformation(
+                            "connect {steamId}: {action} (token: {hasToken}, roster: {roster}, password ready: {ready})",
+                            steamId,
+                            decision.action,
+                            token != null,
+                            _session.Current?.allowed_steam_ids.Count ?? -1,
+                            PasswordBuffer != nint.Zero
+                        );
 
                         if (
                             decision.action == ePracticeConnect.Authorized
