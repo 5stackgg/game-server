@@ -323,7 +323,8 @@ public partial class UtilityPracticePlugin : BasePlugin
 
             _standingIn[player.SteamID] = key;
 
-            _replay.ShowAllMarkers(library, show, at);
+            // The library is already drawn; only this player's selection moves.
+            _replay.ShowSelection(player, show, at);
 
             // Looking at a ring IS choosing it: the crosshair, the name and the
             // angular guidance have to describe one throw, and they read the
@@ -662,6 +663,12 @@ public partial class UtilityPracticePlugin : BasePlugin
     {
         _drill.Forget(steamId);
         _system.Forget(steamId);
+
+        // Their selection is theirs: leaving it behind leaks the entities and
+        // leaves standing transmit blocks pointing at indices the engine will
+        // hand to something else.
+        _replay.ClearSelectionFor(steamId);
+        _standingIn.Remove(steamId);
     }
 
     // Swiftly's client events carry a slot, not a steam id.

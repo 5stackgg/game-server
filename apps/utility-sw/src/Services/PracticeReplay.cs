@@ -103,9 +103,27 @@ public class PracticeReplay
     // so it never wears the utility's colour.
     private static readonly Color AimColor = new Color(255, 235, 120, 255);
 
+    // The library layer: every lineup's stance ring, landing ring, name and
+    // grenade model. Shared on purpose -- everyone on the server should see
+    // where the lineups are.
     private readonly List<CEnvBeam> _markerBeams = new();
     private readonly List<CPointWorldText> _markerTexts = new();
     private readonly List<CDynamicProp> _markerProps = new();
+
+    // The selection layer: the crosshair and labels for whichever lineup ONE
+    // player has focused. Kept per player and transmit-blocked from everybody
+    // else, because two people practising at once were otherwise wiping each
+    // other's aim marker every time either of them moved.
+    private class Selection
+    {
+        public readonly List<CEnvBeam> Beams = new();
+        public readonly List<CPointWorldText> Texts = new();
+    }
+
+    private readonly Dictionary<ulong, Selection> _selections = new();
+
+    // Which list the drawing helpers append to. Null means the shared layer.
+    private Selection? _drawingInto;
 
     // A real smoke emitted at the landing point: the only preview with perfect
     // fidelity, because it is the same cloud the throw would make.
@@ -218,7 +236,8 @@ public class PracticeReplay
                 here.Add(lineup);
             }
 
-            ShowAllMarkers(library, here, standing);
+            ShowLibrary(library);
+            ShowSelection(player, here, standing);
         });
 
         player.SendCenter(Describe(lineup));
@@ -866,7 +885,8 @@ public class PracticeReplay
             here.Add(lineup);
         }
 
-        ShowAllMarkers(library, here, standing);
+        ShowLibrary(library);
+        ShowSelection(player, here, standing);
     }
 
     // Every lineup on the map at once. Loading one and cycling with .next hides
@@ -888,17 +908,21 @@ public class PracticeReplay
         Vec3 stance
     )
     {
-        ClearMarkers();
+        ShowLibrary(lineups);
+        ShowSelection(null, active, stance);
+    }
 
-        var live = new HashSet<string>(active.Select(entry => entry.client_id));
+    // The library layer. Every lineup gets the same quiet treatment -- no
+    // exclusions, because a lineup one player has focused is still just a ring
+    // to everyone else.
+    public void ShowLibrary(IEnumerable<LineupRecord> lineups)
+    {
+        ClearSharedMarkers();
+
+        _drawingInto = null;
 
         foreach (LineupRecord lineup in lineups)
         {
-            if (live.Contains(lineup.client_id))
-            {
-                continue;
-            }
-
             Color quiet = ColorFor(lineup.utility_type);
             Vec3 feet = Grounded(lineup.release.feet_position);
 
@@ -908,11 +932,145 @@ public class PracticeReplay
             Label(new Vec3(feet.x, feet.y, feet.z + 10f), lineup.name, quiet);
             UtilityModel(lineup, feet);
         }
+    }
 
-        foreach (LineupRecord lineup in active)
+    // One player's focused lineups: the big ring, the STAND label and the aim
+    // crosshair. Hidden from every other viewer, so nobody else's movement can
+    // take it away. A null owner draws into the shared layer, which is only for
+    // the single-player paths that predate the split.
+    public void ShowSelection(
+        IPlayer? owner,
+        IReadOnlyCollection<LineupRecord> active,
+        Vec3 stance
+    )
+    {
+        if (owner == null)
         {
-            ShowMarkers(lineup, stance, false);
+            _drawingInto = null;
+
+            foreach (LineupRecord lineup in active)
+            {
+                ShowMarkers(lineup, stance, false);
+            }
+
+            return;
         }
+
+        ClearSelection(owner.SteamID);
+
+        if (active.Count == 0)
+        {
+            return;
+        }
+
+        var selection = new Selection();
+
+        _selections[owner.SteamID] = selection;
+        _drawingInto = selection;
+
+        try
+        {
+            foreach (LineupRecord lineup in active)
+            {
+                ShowMarkers(lineup, stance, false);
+            }
+        }
+        finally
+        {
+            _drawingInto = null;
+        }
+
+        ApplySelectionVisibility();
+    }
+
+    // A selection belongs to one viewer, so it is blocked for everybody else.
+    private void ApplySelectionVisibility()
+    {
+        foreach (IPlayer viewer in _core.PlayerManager.GetAllPlayers())
+        {
+            if (viewer == null || !viewer.IsValid || viewer.IsFakeClient)
+            {
+                continue;
+            }
+
+            foreach ((ulong owner, Selection selection) in _selections)
+            {
+                bool hidden = owner != viewer.SteamID;
+
+                foreach (CEnvBeam beam in selection.Beams)
+                {
+                    if (beam.IsValid)
+                    {
+                        viewer.ShouldBlockTransmitEntity((int)beam.Index, hidden);
+                    }
+                }
+
+                foreach (CPointWorldText text in selection.Texts)
+                {
+                    if (text.IsValid)
+                    {
+                        viewer.ShouldBlockTransmitEntity((int)text.Index, hidden);
+                    }
+                }
+            }
+        }
+    }
+
+    public void ClearSelectionFor(ulong steamId)
+    {
+        ClearSelection(steamId);
+    }
+
+    private void ClearSelection(ulong steamId)
+    {
+        if (!_selections.TryGetValue(steamId, out Selection? selection))
+        {
+            return;
+        }
+
+        // Entity indices are reused, so a standing block has to be lifted
+        // BEFORE the entity goes away or it lands on whatever takes its slot.
+        foreach (IPlayer viewer in _core.PlayerManager.GetAllPlayers())
+        {
+            if (viewer == null || !viewer.IsValid || viewer.IsFakeClient)
+            {
+                continue;
+            }
+
+            foreach (CEnvBeam beam in selection.Beams)
+            {
+                if (beam.IsValid)
+                {
+                    viewer.ShouldBlockTransmitEntity((int)beam.Index, false);
+                }
+            }
+
+            foreach (CPointWorldText text in selection.Texts)
+            {
+                if (text.IsValid)
+                {
+                    viewer.ShouldBlockTransmitEntity((int)text.Index, false);
+                }
+            }
+        }
+
+        foreach (CEnvBeam beam in selection.Beams)
+        {
+            if (beam.IsValid)
+            {
+                beam.Despawn();
+            }
+        }
+
+        foreach (CPointWorldText text in selection.Texts)
+        {
+            if (text.IsValid)
+            {
+                text.Despawn();
+            }
+        }
+
+        _selections.Remove(steamId);
     }
 
     // The lineups throwable from where this player is standing, which is what
@@ -1249,7 +1407,16 @@ public class PracticeReplay
     {
         CEnvBeam? beam = CreateBeam(start, end, color, width);
 
-        if (beam != null)
+        if (beam == null)
+        {
+            return;
+        }
+
+        if (_drawingInto != null)
+        {
+            _drawingInto.Beams.Add(beam);
+        }
+        else
         {
             _markerBeams.Add(beam);
         }
@@ -1303,7 +1470,14 @@ public class PracticeReplay
 
             if (beam != null)
             {
-                _markerBeams.Add(beam);
+                if (_drawingInto != null)
+                {
+                    _drawingInto.Beams.Add(beam);
+                }
+                else
+                {
+                    _markerBeams.Add(beam);
+                }
             }
         }
     }
@@ -1345,7 +1519,14 @@ public class PracticeReplay
 
             label.DispatchSpawn();
 
-            _markerTexts.Add(label);
+            if (_drawingInto != null)
+            {
+                _drawingInto.Texts.Add(label);
+            }
+            else
+            {
+                _markerTexts.Add(label);
+            }
         }
         catch (Exception error)
         {
@@ -1361,10 +1542,50 @@ public class PracticeReplay
         _markerBeams.Clear();
         _markerTexts.Clear();
         _markerProps.Clear();
+        _selections.Clear();
+        _drawingInto = null;
+    }
+
+    // The library layer only. The selection layer belongs to individual players
+    // and outlives a library redraw.
+    private void ClearSharedMarkers()
+    {
+        foreach (CEnvBeam beam in _markerBeams)
+        {
+            if (beam.IsValid)
+            {
+                beam.Despawn();
+            }
+        }
+
+        foreach (CPointWorldText label in _markerTexts)
+        {
+            if (label.IsValid)
+            {
+                label.Despawn();
+            }
+        }
+
+        foreach (CDynamicProp prop in _markerProps)
+        {
+            if (prop.IsValid)
+            {
+                prop.Despawn();
+            }
+        }
+
+        _markerBeams.Clear();
+        _markerTexts.Clear();
+        _markerProps.Clear();
     }
 
     public void ClearMarkers()
     {
+        foreach (ulong steamId in _selections.Keys.ToList())
+        {
+            ClearSelection(steamId);
+        }
+
         foreach (CEnvBeam beam in _markerBeams)
         {
             if (beam.IsValid)
