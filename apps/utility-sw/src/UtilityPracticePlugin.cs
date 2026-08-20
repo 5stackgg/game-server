@@ -236,6 +236,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void OnSecond()
     {
+        EndWarmup();
         RespawnTheDead();
         KeepEveryoneStocked();
         ReportOccupancy();
@@ -291,6 +292,35 @@ public partial class UtilityPracticePlugin : BasePlugin
         }
 
         _ = Task.Run(() => _api.Occupancy(present));
+    }
+
+    private int _warmupTicks;
+
+    // A practice server is never in warmup. Enforced rather than set once:
+    // mp_warmup_end at map load runs before warmup has begun, and the game
+    // starts one of its own whenever it feels like it -- on the first connect,
+    // on a restart, after a mode cfg lands.
+    private void EndWarmup()
+    {
+        if (--_warmupTicks > 0)
+        {
+            return;
+        }
+
+        CCSGameRules? rules = Core
+            .EntitySystem.GetAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+            .FirstOrDefault()
+            ?.GameRules;
+
+        if (rules == null || !rules.WarmupPeriod)
+        {
+            return;
+        }
+
+        // Not every tick: the command takes a moment to land, and re-issuing it
+        // in the meantime achieves nothing.
+        _warmupTicks = WarmupRetrySeconds;
+        Core.Engine.ExecuteCommand("mp_warmup_end");
     }
 
     private void KeepEveryoneStocked()
@@ -469,6 +499,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     // box that no mode was ever selected for, and without this it sits in
     // warmup with no money and no utility.
     private const int OccupancySeconds = 15;
+    private const int WarmupRetrySeconds = 3;
 
     private const float CfgReapplySeconds = 3f;
 
@@ -478,6 +509,12 @@ public partial class UtilityPracticePlugin : BasePlugin
         // Nothing ends the round: a kill or an expired timer would reset
         // everyone mid-lineup.
         "mp_ignore_round_win_conditions 1",
+        "mp_warmuptime 1",
+        "mp_warmup_pausetimer 0",
+        "mp_halftime 0",
+        "mp_match_can_clinch 0",
+        "mp_team_intro_time 0",
+        "mp_round_restart_delay 0",
         "mp_warmup_end",
         "mp_freezetime 0",
         "mp_roundtime 60",
