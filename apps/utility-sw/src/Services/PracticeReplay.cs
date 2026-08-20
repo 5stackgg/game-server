@@ -69,6 +69,10 @@ public class PracticeReplay
     // aim ray actually lands.
     private const float AimTraceRange = 4096f;
 
+    // A standing hull is 32 wide and 72 tall, so anything past ~48 units along
+    // the aim is outside it whichever way the player is facing.
+    private const float AimTraceStartOffset = 48f;
+
     // Only used when the ray leaves the map without hitting anything -- aiming
     // up over open ground has no surface to mark, and a ring hung out at the
     // full trace length would be a speck against the skybox.
@@ -983,7 +987,15 @@ public class PracticeReplay
             (float)(-Math.Sin(pitch))
         );
 
-        var from = new Vector(eye.x, eye.y, eye.z);
+        // Started clear of the player's own hull. Markers are drawn while
+        // somebody is standing on the spot, and a trace beginning inside a
+        // player stops on that player -- which is why the crosshair landed a
+        // stride away instead of on the wall it is aimed at.
+        var from = new Vector(
+            eye.x + dir.x * AimTraceStartOffset,
+            eye.y + dir.y * AimTraceStartOffset,
+            eye.z + dir.z * AimTraceStartOffset
+        );
         var to = new Vector(
             eye.x + dir.x * AimTraceRange,
             eye.y + dir.y * AimTraceRange,
@@ -995,6 +1007,20 @@ public class PracticeReplay
         try
         {
             var trace = _core.Trace.TraceShapeLine(from, to, null);
+
+            _logger.LogInformation(
+                "aim trace for {name}: hit={hit} at {x},{y},{z} ({dist} units out)",
+                lineup.name,
+                trace.DidHit,
+                trace.EndPos.X.ToString("0.#"),
+                trace.EndPos.Y.ToString("0.#"),
+                trace.EndPos.Z.ToString("0.#"),
+                new Vec3(
+                    trace.EndPos.X - eye.x,
+                    trace.EndPos.Y - eye.y,
+                    trace.EndPos.Z - eye.z
+                ).Length().ToString("0.#")
+            );
 
             hit = trace.DidHit
                 ? new Vec3(trace.EndPos.X, trace.EndPos.Y, trace.EndPos.Z)
