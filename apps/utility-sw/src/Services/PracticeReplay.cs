@@ -797,6 +797,22 @@ public class PracticeReplay
     // drawn the player is standing on the spot, and a downward trace from
     // inside their own hull hits them instead of the floor. Load works it out
     // before the teleport, while the spot is still empty.
+    // Markers for a lineup the player is already standing on, with no teleport:
+    // used straight after .save, where moving them would be pointless.
+    public void ShowMarkersFor(IPlayer player, LineupRecord lineup)
+    {
+        CCSPlayerPawn? pawn = player.PlayerPawn;
+
+        if (pawn == null || !pawn.IsValid)
+        {
+            return;
+        }
+
+        Vector feet = pawn.AbsOrigin ?? new Vector(0, 0, 0);
+
+        ShowMarkers(lineup, new Vec3(feet.X, feet.Y, feet.Z));
+    }
+
     private void ShowMarkers(LineupRecord lineup, Vec3 stance)
     {
         ClearMarkers();

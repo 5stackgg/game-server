@@ -59,6 +59,23 @@ public partial class UtilityPracticePlugin
 
         _library.Add(player.SteamID, thrown);
 
+        // A lineup you just saved is the lineup you are working on, so it
+        // becomes the loaded one and gets its markers straight away. Without
+        // this the library holds it but nothing on screen does, and it takes a
+        // .next or .prev -- which only walk results from an EARLIER query -- to
+        // make it appear.
+        PracticeState saved = _system.StateFor(player.SteamID);
+
+        saved.Loaded = thrown;
+        saved.Results.Clear();
+        saved.Results.Add(thrown);
+        saved.Index = 0;
+
+        // Deliberately not the full .load: the player is already standing on
+        // the spot they just threw from, and teleporting them onto it would
+        // yank the view for no reason.
+        _replay.ShowMarkersFor(player, thrown);
+
         Reply(context, $" {ChatColors.Green}saved {ChatColors.Default}{name}");
 
         ulong steamId = player.SteamID;
