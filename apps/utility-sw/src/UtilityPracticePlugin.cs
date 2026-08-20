@@ -7,6 +7,7 @@ using SwiftlyS2.Shared.Events;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Plugins;
 using static SwiftlyS2.Shared.Helper;
+using SwiftlyS2.Shared.Natives;
 using SwiftlyS2.Shared.SchemaDefinitions;
 
 namespace UtilityPractice;
@@ -232,6 +233,65 @@ public partial class UtilityPracticePlugin : BasePlugin
     {
         _recorder.OnTick();
         _solver.OnTick();
+        AimFeedback();
+    }
+
+    // How close the crosshair has to be to the recorded aim before the throw
+    // instructions appear. Two degrees is tight enough that it means "you are
+    // on it" and loose enough to hold still at.
+    private const float AimToleranceDegrees = 2f;
+
+    // Centre text has to be re-sent to stay on screen, but not sixty-four
+    // times a second: eight is smooth and costs a fraction of the messages.
+    private const int AimFeedbackEveryTicks = 8;
+
+    private int _aimTick;
+
+    // Lining a crosshair up is the part of a lineup that cannot be shown by
+    // standing somewhere, so the moment it IS lined up is the moment to say
+    // how to throw -- while they are still looking at the reticle.
+    private void AimFeedback()
+    {
+        if (++_aimTick % AimFeedbackEveryTicks != 0)
+        {
+            return;
+        }
+
+        foreach (IPlayer player in Core.PlayerManager.GetAllPlayers())
+        {
+            if (player == null || !player.IsValid || player.IsFakeClient)
+            {
+                continue;
+            }
+
+            LineupRecord? lineup = _system.StateFor(player.SteamID).Loaded;
+            CCSPlayerPawn? pawn = player.PlayerPawn;
+
+            if (lineup == null || pawn == null || !pawn.IsValid)
+            {
+                continue;
+            }
+
+            QAngle eyes = pawn.EyeAngles;
+
+            if (
+                AngleGap(eyes.Y, lineup.release.yaw) > AimToleranceDegrees
+                || AngleGap(eyes.X, lineup.release.pitch) > AimToleranceDegrees
+            )
+            {
+                continue;
+            }
+
+            player.SendCenter(PracticeReplay.ThrowHint(lineup));
+        }
+    }
+
+    // Shortest way round the circle, so 359 and 1 are two degrees apart.
+    private static float AngleGap(float a, float b)
+    {
+        float gap = Math.Abs(a - b) % 360f;
+
+        return gap > 180f ? 360f - gap : gap;
     }
 
     private void OnSecond()

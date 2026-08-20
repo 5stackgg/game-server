@@ -58,6 +58,13 @@ public class PracticeReplay
     // In-world markers for the lineup currently loaded. Deliberately NOT part
     // of _ghosts: ghosts are filtered per viewer, and a marker is meant to be
     // seen by everyone on the server.
+    // Long enough to cross any competitive map, short enough to stop.
+    private const float AimTraceRange = 8192f;
+
+    // The aim reticle is the one marker that is not a place the utility goes,
+    // so it never wears the utility's colour.
+    private static readonly Color AimColor = new Color(255, 235, 120, 255);
+
     private readonly List<CEnvBeam> _markerBeams = new();
     private readonly List<CPointWorldText> _markerTexts = new();
 
@@ -604,6 +611,34 @@ public class PracticeReplay
         }
     }
 
+    // What to actually do once the crosshair is on the reticle. Everything the
+    // lineup knows about the throw, in the order a player performs it.
+    public static string ThrowHint(LineupRecord lineup)
+    {
+        string movement = lineup.technique switch
+        {
+            "Jump" => "JUMP THROW",
+            "Run" => "RUN AND THROW",
+            "RunJump" => "RUN + JUMP THROW",
+            "Crouch" => "CROUCH THROW",
+            "CrouchJump" => "CROUCH + JUMP THROW",
+            "Walk" => "WALK AND THROW",
+            _ => "STAND STILL",
+        };
+
+        string click = lineup.strength switch
+        {
+            "Half" => "LEFT + RIGHT CLICK",
+            "Drop" => "RIGHT CLICK",
+            "Full" => "LEFT CLICK",
+            _ => "LEFT CLICK",
+        };
+
+        string bind = lineup.release.jump_throw ? " (jump-throw bind)" : "";
+
+        return $"LINED UP\n{movement} - {click}{bind}";
+    }
+
     public static string Describe(LineupRecord lineup)
     {
         string name = string.IsNullOrEmpty(lineup.name) ? "unnamed" : lineup.name;
@@ -733,42 +768,159 @@ public class PracticeReplay
         Vec3 stance = lineup.release.feet_position;
         Vec3 landing = lineup.detonation_position;
 
-        Ring(stance, 18f, color, 1.5f);
+        Ring(stance, 32f, color, 3f);
         Label(
             new Vec3(stance.x, stance.y, stance.z + 12f),
             $"STAND\n{lineup.name}",
             color
         );
 
-        Ring(landing, 26f, color, 2f);
+        Ring(landing, 40f, color, 3f);
         Label(
             new Vec3(landing.x, landing.y, landing.z + 16f),
             lineup.utility_type.ToUpperInvariant(),
             color
         );
 
-        // Where to look, placed along the recorded aim at the distance the
-        // throw actually travelled, so it sits on the thing being aimed at
-        // rather than floating an arbitrary distance away.
+        AimReticle(lineup);
+    }
+
+    // Where to point. The aim ray is traced until it hits something, so the
+    // reticle lands ON the surface being aimed at rather than hanging in the
+    // air short of it -- for an arcing smoke the crosshair sits well above the
+    // landing spot, so distance-to-landing was never the right answer.
+    private void AimReticle(LineupRecord lineup)
+    {
         Vec3 eye = lineup.release.eye_position;
-        float reach = new Vec3(landing.x - eye.x, landing.y - eye.y, 0f).LengthXY();
 
-        if (reach > 1f)
+        double yaw = lineup.release.yaw * Math.PI / 180.0;
+        double pitch = lineup.release.pitch * Math.PI / 180.0;
+        float flat = (float)Math.Cos(pitch);
+
+        // CS2 pitch is negative looking up, so the sign flips here.
+        var dir = new Vec3(
+            (float)(Math.Cos(yaw) * flat),
+            (float)(Math.Sin(yaw) * flat),
+            (float)(-Math.Sin(pitch))
+        );
+
+        var from = new Vector(eye.x, eye.y, eye.z);
+        var to = new Vector(
+            eye.x + dir.x * AimTraceRange,
+            eye.y + dir.y * AimTraceRange,
+            eye.z + dir.z * AimTraceRange
+        );
+
+        Vec3 hit;
+
+        try
         {
-            double yaw = lineup.release.yaw * Math.PI / 180.0;
-            double pitch = lineup.release.pitch * Math.PI / 180.0;
-            float flat = (float)Math.Cos(pitch);
+            var trace = _core.Trace.TraceShapeLine(from, to, null);
 
-            var aim = new Vec3(
-                eye.x + (float)(Math.Cos(yaw) * flat) * reach,
-                eye.y + (float)(Math.Sin(yaw) * flat) * reach,
-                // CS2 pitch is negative looking up, so the sign flips here.
-                eye.z + (float)(-Math.Sin(pitch)) * reach
+            hit = trace.DidHit
+                ? new Vec3(trace.EndPos.X, trace.EndPos.Y, trace.EndPos.Z)
+                : new Vec3(to.X, to.Y, to.Z);
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to trace a lineup's aim");
+            hit = new Vec3(to.X, to.Y, to.Z);
+        }
+
+        // Pulled back off the surface so the reticle does not z-fight with the
+        // wall it is drawn on.
+        var center = new Vec3(
+            hit.x - dir.x * 2f,
+            hit.y - dir.y * 2f,
+            hit.z - dir.z * 2f
+        );
+
+        float away = new Vec3(center.x - eye.x, center.y - eye.y, center.z - eye.z).Length();
+
+        // Sized by distance so it looks the same from the stance whether the
+        // wall is ten units away or two thousand.
+        float size = Math.Clamp(away * 0.05f, 14f, 90f);
+
+        // Deliberately not the utility's colour: this is the only marker that
+        // is not a place the utility goes, and it has to separate from the
+        // stance and landing rings at a glance.
+        Reticle(center, dir, size, AimColor);
+    }
+
+    // A box with a ring inside it, drawn in the plane facing back down the aim
+    // ray so it reads as something to line a crosshair up with.
+    private void Reticle(Vec3 center, Vec3 forward, float size, Color color)
+    {
+        Vec3 right = Cross(forward, new Vec3(0, 0, 1));
+
+        // Looking straight up or down leaves no horizon to take "right" from.
+        if (right.Length() < 0.001f)
+        {
+            right = new Vec3(1, 0, 0);
+        }
+
+        right = Normalize(right);
+
+        Vec3 up = Normalize(Cross(right, forward));
+
+        Vec3 Corner(float x, float y) =>
+            new Vec3(
+                center.x + right.x * x + up.x * y,
+                center.y + right.y * x + up.y * y,
+                center.z + right.z * x + up.z * y
             );
 
-            Label(aim, "AIM", color);
-            Ring(aim, 10f, color, 1f);
+        Vec3 topLeft = Corner(-size, size);
+        Vec3 topRight = Corner(size, size);
+        Vec3 bottomRight = Corner(size, -size);
+        Vec3 bottomLeft = Corner(-size, -size);
+
+        AddMarkerBeam(topLeft, topRight, color, 2f);
+        AddMarkerBeam(topRight, bottomRight, color, 2f);
+        AddMarkerBeam(bottomRight, bottomLeft, color, 2f);
+        AddMarkerBeam(bottomLeft, topLeft, color, 2f);
+
+        const int Segments = 12;
+        float radius = size * 0.45f;
+
+        for (int index = 0; index < Segments; index++)
+        {
+            double a = index * 2 * Math.PI / Segments;
+            double b = (index + 1) * 2 * Math.PI / Segments;
+
+            AddMarkerBeam(
+                Corner((float)Math.Cos(a) * radius, (float)Math.Sin(a) * radius),
+                Corner((float)Math.Cos(b) * radius, (float)Math.Sin(b) * radius),
+                color,
+                2f
+            );
         }
+    }
+
+    private void AddMarkerBeam(Vec3 start, Vec3 end, Color color, float width)
+    {
+        CEnvBeam? beam = CreateBeam(start, end, color, width);
+
+        if (beam != null)
+        {
+            _markerBeams.Add(beam);
+        }
+    }
+
+    private static Vec3 Cross(Vec3 a, Vec3 b)
+    {
+        return new Vec3(
+            a.y * b.z - a.z * b.y,
+            a.z * b.x - a.x * b.z,
+            a.x * b.y - a.y * b.x
+        );
+    }
+
+    private static Vec3 Normalize(Vec3 v)
+    {
+        float length = v.Length();
+
+        return length < 0.0001f ? v : new Vec3(v.x / length, v.y / length, v.z / length);
     }
 
     private void Ring(Vec3 center, float radius, Color color, float width)
