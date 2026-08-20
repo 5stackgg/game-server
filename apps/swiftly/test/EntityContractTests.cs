@@ -31,7 +31,8 @@ public class EntityContractTests
             "tech_timeout_setting": "CoachAndPlayers",
             "use_playcast": false,
             "show_elo_ranks": true,
-            "cfg_overrides": { "sv_cheats": "0" }
+            "cfg_overrides": { "sv_cheats": "0", "Global": "mp_freezetime 3", "Plugin.inventory-simulator": "invsim_ws_enabled 1" },
+            "cfg_execs": ["global", "plugin.inventory-simulator", "mode"]
           },
           "lineup_1": {
             "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
@@ -101,6 +102,14 @@ public class EntityContractTests
         Assert.True(options.halftime_pausematch);
         Assert.True(options.camera_required);
         Assert.Equal("0", options.cfg_overrides["sv_cheats"]);
+        Assert.Equal("mp_freezetime 3", options.cfg_overrides["Global"]);
+
+        // The order is the contract: cfg_overrides only says which files to
+        // write, and last-exec-wins is read out of this list alone.
+        Assert.Equal(
+            new[] { "global", "plugin.inventory-simulator", "mode" },
+            options.cfg_execs
+        );
     }
 
     [Fact]
