@@ -210,7 +210,31 @@ public class PracticeRecorder
             if (state.PinPulled && !state.Released && grenade.ThrowTime.Value > 0)
             {
                 state.Released = true;
-                state.Frozen = Snapshot(pawn, grenade, StanceFor(player.SteamID, state));
+
+                Vec3? anchor = StanceFor(player.SteamID, state);
+                Vector releasedAt = pawn.AbsOrigin ?? new Vector(0, 0, 0);
+
+                // Every argument about where a lineup "should" be has come down
+                // to which of these three the recorder picked, so it says so.
+                _logger.LogInformation(
+                    "throw by {steam}: standstill {anchor} (age {age} ticks), takeoff {takeoff}, released at {released} -> stored {chosen}",
+                    player.SteamID,
+                    _stationary.TryGetValue(player.SteamID, out StationaryAnchor found)
+                        ? $"{found.Position.x:0.##},{found.Position.y:0.##},{found.Position.z:0.##}"
+                        : "none",
+                    _stationary.TryGetValue(player.SteamID, out StationaryAnchor aged)
+                        ? (_tick - aged.Tick).ToString()
+                        : "-",
+                    state.Stance == null
+                        ? "none"
+                        : $"{state.Stance.Value.x:0.##},{state.Stance.Value.y:0.##},{state.Stance.Value.z:0.##}",
+                    $"{releasedAt.X:0.##},{releasedAt.Y:0.##},{releasedAt.Z:0.##}",
+                    anchor == null
+                        ? "release origin"
+                        : $"{anchor.Value.x:0.##},{anchor.Value.y:0.##},{anchor.Value.z:0.##}"
+                );
+
+                state.Frozen = Snapshot(pawn, grenade, anchor);
                 _pending[player.SteamID] = state.Frozen;
             }
         }
