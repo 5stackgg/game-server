@@ -282,6 +282,15 @@ public partial class UtilityPracticePlugin : BasePlugin
     // you would stand to look at them.
     private const double RingHoverDegrees = 7.0;
 
+    // Below this a ring is under the player's feet, and the angle to it says
+    // nothing about which way they are facing.
+    private const float RingHoverMinDistance = 96f;
+
+    // How near the crosshair has to be to a throw's recorded aim to count as
+    // meaning that throw. Generous: this is "which of these did you mean", not
+    // the tenth-of-a-degree check that says you are on the line.
+    private const float AimPickDegrees = 25f;
+
     private int _aimTick;
 
     // Lining a crosshair up is the part of a lineup that cannot be shown by
@@ -319,7 +328,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             // walking in cannot say which throw is meant -- and picking one by
             // arrival order means the aim marker changes depending on which
             // side you stepped in from. Pointing at a ring is unambiguous.
-            LineupRecord? aimedAt = LookingAtRing(pawn, at, library);
+            LineupRecord? aimedAt = LookingAt(pawn, at, library, here);
 
             // One throw off this spot needs no choosing. Several do, and until
             // one is chosen nothing draws an aim point at all: a crosshair for
@@ -360,13 +369,55 @@ public partial class UtilityPracticePlugin : BasePlugin
     // The stance ring the player's crosshair is nearest to, by angle rather
     // than distance so a ring across the room can be picked as easily as one
     // underfoot.
-    private static LineupRecord? LookingAtRing(
+    // Which throw the player means, decided by where they are LOOKING rather
+    // than which ring they are nearest.
+    //
+    // Two candidates, in order:
+    //   - the throw whose recorded aim is closest to the player's current view,
+    //     which is what "look toward the smoke" means when several throws share
+    //     one spot and every ring is under your feet;
+    //   - failing that, a ring they are pointing at from a distance, which is
+    //     how you pick a spot across the room.
+    private static LineupRecord? LookingAt(
         CCSPlayerPawn pawn,
         Vec3 at,
-        IReadOnlyList<LineupRecord> library
+        IReadOnlyList<LineupRecord> library,
+        IReadOnlyList<LineupRecord> here
     )
     {
         QAngle eyes = pawn.EyeAngles;
+
+        if (here.Count > 0)
+        {
+            LineupRecord? bestAim = null;
+            float bestOff = AimPickDegrees;
+
+            foreach (LineupRecord lineup in here)
+            {
+                float off = Math.Max(
+                    AngleGap(eyes.Y, lineup.release.yaw),
+                    AngleGap(eyes.X, lineup.release.pitch)
+                );
+
+                if (off < bestOff)
+                {
+                    bestOff = off;
+                    bestAim = lineup;
+                }
+            }
+
+            if (bestAim != null)
+            {
+                return bestAim;
+            }
+
+            // Standing on a spot but looking nowhere near any of its throws:
+            // naming one anyway would be the arbitrary pick this replaced.
+            if (here.Count > 1)
+            {
+                return null;
+            }
+        }
 
         double yaw = eyes.Y * Math.PI / 180.0;
         double pitch = eyes.X * Math.PI / 180.0;
@@ -389,7 +440,9 @@ public partial class UtilityPracticePlugin : BasePlugin
             var toRing = new Vec3(feet.x - eye.x, feet.y - eye.y, feet.z - eye.z);
             float length = toRing.Length();
 
-            if (length < 1f)
+            // A ring you are standing on is straight down from the eye, which
+            // is never what "looking at" means.
+            if (length < RingHoverMinDistance)
             {
                 continue;
             }
@@ -409,10 +462,6 @@ public partial class UtilityPracticePlugin : BasePlugin
         return best;
     }
 
-    // One owner for centre text, resolved fresh every pass and re-sent so it
-    // persists -- centre text decays, and the old split let SpotWatch write
-    // "what is here" once and lose it a second later while AimFeedback kept
-    // re-sending angles over the top.
     private void AimFeedback()
     {
         if (++_aimTick % AimFeedbackEveryTicks != 0)
@@ -467,14 +516,13 @@ public partial class UtilityPracticePlugin : BasePlugin
         var at = new Vec3(origin.X, origin.Y, origin.Z);
 
         IReadOnlyList<LineupRecord> library = _library.For(player.SteamID);
-        LineupRecord? aimedAt = LookingAtRing(pawn, at, library);
+        List<LineupRecord> here = PracticeReplay.SpotAt(library, at);
+        LineupRecord? aimedAt = LookingAt(pawn, at, library, here);
 
         if (aimedAt != null)
         {
             return Describe(aimedAt);
         }
-
-        List<LineupRecord> here = PracticeReplay.SpotAt(library, at);
 
         if (here.Count == 1)
         {

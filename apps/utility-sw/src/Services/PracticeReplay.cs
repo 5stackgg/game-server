@@ -1236,7 +1236,8 @@ public class PracticeReplay
         Label(
             new Vec3(center.x, center.y, center.z + size + 8f),
             label,
-            ColorFor(lineup.utility_type)
+            ColorFor(lineup.utility_type),
+            eye
         );
     }
 
@@ -1482,7 +1483,10 @@ public class PracticeReplay
         }
     }
 
-    private void Label(Vec3 at, string text, Color color)
+    // facing: where the text should read from, normally the spot the player is
+    // standing on. Passing null keeps the auto-reorient, which is right for a
+    // label lying on the floor and wrong for one on a wall.
+    private void Label(Vec3 at, string text, Color color, Vec3? facing = null)
     {
         try
         {
@@ -1507,13 +1511,35 @@ public class PracticeReplay
                 .POINT_WORLD_TEXT_JUSTIFY_HORIZONTAL_CENTER;
             label.JustifyVertical = PointWorldTextJustifyVertical_t
                 .POINT_WORLD_TEXT_JUSTIFY_VERTICAL_CENTER;
-            // Always readable, wherever the reader is standing.
-            label.ReorientMode = PointWorldTextReorientMode_t
-                .POINT_WORLD_TEXT_REORIENT_AROUND_UP;
+            var angle = new QAngle(0, 0, 0);
+
+            if (facing == null)
+            {
+                // Spins to face whoever is reading it. Fine on the floor.
+                label.ReorientMode = PointWorldTextReorientMode_t
+                    .POINT_WORLD_TEXT_REORIENT_AROUND_UP;
+            }
+            else
+            {
+                // Aimed by hand instead. Auto-reorient was leaving wall labels
+                // rolled onto their side -- text running bottom to top -- so
+                // the angle is set explicitly and the roll pinned flat.
+                float dx = facing.Value.x - at.x;
+                float dy = facing.Value.y - at.y;
+
+                float yaw = (float)(Math.Atan2(dy, dx) * 180.0 / Math.PI);
+
+                // point_worldtext reads along its own +X, so it has to be
+                // turned to face the reader rather than away from them.
+                angle = new QAngle(0, yaw + 180f, 0);
+
+                label.ReorientMode = PointWorldTextReorientMode_t
+                    .POINT_WORLD_TEXT_REORIENT_NONE;
+            }
 
             label.Teleport(
                 new Vector(at.x, at.y, at.z),
-                new QAngle(0, 0, 0),
+                angle,
                 new Vector(0, 0, 0)
             );
 
