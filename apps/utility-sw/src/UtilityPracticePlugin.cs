@@ -330,19 +330,22 @@ public partial class UtilityPracticePlugin : BasePlugin
             // side you stepped in from. Pointing at a ring is unambiguous.
             LineupRecord? aimedAt = LookingAt(pawn, at, library, here);
 
-            // One throw off this spot needs no choosing. Several do, and until
-            // one is chosen nothing draws an aim point at all: a crosshair for
-            // the wrong throw is worse than none.
+            // Standing on a spot shows every throw off it -- you cannot choose
+            // between options you cannot see. Looking toward one only decides
+            // which is drawn heavy. Off a spot, pointing at a ring across the
+            // room still shows that one on its own.
             List<LineupRecord> show =
-                aimedAt != null
-                    ? new List<LineupRecord> { aimedAt }
-                    : here.Count == 1
-                        ? here
+                here.Count > 0
+                    ? here
+                    : aimedAt != null
+                        ? new List<LineupRecord> { aimedAt }
                         : new List<LineupRecord>();
 
             string key = string.Join(
                 ",",
-                show.Select(entry => entry.client_id).OrderBy(id => id)
+                show.Select(entry => entry.client_id)
+                    .OrderBy(id => id)
+                    .Append(aimedAt?.client_id ?? "-")
             );
 
             if (_standingIn.TryGetValue(player.SteamID, out string? was) && was == key)
@@ -353,7 +356,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             _standingIn[player.SteamID] = key;
 
             // The library is already drawn; only this player's selection moves.
-            _replay.ShowSelection(player, show, at);
+            _replay.ShowSelection(player, show, at, aimedAt);
 
             // Looking at a ring IS choosing it: the crosshair, the name and the
             // angular guidance have to describe one throw, and they read the

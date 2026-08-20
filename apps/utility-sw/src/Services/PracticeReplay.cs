@@ -108,7 +108,7 @@ public class PracticeReplay
     // where the lineups are.
     private readonly List<CEnvBeam> _markerBeams = new();
     private readonly List<CPointWorldText> _markerTexts = new();
-    private readonly List<CDynamicProp> _markerProps = new();
+    private readonly List<CPhysicsProp> _markerProps = new();
 
     // The selection layer: the crosshair and labels for whichever lineup ONE
     // player has focused. Kept per player and transmit-blocked from everybody
@@ -124,6 +124,11 @@ public class PracticeReplay
 
     // Which list the drawing helpers append to. Null means the shared layer.
     private Selection? _drawingInto;
+
+    // Which of the drawn throws is the one the player is looking toward. Every
+    // throw off a spot is drawn -- you cannot choose between options you cannot
+    // see -- and this one is drawn heavier so it stands out from its siblings.
+    private LineupRecord? _focused;
 
     // A real smoke emitted at the landing point: the only preview with perfect
     // fidelity, because it is the same cloud the throw would make.
@@ -941,9 +946,12 @@ public class PracticeReplay
     public void ShowSelection(
         IPlayer? owner,
         IReadOnlyCollection<LineupRecord> active,
-        Vec3 stance
+        Vec3 stance,
+        LineupRecord? focused = null
     )
     {
+        _focused = focused;
+
         if (owner == null)
         {
             _drawingInto = null;
@@ -1229,6 +1237,18 @@ public class PracticeReplay
         // this: you are always standing on them.
         float weight = Math.Clamp(away * 0.0018f, MarkerWidth, 2.2f);
 
+        bool isFocused =
+            _focused == null || _focused.client_id == lineup.client_id;
+
+        // A sibling throw is drawn, but quietly: half the weight and two thirds
+        // the size, so the one being looked toward reads as the answer without
+        // the others disappearing.
+        if (!isFocused)
+        {
+            Reticle(center, dir, size * 0.66f, ColorFor(lineup.utility_type), weight * 0.5f);
+            return;
+        }
+
         Reticle(center, dir, size, ColorFor(lineup.utility_type), weight);
 
         // Named at the crosshair itself: several throws off one spot are only
@@ -1367,12 +1387,18 @@ public class PracticeReplay
 
         try
         {
-            // prop_dynamic_override, and the model set BEFORE DispatchSpawn.
-            // Both matter: a prop spawned first is networked with no model and
-            // stays the ERROR model however late the real one is assigned.
-            CDynamicProp prop =
-                _core.EntitySystem.CreateEntityByDesignerName<CDynamicProp>(
-                    "prop_dynamic_override"
+            // A physics prop, not a dynamic one. Grenade models carry propdata,
+            // and CS2 deletes them off a prop_dynamic on sight -- "which has
+            // propdata which means that it be used on a prop_physics" -- so the
+            // engine's own answer is the class to use. prop_dynamic_override
+            // does NOT bypass that check here the way it did in Source 1.
+            //
+            // The model is set BEFORE DispatchSpawn: a prop spawned first is
+            // networked with no model and stays the ERROR model however late
+            // the real one arrives.
+            CPhysicsProp prop =
+                _core.EntitySystem.CreateEntityByDesignerName<CPhysicsProp>(
+                    "prop_physics_override"
                 );
 
             if (!prop.IsValid)
@@ -1382,12 +1408,6 @@ public class PracticeReplay
 
             prop.SetModel(model);
 
-            _logger.LogInformation(
-                "utility marker model for {type}: {model}",
-                lineup.utility_type,
-                model
-            );
-
             prop.Teleport(
                 new Vector(stance.x, stance.y, stance.z + UtilityModelHeight),
                 new QAngle(0, 0, 0),
@@ -1395,6 +1415,10 @@ public class PracticeReplay
             );
 
             prop.DispatchSpawn();
+
+            // Otherwise it is a physics object: it falls off the marker, and a
+            // player can shoot it across the map.
+            prop.AcceptInput<string>("DisableMotion", "", null, null, 0);
 
             _markerProps.Add(prop);
         }
@@ -1592,7 +1616,7 @@ public class PracticeReplay
             }
         }
 
-        foreach (CDynamicProp prop in _markerProps)
+        foreach (CPhysicsProp prop in _markerProps)
         {
             if (prop.IsValid)
             {
@@ -1628,7 +1652,7 @@ public class PracticeReplay
             }
         }
 
-        foreach (CDynamicProp prop in _markerProps)
+        foreach (CPhysicsProp prop in _markerProps)
         {
             if (prop.IsValid)
             {
