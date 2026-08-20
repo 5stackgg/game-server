@@ -99,6 +99,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         if (hotReload)
         {
             _library.SetMap(Server.MapName);
+            ApplyPracticeCfg();
             RefreshEverything();
         }
 
@@ -213,6 +214,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         _system.Reset();
         _library.SetMap(mapName);
 
+        ApplyPracticeCfg();
+
         RefreshEverything();
     }
 
@@ -233,6 +236,42 @@ public partial class UtilityPracticePlugin : BasePlugin
                 _library.Refresh(player.SteamID);
             }
         }
+    }
+
+    // The state a practice server has to be in, applied by the plugin rather
+    // than a game mode cfg: a practice server may be a third-party dedicated
+    // box that no mode was ever selected for, and without this it sits in
+    // warmup with no money and no utility.
+    private static readonly string[] PracticeCfg = new[]
+    {
+        "sv_cheats 1",
+        // Nothing ends the round: a kill or an expired timer would reset
+        // everyone mid-lineup.
+        "mp_ignore_round_win_conditions 1",
+        "mp_warmup_end",
+        "mp_freezetime 0",
+        "mp_roundtime 60",
+        "mp_roundtime_defuse 60",
+        "mp_respawn_immunitytime 0",
+        "mp_buy_anywhere 1",
+        "mp_buytime 60000",
+        "mp_maxmoney 65535",
+        "mp_startmoney 65535",
+        "mp_afterroundmoney 65535",
+        "mp_death_drop_gun 0",
+        "mp_death_drop_grenade 0",
+        "mp_solid_teammates 0",
+        "mp_teammates_are_enemies 0",
+        "sv_grenade_trajectory_prac_pipreview 1",
+        "sv_infinite_ammo 1",
+        "ammo_grenade_limit_total 5",
+        "sv_full_alltalk 1",
+        "tv_enable 0",
+    };
+
+    private void ApplyPracticeCfg()
+    {
+        Server.NextFrame(() => Server.ExecuteCommand(string.Join(";", PracticeCfg)));
     }
 
     private void OnSessionRefreshed(PracticeSessionData session)
