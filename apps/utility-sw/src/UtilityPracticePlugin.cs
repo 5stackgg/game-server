@@ -174,6 +174,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         {
             _library.SetMap(Core.Engine.GlobalVars.MapName.ToString());
             ApplyPracticeCfg();
+            _replay.LearnUtilityModels();
             RefreshEverything();
         }
 
@@ -775,6 +776,10 @@ public partial class UtilityPracticePlugin : BasePlugin
         _library.SetMap(mapName);
 
         ApplyPracticeCfg();
+
+        // Next tick, not now: the entity system has nothing to spawn into
+        // while the map is still loading.
+        Core.Scheduler.NextTick(_replay.LearnUtilityModels);
 
         RefreshEverything();
     }

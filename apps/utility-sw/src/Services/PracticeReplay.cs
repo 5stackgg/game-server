@@ -99,7 +99,9 @@ public class PracticeReplay
 
     // Roughly where the grenade sits in a player's hand, so it reads as "this
     // is what you throw from here" rather than as litter on the floor.
-    private const float UtilityModelHeight = 52f;
+    // Above standing eye height (64) on purpose. .load stands the player ON
+    // the ring, and at chest height the grenade is inside their camera.
+    private const float UtilityModelHeight = 80f;
 
     // The aim reticle is the one marker that is not a place the utility goes,
     // so it never wears the utility's colour.
@@ -1378,6 +1380,52 @@ public class PracticeReplay
     // The grenade itself, floating over the spot at about eye height: a ring
     // says where to stand, and this says what to throw from it without reading
     // a colour off a beam.
+    // FSOLID_NOT_SOLID.
+    private const byte NotSolid = 4;
+
+    // Asks the engine what each grenade actually looks like, by spawning one of
+    // each weapon under the world for a single tick and reading the model back
+    // off it. Two problems in one: the path is right by construction rather
+    // than by guesswork, and it is precached by construction too -- the engine
+    // precaches every weapon at level init, which our own precache list, built
+    // from paths we invented, cannot promise. Without this nothing rendered
+    // until somebody threw the grenade, which is what taught it the path.
+    public void LearnUtilityModels()
+    {
+        foreach (KeyValuePair<string, string> pair in PracticeLineupUtility.UtilityWeapons())
+        {
+            try
+            {
+                CBaseModelEntity probe =
+                    _core.EntitySystem.CreateEntityByDesignerName<CBaseModelEntity>(pair.Value);
+
+                if (!probe.IsValid)
+                {
+                    continue;
+                }
+
+                var keys = new CEntityKeyValues();
+
+                keys.SetString("origin", "0 0 -16384");
+                keys.SetString("solid", "0");
+
+                probe.DispatchSpawn(keys);
+
+                PracticeLineupUtility.LearnUtilityModel(pair.Key, probe.GetModel());
+
+                probe.Despawn();
+            }
+            catch (Exception error)
+            {
+                _logger.LogWarning(
+                    error,
+                    "unable to read the world model for {weapon}",
+                    pair.Value
+                );
+            }
+        }
+    }
+
     private void UtilityModel(LineupRecord lineup, Vec3 stance)
     {
         string? model = PracticeLineupUtility.ModelForUtilityType(lineup.utility_type);
@@ -1428,6 +1476,18 @@ public class PracticeReplay
             // Otherwise it is a physics object: it falls off the marker, and a
             // player can shoot it across the map.
             prop.AcceptInput<string>("DisableMotion", "", null, null, 0);
+
+            // The model floats at chest height ON the spot a player is being
+            // told to stand, so anything short of completely intangible traps
+            // them inside it. The "solid" keyvalue alone does not survive
+            // prop_physics building its own VPhysics on spawn.
+            prop.Collision.SolidType = SolidType_t.SOLID_NONE;
+            prop.Collision.SolidFlags = NotSolid;
+            prop.Collision.CollisionGroup = (byte)CollisionGroup.Nonphysical;
+            prop.Collision.CollisionAttribute.CollisionGroup = (byte)CollisionGroup.Nonphysical;
+            prop.Collision.CollisionAttribute.InteractsAs = 0;
+            prop.Collision.CollisionAttribute.InteractsWith = 0;
+            prop.CollisionRulesChanged();
 
             _markerProps.Add(prop);
         }

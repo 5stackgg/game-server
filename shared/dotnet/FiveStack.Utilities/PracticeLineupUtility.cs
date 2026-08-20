@@ -33,11 +33,11 @@ public static class PracticeLineupUtility
     private static readonly Dictionary<string, string> UtilityToModel =
         new()
         {
-            { "Smoke", "models/weapons/w_eq_smokegrenade_dropped.vmdl" },
-            { "Flash", "models/weapons/w_eq_flashbang_dropped.vmdl" },
-            { "HighExplosive", "models/weapons/w_eq_fraggrenade_dropped.vmdl" },
-            { "Molotov", "models/weapons/w_eq_molotov_dropped.vmdl" },
-            { "Decoy", "models/weapons/w_eq_decoy_dropped.vmdl" },
+            { "Smoke", "weapons/models/grenade/smokegrenade/weapon_smokegrenade.vmdl" },
+            { "Flash", "weapons/models/grenade/flashbang/weapon_flashbang.vmdl" },
+            { "HighExplosive", "weapons/models/grenade/hegrenade/weapon_hegrenade.vmdl" },
+            { "Molotov", "weapons/models/grenade/molotov/weapon_molotov.vmdl" },
+            { "Decoy", "weapons/models/grenade/decoy/weapon_decoy.vmdl" },
         };
 
     // Everything that has to be in the map's precache list. A model the server
@@ -49,10 +49,11 @@ public static class PracticeLineupUtility
         return UtilityToModel.Values;
     }
 
-    // Learned at runtime from a real projectile. The hard-coded table below is
-    // a starting guess carried over from CS:GO's naming, and a wrong path shows
-    // as the ERROR model -- so the first time anybody actually throws a smoke,
-    // the engine's own answer replaces the guess for good.
+    // The engine's own answer, harvested at map load from a throwaway weapon
+    // entity of each type and topped up from any projectile that actually
+    // flies. The table above is only a fallback: CS2 renamed these out of
+    // CS:GO's models/weapons/w_eq_* scheme, and a path that is wrong by one
+    // character renders as the ERROR model with no other complaint.
     private static readonly Dictionary<string, string> LearnedModels = new();
 
     public static void LearnUtilityModel(string utilityType, string? model)
@@ -91,6 +92,15 @@ public static class PracticeLineupUtility
     public static string? UtilityTypeForProjectile(string designerName)
     {
         return ProjectileToUtility.TryGetValue(designerName, out string? type) ? type : null;
+    }
+
+    // Type paired with the weapon that carries its model, for the map-load
+    // harvest. Spawning the real weapon is the only way to get a path that is
+    // certainly correct AND certainly precached -- our own precache list can
+    // only ever contain paths we guessed.
+    public static IEnumerable<KeyValuePair<string, string>> UtilityWeapons()
+    {
+        return UtilityToWeapon;
     }
 
     public static string? WeaponForUtilityType(string utilityType)
