@@ -58,8 +58,13 @@ public class PracticeReplay
     // In-world markers for the lineup currently loaded. Deliberately NOT part
     // of _ghosts: ghosts are filtered per viewer, and a marker is meant to be
     // seen by everyone on the server.
-    // Long enough to cross any competitive map, short enough to stop.
-    private const float AimTraceRange = 8192f;
+    // How far in front of the stance the reticle hangs. Deliberately short: an
+    // aim ray traced to the far side of the map climbs thousands of units on
+    // the upward pitch a smoke needs, and puts the marker on a ceiling nobody
+    // is looking at. A player lines a crosshair up against something a few
+    // metres away, so that is where the target goes -- unless a wall is nearer,
+    // in which case it lands on the wall.
+    private const float AimTraceRange = 420f;
 
     // Thinner than the ghost line at 1.6: a marker is an outline, and a ring
     // is a dozen overlapping segments whose glow compounds into a blob at
@@ -856,7 +861,7 @@ public class PracticeReplay
 
         // Sized by distance so it looks the same from the stance whether the
         // wall is ten units away or two thousand.
-        float size = Math.Clamp(away * 0.05f, 14f, 90f);
+        float size = Math.Clamp(away * 0.09f, 18f, 60f);
 
         // Deliberately not the utility's colour: this is the only marker that
         // is not a place the utility goes, and it has to separate from the
