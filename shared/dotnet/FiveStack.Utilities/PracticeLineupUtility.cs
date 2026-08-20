@@ -49,8 +49,29 @@ public static class PracticeLineupUtility
         return UtilityToModel.Values;
     }
 
+    // Learned at runtime from a real projectile. The hard-coded table below is
+    // a starting guess carried over from CS:GO's naming, and a wrong path shows
+    // as the ERROR model -- so the first time anybody actually throws a smoke,
+    // the engine's own answer replaces the guess for good.
+    private static readonly Dictionary<string, string> LearnedModels = new();
+
+    public static void LearnUtilityModel(string utilityType, string? model)
+    {
+        if (string.IsNullOrEmpty(model) || !model.EndsWith(".vmdl"))
+        {
+            return;
+        }
+
+        LearnedModels[utilityType] = model;
+    }
+
     public static string? ModelForUtilityType(string utilityType)
     {
+        if (LearnedModels.TryGetValue(utilityType, out string? learned))
+        {
+            return learned;
+        }
+
         return UtilityToModel.TryGetValue(utilityType, out string? model)
             ? model
             : null;

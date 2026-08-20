@@ -379,6 +379,12 @@ public class PracticeRecorder
             return;
         }
 
+        // The engine just told us what a real one of these looks like.
+        if (entity is CBaseModelEntity model && model.IsValid)
+        {
+            PracticeLineupUtility.LearnUtilityModel(utilityType, model.GetModel());
+        }
+
         if (Emitting)
         {
             return;

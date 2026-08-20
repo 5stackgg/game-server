@@ -1367,15 +1367,26 @@ public class PracticeReplay
 
         try
         {
+            // prop_dynamic_override, and the model set BEFORE DispatchSpawn.
+            // Both matter: a prop spawned first is networked with no model and
+            // stays the ERROR model however late the real one is assigned.
             CDynamicProp prop =
                 _core.EntitySystem.CreateEntityByDesignerName<CDynamicProp>(
-                    "prop_dynamic"
+                    "prop_dynamic_override"
                 );
 
             if (!prop.IsValid)
             {
                 return;
             }
+
+            prop.SetModel(model);
+
+            _logger.LogInformation(
+                "utility marker model for {type}: {model}",
+                lineup.utility_type,
+                model
+            );
 
             prop.Teleport(
                 new Vector(stance.x, stance.y, stance.z + UtilityModelHeight),
@@ -1386,17 +1397,6 @@ public class PracticeReplay
             prop.DispatchSpawn();
 
             _markerProps.Add(prop);
-
-            // Deferred a tick, the same way the match plugin sets a player
-            // model: a model assigned in the same frame as the spawn does not
-            // take.
-            _core.Scheduler.NextTick(() =>
-            {
-                if (prop.IsValid)
-                {
-                    prop.SetModel(model);
-                }
-            });
         }
         catch (Exception error)
         {
