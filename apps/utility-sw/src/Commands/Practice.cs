@@ -667,6 +667,20 @@ public partial class UtilityPracticePlugin
         RefreshEverything();
     }
 
+    private const float WelcomeDelaySeconds = 2f;
+
+    // Deliberately short. The full list is sixteen lines and reads as spam on
+    // every join; these are the four that get somebody throwing, and .help is
+    // where the rest lives.
+    private static readonly string[] WelcomeLines = new[]
+    {
+        $" {ChatColors.Green}utility practice {ChatColors.Grey}-- infinite utility, buy anywhere",
+        $" {ChatColors.Default}.save <name> {ChatColors.Grey}saves the throw you just made",
+        $" {ChatColors.Default}.load <query> {ChatColors.Grey}stands you on a saved lineup",
+        $" {ChatColors.Default}.rethrow {ChatColors.Grey}back to the loaded lineup",
+        $" {ChatColors.Default}.help {ChatColors.Grey}everything else",
+    };
+
     private static readonly string[] HelpLines = new[]
     {
         $" {ChatColors.Green}utility practice",

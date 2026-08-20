@@ -33,6 +33,42 @@ public partial class UtilityPracticePlugin
         _library.Refresh(steamId.SteamId64);
     }
 
+    // Joining a team is the moment somebody is actually in the server and able
+    // to read chat -- connect is too early, and a practice server whose
+    // commands nobody knows about is a practice server nobody can use.
+    [GameEventHandler]
+    public HookResult OnPlayerJoinTeam(EventPlayerTeam @event, GameEventInfo info)
+    {
+        CCSPlayerController? player = @event.Userid;
+
+        if (player == null || !player.IsValid || player.IsBot)
+        {
+            return HookResult.Continue;
+        }
+
+        ulong steamId = player.SteamID;
+
+        // Once per connection, not once per team change: switching sides to
+        // line something up should not re-print the menu every time.
+        if (!_welcomed.Add(steamId))
+        {
+            return HookResult.Continue;
+        }
+
+        AddTimer(
+            WelcomeDelaySeconds,
+            () =>
+            {
+                foreach (string line in WelcomeLines)
+                {
+                    Tell(steamId, line);
+                }
+            }
+        );
+
+        return HookResult.Continue;
+    }
+
     private void OnClientDisconnect(int slot)
     {
         CCSPlayerController? player = Utilities.GetPlayerFromSlot(slot);
@@ -41,6 +77,8 @@ public partial class UtilityPracticePlugin
         {
             return;
         }
+
+        _welcomed.Remove(player.SteamID);
 
         // A run ends with the player who was in it: the map is still standing,
         // but nobody is left to be teleported or told anything.

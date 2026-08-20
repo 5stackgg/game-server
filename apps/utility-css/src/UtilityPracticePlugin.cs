@@ -253,6 +253,8 @@ public partial class UtilityPracticePlugin : BasePlugin
     // than a game mode cfg: a practice server may be a third-party dedicated
     // box that no mode was ever selected for, and without this it sits in
     // warmup with no money and no utility.
+    private readonly HashSet<ulong> _welcomed = new();
+
     private const float CfgReapplySeconds = 3f;
 
     private static readonly string[] PracticeCfg = new[]

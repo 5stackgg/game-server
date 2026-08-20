@@ -43,6 +43,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private EventDelegates.OnTick? _tickHandler;
     private EventDelegates.OnEntityCreated? _entityCreatedHandler;
+    private readonly HashSet<ulong> _welcomed = new();
     private EventDelegates.OnMapLoad? _mapLoadHandler;
     private EventDelegates.OnClientDisconnected? _disconnectHandler;
     private EventDelegates.OnClientSteamAuthorize? _authorizeHandler;
@@ -125,7 +126,15 @@ public partial class UtilityPracticePlugin : BasePlugin
         _mapLoadHandler = @event => OnMapLoad(@event.MapName);
         Core.Event.OnMapLoad += _mapLoadHandler;
 
-        _disconnectHandler = @event => ForPlayer(@event.PlayerId, OnPlayerGone);
+        _disconnectHandler = @event =>
+            ForPlayer(
+                @event.PlayerId,
+                steamId =>
+                {
+                    _welcomed.Remove(steamId);
+                    OnPlayerGone(steamId);
+                }
+            );
         Core.Event.OnClientDisconnected += _disconnectHandler;
 
         _authorizeHandler = @event =>
