@@ -249,11 +249,6 @@ public partial class UtilityPracticePlugin : BasePlugin
     // genuinely on the recorded angle rather than somewhere near it.
     private const float AimToleranceDegrees = 0.1f;
 
-    // Wide enough to be worth coaching towards. Between this and the tolerance
-    // the player gets the live error instead of silence, which is what lets
-    // them close the last fraction of a degree.
-    private const float AimGuideDegrees = 8f;
-
     // Centre text has to be re-sent to stay on screen. Four ticks is sixteen
     // updates a second, which is fast enough that a hundredth-of-a-degree
     // readout tracks the mouse instead of lagging behind it.
@@ -330,13 +325,13 @@ public partial class UtilityPracticePlugin : BasePlugin
 
             _replay.ShowAllMarkers(library, show, at);
 
-            if (show.Count == 1)
+            // Looking at a ring IS choosing it: the crosshair, the name and the
+            // angular guidance have to describe one throw, and they read the
+            // loaded lineup. Only while standing on a spot, so glancing across
+            // the map at a distant ring cannot silently retarget the loaded one.
+            if (aimedAt != null && here.Count > 0)
             {
-                player.SendCenter(show[0].name);
-            }
-            else if (here.Count > 1)
-            {
-                player.SendCenter($"{here.Count} throws here - look at a ring");
+                _system.StateFor(player.SteamID).Loaded = aimedAt;
             }
         }
     }
@@ -393,6 +388,10 @@ public partial class UtilityPracticePlugin : BasePlugin
         return best;
     }
 
+    // One owner for centre text, resolved fresh every pass and re-sent so it
+    // persists -- centre text decays, and the old split let SpotWatch write
+    // "what is here" once and lose it a second later while AimFeedback kept
+    // re-sending angles over the top.
     private void AimFeedback()
     {
         if (++_aimTick % AimFeedbackEveryTicks != 0)
@@ -407,57 +406,74 @@ public partial class UtilityPracticePlugin : BasePlugin
                 continue;
             }
 
-            LineupRecord? lineup = _system.StateFor(player.SteamID).Loaded;
             CCSPlayerPawn? pawn = player.PlayerPawn;
 
-            if (lineup == null || pawn == null || !pawn.IsValid)
+            if (pawn == null || !pawn.IsValid)
             {
                 continue;
             }
 
-            QAngle eyes = pawn.EyeAngles;
+            string? message = CentreText(player, pawn);
 
-            float yawOff = AngleGap(eyes.Y, lineup.release.yaw);
-            float pitchOff = AngleGap(eyes.X, lineup.release.pitch);
-
-            if (yawOff <= AimToleranceDegrees && pitchOff <= AimToleranceDegrees)
+            if (message != null)
             {
-                player.SendCenter(PracticeReplay.ThrowHint(lineup));
-                continue;
+                player.SendCenter(message);
             }
-
-            if (yawOff > AimGuideDegrees || pitchOff > AimGuideDegrees)
-            {
-                continue;
-            }
-
-            // Signed, and named by the direction the crosshair has to travel,
-            // because "0.4 degrees off" does not tell anyone which way to move.
-            float yawDelta = Signed(lineup.release.yaw - eyes.Y);
-            float pitchDelta = Signed(lineup.release.pitch - eyes.X);
-
-            player.SendCenter(
-                $"{(yawDelta >= 0 ? "LEFT" : "RIGHT")} {Math.Abs(yawDelta):0.00}&#176;"
-                    + $"   {(pitchDelta >= 0 ? "DOWN" : "UP")} {Math.Abs(pitchDelta):0.00}&#176;"
-            );
         }
     }
 
-    // Shortest signed way round the circle: -180..180.
-    private static float Signed(float degrees)
+    // First match wins. The order is the order a player needs the answer in:
+    // how to throw it once they are on the angle, otherwise what they are
+    // pointing at, otherwise what they are standing on.
+    private string? CentreText(IPlayer player, CCSPlayerPawn pawn)
     {
-        float wrapped = degrees % 360f;
+        LineupRecord? lineup = _system.StateFor(player.SteamID).Loaded;
 
-        if (wrapped > 180f)
+        if (lineup != null)
         {
-            wrapped -= 360f;
-        }
-        else if (wrapped < -180f)
-        {
-            wrapped += 360f;
+            QAngle eyes = pawn.EyeAngles;
+
+            if (
+                AngleGap(eyes.Y, lineup.release.yaw) <= AimToleranceDegrees
+                && AngleGap(eyes.X, lineup.release.pitch) <= AimToleranceDegrees
+            )
+            {
+                return PracticeReplay.ThrowHint(lineup);
+            }
         }
 
-        return wrapped;
+        Vector origin = pawn.AbsOrigin ?? new Vector(0, 0, 0);
+        var at = new Vec3(origin.X, origin.Y, origin.Z);
+
+        IReadOnlyList<LineupRecord> library = _library.For(player.SteamID);
+        LineupRecord? aimedAt = LookingAtRing(pawn, at, library);
+
+        if (aimedAt != null)
+        {
+            return Describe(aimedAt);
+        }
+
+        List<LineupRecord> here = PracticeReplay.SpotAt(library, at);
+
+        if (here.Count == 1)
+        {
+            return Describe(here[0]);
+        }
+
+        // Several throws off one spot: name them all rather than a count, so the
+        // player knows what is on offer before choosing one.
+        if (here.Count > 1)
+        {
+            return string.Join("\n", here.Select(entry => entry.name));
+        }
+
+        return null;
+    }
+
+    private static string Describe(LineupRecord lineup)
+    {
+        return $"{lineup.name}\n{lineup.utility_type.ToUpperInvariant()} - "
+            + lineup.technique.ToUpperInvariant();
     }
 
     // Shortest way round the circle, so 359 and 1 are two degrees apart.

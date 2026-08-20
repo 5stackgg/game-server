@@ -95,12 +95,17 @@ public class PracticeReplay
     // on screen the difference is invisible and the entity count is not.
     private const int QuietSegments = 10;
 
+    // Roughly where the grenade sits in a player's hand, so it reads as "this
+    // is what you throw from here" rather than as litter on the floor.
+    private const float UtilityModelHeight = 52f;
+
     // The aim reticle is the one marker that is not a place the utility goes,
     // so it never wears the utility's colour.
     private static readonly Color AimColor = new Color(255, 235, 120, 255);
 
     private readonly List<CEnvBeam> _markerBeams = new();
     private readonly List<CPointWorldText> _markerTexts = new();
+    private readonly List<CDynamicProp> _markerProps = new();
 
     // A real smoke emitted at the landing point: the only preview with perfect
     // fidelity, because it is the same cloud the throw would make.
@@ -901,6 +906,7 @@ public class PracticeReplay
             Ring(lineup.detonation_position, 26f, quiet, MarkerWidth, QuietSegments);
             AddMarkerBeam(feet, lineup.detonation_position, quiet, 0.3f);
             Label(new Vec3(feet.x, feet.y, feet.z + 10f), lineup.name, quiet);
+            UtilityModel(lineup, feet);
         }
 
         foreach (LineupRecord lineup in active)
@@ -947,6 +953,7 @@ public class PracticeReplay
             $"STAND\n{lineup.name}",
             color
         );
+        UtilityModel(lineup, stance);
 
         Ring(landing, 34f, color, MarkerWidth);
         Label(
@@ -1187,6 +1194,57 @@ public class PracticeReplay
         }
     }
 
+    // The grenade itself, floating over the spot at about eye height: a ring
+    // says where to stand, and this says what to throw from it without reading
+    // a colour off a beam.
+    private void UtilityModel(LineupRecord lineup, Vec3 stance)
+    {
+        string? model = PracticeLineupUtility.ModelForUtilityType(lineup.utility_type);
+
+        if (model == null)
+        {
+            return;
+        }
+
+        try
+        {
+            CDynamicProp prop =
+                _core.EntitySystem.CreateEntityByDesignerName<CDynamicProp>(
+                    "prop_dynamic"
+                );
+
+            if (!prop.IsValid)
+            {
+                return;
+            }
+
+            prop.Teleport(
+                new Vector(stance.x, stance.y, stance.z + UtilityModelHeight),
+                new QAngle(0, 0, 0),
+                new Vector(0, 0, 0)
+            );
+
+            prop.DispatchSpawn();
+
+            _markerProps.Add(prop);
+
+            // Deferred a tick, the same way the match plugin sets a player
+            // model: a model assigned in the same frame as the spawn does not
+            // take.
+            _core.Scheduler.NextTick(() =>
+            {
+                if (prop.IsValid)
+                {
+                    prop.SetModel(model);
+                }
+            });
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to show a lineup's utility model");
+        }
+    }
+
     private void AddMarkerBeam(Vec3 start, Vec3 end, Color color, float width)
     {
         CEnvBeam? beam = CreateBeam(start, end, color, width);
@@ -1302,6 +1360,7 @@ public class PracticeReplay
     {
         _markerBeams.Clear();
         _markerTexts.Clear();
+        _markerProps.Clear();
     }
 
     public void ClearMarkers()
@@ -1322,8 +1381,17 @@ public class PracticeReplay
             }
         }
 
+        foreach (CDynamicProp prop in _markerProps)
+        {
+            if (prop.IsValid)
+            {
+                prop.Despawn();
+            }
+        }
+
         _markerBeams.Clear();
         _markerTexts.Clear();
+        _markerProps.Clear();
     }
 
     private CEnvBeam? CreateBeam(Vec3 start, Vec3 end, Color color, float width)

@@ -28,6 +28,25 @@ public static class PracticeLineupUtility
             { "Decoy", "weapon_decoy" },
         };
 
+    // e_utility_types value -> the world model shown floating over a lineup's
+    // stance, so a player can see WHAT to throw before walking to the spot.
+    private static readonly Dictionary<string, string> UtilityToModel =
+        new()
+        {
+            { "Smoke", "models/weapons/w_eq_smokegrenade_dropped.vmdl" },
+            { "Flash", "models/weapons/w_eq_flashbang_dropped.vmdl" },
+            { "HighExplosive", "models/weapons/w_eq_fraggrenade_dropped.vmdl" },
+            { "Molotov", "models/weapons/w_eq_molotov_dropped.vmdl" },
+            { "Decoy", "models/weapons/w_eq_decoy_dropped.vmdl" },
+        };
+
+    public static string? ModelForUtilityType(string utilityType)
+    {
+        return UtilityToModel.TryGetValue(utilityType, out string? model)
+            ? model
+            : null;
+    }
+
     private static readonly HashSet<string> GrenadeWeapons =
         new()
         {
