@@ -37,7 +37,16 @@ public class PracticeRecorder
         public bool PinPulled;
         public bool Released;
         public ThrowSnapshot? Frozen;
+
+        // Where they were standing before the jump. A jump-throw releases in
+        // mid-air, and teleporting somebody back to a point in mid-air drops
+        // them into whatever is underneath -- which is how ".load" ends up
+        // inside a wall next to the thing you were standing beside.
+        public Vec3? Stance;
     }
+
+    // FL_ONGROUND, the same flag the snapshot itself records.
+    private const uint FlOnGround = 1 << 0;
 
     private class TrackedProjectile
     {
@@ -150,13 +159,23 @@ public class PracticeRecorder
                 state.PinPulled = true;
             }
 
+            if (state.PinPulled && !state.Released)
+            {
+                Vector here = pawn.AbsOrigin ?? new Vector(0, 0, 0);
+
+                if ((pawn.Flags & FlOnGround) != 0)
+                {
+                    state.Stance = new Vec3(here.X, here.Y, here.Z);
+                }
+            }
+
             // m_fThrowTime going non-zero is the release edge. Freeze the
             // player's state right here: by the time the projectile entity
             // exists they have already started moving again.
             if (state.PinPulled && !state.Released && grenade.ThrowTime.Value > 0)
             {
                 state.Released = true;
-                state.Frozen = Snapshot(pawn, grenade);
+                state.Frozen = Snapshot(pawn, grenade, state.Stance);
                 _pending[player.SteamID] = state.Frozen;
             }
         }
@@ -180,7 +199,7 @@ public class PracticeRecorder
         }
     }
 
-    private ThrowSnapshot Snapshot(CCSPlayerPawn pawn, CBaseCSGrenade grenade)
+    private ThrowSnapshot Snapshot(CCSPlayerPawn pawn, CBaseCSGrenade grenade, Vec3? stance)
     {
         Vector origin = pawn.AbsOrigin ?? new Vector(0, 0, 0);
         Vector velocity = pawn.AbsVelocity;
@@ -202,13 +221,15 @@ public class PracticeRecorder
 
         return new ThrowSnapshot
         {
-            feet_position = new Vec3(origin.X, origin.Y, origin.Z),
+            // The stance, not the release point: this is where the lineup says
+            // to stand, and standing is something you can only do on the floor.
+            feet_position = stance ?? new Vec3(origin.X, origin.Y, origin.Z),
             eye_position = new Vec3(origin.X, origin.Y, eyeZ),
             pitch = angles.X,
             yaw = angles.Y,
             velocity = new Vec3(velocity.X, velocity.Y, velocity.Z),
             speed = new Vec3(velocity.X, velocity.Y, 0f).LengthXY(),
-            on_ground = (pawn.Flags & (1 << 0)) != 0,
+            on_ground = (pawn.Flags & FlOnGround) != 0,
             ducked = ducked,
             walking = walking,
             throw_strength_raw = grenade.ThrowStrength,

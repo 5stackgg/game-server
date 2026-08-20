@@ -145,6 +145,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     {
         RespawnTheDead();
         KeepEveryoneStocked();
+        ReportOccupancy();
         _system.Tick();
         _playbook.Second();
         _drill.Second();
@@ -172,6 +173,32 @@ public partial class UtilityPracticePlugin : BasePlugin
     // Every second rather than only on spawn: a respawn, a team switch and a
     // round reset all hand a player an empty bag, and the cost of checking is
     // one loop over the weapons they already have.
+    private int _occupancyTicks;
+
+    // Every few seconds, not every one: the panel only needs to know somebody
+    // is here, and the reaper's clocks are measured in minutes.
+    private void ReportOccupancy()
+    {
+        if (++_occupancyTicks < OccupancySeconds)
+        {
+            return;
+        }
+
+        _occupancyTicks = 0;
+
+        var present = new List<ulong>();
+
+        foreach (CCSPlayerController player in Utilities.GetPlayers())
+        {
+            if (player != null && player.IsValid && !player.IsBot)
+            {
+                present.Add(player.SteamID);
+            }
+        }
+
+        _ = Task.Run(() => _api.Occupancy(present));
+    }
+
     private void KeepEveryoneStocked()
     {
         foreach (CCSPlayerController player in Utilities.GetPlayers())
@@ -291,6 +318,8 @@ public partial class UtilityPracticePlugin : BasePlugin
     // box that no mode was ever selected for, and without this it sits in
     // warmup with no money and no utility.
     private readonly HashSet<ulong> _welcomed = new();
+
+    private const int OccupancySeconds = 15;
 
     private const float CfgReapplySeconds = 3f;
 

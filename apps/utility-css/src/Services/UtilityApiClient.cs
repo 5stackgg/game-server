@@ -124,6 +124,20 @@ public class UtilityApiClient
         }
     }
 
+    // The only way the panel learns anybody is on this server. A match server
+    // reports connects over the match-events socket; a practice server has no
+    // such socket, and without this every session reads as empty and gets
+    // reaped out from under whoever is throwing.
+    public async Task Occupancy(IReadOnlyCollection<ulong> steamIds)
+    {
+        string body = JsonSerializer.Serialize(
+            new { steam_ids = steamIds.Select(id => id.ToString()).ToArray() },
+            PracticeJson.Options
+        );
+
+        await SendText(HttpMethod.Post, "/utility/occupancy", body);
+    }
+
     public async Task<PracticeSessionData?> Session()
     {
         string? body = await SendText(HttpMethod.Get, "/utility/session", null);
