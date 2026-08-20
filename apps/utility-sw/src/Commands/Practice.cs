@@ -299,7 +299,7 @@ public partial class UtilityPracticePlugin
         ulong steamId = player.SteamID;
 
         // The same fetch .load already made, and free once it has landed.
-        _library.EnsureTrajectory(loaded, fetched => DrawBloom(steamId, fetched));
+        _library.EnsureTrajectory(loaded, steamId, fetched => DrawBloom(steamId, fetched));
     }
 
     [Command("playbook", registerRaw: false, permission: "")]
@@ -1051,6 +1051,7 @@ public partial class UtilityPracticePlugin
 
         _library.EnsureTrajectory(
             lineup,
+            steamId,
             fetched =>
             {
                 // The player may have loaded something else while the path was

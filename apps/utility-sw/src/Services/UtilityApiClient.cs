@@ -100,11 +100,11 @@ public class UtilityApiClient
 
     // A library row carries no flight path and no measured bloom, so both cost
     // one more call.
-    public async Task<UtilityTrajectoryArtifact?> Trajectory(string id)
+    public async Task<UtilityTrajectoryArtifact?> Trajectory(string id, ulong steamId)
     {
         byte[]? body = await Send(
             HttpMethod.Get,
-            $"/utility/{Uri.EscapeDataString(id)}/trajectory",
+            $"/utility/{Uri.EscapeDataString(id)}/trajectory?steam_id={steamId}",
             null
         );
 

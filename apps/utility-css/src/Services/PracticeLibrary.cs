@@ -71,7 +71,7 @@ public class PracticeLibrary
     // can be drawn until they have been fetched. Everything else about a lineup
     // -- where to stand, where to look, what to hold -- is already in hand,
     // which is why .load teleports first and only then waits on this.
-    public void EnsureTrajectory(LineupRecord lineup, Action<LineupRecord> ready)
+    public void EnsureTrajectory(LineupRecord lineup, ulong steamId, Action<LineupRecord> ready)
     {
         if (lineup.trajectory.Count > 0 || string.IsNullOrEmpty(lineup.id))
         {
@@ -83,7 +83,7 @@ public class PracticeLibrary
 
         _ = Task.Run(async () =>
         {
-            UtilityTrajectoryArtifact? artifact = await _api.Trajectory(id);
+            UtilityTrajectoryArtifact? artifact = await _api.Trajectory(id, steamId);
 
             Server.NextFrame(() =>
             {
