@@ -129,6 +129,7 @@ public class PracticeReplay
             return;
         }
 
+        GhostsChanged();
         _ghosts.Add(
             new Ghost
             {
@@ -189,6 +190,7 @@ public class PracticeReplay
 
         // Held until it is toggled off rather than expiring: a player lining a
         // throw up is looking at it for as long as that takes.
+        GhostsChanged();
         _ghosts.Add(
             new Ghost
             {
@@ -218,6 +220,7 @@ public class PracticeReplay
 
             Kill(_ghosts[index]);
             _ghosts.RemoveAt(index);
+            GhostsChanged();
         }
     }
 
@@ -232,6 +235,7 @@ public class PracticeReplay
 
             Kill(_ghosts[index]);
             _ghosts.RemoveAt(index);
+            GhostsChanged();
         }
     }
 
@@ -250,6 +254,7 @@ public class PracticeReplay
         }
 
         _ghosts.Clear();
+        GhostsChanged();
     }
 
     public void Sweep()
@@ -265,6 +270,7 @@ public class PracticeReplay
 
             Kill(_ghosts[index]);
             _ghosts.RemoveAt(index);
+            GhostsChanged();
         }
     }
 
@@ -272,18 +278,41 @@ public class PracticeReplay
 
     // Beams are the only entities this plugin spawns, so a transmit filter
     // built from this list can never hide anything else by accident.
-    public IEnumerable<(uint index, ulong owner)> GhostEntities()
+    //
+    // Cached, because the caller is CheckTransmit and that runs every frame:
+    // rebuilding this per frame allocates a list per frame forever. Invalidated
+    // by every path that adds or removes a ghost.
+    private (uint index, ulong owner)[]? _ghostIndexes;
+
+    public IReadOnlyList<(uint index, ulong owner)> GhostEntities()
     {
+        if (_ghostIndexes != null)
+        {
+            return _ghostIndexes;
+        }
+
+        var indexes = new List<(uint index, ulong owner)>();
+
         foreach (Ghost ghost in _ghosts)
         {
             foreach (CEnvBeam beam in ghost.Beams)
             {
                 if (beam.IsValid)
                 {
-                    yield return (beam.Index, ghost.OwnerSteamId);
+                    indexes.Add((beam.Index, ghost.OwnerSteamId));
                 }
             }
         }
+
+        _ghostIndexes = indexes.ToArray();
+        return _ghostIndexes;
+    }
+
+    // Every mutation of _ghosts goes through here, so the cache cannot outlive
+    // the set it describes.
+    private void GhostsChanged()
+    {
+        _ghostIndexes = null;
     }
 
     public static string Describe(LineupRecord lineup)

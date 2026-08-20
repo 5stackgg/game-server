@@ -97,7 +97,7 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        List<(uint index, ulong owner)> ghosts = _replay.GhostEntities().ToList();
+        IReadOnlyList<(uint index, ulong owner)> ghosts = _replay.GhostEntities();
 
         foreach ((CCheckTransmitInfo info, CCSPlayerController? viewer) in infoList)
         {
