@@ -64,7 +64,15 @@ public class PracticeReplay
     // is looking at. A player lines a crosshair up against something a few
     // metres away, so that is where the target goes -- unless a wall is nearer,
     // in which case it lands on the wall.
-    private const float AimTraceRange = 420f;
+    // Traced far enough to reach real geometry: a crosshair placement is only
+    // exact if it sits on something in the world, so the ring goes wherever the
+    // aim ray actually lands.
+    private const float AimTraceRange = 4096f;
+
+    // Only used when the ray leaves the map without hitting anything -- aiming
+    // up over open ground has no surface to mark, and a ring hung out at the
+    // full trace length would be a speck against the skybox.
+    private const float AimFallbackRange = 420f;
 
     // A jump tops out around 54 units, so anything further below a recorded
     // position is a different floor and must not be snapped to.
@@ -817,11 +825,9 @@ public class PracticeReplay
     {
         ClearMarkers();
 
-        if (!_config.GhostPreview)
-        {
-            return;
-        }
-
+        // Deliberately not gated behind the ghost preview: a preview is an
+        // optional extra, but where to stand and where to point IS the lineup.
+        // There is no useful state where a loaded lineup shows neither.
         Color color = ColorFor(lineup.utility_type);
         Vec3 landing = lineup.detonation_position;
 
@@ -886,12 +892,20 @@ public class PracticeReplay
 
             hit = trace.DidHit
                 ? new Vec3(trace.EndPos.X, trace.EndPos.Y, trace.EndPos.Z)
-                : new Vec3(to.X, to.Y, to.Z);
+                : new Vec3(
+                    eye.x + dir.x * AimFallbackRange,
+                    eye.y + dir.y * AimFallbackRange,
+                    eye.z + dir.z * AimFallbackRange
+                );
         }
         catch (Exception error)
         {
             _logger.LogError(error, "unable to trace a lineup's aim");
-            hit = new Vec3(to.X, to.Y, to.Z);
+            hit = new Vec3(
+                eye.x + dir.x * AimFallbackRange,
+                eye.y + dir.y * AimFallbackRange,
+                eye.z + dir.z * AimFallbackRange
+            );
         }
 
         // Pulled back off the surface so the reticle does not z-fight with the

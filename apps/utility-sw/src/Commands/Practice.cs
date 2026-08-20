@@ -254,6 +254,7 @@ public partial class UtilityPracticePlugin
         state.Bloom = false;
 
         _replay.ClearGhosts(player.SteamID);
+        _replay.ClearMarkers();
 
         Reply(context, $" {ChatColors.Green}cleared");
     }
@@ -742,6 +743,16 @@ public partial class UtilityPracticePlugin
         ulong steamId = player.SteamID;
 
         Reply(context, $" {ChatColors.Grey}reloading...");
+
+        // The library about to be replaced is the one these markers came from.
+        PracticeState reloading = _system.StateFor(steamId);
+
+        reloading.Loaded = null;
+        reloading.Results.Clear();
+        reloading.Index = -1;
+
+        _replay.ClearGhosts(steamId);
+        _replay.ClearMarkers();
 
         _library.Refresh(
             steamId,

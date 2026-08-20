@@ -236,14 +236,20 @@ public partial class UtilityPracticePlugin : BasePlugin
         AimFeedback();
     }
 
-    // How close the crosshair has to be to the recorded aim before the throw
-    // instructions appear. Two degrees is tight enough that it means "you are
-    // on it" and loose enough to hold still at.
-    private const float AimToleranceDegrees = 2f;
+    // Dead on, not nearly. A tenth of a degree is inside one mouse count at
+    // normal sensitivity, so this only reads LINED UP when the crosshair is
+    // genuinely on the recorded angle rather than somewhere near it.
+    private const float AimToleranceDegrees = 0.1f;
 
-    // Centre text has to be re-sent to stay on screen, but not sixty-four
-    // times a second: eight is smooth and costs a fraction of the messages.
-    private const int AimFeedbackEveryTicks = 8;
+    // Wide enough to be worth coaching towards. Between this and the tolerance
+    // the player gets the live error instead of silence, which is what lets
+    // them close the last fraction of a degree.
+    private const float AimGuideDegrees = 8f;
+
+    // Centre text has to be re-sent to stay on screen. Four ticks is sixteen
+    // updates a second, which is fast enough that a hundredth-of-a-degree
+    // readout tracks the mouse instead of lagging behind it.
+    private const int AimFeedbackEveryTicks = 4;
 
     private int _aimTick;
 
@@ -274,16 +280,47 @@ public partial class UtilityPracticePlugin : BasePlugin
 
             QAngle eyes = pawn.EyeAngles;
 
-            if (
-                AngleGap(eyes.Y, lineup.release.yaw) > AimToleranceDegrees
-                || AngleGap(eyes.X, lineup.release.pitch) > AimToleranceDegrees
-            )
+            float yawOff = AngleGap(eyes.Y, lineup.release.yaw);
+            float pitchOff = AngleGap(eyes.X, lineup.release.pitch);
+
+            if (yawOff <= AimToleranceDegrees && pitchOff <= AimToleranceDegrees)
+            {
+                player.SendCenter(PracticeReplay.ThrowHint(lineup));
+                continue;
+            }
+
+            if (yawOff > AimGuideDegrees || pitchOff > AimGuideDegrees)
             {
                 continue;
             }
 
-            player.SendCenter(PracticeReplay.ThrowHint(lineup));
+            // Signed, and named by the direction the crosshair has to travel,
+            // because "0.4 degrees off" does not tell anyone which way to move.
+            float yawDelta = Signed(lineup.release.yaw - eyes.Y);
+            float pitchDelta = Signed(lineup.release.pitch - eyes.X);
+
+            player.SendCenter(
+                $"{(yawDelta >= 0 ? "LEFT" : "RIGHT")} {Math.Abs(yawDelta):0.00}&#176;"
+                    + $"   {(pitchDelta >= 0 ? "DOWN" : "UP")} {Math.Abs(pitchDelta):0.00}&#176;"
+            );
         }
+    }
+
+    // Shortest signed way round the circle: -180..180.
+    private static float Signed(float degrees)
+    {
+        float wrapped = degrees % 360f;
+
+        if (wrapped > 180f)
+        {
+            wrapped -= 360f;
+        }
+        else if (wrapped < -180f)
+        {
+            wrapped += 360f;
+        }
+
+        return wrapped;
     }
 
     // Shortest way round the circle, so 359 and 1 are two degrees apart.
