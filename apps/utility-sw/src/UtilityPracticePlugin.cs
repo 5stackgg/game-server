@@ -94,6 +94,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         _replay.IsSolo = _system.IsSolo;
         _replay.WantsGhosts = _system.WantsGhosts;
+        _replay.All = steamId => _library.For(steamId);
         // A solve rains live HE and molotovs on a map people are standing in.
         _system.SolveRunning = () => _solver.IsBusy;
         _session.Refreshed += OnSessionRefreshed;

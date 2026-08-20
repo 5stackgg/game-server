@@ -83,6 +83,10 @@ public class PracticeReplay
     // anything heavier.
     private const float MarkerWidth = 0.6f;
 
+    // Coarser circles for the lineups that are not the focused one: at a dozen
+    // on screen the difference is invisible and the entity count is not.
+    private const int QuietSegments = 10;
+
     // The aim reticle is the one marker that is not a place the utility goes,
     // so it never wears the utility's colour.
     private static readonly Color AimColor = new Color(255, 235, 120, 255);
@@ -127,6 +131,11 @@ public class PracticeReplay
     // Wired by the plugin rather than injected: PracticeSystem already depends
     // on this service, so asking for it back would close the cycle.
     public Func<ulong, bool> IsSolo { get; set; } = _ => true;
+
+    // The whole library for a player, so loading one lineup still draws the
+    // rest. Supplied by the plugin, which owns the library.
+    public Func<ulong, IReadOnlyList<LineupRecord>> All { get; set; } =
+        _ => Array.Empty<LineupRecord>();
 
     // A capture client watching a lineup wants the throw and not the plugin's
     // drawing of it: beams in frame are our overlay filmed instead of the map.
@@ -182,7 +191,14 @@ public class PracticeReplay
                 standing = new Vec3(landed.X, landed.Y, landed.Z);
             }
 
-            ShowMarkers(lineup, standing);
+            // Everything on the map, with this one in focus.
+            IReadOnlyList<LineupRecord> everything = All(player.SteamID);
+
+            ShowAllMarkers(
+                everything.Count > 0 ? everything : new[] { lineup },
+                lineup,
+                standing
+            );
         });
 
         player.SendCenter(Describe(lineup));
@@ -817,13 +833,56 @@ public class PracticeReplay
         }
 
         Vector feet = pawn.AbsOrigin ?? new Vector(0, 0, 0);
+        IReadOnlyList<LineupRecord> everything = All(player.SteamID);
 
-        ShowMarkers(lineup, new Vec3(feet.X, feet.Y, feet.Z));
+        ShowAllMarkers(
+            everything.Count > 0 ? everything : new[] { lineup },
+            lineup,
+            new Vec3(feet.X, feet.Y, feet.Z)
+        );
     }
 
-    private void ShowMarkers(LineupRecord lineup, Vec3 stance)
+    // Every lineup on the map at once. Loading one and cycling with .next hides
+    // the thing a practice server is for: seeing where all the smokes go and
+    // walking between them. The focused one gets the full treatment; the rest
+    // stay as a stance ring and a landing ring so a map full of them is still
+    // readable and still cheap.
+    public void ShowAllMarkers(
+        IEnumerable<LineupRecord> lineups,
+        LineupRecord? focused,
+        Vec3 focusedStance
+    )
     {
         ClearMarkers();
+
+        foreach (LineupRecord lineup in lineups)
+        {
+            if (focused != null && lineup.client_id == focused.client_id)
+            {
+                continue;
+            }
+
+            Color quiet = ColorFor(lineup.utility_type);
+            Vec3 feet = Grounded(lineup.release.feet_position);
+
+            Ring(feet, 18f, quiet, MarkerWidth, QuietSegments);
+            Ring(lineup.detonation_position, 26f, quiet, MarkerWidth, QuietSegments);
+            AddMarkerBeam(feet, lineup.detonation_position, quiet, 0.3f);
+            Label(new Vec3(feet.x, feet.y, feet.z + 10f), lineup.name, quiet);
+        }
+
+        if (focused != null)
+        {
+            ShowMarkers(focused, focusedStance, false);
+        }
+    }
+
+    private void ShowMarkers(LineupRecord lineup, Vec3 stance, bool clear = true)
+    {
+        if (clear)
+        {
+            ClearMarkers();
+        }
 
         // Deliberately not gated behind the ghost preview: a preview is an
         // optional extra, but where to stand and where to point IS the lineup.
@@ -1060,9 +1119,15 @@ public class PracticeReplay
         return length < 0.0001f ? v : new Vec3(v.x / length, v.y / length, v.z / length);
     }
 
-    private void Ring(Vec3 center, float radius, Color color, float width)
+    private void Ring(
+        Vec3 center,
+        float radius,
+        Color color,
+        float width,
+        int segments = 20
+    )
     {
-        const int Segments = 20;
+        int Segments = segments;
 
         for (int index = 0; index < Segments; index++)
         {
