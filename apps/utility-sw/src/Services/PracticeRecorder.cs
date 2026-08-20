@@ -296,6 +296,21 @@ public class PracticeRecorder
     // grounded position is the better of two imperfect answers.
     private Vec3? StanceFor(ulong steamId, ArmedState state)
     {
+        // The last GROUNDED point while the pin was held is the throw's own
+        // takeoff, and for a jump throw from a standstill that is exactly where
+        // the player was standing. It already solves the airborne-release
+        // problem, because a grounded point is never the apex.
+        //
+        // The remembered standstill is only a fallback for the case Stance
+        // cannot answer -- a pin pulled in mid-air. Preferring it outright was
+        // wrong: it can be a spot the player stood at seconds ago and walked
+        // away from, which lands the lineup a stride to one side of where they
+        // actually threw from.
+        if (state.Stance != null)
+        {
+            return state.Stance;
+        }
+
         if (
             _stationary.TryGetValue(steamId, out StationaryAnchor anchor)
             && _tick - anchor.Tick <= StationaryMaxAgeTicks
@@ -304,7 +319,7 @@ public class PracticeRecorder
             return anchor.Position;
         }
 
-        return state.Stance;
+        return null;
     }
 
     private ThrowSnapshot Snapshot(CCSPlayerPawn pawn, CBaseCSGrenade grenade, Vec3? stance)
