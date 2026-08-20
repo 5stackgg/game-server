@@ -849,12 +849,17 @@ public class PracticeReplay
         // Deliberately not the utility's colour: this is the only marker that
         // is not a place the utility goes, and it has to separate from the
         // stance and landing rings at a glance.
-        Reticle(center, dir, size, AimColor);
+        // Thin lines vanish at range, so the reticle's weight grows with
+        // distance the same way its size does. The ground rings never need
+        // this: you are always standing on them.
+        float weight = Math.Clamp(away * 0.0018f, MarkerWidth, 2.2f);
+
+        Reticle(center, dir, size, AimColor, weight);
     }
 
     // A box with a ring inside it, drawn in the plane facing back down the aim
     // ray so it reads as something to line a crosshair up with.
-    private void Reticle(Vec3 center, Vec3 forward, float size, Color color)
+    private void Reticle(Vec3 center, Vec3 forward, float size, Color color, float width)
     {
         Vec3 right = Cross(forward, new Vec3(0, 0, 1));
 
@@ -880,10 +885,10 @@ public class PracticeReplay
         Vec3 bottomRight = Corner(size, -size);
         Vec3 bottomLeft = Corner(-size, -size);
 
-        AddMarkerBeam(topLeft, topRight, color, MarkerWidth);
-        AddMarkerBeam(topRight, bottomRight, color, MarkerWidth);
-        AddMarkerBeam(bottomRight, bottomLeft, color, MarkerWidth);
-        AddMarkerBeam(bottomLeft, topLeft, color, MarkerWidth);
+        AddMarkerBeam(topLeft, topRight, color, width);
+        AddMarkerBeam(topRight, bottomRight, color, width);
+        AddMarkerBeam(bottomRight, bottomLeft, color, width);
+        AddMarkerBeam(bottomLeft, topLeft, color, width);
 
         const int Segments = 20;
         float radius = size * 0.45f;
@@ -897,7 +902,7 @@ public class PracticeReplay
                 Corner((float)Math.Cos(a) * radius, (float)Math.Sin(a) * radius),
                 Corner((float)Math.Cos(b) * radius, (float)Math.Sin(b) * radius),
                 color,
-                MarkerWidth
+                width
             );
         }
     }
