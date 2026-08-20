@@ -979,7 +979,9 @@ public class PracticeReplay
 
         // Sized by distance so it looks the same from the stance whether the
         // wall is ten units away or two thousand.
-        float size = Math.Clamp(away * 0.09f, 18f, 60f);
+        // Tighter than a "look over there" marker: this is a point to cover
+        // with the crosshair, so it subtends a few degrees and no more.
+        float size = Math.Clamp(away * 0.045f, 9f, 40f);
 
         // Deliberately not the utility's colour: this is the only marker that
         // is not a place the utility goes, and it has to separate from the
@@ -1015,18 +1017,29 @@ public class PracticeReplay
                 center.z + right.z * x + up.z * y
             );
 
-        Vec3 topLeft = Corner(-size, size);
-        Vec3 topRight = Corner(size, size);
-        Vec3 bottomRight = Corner(size, -size);
-        Vec3 bottomLeft = Corner(-size, -size);
+        // A crosshair, not an area. The four arms stop short of the middle so
+        // the gap they leave IS the aim point -- a ring or a box tells you
+        // roughly where to look, and roughly is what this is meant to replace.
+        float gap = size * 0.12f;
+        float arm = size * 0.62f;
 
-        AddMarkerBeam(topLeft, topRight, color, width);
-        AddMarkerBeam(topRight, bottomRight, color, width);
-        AddMarkerBeam(bottomRight, bottomLeft, color, width);
-        AddMarkerBeam(bottomLeft, topLeft, color, width);
+        AddMarkerBeam(Corner(gap, 0), Corner(arm, 0), color, width);
+        AddMarkerBeam(Corner(-gap, 0), Corner(-arm, 0), color, width);
+        AddMarkerBeam(Corner(0, gap), Corner(0, arm), color, width);
+        AddMarkerBeam(Corner(0, -gap), Corner(0, -arm), color, width);
 
-        const int Segments = 20;
-        float radius = size * 0.45f;
+        // The point itself: a dot small enough that covering it with the
+        // crosshair means covering the exact spot the throw was aimed at.
+        float dot = Math.Max(size * 0.03f, 0.6f);
+
+        AddMarkerBeam(Corner(-dot, 0), Corner(dot, 0), color, width * 1.6f);
+        AddMarkerBeam(Corner(0, -dot), Corner(0, dot), color, width * 1.6f);
+
+        // A faint outer ring so the thing can be FOUND from across the map.
+        // Deliberately thin and wide: it draws the eye without competing with
+        // the centre for it.
+        const int Segments = 16;
+        float radius = size;
 
         for (int index = 0; index < Segments; index++)
         {
@@ -1037,7 +1050,7 @@ public class PracticeReplay
                 Corner((float)Math.Cos(a) * radius, (float)Math.Sin(a) * radius),
                 Corner((float)Math.Cos(b) * radius, (float)Math.Sin(b) * radius),
                 color,
-                width
+                width * 0.5f
             );
         }
     }
