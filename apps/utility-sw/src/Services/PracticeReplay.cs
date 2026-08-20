@@ -61,6 +61,11 @@ public class PracticeReplay
     // Long enough to cross any competitive map, short enough to stop.
     private const float AimTraceRange = 8192f;
 
+    // Thinner than the ghost line at 1.6: a marker is an outline, and a ring
+    // is a dozen overlapping segments whose glow compounds into a blob at
+    // anything heavier.
+    private const float MarkerWidth = 0.6f;
+
     // The aim reticle is the one marker that is not a place the utility goes,
     // so it never wears the utility's colour.
     private static readonly Color AimColor = new Color(255, 235, 120, 255);
@@ -768,14 +773,14 @@ public class PracticeReplay
         Vec3 stance = lineup.release.feet_position;
         Vec3 landing = lineup.detonation_position;
 
-        Ring(stance, 32f, color, 3f);
+        Ring(stance, 24f, color, MarkerWidth);
         Label(
             new Vec3(stance.x, stance.y, stance.z + 12f),
             $"STAND\n{lineup.name}",
             color
         );
 
-        Ring(landing, 40f, color, 3f);
+        Ring(landing, 34f, color, MarkerWidth);
         Label(
             new Vec3(landing.x, landing.y, landing.z + 16f),
             lineup.utility_type.ToUpperInvariant(),
@@ -875,12 +880,12 @@ public class PracticeReplay
         Vec3 bottomRight = Corner(size, -size);
         Vec3 bottomLeft = Corner(-size, -size);
 
-        AddMarkerBeam(topLeft, topRight, color, 2f);
-        AddMarkerBeam(topRight, bottomRight, color, 2f);
-        AddMarkerBeam(bottomRight, bottomLeft, color, 2f);
-        AddMarkerBeam(bottomLeft, topLeft, color, 2f);
+        AddMarkerBeam(topLeft, topRight, color, MarkerWidth);
+        AddMarkerBeam(topRight, bottomRight, color, MarkerWidth);
+        AddMarkerBeam(bottomRight, bottomLeft, color, MarkerWidth);
+        AddMarkerBeam(bottomLeft, topLeft, color, MarkerWidth);
 
-        const int Segments = 12;
+        const int Segments = 20;
         float radius = size * 0.45f;
 
         for (int index = 0; index < Segments; index++)
@@ -892,7 +897,7 @@ public class PracticeReplay
                 Corner((float)Math.Cos(a) * radius, (float)Math.Sin(a) * radius),
                 Corner((float)Math.Cos(b) * radius, (float)Math.Sin(b) * radius),
                 color,
-                2f
+                MarkerWidth
             );
         }
     }
@@ -925,7 +930,7 @@ public class PracticeReplay
 
     private void Ring(Vec3 center, float radius, Color color, float width)
     {
-        const int Segments = 10;
+        const int Segments = 20;
 
         for (int index = 0; index < Segments; index++)
         {
