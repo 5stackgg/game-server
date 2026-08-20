@@ -55,6 +55,12 @@ public class PracticeReplay
 
     private readonly List<Ghost> _ghosts = new List<Ghost>();
 
+    // In-world markers for the lineup currently loaded. Deliberately NOT part
+    // of _ghosts: ghosts are filtered per viewer, and a marker is meant to be
+    // seen by everyone on the server.
+    private readonly List<CEnvBeam> _markerBeams = new();
+    private readonly List<CPointWorldText> _markerTexts = new();
+
     // A real smoke emitted at the landing point: the only preview with perfect
     // fidelity, because it is the same cloud the throw would make.
     private readonly Dictionary<ulong, CSmokeGrenadeProjectile> _bloomSmoke = new();
@@ -123,6 +129,8 @@ public class PracticeReplay
         ReapplyAngles(player, facing, aim, 2);
 
         GiveUtility(player, lineup.utility_type);
+
+        ShowMarkers(lineup);
 
         player.SendCenter(Describe(lineup));
     }
@@ -483,6 +491,8 @@ public class PracticeReplay
         _ghosts.Clear();
         _ghostThrows.Clear();
 
+        ClearMarkers();
+
         foreach (ulong steamId in _bloomSmoke.Keys.ToList())
         {
             ClearBloomSmoke(steamId);
@@ -703,6 +713,160 @@ public class PracticeReplay
         points.Add(lineup.detonation_position);
 
         return points;
+    }
+
+    // Valve's own guides mark three things per lineup -- where you stand, what
+    // you look at, and where it lands -- and that split is the right one, so
+    // these mirror it. It is drawn from entities the server owns rather than
+    // the annotation system, which is client-side and cannot be driven from
+    // here at all.
+    private void ShowMarkers(LineupRecord lineup)
+    {
+        ClearMarkers();
+
+        if (!_config.GhostPreview)
+        {
+            return;
+        }
+
+        Color color = ColorFor(lineup.utility_type);
+        Vec3 stance = lineup.release.feet_position;
+        Vec3 landing = lineup.detonation_position;
+
+        Ring(stance, 18f, color, 1.5f);
+        Label(
+            new Vec3(stance.x, stance.y, stance.z + 12f),
+            $"STAND\n{lineup.name}",
+            color
+        );
+
+        Ring(landing, 26f, color, 2f);
+        Label(
+            new Vec3(landing.x, landing.y, landing.z + 16f),
+            lineup.utility_type.ToUpperInvariant(),
+            color
+        );
+
+        // Where to look, placed along the recorded aim at the distance the
+        // throw actually travelled, so it sits on the thing being aimed at
+        // rather than floating an arbitrary distance away.
+        Vec3 eye = lineup.release.eye_position;
+        float reach = new Vec3(landing.x - eye.x, landing.y - eye.y, 0f).LengthXY();
+
+        if (reach > 1f)
+        {
+            double yaw = lineup.release.yaw * Math.PI / 180.0;
+            double pitch = lineup.release.pitch * Math.PI / 180.0;
+            float flat = (float)Math.Cos(pitch);
+
+            var aim = new Vec3(
+                eye.x + (float)(Math.Cos(yaw) * flat) * reach,
+                eye.y + (float)(Math.Sin(yaw) * flat) * reach,
+                // CS2 pitch is negative looking up, so the sign flips here.
+                eye.z + (float)(-Math.Sin(pitch)) * reach
+            );
+
+            Label(aim, "AIM", color);
+            Ring(aim, 10f, color, 1f);
+        }
+    }
+
+    private void Ring(Vec3 center, float radius, Color color, float width)
+    {
+        const int Segments = 10;
+
+        for (int index = 0; index < Segments; index++)
+        {
+            double a = index * 2 * Math.PI / Segments;
+            double b = (index + 1) * 2 * Math.PI / Segments;
+
+            CEnvBeam? beam = CreateBeam(
+                new Vec3(
+                    center.x + (float)(Math.Cos(a) * radius),
+                    center.y + (float)(Math.Sin(a) * radius),
+                    center.z + 2f
+                ),
+                new Vec3(
+                    center.x + (float)(Math.Cos(b) * radius),
+                    center.y + (float)(Math.Sin(b) * radius),
+                    center.z + 2f
+                ),
+                color,
+                width
+            );
+
+            if (beam != null)
+            {
+                _markerBeams.Add(beam);
+            }
+        }
+    }
+
+    private void Label(Vec3 at, string text, Color color)
+    {
+        try
+        {
+            CPointWorldText label =
+                _core.EntitySystem.CreateEntityByDesignerName<CPointWorldText>(
+                    "point_worldtext"
+                );
+
+            if (!label.IsValid)
+            {
+                return;
+            }
+
+            label.MessageText = text;
+            label.Color = color;
+            label.FontSize = 60;
+            label.FontName = "Arial Black";
+            label.Fullbright = true;
+            label.WorldUnitsPerPx = 0.15f;
+            label.Enabled = true;
+            label.JustifyHorizontal = PointWorldTextJustifyHorizontal_t
+                .POINT_WORLD_TEXT_JUSTIFY_HORIZONTAL_CENTER;
+            label.JustifyVertical = PointWorldTextJustifyVertical_t
+                .POINT_WORLD_TEXT_JUSTIFY_VERTICAL_CENTER;
+            // Always readable, wherever the reader is standing.
+            label.ReorientMode = PointWorldTextReorientMode_t
+                .POINT_WORLD_TEXT_REORIENT_AROUND_UP;
+
+            label.Teleport(
+                new Vector(at.x, at.y, at.z),
+                new QAngle(0, 0, 0),
+                new Vector(0, 0, 0)
+            );
+
+            label.DispatchSpawn();
+
+            _markerTexts.Add(label);
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to place a lineup marker");
+        }
+    }
+
+    public void ClearMarkers()
+    {
+        foreach (CEnvBeam beam in _markerBeams)
+        {
+            if (beam.IsValid)
+            {
+                beam.Despawn();
+            }
+        }
+
+        foreach (CPointWorldText label in _markerTexts)
+        {
+            if (label.IsValid)
+            {
+                label.Despawn();
+            }
+        }
+
+        _markerBeams.Clear();
+        _markerTexts.Clear();
     }
 
     private CEnvBeam? CreateBeam(Vec3 start, Vec3 end, Color color, float width)
