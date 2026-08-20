@@ -938,7 +938,10 @@ public class PracticeReplay
     {
         try
         {
-            var from = new Vector(position.x, position.y, position.z);
+            // Started above the point on purpose: a trace that begins flush
+            // against a surface can report no hit at all, which is exactly the
+            // case for a lineup already standing on the floor.
+            var from = new Vector(position.x, position.y, position.z + 8f);
             var to = new Vector(
                 position.x,
                 position.y,
@@ -947,10 +950,29 @@ public class PracticeReplay
 
             var trace = _core.Trace.TraceShapeLine(from, to, null);
 
-            // Already standing on it: the trace hits at once and changes nothing.
-            return trace.DidHit
-                ? new Vec3(position.x, position.y, trace.EndPos.Z)
-                : position;
+            if (!trace.DidHit)
+            {
+                _logger.LogWarning(
+                    "lineup stance at {x},{y},{z} found no floor within {range} units",
+                    position.x,
+                    position.y,
+                    position.z,
+                    GroundSnapRange
+                );
+                return position;
+            }
+
+            float drop = position.z - trace.EndPos.Z;
+
+            if (drop > 1f)
+            {
+                _logger.LogInformation(
+                    "lineup stance lowered {drop} units onto the floor (recorded airborne)",
+                    drop
+                );
+            }
+
+            return new Vec3(position.x, position.y, trace.EndPos.Z);
         }
         catch (Exception error)
         {
