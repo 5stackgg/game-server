@@ -565,15 +565,18 @@ public partial class UtilityPracticePlugin : BasePlugin
     // written only when what it says actually changes.
     private readonly Dictionary<(ulong, PanelKind), string> _showing = new();
 
-    // EVERY write restarts the panel's fade-in, so a keepalive is a visible
-    // pulse no matter how rarely it runs -- the only cure is to make it rare.
-    // A minute of hold, refreshed at half that, turns a flash every two seconds
-    // into one every thirty, and the panel is explicitly cleared the moment it
-    // stops being true rather than relying on this to expire.
+    // The HTML panel holds for as long as it is told to, so its keepalive can
+    // be rare -- and it needs to be, because every write restarts its fade-in.
     private const int PanelHoldMilliseconds = 60000;
 
-    // Derived so the two can never drift into a gap: half the hold, in ticks.
-    private const int PanelKeepAliveTicks = (PanelHoldMilliseconds / 1000 / 2) * 64;
+    // Half the hold, in ticks, so the two can never drift into a gap.
+    private const int StepsKeepAliveTicks = (PanelHoldMilliseconds / 1000 / 2) * 64;
+
+    // Centre text expires on the game's own short schedule and takes no
+    // duration, so the card has to be re-sent often to stay up at all. This is
+    // only safe because that channel does not animate on write: the same rate
+    // on the HTML panel is exactly the strobe this arrangement was made to fix.
+    private const int CardKeepAliveTicks = 64;
 
     private void Send(IPlayer player, PanelKind kind, string? content)
     {
@@ -593,7 +596,9 @@ public partial class UtilityPracticePlugin : BasePlugin
             return;
         }
 
-        if (had && showing == content && _aimTick % PanelKeepAliveTicks != 0)
+        int keepAlive = kind == PanelKind.Steps ? StepsKeepAliveTicks : CardKeepAliveTicks;
+
+        if (had && showing == content && _aimTick % keepAlive != 0)
         {
             return;
         }
@@ -604,7 +609,11 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private static void Write(IPlayer player, PanelKind kind, string content)
     {
-        if (kind == PanelKind.Card)
+        // Steps take the animating HTML panel, the card takes the quiet one.
+        // The panel that flashes on every write is the one whose message is
+        // supposed to be changing, and the panel that can be killed in a
+        // millisecond is the one that has to vanish the instant it comes true.
+        if (kind == PanelKind.Steps)
         {
             player.SendCenterHTML(content, PanelHoldMilliseconds);
         }
@@ -621,18 +630,17 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private static void Clear(IPlayer player, PanelKind kind)
     {
-        if (kind == PanelKind.Card)
+        if (kind == PanelKind.Steps)
         {
             player.SendCenterHTML("", PanelClearMilliseconds);
 
             return;
         }
 
-        // The steps line is NOT written blank. SendCenter takes no duration, so
-        // a blank write just starts another full-length message that happens to
-        // have nothing in it -- which is slower to disappear than the real line
-        // it replaced. Writing nothing lets the last line lapse on the game's
-        // own schedule instead.
+        // The card is NOT written blank. SendCenter takes no duration, so a
+        // blank write just starts another full-length message that happens to
+        // have nothing in it -- slower to disappear than the line it replaced.
+        // Writing nothing lets it lapse on the game's own schedule instead.
     }
 
     private (LineupRecord? lineup, bool onSpot, bool onAngle) Focused(
@@ -695,39 +703,41 @@ public partial class UtilityPracticePlugin : BasePlugin
     // The reference card: what this throw is and how it is thrown. Stays up
     // the whole time a lineup is in focus, because it is the thing a player
     // reads once and glances back at -- never the thing that nags.
+    // Plain text, because the card sits on the channel that does not animate.
+    // No escaping needed here for the same reason -- a lineup name is user text
+    // and this channel renders it literally, which is exactly what we want.
     private static string Card(LineupRecord lineup)
     {
         string details = string.IsNullOrWhiteSpace(lineup.description)
             ? ""
-            : "<br><font class='fontSize-s' color='#8a8a8a'>write-up on the web</font>";
+            : $"\n{PracticeReplay.Tracked("write-up on the web")}";
 
-        return $"<font class='fontSize-l' color='#f99e2f'>{Escape(lineup.name)}</font>"
-            + $"<br><font class='fontSize-sm' color='#dcdcdc'>{PracticeReplay.ThrowHint(lineup)}</font>"
-            + details;
+        return $"{lineup.name}\n{PracticeReplay.ThrowHint(lineup)}{details}";
     }
 
-    // Centre HTML is markup, and a lineup name is whatever somebody typed.
-    private static string Escape(string text)
-    {
-        return text.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
-    }
-
-    // The other panel: the one step that is not done yet. It closes the moment
-    // the player is lined up -- silence IS the success signal, alongside the
-    // crosshair fading out, so nothing is left shouting over the shot.
+    // The one step that is not done yet, on the animating channel -- where a
+    // flash on each change reads as the instruction CHANGING rather than as the
+    // reference card blinking at you. It closes the moment the player is lined
+    // up: silence, alongside the crosshair fading out, IS the success signal.
     private static string? Steps(bool onSpot, bool onAngle)
     {
         if (!onSpot)
         {
-            return PracticeReplay.Tracked("stand in the circle");
+            return Instruction("stand in the circle", "#f99e2f");
         }
 
         if (!onAngle)
         {
-            return PracticeReplay.Tracked("match the crosshair");
+            return Instruction("match the crosshair", "#f99e2f");
         }
 
         return null;
+    }
+
+    private static string Instruction(string text, string color)
+    {
+        return $"<font class='fontSize-m' color='{color}'>"
+            + $"{PracticeReplay.Tracked(text)}</font>";
     }
 
     // Shortest way round the circle, so 359 and 1 are two degrees apart.
