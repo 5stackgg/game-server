@@ -1305,8 +1305,13 @@ public class PracticeReplay
             );
         }
 
-        float arm = StanceRingRadius * 0.75f;
-        float gap = StanceRingRadius * 0.25f;
+        // The same grammar as the reticle in the air, at the same proportions:
+        // four arms stopping short of the middle so the gap IS the point, and
+        // a dot small enough that standing over it means standing on the exact
+        // spot. Finer than the ring around it -- the ring is for finding, the
+        // crosshair is for placing.
+        float gap = StanceRingRadius * 0.12f;
+        float arm = StanceRingRadius * 0.62f;
 
         foreach ((float x, float y) in new[] { (1f, 0f), (-1f, 0f), (0f, 1f), (0f, -1f) })
         {
@@ -1314,9 +1319,24 @@ public class PracticeReplay
                 new Vec3(at.x + (x * gap), at.y + (y * gap), z),
                 new Vec3(at.x + (x * arm), at.y + (y * arm), z),
                 color,
-                StanceWidth
+                StanceCrossWidth
             );
         }
+
+        float dot = Math.Max(StanceRingRadius * 0.03f, 0.6f);
+
+        AddMarkerBeam(
+            new Vec3(at.x - dot, at.y, z),
+            new Vec3(at.x + dot, at.y, z),
+            color,
+            StanceCrossWidth * 1.6f
+        );
+        AddMarkerBeam(
+            new Vec3(at.x, at.y - dot, z),
+            new Vec3(at.x, at.y + dot, z),
+            color,
+            StanceCrossWidth * 1.6f
+        );
     }
 
     private void ShowStance(Vec3 stance)
@@ -1657,6 +1677,8 @@ public class PracticeReplay
     private static readonly Color AmberDim = new Color(203, 117, 11, 255);
 
     private const float StanceWidth = 1.6f;
+
+    private const float StanceCrossWidth = 0.9f;
 
     // A circle a player fits inside, with the crosshair gap at its centre.
     private const float StanceRingRadius = 22f;
