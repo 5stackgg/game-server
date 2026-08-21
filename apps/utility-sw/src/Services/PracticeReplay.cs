@@ -93,6 +93,10 @@ public class PracticeReplay
     // anything heavier.
     private const float MarkerWidth = 0.6f;
 
+    // Coarser circles for the lineups that are not the focused one: at a dozen
+    // on screen the difference is invisible and the entity count is not.
+    private const int QuietSegments = 10;
+
     // Roughly where the grenade sits in a player's hand, so it reads as "this
     // is what you throw from here" rather than as litter on the floor.
     // Side by side when one spot wants more than one kind of grenade.
@@ -125,13 +129,6 @@ public class PracticeReplay
         // The crosshairs, kept per throw so they can be recoloured as the
         // player moves the mouse instead of being torn down and redrawn.
         public readonly List<Aim> Aims = new();
-
-        // The gate and its tether, which belong to the SPOT rather than to any
-        // one throw off it, and are recoloured by where the player is standing.
-        public readonly List<CEnvBeam> Stance = new();
-
-        public Vec3 At;
-        public float Miss = -1f;
     }
 
     private class Aim
@@ -145,9 +142,6 @@ public class PracticeReplay
     // The reticle currently being drawn, so its beams can be collected apart
     // from the rest of the selection.
     private Aim? _aimInto;
-
-    // Same, for the spot furniture.
-    private List<CEnvBeam>? _stanceInto;
 
     private readonly Dictionary<ulong, Selection> _selections = new();
 
@@ -960,25 +954,13 @@ public class PracticeReplay
 
         foreach (LineupRecord lineup in lineups)
         {
-            Color type = ColorFor(lineup.utility_type);
+            Color quiet = ColorFor(lineup.utility_type);
             Vec3 feet = Grounded(lineup.release.feet_position);
 
-            // Seven beams where there used to be twenty-one. A map holds
-            // hundreds of these at once, so the resting state has to be the
-            // cheapest thing on screen as well as the quietest -- and no
-            // connecting line at rest, which is what turned a busy map into a
-            // cat's cradle.
-            Chevron(feet, lineup.release.yaw, 13f, AmberDim, MarkerWidth);
-            AddMarkerBeam(
-                new Vec3(feet.x, feet.y, feet.z + 2f),
-                new Vec3(feet.x, feet.y, feet.z + 9f),
-                AmberDim,
-                MarkerWidth
-            );
-
-            Diamond(lineup.detonation_position, 22f, type, MarkerWidth);
-
-            Label(new Vec3(feet.x, feet.y, feet.z + 14f), lineup.name, Amber);
+            Ring(feet, 18f, quiet, MarkerWidth, QuietSegments);
+            Ring(lineup.detonation_position, 26f, quiet, MarkerWidth, QuietSegments);
+            AddMarkerBeam(feet, lineup.detonation_position, quiet, 0.3f);
+            Label(new Vec3(feet.x, feet.y, feet.z + 10f), lineup.name, quiet);
         }
 
         ShowSpotUtility(lineups);
@@ -1033,11 +1015,6 @@ public class PracticeReplay
         {
             _drawingInto = null;
 
-            if (active.Count > 0)
-            {
-                ShowStance(Grounded(active.First().release.feet_position), active.Count);
-            }
-
             foreach (LineupRecord lineup in active)
             {
                 ShowMarkers(lineup, stance);
@@ -1058,24 +1035,8 @@ public class PracticeReplay
         _selections[owner.SteamID] = selection;
         _drawingInto = selection;
 
-        // The gate marks the RECORDED spot, never where the player happens to
-        // be standing -- SpotWatch passes the player's own position, and a gate
-        // drawn under their feet can never tell them they are off it.
-        selection.At = Grounded(active.First().release.feet_position);
-
         try
         {
-            _stanceInto = selection.Stance;
-
-            try
-            {
-                ShowStance(selection.At, active.Count);
-            }
-            finally
-            {
-                _stanceInto = null;
-            }
-
             foreach (LineupRecord lineup in active)
             {
                 ShowMarkers(lineup, stance);
@@ -1118,33 +1079,6 @@ public class PracticeReplay
                         viewer.ShouldBlockTransmitEntity((int)text.Index, hidden);
                     }
                 }
-            }
-        }
-    }
-
-    // The gate answers the other half of the question. A player who is off the
-    // angle and a player who is off the spot both see "not yet" -- in the same
-    // colours, on the marker that is actually wrong.
-    private void TintStance(Selection selection, Vec3 feet)
-    {
-        float miss = PracticeLineupUtility.StanceMiss(
-            new Vec3(selection.At.x - feet.x, selection.At.y - feet.y, 0f).LengthXY()
-        );
-
-        if (Math.Abs(miss - selection.Miss) < 0.02f)
-        {
-            return;
-        }
-
-        selection.Miss = miss;
-
-        Color color = MissColor(miss);
-
-        foreach (CEnvBeam beam in selection.Stance)
-        {
-            if (beam.IsValid)
-            {
-                beam.Render = color;
             }
         }
     }
@@ -1225,32 +1159,6 @@ public class PracticeReplay
             .ToList();
     }
 
-    // Everything about the PLACE rather than any throw off it. Drawn once per
-    // selection: calling this per lineup stacked identical gates on each other
-    // and, worse, piled the labels into an unreadable smear.
-    private void ShowStance(Vec3 stance, int throws)
-    {
-        Gate(stance, 0f, 26f, Amber, MarkerWidth);
-
-        // Ties the grenade floating overhead to the ground it belongs to, so a
-        // spot with a model reads as one object rather than two.
-        Dashed(
-            new Vec3(stance.x, stance.y, stance.z + 4f),
-            new Vec3(stance.x, stance.y, stance.z + UtilityModelHeight - 6f),
-            AmberDim,
-            MarkerWidth,
-            4
-        );
-
-        Label(
-            new Vec3(stance.x, stance.y, stance.z + 14f),
-            throws > 1
-                ? $"{Tracked("stand")}\n{throws} throws"
-                : Tracked("stand"),
-            Amber
-        );
-    }
-
     private void ShowMarkers(LineupRecord lineup, Vec3 stance)
     {
         // Deliberately not gated behind the ghost preview: a preview is an
@@ -1259,21 +1167,17 @@ public class PracticeReplay
         Color color = ColorFor(lineup.utility_type);
         Vec3 landing = lineup.detonation_position;
 
-        // One chevron per throw, all fanning out of the one gate: a spot with
-        // three lineups shows three directions leaving it, which is the whole
-        // question a player has when they walk onto it. The gate itself is
-        // drawn once by ShowStance -- it belongs to the ground, not the throw.
-        Chevron(stance, lineup.release.yaw, 15f, Amber, MarkerWidth);
+        Ring(stance, 24f, color, MarkerWidth);
+        Label(
+            new Vec3(stance.x, stance.y, stance.z + 12f),
+            $"STAND\n{lineup.name}",
+            color
+        );
 
-        // The flight is a plan, so it is dashed, and it only appears for the
-        // throw you are actually on -- every lineup drawing its own line is
-        // what made a spot with three throws unreadable.
-        Dashed(new Vec3(stance.x, stance.y, stance.z + 40f), landing, color, 0.3f, 7);
-
-        Diamond(landing, 30f, color, MarkerWidth);
+        Ring(landing, 34f, color, MarkerWidth);
         Label(
             new Vec3(landing.x, landing.y, landing.z + 16f),
-            Tracked(lineup.utility_type),
+            lineup.utility_type.ToUpperInvariant(),
             color
         );
 
@@ -1329,6 +1233,20 @@ public class PracticeReplay
         try
         {
             var trace = _core.Trace.TraceShapeLine(from, to, null);
+
+            _logger.LogInformation(
+                "aim trace for {name}: hit={hit} at {x},{y},{z} ({dist} units out)",
+                lineup.name,
+                trace.DidHit,
+                trace.EndPos.X.ToString("0.#"),
+                trace.EndPos.Y.ToString("0.#"),
+                trace.EndPos.Z.ToString("0.#"),
+                new Vec3(
+                    trace.EndPos.X - eye.x,
+                    trace.EndPos.Y - eye.y,
+                    trace.EndPos.Z - eye.z
+                ).Length().ToString("0.#")
+            );
 
             hit = trace.DidHit
                 ? new Vec3(trace.EndPos.X, trace.EndPos.Y, trace.EndPos.Z)
@@ -1416,16 +1334,14 @@ public class PracticeReplay
         );
     }
 
-    // Called as the player moves, not as they walk onto a spot: the markers are
-    // already drawn, and all that changes is how wrong they are.
-    public void TintAim(IPlayer player, float eyeYaw, float eyePitch, Vec3 feet)
+    // Called as the player moves, not as they walk onto a spot: the crosshairs
+    // are already drawn, and all that changes is how wrong each one is.
+    public void TintAim(IPlayer player, float eyeYaw, float eyePitch)
     {
         if (!_selections.TryGetValue(player.SteamID, out Selection? selection))
         {
             return;
         }
-
-        TintStance(selection, feet);
 
         foreach (Aim aim in selection.Aims)
         {
@@ -1507,32 +1423,23 @@ public class PracticeReplay
         AddMarkerBeam(Corner(-dot, 0), Corner(dot, 0), color, width * 1.6f);
         AddMarkerBeam(Corner(0, -dot), Corner(0, dot), color, width * 1.6f);
 
-        // Corner brackets rather than a ring, so the crosshair speaks the same
-        // language as the gate on the floor -- and eight beams instead of
-        // sixteen, on the marker a spot draws once per throw.
-        float edge = size;
-        float bracket = size * 0.34f;
+        // A faint outer ring so the thing can be FOUND from across the map.
+        // Deliberately thin and wide: it draws the eye without competing with
+        // the centre for it.
+        const int Segments = 16;
+        float radius = size;
 
-        foreach (int horizontal in new[] { 1, -1 })
+        for (int index = 0; index < Segments; index++)
         {
-            foreach (int vertical in new[] { 1, -1 })
-            {
-                float x = edge * horizontal;
-                float y = edge * vertical;
+            double a = index * 2 * Math.PI / Segments;
+            double b = (index + 1) * 2 * Math.PI / Segments;
 
-                AddMarkerBeam(
-                    Corner(x, y),
-                    Corner(x - (bracket * horizontal), y),
-                    color,
-                    width * 0.6f
-                );
-                AddMarkerBeam(
-                    Corner(x, y),
-                    Corner(x, y - (bracket * vertical)),
-                    color,
-                    width * 0.6f
-                );
-            }
+            AddMarkerBeam(
+                Corner((float)Math.Cos(a) * radius, (float)Math.Sin(a) * radius),
+                Corner((float)Math.Cos(b) * radius, (float)Math.Sin(b) * radius),
+                color,
+                width * 0.5f
+            );
         }
     }
 
@@ -1590,121 +1497,8 @@ public class PracticeReplay
     // The grenade itself, floating over the spot at about eye height: a ring
     // says where to stand, and this says what to throw from it without reading
     // a colour off a beam.
-    // The panel's --tac-amber ramp, straight off assets/css/tailwind.css.
-    // Amber is the colour of YOU in this scheme -- where to stand, which way to
-    // face, where to point. The utility's own colour is reserved for the half
-    // that is about the grenade: where it lands and what it is. Everything
-    // being type-coloured is what made a busy map unreadable.
-    private static readonly Color Amber = new Color(249, 158, 47, 255);
-    private static readonly Color AmberDim = new Color(203, 117, 11, 255);
-
     // FSOLID_NOT_SOLID.
     private const byte NotSolid = 4;
-
-    // Flat forward/right for a yaw, so a marker can be built facing the throw
-    // instead of facing whatever way the map's axes happen to run.
-    private static (Vec3 forward, Vec3 right) Bearing(float yaw)
-    {
-        double radians = yaw * Math.PI / 180d;
-        var forward = new Vec3((float)Math.Cos(radians), (float)Math.Sin(radians), 0f);
-
-        return (forward, new Vec3(forward.y, -forward.x, 0f));
-    }
-
-    private static Vec3 Offset(Vec3 at, Vec3 forward, float along, Vec3 right, float across)
-    {
-        return new Vec3(
-            at.x + (forward.x * along) + (right.x * across),
-            at.y + (forward.y * along) + (right.y * across),
-            at.z
-        );
-    }
-
-    // A caret on the floor pointing down the throw. Two beams against a ring's
-    // ten, and it says the thing a ring cannot: which way to face once you are
-    // standing on it.
-    private void Chevron(Vec3 at, float yaw, float size, Color color, float width)
-    {
-        (Vec3 forward, Vec3 right) = Bearing(yaw);
-
-        Vec3 tip = Offset(at, forward, size, right, 0f);
-
-        AddMarkerBeam(Offset(at, forward, -size * 0.4f, right, -size * 0.8f), tip, color, width);
-        AddMarkerBeam(Offset(at, forward, -size * 0.4f, right, size * 0.8f), tip, color, width);
-    }
-
-    // Four beams, and deliberately not a circle: the landing marker and the
-    // stance marker must never be mistaken for each other at a glance.
-    private void Diamond(Vec3 at, float radius, Color color, float width)
-    {
-        var north = new Vec3(at.x, at.y + radius, at.z);
-        var east = new Vec3(at.x + radius, at.y, at.z);
-        var south = new Vec3(at.x, at.y - radius, at.z);
-        var west = new Vec3(at.x - radius, at.y, at.z);
-
-        AddMarkerBeam(north, east, color, width);
-        AddMarkerBeam(east, south, color, width);
-        AddMarkerBeam(south, west, color, width);
-        AddMarkerBeam(west, north, color, width);
-    }
-
-    // Corner brackets on a square turned to face the throw, with the two
-    // corners on the throwing side cut back so it reads as a gate you step
-    // into and shoot out of, rather than a box you are stood in.
-    private void Gate(Vec3 at, float yaw, float half, Color color, float width)
-    {
-        (Vec3 forward, Vec3 right) = Bearing(yaw);
-
-        foreach (int alongSign in new[] { 1, -1 })
-        {
-            foreach (int acrossSign in new[] { 1, -1 })
-            {
-                Vec3 corner = Offset(at, forward, half * alongSign, right, half * acrossSign);
-                float reach = half * (alongSign > 0 ? 0.28f : 0.46f);
-
-                AddMarkerBeam(
-                    corner,
-                    Offset(corner, forward, -reach * alongSign, right, 0f),
-                    color,
-                    width
-                );
-                AddMarkerBeam(
-                    corner,
-                    Offset(corner, forward, 0f, right, -reach * acrossSign),
-                    color,
-                    width
-                );
-            }
-        }
-    }
-
-    // A flight is a plan, not an object, so it is drawn as one.
-    private void Dashed(Vec3 from, Vec3 to, Color color, float width, int dashes)
-    {
-        for (int index = 0; index < dashes; index += 1)
-        {
-            float start = index / (float)dashes;
-            float end = start + (0.55f / dashes);
-
-            AddMarkerBeam(Lerp(from, to, start), Lerp(from, to, end), color, width);
-        }
-    }
-
-    private static Vec3 Lerp(Vec3 from, Vec3 to, float t)
-    {
-        return new Vec3(
-            from.x + ((to.x - from.x) * t),
-            from.y + ((to.y - from.y) * t),
-            from.z + ((to.z - from.z) * t)
-        );
-    }
-
-    // The panel sets every caption in mono uppercase on wide tracking, and
-    // point_worldtext has no letter-spacing, so the spacing goes in the string.
-    public static string Tracked(string text)
-    {
-        return string.Join(" ", text.ToUpperInvariant().ToCharArray());
-    }
 
     // Asks the engine what each grenade actually looks like, by spawning one of
     // each weapon under the world for a single tick and reading the model back
@@ -1729,26 +1523,14 @@ public class PracticeReplay
 
                 var keys = new CEntityKeyValues();
 
-                // Inside the world. -16384 is the coordinate limit itself, and
-                // an entity spawned exactly on it trips engine bounds checks.
-                keys.SetString("origin", "0 0 -8192");
+                keys.SetString("origin", "0 0 -16384");
                 keys.SetString("solid", "0");
 
                 probe.DispatchSpawn(keys);
 
                 PracticeLineupUtility.LearnUtilityModel(pair.Key, probe.GetModel());
 
-                // Next tick, not this one. A weapon entity is still finishing
-                // its own spawn when DispatchSpawn returns, and tearing it down
-                // underneath that is how you crash the server rather than
-                // borrow a model path from it.
-                _core.Scheduler.NextTick(() =>
-                {
-                    if (probe.IsValid)
-                    {
-                        probe.Despawn();
-                    }
-                });
+                probe.Despawn();
             }
             catch (Exception error)
             {
@@ -1763,11 +1545,6 @@ public class PracticeReplay
 
     private void UtilityModel(string utilityType, Vec3 at)
     {
-        if (!Sane(at))
-        {
-            return;
-        }
-
         string? model = PracticeLineupUtility.ModelForUtilityType(utilityType);
 
         if (model == null)
@@ -1847,7 +1624,6 @@ public class PracticeReplay
         }
 
         _aimInto?.Beams.Add(beam);
-        _stanceInto?.Add(beam);
 
         if (_drawingInto != null)
         {
@@ -1875,16 +1651,55 @@ public class PracticeReplay
         return length < 0.0001f ? v : new Vec3(v.x / length, v.y / length, v.z / length);
     }
 
+    private void Ring(
+        Vec3 center,
+        float radius,
+        Color color,
+        float width,
+        int segments = 20
+    )
+    {
+        int Segments = segments;
+
+        for (int index = 0; index < Segments; index++)
+        {
+            double a = index * 2 * Math.PI / Segments;
+            double b = (index + 1) * 2 * Math.PI / Segments;
+
+            CEnvBeam? beam = CreateBeam(
+                new Vec3(
+                    center.x + (float)(Math.Cos(a) * radius),
+                    center.y + (float)(Math.Sin(a) * radius),
+                    center.z + 2f
+                ),
+                new Vec3(
+                    center.x + (float)(Math.Cos(b) * radius),
+                    center.y + (float)(Math.Sin(b) * radius),
+                    center.z + 2f
+                ),
+                color,
+                width
+            );
+
+            if (beam != null)
+            {
+                if (_drawingInto != null)
+                {
+                    _drawingInto.Beams.Add(beam);
+                }
+                else
+                {
+                    _markerBeams.Add(beam);
+                }
+            }
+        }
+    }
+
     // facing: where the text should read from, normally the spot the player is
     // standing on. Passing null keeps the auto-reorient, which is right for a
     // label lying on the floor and wrong for one on a wall.
     private CPointWorldText? Label(Vec3 at, string text, Color color, Vec3? facing = null)
     {
-        if (!Sane(at))
-        {
-            return null;
-        }
-
         try
         {
             CPointWorldText label =
@@ -2042,31 +1857,8 @@ public class PracticeReplay
         _markerProps.Clear();
     }
 
-    // A NaN or an infinity reaching Teleport takes the whole server down inside
-    // native code, where the try/catch below cannot see it -- so coordinates are
-    // checked before the engine ever sees them, not after it faults.
-    private static bool Sane(Vec3 point)
-    {
-        return float.IsFinite(point.x) && float.IsFinite(point.y) && float.IsFinite(point.z);
-    }
-
     private CEnvBeam? CreateBeam(Vec3 start, Vec3 end, Color color, float width)
     {
-        if (!Sane(start) || !Sane(end))
-        {
-            _logger.LogWarning(
-                "refusing to draw a beam at {sx},{sy},{sz} -> {ex},{ey},{ez}",
-                start.x,
-                start.y,
-                start.z,
-                end.x,
-                end.y,
-                end.z
-            );
-
-            return null;
-        }
-
         try
         {
             CEnvBeam beam = _core.EntitySystem.CreateEntityByDesignerName<CEnvBeam>("env_beam");

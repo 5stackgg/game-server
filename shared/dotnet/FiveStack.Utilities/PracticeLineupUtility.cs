@@ -133,30 +133,6 @@ public static class PracticeLineupUtility
         return Math.Clamp((error - tolerance) / span, 0f, 1f);
     }
 
-    // The same green-to-red idea as the aim, for where the player's feet are.
-    // Position and angle are the two halves of a lineup and a player has no way
-    // to tell which one they have wrong, so both say so the same way.
-    public static float StanceMiss(float distance)
-    {
-        if (distance <= StanceToleranceUnits)
-        {
-            return 0f;
-        }
-
-        return Math.Clamp(
-            (distance - StanceToleranceUnits) / (StanceMissSpanUnits - StanceToleranceUnits),
-            0f,
-            1f
-        );
-    }
-
-    // Close enough to stand. Deliberately far tighter than SpotRadius, which
-    // asks "are these the same place" -- this asks "are you ON it".
-    public const float StanceToleranceUnits = 8f;
-
-    // Fully red this far from the recorded spot.
-    public const float StanceMissSpanUnits = 48f;
-
     // A lineup that never said how precise it is.
     public const float DefaultAimTolerance = 0.35f;
 

@@ -263,39 +263,71 @@ public class AimMissTests
             Assert.InRange(miss, 0f, 1f);
         }
     }
-}
 
-public class StanceMissTests
-{
-    [Fact]
-    public void StandingOnTheSpotIsFullyOn()
+    private static LineupRecord Addressable(string? id, string clientId)
     {
-        Assert.Equal(0f, PracticeLineupUtility.StanceMiss(0f));
-        Assert.Equal(0f, PracticeLineupUtility.StanceMiss(8f));
+        return new LineupRecord
+        {
+            id = id,
+            client_id = clientId,
+            name = "addressable",
+            release = new ThrowSnapshot { feet_position = new Vec3(0f, 0f, 0f) },
+        };
+    }
+
+    // A saved lineup is addressed by the panel's id.
+    [Fact]
+    public void FindsALineupByItsPanelId()
+    {
+        LineupRecord wanted = Addressable("11111111-2222-3333-4444-555555555555", "local-1");
+        var lineups = new[] { Addressable("00000000-0000-0000-0000-000000000000", "local-0"), wanted };
+
+        Assert.Same(
+            wanted,
+            PracticeLineupUtility.ById(lineups, "11111111-2222-3333-4444-555555555555")
+        );
+    }
+
+    // A scratch throw sent for a test has no panel id at all, only the local
+    // one, so both keys have to be addressable or "try it" cannot be loaded.
+    [Fact]
+    public void FindsAScratchLineupByItsClientId()
+    {
+        LineupRecord scratch = Addressable(null, "scratch-abc");
+        var lineups = new[] { Addressable("11111111-2222-3333-4444-555555555555", "local-1"), scratch };
+
+        Assert.Same(scratch, PracticeLineupUtility.ById(lineups, "scratch-abc"));
     }
 
     [Fact]
-    public void DriftingOffRampsUp()
+    public void MatchesAnIdRegardlessOfCase()
     {
-        float near = PracticeLineupUtility.StanceMiss(12f);
-        float far = PracticeLineupUtility.StanceMiss(30f);
+        LineupRecord wanted = Addressable("AABBCCDD-1111-2222-3333-444455556666", "local-1");
 
-        Assert.True(near > 0f);
-        Assert.True(far > near);
-        Assert.True(far < 1f);
+        Assert.Same(
+            wanted,
+            PracticeLineupUtility.ById(new[] { wanted }, "aabbccdd-1111-2222-3333-444455556666")
+        );
+    }
+
+    // The important one. An empty argument must find nothing rather than the
+    // first lineup whose own id happens to be unset -- a remote load that
+    // arrived without an id would otherwise stand somebody on an arbitrary
+    // throw and report success.
+    [Fact]
+    public void RefusesAnEmptyId()
+    {
+        var lineups = new[] { Addressable(null, ""), Addressable("", "local-1") };
+
+        Assert.Null(PracticeLineupUtility.ById(lineups, ""));
+        Assert.Null(PracticeLineupUtility.ById(lineups, "   "));
     }
 
     [Fact]
-    public void WellOffTheSpotIsFullyRed()
+    public void ReturnsNullWhenNothingMatches()
     {
-        Assert.Equal(1f, PracticeLineupUtility.StanceMiss(48f));
-        Assert.Equal(1f, PracticeLineupUtility.StanceMiss(500f));
-    }
+        var lineups = new[] { Addressable("11111111-2222-3333-4444-555555555555", "local-1") };
 
-    [Fact]
-    public void StanceToleranceIsTighterThanTheSpotItself()
-    {
-        // SpotRadius asks "is this the same place"; this asks "are you on it".
-        Assert.True(PracticeLineupUtility.StanceToleranceUnits < 40f);
+        Assert.Null(PracticeLineupUtility.ById(lineups, "not-a-lineup"));
     }
 }
