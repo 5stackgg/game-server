@@ -1078,10 +1078,27 @@ public partial class UtilityPracticePlugin : BasePlugin
             steamId,
             count =>
             {
-                if (count > 0)
+                if (count <= 0)
                 {
-                    _replay.ShowLibrary(_library.For(steamId));
+                    return;
                 }
+
+                IReadOnlyList<LineupRecord> library = _library.For(steamId);
+
+                _replay.ShowLibrary(library);
+
+                // .next and .prev walk state.Results, and a refresh never filled
+                // it -- so every lineup on the map was drawn and none of them
+                // could be stepped through until the player ran a search. If
+                // they can SEE them, they can walk them. Any earlier search is
+                // discarded on purpose: this only runs on join, map change and
+                // an explicit refresh, and a search from before any of those is
+                // describing a map state that no longer exists.
+                PracticeState state = _system.StateFor(steamId);
+
+                state.Results.Clear();
+                state.Results.AddRange(library);
+                state.Index = -1;
             }
         );
     }

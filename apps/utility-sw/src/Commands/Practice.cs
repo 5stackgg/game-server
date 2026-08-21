@@ -417,6 +417,40 @@ public partial class UtilityPracticePlugin
         }
     }
 
+    // The other end of the throw. Loading a lineup puts you where it is thrown
+    // FROM; this puts you where it lands, which is the only way to see what the
+    // smoke actually covers without throwing it and running.
+    [Command("jump", registerRaw: false, permission: "")]
+    public void OnJump(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        LineupRecord? lineup = _system.StateFor(player.SteamID).Loaded;
+
+        if (lineup == null)
+        {
+            Reply(context, $" {ChatColors.Grey}load a lineup first");
+            return;
+        }
+
+        if (!_replay.JumpToLanding(player, lineup))
+        {
+            Reply(context, $" {ChatColors.Red}could not move you there");
+            return;
+        }
+
+        Reply(
+            context,
+            $" {ChatColors.Green}moved to where {ChatColors.Default}{lineup.name}"
+                + $" {ChatColors.Green}lands"
+        );
+    }
+
     [Command("pos", registerRaw: false, permission: "")]
     public void OnPos(ICommandContext context)
     {
@@ -812,6 +846,7 @@ public partial class UtilityPracticePlugin
         $" {ChatColors.Default}.save <name> {ChatColors.Grey}saves your last throw",
         $" {ChatColors.Default}.load <query> {ChatColors.Grey}teleports you to a lineup",
         $" {ChatColors.Default}.next / .prev {ChatColors.Grey}walk the last search",
+        $" {ChatColors.Default}.jump {ChatColors.Grey}stand where the loaded lineup lands",
         $" {ChatColors.Default}.rethrow {ChatColors.Grey}back to the loaded lineup",
         $" {ChatColors.Default}.last / .back <n> {ChatColors.Grey}back to a throw you made",
         $" {ChatColors.Default}.list / .reload / .delete {ChatColors.Grey}manage your library",
