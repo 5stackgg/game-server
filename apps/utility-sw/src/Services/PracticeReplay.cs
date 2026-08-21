@@ -126,6 +126,13 @@ public class PracticeReplay
         // The crosshairs, kept per throw so they can be recoloured as the
         // player moves the mouse instead of being torn down and redrawn.
         public readonly List<Aim> Aims = new();
+
+        // The gate and its tether, which belong to the SPOT rather than to any
+        // one throw off it, and are recoloured by where the player is standing.
+        public readonly List<CEnvBeam> Stance = new();
+
+        public Vec3 At;
+        public float Miss = -1f;
     }
 
     private class Aim
@@ -139,6 +146,9 @@ public class PracticeReplay
     // The reticle currently being drawn, so its beams can be collected apart
     // from the rest of the selection.
     private Aim? _aimInto;
+
+    // Same, for the spot furniture.
+    private List<CEnvBeam>? _stanceInto;
 
     private readonly Dictionary<ulong, Selection> _selections = new();
 
@@ -1024,6 +1034,11 @@ public class PracticeReplay
         {
             _drawingInto = null;
 
+            if (active.Count > 0)
+            {
+                ShowStance(stance, active.Count);
+            }
+
             foreach (LineupRecord lineup in active)
             {
                 ShowMarkers(lineup, stance);
@@ -1044,8 +1059,21 @@ public class PracticeReplay
         _selections[owner.SteamID] = selection;
         _drawingInto = selection;
 
+        selection.At = stance;
+
         try
         {
+            _stanceInto = selection.Stance;
+
+            try
+            {
+                ShowStance(stance, active.Count);
+            }
+            finally
+            {
+                _stanceInto = null;
+            }
+
             foreach (LineupRecord lineup in active)
             {
                 ShowMarkers(lineup, stance);
@@ -1088,6 +1116,33 @@ public class PracticeReplay
                         viewer.ShouldBlockTransmitEntity((int)text.Index, hidden);
                     }
                 }
+            }
+        }
+    }
+
+    // The gate answers the other half of the question. A player who is off the
+    // angle and a player who is off the spot both see "not yet" -- in the same
+    // colours, on the marker that is actually wrong.
+    private void TintStance(Selection selection, Vec3 feet)
+    {
+        float miss = PracticeLineupUtility.StanceMiss(
+            new Vec3(selection.At.x - feet.x, selection.At.y - feet.y, 0f).LengthXY()
+        );
+
+        if (Math.Abs(miss - selection.Miss) < 0.02f)
+        {
+            return;
+        }
+
+        selection.Miss = miss;
+
+        Color color = MissColor(miss);
+
+        foreach (CEnvBeam beam in selection.Stance)
+        {
+            if (beam.IsValid)
+            {
+                beam.Render = color;
             }
         }
     }
@@ -1168,20 +1223,12 @@ public class PracticeReplay
             .ToList();
     }
 
-    private void ShowMarkers(LineupRecord lineup, Vec3 stance)
+    // Everything about the PLACE rather than any throw off it. Drawn once per
+    // selection: calling this per lineup stacked identical gates on each other
+    // and, worse, piled the labels into an unreadable smear.
+    private void ShowStance(Vec3 stance, int throws)
     {
-        // Deliberately not gated behind the ghost preview: a preview is an
-        // optional extra, but where to stand and where to point IS the lineup.
-        // There is no useful state where a loaded lineup shows neither.
-        Color color = ColorFor(lineup.utility_type);
-        Vec3 landing = lineup.detonation_position;
-
-        // The stance is a GATE turned to face the throw: step into it, look out
-        // of the open end. Amber, because it is about the player rather than
-        // the grenade, and oriented, because "stand in this circle" leaves you
-        // to guess the one thing that is hardest to guess.
-        Gate(stance, lineup.release.yaw, 26f, Amber, MarkerWidth);
-        Chevron(stance, lineup.release.yaw, 15f, Amber, MarkerWidth);
+        Gate(stance, 0f, 26f, Amber, MarkerWidth);
 
         // Ties the grenade floating overhead to the ground it belongs to, so a
         // spot with a model reads as one object rather than two.
@@ -1195,9 +1242,26 @@ public class PracticeReplay
 
         Label(
             new Vec3(stance.x, stance.y, stance.z + 14f),
-            $"{lineup.name}\n{Tracked("stand")}",
+            throws > 1
+                ? $"{Tracked("stand")}\n{throws} throws"
+                : Tracked("stand"),
             Amber
         );
+    }
+
+    private void ShowMarkers(LineupRecord lineup, Vec3 stance)
+    {
+        // Deliberately not gated behind the ghost preview: a preview is an
+        // optional extra, but where to stand and where to point IS the lineup.
+        // There is no useful state where a loaded lineup shows neither.
+        Color color = ColorFor(lineup.utility_type);
+        Vec3 landing = lineup.detonation_position;
+
+        // One chevron per throw, all fanning out of the one gate: a spot with
+        // three lineups shows three directions leaving it, which is the whole
+        // question a player has when they walk onto it. The gate itself is
+        // drawn once by ShowStance -- it belongs to the ground, not the throw.
+        Chevron(stance, lineup.release.yaw, 15f, Amber, MarkerWidth);
 
         // The flight is a plan, so it is dashed, and it only appears for the
         // throw you are actually on -- every lineup drawing its own line is
@@ -1364,14 +1428,16 @@ public class PracticeReplay
         );
     }
 
-    // Called as the player moves, not as they walk onto a spot: the crosshairs
-    // are already drawn, and all that changes is how wrong each one is.
-    public void TintAim(IPlayer player, float eyeYaw, float eyePitch)
+    // Called as the player moves, not as they walk onto a spot: the markers are
+    // already drawn, and all that changes is how wrong they are.
+    public void TintAim(IPlayer player, float eyeYaw, float eyePitch, Vec3 feet)
     {
         if (!_selections.TryGetValue(player.SteamID, out Selection? selection))
         {
             return;
         }
+
+        TintStance(selection, feet);
 
         foreach (Aim aim in selection.Aims)
         {
@@ -1647,7 +1713,7 @@ public class PracticeReplay
 
     // The panel sets every caption in mono uppercase on wide tracking, and
     // point_worldtext has no letter-spacing, so the spacing goes in the string.
-    private static string Tracked(string text)
+    public static string Tracked(string text)
     {
         return string.Join(" ", text.ToUpperInvariant().ToCharArray());
     }
@@ -1776,6 +1842,7 @@ public class PracticeReplay
         }
 
         _aimInto?.Beams.Add(beam);
+        _stanceInto?.Add(beam);
 
         if (_drawingInto != null)
         {

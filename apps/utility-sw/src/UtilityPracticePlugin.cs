@@ -495,7 +495,14 @@ public partial class UtilityPracticePlugin : BasePlugin
 
             QAngle eyes = pawn.EyeAngles;
 
-            _replay.TintAim(player, eyes.Y, eyes.X);
+            Vector standing = pawn.AbsOrigin ?? new Vector(0, 0, 0);
+
+            _replay.TintAim(
+                player,
+                eyes.Y,
+                eyes.X,
+                new Vec3(standing.X, standing.Y, standing.Z)
+            );
 
             string? message = CentreText(player, pawn);
 
@@ -516,17 +523,34 @@ public partial class UtilityPracticePlugin : BasePlugin
         if (lineup != null)
         {
             QAngle eyes = pawn.EyeAngles;
+            Vector standing = pawn.AbsOrigin ?? new Vector(0, 0, 0);
+            Vec3 spot = lineup.release.feet_position;
 
-            if (
+            bool onAngle =
                 PracticeLineupUtility.AimError(
                     eyes.Y,
                     eyes.X,
                     lineup.release.yaw,
                     lineup.release.pitch
-                ) <= ToleranceFor(lineup)
-            )
+                ) <= ToleranceFor(lineup);
+
+            // Both halves, not just the angle. Saying LINED UP to somebody
+            // holding the right angle from the wrong place is worse than saying
+            // nothing -- they throw it, it misses, and the lineup gets blamed.
+            bool onSpot =
+                PracticeLineupUtility.StanceMiss(
+                    new Vec3(spot.x - standing.X, spot.y - standing.Y, 0f).LengthXY()
+                ) == 0f;
+
+            if (onAngle && onSpot)
             {
                 return PracticeReplay.ThrowHint(lineup);
+            }
+
+            if (onAngle)
+            {
+                return $"{PracticeReplay.Tracked("on the angle")}\n"
+                    + PracticeReplay.Tracked("wrong spot");
             }
         }
 
