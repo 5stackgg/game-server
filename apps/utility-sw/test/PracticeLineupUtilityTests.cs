@@ -1,4 +1,5 @@
 using FiveStack.Entities.Practice;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Xunit;
 
@@ -327,5 +328,48 @@ public class MissBucketTests
         {
             Assert.InRange(PracticeLineupUtility.MissBucket(miss, 5), 0, 4);
         }
+    }
+}
+
+public class TechniqueLabelTests
+{
+    [Theory]
+    [InlineData("Stationary", "STAND STILL")]
+    [InlineData("Walking", "WALK AND THROW")]
+    [InlineData("Running", "RUN AND THROW")]
+    [InlineData("Crouch", "CROUCH THROW")]
+    [InlineData("Jump", "JUMP THROW")]
+    [InlineData("RunJump", "RUN + JUMP THROW")]
+    [InlineData("WalkJump", "WALK + JUMP THROW")]
+    [InlineData("CrouchJump", "CROUCH + JUMP THROW")]
+    public void EveryTechniqueHasItsOwnInstruction(string technique, string expected)
+    {
+        Assert.Equal(expected, PracticeLineupUtility.TechniqueLabel(technique));
+    }
+
+    [Fact]
+    public void NoTechniqueIsSilentlyTreatedAsStandingStill()
+    {
+        // The bug this guards: the old switch matched "Run"/"Walk" while the
+        // enum says Running/Walking, so a running throw was taught as a
+        // standing one and simply never landed.
+        foreach (string name in Enum.GetNames<eThrowTechnique>())
+        {
+            string label = PracticeLineupUtility.TechniqueLabel(name);
+
+            if (name != nameof(eThrowTechnique.Stationary))
+            {
+                Assert.NotEqual("STAND STILL", label);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData("Full", "LEFT CLICK")]
+    [InlineData("Half", "LEFT + RIGHT CLICK")]
+    [InlineData("Drop", "RIGHT CLICK")]
+    public void EveryStrengthHasItsOwnClick(string strength, string expected)
+    {
+        Assert.Equal(expected, PracticeLineupUtility.StrengthLabel(strength));
     }
 }

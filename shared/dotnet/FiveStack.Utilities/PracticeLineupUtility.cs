@@ -1,4 +1,5 @@
 using FiveStack.Entities.Practice;
+using FiveStack.Enums;
 
 namespace FiveStack.Utilities;
 
@@ -170,6 +171,37 @@ public static class PracticeLineupUtility
         }
 
         return 1 + Math.Clamp((int)(miss * (buckets - 1)), 0, buckets - 2);
+    }
+
+    // How a player is told to move. Every value of eThrowTechnique must appear
+    // here: the switch this replaced matched "Run" and "Walk" while the enum
+    // says Running and Walking, and omitted WalkJump entirely -- so three of
+    // eight techniques quietly instructed the player to STAND STILL for a
+    // throw that only lands while moving.
+    public static string TechniqueLabel(string? technique)
+    {
+        return technique switch
+        {
+            nameof(eThrowTechnique.Stationary) => "STAND STILL",
+            nameof(eThrowTechnique.Walking) => "WALK AND THROW",
+            nameof(eThrowTechnique.Running) => "RUN AND THROW",
+            nameof(eThrowTechnique.Crouch) => "CROUCH THROW",
+            nameof(eThrowTechnique.Jump) => "JUMP THROW",
+            nameof(eThrowTechnique.RunJump) => "RUN + JUMP THROW",
+            nameof(eThrowTechnique.WalkJump) => "WALK + JUMP THROW",
+            nameof(eThrowTechnique.CrouchJump) => "CROUCH + JUMP THROW",
+            _ => "STAND STILL",
+        };
+    }
+
+    public static string StrengthLabel(string? strength)
+    {
+        return strength switch
+        {
+            nameof(eThrowStrength.Half) => "LEFT + RIGHT CLICK",
+            nameof(eThrowStrength.Drop) => "RIGHT CLICK",
+            _ => "LEFT CLICK",
+        };
     }
 
     // A lineup that never said how precise it is.

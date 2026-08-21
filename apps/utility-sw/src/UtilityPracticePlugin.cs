@@ -549,25 +549,68 @@ public partial class UtilityPracticePlugin : BasePlugin
     {
         (LineupRecord? lineup, bool onSpot, bool onAngle) = Focused(player, pawn);
 
-        if (lineup == null)
+        Send(player, PanelKind.Card, lineup == null ? null : Card(lineup));
+        Send(player, PanelKind.Steps, lineup == null ? null : Steps(onSpot, onAngle));
+    }
+
+    private enum PanelKind
+    {
+        Card,
+        Steps,
+    }
+
+    // What each panel is currently showing, so an unchanged panel is left
+    // alone. Re-sending centre HTML restarts its fade-in, which at sixteen
+    // times a second is a strobe rather than a message -- the panel has to be
+    // written only when what it says actually changes.
+    private readonly Dictionary<(ulong, PanelKind), string> _showing = new();
+
+    // Long enough that a keepalive never races the expiry, short enough that a
+    // player who disconnects mid-throw does not leave a panel hanging.
+    private const int PanelHoldMilliseconds = 8000;
+
+    // A keepalive well inside the hold, so the panel is continuous without
+    // being rewritten on every pass.
+    private const int PanelKeepAliveTicks = 128;
+
+    private void Send(IPlayer player, PanelKind kind, string? content)
+    {
+        (ulong, PanelKind) key = (player.SteamID, kind);
+        bool had = _showing.TryGetValue(key, out string? showing);
+
+        if (content == null)
+        {
+            // Cleared the moment it stops being true, rather than left to time
+            // out: a stale instruction is worse than no instruction.
+            if (had)
+            {
+                _showing.Remove(key);
+                Write(player, kind, "");
+            }
+
+            return;
+        }
+
+        if (had && showing == content && _aimTick % PanelKeepAliveTicks != 0)
         {
             return;
         }
 
-        // Held a little past the resend interval so it never blinks between
-        // frames, and re-sent because centre HTML expires on its own.
-        player.SendCenterHTML(Card(lineup), CardHoldMilliseconds);
-
-        string? steps = Steps(onSpot, onAngle);
-
-        if (steps != null)
-        {
-            player.SendCenter(steps);
-        }
+        _showing[key] = content;
+        Write(player, kind, content);
     }
 
-    // Slightly longer than the resend interval, so the card is continuous.
-    private const int CardHoldMilliseconds = 400;
+    private static void Write(IPlayer player, PanelKind kind, string content)
+    {
+        if (kind == PanelKind.Card)
+        {
+            player.SendCenterHTML(content, PanelHoldMilliseconds);
+        }
+        else
+        {
+            player.SendCenter(content);
+        }
+    }
 
     private (LineupRecord? lineup, bool onSpot, bool onAngle) Focused(
         IPlayer player,
@@ -848,6 +891,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         // hand to something else.
         _replay.ClearSelectionFor(steamId);
         _standingIn.Remove(steamId);
+        _showing.Remove((steamId, PanelKind.Card));
+        _showing.Remove((steamId, PanelKind.Steps));
     }
 
     // Swiftly's client events carry a slot, not a steam id.

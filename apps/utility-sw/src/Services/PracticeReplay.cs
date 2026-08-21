@@ -832,31 +832,14 @@ public class PracticeReplay
     // lineup knows about the throw, in the order a player performs it.
     public static string ThrowHint(LineupRecord lineup)
     {
-        string movement = lineup.technique switch
-        {
-            "Jump" => "JUMP THROW",
-            "Run" => "RUN AND THROW",
-            "RunJump" => "RUN + JUMP THROW",
-            "Crouch" => "CROUCH THROW",
-            "CrouchJump" => "CROUCH + JUMP THROW",
-            "Walk" => "WALK AND THROW",
-            _ => "STAND STILL",
-        };
-
-        string click = lineup.strength switch
-        {
-            "Half" => "LEFT + RIGHT CLICK",
-            "Drop" => "RIGHT CLICK",
-            "Full" => "LEFT CLICK",
-            _ => "LEFT CLICK",
-        };
-
         string bind = lineup.release.jump_throw ? " + JUMP-THROW BIND" : "";
 
         // No LINED UP banner: the crosshair fading to nothing already says it,
-        // and this line has a standing job as the middle row rather than
-        // appearing only at the moment of success.
-        return $"{lineup.utility_type.ToUpperInvariant()} - {movement} - {click}{bind}";
+        // and this line has a standing job on the card rather than appearing
+        // only at the moment of success.
+        return $"{lineup.utility_type.ToUpperInvariant()} - "
+            + $"{PracticeLineupUtility.TechniqueLabel(lineup.technique)} - "
+            + $"{PracticeLineupUtility.StrengthLabel(lineup.strength)}{bind}";
     }
 
     public static string Describe(LineupRecord lineup)
