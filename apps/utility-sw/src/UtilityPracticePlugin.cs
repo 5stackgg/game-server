@@ -879,6 +879,9 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void OnSecond()
     {
+        // Until the session is known, the door policy is "nobody" -- so this
+        // comes before everything else that assumes people can get in.
+        _session.RetryIfMissing(TimeSpan.FromSeconds(15));
         EndWarmup();
         RespawnTheDead();
         KeepEveryoneStocked();

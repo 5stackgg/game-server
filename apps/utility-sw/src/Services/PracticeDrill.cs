@@ -69,6 +69,33 @@ public class PracticeDrill
             _random
         );
 
+        return Begin(steamId, queue, Ordering(order));
+    }
+
+    // A drill over lineups somebody picked rather than a slice of their book --
+    // the website sending "drill these" is the same run, chosen differently.
+    public eDrillStart StartWith(ulong steamId, IReadOnlyList<LineupRecord> queue)
+    {
+        if (_runs.ContainsKey(steamId))
+        {
+            return eDrillStart.AlreadyRunning;
+        }
+
+        if (!_config.ReplayEnabled)
+        {
+            return eDrillStart.ReplayDisabled;
+        }
+
+        if (!_config.IsConnected())
+        {
+            return eDrillStart.NotConnected;
+        }
+
+        return Begin(steamId, queue.ToList(), "as sent");
+    }
+
+    private eDrillStart Begin(ulong steamId, List<LineupRecord> queue, string ordering)
+    {
         if (queue.Count == 0)
         {
             return eDrillStart.NothingToDrill;
@@ -79,8 +106,8 @@ public class PracticeDrill
 
         Tell?.Invoke(
             steamId,
-            $"drill started - {queue.Count} lineups x{DrillReps}, {Ordering(order)}"
-                + " (.skip to pass, .drill stop to end)"
+            $"drill started - {queue.Count} lineups x{DrillReps}, {ordering}"
+                + " (.skip to pass, .cancel to end)"
         );
 
         Advance(steamId, run);

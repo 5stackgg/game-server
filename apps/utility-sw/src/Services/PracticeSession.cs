@@ -24,6 +24,46 @@ public class PracticeSession
 
     public PracticeSessionData? Current => _session;
 
+    private int _refreshing;
+    private DateTime _lastAttempt = DateTime.MinValue;
+
+    // The map-load fetch is one shot, and an unattended server has nobody on it
+    // to cause another -- a render pod cannot even connect until the roster
+    // exists. One transient failure of that single call used to brick the
+    // server silently. This is the safety net: keep asking, spaced out, only
+    // while we still know nothing.
+    public void RetryIfMissing(TimeSpan minInterval)
+    {
+        if (_session != null)
+        {
+            return;
+        }
+
+        if (DateTime.UtcNow - _lastAttempt < minInterval)
+        {
+            return;
+        }
+
+        if (Interlocked.Exchange(ref _refreshing, 1) == 1)
+        {
+            return;
+        }
+
+        _lastAttempt = DateTime.UtcNow;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Refresh();
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _refreshing, 0);
+            }
+        });
+    }
+
     public async Task Refresh()
     {
         PracticeSessionData? session = await _api.Session();

@@ -783,6 +783,87 @@ public partial class UtilityPracticePlugin
         RemoteLoad(steamId, lineupId, refreshed: false);
     }
 
+    // The drill twin of utility_practice_load: the panel names a set of lineups
+    // and the run is built from exactly those, in the order they arrived.
+    [Command("utility_practice_drill", registerRaw: true, permission: "")]
+    public void OnRemoteDrill(ICommandContext context)
+    {
+        if (context.IsSentByPlayer)
+        {
+            return;
+        }
+
+        string[] args = context.Args.ToArray();
+
+        if (args.Length < 2 || !ulong.TryParse(args[0].Trim(), out ulong steamId))
+        {
+            Reply(context, "usage: utility_practice_drill <steamid64> <id,id,...>");
+            return;
+        }
+
+        string[] ids = args[1]
+            .Trim()
+            .Trim('"')
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (ids.Length == 0)
+        {
+            Reply(context, "usage: utility_practice_drill <steamid64> <id,id,...>");
+            return;
+        }
+
+        RemoteDrill(steamId, ids, refreshed: false);
+    }
+
+    private void RemoteDrill(ulong steamId, string[] ids, bool refreshed)
+    {
+        IPlayer? player = _system.Find(steamId);
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        IReadOnlyList<LineupRecord> library = _library.For(steamId);
+
+        List<LineupRecord> queue = ids.Select(id =>
+                PracticeLineupUtility.ById(library, id)
+            )
+            .OfType<LineupRecord>()
+            .ToList();
+
+        // Same reasoning as RemoteLoad: the panel sends lineups this server has
+        // never cached, so one refresh before giving up. All or nothing --
+        // drilling half a set silently would be worse than saying no.
+        if (queue.Count < ids.Length && !refreshed)
+        {
+            _library.Refresh(steamId, _ => RemoteDrill(steamId, ids, refreshed: true));
+            return;
+        }
+
+        if (queue.Count == 0)
+        {
+            Tell(steamId, $" {ChatColors.Red}none of those lineups are on this server");
+            return;
+        }
+
+        switch (_drill.StartWith(steamId, queue))
+        {
+            case eDrillStart.AlreadyRunning:
+                Tell(steamId, $" {ChatColors.Red}already drilling; .cancel first");
+                return;
+            case eDrillStart.ReplayDisabled:
+                Tell(steamId, $" {ChatColors.Red}replay is disabled on this server");
+                return;
+            case eDrillStart.NotConnected:
+                Tell(steamId, $" {ChatColors.Red}this server has no panel to score throws");
+                return;
+            case eDrillStart.NothingToDrill:
+                Tell(steamId, $" {ChatColors.Red}nothing to drill");
+                return;
+        }
+    }
+
     private void RemoteLoad(ulong steamId, string lineupId, bool refreshed)
     {
         IPlayer? player = _system.Find(steamId);
