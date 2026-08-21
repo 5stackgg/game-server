@@ -93,9 +93,6 @@ public class PracticeReplay
     // anything heavier.
     private const float MarkerWidth = 0.6f;
 
-    // Coarser circles for the lineups that are not the focused one: at a dozen
-    // on screen the difference is invisible and the entity count is not.
-    private const int QuietSegments = 10;
 
     // Roughly where the grenade sits in a player's hand, so it reads as "this
     // is what you throw from here" rather than as litter on the floor.
@@ -954,13 +951,25 @@ public class PracticeReplay
 
         foreach (LineupRecord lineup in lineups)
         {
-            Color quiet = ColorFor(lineup.utility_type);
+            Color type = ColorFor(lineup.utility_type);
             Vec3 feet = Grounded(lineup.release.feet_position);
 
-            Ring(feet, 18f, quiet, MarkerWidth, QuietSegments);
-            Ring(lineup.detonation_position, 26f, quiet, MarkerWidth, QuietSegments);
-            AddMarkerBeam(feet, lineup.detonation_position, quiet, 0.3f);
-            Label(new Vec3(feet.x, feet.y, feet.z + 10f), lineup.name, quiet);
+            // Seven beams where there used to be twenty-one. A map holds
+            // hundreds of these at once, so the resting state has to be the
+            // cheapest thing on screen as well as the quietest -- and no
+            // connecting line at rest, which is what turned a busy map into a
+            // cat's cradle.
+            Chevron(feet, lineup.release.yaw, 13f, AmberDim, MarkerWidth);
+            AddMarkerBeam(
+                new Vec3(feet.x, feet.y, feet.z + 2f),
+                new Vec3(feet.x, feet.y, feet.z + 9f),
+                AmberDim,
+                MarkerWidth
+            );
+
+            Diamond(lineup.detonation_position, 22f, type, MarkerWidth);
+
+            Label(new Vec3(feet.x, feet.y, feet.z + 14f), lineup.name, Amber);
         }
 
         ShowSpotUtility(lineups);
@@ -1167,17 +1176,38 @@ public class PracticeReplay
         Color color = ColorFor(lineup.utility_type);
         Vec3 landing = lineup.detonation_position;
 
-        Ring(stance, 24f, color, MarkerWidth);
-        Label(
-            new Vec3(stance.x, stance.y, stance.z + 12f),
-            $"STAND\n{lineup.name}",
-            color
+        // The stance is a GATE turned to face the throw: step into it, look out
+        // of the open end. Amber, because it is about the player rather than
+        // the grenade, and oriented, because "stand in this circle" leaves you
+        // to guess the one thing that is hardest to guess.
+        Gate(stance, lineup.release.yaw, 26f, Amber, MarkerWidth);
+        Chevron(stance, lineup.release.yaw, 15f, Amber, MarkerWidth);
+
+        // Ties the grenade floating overhead to the ground it belongs to, so a
+        // spot with a model reads as one object rather than two.
+        Dashed(
+            new Vec3(stance.x, stance.y, stance.z + 4f),
+            new Vec3(stance.x, stance.y, stance.z + UtilityModelHeight - 6f),
+            AmberDim,
+            MarkerWidth,
+            4
         );
 
-        Ring(landing, 34f, color, MarkerWidth);
+        Label(
+            new Vec3(stance.x, stance.y, stance.z + 14f),
+            $"{lineup.name}\n{Tracked("stand")}",
+            Amber
+        );
+
+        // The flight is a plan, so it is dashed, and it only appears for the
+        // throw you are actually on -- every lineup drawing its own line is
+        // what made a spot with three throws unreadable.
+        Dashed(new Vec3(stance.x, stance.y, stance.z + 40f), landing, color, 0.3f, 7);
+
+        Diamond(landing, 30f, color, MarkerWidth);
         Label(
             new Vec3(landing.x, landing.y, landing.z + 16f),
-            lineup.utility_type.ToUpperInvariant(),
+            Tracked(lineup.utility_type),
             color
         );
 
@@ -1423,23 +1453,32 @@ public class PracticeReplay
         AddMarkerBeam(Corner(-dot, 0), Corner(dot, 0), color, width * 1.6f);
         AddMarkerBeam(Corner(0, -dot), Corner(0, dot), color, width * 1.6f);
 
-        // A faint outer ring so the thing can be FOUND from across the map.
-        // Deliberately thin and wide: it draws the eye without competing with
-        // the centre for it.
-        const int Segments = 16;
-        float radius = size;
+        // Corner brackets rather than a ring, so the crosshair speaks the same
+        // language as the gate on the floor -- and eight beams instead of
+        // sixteen, on the marker a spot draws once per throw.
+        float edge = size;
+        float bracket = size * 0.34f;
 
-        for (int index = 0; index < Segments; index++)
+        foreach (int horizontal in new[] { 1, -1 })
         {
-            double a = index * 2 * Math.PI / Segments;
-            double b = (index + 1) * 2 * Math.PI / Segments;
+            foreach (int vertical in new[] { 1, -1 })
+            {
+                float x = edge * horizontal;
+                float y = edge * vertical;
 
-            AddMarkerBeam(
-                Corner((float)Math.Cos(a) * radius, (float)Math.Sin(a) * radius),
-                Corner((float)Math.Cos(b) * radius, (float)Math.Sin(b) * radius),
-                color,
-                width * 0.5f
-            );
+                AddMarkerBeam(
+                    Corner(x, y),
+                    Corner(x - (bracket * horizontal), y),
+                    color,
+                    width * 0.6f
+                );
+                AddMarkerBeam(
+                    Corner(x, y),
+                    Corner(x, y - (bracket * vertical)),
+                    color,
+                    width * 0.6f
+                );
+            }
         }
     }
 
@@ -1497,8 +1536,121 @@ public class PracticeReplay
     // The grenade itself, floating over the spot at about eye height: a ring
     // says where to stand, and this says what to throw from it without reading
     // a colour off a beam.
+    // The panel's --tac-amber ramp, straight off assets/css/tailwind.css.
+    // Amber is the colour of YOU in this scheme -- where to stand, which way to
+    // face, where to point. The utility's own colour is reserved for the half
+    // that is about the grenade: where it lands and what it is. Everything
+    // being type-coloured is what made a busy map unreadable.
+    private static readonly Color Amber = new Color(249, 158, 47, 255);
+    private static readonly Color AmberDim = new Color(203, 117, 11, 255);
+
     // FSOLID_NOT_SOLID.
     private const byte NotSolid = 4;
+
+    // Flat forward/right for a yaw, so a marker can be built facing the throw
+    // instead of facing whatever way the map's axes happen to run.
+    private static (Vec3 forward, Vec3 right) Bearing(float yaw)
+    {
+        double radians = yaw * Math.PI / 180d;
+        var forward = new Vec3((float)Math.Cos(radians), (float)Math.Sin(radians), 0f);
+
+        return (forward, new Vec3(forward.y, -forward.x, 0f));
+    }
+
+    private static Vec3 Offset(Vec3 at, Vec3 forward, float along, Vec3 right, float across)
+    {
+        return new Vec3(
+            at.x + (forward.x * along) + (right.x * across),
+            at.y + (forward.y * along) + (right.y * across),
+            at.z
+        );
+    }
+
+    // A caret on the floor pointing down the throw. Two beams against a ring's
+    // ten, and it says the thing a ring cannot: which way to face once you are
+    // standing on it.
+    private void Chevron(Vec3 at, float yaw, float size, Color color, float width)
+    {
+        (Vec3 forward, Vec3 right) = Bearing(yaw);
+
+        Vec3 tip = Offset(at, forward, size, right, 0f);
+
+        AddMarkerBeam(Offset(at, forward, -size * 0.4f, right, -size * 0.8f), tip, color, width);
+        AddMarkerBeam(Offset(at, forward, -size * 0.4f, right, size * 0.8f), tip, color, width);
+    }
+
+    // Four beams, and deliberately not a circle: the landing marker and the
+    // stance marker must never be mistaken for each other at a glance.
+    private void Diamond(Vec3 at, float radius, Color color, float width)
+    {
+        var north = new Vec3(at.x, at.y + radius, at.z);
+        var east = new Vec3(at.x + radius, at.y, at.z);
+        var south = new Vec3(at.x, at.y - radius, at.z);
+        var west = new Vec3(at.x - radius, at.y, at.z);
+
+        AddMarkerBeam(north, east, color, width);
+        AddMarkerBeam(east, south, color, width);
+        AddMarkerBeam(south, west, color, width);
+        AddMarkerBeam(west, north, color, width);
+    }
+
+    // Corner brackets on a square turned to face the throw, with the two
+    // corners on the throwing side cut back so it reads as a gate you step
+    // into and shoot out of, rather than a box you are stood in.
+    private void Gate(Vec3 at, float yaw, float half, Color color, float width)
+    {
+        (Vec3 forward, Vec3 right) = Bearing(yaw);
+
+        foreach (int alongSign in new[] { 1, -1 })
+        {
+            foreach (int acrossSign in new[] { 1, -1 })
+            {
+                Vec3 corner = Offset(at, forward, half * alongSign, right, half * acrossSign);
+                float reach = half * (alongSign > 0 ? 0.28f : 0.46f);
+
+                AddMarkerBeam(
+                    corner,
+                    Offset(corner, forward, -reach * alongSign, right, 0f),
+                    color,
+                    width
+                );
+                AddMarkerBeam(
+                    corner,
+                    Offset(corner, forward, 0f, right, -reach * acrossSign),
+                    color,
+                    width
+                );
+            }
+        }
+    }
+
+    // A flight is a plan, not an object, so it is drawn as one.
+    private void Dashed(Vec3 from, Vec3 to, Color color, float width, int dashes)
+    {
+        for (int index = 0; index < dashes; index += 1)
+        {
+            float start = index / (float)dashes;
+            float end = start + (0.55f / dashes);
+
+            AddMarkerBeam(Lerp(from, to, start), Lerp(from, to, end), color, width);
+        }
+    }
+
+    private static Vec3 Lerp(Vec3 from, Vec3 to, float t)
+    {
+        return new Vec3(
+            from.x + ((to.x - from.x) * t),
+            from.y + ((to.y - from.y) * t),
+            from.z + ((to.z - from.z) * t)
+        );
+    }
+
+    // The panel sets every caption in mono uppercase on wide tracking, and
+    // point_worldtext has no letter-spacing, so the spacing goes in the string.
+    private static string Tracked(string text)
+    {
+        return string.Join(" ", text.ToUpperInvariant().ToCharArray());
+    }
 
     // Asks the engine what each grenade actually looks like, by spawning one of
     // each weapon under the world for a single tick and reading the model back
@@ -1649,50 +1801,6 @@ public class PracticeReplay
         float length = v.Length();
 
         return length < 0.0001f ? v : new Vec3(v.x / length, v.y / length, v.z / length);
-    }
-
-    private void Ring(
-        Vec3 center,
-        float radius,
-        Color color,
-        float width,
-        int segments = 20
-    )
-    {
-        int Segments = segments;
-
-        for (int index = 0; index < Segments; index++)
-        {
-            double a = index * 2 * Math.PI / Segments;
-            double b = (index + 1) * 2 * Math.PI / Segments;
-
-            CEnvBeam? beam = CreateBeam(
-                new Vec3(
-                    center.x + (float)(Math.Cos(a) * radius),
-                    center.y + (float)(Math.Sin(a) * radius),
-                    center.z + 2f
-                ),
-                new Vec3(
-                    center.x + (float)(Math.Cos(b) * radius),
-                    center.y + (float)(Math.Sin(b) * radius),
-                    center.z + 2f
-                ),
-                color,
-                width
-            );
-
-            if (beam != null)
-            {
-                if (_drawingInto != null)
-                {
-                    _drawingInto.Beams.Add(beam);
-                }
-                else
-                {
-                    _markerBeams.Add(beam);
-                }
-            }
-        }
     }
 
     // facing: where the text should read from, normally the spot the player is
