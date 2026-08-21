@@ -254,6 +254,30 @@ public static class PracticeLineupUtility
     // Everything a query could have meant, nearest first, so .next and .prev
     // walk the same set the player was thinking of. Resolve picks one out of
     // this; it does not narrow it further.
+    /// <summary>
+    /// Exact lookup, for a load the panel asked for rather than one a player
+    /// typed. `.load` matches names loosely because a human is guessing at one;
+    /// a panel already knows exactly which lineup it means, and picking a
+    /// near-miss there would stand somebody on the wrong throw without saying
+    /// so.
+    ///
+    /// Both keys are checked: a saved lineup is addressed by its panel `id`,
+    /// and a scratch throw sent for a test has only the plugin-side
+    /// `client_id`.
+    /// </summary>
+    public static LineupRecord? ById(IEnumerable<LineupRecord> lineups, string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return null;
+        }
+
+        return lineups.FirstOrDefault(lineup =>
+            string.Equals(lineup.id, id, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(lineup.client_id, id, StringComparison.OrdinalIgnoreCase)
+        );
+    }
+
     public static List<LineupRecord> Filter(
         IEnumerable<LineupRecord> lineups,
         string query,

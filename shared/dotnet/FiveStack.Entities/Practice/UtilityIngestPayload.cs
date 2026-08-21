@@ -27,6 +27,18 @@ public class UtilityIngestPayload
     public float? view_yaw { get; set; }
     public float? view_pitch { get; set; }
 
+    // The physics seed: where the projectile actually came into being and how
+    // fast it was going. Sent whole or not at all -- the panel rejects a
+    // partial seed, and everything downstream reads a zero velocity as "there
+    // is no seed" rather than as a grenade launched from the world origin.
+    public float? initial_pos_x { get; set; }
+    public float? initial_pos_y { get; set; }
+    public float? initial_pos_z { get; set; }
+
+    public float? initial_vel_x { get; set; }
+    public float? initial_vel_y { get; set; }
+    public float? initial_vel_z { get; set; }
+
     public float? land_x { get; set; }
     public float? land_y { get; set; }
     public float? land_z { get; set; }
@@ -40,6 +52,11 @@ public class UtilityIngestPayload
 
     public static UtilityIngestPayload From(LineupRecord lineup)
     {
+        // Vec3 is a struct, so an unrecorded seed is (0,0,0) rather than null.
+        // A grenade that left somebody's hand is always moving, which is what
+        // separates the two.
+        bool seeded = lineup.initial_velocity.Length() > 0.0001f;
+
         return new UtilityIngestPayload
         {
             author_steam_id = Text(lineup.author_steam_id),
@@ -60,6 +77,14 @@ public class UtilityIngestPayload
             land_x = lineup.detonation_position.x,
             land_y = lineup.detonation_position.y,
             land_z = lineup.detonation_position.z,
+
+            initial_pos_x = seeded ? lineup.initial_position.x : null,
+            initial_pos_y = seeded ? lineup.initial_position.y : null,
+            initial_pos_z = seeded ? lineup.initial_position.z : null,
+
+            initial_vel_x = seeded ? lineup.initial_velocity.x : null,
+            initial_vel_y = seeded ? lineup.initial_velocity.y : null,
+            initial_vel_z = seeded ? lineup.initial_velocity.z : null,
 
             flight_time_ms = MillisecondsFromSeconds(lineup.flight_time),
             name = Text(lineup.name),

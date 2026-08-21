@@ -631,6 +631,66 @@ public partial class UtilityPracticePlugin
         }
     }
 
+    // Server-only, like utility_practice_refresh below: the panel sends this
+    // over RCON when somebody presses "load me in" on the website, so the
+    // command has to name the player rather than being spoken by them.
+    [ConsoleCommand("utility_practice_load", "Stands a named player on a lineup, by id")]
+    [CommandHelper(
+        minArgs: 2,
+        usage: "<steamid64> <lineup_id>",
+        whoCanExecute: CommandUsage.SERVER_ONLY
+    )]
+    public void OnRemoteLoad(CCSPlayerController? _, CommandInfo command)
+    {
+        if (!ulong.TryParse(command.GetArg(1), out ulong steamId))
+        {
+            command.ReplyToCommand("usage: utility_practice_load <steamid64> <lineup_id>");
+            return;
+        }
+
+        string lineupId = command.GetArg(2).Trim().Trim('"');
+
+        if (string.IsNullOrEmpty(lineupId))
+        {
+            command.ReplyToCommand("usage: utility_practice_load <steamid64> <lineup_id>");
+            return;
+        }
+
+        RemoteLoad(steamId, lineupId, refreshed: false);
+    }
+
+    private void RemoteLoad(ulong steamId, string lineupId, bool refreshed)
+    {
+        CCSPlayerController? player = Utilities.GetPlayerFromSteamId(steamId);
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        LineupRecord? lineup = PracticeLineupUtility.ById(_library.For(steamId), lineupId);
+
+        if (lineup != null)
+        {
+            Apply(player, lineup);
+            return;
+        }
+
+        // Not in the cached library. That is the normal case rather than an
+        // error: the panel sends lineups this player has never loaded here --
+        // a scratch throw off the meta browser, or one saved on another
+        // device -- and the cache is only refreshed on demand. One refresh,
+        // then give up; retrying past that would hammer the panel every time
+        // somebody sends a lineup that really is gone.
+        if (refreshed)
+        {
+            Tell(steamId, $" {ChatColors.Red}that lineup is not available on this server");
+            return;
+        }
+
+        _library.Refresh(steamId, _ => RemoteLoad(steamId, lineupId, refreshed: true));
+    }
+
     // Server-only and deliberately unprefixed, like the match plugin's
     // get_match: the panel calls it when the roster or the library changes.
     [ConsoleCommand("utility_practice_refresh", "Re-reads the practice session from the panel")]

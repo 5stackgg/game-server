@@ -499,3 +499,70 @@ public class UtilityWireTests
         Assert.DoesNotContain("\"match_id\"", json);
     }
 }
+
+public class UtilityIngestSeedTests
+{
+    private static LineupRecord Thrown()
+    {
+        return new LineupRecord
+        {
+            utility_type = "Smoke",
+            initial_position = new Vec3(100f, 200f, 64f),
+            initial_velocity = new Vec3(700f, -120f, 260f),
+        };
+    }
+
+    [Fact]
+    public void AThrownGrenadeCarriesItsPhysicsSeed()
+    {
+        UtilityIngestPayload payload = UtilityIngestPayload.From(Thrown());
+
+        Assert.Equal(100f, payload.initial_pos_x);
+        Assert.Equal(200f, payload.initial_pos_y);
+        Assert.Equal(64f, payload.initial_pos_z);
+        Assert.Equal(700f, payload.initial_vel_x);
+        Assert.Equal(-120f, payload.initial_vel_y);
+        Assert.Equal(260f, payload.initial_vel_z);
+    }
+
+    [Fact]
+    public void ARecordWithNoSeedSendsNoneOfIt()
+    {
+        // The panel rejects a partial seed outright, and a struct default of
+        // (0,0,0) would otherwise be stored as a throw from the world origin.
+        UtilityIngestPayload payload = UtilityIngestPayload.From(
+            new LineupRecord { utility_type = "Smoke" }
+        );
+
+        Assert.Null(payload.initial_pos_x);
+        Assert.Null(payload.initial_pos_y);
+        Assert.Null(payload.initial_pos_z);
+        Assert.Null(payload.initial_vel_x);
+        Assert.Null(payload.initial_vel_y);
+        Assert.Null(payload.initial_vel_z);
+    }
+
+    [Fact]
+    public void TheSeedSurvivesIngestAndComesBackOutOfTheLibrary()
+    {
+        UtilityIngestPayload sent = UtilityIngestPayload.From(Thrown());
+
+        // What the panel stores and hands back is the library row, so the
+        // round trip is only closed if it rebuilds the same seed.
+        LineupRecord back = new UtilityLibraryRow
+        {
+            utility_type = "Smoke",
+            initial_pos_x = sent.initial_pos_x,
+            initial_pos_y = sent.initial_pos_y,
+            initial_pos_z = sent.initial_pos_z,
+            initial_vel_x = sent.initial_vel_x,
+            initial_vel_y = sent.initial_vel_y,
+            initial_vel_z = sent.initial_vel_z,
+        }.ToLineup();
+
+        Assert.Equal(Thrown().initial_position.x, back.initial_position.x);
+        Assert.Equal(Thrown().initial_position.z, back.initial_position.z);
+        Assert.Equal(Thrown().initial_velocity.x, back.initial_velocity.x);
+        Assert.Equal(Thrown().initial_velocity.z, back.initial_velocity.z);
+    }
+}
