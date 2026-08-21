@@ -174,12 +174,6 @@ public partial class UtilityPracticePlugin : BasePlugin
         {
             _library.SetMap(Core.Engine.GlobalVars.MapName.ToString());
             ApplyPracticeCfg();
-
-            // Load() runs on the plugin manager's thread, and spawning an
-            // entity off the main thread throws. OnMapLoad already schedules
-            // this for the same reason; the hot-reload path forgot to.
-            Core.Scheduler.NextTick(_replay.LearnUtilityModels);
-
             RefreshEverything();
         }
 
@@ -815,9 +809,6 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         ApplyPracticeCfg();
 
-        // Next tick, not now: the entity system has nothing to spawn into
-        // while the map is still loading.
-        Core.Scheduler.NextTick(_replay.LearnUtilityModels);
 
         RefreshEverything();
     }

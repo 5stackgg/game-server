@@ -49,11 +49,11 @@ public static class PracticeLineupUtility
         return UtilityToModel.Values;
     }
 
-    // The engine's own answer, harvested at map load from a throwaway weapon
-    // entity of each type and topped up from any projectile that actually
-    // flies. The table above is only a fallback: CS2 renamed these out of
-    // CS:GO's models/weapons/w_eq_* scheme, and a path that is wrong by one
-    // character renders as the ERROR model with no other complaint.
+    // Learned from any projectile that actually flies, because the engine's own
+    // answer beats a guess: CS2 renamed these out of CS:GO's
+    // models/weapons/w_eq_* scheme, and a path wrong by one character renders
+    // as the ERROR model with no other complaint. The table above is what gets
+    // precached, so it is what a map starts with.
     private static readonly Dictionary<string, string> LearnedModels = new();
 
     public static void LearnUtilityModel(string utilityType, string? model)
@@ -207,15 +207,6 @@ public static class PracticeLineupUtility
         }
 
         return spots;
-    }
-
-    // Type paired with the weapon that carries its model, for the map-load
-    // harvest. Spawning the real weapon is the only way to get a path that is
-    // certainly correct AND certainly precached -- our own precache list can
-    // only ever contain paths we guessed.
-    public static IEnumerable<KeyValuePair<string, string>> UtilityWeapons()
-    {
-        return UtilityToWeapon;
     }
 
     public static string? WeaponForUtilityType(string utilityType)

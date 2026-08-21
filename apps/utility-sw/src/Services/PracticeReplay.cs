@@ -223,8 +223,6 @@ public class PracticeReplay
     // collision clearing that follows them.
     public const bool DrawModels = true;
 
-    // Spawning a weapon entity of each type at map load to read its model path.
-    public const bool HarvestModels = false;
 
     // Ghost trails and the measured bloom outline.
     public const bool DrawGhosts = false;
@@ -241,7 +239,7 @@ public class PracticeReplay
     // is no way to tell a switch that is off from a build that never deployed.
     public static string SwitchState()
     {
-        return $"markers={DrawMarkers} models={DrawModels} harvest={HarvestModels} "
+        return $"markers={DrawMarkers} models={DrawModels} "
             + $"ghosts={DrawGhosts} grenades={EmitGrenades} transmit={TransmitBlocking}";
     }
 
@@ -1793,66 +1791,6 @@ public class PracticeReplay
     public static string Tracked(string text)
     {
         return string.Join(" ", text.ToUpperInvariant().ToCharArray());
-    }
-
-    // Asks the engine what each grenade actually looks like, by spawning one of
-    // each weapon under the world for a single tick and reading the model back
-    // off it. Two problems in one: the path is right by construction rather
-    // than by guesswork, and it is precached by construction too -- the engine
-    // precaches every weapon at level init, which our own precache list, built
-    // from paths we invented, cannot promise. Without this nothing rendered
-    // until somebody threw the grenade, which is what taught it the path.
-    public void LearnUtilityModels()
-    {
-        if (!HarvestModels)
-        {
-            return;
-        }
-
-        foreach (KeyValuePair<string, string> pair in PracticeLineupUtility.UtilityWeapons())
-        {
-            try
-            {
-                CBaseModelEntity probe =
-                    _core.EntitySystem.CreateEntityByDesignerName<CBaseModelEntity>(pair.Value);
-
-                if (!probe.IsValid)
-                {
-                    continue;
-                }
-
-                var keys = new CEntityKeyValues();
-
-                // Inside the world. -16384 is the coordinate limit itself, and
-                // an entity spawned exactly on it trips engine bounds checks.
-                keys.SetString("origin", "0 0 -8192");
-                keys.SetString("solid", "0");
-
-                probe.DispatchSpawn(keys);
-
-                PracticeLineupUtility.LearnUtilityModel(pair.Key, probe.GetModel());
-
-                // Next tick, not this one. A weapon entity is still finishing
-                // its own spawn when DispatchSpawn returns, and tearing it down
-                // underneath that is how you crash the server rather than
-                // borrow a model path from it.
-                _core.Scheduler.NextTick(() =>
-                {
-                    if (probe.IsValid)
-                    {
-                        probe.Despawn();
-                    }
-                });
-            }
-            catch (Exception error)
-            {
-                _logger.LogWarning(
-                    error,
-                    "unable to read the world model for {weapon}",
-                    pair.Value
-                );
-            }
-        }
     }
 
     private void UtilityModel(string utilityType, Vec3 at)
