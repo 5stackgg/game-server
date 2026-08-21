@@ -96,7 +96,15 @@ public class PracticeReplay
 
         parameters.IterateEntities = true;
         parameters.ShouldHitEntity = entity =>
-            !TraceInvisible.Contains(entity.DesignerName ?? "");
+        {
+            string designer = entity.DesignerName ?? "";
+
+            // Held weapons follow players through rays, and projectiles are
+            // wherever somebody last threw one.
+            return !TraceInvisible.Contains(designer)
+                && !designer.StartsWith("weapon_")
+                && !designer.EndsWith("_projectile");
+        };
 
         return parameters;
     }
@@ -131,7 +139,7 @@ public class PracticeReplay
 
     // Above standing eye height (64) on purpose. .load stands the player ON
     // the ring, and at chest height the grenade is inside their camera.
-    private const float UtilityModelHeight = 80f;
+    public const float UtilityModelHeight = 80f;
 
     // The aim reticle is the one marker that is not a place the utility goes,
     // so it never wears the utility's colour.
@@ -210,6 +218,10 @@ public class PracticeReplay
     // The reticle currently being drawn, so its beams can be collected apart
     // from the rest of the selection.
     private Aim? _aimInto;
+
+    // Where each lineup's aim ray lands, traced once. client_id keyed;
+    // dropped on map change with everything else.
+    private readonly Dictionary<string, Vec3> _aimHits = new();
 
     // Same, for the spot furniture.
     private List<CEnvBeam>? _stanceInto;
@@ -1066,17 +1078,11 @@ public class PracticeReplay
             // cheapest thing on screen as well as the quietest -- and no
             // connecting line at rest, which is what turned a busy map into a
             // cat's cradle.
+            // No name on the ground and no post: the chevron says which way,
+            // the glowing model says what and where, and the name arrives in
+            // centre text when the player points at the grenade.
             Chevron(feet, lineup.release.yaw, 13f, AmberDim, MarkerWidth);
-            AddMarkerBeam(
-                new Vec3(feet.x, feet.y, feet.z + 2f),
-                new Vec3(feet.x, feet.y, feet.z + 9f),
-                AmberDim,
-                MarkerWidth
-            );
-
             Diamond(lineup.detonation_position, 22f, type, MarkerWidth);
-
-            Label(new Vec3(feet.x, feet.y, feet.z + 14f), lineup.name, Amber);
         }
 
         ShowSpotUtility(lineups);
@@ -1313,16 +1319,6 @@ public class PracticeReplay
     {
         GroundReticle(stance, ColorForBucket(MissBuckets - 1));
 
-        // Ties the grenade floating overhead to the ground it belongs to, so a
-        // spot with a model reads as one object rather than two.
-        Dashed(
-            new Vec3(stance.x, stance.y, stance.z + 4f),
-            new Vec3(stance.x, stance.y, stance.z + UtilityModelHeight - 6f),
-            AmberDim,
-            MarkerWidth,
-            4
-        );
-
         Label(
             new Vec3(stance.x, stance.y, stance.z + 14f),
             throws > 1
@@ -1397,28 +1393,36 @@ public class PracticeReplay
             eye.z + dir.z * AimTraceRange
         );
 
-        Vec3 hit;
-
-        try
+        // Traced once per lineup and remembered: the wall a throw points at is
+        // a static fact of the map, so a reticle that lands in two different
+        // places across two redraws is always wrong at least once. The cache
+        // also outlives whatever transient -- a body, a thrown grenade -- might
+        // wander through the ray on a later redraw.
+        if (!_aimHits.TryGetValue(lineup.client_id, out Vec3 hit))
         {
-            var trace = _core.Trace.TraceShapeLine(from, to, SkipMarkers());
+            try
+            {
+                var trace = _core.Trace.TraceShapeLine(from, to, SkipMarkers());
 
-            hit = trace.DidHit
-                ? new Vec3(trace.EndPos.X, trace.EndPos.Y, trace.EndPos.Z)
-                : new Vec3(
+                hit = trace.DidHit
+                    ? new Vec3(trace.EndPos.X, trace.EndPos.Y, trace.EndPos.Z)
+                    : new Vec3(
+                        eye.x + dir.x * AimFallbackRange,
+                        eye.y + dir.y * AimFallbackRange,
+                        eye.z + dir.z * AimFallbackRange
+                    );
+            }
+            catch (Exception error)
+            {
+                _logger.LogError(error, "unable to trace a lineup's aim");
+                hit = new Vec3(
                     eye.x + dir.x * AimFallbackRange,
                     eye.y + dir.y * AimFallbackRange,
                     eye.z + dir.z * AimFallbackRange
                 );
-        }
-        catch (Exception error)
-        {
-            _logger.LogError(error, "unable to trace a lineup's aim");
-            hit = new Vec3(
-                eye.x + dir.x * AimFallbackRange,
-                eye.y + dir.y * AimFallbackRange,
-                eye.z + dir.z * AimFallbackRange
-            );
+            }
+
+            _aimHits[lineup.client_id] = hit;
         }
 
         // Pulled back off the surface so the reticle does not z-fight with the
@@ -1966,6 +1970,7 @@ public class PracticeReplay
     // makes despawning it actively harmful. Drop the references instead.
     public void ForgetMarkers()
     {
+        _aimHits.Clear();
         _markerBeams.Clear();
         _markerTexts.Clear();
         _markerProps.Clear();

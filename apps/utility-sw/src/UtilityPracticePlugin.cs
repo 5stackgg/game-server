@@ -447,25 +447,41 @@ public partial class UtilityPracticePlugin : BasePlugin
         foreach (LineupRecord lineup in library)
         {
             Vec3 feet = lineup.release.feet_position;
-            var toRing = new Vec3(feet.x - eye.x, feet.y - eye.y, feet.z - eye.z);
-            float length = toRing.Length();
 
-            // A ring you are standing on is straight down from the eye, which
-            // is never what "looking at" means.
-            if (length < RingHoverMinDistance)
+            // The floating grenade is the spot's face, so pointing at it has
+            // to count the same as pointing at the ground ring under it --
+            // with no ground text left, the model is what a player actually
+            // aims at to ask "what is this one called".
+            foreach (
+                float lift in new[] { 0f, PracticeReplay.UtilityModelHeight }
+            )
             {
-                continue;
-            }
+                var toRing = new Vec3(
+                    feet.x - eye.x,
+                    feet.y - eye.y,
+                    feet.z + lift - eye.z
+                );
+                float length = toRing.Length();
 
-            double dot =
-                (view.x * toRing.x + view.y * toRing.y + view.z * toRing.z) / length;
+                // A ring you are standing on is straight down from the eye,
+                // which is never what "looking at" means.
+                if (length < RingHoverMinDistance)
+                {
+                    continue;
+                }
 
-            double angle = Math.Acos(Math.Clamp(dot, -1.0, 1.0)) * 180.0 / Math.PI;
+                double dot =
+                    (view.x * toRing.x + view.y * toRing.y + view.z * toRing.z)
+                    / length;
 
-            if (angle < bestAngle)
-            {
-                bestAngle = angle;
-                best = lineup;
+                double angle =
+                    Math.Acos(Math.Clamp(dot, -1.0, 1.0)) * 180.0 / Math.PI;
+
+                if (angle < bestAngle)
+                {
+                    bestAngle = angle;
+                    best = lineup;
+                }
             }
         }
 
