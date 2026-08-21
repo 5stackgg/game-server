@@ -571,7 +571,13 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         (LineupRecord? lineup, bool onSpot, bool onAngle) = Focused(player, pawn);
 
-        Send(player, PanelKind.Title, lineup?.name);
+        // Null, not "": an empty string is CONTENT to Send, and the title would
+        // never clear.
+        Send(
+            player,
+            PanelKind.Title,
+            lineup == null ? null : PracticeLineupUtility.TitleCase(lineup.name)
+        );
         Send(player, PanelKind.Card, lineup == null ? null : Card(lineup));
         Send(
             player,
@@ -751,9 +757,9 @@ public partial class UtilityPracticePlugin : BasePlugin
     {
         string details = string.IsNullOrWhiteSpace(lineup.description)
             ? ""
-            : $"\n{PracticeLineupUtility.Tracked("write-up on the web")}";
+            : "\nWrite-up on the web";
 
-        return $"{PracticeReplay.ThrowHint(lineup)}{details}";
+        return $"{PracticeLineupUtility.TitleCase(PracticeReplay.ThrowHint(lineup))}{details}";
     }
 
     // The one step that is not done yet, on the animating channel -- where a

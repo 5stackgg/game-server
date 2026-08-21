@@ -393,3 +393,36 @@ public class TrackedHtmlTests
         Assert.Equal("S T A N D", PracticeLineupUtility.Tracked("stand"));
     }
 }
+
+public class TitleCaseTests
+{
+    [Theory]
+    [InlineData("new window", "New Window")]
+    [InlineData("CONNECTOR", "Connector")]
+    [InlineData("SMOKE - JUMP THROW - LEFT CLICK", "Smoke - Jump Throw - Left Click")]
+    [InlineData("a", "A")]
+    public void WordsAreCapitalisedAndTheRestLowered(string input, string expected)
+    {
+        Assert.Equal(expected, PracticeLineupUtility.TitleCase(input));
+    }
+
+    [Fact]
+    public void HyphensAreNotWordBreaks()
+    {
+        // "Write-Up" reads worse than "Write-up", so only whitespace splits.
+        Assert.Equal("Write-up On The Web", PracticeLineupUtility.TitleCase("WRITE-UP ON THE WEB"));
+    }
+
+    [Fact]
+    public void EmptyInputStaysEmpty()
+    {
+        Assert.Equal("", PracticeLineupUtility.TitleCase(null));
+        Assert.Equal("", PracticeLineupUtility.TitleCase("   "));
+    }
+
+    [Fact]
+    public void RunsOfSpacesDoNotCrash()
+    {
+        Assert.Equal("Two  Gaps", PracticeLineupUtility.TitleCase("two  gaps"));
+    }
+}

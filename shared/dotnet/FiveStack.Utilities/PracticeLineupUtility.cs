@@ -204,6 +204,36 @@ public static class PracticeLineupUtility
         };
     }
 
+    // Title Case, for the two panels that are read as prose rather than barked
+    // as instructions. Shouting is reserved for the step line, which is the
+    // only one telling the player to DO something -- a name and a technique
+    // are just labels, and labels in block capitals are harder to read, not
+    // more important. Only whitespace separates words, so "write-up" keeps its
+    // lower half rather than becoming "Write-Up".
+    public static string TitleCase(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return "";
+        }
+
+        string[] words = text.Split(' ');
+
+        for (int index = 0; index < words.Length; index += 1)
+        {
+            string word = words[index];
+
+            if (word.Length == 0)
+            {
+                continue;
+            }
+
+            words[index] = char.ToUpperInvariant(word[0]) + word[1..].ToLowerInvariant();
+        }
+
+        return string.Join(" ", words);
+    }
+
     // Captions are set in mono uppercase on wide tracking, and neither text
     // channel has letter-spacing, so the spacing goes into the string.
     public static string Tracked(string text)
