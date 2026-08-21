@@ -131,7 +131,7 @@ public class PracticeReplay
         public readonly List<CEnvBeam> Stance = new();
 
         public Vec3 At;
-        public float Miss = -1f;
+        public int Bucket = -1;
     }
 
     private class Aim
@@ -139,7 +139,30 @@ public class PracticeReplay
         public LineupRecord Lineup = null!;
         public readonly List<CEnvBeam> Beams = new();
         public CPointWorldText? Label;
-        public float Miss = -1f;
+        public int Bucket = -1;
+
+        // Kept so the crosshair can be REBUILT in a new colour. A spawned
+        // env_beam does not reliably re-network m_clrRender, so assigning
+        // Render on a live beam moves it on the server and nowhere else --
+        // which is why lining up never turned anything green.
+        public Vec3 Center;
+        public Vec3 Dir;
+        public float Size;
+        public float Weight;
+    }
+
+    // Coarse on purpose: this decides how often a crosshair is torn down and
+    // rebuilt, and the eye cannot separate neighbouring shades anyway.
+    private const int MissBuckets = 5;
+
+    private static int BucketFor(float miss)
+    {
+        return Math.Clamp((int)(miss * MissBuckets), 0, MissBuckets - 1);
+    }
+
+    private static Color ColorForBucket(int bucket)
+    {
+        return MissColor(bucket / (float)(MissBuckets - 1));
     }
 
     // The reticle currently being drawn, so its beams can be collected apart
@@ -1106,25 +1129,46 @@ public class PracticeReplay
     // colours, on the marker that is actually wrong.
     private void TintStance(Selection selection, Vec3 feet)
     {
-        float miss = PracticeLineupUtility.StanceMiss(
-            new Vec3(selection.At.x - feet.x, selection.At.y - feet.y, 0f).LengthXY()
+        int bucket = BucketFor(
+            PracticeLineupUtility.StanceMiss(
+                new Vec3(selection.At.x - feet.x, selection.At.y - feet.y, 0f).LengthXY()
+            )
         );
 
-        if (Math.Abs(miss - selection.Miss) < 0.02f)
+        if (bucket == selection.Bucket)
         {
             return;
         }
 
-        selection.Miss = miss;
+        selection.Bucket = bucket;
 
-        Color color = MissColor(miss);
+        Color color = ColorForBucket(bucket);
 
         foreach (CEnvBeam beam in selection.Stance)
         {
             if (beam.IsValid)
             {
-                beam.Render = color;
+                selection.Beams.Remove(beam);
+                beam.Despawn();
             }
+        }
+
+        selection.Stance.Clear();
+
+        Selection? was = _drawingInto;
+
+        _drawingInto = selection;
+        _stanceInto = selection.Stance;
+
+        try
+        {
+            Gate(selection.At, 0f, StanceGateHalf, color, StanceWidth);
+            Beacon(selection.At, color);
+        }
+        finally
+        {
+            _stanceInto = null;
+            _drawingInto = was;
         }
     }
 
@@ -1183,7 +1227,8 @@ public class PracticeReplay
     // and, worse, piled the labels into an unreadable smear.
     private void ShowStance(Vec3 stance, int throws)
     {
-        Gate(stance, 0f, 26f, Amber, MarkerWidth);
+        Gate(stance, 0f, StanceGateHalf, ColorForBucket(MissBuckets - 1), StanceWidth);
+        Beacon(stance, ColorForBucket(MissBuckets - 1));
 
         // Ties the grenade floating overhead to the ground it belongs to, so a
         // spot with a model reads as one object rather than two.
@@ -1329,13 +1374,20 @@ public class PracticeReplay
         // one you are on is said in COLOUR, not in scale: a smaller crosshair
         // reads as "further away", which is exactly the wrong thing to say
         // about a point you are being asked to cover precisely.
-        var aim = new Aim { Lineup = lineup };
+        var aim = new Aim
+        {
+            Lineup = lineup,
+            Center = center,
+            Dir = dir,
+            Size = size,
+            Weight = weight,
+        };
 
         _aimInto = aim;
 
         try
         {
-            Reticle(center, dir, size, MissColor(1f), weight);
+            Reticle(center, dir, size, ColorForBucket(MissBuckets - 1), weight);
         }
         finally
         {
@@ -1347,7 +1399,7 @@ public class PracticeReplay
         aim.Label = Label(
             new Vec3(center.x, center.y, center.z + size + 8f),
             label,
-            MissColor(1f)
+            ColorForBucket(MissBuckets - 1)
         );
 
         _drawingInto?.Aims.Add(aim);
@@ -1386,34 +1438,52 @@ public class PracticeReplay
 
         foreach (Aim aim in selection.Aims)
         {
-            float miss = PracticeLineupUtility.AimMiss(
-                PracticeLineupUtility.AimError(
-                    eyeYaw,
-                    eyePitch,
-                    aim.Lineup.release.yaw,
-                    aim.Lineup.release.pitch
-                ),
-                aim.Lineup.aim_tolerance
+            int bucket = BucketFor(
+                PracticeLineupUtility.AimMiss(
+                    PracticeLineupUtility.AimError(
+                        eyeYaw,
+                        eyePitch,
+                        aim.Lineup.release.yaw,
+                        aim.Lineup.release.pitch
+                    ),
+                    aim.Lineup.aim_tolerance
+                )
             );
 
-            // Beams are networked on change, so only send one when the colour
-            // would actually differ. At sixteen updates a second across every
-            // throw on a spot, repainting unconditionally is real traffic.
-            if (Math.Abs(miss - aim.Miss) < 0.02f)
+            if (bucket == aim.Bucket)
             {
                 continue;
             }
 
-            aim.Miss = miss;
+            aim.Bucket = bucket;
 
-            Color color = MissColor(miss);
+            Color color = ColorForBucket(bucket);
 
+            // Rebuilt, not recoloured, for the reason on Aim above.
             foreach (CEnvBeam beam in aim.Beams)
             {
                 if (beam.IsValid)
                 {
-                    beam.Render = color;
+                    selection.Beams.Remove(beam);
+                    beam.Despawn();
                 }
+            }
+
+            aim.Beams.Clear();
+
+            Selection? previous = _drawingInto;
+
+            _drawingInto = selection;
+            _aimInto = aim;
+
+            try
+            {
+                Reticle(aim.Center, aim.Dir, aim.Size, color, aim.Weight);
+            }
+            finally
+            {
+                _aimInto = null;
+                _drawingInto = previous;
             }
 
             if (aim.Label != null && aim.Label.IsValid)
@@ -1555,6 +1625,12 @@ public class PracticeReplay
     private static readonly Color Amber = new Color(249, 158, 47, 255);
     private static readonly Color AmberDim = new Color(203, 117, 11, 255);
 
+    // The gate has to read as a place to stand from across the room, not only
+    // from on top of it.
+    private const float StanceGateHalf = 30f;
+    private const float StanceWidth = 1.6f;
+    private const float BeaconHeight = 96f;
+
     // Legible without being architecture. These labels sit on the spot they
     // name, at arm's length, not across the map.
     private const int LabelFontSize = 34;
@@ -1579,6 +1655,20 @@ public class PracticeReplay
             at.x + (forward.x * along) + (right.x * across),
             at.y + (forward.y * along) + (right.y * across),
             at.z
+        );
+    }
+
+    // A pillar out of the middle of the gate. The gate is flat on the floor, so
+    // at any distance it is edge-on and nearly invisible; this is the part you
+    // spot first, and it carries the same colour, so "am I on the spot" is
+    // answerable without looking down.
+    private void Beacon(Vec3 at, Color color)
+    {
+        AddMarkerBeam(
+            new Vec3(at.x, at.y, at.z + 2f),
+            new Vec3(at.x, at.y, at.z + BeaconHeight),
+            color,
+            StanceWidth
         );
     }
 
