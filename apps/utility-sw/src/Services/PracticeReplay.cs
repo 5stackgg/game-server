@@ -1719,27 +1719,6 @@ public class PracticeReplay
         AddMarkerBeam(west, north, color, width);
     }
 
-    // A flight is a plan, not an object, so it is drawn as one.
-    private void Dashed(Vec3 from, Vec3 to, Color color, float width, int dashes)
-    {
-        for (int index = 0; index < dashes; index += 1)
-        {
-            float start = index / (float)dashes;
-            float end = start + (0.55f / dashes);
-
-            AddMarkerBeam(Lerp(from, to, start), Lerp(from, to, end), color, width);
-        }
-    }
-
-    private static Vec3 Lerp(Vec3 from, Vec3 to, float t)
-    {
-        return new Vec3(
-            from.x + ((to.x - from.x) * t),
-            from.y + ((to.y - from.y) * t),
-            from.z + ((to.z - from.z) * t)
-        );
-    }
-
     // The panel sets every caption in mono uppercase on wide tracking, and
     // point_worldtext has no letter-spacing, so the spacing goes in the string.
     public static string Tracked(string text)
