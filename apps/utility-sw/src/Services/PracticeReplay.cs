@@ -224,7 +224,7 @@ public class PracticeReplay
     public const bool DrawModels = true;
 
     // Spawning a weapon entity of each type at map load to read its model path.
-    public const bool HarvestModels = true;
+    public const bool HarvestModels = false;
 
     // Ghost trails and the measured bloom outline.
     public const bool DrawGhosts = false;
