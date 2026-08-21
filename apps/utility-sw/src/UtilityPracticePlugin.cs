@@ -102,6 +102,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _recorder.Thrown += _system.OnThrown;
         _recorder.Finalized += _score.OnFinalized;
         _recorder.Thrown += _drill.OnThrown;
+        _system.HoldUtility = _drill.Waiting;
         _score.Scored += _drill.OnScored;
         _score.Scored += OnScoredHint;
 
@@ -616,7 +617,11 @@ public partial class UtilityPracticePlugin : BasePlugin
             Hint(player, HintCooldownTicks);
         }
 
-        Send(player, PanelKind.Card, lineup == null ? null : Card(lineup));
+        Send(
+            player,
+            PanelKind.Card,
+            lineup == null ? null : Card(lineup, _drill.Progress(player.SteamID))
+        );
         Send(
             player,
             PanelKind.Steps,
@@ -791,13 +796,19 @@ public partial class UtilityPracticePlugin : BasePlugin
     // How the throw is made, and whether there is more to read about it. The
     // name is not here -- it has its own channel, which is the whole reason
     // these ended up in three places instead of one.
-    private static string Card(LineupRecord lineup)
+    private static string Card(LineupRecord lineup, string? drill)
     {
         string details = string.IsNullOrWhiteSpace(lineup.description)
             ? ""
             : "\nWrite-up on the web";
 
-        return $"{PracticeLineupUtility.TitleCase(PracticeReplay.ThrowHint(lineup))}{details}";
+        // While a drill is running, where you are in it belongs next to the
+        // throw you are being asked to make -- not in chat, where it scrolls
+        // away between attempts.
+        string progress = drill == null ? "" : $"\n{drill}";
+
+        return $"{PracticeLineupUtility.TitleCase(PracticeReplay.ThrowHint(lineup))}"
+            + $"{details}{progress}";
     }
 
     // The one step that is not done yet, on the animating channel -- where a

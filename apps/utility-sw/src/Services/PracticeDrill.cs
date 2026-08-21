@@ -70,12 +70,13 @@ public class PracticeDrill
             return eDrillStart.NothingToDrill;
         }
 
-        var run = new PracticeDrillRun(queue);
+        var run = new PracticeDrillRun(queue, DrillReps);
         _runs[steamId] = run;
 
         Tell?.Invoke(
             steamId,
-            $"drill started - {queue.Count} throws, {Ordering(order)} (.skip to pass, .drill stop to end)"
+            $"drill started - {queue.Count} lineups x{DrillReps}, {Ordering(order)}"
+                + " (.skip to pass, .drill stop to end)"
         );
 
         Advance(steamId, run);
@@ -168,6 +169,33 @@ public class PracticeDrill
 
     // A player who has left cannot be told anything, so their run ends where it
     // stands rather than printing a summary into an empty seat.
+    // Three goes at each lineup before moving on. One is a tour of the map,
+    // not practice: the point of a drill is throwing the same thing until it
+    // stops being luck.
+    public const int DrillReps = 3;
+
+    // Whether this player owes the run an answer -- they have thrown and the
+    // panel has not scored it yet. Used to hold their next grenade back: a
+    // drill where you can spam three smokes before the first is judged is not
+    // measuring anything.
+    public bool Waiting(ulong steamId)
+    {
+        return _runs.TryGetValue(steamId, out PracticeDrillRun? run) && run.Waiting;
+    }
+
+    // What the panels say while a drill is on. Null when there is no run.
+    public string? Progress(ulong steamId)
+    {
+        if (!_runs.TryGetValue(steamId, out PracticeDrillRun? run) || run.Finished)
+        {
+            return null;
+        }
+
+        string tally = run.Attempts == 0 ? "no throws yet" : Tally(run);
+
+        return $"Drill {run.Position}/{run.Length} - rep {run.Rep}/{run.Reps} - {tally}";
+    }
+
     public void Forget(ulong steamId)
     {
         _runs.Remove(steamId);
@@ -199,7 +227,8 @@ public class PracticeDrill
 
                 Note?.Invoke(
                     steamId,
-                    $"{run.Position}/{run.Length} {DrillUtility.Name(next)} - {Tally(run)}"
+                    $"{run.Position}/{run.Length} rep {run.Rep}/{run.Reps} "
+                        + $"{DrillUtility.Name(next)} - {Tally(run)}"
                 );
 
                 return;

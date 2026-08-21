@@ -497,3 +497,64 @@ public class PracticeDrillRunTests
         Assert.Equal(1, theirs.Misses);
     }
 }
+
+public class PracticeDrillRunRepTests
+{
+    private static LineupRecord Lineup(string id)
+    {
+        return new LineupRecord { id = id, client_id = id, utility_type = "Smoke" };
+    }
+
+    [Fact]
+    public void EachLineupIsRepeatedBeforeTheNext()
+    {
+        var run = new PracticeDrillRun(new[] { Lineup("a"), Lineup("b") }, 3);
+
+        // Consecutive, not interleaved: you throw the same lineup until it is
+        // learned rather than being sent round the map three times.
+        Assert.Equal("a", run.Next()?.id);
+        Assert.Equal("a", run.Next()?.id);
+        Assert.Equal("a", run.Next()?.id);
+        Assert.Equal("b", run.Next()?.id);
+    }
+
+    [Fact]
+    public void RepAndPositionReadAsProgress()
+    {
+        var run = new PracticeDrillRun(new[] { Lineup("a"), Lineup("b") }, 3);
+
+        run.Next();
+        Assert.Equal(1, run.Position);
+        Assert.Equal(1, run.Rep);
+
+        run.Next();
+        Assert.Equal(1, run.Position);
+        Assert.Equal(2, run.Rep);
+
+        run.Next();
+        run.Next();
+        Assert.Equal(2, run.Position);
+        Assert.Equal(1, run.Rep);
+    }
+
+    [Fact]
+    public void TheRunEndsAfterEveryRepOfEveryLineup()
+    {
+        var run = new PracticeDrillRun(new[] { Lineup("a") }, 2);
+
+        Assert.NotNull(run.Next());
+        Assert.NotNull(run.Next());
+        Assert.Null(run.Next());
+        Assert.True(run.Finished);
+    }
+
+    [Fact]
+    public void OneRepIsTheOldBehaviour()
+    {
+        var run = new PracticeDrillRun(new[] { Lineup("a"), Lineup("b") });
+
+        Assert.Equal("a", run.Next()?.id);
+        Assert.Equal("b", run.Next()?.id);
+        Assert.Null(run.Next());
+    }
+}

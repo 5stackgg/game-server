@@ -150,9 +150,20 @@ public class PracticeSystem
 
     // Called on the release edge, so a thrown grenade is in the player's hand
     // again a tick or two later.
+    // Set by the plugin to the drill's Waiting check. A player mid-drill who
+    // has thrown and not been scored yet gets nothing back until the panel has
+    // answered -- otherwise three smokes are in the air before the first is
+    // judged and the run is measuring nothing.
+    public Func<ulong, bool>? HoldUtility { get; set; }
+
     public void OnThrown(ulong steamId, string utilityType)
     {
         if (!_config.InfiniteUtility)
+        {
+            return;
+        }
+
+        if (HoldUtility?.Invoke(steamId) == true)
         {
             return;
         }

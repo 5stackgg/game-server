@@ -28,10 +28,17 @@ public class PracticeDrillRun
     private int _unscoredInARow;
     private int _unloadableInARow;
 
-    public PracticeDrillRun(IReadOnlyList<LineupRecord> queue)
+    // Reps are consecutive: a lineup is thrown until it is learned, then the
+    // run moves on. Interleaving them would make the drill a memory test of
+    // where the spots are rather than practice at hitting one.
+    public PracticeDrillRun(IReadOnlyList<LineupRecord> queue, int reps = 1)
     {
         _queue = queue.ToList();
+        _reps = Math.Max(1, reps);
     }
+
+    private readonly int _reps;
+    private int _rep;
 
     public eDrillEnd Ending { get; private set; } = eDrillEnd.Running;
 
@@ -41,6 +48,11 @@ public class PracticeDrillRun
 
     // One based, so it reads as "3/10" while a run is going.
     public int Position => Math.Min(_index + 1, _queue.Count);
+
+    // Which attempt at the current lineup this is, and how many it gets.
+    public int Rep => _rep + 1;
+
+    public int Reps => _reps;
 
     public int Hits { get; private set; }
     public int Misses { get; private set; }
@@ -68,6 +80,15 @@ public class PracticeDrillRun
             return null;
         }
 
+        // Another go at the same lineup before moving on.
+        if (Current != null && _rep + 1 < _reps)
+        {
+            _rep++;
+
+            return Current;
+        }
+
+        _rep = 0;
         _index++;
 
         if (_index >= _queue.Count)
