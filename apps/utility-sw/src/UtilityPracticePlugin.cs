@@ -547,8 +547,28 @@ public partial class UtilityPracticePlugin : BasePlugin
     // and how do I throw it", the steps line (centre text) answers "what have
     // I not done yet". One channel had to keep swapping between the two, so
     // reading the instructions meant losing the guidance and back again.
+    // While .alerts is showing samples, the panels would overwrite the centre
+    // ones within a second and the demo would be pointless.
+    private readonly Dictionary<ulong, int> _demoUntil = new();
+
+    public void SuppressPanels(ulong steamId, int ticks)
+    {
+        _demoUntil[steamId] = _aimTick + ticks;
+    }
+
     private void Panels(IPlayer player, CCSPlayerPawn pawn)
     {
+        if (_demoUntil.TryGetValue(player.SteamID, out int until))
+        {
+            if (_aimTick < until)
+            {
+                return;
+            }
+
+            _demoUntil.Remove(player.SteamID);
+        }
+
+
         (LineupRecord? lineup, bool onSpot, bool onAngle) = Focused(player, pawn);
 
         Send(player, PanelKind.Card, lineup == null ? null : Card(lineup));
@@ -712,11 +732,17 @@ public partial class UtilityPracticePlugin : BasePlugin
     // Plain text, because the card sits on the channel that does not animate.
     // No escaping needed here for the same reason -- a lineup name is user text
     // and this channel renders it literally, which is exactly what we want.
-    // Just the name, on the channel that does not animate. A title has nothing
-    // to say that changes, so it belongs where nothing moves.
+    // Everything about the lineup ITSELF -- what it is called, how it is
+    // thrown, whether there is more to read -- on the channel that does not
+    // animate. None of it changes while a lineup is in focus, so none of it
+    // belongs on a panel that redraws.
     private static string Card(LineupRecord lineup)
     {
-        return lineup.name;
+        string details = string.IsNullOrWhiteSpace(lineup.description)
+            ? ""
+            : $"\n{PracticeLineupUtility.Tracked("write-up on the web")}";
+
+        return $"{lineup.name}\n{PracticeReplay.ThrowHint(lineup)}{details}";
     }
 
     // The one step that is not done yet, on the animating channel -- where a
@@ -731,22 +757,11 @@ public partial class UtilityPracticePlugin : BasePlugin
     // How to throw it, and what is left to do. Both belong on the animating
     // panel: they are the lines that CHANGE, so a flash on write reads as the
     // instruction moving on rather than as the title blinking.
-    private static string Headline(LineupRecord lineup, bool onSpot, bool onAngle)
+    // The step and nothing else. This panel exists to nag and then get out of
+    // the way, so it carries only what is still undone.
+    private static string? Headline(LineupRecord lineup, bool onSpot, bool onAngle)
     {
-        string how =
-            "<font class='fontSize-m' color='#dcdcdc'>"
-            + $"{PracticeReplay.ThrowHint(lineup)}</font>";
-
-        if (!string.IsNullOrWhiteSpace(lineup.description))
-        {
-            how +=
-                "<br><font class='fontSize-s' color='#8a8a8a'>"
-                + $"{PracticeLineupUtility.TrackedHtml("write-up on the web")}</font>";
-        }
-
-        string? step = Steps(onSpot, onAngle);
-
-        return step == null ? how : $"{how}<br>{step}";
+        return Steps(onSpot, onAngle);
     }
 
     private static string? Steps(bool onSpot, bool onAngle)
@@ -956,6 +971,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         // hand to something else.
         _replay.ClearSelectionFor(steamId);
         _standingIn.Remove(steamId);
+        _demoUntil.Remove(steamId);
         _showing.Remove((steamId, PanelKind.Card));
         _showing.Remove((steamId, PanelKind.Steps));
     }

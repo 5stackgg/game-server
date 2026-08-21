@@ -1,6 +1,7 @@
 using FiveStack.Entities.Practice;
 using FiveStack.Enums;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Core.Menus.OptionsBase;
 using SwiftlyS2.Shared.Commands;
@@ -484,6 +485,51 @@ public partial class UtilityPracticePlugin
         Core.MenusAPI.OpenMenuForPlayer(player, builder.Build());
     }
 
+    // Every message channel CS2 exposes, one sample each, labelled with the
+    // name to use in code. There is no documentation for where these land on
+    // screen -- the only way to choose between them is to look at all of them
+    // at once.
+    [Command("alerts", registerRaw: false, permission: "")]
+    public void OnAlerts(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        // Twelve seconds of quiet, so the lineup panels do not overwrite the
+        // two centre samples a moment after they appear.
+        SuppressPanels(player.SteamID, 12 * 64);
+
+        foreach (MessageType type in Enum.GetValues<MessageType>())
+        {
+            try
+            {
+                player.SendMessage(type, $"[{type}] the quick brown fox - 1234567890");
+            }
+            catch (Exception error)
+            {
+                _logger.LogWarning(error, "channel {type} refused a message", type);
+            }
+        }
+
+        // Sent separately because it is the only one that takes a duration, and
+        // without one it would vanish before the others are read.
+        player.SendCenterHTML(
+            "<font class='fontSize-l' color='#f99e2f'>[CenterHTML] large amber</font>"
+                + "<br><font class='fontSize-m' color='#dcdcdc'>medium grey</font>"
+                + "<br><font class='fontSize-s' color='#8a8a8a'>small dim</font>",
+            12000
+        );
+
+        Reply(
+            context,
+            $" {ChatColors.Grey}sent one sample down every channel - panels paused for 12s"
+        );
+    }
+
     [Command("where", registerRaw: false, permission: "")]
     public void OnWhere(ICommandContext context)
     {
@@ -957,6 +1003,7 @@ public partial class UtilityPracticePlugin
         $" {ChatColors.Default}.drill [count] [worst] / .skip {ChatColors.Grey}drills your book and scores it",
         $" {ChatColors.Default}.playbook / .run / .playbook stop {ChatColors.Grey}the loaded execute",
         $" {ChatColors.Default}.ghosts [on|off] {ChatColors.Grey}draws the preview line, or does not",
+        $" {ChatColors.Default}.alerts {ChatColors.Grey}one sample down every message channel",
         $" {ChatColors.Default}.noclip / .god / .timer / .solo / .clear",
     };
 
