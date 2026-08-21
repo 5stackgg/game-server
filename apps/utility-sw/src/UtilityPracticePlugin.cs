@@ -571,6 +571,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         (LineupRecord? lineup, bool onSpot, bool onAngle) = Focused(player, pawn);
 
+        Send(player, PanelKind.Title, lineup?.name);
         Send(player, PanelKind.Card, lineup == null ? null : Card(lineup));
         Send(
             player,
@@ -581,6 +582,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private enum PanelKind
     {
+        Title,
         Card,
         Steps,
     }
@@ -642,11 +644,21 @@ public partial class UtilityPracticePlugin : BasePlugin
         if (kind == PanelKind.Steps)
         {
             player.SendCenterHTML(content, PanelHoldMilliseconds);
+
+            return;
         }
-        else
+
+        // Alert is the third place on screen that holds still. It is why the
+        // name, the throw details and the outstanding step can sit apart from
+        // each other rather than stacking into one block.
+        if (kind == PanelKind.Title)
         {
-            player.SendCenter(content);
+            player.SendAlert(content);
+
+            return;
         }
+
+        player.SendCenter(content);
     }
 
     // Clearing is a WRITE with the shortest possible life, not a write with the
@@ -663,10 +675,10 @@ public partial class UtilityPracticePlugin : BasePlugin
             return;
         }
 
-        // The card is NOT written blank. SendCenter takes no duration, so a
-        // blank write just starts another full-length message that happens to
-        // have nothing in it -- slower to disappear than the line it replaced.
-        // Writing nothing lets it lapse on the game's own schedule instead.
+        // Neither the card nor the title is written blank. Those channels take
+        // no duration, so a blank write just starts another full-length message
+        // that happens to be empty -- slower to clear than the line it
+        // replaced. Writing nothing lets them lapse on the game's schedule.
     }
 
     private (LineupRecord? lineup, bool onSpot, bool onAngle) Focused(
@@ -732,17 +744,16 @@ public partial class UtilityPracticePlugin : BasePlugin
     // Plain text, because the card sits on the channel that does not animate.
     // No escaping needed here for the same reason -- a lineup name is user text
     // and this channel renders it literally, which is exactly what we want.
-    // Everything about the lineup ITSELF -- what it is called, how it is
-    // thrown, whether there is more to read -- on the channel that does not
-    // animate. None of it changes while a lineup is in focus, so none of it
-    // belongs on a panel that redraws.
+    // How the throw is made, and whether there is more to read about it. The
+    // name is not here -- it has its own channel, which is the whole reason
+    // these ended up in three places instead of one.
     private static string Card(LineupRecord lineup)
     {
         string details = string.IsNullOrWhiteSpace(lineup.description)
             ? ""
             : $"\n{PracticeLineupUtility.Tracked("write-up on the web")}";
 
-        return $"{lineup.name}\n{PracticeReplay.ThrowHint(lineup)}{details}";
+        return $"{PracticeReplay.ThrowHint(lineup)}{details}";
     }
 
     // The one step that is not done yet, on the animating channel -- where a
@@ -972,6 +983,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _replay.ClearSelectionFor(steamId);
         _standingIn.Remove(steamId);
         _demoUntil.Remove(steamId);
+        _showing.Remove((steamId, PanelKind.Title));
         _showing.Remove((steamId, PanelKind.Card));
         _showing.Remove((steamId, PanelKind.Steps));
     }
