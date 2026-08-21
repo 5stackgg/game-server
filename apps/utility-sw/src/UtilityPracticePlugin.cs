@@ -622,42 +622,44 @@ public partial class UtilityPracticePlugin : BasePlugin
         CCSPlayerPawn pawn
     )
     {
-        LineupRecord? lineup = _system.StateFor(player.SteamID).Loaded;
-
-        if (lineup != null)
-        {
-            QAngle eyes = pawn.EyeAngles;
-            Vector standing = pawn.AbsOrigin ?? new Vector(0, 0, 0);
-            Vec3 spot = lineup.release.feet_position;
-
-            bool onAngle =
-                PracticeLineupUtility.AimError(
-                    eyes.Y,
-                    eyes.X,
-                    lineup.release.yaw,
-                    lineup.release.pitch
-                ) <= ToleranceFor(lineup);
-
-            // Both halves, not just the angle. Saying LINED UP to somebody
-            // holding the right angle from the wrong place is worse than saying
-            // nothing -- they throw it, it misses, and the lineup gets blamed.
-            bool onSpot =
-                PracticeLineupUtility.StanceMiss(
-                    new Vec3(spot.x - standing.X, spot.y - standing.Y, 0f).LengthXY()
-                ) == 0f;
-
-            return (lineup, onSpot, onAngle);
-        }
-
         Vector origin = pawn.AbsOrigin ?? new Vector(0, 0, 0);
         var at = new Vec3(origin.X, origin.Y, origin.Z);
 
         IReadOnlyList<LineupRecord> library = _library.For(player.SteamID);
         List<LineupRecord> here = PracticeReplay.SpotAt(library, at);
         LineupRecord? aimedAt = LookingAt(pawn, at, library, here);
+        LineupRecord? loaded = _system.StateFor(player.SteamID).Loaded;
 
-        // Nothing loaded, so nothing is "done" yet -- the panels describe what
-        // the player is pointing at or standing on, and the steps line tells
+        // A loaded lineup only owns the panels while the player is actually at
+        // its spot or looking at it. Walk away and the panels go: instructions
+        // for a throw you are nowhere near are just something stuck to the
+        // screen, and .load is not a commitment to read about it forever.
+        if (loaded != null && (here.Contains(loaded) || aimedAt == loaded))
+        {
+            QAngle eyes = pawn.EyeAngles;
+            Vec3 spot = loaded.release.feet_position;
+
+            bool onAngle =
+                PracticeLineupUtility.AimError(
+                    eyes.Y,
+                    eyes.X,
+                    loaded.release.yaw,
+                    loaded.release.pitch
+                ) <= ToleranceFor(loaded);
+
+            // Both halves, not just the angle. Saying you are lined up while
+            // you stand in the wrong place is worse than saying nothing -- the
+            // throw misses and the lineup gets blamed.
+            bool onSpot =
+                PracticeLineupUtility.StanceMiss(
+                    new Vec3(spot.x - origin.X, spot.y - origin.Y, 0f).LengthXY()
+                ) == 0f;
+
+            return (loaded, onSpot, onAngle);
+        }
+
+        // Nothing loaded here, so nothing is done yet: the panels describe what
+        // the player is pointing at or standing on, and the steps line gives
         // them the first thing to do about it.
         if (aimedAt != null)
         {
