@@ -779,7 +779,10 @@ public class PracticeReplay
         return $"{name}\n{lineup.utility_type} - {lineup.technique}{strength}";
     }
 
-    private void GiveUtility(IPlayer player, string utilityType)
+    // Public so a drill can re-arm a player for another rep without moving
+    // them: the point of a repeat is throwing the same lineup again, and being
+    // teleported back onto the spot each time takes the walk-up away.
+    public void GiveUtility(IPlayer player, string utilityType)
     {
         string? weapon = PracticeLineupUtility.WeaponForUtilityType(utilityType);
         CCSPlayerPawn? pawn = player.PlayerPawn;

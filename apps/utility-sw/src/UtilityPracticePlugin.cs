@@ -1010,6 +1010,16 @@ public partial class UtilityPracticePlugin : BasePlugin
             return true;
         };
 
+        _drill.Rearm = (steamId, lineup) =>
+        {
+            IPlayer? player = _system.Find(steamId);
+
+            if (player != null && player.IsValid)
+            {
+                _replay.GiveUtility(player, lineup.utility_type);
+            }
+        };
+
         _drill.Tell = (steamId, message) => Tell(steamId, $" {ChatColors.Green}{message}");
 
         _drill.Note = (steamId, message) => Tell(steamId, $" {ChatColors.Grey}{message}");

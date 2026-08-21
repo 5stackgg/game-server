@@ -34,6 +34,10 @@ public class PracticeDrill
     // are. Load answers false when the lineup could not be stood on, which is
     // the only thing the runner cannot work out for itself.
     public Func<ulong, LineupRecord, bool>? Load { get; set; }
+
+    // A repeat of the lineup already loaded: hand the grenade back where they
+    // stand, and leave it to them to walk to the spot again.
+    public Action<ulong, LineupRecord>? Rearm { get; set; }
     public Action<ulong, string>? Tell { get; set; }
     public Action<ulong, string>? Note { get; set; }
     public Action<ulong, string>? Center { get; set; }
@@ -218,6 +222,23 @@ public class PracticeDrill
             if (next == null)
             {
                 Finish(steamId, run);
+                return;
+            }
+
+            // A later rep is the SAME lineup, already loaded and already
+            // marked. Re-loading it would teleport the player back onto the
+            // spot, and walking back is part of the throw.
+            if (run.Rep > 1)
+            {
+                Rearm?.Invoke(steamId, next);
+                run.Loaded();
+
+                Note?.Invoke(
+                    steamId,
+                    $"{run.Position}/{run.Length} rep {run.Rep}/{run.Reps} "
+                        + $"{DrillUtility.Name(next)} - {Tally(run)}"
+                );
+
                 return;
             }
 
