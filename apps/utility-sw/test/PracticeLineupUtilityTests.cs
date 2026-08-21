@@ -299,3 +299,33 @@ public class StanceMissTests
         Assert.True(PracticeLineupUtility.StanceToleranceUnits < 40f);
     }
 }
+
+public class MissBucketTests
+{
+    [Fact]
+    public void GreenIsReservedForInsideTolerance()
+    {
+        Assert.Equal(0, PracticeLineupUtility.MissBucket(0f, 5));
+
+        // The smallest possible miss is already NOT green -- this is the whole
+        // point: the colour and LINED UP must never disagree.
+        Assert.NotEqual(0, PracticeLineupUtility.MissBucket(0.001f, 5));
+    }
+
+    [Fact]
+    public void OutsideToleranceRampsAcrossTheRemainingSteps()
+    {
+        Assert.Equal(1, PracticeLineupUtility.MissBucket(0.05f, 5));
+        Assert.Equal(4, PracticeLineupUtility.MissBucket(1f, 5));
+        Assert.Equal(4, PracticeLineupUtility.MissBucket(0.9f, 5));
+    }
+
+    [Fact]
+    public void EveryMissLandsInsideTheStepRange()
+    {
+        foreach (float miss in new[] { 0f, 0.001f, 0.2f, 0.5f, 0.99f, 1f })
+        {
+            Assert.InRange(PracticeLineupUtility.MissBucket(miss, 5), 0, 4);
+        }
+    }
+}

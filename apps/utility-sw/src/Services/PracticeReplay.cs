@@ -157,7 +157,7 @@ public class PracticeReplay
 
     private static int BucketFor(float miss)
     {
-        return Math.Clamp((int)(miss * MissBuckets), 0, MissBuckets - 1);
+        return PracticeLineupUtility.MissBucket(miss, MissBuckets);
     }
 
     private static Color ColorForBucket(int bucket)
@@ -978,6 +978,13 @@ public class PracticeReplay
     // The library layer. Every lineup gets the same quiet treatment -- no
     // exclusions, because a lineup one player has focused is still just a ring
     // to everyone else.
+    // The most lineups the resting layer will draw. Each costs ~8 networked
+    // entities (7 beams + a label) plus a prop per spot, and the panel serves
+    // up to 500 -- drawn in full that is thousands of edicts, which is a server
+    // crash delivered by popularity rather than by any bug. The API returns
+    // newest first, so what survives the cap is the newest.
+    private const int MaxLibraryDrawn = 150;
+
     public void ShowLibrary(IEnumerable<LineupRecord> lineups)
     {
         if (!DrawMarkers)
@@ -988,6 +995,21 @@ public class PracticeReplay
         ClearSharedMarkers();
 
         _drawingInto = null;
+
+        List<LineupRecord> all = lineups.ToList();
+        List<LineupRecord> drawn = all.Take(MaxLibraryDrawn).ToList();
+
+        if (drawn.Count < all.Count)
+        {
+            // Never silently: a capped map reads as "this is everything".
+            _logger.LogWarning(
+                "library draw capped at {drawn} of {total} lineups",
+                drawn.Count,
+                all.Count
+            );
+        }
+
+        lineups = drawn;
 
         foreach (LineupRecord lineup in lineups)
         {

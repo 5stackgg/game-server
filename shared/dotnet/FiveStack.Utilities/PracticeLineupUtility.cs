@@ -157,6 +157,21 @@ public static class PracticeLineupUtility
     // Fully red this far from the recorded spot.
     public const float StanceMissSpanUnits = 48f;
 
+    // Which of the colour steps a miss lands on. Step 0 is reserved for a miss
+    // of exactly zero -- inside tolerance -- so "the crosshair is green" and
+    // "LINED UP" can never disagree: a naive miss*steps split would show full
+    // green from over a degree out while the text still said no. Everything
+    // outside tolerance ramps across the remaining steps.
+    public static int MissBucket(float miss, int buckets)
+    {
+        if (miss <= 0f)
+        {
+            return 0;
+        }
+
+        return 1 + Math.Clamp((int)(miss * (buckets - 1)), 0, buckets - 2);
+    }
+
     // A lineup that never said how precise it is.
     public const float DefaultAimTolerance = 0.35f;
 
