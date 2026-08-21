@@ -99,6 +99,20 @@ public class UtilityConfig
 
         UtilityUrl = UtilityUrl.TrimEnd('/');
 
+        // A doubled scheme dials a host literally named "https" and then dies
+        // quietly on DNS -- the exact failure is invisible from outside the
+        // pod, so it is collapsed here and the resolved URL is said out loud.
+        UtilityUrl = System.Text.RegularExpressions.Regex.Replace(
+            UtilityUrl,
+            "^(https?://)+",
+            "$1"
+        );
+
+        if (!string.IsNullOrEmpty(UtilityUrl))
+        {
+            _logger.LogInformation("utility practice panel: {url}", UtilityUrl);
+        }
+
         if (string.IsNullOrEmpty(UtilityUrl) || string.IsNullOrEmpty(ServerApiPassword))
         {
             // Not fatal: local practice commands still work, saves just cannot
