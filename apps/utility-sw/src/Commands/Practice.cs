@@ -351,6 +351,25 @@ public partial class UtilityPracticePlugin
         StartPlaybook(player, context);
     }
 
+    // The way out that does not need remembering which mode you are in.
+    [Command("cancel", registerRaw: false, permission: "")]
+    public void OnCancel(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        Reply(
+            context,
+            _drill.Stop(player.SteamID)
+                ? $" {ChatColors.Green}drill stopped"
+                : $" {ChatColors.Grey}nothing to cancel"
+        );
+    }
+
     [Command("drill", registerRaw: false, permission: "")]
     public void OnDrill(ICommandContext context)
     {
@@ -361,11 +380,27 @@ public partial class UtilityPracticePlugin
             return;
         }
 
+        // A bare .drill while one is running ends it. Toggling off with the
+        // same word you started with is what a player reaches for first, and
+        // Stop is a no-op when there is nothing to stop, so this cannot
+        // swallow a genuine start.
+        if (
+            string.IsNullOrWhiteSpace(string.Join(" ", context.Args))
+            && _drill.Stop(player.SteamID)
+        )
+        {
+            Reply(context, $" {ChatColors.Green}drill stopped");
+            return;
+        }
+
         DrillRequest request = DrillUtility.Parse(string.Join(" ", context.Args));
 
         if (!request.Valid)
         {
-            Reply(context, $" {ChatColors.Red}usage: .drill [count] [worst|random] / .drill stop");
+            Reply(
+                context,
+                $" {ChatColors.Red}usage: .drill [count] [worst|random] / .drill / .cancel"
+            );
             return;
         }
 
@@ -822,6 +857,7 @@ public partial class UtilityPracticePlugin
         $" {ChatColors.Default}.bloom {ChatColors.Grey}outlines where the loaded smoke lands",
         $" {ChatColors.Default}.solve [name] {ChatColors.Grey}finds a throw onto the spot you are looking at",
         $" {ChatColors.Default}.drill [count] [worst] / .skip {ChatColors.Grey}drills your book and scores it",
+        $" {ChatColors.Default}.drill / .cancel {ChatColors.Grey}stops a drill you are in",
         $" {ChatColors.Default}.playbook / .run / .playbook stop {ChatColors.Grey}the loaded execute",
         $" {ChatColors.Default}.noclip / .god / .timer / .solo / .clear",
     };
