@@ -712,15 +712,11 @@ public partial class UtilityPracticePlugin : BasePlugin
     // Plain text, because the card sits on the channel that does not animate.
     // No escaping needed here for the same reason -- a lineup name is user text
     // and this channel renders it literally, which is exactly what we want.
-    // Throw details only. The name lives in its own HUD channel now, so this
-    // stays purely "how do I throw it" and never reflows when the name changes.
+    // Just the name, on the channel that does not animate. A title has nothing
+    // to say that changes, so it belongs where nothing moves.
     private static string Card(LineupRecord lineup)
     {
-        string details = string.IsNullOrWhiteSpace(lineup.description)
-            ? ""
-            : $"\n{PracticeLineupUtility.Tracked("write-up on the web")}";
-
-        return $"{PracticeReplay.ThrowHint(lineup)}{details}";
+        return lineup.name;
     }
 
     // The one step that is not done yet, on the animating channel -- where a
@@ -732,20 +728,25 @@ public partial class UtilityPracticePlugin : BasePlugin
     // element) compiles and sends but never renders, so the name takes its own
     // line at the top of the HTML panel rather than a channel of its own.
     // Throw details stay on the other channel entirely, which was the point.
+    // How to throw it, and what is left to do. Both belong on the animating
+    // panel: they are the lines that CHANGE, so a flash on write reads as the
+    // instruction moving on rather than as the title blinking.
     private static string Headline(LineupRecord lineup, bool onSpot, bool onAngle)
     {
-        string name =
-            $"<font class='fontSize-l' color='#f99e2f'>{Escape(lineup.name)}</font>";
+        string how =
+            "<font class='fontSize-m' color='#dcdcdc'>"
+            + $"{PracticeReplay.ThrowHint(lineup)}</font>";
+
+        if (!string.IsNullOrWhiteSpace(lineup.description))
+        {
+            how +=
+                "<br><font class='fontSize-s' color='#8a8a8a'>"
+                + $"{PracticeLineupUtility.TrackedHtml("write-up on the web")}</font>";
+        }
 
         string? step = Steps(onSpot, onAngle);
 
-        return step == null ? name : $"{name}<br>{step}";
-    }
-
-    // Centre HTML is markup and a lineup name is whatever somebody typed.
-    private static string Escape(string text)
-    {
-        return text.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
+        return step == null ? how : $"{how}<br>{step}";
     }
 
     private static string? Steps(bool onSpot, bool onAngle)
