@@ -1342,11 +1342,6 @@ public class PracticeReplay
         // drawn once by ShowStance -- it belongs to the ground, not the throw.
         Chevron(stance, lineup.release.yaw, 15f, Amber, MarkerWidth);
 
-        // The flight is a plan, so it is dashed, and it only appears for the
-        // throw you are actually on -- every lineup drawing its own line is
-        // what made a spot with three throws unreadable.
-        Dashed(new Vec3(stance.x, stance.y, stance.z + 40f), landing, color, 0.3f, 7);
-
         Diamond(landing, 30f, color, MarkerWidth);
         Label(
             new Vec3(landing.x, landing.y, landing.z + 16f),
