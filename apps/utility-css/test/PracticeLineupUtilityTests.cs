@@ -264,3 +264,38 @@ public class AimMissTests
         }
     }
 }
+
+public class StanceMissTests
+{
+    [Fact]
+    public void StandingOnTheSpotIsFullyOn()
+    {
+        Assert.Equal(0f, PracticeLineupUtility.StanceMiss(0f));
+        Assert.Equal(0f, PracticeLineupUtility.StanceMiss(8f));
+    }
+
+    [Fact]
+    public void DriftingOffRampsUp()
+    {
+        float near = PracticeLineupUtility.StanceMiss(12f);
+        float far = PracticeLineupUtility.StanceMiss(30f);
+
+        Assert.True(near > 0f);
+        Assert.True(far > near);
+        Assert.True(far < 1f);
+    }
+
+    [Fact]
+    public void WellOffTheSpotIsFullyRed()
+    {
+        Assert.Equal(1f, PracticeLineupUtility.StanceMiss(48f));
+        Assert.Equal(1f, PracticeLineupUtility.StanceMiss(500f));
+    }
+
+    [Fact]
+    public void StanceToleranceIsTighterThanTheSpotItself()
+    {
+        // SpotRadius asks "is this the same place"; this asks "are you on it".
+        Assert.True(PracticeLineupUtility.StanceToleranceUnits < 40f);
+    }
+}

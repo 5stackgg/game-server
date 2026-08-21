@@ -756,6 +756,11 @@ public class PracticeSolver
 
     private void Block(uint index, bool hidden)
     {
+        if (!PracticeReplay.TransmitBlocking)
+        {
+            return;
+        }
+
         foreach (IPlayer viewer in _core.PlayerManager.GetAllPlayers())
         {
             if (viewer != null && viewer.IsValid)
