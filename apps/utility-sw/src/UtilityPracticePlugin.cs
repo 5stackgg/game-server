@@ -616,9 +616,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     // Clearing is a WRITE with the shortest possible life, not a write with the
     // panel's usual hold: sending blank content on the sixty-second hold left
-    // an empty panel sitting on screen for a minute. The card blanks to nothing
-    // at all; the steps line blanks to a space, because an empty centre message
-    // draws a stray glyph instead of drawing nothing.
+    // an empty panel sitting on screen for a minute.
     private const int PanelClearMilliseconds = 1;
 
     private static void Clear(IPlayer player, PanelKind kind)
@@ -626,11 +624,15 @@ public partial class UtilityPracticePlugin : BasePlugin
         if (kind == PanelKind.Card)
         {
             player.SendCenterHTML("", PanelClearMilliseconds);
+
+            return;
         }
-        else
-        {
-            player.SendCenter(" ");
-        }
+
+        // The steps line is NOT written blank. SendCenter takes no duration, so
+        // a blank write just starts another full-length message that happens to
+        // have nothing in it -- which is slower to disappear than the real line
+        // it replaced. Writing nothing lets the last line lapse on the game's
+        // own schedule instead.
     }
 
     private (LineupRecord? lineup, bool onSpot, bool onAngle) Focused(
