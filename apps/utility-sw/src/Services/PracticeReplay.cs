@@ -15,7 +15,6 @@ namespace UtilityPractice;
 // grenade took so they can see the throw before they make it.
 public class PracticeReplay
 {
-    private const float GhostSeconds = 8f;
     private const float GhostWidth = 1.6f;
 
     // A simplified line is a few dozen points; a long one is strided rather
@@ -78,12 +77,26 @@ public class PracticeReplay
     // catch it -- the crosshair drew wherever somebody was standing and only
     // corrected on the next redraw. Skipping pawns in the filter kills the
     // whole class instead of one case of it.
-    private static TraceParams SkipPlayers()
+    // Bodies wander through rays, and every marker this plugin draws sits
+    // exactly where its rays go -- the floating grenade model lives ~16u above
+    // the stance eye, dead in the path of any steep upward throw, which is
+    // where "the crosshair is suddenly low and close" came from. None of these
+    // is ever the wall being aimed at.
+    private static readonly HashSet<string> TraceInvisible = new()
+    {
+        "player",
+        "prop_physics_override",
+        "env_beam",
+        "point_worldtext",
+    };
+
+    private static TraceParams SkipMarkers()
     {
         var parameters = new TraceParams();
 
         parameters.IterateEntities = true;
-        parameters.ShouldHitEntity = entity => entity.DesignerName != "player";
+        parameters.ShouldHitEntity = entity =>
+            !TraceInvisible.Contains(entity.DesignerName ?? "");
 
         return parameters;
     }
@@ -418,7 +431,10 @@ public class PracticeReplay
             {
                 OwnerSteamId = player.SteamID,
                 Kind = GhostKind.Line,
-                ExpiresAt = DateTime.UtcNow.AddSeconds(GhostSeconds),
+                // Held, not timed out: "the line where the nade goes" vanishing
+                // after a few seconds read as a bug, not a preview. The next
+                // .load or .clear replaces it.
+                ExpiresAt = DateTime.MaxValue,
                 Beams = beams,
             }
         );
@@ -1248,10 +1264,54 @@ public class PracticeReplay
     // Everything about the PLACE rather than any throw off it. Drawn once per
     // selection: calling this per lineup stacked identical gates on each other
     // and, worse, piled the labels into an unreadable smear.
+    // Feet are aimed the same way a crosshair is, so the spot gets the same
+    // instrument: a circle flat on the floor with four arms stopping short of
+    // the middle -- the gap IS where the feet go -- the whole thing tinted
+    // green/red by how close the player is standing. This replaces a bracket
+    // gate and a vertical pillar that said "here" from afar but nothing about
+    // how close you were once you arrived.
+    private void GroundReticle(Vec3 at, Color color)
+    {
+        float z = at.z + 1.5f;
+
+        for (int index = 0; index < StanceRingSegments; index++)
+        {
+            double a = index * 2 * Math.PI / StanceRingSegments;
+            double b = (index + 1) * 2 * Math.PI / StanceRingSegments;
+
+            AddMarkerBeam(
+                new Vec3(
+                    at.x + (float)(Math.Cos(a) * StanceRingRadius),
+                    at.y + (float)(Math.Sin(a) * StanceRingRadius),
+                    z
+                ),
+                new Vec3(
+                    at.x + (float)(Math.Cos(b) * StanceRingRadius),
+                    at.y + (float)(Math.Sin(b) * StanceRingRadius),
+                    z
+                ),
+                color,
+                StanceWidth
+            );
+        }
+
+        float arm = StanceRingRadius * 0.75f;
+        float gap = StanceRingRadius * 0.25f;
+
+        foreach ((float x, float y) in new[] { (1f, 0f), (-1f, 0f), (0f, 1f), (0f, -1f) })
+        {
+            AddMarkerBeam(
+                new Vec3(at.x + (x * gap), at.y + (y * gap), z),
+                new Vec3(at.x + (x * arm), at.y + (y * arm), z),
+                color,
+                StanceWidth
+            );
+        }
+    }
+
     private void ShowStance(Vec3 stance, int throws)
     {
-        Gate(stance, 0f, StanceGateHalf, ColorForBucket(MissBuckets - 1), StanceWidth);
-        Beacon(stance, ColorForBucket(MissBuckets - 1));
+        GroundReticle(stance, ColorForBucket(MissBuckets - 1));
 
         // Ties the grenade floating overhead to the ground it belongs to, so a
         // spot with a model reads as one object rather than two.
@@ -1341,7 +1401,7 @@ public class PracticeReplay
 
         try
         {
-            var trace = _core.Trace.TraceShapeLine(from, to, SkipPlayers());
+            var trace = _core.Trace.TraceShapeLine(from, to, SkipMarkers());
 
             hit = trace.DidHit
                 ? new Vec3(trace.EndPos.X, trace.EndPos.Y, trace.EndPos.Z)
@@ -1555,7 +1615,7 @@ public class PracticeReplay
                 position.z - GroundSnapRange
             );
 
-            var trace = _core.Trace.TraceShapeLine(from, to, SkipPlayers());
+            var trace = _core.Trace.TraceShapeLine(from, to, SkipMarkers());
 
             if (!trace.DidHit)
             {
@@ -1599,11 +1659,11 @@ public class PracticeReplay
     private static readonly Color Amber = new Color(249, 158, 47, 255);
     private static readonly Color AmberDim = new Color(203, 117, 11, 255);
 
-    // The gate has to read as a place to stand from across the room, not only
-    // from on top of it.
-    private const float StanceGateHalf = 30f;
     private const float StanceWidth = 1.6f;
-    private const float BeaconHeight = 96f;
+
+    // A circle a player fits inside, with the crosshair gap at its centre.
+    private const float StanceRingRadius = 22f;
+    private const int StanceRingSegments = 14;
 
     // Legible without being architecture. These labels sit on the spot they
     // name, at arm's length, not across the map.
@@ -1629,20 +1689,6 @@ public class PracticeReplay
             at.x + (forward.x * along) + (right.x * across),
             at.y + (forward.y * along) + (right.y * across),
             at.z
-        );
-    }
-
-    // A pillar out of the middle of the gate. The gate is flat on the floor, so
-    // at any distance it is edge-on and nearly invisible; this is the part you
-    // spot first, and it carries the same colour, so "am I on the spot" is
-    // answerable without looking down.
-    private void Beacon(Vec3 at, Color color)
-    {
-        AddMarkerBeam(
-            new Vec3(at.x, at.y, at.z + 2f),
-            new Vec3(at.x, at.y, at.z + BeaconHeight),
-            color,
-            StanceWidth
         );
     }
 
@@ -1672,36 +1718,6 @@ public class PracticeReplay
         AddMarkerBeam(east, south, color, width);
         AddMarkerBeam(south, west, color, width);
         AddMarkerBeam(west, north, color, width);
-    }
-
-    // Corner brackets on a square turned to face the throw, with the two
-    // corners on the throwing side cut back so it reads as a gate you step
-    // into and shoot out of, rather than a box you are stood in.
-    private void Gate(Vec3 at, float yaw, float half, Color color, float width)
-    {
-        (Vec3 forward, Vec3 right) = Bearing(yaw);
-
-        foreach (int alongSign in new[] { 1, -1 })
-        {
-            foreach (int acrossSign in new[] { 1, -1 })
-            {
-                Vec3 corner = Offset(at, forward, half * alongSign, right, half * acrossSign);
-                float reach = half * (alongSign > 0 ? 0.28f : 0.46f);
-
-                AddMarkerBeam(
-                    corner,
-                    Offset(corner, forward, -reach * alongSign, right, 0f),
-                    color,
-                    width
-                );
-                AddMarkerBeam(
-                    corner,
-                    Offset(corner, forward, 0f, right, -reach * acrossSign),
-                    color,
-                    width
-                );
-            }
-        }
     }
 
     // A flight is a plan, not an object, so it is drawn as one.
