@@ -170,6 +170,15 @@ public partial class UtilityPracticePlugin : BasePlugin
         // for the map here is what stopped the plugin loading at all -- and the
         // map arrives moments later with OnMapLoad, which does both of these.
         // A hot reload has already missed that event, so this is its only chance.
+        // Whatever the last instance drew is still in the world and nothing in
+        // this one has a handle to it.
+        int swept = _replay.SweepMarkers();
+
+        if (swept > 0)
+        {
+            _logger.LogInformation("swept {swept} marker(s) left by a previous load", swept);
+        }
+
         if (hotReload)
         {
             _library.SetMap(Core.Engine.GlobalVars.MapName.ToString());
@@ -187,6 +196,11 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     public override void Unload()
     {
+        // Drawn entities are not the plugin's to leave behind: without this a
+        // hot reload orphans every beam, label and model in the world, with no
+        // instance left holding a reference to any of them.
+        _replay.SweepMarkers();
+
         _session.Refreshed -= OnSessionRefreshed;
         _recorder.Thrown -= _system.OnThrown;
         _recorder.Finalized -= _score.OnFinalized;
@@ -815,11 +829,10 @@ public partial class UtilityPracticePlugin : BasePlugin
         // does not survive the mesh being replaced.
         _solver.Reset();
 
-        // Beams and world text do not survive a map change as anything useful:
-        // the handles go stale while the tracked lists still hold them, so
-        // nothing ever clears them and the next load draws on top of a list
-        // that can never be emptied.
-        _replay.ForgetMarkers();
+        // Anything that did survive the map change is despawned outright, and
+        // the handles are dropped either way -- a stale handle can be recycled
+        // into a NEW entity, which makes despawning it later actively harmful.
+        _replay.SweepMarkers();
 
         _library.SetMap(mapName);
 

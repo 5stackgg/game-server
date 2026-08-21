@@ -255,7 +255,14 @@ public partial class UtilityPracticePlugin
         state.Bloom = false;
 
         _replay.ClearGhosts(player.SteamID);
-        _replay.ClearMarkers();
+
+        // Swept rather than cleared: ClearMarkers can only despawn what this
+        // instance still has a handle to, and anything a previous load left
+        // behind is exactly what makes .clear look like it did nothing.
+        // _standingIn is deliberately NOT reset -- the spot the player is
+        // stood on stays cleared until they step off it and back on, instead
+        // of redrawing itself a second later.
+        _replay.SweepMarkers();
 
         Reply(context, $" {ChatColors.Green}cleared");
     }

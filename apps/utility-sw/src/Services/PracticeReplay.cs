@@ -1695,6 +1695,66 @@ public class PracticeReplay
     private const int LabelFontSize = 34;
     private const float LabelUnitsPerPx = 0.06f;
 
+    // Stamped on every entity this plugin spawns. Entities outlive the plugin
+    // instance that made them: a hot reload drops all our references while the
+    // beams stay in the world, so the ONLY way a fresh instance can find its
+    // predecessor's litter is a mark it can read back off the world itself.
+    private const string MarkerTag = "5stack_utility_marker";
+
+    // The classes we spawn. Maps author their own env_beams and props, which is
+    // exactly why the sweep matches on the tag as well as the class.
+    private static readonly string[] MarkerClasses =
+    {
+        "env_beam",
+        "point_worldtext",
+        "prop_physics_override",
+    };
+
+    private static CEntityKeyValues Tagged()
+    {
+        var keys = new CEntityKeyValues();
+
+        keys.SetString("targetname", MarkerTag);
+
+        return keys;
+    }
+
+    // Despawns every marker in the world, ours or a previous instance's, then
+    // forgets the handles. Safe to call when there is nothing to find.
+    public int SweepMarkers()
+    {
+        int swept = 0;
+
+        foreach (string designer in MarkerClasses)
+        {
+            try
+            {
+                foreach (
+                    CBaseEntity entity in _core.EntitySystem.GetAllEntitiesByDesignerName<CBaseEntity>(
+                        designer
+                    )
+                )
+                {
+                    if (!entity.IsValid || entity.Entity?.Name != MarkerTag)
+                    {
+                        continue;
+                    }
+
+                    entity.Despawn();
+                    swept += 1;
+                }
+            }
+            catch (Exception error)
+            {
+                _logger.LogWarning(error, "unable to sweep {designer} markers", designer);
+            }
+        }
+
+        ForgetMarkers();
+
+        return swept;
+    }
+
     // FSOLID_NOT_SOLID.
     private const byte NotSolid = 4;
 
@@ -1800,6 +1860,7 @@ public class PracticeReplay
             var keys = new CEntityKeyValues();
             var origin = new Vector(at.x, at.y, at.z + UtilityModelHeight);
 
+            keys.SetString("targetname", MarkerTag);
             keys.SetString("model", model);
             keys.SetString("solid", "0");
             keys.SetString(
@@ -1948,7 +2009,7 @@ public class PracticeReplay
                 new Vector(0, 0, 0)
             );
 
-            label.DispatchSpawn();
+            label.DispatchSpawn(Tagged());
 
             if (_drawingInto != null)
             {
@@ -2096,7 +2157,7 @@ public class PracticeReplay
 
             beam.EndPos = new Vector(end.x, end.y, end.z);
 
-            beam.DispatchSpawn();
+            beam.DispatchSpawn(Tagged());
 
             return beam;
         }
