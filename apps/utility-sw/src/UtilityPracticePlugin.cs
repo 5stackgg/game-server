@@ -565,13 +565,15 @@ public partial class UtilityPracticePlugin : BasePlugin
     // written only when what it says actually changes.
     private readonly Dictionary<(ulong, PanelKind), string> _showing = new();
 
-    // Long enough that a keepalive never races the expiry, short enough that a
-    // player who disconnects mid-throw does not leave a panel hanging.
-    private const int PanelHoldMilliseconds = 8000;
+    // EVERY write restarts the panel's fade-in, so a keepalive is a visible
+    // pulse no matter how rarely it runs -- the only cure is to make it rare.
+    // A minute of hold, refreshed at half that, turns a flash every two seconds
+    // into one every thirty, and the panel is explicitly cleared the moment it
+    // stops being true rather than relying on this to expire.
+    private const int PanelHoldMilliseconds = 60000;
 
-    // A keepalive well inside the hold, so the panel is continuous without
-    // being rewritten on every pass.
-    private const int PanelKeepAliveTicks = 128;
+    // Derived so the two can never drift into a gap: half the hold, in ticks.
+    private const int PanelKeepAliveTicks = (PanelHoldMilliseconds / 1000 / 2) * 64;
 
     private void Send(IPlayer player, PanelKind kind, string? content)
     {
@@ -585,7 +587,10 @@ public partial class UtilityPracticePlugin : BasePlugin
             if (had)
             {
                 _showing.Remove(key);
-                Write(player, kind, "");
+
+                // A space, not an empty string: an empty centre message draws a
+                // stray glyph rather than nothing at all.
+                Write(player, kind, " ");
             }
 
             return;
