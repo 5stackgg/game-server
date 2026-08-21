@@ -104,6 +104,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _recorder.Finalized += _score.OnFinalized;
         _recorder.Thrown += _drill.OnThrown;
         _score.Scored += _drill.OnScored;
+        _score.Scored += OnScoredHint;
 
         WirePlaybook();
         WireDrill();
@@ -208,6 +209,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _recorder.Finalized -= _score.OnFinalized;
         _recorder.Thrown -= _drill.OnThrown;
         _score.Scored -= _drill.OnScored;
+        _score.Scored -= OnScoredHint;
 
         if (_tickHandler != null)
         {
@@ -547,52 +549,59 @@ public partial class UtilityPracticePlugin : BasePlugin
     // and how do I throw it", the steps line (centre text) answers "what have
     // I not done yet". One channel had to keep swapping between the two, so
     // reading the instructions meant losing the guidance and back again.
-    // Told once, the first time a player has a lineup in front of them.
-    //
     // Chat rather than a HUD panel, precisely BECAUSE chat stacks: a line that
-    // scrolls away with the rest of the log is the right home for something
-    // said once and never repeated. On a panel it would either sit there
-    // forever or fight the three that are already earning their place. And it
-    // is guarded per player rather than shown on a timer, because the second
-    // time you read the same tip it is noise.
-    private readonly HashSet<ulong> _hinted = new();
+    // scrolls away with the rest of the log is the right home for a tip. On a
+    // panel it would either sit there forever or fight the three that are
+    // already earning their place.
+    private readonly Dictionary<ulong, int> _hintedAt = new();
 
-    private void Hint(IPlayer player)
+    // Long enough that nobody reads it twice in a practice run they are
+    // concentrating on.
+    private const int HintCooldownTicks = 180 * 64;
+
+    // A landed throw is the moment .next actually means something, so the tip
+    // gets a much shorter gap there -- but not none, or a player working one
+    // spot hard would be told the same thing after every smoke.
+    private const int HintAfterHitTicks = 30 * 64;
+
+    private void Hint(IPlayer player, int cooldown)
     {
-        if (!_hinted.Add(player.SteamID))
+        if (
+            _hintedAt.TryGetValue(player.SteamID, out int last)
+            && _aimTick - last < cooldown
+        )
         {
             return;
         }
 
+        _hintedAt[player.SteamID] = _aimTick;
+
         Tell(
             player.SteamID,
             $" {ChatColors.Grey}tip: {ChatColors.Default}.next{ChatColors.Grey} and "
-                + $"{ChatColors.Default}.prev{ChatColors.Grey} walk through the lineups, "
-                + $"{ChatColors.Default}.clear{ChatColors.Grey} puts them away"
+                + $"{ChatColors.Default}.prev{ChatColors.Grey} walk through the lineups"
         );
     }
 
-    // While .alerts is showing samples, the panels would overwrite the centre
-    // ones within a second and the demo would be pointless.
-    private readonly Dictionary<ulong, int> _demoUntil = new();
-
-    public void SuppressPanels(ulong steamId, int ticks)
+    // Landing one is the natural point to move on, so that is where the nudge
+    // to do so belongs.
+    private void OnScoredHint(ulong steamId, string lineupId, UtilityPracticeResult? result)
     {
-        _demoUntil[steamId] = _aimTick + ticks;
+        if (result?.success != true)
+        {
+            return;
+        }
+
+        IPlayer? player = _system.Find(steamId);
+
+        if (player != null && player.IsValid)
+        {
+            Hint(player, HintAfterHitTicks);
+        }
     }
 
     private void Panels(IPlayer player, CCSPlayerPawn pawn)
     {
-        if (_demoUntil.TryGetValue(player.SteamID, out int until))
-        {
-            if (_aimTick < until)
-            {
-                return;
-            }
-
-            _demoUntil.Remove(player.SteamID);
-        }
-
 
         (LineupRecord? lineup, bool onSpot, bool onAngle) = Focused(player, pawn);
 
@@ -605,7 +614,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         );
         if (lineup != null)
         {
-            Hint(player);
+            Hint(player, HintCooldownTicks);
         }
 
         Send(player, PanelKind.Card, lineup == null ? null : Card(lineup));
@@ -1018,8 +1027,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         // hand to something else.
         _replay.ClearSelectionFor(steamId);
         _standingIn.Remove(steamId);
-        _hinted.Remove(steamId);
-        _demoUntil.Remove(steamId);
+        _hintedAt.Remove(steamId);
         _showing.Remove((steamId, PanelKind.Title));
         _showing.Remove((steamId, PanelKind.Card));
         _showing.Remove((steamId, PanelKind.Steps));
