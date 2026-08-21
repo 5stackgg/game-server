@@ -180,6 +180,10 @@ public class PracticeReplay
         public int Bucket = -1;
     }
 
+    // The lined-up crosshair: barely-there green. Beams render bright against
+    // the world, so a dark colour is how a beam whispers.
+    private static readonly Color AimSettled = new Color(18, 52, 26, 255);
+
     // What .tintest settled: a "Color" INPUT reaches clients, where assigning
     // Render on a live beam moves the value on the server and nowhere else.
     // This is why colour changes are one input per beam instead of the
@@ -1508,7 +1512,15 @@ public class PracticeReplay
             }
 
             aim.Bucket = bucket;
-            Recolour(aim.Beams, ColorForBucket(bucket));
+
+            // On the angle the crosshair has done its job, and full-strength
+            // beams would now be sitting exactly where the player needs to see
+            // the world. Faded to a whisper rather than removed: it stays a
+            // reference point if they drift, without costing them the view.
+            Recolour(
+                aim.Beams,
+                bucket == 0 ? AimSettled : ColorForBucket(bucket)
+            );
         }
     }
 
