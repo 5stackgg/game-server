@@ -746,28 +746,10 @@ public class PracticeSolver
 
     private void Hide(uint index)
     {
-        Block(index, true);
     }
 
     private void Unhide(uint index)
     {
-        Block(index, false);
-    }
-
-    private void Block(uint index, bool hidden)
-    {
-        if (!PracticeReplay.TransmitBlocking)
-        {
-            return;
-        }
-
-        foreach (IPlayer viewer in _core.PlayerManager.GetAllPlayers())
-        {
-            if (viewer != null && viewer.IsValid)
-            {
-                viewer.ShouldBlockTransmitEntity((int)index, hidden);
-            }
-        }
     }
 
     private CBaseCSGrenadeProjectile? TryProjectileAt(uint index)

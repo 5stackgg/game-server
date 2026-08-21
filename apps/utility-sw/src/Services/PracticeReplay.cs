@@ -223,7 +223,6 @@ public class PracticeReplay
     // collision clearing that follows them.
     public const bool DrawModels = true;
 
-
     // Ghost trails and the measured bloom outline.
     public const bool DrawGhosts = true;
 
@@ -231,16 +230,12 @@ public class PracticeReplay
     // EmitMolotov, plus the bloom's live smoke.
     public const bool EmitGrenades = true;
 
-    // ShouldBlockTransmitEntity. SwiftlyS2 1.4.4 has a known CheckTransmit
-    // crash upstream, and this is the only plugin in the repo that calls it.
-    public const bool TransmitBlocking = false;
-
     // So the server log says exactly which of these is live. Without it there
     // is no way to tell a switch that is off from a build that never deployed.
     public static string SwitchState()
     {
         return $"markers={DrawMarkers} models={DrawModels} "
-            + $"ghosts={DrawGhosts} grenades={EmitGrenades} transmit={TransmitBlocking}";
+            + $"ghosts={DrawGhosts} grenades={EmitGrenades}";
     }
 
     public void Load(IPlayer player, LineupRecord lineup)
@@ -376,7 +371,6 @@ public class PracticeReplay
             }
         );
 
-        ApplyVisibility();
     }
 
     // The measured bloom, outlined where it would actually sit. Answers how
@@ -443,8 +437,6 @@ public class PracticeReplay
             }
         );
 
-        ApplyVisibility();
-
         return beams.Count;
     }
 
@@ -495,7 +487,6 @@ public class PracticeReplay
             _recorder.Forget(smoke.Index);
 
             _bloomSmoke[player.SteamID] = smoke;
-            ApplyVisibility();
 
             return true;
         }
@@ -519,7 +510,6 @@ public class PracticeReplay
 
         if (smoke.IsValid)
         {
-            Unblock(smoke.Index);
             smoke.Despawn();
         }
     }
@@ -751,60 +741,6 @@ public class PracticeReplay
 
             Kill(_ghosts[index]);
             _ghosts.RemoveAt(index);
-        }
-    }
-
-    // Swiftly's transmit blocking is a standing per-player list rather than a
-    // per-frame callback, so it is recomputed whenever the set of beams or of
-    // solo players changes.
-    public void ApplyVisibility()
-    {
-        if (!TransmitBlocking)
-        {
-            return;
-        }
-
-        foreach (IPlayer viewer in _core.PlayerManager.GetAllPlayers())
-        {
-            if (viewer == null || !viewer.IsValid || viewer.IsFakeClient)
-            {
-                continue;
-            }
-
-            bool viewerIsSolo = IsSolo(viewer.SteamID);
-            bool viewerWantsGhosts = WantsGhosts(viewer.SteamID);
-
-            foreach (Ghost ghost in _ghosts)
-            {
-                bool hidden =
-                    !viewerWantsGhosts
-                    || (
-                        ghost.OwnerSteamId != viewer.SteamID
-                        && (viewerIsSolo || IsSolo(ghost.OwnerSteamId))
-                    );
-
-                foreach (CEnvBeam beam in ghost.Beams)
-                {
-                    if (beam.IsValid)
-                    {
-                        viewer.ShouldBlockTransmitEntity((int)beam.Index, hidden);
-                    }
-                }
-            }
-
-            foreach ((ulong owner, CSmokeGrenadeProjectile smoke) in _bloomSmoke)
-            {
-                if (!smoke.IsValid)
-                {
-                    continue;
-                }
-
-                viewer.ShouldBlockTransmitEntity(
-                    (int)smoke.Index,
-                    !viewerWantsGhosts
-                        || (owner != viewer.SteamID && (viewerIsSolo || IsSolo(owner)))
-                );
-            }
         }
     }
 
@@ -1163,45 +1099,6 @@ public class PracticeReplay
             _drawingInto = null;
         }
 
-        ApplySelectionVisibility();
-    }
-
-    // A selection belongs to one viewer, so it is blocked for everybody else.
-    private void ApplySelectionVisibility()
-    {
-        if (!TransmitBlocking)
-        {
-            return;
-        }
-
-        foreach (IPlayer viewer in _core.PlayerManager.GetAllPlayers())
-        {
-            if (viewer == null || !viewer.IsValid || viewer.IsFakeClient)
-            {
-                continue;
-            }
-
-            foreach ((ulong owner, Selection selection) in _selections)
-            {
-                bool hidden = owner != viewer.SteamID;
-
-                foreach (CEnvBeam beam in selection.Beams)
-                {
-                    if (beam.IsValid)
-                    {
-                        viewer.ShouldBlockTransmitEntity((int)beam.Index, hidden);
-                    }
-                }
-
-                foreach (CPointWorldText text in selection.Texts)
-                {
-                    if (text.IsValid)
-                    {
-                        viewer.ShouldBlockTransmitEntity((int)text.Index, hidden);
-                    }
-                }
-            }
-        }
     }
 
     // The gate answers the other half of the question. A player who is off the
@@ -1241,32 +1138,6 @@ public class PracticeReplay
         if (!_selections.TryGetValue(steamId, out Selection? selection))
         {
             return;
-        }
-
-        // Entity indices are reused, so a standing block has to be lifted
-        // BEFORE the entity goes away or it lands on whatever takes its slot.
-        foreach (IPlayer viewer in _core.PlayerManager.GetAllPlayers())
-        {
-            if (viewer == null || !viewer.IsValid || viewer.IsFakeClient)
-            {
-                continue;
-            }
-
-            foreach (CEnvBeam beam in selection.Beams)
-            {
-                if (beam.IsValid)
-                {
-                    viewer.ShouldBlockTransmitEntity((int)beam.Index, false);
-                }
-            }
-
-            foreach (CPointWorldText text in selection.Texts)
-            {
-                if (text.IsValid)
-                {
-                    viewer.ShouldBlockTransmitEntity((int)text.Index, false);
-                }
-            }
         }
 
         foreach (CEnvBeam beam in selection.Beams)
@@ -1327,8 +1198,8 @@ public class PracticeReplay
         Label(
             new Vec3(stance.x, stance.y, stance.z + 14f),
             throws > 1
-                ? $"{Tracked("stand")}\n{throws} throws"
-                : Tracked("stand"),
+                ? $"{Tracked("stand here")}\n{throws} throws from this spot"
+                : Tracked("stand here"),
             Amber
         );
     }
@@ -1476,8 +1347,7 @@ public class PracticeReplay
         aim.Label = Label(
             new Vec3(center.x, center.y, center.z + size + 8f),
             label,
-            MissColor(1f),
-            eye
+            MissColor(1f)
         );
 
         _drawingInto?.Aims.Add(aim);
@@ -1684,6 +1554,11 @@ public class PracticeReplay
     // being type-coloured is what made a busy map unreadable.
     private static readonly Color Amber = new Color(249, 158, 47, 255);
     private static readonly Color AmberDim = new Color(203, 117, 11, 255);
+
+    // Legible without being architecture. These labels sit on the spot they
+    // name, at arm's length, not across the map.
+    private const int LabelFontSize = 34;
+    private const float LabelUnitsPerPx = 0.06f;
 
     // FSOLID_NOT_SOLID.
     private const byte NotSolid = 4;
@@ -1915,7 +1790,7 @@ public class PracticeReplay
     // facing: where the text should read from, normally the spot the player is
     // standing on. Passing null keeps the auto-reorient, which is right for a
     // label lying on the floor and wrong for one on a wall.
-    private CPointWorldText? Label(Vec3 at, string text, Color color, Vec3? facing = null)
+    private CPointWorldText? Label(Vec3 at, string text, Color color)
     {
         if (!Sane(at))
         {
@@ -1936,40 +1811,30 @@ public class PracticeReplay
 
             label.MessageText = text;
             label.Color = color;
-            label.FontSize = 60;
             label.FontName = "Arial Black";
             label.Fullbright = true;
-            label.WorldUnitsPerPx = 0.15f;
             label.Enabled = true;
             label.JustifyHorizontal = PointWorldTextJustifyHorizontal_t
                 .POINT_WORLD_TEXT_JUSTIFY_HORIZONTAL_CENTER;
             label.JustifyVertical = PointWorldTextJustifyVertical_t
                 .POINT_WORLD_TEXT_JUSTIFY_VERTICAL_CENTER;
+
+            // Every label spins to face whoever is reading it, and is spawned
+            // with no angle of its own. Aiming one by hand is what produced
+            // text lying on its side and mirrored: point_worldtext draws in its
+            // own flat plane, so any hand-set angle is a plane you end up
+            // reading edge-on or from behind. There is no orientation worth
+            // computing here -- the engine already knows where the reader is.
+            label.ReorientMode = PointWorldTextReorientMode_t
+                .POINT_WORLD_TEXT_REORIENT_AROUND_UP;
+
+            // Small, because these sit ON the thing they name rather than
+            // across the map from it. 60px at 0.15 units/px was roughly two
+            // metres of lettering standing in a doorway.
+            label.FontSize = LabelFontSize;
+            label.WorldUnitsPerPx = LabelUnitsPerPx;
+
             var angle = new QAngle(0, 0, 0);
-
-            if (facing == null)
-            {
-                // Spins to face whoever is reading it. Fine on the floor.
-                label.ReorientMode = PointWorldTextReorientMode_t
-                    .POINT_WORLD_TEXT_REORIENT_AROUND_UP;
-            }
-            else
-            {
-                // Aimed by hand instead. Auto-reorient was leaving wall labels
-                // rolled onto their side -- text running bottom to top -- so
-                // the angle is set explicitly and the roll pinned flat.
-                float dx = facing.Value.x - at.x;
-                float dy = facing.Value.y - at.y;
-
-                float yaw = (float)(Math.Atan2(dy, dx) * 180.0 / Math.PI);
-
-                // point_worldtext reads along its own +X, so it has to be
-                // turned to face the reader rather than away from them.
-                angle = new QAngle(0, yaw + 180f, 0);
-
-                label.ReorientMode = PointWorldTextReorientMode_t
-                    .POINT_WORLD_TEXT_REORIENT_NONE;
-            }
 
             label.Teleport(
                 new Vector(at.x, at.y, at.z),
@@ -2144,26 +2009,7 @@ public class PracticeReplay
                 continue;
             }
 
-            Unblock(beam.Index);
             beam.Despawn();
-        }
-    }
-
-    // Entity indices are reused, so a standing block has to be lifted before
-    // the entity goes away or it will hide whatever lands on that index next.
-    private void Unblock(uint index)
-    {
-        if (!TransmitBlocking)
-        {
-            return;
-        }
-
-        foreach (IPlayer viewer in _core.PlayerManager.GetAllPlayers())
-        {
-            if (viewer != null && viewer.IsValid)
-            {
-                viewer.ShouldBlockTransmitEntity((int)index, false);
-            }
         }
     }
 

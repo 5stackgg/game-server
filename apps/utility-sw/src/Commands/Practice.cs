@@ -701,8 +701,6 @@ public partial class UtilityPracticePlugin
         PracticeState state = _system.StateFor(player.SteamID);
         state.Solo = !state.Solo;
 
-        _replay.ApplyVisibility();
-
         Reply(
             context,
             state.Solo
@@ -740,8 +738,6 @@ public partial class UtilityPracticePlugin
         {
             _replay.ClearGhosts(player.SteamID);
         }
-
-        _replay.ApplyVisibility();
 
         Reply(context, $" {ChatColors.Green}ghost previews {Toggle(state.Ghosts)}");
     }
