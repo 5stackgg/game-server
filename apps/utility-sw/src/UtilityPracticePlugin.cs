@@ -9,6 +9,7 @@ using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Plugins;
 using static SwiftlyS2.Shared.Helper;
 using SwiftlyS2.Shared.Natives;
+using SwiftlyS2.Shared.ProtobufDefinitions;
 using SwiftlyS2.Shared.SchemaDefinitions;
 
 namespace UtilityPractice;
@@ -549,12 +550,14 @@ public partial class UtilityPracticePlugin : BasePlugin
     {
         (LineupRecord? lineup, bool onSpot, bool onAngle) = Focused(player, pawn);
 
+        Send(player, PanelKind.Title, lineup?.name);
         Send(player, PanelKind.Card, lineup == null ? null : Card(lineup));
         Send(player, PanelKind.Steps, lineup == null ? null : Steps(onSpot, onAngle));
     }
 
     private enum PanelKind
     {
+        Title,
         Card,
         Steps,
     }
@@ -607,6 +610,33 @@ public partial class UtilityPracticePlugin : BasePlugin
         Write(player, kind, content);
     }
 
+    // A positioned HUD message on its own channel -- a third element entirely,
+    // independent of the two text channels, so the name can sit above the
+    // throw details instead of sharing a line with them. Channel and position
+    // are ours to pick; nothing else in the plugin writes this channel.
+    private const int TitleChannel = 4;
+
+    private void WriteTitle(IPlayer player, string content)
+    {
+        try
+        {
+            using var message = Core.NetMessage.Create<CUserMessageHudMsg>();
+
+            message.Channel = TitleChannel;
+
+            // -1 centres an axis. Just above the middle, clear of the crosshair.
+            message.X = -1f;
+            message.Y = 0.34f;
+            message.Message = content;
+
+            message.SendToPlayer((int)player.Slot);
+        }
+        catch (Exception error)
+        {
+            _logger.LogWarning(error, "unable to write the lineup title");
+        }
+    }
+
     private static void Write(IPlayer player, PanelKind kind, string content)
     {
         // Steps take the animating HTML panel, the card takes the quiet one.
@@ -628,8 +658,16 @@ public partial class UtilityPracticePlugin : BasePlugin
     // an empty panel sitting on screen for a minute.
     private const int PanelClearMilliseconds = 1;
 
-    private static void Clear(IPlayer player, PanelKind kind)
+    private void Clear(IPlayer player, PanelKind kind)
     {
+        // An empty HUD message retires the channel outright.
+        if (kind == PanelKind.Title)
+        {
+            WriteTitle(player, "");
+
+            return;
+        }
+
         if (kind == PanelKind.Steps)
         {
             player.SendCenterHTML("", PanelClearMilliseconds);
@@ -706,13 +744,15 @@ public partial class UtilityPracticePlugin : BasePlugin
     // Plain text, because the card sits on the channel that does not animate.
     // No escaping needed here for the same reason -- a lineup name is user text
     // and this channel renders it literally, which is exactly what we want.
+    // Throw details only. The name lives in its own HUD channel now, so this
+    // stays purely "how do I throw it" and never reflows when the name changes.
     private static string Card(LineupRecord lineup)
     {
         string details = string.IsNullOrWhiteSpace(lineup.description)
             ? ""
             : $"\n{PracticeLineupUtility.Tracked("write-up on the web")}";
 
-        return $"{lineup.name}\n{PracticeReplay.ThrowHint(lineup)}{details}";
+        return $"{PracticeReplay.ThrowHint(lineup)}{details}";
     }
 
     // The one step that is not done yet, on the animating channel -- where a
@@ -926,6 +966,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         // hand to something else.
         _replay.ClearSelectionFor(steamId);
         _standingIn.Remove(steamId);
+        _showing.Remove((steamId, PanelKind.Title));
         _showing.Remove((steamId, PanelKind.Card));
         _showing.Remove((steamId, PanelKind.Steps));
     }
