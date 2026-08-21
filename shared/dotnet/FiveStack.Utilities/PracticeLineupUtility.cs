@@ -204,6 +204,21 @@ public static class PracticeLineupUtility
         };
     }
 
+    // Captions are set in mono uppercase on wide tracking, and neither text
+    // channel has letter-spacing, so the spacing goes into the string.
+    public static string Tracked(string text)
+    {
+        return string.Join(" ", text.ToUpperInvariant().ToCharArray());
+    }
+
+    // The same tracking, for the HTML panel. Markup collapses runs of
+    // whitespace, so the three spaces separating two words become one and the
+    // words run together -- letter spacing survives and word spacing does not.
+    public static string TrackedHtml(string text)
+    {
+        return Tracked(text).Replace(" ", "&nbsp;");
+    }
+
     // A lineup that never said how precise it is.
     public const float DefaultAimTolerance = 0.35f;
 

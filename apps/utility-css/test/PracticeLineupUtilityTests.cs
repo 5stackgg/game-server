@@ -373,3 +373,23 @@ public class TechniqueLabelTests
         Assert.Equal(expected, PracticeLineupUtility.StrengthLabel(strength));
     }
 }
+
+public class TrackedHtmlTests
+{
+    [Fact]
+    public void WordGapsSurviveMarkupCollapsing()
+    {
+        string html = PracticeLineupUtility.TrackedHtml("stand in");
+
+        // Every gap has to be non-breaking, or HTML folds the three spaces
+        // between two words down to one and the words run together.
+        Assert.DoesNotContain(" ", html);
+        Assert.Equal("S&nbsp;T&nbsp;A&nbsp;N&nbsp;D&nbsp;&nbsp;&nbsp;I&nbsp;N", html);
+    }
+
+    [Fact]
+    public void PlainTrackingIsUntouched()
+    {
+        Assert.Equal("S T A N D", PracticeLineupUtility.Tracked("stand"));
+    }
+}

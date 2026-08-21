@@ -710,7 +710,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     {
         string details = string.IsNullOrWhiteSpace(lineup.description)
             ? ""
-            : $"\n{PracticeReplay.Tracked("write-up on the web")}";
+            : $"\n{PracticeLineupUtility.Tracked("write-up on the web")}";
 
         return $"{lineup.name}\n{PracticeReplay.ThrowHint(lineup)}{details}";
     }
@@ -737,7 +737,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     private static string Instruction(string text, string color)
     {
         return $"<font class='fontSize-m' color='{color}'>"
-            + $"{PracticeReplay.Tracked(text)}</font>";
+            + $"{PracticeLineupUtility.TrackedHtml(text)}</font>";
     }
 
     // Shortest way round the circle, so 359 and 1 are two degrees apart.

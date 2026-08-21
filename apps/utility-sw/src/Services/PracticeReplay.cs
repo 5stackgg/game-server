@@ -1341,7 +1341,7 @@ public class PracticeReplay
         Diamond(landing, 30f, color, MarkerWidth);
         Label(
             new Vec3(landing.x, landing.y, landing.z + 16f),
-            Tracked(lineup.utility_type),
+            PracticeLineupUtility.Tracked(lineup.utility_type),
             color
         );
 
@@ -1793,13 +1793,6 @@ public class PracticeReplay
         AddMarkerBeam(east, south, color, width);
         AddMarkerBeam(south, west, color, width);
         AddMarkerBeam(west, north, color, width);
-    }
-
-    // The panel sets every caption in mono uppercase on wide tracking, and
-    // point_worldtext has no letter-spacing, so the spacing goes in the string.
-    public static string Tracked(string text)
-    {
-        return string.Join(" ", text.ToUpperInvariant().ToCharArray());
     }
 
     private void UtilityModel(string utilityType, Vec3 at)
