@@ -93,7 +93,6 @@ public class PracticeReplay
     // anything heavier.
     private const float MarkerWidth = 0.6f;
 
-
     // Roughly where the grenade sits in a player's hand, so it reads as "this
     // is what you throw from here" rather than as litter on the floor.
     // Side by side when one spot wants more than one kind of grenade.
@@ -1036,7 +1035,7 @@ public class PracticeReplay
 
             if (active.Count > 0)
             {
-                ShowStance(stance, active.Count);
+                ShowStance(Grounded(active.First().release.feet_position), active.Count);
             }
 
             foreach (LineupRecord lineup in active)
@@ -1059,7 +1058,10 @@ public class PracticeReplay
         _selections[owner.SteamID] = selection;
         _drawingInto = selection;
 
-        selection.At = stance;
+        // The gate marks the RECORDED spot, never where the player happens to
+        // be standing -- SpotWatch passes the player's own position, and a gate
+        // drawn under their feet can never tell them they are off it.
+        selection.At = Grounded(active.First().release.feet_position);
 
         try
         {
@@ -1067,7 +1069,7 @@ public class PracticeReplay
 
             try
             {
-                ShowStance(stance, active.Count);
+                ShowStance(selection.At, active.Count);
             }
             finally
             {
@@ -1327,20 +1329,6 @@ public class PracticeReplay
         try
         {
             var trace = _core.Trace.TraceShapeLine(from, to, null);
-
-            _logger.LogInformation(
-                "aim trace for {name}: hit={hit} at {x},{y},{z} ({dist} units out)",
-                lineup.name,
-                trace.DidHit,
-                trace.EndPos.X.ToString("0.#"),
-                trace.EndPos.Y.ToString("0.#"),
-                trace.EndPos.Z.ToString("0.#"),
-                new Vec3(
-                    trace.EndPos.X - eye.x,
-                    trace.EndPos.Y - eye.y,
-                    trace.EndPos.Z - eye.z
-                ).Length().ToString("0.#")
-            );
 
             hit = trace.DidHit
                 ? new Vec3(trace.EndPos.X, trace.EndPos.Y, trace.EndPos.Z)
@@ -1741,14 +1729,26 @@ public class PracticeReplay
 
                 var keys = new CEntityKeyValues();
 
-                keys.SetString("origin", "0 0 -16384");
+                // Inside the world. -16384 is the coordinate limit itself, and
+                // an entity spawned exactly on it trips engine bounds checks.
+                keys.SetString("origin", "0 0 -8192");
                 keys.SetString("solid", "0");
 
                 probe.DispatchSpawn(keys);
 
                 PracticeLineupUtility.LearnUtilityModel(pair.Key, probe.GetModel());
 
-                probe.Despawn();
+                // Next tick, not this one. A weapon entity is still finishing
+                // its own spawn when DispatchSpawn returns, and tearing it down
+                // underneath that is how you crash the server rather than
+                // borrow a model path from it.
+                _core.Scheduler.NextTick(() =>
+                {
+                    if (probe.IsValid)
+                    {
+                        probe.Despawn();
+                    }
+                });
             }
             catch (Exception error)
             {
@@ -1763,6 +1763,11 @@ public class PracticeReplay
 
     private void UtilityModel(string utilityType, Vec3 at)
     {
+        if (!Sane(at))
+        {
+            return;
+        }
+
         string? model = PracticeLineupUtility.ModelForUtilityType(utilityType);
 
         if (model == null)
@@ -1875,6 +1880,11 @@ public class PracticeReplay
     // label lying on the floor and wrong for one on a wall.
     private CPointWorldText? Label(Vec3 at, string text, Color color, Vec3? facing = null)
     {
+        if (!Sane(at))
+        {
+            return null;
+        }
+
         try
         {
             CPointWorldText label =
@@ -2032,8 +2042,31 @@ public class PracticeReplay
         _markerProps.Clear();
     }
 
+    // A NaN or an infinity reaching Teleport takes the whole server down inside
+    // native code, where the try/catch below cannot see it -- so coordinates are
+    // checked before the engine ever sees them, not after it faults.
+    private static bool Sane(Vec3 point)
+    {
+        return float.IsFinite(point.x) && float.IsFinite(point.y) && float.IsFinite(point.z);
+    }
+
     private CEnvBeam? CreateBeam(Vec3 start, Vec3 end, Color color, float width)
     {
+        if (!Sane(start) || !Sane(end))
+        {
+            _logger.LogWarning(
+                "refusing to draw a beam at {sx},{sy},{sz} -> {ex},{ey},{ez}",
+                start.x,
+                start.y,
+                start.z,
+                end.x,
+                end.y,
+                end.z
+            );
+
+            return null;
+        }
+
         try
         {
             CEnvBeam beam = _core.EntitySystem.CreateEntityByDesignerName<CEnvBeam>("env_beam");
