@@ -7,6 +7,7 @@ using SwiftlyS2.Shared.EntitySystem;
 using SwiftlyS2.Shared.Natives;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.SchemaDefinitions;
+using SwiftlyS2.Shared.Trace;
 
 namespace UtilityPractice;
 
@@ -71,9 +72,22 @@ public class PracticeReplay
     // aim ray actually lands.
     private const float AimTraceRange = 4096f;
 
-    // A standing hull is 32 wide and 72 tall, so anything past ~48 units along
-    // the aim is outside it whichever way the player is facing.
-    private const float AimTraceStartOffset = 48f;
+    // Players catch line traces, and both marker traces suffered for it: the
+    // aim trace was offset forward to clear the thrower's hull, which broke
+    // walls nearer than the offset and still let any OTHER body in the ray
+    // catch it -- the crosshair drew wherever somebody was standing and only
+    // corrected on the next redraw. Skipping pawns in the filter kills the
+    // whole class instead of one case of it.
+    private static TraceParams SkipPlayers()
+    {
+        var parameters = new TraceParams();
+
+        parameters.IterateEntities = true;
+        parameters.ShouldHitEntity = entity => entity.DesignerName != "player";
+
+        return parameters;
+    }
+
 
     // Only used when the ray leaves the map without hitting anything -- aiming
     // up over open ground has no surface to mark, and a ring hung out at the
@@ -142,17 +156,28 @@ public class PracticeReplay
     {
         public LineupRecord Lineup = null!;
         public readonly List<CEnvBeam> Beams = new();
-        public CPointWorldText? Label;
         public int Bucket = -1;
+    }
 
-        // Kept so the crosshair can be REBUILT in a new colour. A spawned
-        // env_beam does not reliably re-network m_clrRender, so assigning
-        // Render on a live beam moves it on the server and nowhere else --
-        // which is why lining up never turned anything green.
-        public Vec3 Center;
-        public Vec3 Dir;
-        public float Size;
-        public float Weight;
+    // What .tintest settled: a "Color" INPUT reaches clients, where assigning
+    // Render on a live beam moves the value on the server and nowhere else.
+    // This is why colour changes are one input per beam instead of the
+    // despawn-and-respawn machinery that used to live here.
+    private static void Recolour(List<CEnvBeam> beams, Color color)
+    {
+        foreach (CEnvBeam beam in beams)
+        {
+            if (beam.IsValid)
+            {
+                beam.AcceptInput<string>(
+                    "Color",
+                    $"{color.R} {color.G} {color.B}",
+                    null,
+                    null,
+                    0
+                );
+            }
+        }
     }
 
     // Coarse on purpose: this decides how often a crosshair is torn down and
@@ -1167,35 +1192,7 @@ public class PracticeReplay
         }
 
         selection.Bucket = bucket;
-
-        Color color = ColorForBucket(bucket);
-
-        foreach (CEnvBeam beam in selection.Stance)
-        {
-            if (beam.IsValid)
-            {
-                selection.Beams.Remove(beam);
-                beam.Despawn();
-            }
-        }
-
-        selection.Stance.Clear();
-
-        Selection? was = _drawingInto;
-
-        _drawingInto = selection;
-        _stanceInto = selection.Stance;
-
-        try
-        {
-            Gate(selection.At, 0f, StanceGateHalf, color, StanceWidth);
-            Beacon(selection.At, color);
-        }
-        finally
-        {
-            _stanceInto = null;
-            _drawingInto = was;
-        }
+        Recolour(selection.Stance, ColorForBucket(bucket));
     }
 
     public void ClearSelectionFor(ulong steamId)
@@ -1333,15 +1330,7 @@ public class PracticeReplay
             (float)(-Math.Sin(pitch))
         );
 
-        // Started clear of the player's own hull. Markers are drawn while
-        // somebody is standing on the spot, and a trace beginning inside a
-        // player stops on that player -- which is why the crosshair landed a
-        // stride away instead of on the wall it is aimed at.
-        var from = new Vector(
-            eye.x + dir.x * AimTraceStartOffset,
-            eye.y + dir.y * AimTraceStartOffset,
-            eye.z + dir.z * AimTraceStartOffset
-        );
+        var from = new Vector(eye.x, eye.y, eye.z);
         var to = new Vector(
             eye.x + dir.x * AimTraceRange,
             eye.y + dir.y * AimTraceRange,
@@ -1352,7 +1341,7 @@ public class PracticeReplay
 
         try
         {
-            var trace = _core.Trace.TraceShapeLine(from, to, null);
+            var trace = _core.Trace.TraceShapeLine(from, to, SkipPlayers());
 
             hit = trace.DidHit
                 ? new Vec3(trace.EndPos.X, trace.EndPos.Y, trace.EndPos.Z)
@@ -1400,14 +1389,7 @@ public class PracticeReplay
         // one you are on is said in COLOUR, not in scale: a smaller crosshair
         // reads as "further away", which is exactly the wrong thing to say
         // about a point you are being asked to cover precisely.
-        var aim = new Aim
-        {
-            Lineup = lineup,
-            Center = center,
-            Dir = dir,
-            Size = size,
-            Weight = weight,
-        };
+        var aim = new Aim { Lineup = lineup };
 
         _aimInto = aim;
 
@@ -1422,11 +1404,10 @@ public class PracticeReplay
 
         // Named at the crosshair itself: several throws off one spot are only
         // useful if you can tell which crosshair belongs to which.
-        aim.Label = Label(
-            new Vec3(center.x, center.y, center.z + size + 8f),
-            label,
-            ColorForBucket(MissBuckets - 1)
-        );
+        // Amber, and never repainted: the label names the throw, the beams
+        // carry the miss signal, and splitting the jobs means the label's own
+        // colour networking never becomes a question.
+        Label(new Vec3(center.x, center.y, center.z + size + 8f), label, Amber);
 
         _drawingInto?.Aims.Add(aim);
     }
@@ -1482,40 +1463,7 @@ public class PracticeReplay
             }
 
             aim.Bucket = bucket;
-
-            Color color = ColorForBucket(bucket);
-
-            // Rebuilt, not recoloured, for the reason on Aim above.
-            foreach (CEnvBeam beam in aim.Beams)
-            {
-                if (beam.IsValid)
-                {
-                    selection.Beams.Remove(beam);
-                    beam.Despawn();
-                }
-            }
-
-            aim.Beams.Clear();
-
-            Selection? previous = _drawingInto;
-
-            _drawingInto = selection;
-            _aimInto = aim;
-
-            try
-            {
-                Reticle(aim.Center, aim.Dir, aim.Size, color, aim.Weight);
-            }
-            finally
-            {
-                _aimInto = null;
-                _drawingInto = previous;
-            }
-
-            if (aim.Label != null && aim.Label.IsValid)
-            {
-                aim.Label.Color = color;
-            }
+            Recolour(aim.Beams, ColorForBucket(bucket));
         }
     }
 
@@ -1607,7 +1555,7 @@ public class PracticeReplay
                 position.z - GroundSnapRange
             );
 
-            var trace = _core.Trace.TraceShapeLine(from, to, null);
+            var trace = _core.Trace.TraceShapeLine(from, to, SkipPlayers());
 
             if (!trace.DidHit)
             {
@@ -1868,6 +1816,11 @@ public class PracticeReplay
             prop.Glow.GlowRange = UtilityGlowRange;
             prop.Glow.GlowRangeMin = 0;
             prop.Glow.GlowTeam = -1;
+
+            // Without this the outline only exists through walls: the moment
+            // the model is actually on screen the glow is culled, which reads
+            // as "it vanishes when I look at it".
+            prop.Glow.EligibleForScreenHighlight = true;
             prop.Glow.Glowing = true;
 
             _markerProps.Add(prop);
@@ -1990,78 +1943,6 @@ public class PracticeReplay
 
             return null;
         }
-    }
-
-    // TEMPORARY EXPERIMENT -- delete together with .tintest once answered.
-    // Settles at runtime whether AcceptInput("Color") on a live env_beam
-    // reaches clients. Spawns a post in front of the player that tries to flip
-    // red/green once a second for six seconds, then removes itself. If the
-    // post visibly flips, the rebuild-on-bucket machinery can collapse into a
-    // single input call per colour change; if it stays red, rebuilds are the
-    // only way and this whole probe just gets deleted.
-    public bool TintProbe(IPlayer player)
-    {
-        CCSPlayerPawn? pawn = player.PlayerPawn;
-
-        if (pawn == null || !pawn.IsValid)
-        {
-            return false;
-        }
-
-        Vector feet = pawn.AbsOrigin ?? new Vector(0, 0, 0);
-        double yaw = pawn.EyeAngles.Y * Math.PI / 180.0;
-        var at = new Vec3(
-            feet.X + (float)(Math.Cos(yaw) * 80),
-            feet.Y + (float)(Math.Sin(yaw) * 80),
-            feet.Z
-        );
-
-        CEnvBeam? beam = CreateBeam(
-            new Vec3(at.x, at.y, at.z + 8f),
-            new Vec3(at.x, at.y, at.z + 72f),
-            MissColor(1f),
-            2f
-        );
-
-        if (beam == null)
-        {
-            return false;
-        }
-
-        for (int second = 1; second <= 6; second += 1)
-        {
-            bool green = second % 2 == 1;
-
-            _core.Scheduler.DelayBySeconds(
-                second,
-                () =>
-                {
-                    if (beam.IsValid)
-                    {
-                        beam.AcceptInput<string>(
-                            "Color",
-                            green ? "60 230 90" : "255 60 0",
-                            null,
-                            null,
-                            0
-                        );
-                    }
-                }
-            );
-        }
-
-        _core.Scheduler.DelayBySeconds(
-            7,
-            () =>
-            {
-                if (beam.IsValid)
-                {
-                    beam.Despawn();
-                }
-            }
-        );
-
-        return true;
     }
 
     // For a map change only. The entities died with the map, so their handles

@@ -477,26 +477,6 @@ public partial class UtilityPracticePlugin
         Core.MenusAPI.OpenMenuForPlayer(player, builder.Build());
     }
 
-    // TEMPORARY: the runtime half of the AcceptInput("Color") question -- see
-    // PracticeReplay.TintProbe for what an answer buys.
-    [Command("tintest", registerRaw: false, permission: "")]
-    public void OnTintTest(ICommandContext context)
-    {
-        IPlayer? player = context.Sender;
-
-        if (player == null || !player.IsValid)
-        {
-            return;
-        }
-
-        Reply(
-            context,
-            _replay.TintProbe(player)
-                ? $" {ChatColors.Grey}watch the post ahead of you: does it flip red/green each second?"
-                : $" {ChatColors.Red}could not spawn the test beam"
-        );
-    }
-
     [Command("where", registerRaw: false, permission: "")]
     public void OnWhere(ICommandContext context)
     {
