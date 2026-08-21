@@ -225,7 +225,7 @@ public class PracticeReplay
 
 
     // Ghost trails and the measured bloom outline.
-    public const bool DrawGhosts = false;
+    public const bool DrawGhosts = true;
 
     // REAL projectiles: EmitSmokeGrenade / EmitFlashbang / EmitHEGrenade /
     // EmitMolotov, plus the bloom's live smoke.
