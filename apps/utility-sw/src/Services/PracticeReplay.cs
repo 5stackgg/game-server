@@ -217,7 +217,7 @@ public class PracticeReplay
     // ---------------------------------------------------------------------
 
     // Beams and world text: rings/gates, labels, connectors, the flight line.
-    public const bool DrawMarkers = false;
+    public const bool DrawMarkers = true;
 
     // prop_physics_override grenade models floating over a spot, and the
     // collision clearing that follows them.
@@ -236,6 +236,14 @@ public class PracticeReplay
     // ShouldBlockTransmitEntity. SwiftlyS2 1.4.4 has a known CheckTransmit
     // crash upstream, and this is the only plugin in the repo that calls it.
     public const bool TransmitBlocking = false;
+
+    // So the server log says exactly which of these is live. Without it there
+    // is no way to tell a switch that is off from a build that never deployed.
+    public static string SwitchState()
+    {
+        return $"markers={DrawMarkers} models={DrawModels} harvest={HarvestModels} "
+            + $"ghosts={DrawGhosts} grenades={EmitGrenades} transmit={TransmitBlocking}";
+    }
 
     public void Load(IPlayer player, LineupRecord lineup)
     {

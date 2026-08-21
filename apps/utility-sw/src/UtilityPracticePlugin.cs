@@ -179,9 +179,10 @@ public partial class UtilityPracticePlugin : BasePlugin
         }
 
         _logger.LogInformation(
-            "utility practice {version} loaded (connected: {connected})",
+            "utility practice {version} loaded (connected: {connected}) [{switches}]",
             ModuleVersion,
-            _config.IsConnected()
+            _config.IsConnected(),
+            PracticeReplay.SwitchState()
         );
     }
 
