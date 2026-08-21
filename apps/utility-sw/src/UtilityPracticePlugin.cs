@@ -9,7 +9,6 @@ using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Plugins;
 using static SwiftlyS2.Shared.Helper;
 using SwiftlyS2.Shared.Natives;
-using SwiftlyS2.Shared.ProtobufDefinitions;
 using SwiftlyS2.Shared.SchemaDefinitions;
 
 namespace UtilityPractice;
@@ -155,8 +154,10 @@ public partial class UtilityPracticePlugin : BasePlugin
             );
         Core.Event.OnClientDisconnected += _disconnectHandler;
 
+        // Refresh FETCHES; it does not draw. Somebody who joins and runs no
+        // command should still see every lineup on the map.
         _authorizeHandler = @event =>
-            ForPlayer(@event.PlayerId, steamId => _library.Refresh(steamId));
+            ForPlayer(@event.PlayerId, steamId => RefreshAndShow(steamId));
         Core.Event.OnClientSteamAuthorize += _authorizeHandler;
 
         InitializeConnectClientHook();
@@ -550,14 +551,16 @@ public partial class UtilityPracticePlugin : BasePlugin
     {
         (LineupRecord? lineup, bool onSpot, bool onAngle) = Focused(player, pawn);
 
-        Send(player, PanelKind.Title, lineup?.name);
         Send(player, PanelKind.Card, lineup == null ? null : Card(lineup));
-        Send(player, PanelKind.Steps, lineup == null ? null : Steps(onSpot, onAngle));
+        Send(
+            player,
+            PanelKind.Steps,
+            lineup == null ? null : Headline(lineup, onSpot, onAngle)
+        );
     }
 
     private enum PanelKind
     {
-        Title,
         Card,
         Steps,
     }
@@ -610,33 +613,6 @@ public partial class UtilityPracticePlugin : BasePlugin
         Write(player, kind, content);
     }
 
-    // A positioned HUD message on its own channel -- a third element entirely,
-    // independent of the two text channels, so the name can sit above the
-    // throw details instead of sharing a line with them. Channel and position
-    // are ours to pick; nothing else in the plugin writes this channel.
-    private const int TitleChannel = 4;
-
-    private void WriteTitle(IPlayer player, string content)
-    {
-        try
-        {
-            using var message = Core.NetMessage.Create<CUserMessageHudMsg>();
-
-            message.Channel = TitleChannel;
-
-            // -1 centres an axis. Just above the middle, clear of the crosshair.
-            message.X = -1f;
-            message.Y = 0.34f;
-            message.Message = content;
-
-            message.SendToPlayer((int)player.Slot);
-        }
-        catch (Exception error)
-        {
-            _logger.LogWarning(error, "unable to write the lineup title");
-        }
-    }
-
     private static void Write(IPlayer player, PanelKind kind, string content)
     {
         // Steps take the animating HTML panel, the card takes the quiet one.
@@ -660,14 +636,6 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void Clear(IPlayer player, PanelKind kind)
     {
-        // An empty HUD message retires the channel outright.
-        if (kind == PanelKind.Title)
-        {
-            WriteTitle(player, "");
-
-            return;
-        }
-
         if (kind == PanelKind.Steps)
         {
             player.SendCenterHTML("", PanelClearMilliseconds);
@@ -759,6 +727,27 @@ public partial class UtilityPracticePlugin : BasePlugin
     // flash on each change reads as the instruction CHANGING rather than as the
     // reference card blinking at you. It closes the moment the player is lined
     // up: silence, alongside the crosshair fading out, IS the success signal.
+    // CS2 offers exactly two persistent on-screen text channels: centre text
+    // and centre HTML. The third (CUserMessageHudMsg, the positioned game_text
+    // element) compiles and sends but never renders, so the name takes its own
+    // line at the top of the HTML panel rather than a channel of its own.
+    // Throw details stay on the other channel entirely, which was the point.
+    private static string Headline(LineupRecord lineup, bool onSpot, bool onAngle)
+    {
+        string name =
+            $"<font class='fontSize-l' color='#f99e2f'>{Escape(lineup.name)}</font>";
+
+        string? step = Steps(onSpot, onAngle);
+
+        return step == null ? name : $"{name}<br>{step}";
+    }
+
+    // Centre HTML is markup and a lineup name is whatever somebody typed.
+    private static string Escape(string text)
+    {
+        return text.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
+    }
+
     private static string? Steps(bool onSpot, bool onAngle)
     {
         if (!onSpot)
@@ -966,7 +955,6 @@ public partial class UtilityPracticePlugin : BasePlugin
         // hand to something else.
         _replay.ClearSelectionFor(steamId);
         _standingIn.Remove(steamId);
-        _showing.Remove((steamId, PanelKind.Title));
         _showing.Remove((steamId, PanelKind.Card));
         _showing.Remove((steamId, PanelKind.Steps));
     }
@@ -1010,6 +998,20 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     // The panel is the only source of both the roster and the library, so a
     // refresh is one round trip followed by one per connected player.
+    private void RefreshAndShow(ulong steamId)
+    {
+        _library.Refresh(
+            steamId,
+            count =>
+            {
+                if (count > 0)
+                {
+                    _replay.ShowLibrary(_library.For(steamId));
+                }
+            }
+        );
+    }
+
     private void RefreshEverything()
     {
         _ = Task.Run(async () =>
@@ -1022,7 +1024,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         {
             if (player != null && player.IsValid && !player.IsFakeClient)
             {
-                _library.Refresh(player.SteamID);
+                RefreshAndShow(player.SteamID);
             }
         }
     }
