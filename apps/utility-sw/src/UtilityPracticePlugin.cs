@@ -755,11 +755,23 @@ public partial class UtilityPracticePlugin : BasePlugin
         LineupRecord? aimedAt = LookingAt(pawn, at, library, here);
         LineupRecord? loaded = _system.StateFor(player.SteamID).Loaded;
 
-        // A loaded lineup only owns the panels while the player is actually at
-        // its spot or looking at it. Walk away and the panels go: instructions
-        // for a throw you are nowhere near are just something stuck to the
-        // screen, and .load is not a commitment to read about it forever.
-        if (loaded != null && (here.Contains(loaded) || aimedAt == loaded))
+        // A drill has already decided what the player is working on, and it
+        // stays decided even when they walk off the spot -- the panels are how
+        // they find their way back to it, so dropping them there would be
+        // exactly backwards.
+        LineupRecord? drilling = _drill.Current(player.SteamID);
+
+        if (drilling != null)
+        {
+            loaded = drilling;
+        }
+
+        // Otherwise a loaded lineup only owns the panels while the player is
+        // actually at its spot or looking at it. Walk away and the panels go:
+        // instructions for a throw you are nowhere near are just something
+        // stuck to the screen, and .load is not a commitment to read about it
+        // forever.
+        if (loaded != null && (drilling != null || here.Contains(loaded) || aimedAt == loaded))
         {
             QAngle eyes = pawn.EyeAngles;
             Vec3 spot = loaded.release.feet_position;
