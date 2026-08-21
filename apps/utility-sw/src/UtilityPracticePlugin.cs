@@ -534,19 +534,45 @@ public partial class UtilityPracticePlugin : BasePlugin
                 new Vec3(standing.X, standing.Y, standing.Z)
             );
 
-            string? message = CentreText(player, pawn);
-
-            if (message != null)
-            {
-                player.SendCenter(message);
-            }
+            Panels(player, pawn);
         }
     }
 
     // First match wins. The order is the order a player needs the answer in:
     // how to throw it once they are on the angle, otherwise what they are
     // pointing at, otherwise what they are standing on.
-    private string? CentreText(IPlayer player, CCSPlayerPawn pawn)
+    // Two panels, deliberately: the card (centre HTML) answers "what is this
+    // and how do I throw it", the steps line (centre text) answers "what have
+    // I not done yet". One channel had to keep swapping between the two, so
+    // reading the instructions meant losing the guidance and back again.
+    private void Panels(IPlayer player, CCSPlayerPawn pawn)
+    {
+        (LineupRecord? lineup, bool onSpot, bool onAngle) = Focused(player, pawn);
+
+        if (lineup == null)
+        {
+            return;
+        }
+
+        // Held a little past the resend interval so it never blinks between
+        // frames, and re-sent because centre HTML expires on its own.
+        player.SendCenterHTML(Card(lineup), CardHoldMilliseconds);
+
+        string? steps = Steps(onSpot, onAngle);
+
+        if (steps != null)
+        {
+            player.SendCenter(steps);
+        }
+    }
+
+    // Slightly longer than the resend interval, so the card is continuous.
+    private const int CardHoldMilliseconds = 400;
+
+    private (LineupRecord? lineup, bool onSpot, bool onAngle) Focused(
+        IPlayer player,
+        CCSPlayerPawn pawn
+    )
     {
         LineupRecord? lineup = _system.StateFor(player.SteamID).Loaded;
 
@@ -572,7 +598,7 @@ public partial class UtilityPracticePlugin : BasePlugin
                     new Vec3(spot.x - standing.X, spot.y - standing.Y, 0f).LengthXY()
                 ) == 0f;
 
-            return Describe(lineup, onSpot, onAngle);
+            return (lineup, onSpot, onAngle);
         }
 
         Vector origin = pawn.AbsOrigin ?? new Vector(0, 0, 0);
@@ -582,44 +608,58 @@ public partial class UtilityPracticePlugin : BasePlugin
         List<LineupRecord> here = PracticeReplay.SpotAt(library, at);
         LineupRecord? aimedAt = LookingAt(pawn, at, library, here);
 
+        // Nothing loaded, so nothing is "done" yet -- the panels describe what
+        // the player is pointing at or standing on, and the steps line tells
+        // them the first thing to do about it.
         if (aimedAt != null)
         {
-            return Describe(aimedAt, here.Contains(aimedAt));
+            return (aimedAt, here.Contains(aimedAt), false);
         }
 
         if (here.Count == 1)
         {
-            return Describe(here[0], true);
+            return (here[0], true, false);
         }
 
-        // Several throws off one spot: name them all rather than a count, so the
-        // player knows what is on offer before choosing one.
-        if (here.Count > 1)
+        return (null, false, false);
+    }
+
+    // The reference card: what this throw is and how it is thrown. Stays up
+    // the whole time a lineup is in focus, because it is the thing a player
+    // reads once and glances back at -- never the thing that nags.
+    private static string Card(LineupRecord lineup)
+    {
+        string details = string.IsNullOrWhiteSpace(lineup.description)
+            ? ""
+            : "<br><font class='fontSize-s' color='#8a8a8a'>write-up on the web</font>";
+
+        return $"<font class='fontSize-l' color='#f99e2f'>{Escape(lineup.name)}</font>"
+            + $"<br><font class='fontSize-sm' color='#dcdcdc'>{PracticeReplay.ThrowHint(lineup)}</font>"
+            + details;
+    }
+
+    // Centre HTML is markup, and a lineup name is whatever somebody typed.
+    private static string Escape(string text)
+    {
+        return text.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
+    }
+
+    // The other panel: the one step that is not done yet. It closes the moment
+    // the player is lined up -- silence IS the success signal, alongside the
+    // crosshair fading out, so nothing is left shouting over the shot.
+    private static string? Steps(bool onSpot, bool onAngle)
+    {
+        if (!onSpot)
         {
-            return string.Join("\n", here.Select(entry => entry.name));
+            return PracticeReplay.Tracked("stand in the circle");
+        }
+
+        if (!onAngle)
+        {
+            return PracticeReplay.Tracked("match the crosshair");
         }
 
         return null;
-    }
-
-    // Three rows, always the same three, so the window never reflows under the
-    // player's eyes: WHAT it is called, HOW it is thrown, WHAT TO DO NEXT.
-    // The name stays put throughout -- losing it the moment you lined up was
-    // the thing that made this window feel like it was flickering at you.
-    private static string Describe(
-        LineupRecord lineup,
-        bool onSpot = false,
-        bool onAngle = false
-    )
-    {
-        string next =
-            !onSpot ? PracticeReplay.Tracked("stand in the circle")
-            : !onAngle ? PracticeReplay.Tracked("match the crosshair")
-            : string.IsNullOrWhiteSpace(lineup.description)
-                ? PracticeReplay.Tracked("throw it")
-                : PracticeReplay.Tracked("write-up on the web");
-
-        return $"{lineup.name}\n{PracticeReplay.ThrowHint(lineup)}\n{next}";
     }
 
     // Shortest way round the circle, so 359 and 1 are two degrees apart.
