@@ -587,10 +587,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             if (had)
             {
                 _showing.Remove(key);
-
-                // A space, not an empty string: an empty centre message draws a
-                // stray glyph rather than nothing at all.
-                Write(player, kind, " ");
+                Clear(player, kind);
             }
 
             return;
@@ -614,6 +611,25 @@ public partial class UtilityPracticePlugin : BasePlugin
         else
         {
             player.SendCenter(content);
+        }
+    }
+
+    // Clearing is a WRITE with the shortest possible life, not a write with the
+    // panel's usual hold: sending blank content on the sixty-second hold left
+    // an empty panel sitting on screen for a minute. The card blanks to nothing
+    // at all; the steps line blanks to a space, because an empty centre message
+    // draws a stray glyph instead of drawing nothing.
+    private const int PanelClearMilliseconds = 1;
+
+    private static void Clear(IPlayer player, PanelKind kind)
+    {
+        if (kind == PanelKind.Card)
+        {
+            player.SendCenterHTML("", PanelClearMilliseconds);
+        }
+        else
+        {
+            player.SendCenter(" ");
         }
     }
 
