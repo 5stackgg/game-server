@@ -21,6 +21,8 @@ public class UtilityLibraryRow
 
     public double? aim_tolerance { get; set; }
 
+    public string? description { get; set; }
+
     public float? origin_x { get; set; }
     public float? origin_y { get; set; }
     public float? origin_z { get; set; }
@@ -67,6 +69,7 @@ public class UtilityLibraryRow
             technique = technique ?? "",
             strength = throw_strength,
             aim_tolerance = (float)(aim_tolerance ?? 0d),
+            description = description,
             visibility = visibility ?? "Private",
             confidence = confidence,
             author_steam_id = author_steam_id ?? "",

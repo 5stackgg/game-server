@@ -41,6 +41,10 @@ public class LineupRecord
     // glance. Zero or missing means fall back to the plugin's own default.
     public float aim_tolerance { get; set; }
 
+    // The author's write-up, when there is one. The plugin only ever says that
+    // it EXISTS -- a paragraph does not belong in centre text.
+    public string? description { get; set; }
+
     // The panel's word for how this lineup was arrived at: exact, derived or
     // low. Null for a lineup recorded in this session, which has not been
     // through the panel yet, and for anything an older panel returned.

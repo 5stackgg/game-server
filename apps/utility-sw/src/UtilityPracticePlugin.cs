@@ -572,16 +572,7 @@ public partial class UtilityPracticePlugin : BasePlugin
                     new Vec3(spot.x - standing.X, spot.y - standing.Y, 0f).LengthXY()
                 ) == 0f;
 
-            if (onAngle && onSpot)
-            {
-                return PracticeReplay.ThrowHint(lineup);
-            }
-
-            if (onAngle)
-            {
-                return $"{PracticeReplay.Tracked("on the angle")}\n"
-                    + PracticeReplay.Tracked("wrong spot");
-            }
+            return Describe(lineup, onSpot, onAngle);
         }
 
         Vector origin = pawn.AbsOrigin ?? new Vector(0, 0, 0);
@@ -593,12 +584,12 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         if (aimedAt != null)
         {
-            return Describe(aimedAt);
+            return Describe(aimedAt, here.Contains(aimedAt));
         }
 
         if (here.Count == 1)
         {
-            return Describe(here[0]);
+            return Describe(here[0], true);
         }
 
         // Several throws off one spot: name them all rather than a count, so the
@@ -611,10 +602,24 @@ public partial class UtilityPracticePlugin : BasePlugin
         return null;
     }
 
-    private static string Describe(LineupRecord lineup)
+    // Three rows, always the same three, so the window never reflows under the
+    // player's eyes: WHAT it is called, HOW it is thrown, WHAT TO DO NEXT.
+    // The name stays put throughout -- losing it the moment you lined up was
+    // the thing that made this window feel like it was flickering at you.
+    private static string Describe(
+        LineupRecord lineup,
+        bool onSpot = false,
+        bool onAngle = false
+    )
     {
-        return $"{lineup.name}\n{lineup.utility_type.ToUpperInvariant()} - "
-            + lineup.technique.ToUpperInvariant();
+        string next =
+            !onSpot ? PracticeReplay.Tracked("stand in the circle")
+            : !onAngle ? PracticeReplay.Tracked("match the crosshair")
+            : string.IsNullOrWhiteSpace(lineup.description)
+                ? PracticeReplay.Tracked("throw it")
+                : PracticeReplay.Tracked("write-up on the web");
+
+        return $"{lineup.name}\n{PracticeReplay.ThrowHint(lineup)}\n{next}";
     }
 
     // Shortest way round the circle, so 359 and 1 are two degrees apart.

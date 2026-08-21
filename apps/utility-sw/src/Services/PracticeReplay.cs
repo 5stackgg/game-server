@@ -851,9 +851,12 @@ public class PracticeReplay
             _ => "LEFT CLICK",
         };
 
-        string bind = lineup.release.jump_throw ? " (jump-throw bind)" : "";
+        string bind = lineup.release.jump_throw ? " + JUMP-THROW BIND" : "";
 
-        return $"LINED UP\n{movement} - {click}{bind}";
+        // No LINED UP banner: the crosshair fading to nothing already says it,
+        // and this line has a standing job as the middle row rather than
+        // appearing only at the moment of success.
+        return $"{lineup.utility_type.ToUpperInvariant()} - {movement} - {click}{bind}";
     }
 
     public static string Describe(LineupRecord lineup)
