@@ -174,7 +174,12 @@ public partial class UtilityPracticePlugin : BasePlugin
         {
             _library.SetMap(Core.Engine.GlobalVars.MapName.ToString());
             ApplyPracticeCfg();
-            _replay.LearnUtilityModels();
+
+            // Load() runs on the plugin manager's thread, and spawning an
+            // entity off the main thread throws. OnMapLoad already schedules
+            // this for the same reason; the hot-reload path forgot to.
+            Core.Scheduler.NextTick(_replay.LearnUtilityModels);
+
             RefreshEverything();
         }
 
