@@ -229,7 +229,7 @@ public class PracticeReplay
 
     // REAL projectiles: EmitSmokeGrenade / EmitFlashbang / EmitHEGrenade /
     // EmitMolotov, plus the bloom's live smoke.
-    public const bool EmitGrenades = false;
+    public const bool EmitGrenades = true;
 
     // ShouldBlockTransmitEntity. SwiftlyS2 1.4.4 has a known CheckTransmit
     // crash upstream, and this is the only plugin in the repo that calls it.
