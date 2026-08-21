@@ -754,8 +754,16 @@ public class PracticeSolver
         Block(index, false);
     }
 
+    // Off for the same reason PracticeReplay.TransmitBlocking is: SwiftlyS2
+    // 1.4.4 crashes in CheckTransmit. A solver probe being visible for the
+    // moment it exists is cosmetic; the server going down is not.
     private void Block(uint index, bool hidden)
     {
+        if (!PracticeReplay.TransmitBlocking)
+        {
+            return;
+        }
+
         foreach (IPlayer viewer in _core.PlayerManager.GetAllPlayers())
         {
             if (viewer != null && viewer.IsValid)

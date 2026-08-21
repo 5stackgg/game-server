@@ -719,7 +719,7 @@ public class PracticeReplay
                 {
                     if (beam.IsValid)
                     {
-                        viewer.ShouldBlockTransmitEntity((int)beam.Index, hidden);
+                        BlockTransmit(viewer, (int)beam.Index, hidden);
                     }
                 }
             }
@@ -731,7 +731,8 @@ public class PracticeReplay
                     continue;
                 }
 
-                viewer.ShouldBlockTransmitEntity(
+                BlockTransmit(
+                    viewer,
                     (int)smoke.Index,
                     !viewerWantsGhosts
                         || (owner != viewer.SteamID && (viewerIsSolo || IsSolo(owner)))
@@ -1068,7 +1069,7 @@ public class PracticeReplay
                 {
                     if (beam.IsValid)
                     {
-                        viewer.ShouldBlockTransmitEntity((int)beam.Index, hidden);
+                        BlockTransmit(viewer, (int)beam.Index, hidden);
                     }
                 }
 
@@ -1076,7 +1077,7 @@ public class PracticeReplay
                 {
                     if (text.IsValid)
                     {
-                        viewer.ShouldBlockTransmitEntity((int)text.Index, hidden);
+                        BlockTransmit(viewer, (int)text.Index, hidden);
                     }
                 }
             }
@@ -1108,7 +1109,7 @@ public class PracticeReplay
             {
                 if (beam.IsValid)
                 {
-                    viewer.ShouldBlockTransmitEntity((int)beam.Index, false);
+                    BlockTransmit(viewer, (int)beam.Index, false);
                 }
             }
 
@@ -1116,7 +1117,7 @@ public class PracticeReplay
             {
                 if (text.IsValid)
                 {
-                    viewer.ShouldBlockTransmitEntity((int)text.Index, false);
+                    BlockTransmit(viewer, (int)text.Index, false);
                 }
             }
         }
@@ -1497,6 +1498,25 @@ public class PracticeReplay
     // The grenade itself, floating over the spot at about eye height: a ring
     // says where to stand, and this says what to throw from it without reading
     // a colour off a beam.
+    // SwiftlyS2 1.4.4 has a known crash in its CheckTransmit implementation
+    // ("fix(checktransmit): Client crashes", fixed after v1.4.4 upstream), and
+    // this plugin is the only one in the repo that calls it -- the match plugin
+    // never does, which is why practice servers fall over and match servers do
+    // not. Blocking transmit is only ever a nicety: without it everyone sees
+    // everyone's ghosts and crosshairs instead of just their own. Flip this back
+    // on once the runtime is past 1.4.4.
+    public const bool TransmitBlocking = false;
+
+    private static void BlockTransmit(IPlayer viewer, int index, bool hidden)
+    {
+        if (!TransmitBlocking)
+        {
+            return;
+        }
+
+        viewer.ShouldBlockTransmitEntity(index, hidden);
+    }
+
     // FSOLID_NOT_SOLID.
     private const byte NotSolid = 4;
 
@@ -1912,7 +1932,7 @@ public class PracticeReplay
         {
             if (viewer != null && viewer.IsValid)
             {
-                viewer.ShouldBlockTransmitEntity((int)index, false);
+                BlockTransmit(viewer, (int)index, false);
             }
         }
     }
