@@ -1081,7 +1081,7 @@ public class PracticeReplay
             // No name on the ground and no post: the chevron says which way,
             // the glowing model says what and where, and the name arrives in
             // centre text when the player points at the grenade.
-            Chevron(feet, lineup.release.yaw, 13f, AmberDim, MarkerWidth);
+            Needle(feet, lineup.release.yaw, 13f, AmberDim, MarkerWidth);
             Diamond(lineup.detonation_position, 22f, type, MarkerWidth);
         }
 
@@ -1144,7 +1144,7 @@ public class PracticeReplay
 
             if (active.Count > 0)
             {
-                ShowStance(Grounded(active.First().release.feet_position), active.Count);
+                ShowStance(Grounded(active.First().release.feet_position));
             }
 
             foreach (LineupRecord lineup in active)
@@ -1178,7 +1178,7 @@ public class PracticeReplay
 
             try
             {
-                ShowStance(selection.At, active.Count);
+                ShowStance(selection.At);
             }
             finally
             {
@@ -1315,17 +1315,9 @@ public class PracticeReplay
         }
     }
 
-    private void ShowStance(Vec3 stance, int throws)
+    private void ShowStance(Vec3 stance)
     {
         GroundReticle(stance, ColorForBucket(MissBuckets - 1));
-
-        Label(
-            new Vec3(stance.x, stance.y, stance.z + 14f),
-            throws > 1
-                ? $"{Tracked("stand here")}\n{throws} throws from this spot"
-                : Tracked("stand here"),
-            Amber
-        );
     }
 
     private void ShowMarkers(LineupRecord lineup, Vec3 stance)
@@ -1335,12 +1327,6 @@ public class PracticeReplay
         // There is no useful state where a loaded lineup shows neither.
         Color color = ColorFor(lineup.utility_type);
         Vec3 landing = lineup.detonation_position;
-
-        // One chevron per throw, all fanning out of the one gate: a spot with
-        // three lineups shows three directions leaving it, which is the whole
-        // question a player has when they walk onto it. The gate itself is
-        // drawn once by ShowStance -- it belongs to the ground, not the throw.
-        Chevron(stance, lineup.release.yaw, 15f, Amber, MarkerWidth);
 
         Diamond(landing, 30f, color, MarkerWidth);
         Label(
@@ -1682,26 +1668,30 @@ public class PracticeReplay
         return (forward, new Vec3(forward.y, -forward.x, 0f));
     }
 
-    private static Vec3 Offset(Vec3 at, Vec3 forward, float along, Vec3 right, float across)
-    {
-        return new Vec3(
-            at.x + (forward.x * along) + (right.x * across),
-            at.y + (forward.y * along) + (right.y * across),
-            at.z
-        );
-    }
-
-    // A caret on the floor pointing down the throw. Two beams against a ring's
-    // ten, and it says the thing a ring cannot: which way to face once you are
-    // standing on it.
-    private void Chevron(Vec3 at, float yaw, float size, Color color, float width)
+    // A needle, not a wedge: the shaft lies exactly on the throw's yaw, so a
+    // player standing on the spot can set their crosshair BY it the same way
+    // the reticle in the air is set. The fat chevron this replaces pointed
+    // "roughly there", which stops being useful the moment feet are down and
+    // precision becomes the whole question.
+    private void Needle(Vec3 at, float yaw, float size, Color color, float width)
     {
         (Vec3 forward, Vec3 right) = Bearing(yaw);
+        float z = at.z + 1.5f;
 
-        Vec3 tip = Offset(at, forward, size, right, 0f);
+        Vec3 At(float along, float across)
+        {
+            return new Vec3(
+                at.x + (forward.x * along) + (right.x * across),
+                at.y + (forward.y * along) + (right.y * across),
+                z
+            );
+        }
 
-        AddMarkerBeam(Offset(at, forward, -size * 0.4f, right, -size * 0.8f), tip, color, width);
-        AddMarkerBeam(Offset(at, forward, -size * 0.4f, right, size * 0.8f), tip, color, width);
+        Vec3 tip = At(size * 2.2f, 0f);
+
+        AddMarkerBeam(At(size * 0.5f, 0f), tip, color, width);
+        AddMarkerBeam(At(size * 1.75f, size * 0.35f), tip, color, width);
+        AddMarkerBeam(At(size * 1.75f, -size * 0.35f), tip, color, width);
     }
 
     // Four beams, and deliberately not a circle: the landing marker and the
