@@ -221,10 +221,10 @@ public class PracticeReplay
 
     // prop_physics_override grenade models floating over a spot, and the
     // collision clearing that follows them.
-    public const bool DrawModels = false;
+    public const bool DrawModels = true;
 
     // Spawning a weapon entity of each type at map load to read its model path.
-    public const bool HarvestModels = false;
+    public const bool HarvestModels = true;
 
     // Ghost trails and the measured bloom outline.
     public const bool DrawGhosts = false;
