@@ -547,6 +547,31 @@ public partial class UtilityPracticePlugin : BasePlugin
     // and how do I throw it", the steps line (centre text) answers "what have
     // I not done yet". One channel had to keep swapping between the two, so
     // reading the instructions meant losing the guidance and back again.
+    // Told once, the first time a player has a lineup in front of them.
+    //
+    // Chat rather than a HUD panel, precisely BECAUSE chat stacks: a line that
+    // scrolls away with the rest of the log is the right home for something
+    // said once and never repeated. On a panel it would either sit there
+    // forever or fight the three that are already earning their place. And it
+    // is guarded per player rather than shown on a timer, because the second
+    // time you read the same tip it is noise.
+    private readonly HashSet<ulong> _hinted = new();
+
+    private void Hint(IPlayer player)
+    {
+        if (!_hinted.Add(player.SteamID))
+        {
+            return;
+        }
+
+        Tell(
+            player.SteamID,
+            $" {ChatColors.Grey}tip: {ChatColors.Default}.next{ChatColors.Grey} and "
+                + $"{ChatColors.Default}.prev{ChatColors.Grey} walk through the lineups, "
+                + $"{ChatColors.Default}.clear{ChatColors.Grey} puts them away"
+        );
+    }
+
     // While .alerts is showing samples, the panels would overwrite the centre
     // ones within a second and the demo would be pointless.
     private readonly Dictionary<ulong, int> _demoUntil = new();
@@ -578,6 +603,11 @@ public partial class UtilityPracticePlugin : BasePlugin
             PanelKind.Title,
             lineup == null ? null : PracticeLineupUtility.TitleCase(lineup.name)
         );
+        if (lineup != null)
+        {
+            Hint(player);
+        }
+
         Send(player, PanelKind.Card, lineup == null ? null : Card(lineup));
         Send(
             player,
@@ -988,6 +1018,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         // hand to something else.
         _replay.ClearSelectionFor(steamId);
         _standingIn.Remove(steamId);
+        _hinted.Remove(steamId);
         _demoUntil.Remove(steamId);
         _showing.Remove((steamId, PanelKind.Title));
         _showing.Remove((steamId, PanelKind.Card));
