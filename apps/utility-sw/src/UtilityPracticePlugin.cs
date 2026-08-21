@@ -364,6 +364,18 @@ public partial class UtilityPracticePlugin : BasePlugin
                         ? new List<LineupRecord> { aimedAt }
                         : new List<LineupRecord>();
 
+            // A drill asks for ONE throw, so it draws one. Showing the other
+            // lineups off the same spot leaves the player picking between
+            // crosshairs when the whole point is that the run has already
+            // chosen for them.
+            LineupRecord? drilling = _drill.Current(player.SteamID);
+
+            if (drilling != null)
+            {
+                show = new List<LineupRecord> { drilling };
+                aimedAt = drilling;
+            }
+
             string key = string.Join(
                 ",",
                 show.Select(entry => entry.client_id)

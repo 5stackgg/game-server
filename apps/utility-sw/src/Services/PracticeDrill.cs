@@ -178,6 +178,14 @@ public class PracticeDrill
     // stops being luck.
     public const int DrillReps = 3;
 
+    // The lineup this player is being drilled on, or null when no run is going.
+    public LineupRecord? Current(ulong steamId)
+    {
+        return _runs.TryGetValue(steamId, out PracticeDrillRun? run) && !run.Finished
+            ? run.Current
+            : null;
+    }
+
     // Whether this player owes the run an answer -- they have thrown and the
     // panel has not scored it yet. Used to hold their next grenade back: a
     // drill where you can spam three smokes before the first is judged is not
