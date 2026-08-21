@@ -1153,7 +1153,7 @@ public class PracticeReplay
 
             foreach (LineupRecord lineup in active)
             {
-                ShowMarkers(lineup, stance);
+                ShowMarkers(lineup);
             }
 
             return;
@@ -1191,7 +1191,7 @@ public class PracticeReplay
 
             foreach (LineupRecord lineup in active)
             {
-                ShowMarkers(lineup, stance);
+                ShowMarkers(lineup);
             }
         }
         finally
@@ -1344,7 +1344,7 @@ public class PracticeReplay
         GroundReticle(stance, ColorForBucket(MissBuckets - 1));
     }
 
-    private void ShowMarkers(LineupRecord lineup, Vec3 stance)
+    private void ShowMarkers(LineupRecord lineup)
     {
         // Deliberately not gated behind the ghost preview: a preview is an
         // optional extra, but where to stand and where to point IS the lineup.
@@ -1359,25 +1359,31 @@ public class PracticeReplay
             color
         );
 
-        AimReticle(lineup, stance, lineup.name);
+        AimReticle(lineup, lineup.name);
     }
 
     // Where to point. The aim ray is traced until it hits something, so the
     // reticle lands ON the surface being aimed at rather than hanging in the
     // air short of it -- for an arcing smoke the crosshair sits well above the
     // landing spot, so distance-to-landing was never the right answer.
-    private void AimReticle(LineupRecord lineup, Vec3 stance, string label)
+    private void AimReticle(LineupRecord lineup, string label)
     {
-        // From where the player's eye WILL BE after .load, not from where the
-        // grenade left the hand. Those stopped being the same point when the
-        // recorder started storing the standstill as feet_position: a run- or
-        // jump-throw releases a whole run-up away from where it is set up, and
-        // tracing from the release point puts the reticle that far off from
-        // what the player sees standing on the marker.
+        // From the eye of somebody standing on THIS LINEUP'S spot -- never from
+        // wherever the player happens to be. The caller's stance is the live
+        // player position, and tracing the same angles from a different origin
+        // lands on a different piece of wall: that is the whole reason the
+        // crosshair "sometimes" appeared in the right place. The point a throw
+        // is aimed at is a fact about the lineup and the map, so nothing about
+        // the viewer may enter into it.
+        //
+        // Not the release point either: a run- or jump-throw leaves the hand a
+        // whole run-up away from where it is set up.
+        Vec3 spot = Grounded(lineup.release.feet_position);
+
         var eye = new Vec3(
-            stance.x,
-            stance.y,
-            stance.z + PracticeSolverUtility.StandingEyeHeight
+            spot.x,
+            spot.y,
+            spot.z + PracticeSolverUtility.StandingEyeHeight
         );
 
         double yaw = lineup.release.yaw * Math.PI / 180.0;
