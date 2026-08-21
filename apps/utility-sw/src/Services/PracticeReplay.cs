@@ -93,6 +93,10 @@ public class PracticeReplay
     // anything heavier.
     private const float MarkerWidth = 0.6f;
 
+    // How far away the model's outline stays visible. Bounded: across the whole
+    // map every spot glowing through every wall is noise, not guidance.
+    private const int UtilityGlowRange = 1500;
+
     // Roughly where the grenade sits in a player's hand, so it reads as "this
     // is what you throw from here" rather than as litter on the floor.
     // Side by side when one spot wants more than one kind of grenade.
@@ -1853,6 +1857,19 @@ public class PracticeReplay
             prop.Collision.CollisionAttribute.InteractsWith = 0;
             prop.CollisionRulesChanged();
 
+            // Through-wall findability, on the model itself rather than a
+            // separate marker: the grenade IS the sign for "there is a lineup
+            // here", so it carries its own outline. Set on the spawn tick so it
+            // rides the entity's first snapshot -- the same networking caution
+            // that forced the beam rebuilds. Type 3 is the through-walls
+            // outline; team -1 shows it to everyone.
+            prop.Glow.GlowType = 3;
+            prop.Glow.GlowColorOverride = ColorFor(utilityType);
+            prop.Glow.GlowRange = UtilityGlowRange;
+            prop.Glow.GlowRangeMin = 0;
+            prop.Glow.GlowTeam = -1;
+            prop.Glow.Glowing = true;
+
             _markerProps.Add(prop);
         }
         catch (Exception error)
@@ -1973,6 +1990,78 @@ public class PracticeReplay
 
             return null;
         }
+    }
+
+    // TEMPORARY EXPERIMENT -- delete together with .tintest once answered.
+    // Settles at runtime whether AcceptInput("Color") on a live env_beam
+    // reaches clients. Spawns a post in front of the player that tries to flip
+    // red/green once a second for six seconds, then removes itself. If the
+    // post visibly flips, the rebuild-on-bucket machinery can collapse into a
+    // single input call per colour change; if it stays red, rebuilds are the
+    // only way and this whole probe just gets deleted.
+    public bool TintProbe(IPlayer player)
+    {
+        CCSPlayerPawn? pawn = player.PlayerPawn;
+
+        if (pawn == null || !pawn.IsValid)
+        {
+            return false;
+        }
+
+        Vector feet = pawn.AbsOrigin ?? new Vector(0, 0, 0);
+        double yaw = pawn.EyeAngles.Y * Math.PI / 180.0;
+        var at = new Vec3(
+            feet.X + (float)(Math.Cos(yaw) * 80),
+            feet.Y + (float)(Math.Sin(yaw) * 80),
+            feet.Z
+        );
+
+        CEnvBeam? beam = CreateBeam(
+            new Vec3(at.x, at.y, at.z + 8f),
+            new Vec3(at.x, at.y, at.z + 72f),
+            MissColor(1f),
+            2f
+        );
+
+        if (beam == null)
+        {
+            return false;
+        }
+
+        for (int second = 1; second <= 6; second += 1)
+        {
+            bool green = second % 2 == 1;
+
+            _core.Scheduler.DelayBySeconds(
+                second,
+                () =>
+                {
+                    if (beam.IsValid)
+                    {
+                        beam.AcceptInput<string>(
+                            "Color",
+                            green ? "60 230 90" : "255 60 0",
+                            null,
+                            null,
+                            0
+                        );
+                    }
+                }
+            );
+        }
+
+        _core.Scheduler.DelayBySeconds(
+            7,
+            () =>
+            {
+                if (beam.IsValid)
+                {
+                    beam.Despawn();
+                }
+            }
+        );
+
+        return true;
     }
 
     // For a map change only. The entities died with the map, so their handles
