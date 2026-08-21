@@ -30,12 +30,6 @@ public class PracticeState
     // has not asked for it should not be paying for it.
     public bool Bloom { get; set; }
 
-    // On by default, because a person loading a lineup wants to see the line.
-    // A capture client turns it off: beams drawn over the map end up in the
-    // clip instead of the throw.
-    // Off until asked for: the flight line held on screen read as clutter --
-    // "weird lines coming out of the spot" -- not guidance. .ghosts opts in.
-    public bool Ghosts { get; set; } = false;
 
     // Lineups this player has already been told are not exact. Said once per
     // lineup: a warning repeated on every .rethrow is a warning nobody reads.
@@ -97,11 +91,6 @@ public class PracticeSystem
     public bool IsSolo(ulong steamId)
     {
         return !_states.TryGetValue(steamId, out PracticeState? state) || state.Solo;
-    }
-
-    public bool WantsGhosts(ulong steamId)
-    {
-        return _states.TryGetValue(steamId, out PracticeState? state) && state.Ghosts;
     }
 
     public void Forget(ulong steamId)

@@ -15,11 +15,9 @@ namespace UtilityPractice;
 // grenade took so they can see the throw before they make it.
 public class PracticeReplay
 {
-    private const float GhostWidth = 1.6f;
 
     // A simplified line is a few dozen points; a long one is strided rather
     // than spawning an entity per segment.
-    private const int MaxGhostSegments = 32;
 
     private const float MarkerHeight = 42f;
 
@@ -43,7 +41,6 @@ public class PracticeReplay
 
     private enum GhostKind
     {
-        Line,
         Bloom,
     }
 
@@ -285,7 +282,6 @@ public class PracticeReplay
 
     // A capture client watching a lineup wants the throw and not the plugin's
     // drawing of it: beams in frame are our overlay filmed instead of the map.
-    public Func<ulong, bool> WantsGhosts { get; set; } = _ => true;
 
     // ---------------------------------------------------------------------
     // CRASH BISECT. Every one of these makes the plugin touch the engine for
@@ -304,8 +300,8 @@ public class PracticeReplay
     // collision clearing that follows them.
     public const bool DrawModels = true;
 
-    // Ghost trails and the measured bloom outline.
-    public const bool DrawGhosts = true;
+    // The measured bloom outline.
+    public const bool DrawBloom = true;
 
     // REAL projectiles: EmitSmokeGrenade / EmitFlashbang / EmitHEGrenade /
     // EmitMolotov, plus the bloom's live smoke.
@@ -316,7 +312,7 @@ public class PracticeReplay
     public static string SwitchState()
     {
         return $"markers={DrawMarkers} models={DrawModels} "
-            + $"ghosts={DrawGhosts} grenades={EmitGrenades}";
+            + $"bloom={DrawBloom} grenades={EmitGrenades}";
     }
 
     public void Load(IPlayer player, LineupRecord lineup)
@@ -390,86 +386,19 @@ public class PracticeReplay
         player.SendCenter(Describe(lineup));
     }
 
-    // Tier 1 preview: the recorded line, drawn as beam segments with a marker
-    // where it lands.
-    public void ShowGhost(IPlayer player, LineupRecord lineup)
-    {
-        if (!DrawGhosts)
-        {
-            return;
-        }
-
-        if (!_config.GhostPreview || !WantsGhosts(player.SteamID))
-        {
-            return;
-        }
-
-        ClearKind(player.SteamID, GhostKind.Line);
-
-        Color color = ColorFor(lineup.utility_type);
-        var beams = new List<CEnvBeam>();
-
-        // A lineup fetched from the panel arrives without its flight path, and
-        // the marker alone is the honest answer until the path has been
-        // fetched: a straight beam to the landing spot is a wrong line, not a
-        // missing one.
-        List<Vec3> points = GhostPoints(lineup);
-
-        for (int index = 0; index < points.Count - 1; index++)
-        {
-            CEnvBeam? beam = CreateBeam(points[index], points[index + 1], color, GhostWidth);
-            if (beam != null)
-            {
-                beams.Add(beam);
-            }
-        }
-
-        Vec3 landing = lineup.detonation_position;
-        CEnvBeam? marker = CreateBeam(
-            landing,
-            new Vec3(landing.x, landing.y, landing.z + MarkerHeight),
-            color,
-            GhostWidth * 2f
-        );
-
-        if (marker != null)
-        {
-            beams.Add(marker);
-        }
-
-        if (beams.Count == 0)
-        {
-            return;
-        }
-
-        _ghosts.Add(
-            new Ghost
-            {
-                OwnerSteamId = player.SteamID,
-                Kind = GhostKind.Line,
-                // Held, not timed out: "the line where the nade goes" vanishing
-                // after a few seconds read as a bug, not a preview. The next
-                // .load or .clear replaces it.
-                ExpiresAt = DateTime.MaxValue,
-                Beams = beams,
-            }
-        );
-
-    }
-
     // The measured bloom, outlined where it would actually sit. Answers how
     // many beams it took: zero when the panel has no measurement for this
     // lineup, which is a normal answer and not a failure.
     public int ShowBloom(IPlayer player, LineupRecord lineup)
     {
-        if (!DrawGhosts)
+        if (!DrawBloom)
         {
             return 0;
         }
 
         ClearKind(player.SteamID, GhostKind.Bloom);
 
-        if (!_config.GhostPreview || !WantsGhosts(player.SteamID))
+        if (!_config.GhostPreview)
         {
             return 0;
         }
@@ -913,44 +842,6 @@ public class PracticeReplay
 
             ReapplyAngles(player, facing, aim, frames - 1);
         });
-    }
-
-    // Empty when the path is unknown; ShowGhost still draws the marker.
-    private static List<Vec3> GhostPoints(LineupRecord lineup)
-    {
-        var points = new List<Vec3>();
-
-        if (lineup.trajectory.Count == 0)
-        {
-            return points;
-        }
-
-        int stride = Math.Max(
-            1,
-            (int)Math.Ceiling(lineup.trajectory.Count / (double)MaxGhostSegments)
-        );
-
-        // The seed is where the grenade actually left the hand. Drawing the line
-        // from it only asks that the point be real, not that the throw be
-        // reproducible, so this is the looser of the two questions.
-        if (lineup.HasPhysicsSeed())
-        {
-            points.Add(lineup.initial_position);
-        }
-
-        for (int index = 0; index < lineup.trajectory.Count; index++)
-        {
-            // Bounces are where the line changes direction, so they survive
-            // striding.
-            if (index % stride == 0 || lineup.trajectory[index].bounce)
-            {
-                points.Add(lineup.trajectory[index].p);
-            }
-        }
-
-        points.Add(lineup.detonation_position);
-
-        return points;
     }
 
     // Valve's own guides mark three things per lineup -- where you stand, what

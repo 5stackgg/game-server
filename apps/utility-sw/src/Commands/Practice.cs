@@ -617,39 +617,6 @@ public partial class UtilityPracticePlugin
         );
     }
 
-    // Sibling of .solo: that one decides whose previews you see, this one
-    // decides whether you see any at all. It takes an explicit on/off as well
-    // as toggling, because the caller that needs it most is a capture client
-    // that cannot read back what state it is in.
-    [Command("ghosts", registerRaw: false, permission: "")]
-    public void OnGhosts(ICommandContext context)
-    {
-        IPlayer? player = context.Sender;
-
-        if (player == null || !player.IsValid)
-        {
-            return;
-        }
-
-        PracticeState state = _system.StateFor(player.SteamID);
-        string argument = string.Join(" ", context.Args).Trim();
-
-        if (!PracticeSignalUtility.TryParseToggle(argument, state.Ghosts, out bool wanted))
-        {
-            Reply(context, $" {ChatColors.Red}usage: .ghosts [on|off]");
-            return;
-        }
-
-        state.Ghosts = wanted;
-
-        if (!wanted)
-        {
-            _replay.ClearGhosts(player.SteamID);
-        }
-
-        Reply(context, $" {ChatColors.Green}ghost previews {Toggle(state.Ghosts)}");
-    }
-
     [Command("delete", registerRaw: false, permission: "")]
     public void OnDelete(ICommandContext context)
     {
@@ -856,7 +823,6 @@ public partial class UtilityPracticePlugin
         $" {ChatColors.Default}.solve [name] {ChatColors.Grey}finds a throw onto the spot you are looking at",
         $" {ChatColors.Default}.drill [count] [worst] / .skip {ChatColors.Grey}drills your book and scores it",
         $" {ChatColors.Default}.playbook / .run / .playbook stop {ChatColors.Grey}the loaded execute",
-        $" {ChatColors.Default}.ghosts [on|off] {ChatColors.Grey}draws the preview line, or does not",
         $" {ChatColors.Default}.noclip / .god / .timer / .solo / .clear",
     };
 
@@ -1008,7 +974,6 @@ public partial class UtilityPracticePlugin
         // Standing the player on the lineup needs nothing but the flat fields,
         // so it happens now; the line itself may still be a round trip away.
         _replay.Load(player, lineup);
-        _replay.ShowGhost(player, lineup);
         _replay.ThrowGhostProjectile(player, lineup);
         WarnIfInexact(player, lineup);
 
@@ -1031,7 +996,6 @@ public partial class UtilityPracticePlugin
 
                 if (still != null && still.IsValid)
                 {
-                    _replay.ShowGhost(still, fetched);
                 }
 
                 DrawBloom(steamId, fetched);
