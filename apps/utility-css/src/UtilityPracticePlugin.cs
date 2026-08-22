@@ -179,15 +179,26 @@ public partial class UtilityPracticePlugin : BasePlugin
     // one loop over the weapons they already have.
     private int _occupancyTicks;
 
-    // Every few seconds, not every one: the panel only needs to know somebody
-    // is here, and the reaper's clocks are measured in minutes.
+    // Set by the connect and disconnect hooks, cleared by the send.
+    //
+    // The hooks flag rather than send because at OnClientDisconnect the leaving
+    // player is STILL in Utilities.GetPlayers() -- a snapshot taken there would
+    // report them as present, which is the exact staleness this exists to
+    // remove. Waiting for the next tick lets the engine drop them first, and
+    // folds a burst of joins into one post.
+    private bool _occupancyDirty;
+
+    // On the next tick after somebody comes or goes; otherwise a slow
+    // reconciler, because the snapshot is idempotent and the reaper's clocks
+    // are measured in minutes.
     private void ReportOccupancy()
     {
-        if (++_occupancyTicks < OccupancySeconds)
+        if (!_occupancyDirty && ++_occupancyTicks < OccupancySeconds)
         {
             return;
         }
 
+        _occupancyDirty = false;
         _occupancyTicks = 0;
 
         var present = new List<ulong>();
@@ -358,7 +369,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     // reason this works at all.
     private PracticeMapChangePending? _pendingMapLoad;
 
-    private const int OccupancySeconds = 15;
+    private const int OccupancySeconds = 60;
     private const int WarmupRetrySeconds = 3;
 
     private const float CfgReapplySeconds = 3f;
