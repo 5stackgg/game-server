@@ -89,7 +89,10 @@ if [ "$ENABLE_CSS_COMPAT" = "true" ]; then
   ln -s "/opt/custom-plugins/addons/counterstrikesharp/configs" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs"
 fi
 
-if [ "$SERVER_TYPE" != "Ranked" ]; then
+# Public-server treatment: every installed custom plugin gets symlinked in,
+# which is what "load on every match" is meant to gate. A practice server is
+# 5stack-managed like a ranked one -- it runs its own plugin and nothing else.
+if [ "$SERVER_TYPE" != "Ranked" ] && [ "$SERVER_TYPE" != "Practice" ]; then
   if [ ! -d "/opt/custom-plugins" ]; then
     mkdir -p "/opt/custom-plugins"
   fi
@@ -175,6 +178,31 @@ if $INSTALL_5STACK_PLUGIN = true ; then
   else
     # dir pre-exists (dev volume mount without DEV_SWAPPED); don't plant /opt/mod inside it
     echo "---5Stack: plugin dir already present, skipping /opt/mod symlink---"
+  fi
+fi
+
+# A practice server runs this instead of the match plugin, never alongside it.
+if $INSTALL_UTILITY_PRACTICE_PLUGIN = true ; then
+  echo "---Install Utility Practice---"
+  UTILITY_PRACTICE_PLUGIN_DIR="${INSTANCE_SERVER_DIR}/game/csgo/addons/swiftlys2/plugins/UtilityPractice"
+  if [ "${DEV_SWAPPED}" == "1" ]; then
+    # AutoHotReload's recursive FileSystemWatcher does not follow symlinked plugin
+    # dirs, so hot reload needs the dev volume mounted straight onto this path
+    # (see the dev deployment). Without the mount, fall back to a symlink.
+    mkdir -p "$UTILITY_PRACTICE_PLUGIN_DIR"
+    if mountpoint -q "$UTILITY_PRACTICE_PLUGIN_DIR"; then
+      echo "---Utility Practice dev: plugin dir is a mounted volume (hot reload enabled)---"
+    else
+      # css and sw dev builds share the dev volume; each uses its own subfolder
+      rmdir "$UTILITY_PRACTICE_PLUGIN_DIR" 2>/dev/null
+      mkdir -p "/opt/dev/utility-sw"
+      ln -s "/opt/dev/utility-sw" "$UTILITY_PRACTICE_PLUGIN_DIR"
+      echo "---Utility Practice dev: symlinked /opt/dev/utility-sw (hot reload OFF; use 'sw plugins reload UtilityPractice')---"
+    fi
+  elif [ ! -e "$UTILITY_PRACTICE_PLUGIN_DIR" ]; then
+    ln -s "/opt/utility-practice" "$UTILITY_PRACTICE_PLUGIN_DIR"
+  else
+    echo "---Utility Practice: plugin dir already present, skipping /opt/utility-practice symlink---"
   fi
 fi
 

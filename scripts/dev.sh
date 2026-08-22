@@ -9,6 +9,8 @@ cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 case "${CODEPIER_DEPLOYMENT:-}" in
   dev-game-server) app="counterstrikesharp" ;;
   dev-swiftly-game-server) app="swiftly" ;;
+  dev-utility-game-server) app="utility-css" ;;
+  dev-utility-swiftly-game-server) app="utility-sw" ;;
   "")
     echo "not inside a codepier pod; run 'codepier up' from the repo root first" >&2
     exit 1
