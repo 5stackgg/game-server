@@ -1210,6 +1210,17 @@ public partial class UtilityPracticePlugin : BasePlugin
     private static readonly string[] PracticeCfg = new[]
     {
         "sv_cheats 1",
+        // A render (and a lineup drill) respawns the player on a loop and
+        // teleports them onto spots -- both of which cs2 counts as suicides in
+        // competitive rules and then kicks "for suiciding too many times".
+        // mp_autokick governs the idle/teamkill/suicide auto-kick; off is what
+        // the duel cfg uses for the same continuous-respawn reason.
+        "mp_autokick 0",
+        "mp_disconnect_kills_players 0",
+        // Nobody is here but the thrower. Bots add competitive round noise and
+        // a team-select screen the render has to sit through.
+        "bot_quota 0",
+        "bot_kick",
         // Nothing ends the round: a kill or an expired timer would reset
         // everyone mid-lineup.
         "mp_ignore_round_win_conditions 1",
