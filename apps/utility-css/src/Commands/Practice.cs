@@ -691,6 +691,109 @@ public partial class UtilityPracticePlugin
         _library.Refresh(steamId, _ => RemoteLoad(steamId, lineupId, refreshed: true));
     }
 
+    // Server-only, like the load above. Everything on this server goes through a
+    // load screen when it runs, so the countdown before the level change is the
+    // only warning anybody gets -- the website never asks first.
+    [ConsoleCommand("utility_practice_map", "Changes the level, optionally landing somebody on a lineup")]
+    [CommandHelper(
+        minArgs: 1,
+        usage: "<map|workshop id> [<steamid64> <id,id,...>]",
+        whoCanExecute: CommandUsage.SERVER_ONLY
+    )]
+    public void OnRemoteMap(CCSPlayerController? _, CommandInfo command)
+    {
+        string[] args = Enumerable
+            .Range(1, command.ArgCount - 1)
+            .Select(index => command.GetArg(index))
+            .ToArray();
+
+        if (
+            !PracticeMapChangeUtility.TryParse(
+                args,
+                out PracticeMapChangeRequest request
+            )
+        )
+        {
+            command.ReplyToCommand(
+                "usage: utility_practice_map <map|workshop id> [<steamid64> <id,id,...>]"
+            );
+            return;
+        }
+
+        // Held on the plugin, which a changelevel does NOT reload -- that is
+        // the whole mechanism by which somebody arrives standing on the lineup
+        // they pressed on the website.
+        _pendingMapLoad = PracticeMapChangeUtility.PendingFor(request, DateTime.UtcNow);
+
+        AnnounceMapChange(request.map);
+
+        AddTimer(
+            PracticeMapChangeUtility.CountdownSeconds,
+            () => Server.ExecuteCommand(PracticeMapChangeUtility.Command(request.map))
+        );
+    }
+
+    private void AnnounceMapChange(string map)
+    {
+        string chat =
+            $" {ChatColors.Green}changing map {ChatColors.Grey}to "
+            + $"{ChatColors.Default}{map} {ChatColors.Grey}in "
+            + $"{PracticeMapChangeUtility.CountdownSeconds}s";
+
+        foreach (CCSPlayerController player in Utilities.GetPlayers())
+        {
+            if (player == null || !player.IsValid || player.IsBot)
+            {
+                continue;
+            }
+
+            player.PrintToChat(chat);
+            player.PrintToCenter($"changing map to {map}");
+        }
+    }
+
+    /**
+     * Stand whoever asked for this map on what they asked for, once they are
+     * actually back in the server.
+     *
+     * Driven off the second tick rather than a connect event: a changelevel
+     * puts every client through its own reconnect, and which hook fires on the
+     * far side of that is not something the plugin should be betting a teleport
+     * on. Retrying until the player is found costs one lookup a second and
+     * works whatever the engine does.
+     */
+    private void DrainPendingMapLoad()
+    {
+        if (_pendingMapLoad == null)
+        {
+            return;
+        }
+
+        if (PracticeMapChangeUtility.IsExpired(_pendingMapLoad, DateTime.UtcNow))
+        {
+            _pendingMapLoad = null;
+            return;
+        }
+
+        PracticeMapChangePending pending = _pendingMapLoad;
+        CCSPlayerController? player = Utilities.GetPlayerFromSteamId(pending.steam_id);
+
+        // Not back yet. A CS2 client can spend a minute on a map load, and the
+        // expiry above is what stops this waiting forever.
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        _pendingMapLoad = null;
+
+        // This runtime has no utility_practice_drill and no PracticeDrill
+        // .StartWith to build a run from a named set, so a queue arrives as its
+        // first lineup. The panel only sends more than one for a drill, which
+        // this plugin cannot start remotely either way.
+        RemoteLoad(pending.steam_id, pending.lineup_ids[0], refreshed: false);
+    }
+
     // Server-only and deliberately unprefixed, like the match plugin's
     // get_match: the panel calls it when the roster or the library changes.
     [ConsoleCommand("utility_practice_refresh", "Re-reads the practice session from the panel")]

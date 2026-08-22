@@ -6,6 +6,7 @@ using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities.Practice;
+using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
@@ -110,6 +111,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         if (hotReload)
         {
             _library.SetMap(Server.MapName);
+            _session.Map = Server.MapName;
             ApplyPracticeCfg();
             RefreshEverything();
         }
@@ -150,6 +152,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _system.Tick();
         _playbook.Second();
         _drill.Second();
+        DrainPendingMapLoad();
     }
 
     // Nobody stays dead on a practice server. Rejoining while dead, falling off
@@ -318,6 +321,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _score.Reset();
         _system.Reset();
         _library.SetMap(mapName);
+        _session.Map = mapName;
 
         ApplyPracticeCfg();
 
@@ -348,6 +352,11 @@ public partial class UtilityPracticePlugin : BasePlugin
     // box that no mode was ever selected for, and without this it sits in
     // warmup with no money and no utility.
     private readonly HashSet<ulong> _welcomed = new();
+
+    // A load waiting for the far side of a changelevel. Deliberately a plain
+    // field: the plugin instance survives a map change, which is the only
+    // reason this works at all.
+    private PracticeMapChangePending? _pendingMapLoad;
 
     private const int OccupancySeconds = 15;
     private const int WarmupRetrySeconds = 3;

@@ -24,9 +24,15 @@ public class PracticeSession
 
     public PracticeSessionData? Current => _session;
 
+    // The level this server actually came up on, set alongside the library's.
+    // The panel cannot tell a map change that has finished from one still
+    // loading any other way -- every clock it could use is a guess at how long
+    // a changelevel takes.
+    public string? Map { get; set; }
+
     public async Task Refresh()
     {
-        PracticeSessionData? session = await _api.Session();
+        PracticeSessionData? session = await _api.Session(Map);
 
         // A failed fetch must not empty the roster: everyone already connected
         // stays connected, and the door keeps the policy it had.

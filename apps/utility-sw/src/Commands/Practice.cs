@@ -208,6 +208,7 @@ public partial class UtilityPracticePlugin
         {
             return;
         }
+        _logger.LogInformation("[nade-render] OnRethrow for {steam}", player.SteamID);
 
         LineupRecord? loaded = _system.StateFor(player.SteamID).Loaded;
 
@@ -894,6 +895,104 @@ public partial class UtilityPracticePlugin
         }
 
         _library.Refresh(steamId, _ => RemoteLoad(steamId, lineupId, refreshed: true));
+    }
+
+    // Server-only, like the two above. Everything on this server goes through a
+    // load screen when it runs, so the countdown before the level change is the
+    // only warning anybody gets -- the website never asks first.
+    [Command("utility_practice_map", registerRaw: true, permission: "")]
+    public void OnRemoteMap(ICommandContext context)
+    {
+        if (context.IsSentByPlayer)
+        {
+            return;
+        }
+
+        if (
+            !PracticeMapChangeUtility.TryParse(
+                context.Args.ToArray(),
+                out PracticeMapChangeRequest request
+            )
+        )
+        {
+            Reply(context, "usage: utility_practice_map <map|workshop id> [<steamid64> <id,id,...>]");
+            return;
+        }
+
+        // Held on the plugin, which a changelevel does NOT reload -- that is
+        // the whole mechanism by which somebody arrives standing on the lineup
+        // they pressed on the website.
+        _pendingMapLoad = PracticeMapChangeUtility.PendingFor(request, DateTime.UtcNow);
+
+        AnnounceMapChange(request.map);
+
+        Core.Scheduler.DelayBySeconds(
+            PracticeMapChangeUtility.CountdownSeconds,
+            () => Core.Engine.ExecuteCommand(PracticeMapChangeUtility.Command(request.map))
+        );
+    }
+
+    private void AnnounceMapChange(string map)
+    {
+        string chat =
+            $" {ChatColors.Green}changing map {ChatColors.Grey}to "
+            + $"{ChatColors.Default}{map} {ChatColors.Grey}in "
+            + $"{PracticeMapChangeUtility.CountdownSeconds}s";
+
+        foreach (IPlayer player in Core.PlayerManager.GetAllPlayers())
+        {
+            if (player == null || !player.IsValid || player.IsFakeClient)
+            {
+                continue;
+            }
+
+            player.SendChat(chat.Colored());
+            player.SendCenter($"changing map to {map}");
+        }
+    }
+
+    /**
+     * Stand whoever asked for this map on what they asked for, once they are
+     * actually back in the server.
+     *
+     * Driven off the second tick rather than a connect event: a changelevel
+     * puts every client through its own reconnect, and which hook fires on the
+     * far side of that is not something the plugin should be betting a teleport
+     * on. Retrying until the player is found costs one dictionary lookup a
+     * second and works whatever the engine does.
+     */
+    private void DrainPendingMapLoad()
+    {
+        if (_pendingMapLoad == null)
+        {
+            return;
+        }
+
+        if (PracticeMapChangeUtility.IsExpired(_pendingMapLoad, DateTime.UtcNow))
+        {
+            _pendingMapLoad = null;
+            return;
+        }
+
+        PracticeMapChangePending pending = _pendingMapLoad;
+        IPlayer? player = _system.Find(pending.steam_id);
+
+        // Not back yet. A CS2 client can spend a minute on a map load, and the
+        // expiry above is what stops this waiting forever.
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        _pendingMapLoad = null;
+
+        if (pending.lineup_ids.Count == 1)
+        {
+            RemoteLoad(pending.steam_id, pending.lineup_ids[0], refreshed: false);
+            return;
+        }
+
+        RemoteDrill(pending.steam_id, pending.lineup_ids.ToArray(), refreshed: false);
     }
 
     // Server-only and deliberately unprefixed, like the match plugin's

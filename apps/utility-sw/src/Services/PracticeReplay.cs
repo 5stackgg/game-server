@@ -319,8 +319,24 @@ public class PracticeReplay
     {
         CCSPlayerPawn? pawn = player.PlayerPawn;
 
+        Vector? wasAt = pawn?.AbsOrigin;
+        _logger.LogInformation(
+            "[nade-render] Load: steam={steam} fake={fake} alive={alive} team={team} pawnValid={valid} at={x},{y},{z}",
+            player.SteamID,
+            player.IsFakeClient,
+            player.IsAlive,
+            player.Controller?.Team,
+            pawn != null && pawn.IsValid,
+            wasAt?.X,
+            wasAt?.Y,
+            wasAt?.Z
+        );
+
         if (pawn == null || !pawn.IsValid)
         {
+            _logger.LogWarning(
+                "[nade-render] Load ABORTED: no valid pawn to teleport (player is in team-select / dead / spectating) — the throw still emits from the seed but the CLIENT NEVER MOVES"
+            );
             return;
         }
 
@@ -334,6 +350,16 @@ public class PracticeReplay
         // into it lies the player on their back.
         var facing = new QAngle(0, lineup.release.yaw, 0);
         var aim = new QAngle(lineup.release.pitch, lineup.release.yaw, 0);
+
+        _logger.LogInformation(
+            "[nade-render] Load: teleporting {steam} to {x},{y},{z} yaw={yaw} pitch={pitch}",
+            player.SteamID,
+            position.X,
+            position.Y,
+            position.Z,
+            lineup.release.yaw,
+            lineup.release.pitch
+        );
 
         player.Teleport(position, facing, new Vector(0, 0, 0));
         pawn.EyeAngles = aim;
@@ -363,6 +389,35 @@ public class PracticeReplay
             {
                 Vector landed = settled.AbsOrigin ?? new Vector(feet.x, feet.y, feet.z);
                 standing = new Vec3(landed.X, landed.Y, landed.Z);
+
+                // A tick after the teleport, is the pawn actually where we put
+                // it? If this reads far from the target the teleport did not
+                // stick -- a round reset / respawn yanked it back to spawn, or
+                // client prediction rubber-banded it -- which is the render's
+                // "player never moved".
+                double dx = landed.X - feet.x;
+                double dy = landed.Y - feet.y;
+                double dz = landed.Z - feet.z;
+                double drift = System.Math.Sqrt(dx * dx + dy * dy + dz * dz);
+                _logger.LogInformation(
+                    "[nade-render] Load settled: steam={steam} at={x},{y},{z} target={tx},{ty},{tz} drift={drift} alive={alive}",
+                    player.SteamID,
+                    landed.X,
+                    landed.Y,
+                    landed.Z,
+                    feet.x,
+                    feet.y,
+                    feet.z,
+                    drift,
+                    player.IsAlive
+                );
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "[nade-render] Load settled: steam={steam} has NO valid pawn a tick after teleport (respawned/died?)",
+                    player.SteamID
+                );
             }
 
             // Everything on the map, with this one in focus.
@@ -532,13 +587,24 @@ public class PracticeReplay
     // where the recorded one did instead of near it.
     public void ThrowGhostProjectile(IPlayer player, LineupRecord lineup)
     {
+        _logger.LogInformation(
+            "[nade-render] ThrowGhostProjectile: emitGrenades={emit} ghostProjectile={ghost} exactlyReplayable={exact} hasSeed={seed} confidence={conf}",
+            EmitGrenades,
+            _config.GhostProjectile,
+            lineup.IsExactlyReplayable(),
+            lineup.HasPhysicsSeed(),
+            lineup.confidence
+        );
+
         if (!EmitGrenades)
         {
+            _logger.LogInformation("[nade-render] skip: EmitGrenades off");
             return;
         }
 
         if (!_config.GhostProjectile)
         {
+            _logger.LogInformation("[nade-render] skip: GhostProjectile off");
             return;
         }
 
@@ -546,6 +612,7 @@ public class PracticeReplay
 
         if (pawn == null || !pawn.IsValid)
         {
+            _logger.LogInformation("[nade-render] skip: pawn invalid");
             return;
         }
 
@@ -555,8 +622,10 @@ public class PracticeReplay
         // practise toward that one, never replay it.
         if (!lineup.IsExactlyReplayable())
         {
+            _logger.LogInformation("[nade-render] skip: not exactly replayable");
             return;
         }
+        _logger.LogInformation("[nade-render] EMITTING {type} from seed", lineup.utility_type);
 
         Vec3 seedPosition = lineup.initial_position;
         Vec3 seedVelocity = lineup.initial_velocity;

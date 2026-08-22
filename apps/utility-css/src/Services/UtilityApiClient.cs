@@ -138,9 +138,13 @@ public class UtilityApiClient
         await SendText(HttpMethod.Post, "/utility/occupancy", body);
     }
 
-    public async Task<PracticeSessionData?> Session()
+    public async Task<PracticeSessionData?> Session(string? map = null)
     {
-        string? body = await SendText(HttpMethod.Get, "/utility/session", null);
+        string route = string.IsNullOrEmpty(map)
+            ? "/utility/session"
+            : $"/utility/session?map={Uri.EscapeDataString(map)}";
+
+        string? body = await SendText(HttpMethod.Get, route, null);
 
         if (body == null)
         {

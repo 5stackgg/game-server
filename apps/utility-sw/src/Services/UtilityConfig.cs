@@ -97,6 +97,22 @@ public class UtilityConfig
             }
         }
 
+        // A render server has no human to throw, so rethrow MUST emit the real
+        // projectile from the seed (GhostProjectile) -- the api sets this on the
+        // pod. Env wins over the file, same as the url/keys above.
+        string? ghostProjectile =
+            Environment.GetEnvironmentVariable("NP_GHOST_PROJECTILE");
+        if (!string.IsNullOrEmpty(ghostProjectile))
+        {
+            GhostProjectile = ghostProjectile == "1" || ghostProjectile == "true";
+        }
+        string? ghostPreview =
+            Environment.GetEnvironmentVariable("NP_GHOST_PREVIEW");
+        if (!string.IsNullOrEmpty(ghostPreview))
+        {
+            GhostPreview = ghostPreview == "1" || ghostPreview == "true";
+        }
+
         UtilityUrl = UtilityUrl.TrimEnd('/');
 
         // A doubled scheme dials a host literally named "https" and then dies

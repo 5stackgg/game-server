@@ -46,6 +46,11 @@ public partial class UtilityPracticePlugin : BasePlugin
     private EventDelegates.OnTick? _tickHandler;
     private EventDelegates.OnEntityCreated? _entityCreatedHandler;
     private readonly HashSet<ulong> _welcomed = new();
+
+    // A load waiting for the far side of a changelevel. Deliberately a plain
+    // field: the plugin instance survives a map change, which is the only
+    // reason this works at all.
+    private PracticeMapChangePending? _pendingMapLoad;
     private EventDelegates.OnMapLoad? _mapLoadHandler;
     private EventDelegates.OnClientDisconnected? _disconnectHandler;
     private EventDelegates.OnPrecacheResource? _precacheHandler;
@@ -184,7 +189,9 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         if (hotReload)
         {
-            _library.SetMap(Core.Engine.GlobalVars.MapName.ToString());
+            string current = Core.Engine.GlobalVars.MapName.ToString();
+            _library.SetMap(current);
+            _session.Map = current;
             ApplyPracticeCfg();
             RefreshEverything();
         }
@@ -890,6 +897,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _playbook.Second();
         _drill.Second();
         _solver.RefreshVisibility();
+        DrainPendingMapLoad();
     }
 
     // Nobody stays dead on a practice server. Rejoining while dead, falling off
@@ -1110,6 +1118,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _replay.SweepMarkers();
 
         _library.SetMap(mapName);
+        _session.Map = mapName;
 
         ApplyPracticeCfg();
 
