@@ -29,6 +29,11 @@ on:
         required: false
         default: false
         type: boolean
+      extra_test_dir:
+        description: "second app whose suite ships in this image (the practice plugin)"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   build:
@@ -47,7 +52,14 @@ jobs:
 
       - name: Test
         if: inputs.run_tests
-        run: dotnet test ${{ inputs.app_dir }}/test/FiveStack.Tests.csproj -c Release
+        env:
+          APP_DIR: ${{ inputs.app_dir }}
+          EXTRA_TEST_DIR: ${{ inputs.extra_test_dir }}
+        run: |
+          dotnet test "$APP_DIR/test/FiveStack.Tests.csproj" -c Release
+          if [ -n "$EXTRA_TEST_DIR" ]; then
+            dotnet test "$EXTRA_TEST_DIR/test/FiveStack.Tests.csproj" -c Release
+          fi
 
       - name: Resolve version and tags
         id: resolve

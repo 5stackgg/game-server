@@ -1,4 +1,4 @@
-FROM registry.gitlab.steamos.cloud/steamrt/sniper/platform:latest-container-runtime-depot AS build
+FROM registry.gitlab.steamos.cloud/steamrt/sniper/platform:latest-container-runtime-depot AS dotnet-sdk
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -12,6 +12,8 @@ RUN apt-get update && \
 
 ENV PATH="/usr/share/dotnet:${PATH}"
 ENV DOTNET_ROOT="/usr/share/dotnet"
+
+FROM dotnet-sdk AS build
 
 WORKDIR /mod
 
@@ -29,6 +31,28 @@ ENV RELEASE_VERSION=${RELEASE_VERSION}
 RUN sed -i "s/__RELEASE_VERSION__/${RELEASE_VERSION}/" apps/swiftly/src/FiveStack.cs
 
 RUN dotnet publish -c Release apps/swiftly/src/FiveStack.csproj -o /mod/release
+
+# The practice plugin is the other half of this image: a server runs either it
+# or the match plugin, never both, so it is built here and symlinked into place
+# only when INSTALL_UTILITY_PRACTICE_PLUGIN is set.
+FROM dotnet-sdk AS utility-build
+
+WORKDIR /mod
+
+COPY Directory.Build.props ./
+COPY apps/utility-sw/src/UtilityPractice.csproj apps/utility-sw/src/
+
+RUN dotnet restore apps/utility-sw/src/UtilityPractice.csproj
+
+COPY shared shared
+COPY apps/utility-sw apps/utility-sw
+
+ARG RELEASE_VERSION
+ENV RELEASE_VERSION=${RELEASE_VERSION}
+
+RUN sed -i "s/__RELEASE_VERSION__/${RELEASE_VERSION}/" apps/utility-sw/src/UtilityPracticePlugin.cs
+
+RUN dotnet publish -c Release apps/utility-sw/src/UtilityPractice.csproj -o /mod/release
 
 FROM debian:bookworm-slim AS zip-creator
 
@@ -54,6 +78,7 @@ ENV AUTOLOAD_PLUGINS=true
 ENV PLUGINS_DIR="/opt/custom-plugins"
 
 ENV INSTALL_5STACK_PLUGIN=true
+ENV INSTALL_UTILITY_PRACTICE_PLUGIN=false
 
 ENV GAME_ID="730"
 ENV GAME_PARAMS=""
@@ -132,6 +157,7 @@ COPY apps/swiftly/cfg /opt/server-cfg
 COPY shared/scripts /opt/scripts
 COPY apps/swiftly/scripts /opt/scripts
 COPY --from=build /mod/release /opt/mod
+COPY --from=utility-build /mod/release /opt/utility-practice
 
 RUN cp -R /opt/swiftlys2/swiftlys2-linux-${SWIFTLYS2_VERSION}-with-runtimes/addons /opt/addons && \
     rm -rf /opt/swiftlys2

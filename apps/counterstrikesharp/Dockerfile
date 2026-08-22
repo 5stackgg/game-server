@@ -1,4 +1,4 @@
-FROM registry.gitlab.steamos.cloud/steamrt/sniper/platform:latest-container-runtime-depot AS build
+FROM registry.gitlab.steamos.cloud/steamrt/sniper/platform:latest-container-runtime-depot AS dotnet-sdk
 
 # Install .NET SDK 10.0
 RUN apt-get update && \
@@ -13,6 +13,8 @@ RUN apt-get update && \
 
 ENV PATH="/usr/share/dotnet:${PATH}"
 ENV DOTNET_ROOT="/usr/share/dotnet"
+
+FROM dotnet-sdk AS build
 
 WORKDIR /mod
 
@@ -34,6 +36,30 @@ RUN dotnet build -c Release apps/counterstrikesharp/src/FiveStack.csproj -o rele
 RUN rm /mod/release/CounterStrikeSharp.API.dll
 
 COPY apps/counterstrikesharp/src/lang /mod/release/lang
+
+# The practice plugin is the other half of this image: a server runs either it
+# or the match plugin, never both, so it is built here and symlinked into place
+# only when INSTALL_UTILITY_PRACTICE_PLUGIN is set.
+FROM dotnet-sdk AS utility-build
+
+WORKDIR /mod
+
+COPY Directory.Build.props ./
+COPY apps/utility-css/src/UtilityPractice.csproj apps/utility-css/src/
+
+RUN dotnet restore apps/utility-css/src/UtilityPractice.csproj
+
+COPY shared shared
+COPY apps/utility-css apps/utility-css
+
+ARG RELEASE_VERSION
+ENV RELEASE_VERSION=${RELEASE_VERSION}
+
+RUN sed -i "s/__RELEASE_VERSION__/${RELEASE_VERSION}/" apps/utility-css/src/UtilityPracticePlugin.cs
+
+RUN dotnet build -c Release apps/utility-css/src/UtilityPractice.csproj -o release
+
+RUN rm -f /mod/release/CounterStrikeSharp.API.dll
 
 # New stage for creating the zip file
 FROM debian:bookworm-slim AS zip-creator
@@ -60,6 +86,7 @@ ENV AUTOLOAD_PLUGINS=true
 ENV PLUGINS_DIR="/opt/custom-plugins"
 
 ENV INSTALL_5STACK_PLUGIN=true
+ENV INSTALL_UTILITY_PRACTICE_PLUGIN=false
 
 ENV GAME_ID="730"
 ENV GAME_PARAMS=""
@@ -125,6 +152,7 @@ COPY apps/counterstrikesharp/cfg /opt/server-cfg
 COPY shared/scripts /opt/scripts
 COPY apps/counterstrikesharp/scripts /opt/scripts
 COPY --from=build /mod/release /opt/mod
+COPY --from=utility-build /mod/release /opt/utility-practice
 
 RUN mv /opt/metamod/addons /opt/addons && \
 	cp -R /opt/counterstrikesharp/addons/metamod /opt/addons && \

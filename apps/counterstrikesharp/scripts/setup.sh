@@ -66,7 +66,10 @@ fi
 
 ln -s "/opt/custom-plugins/addons/counterstrikesharp/configs" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs"
 
-if [ "$SERVER_TYPE" != "Ranked" ]; then
+# Public-server treatment: every installed custom plugin gets symlinked in,
+# which is what "load on every match" is meant to gate. A practice server is
+# 5stack-managed like a ranked one -- it runs its own plugin and nothing else.
+if [ "$SERVER_TYPE" != "Ranked" ] && [ "$SERVER_TYPE" != "Practice" ]; then
   if [ ! -d "/opt/custom-plugins" ]; then
     mkdir -p "/opt/custom-plugins"
   fi
@@ -126,6 +129,18 @@ if $INSTALL_5STACK_PLUGIN = true ; then
     ln -s "/opt/dev/css" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/FiveStack"
   else
     ln -s "/opt/mod" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/FiveStack"
+  fi
+fi
+
+# A practice server runs this instead of the match plugin, never alongside it.
+if $INSTALL_UTILITY_PRACTICE_PLUGIN = true ; then
+  echo "---Install Utility Practice---"
+  if [ "${DEV_SWAPPED}" == "1" ]; then
+    # css and sw dev builds share the dev volume; each uses its own subfolder
+    mkdir -p "/opt/dev/utility-css"
+    ln -s "/opt/dev/utility-css" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/UtilityPractice"
+  else
+    ln -s "/opt/utility-practice" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/UtilityPractice"
   fi
 fi
 
