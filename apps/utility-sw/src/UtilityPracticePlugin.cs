@@ -150,6 +150,11 @@ public partial class UtilityPracticePlugin : BasePlugin
         Core.Event.OnPrecacheResource += _precacheHandler;
 
         _disconnectHandler = @event =>
+        {
+            // Outside ForPlayer: somebody left either way, and a player we
+            // cannot resolve is exactly when the roster most needs re-reading.
+            _occupancyDirty = true;
+
             ForPlayer(
                 @event.PlayerId,
                 steamId =>
@@ -158,12 +163,17 @@ public partial class UtilityPracticePlugin : BasePlugin
                     OnPlayerGone(steamId);
                 }
             );
+        };
         Core.Event.OnClientDisconnected += _disconnectHandler;
 
         // Refresh FETCHES; it does not draw. Somebody who joins and runs no
         // command should still see every lineup on the map.
         _authorizeHandler = @event =>
+        {
+            _occupancyDirty = true;
+
             ForPlayer(@event.PlayerId, steamId => RefreshAndShow(steamId));
+        };
         Core.Event.OnClientSteamAuthorize += _authorizeHandler;
 
         InitializeConnectClientHook();
@@ -924,15 +934,26 @@ public partial class UtilityPracticePlugin : BasePlugin
     // one loop over the weapons they already have.
     private int _occupancyTicks;
 
-    // Every few seconds, not every one: the panel only needs to know somebody
-    // is here, and the reaper's clocks are measured in minutes.
+    // Set by the connect and disconnect hooks, cleared by the send.
+    //
+    // The hooks flag rather than send because at OnClientDisconnected the
+    // leaving player is STILL in Core.PlayerManager.GetAllPlayers() -- a
+    // snapshot taken there would report them as present, which is the exact
+    // staleness this exists to remove. Waiting for the next tick lets the
+    // engine drop them first, and folds a burst of joins into one post.
+    private bool _occupancyDirty;
+
+    // On the next tick after somebody comes or goes; otherwise a slow
+    // reconciler, because the snapshot is idempotent and the reaper's clocks
+    // are measured in minutes.
     private void ReportOccupancy()
     {
-        if (++_occupancyTicks < OccupancySeconds)
+        if (!_occupancyDirty && ++_occupancyTicks < OccupancySeconds)
         {
             return;
         }
 
+        _occupancyDirty = false;
         _occupancyTicks = 0;
 
         var present = new List<ulong>();
@@ -1211,7 +1232,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     // than a game mode cfg: a practice server may be a third-party dedicated
     // box that no mode was ever selected for, and without this it sits in
     // warmup with no money and no utility.
-    private const int OccupancySeconds = 15;
+    private const int OccupancySeconds = 60;
     private const int WarmupRetrySeconds = 3;
 
     private const float CfgReapplySeconds = 3f;

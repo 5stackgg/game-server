@@ -31,6 +31,7 @@ public partial class UtilityPracticePlugin
     private void OnClientAuthorized(int slot, SteamID steamId)
     {
         _library.Refresh(steamId.SteamId64);
+        _occupancyDirty = true;
     }
 
     // Joining a team is the moment somebody is actually in the server and able
@@ -71,6 +72,10 @@ public partial class UtilityPracticePlugin
 
     private void OnClientDisconnect(int slot)
     {
+        // Before the validity check: somebody left either way, and a controller
+        // we cannot resolve is exactly when the roster most needs re-reading.
+        _occupancyDirty = true;
+
         CCSPlayerController? player = Utilities.GetPlayerFromSlot(slot);
 
         if (player == null || !player.IsValid)
