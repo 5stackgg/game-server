@@ -310,15 +310,49 @@ public class PracticeReplay
     // The whole library for a player, so loading one lineup still draws the
     // rest. Supplied by the plugin, which owns the library.
     /// <summary>
-    /// Narrows the library layer to a named set of lineups.
+    /// Narrows the library layer to a named set of lineups, IN ORDER.
     ///
     /// Starting an execute drew every smoke on the map, because a playbook step
     /// goes through the same Load as a typed .load and Load draws the whole
     /// library. That buries the four throws the execute is actually about in a
     /// hundred that it is not. Null means the whole library, which is the
     /// resting state.
+    ///
+    /// Ordered rather than a set because the position IS the colour: an execute
+    /// puts several grenades up at once and drawn in the utility's own colour
+    /// they are all the same white, so nothing on the ground says which one
+    /// landed where.
     /// </summary>
-    public IReadOnlyCollection<string>? LibraryRestriction { get; set; }
+    public IReadOnlyList<string>? LibraryRestriction { get; set; }
+
+    /// <summary>
+    /// The colour a lineup is wearing in the running execute, or null when it
+    /// is not in one. Position in LibraryRestriction decides it.
+    /// </summary>
+    public PracticeStepColors.StepColor? StepColorFor(string clientId)
+    {
+        IReadOnlyList<string>? order = LibraryRestriction;
+
+        if (order == null)
+        {
+            return null;
+        }
+
+        for (int index = 0; index < order.Count; index++)
+        {
+            if (string.Equals(order[index], clientId, StringComparison.OrdinalIgnoreCase))
+            {
+                return PracticeStepColors.For(index);
+            }
+        }
+
+        return null;
+    }
+
+    private static Color Rgb(PracticeStepColors.StepColor step)
+    {
+        return new Color((int)step.R, (int)step.G, (int)step.B, 255);
+    }
 
     public Func<ulong, IReadOnlyList<LineupRecord>> All { get; set; } =
         _ => Array.Empty<LineupRecord>();
@@ -463,9 +497,9 @@ public class PracticeReplay
                 );
             }
 
-            // Everything on the map, with this one in focus -- or just the
-            // execute's own throws while one is running.
-            IReadOnlyList<LineupRecord> everything = Restricted(All(player.SteamID));
+            // Everything on the map, with this one in focus. ShowLibrary
+            // narrows it to the execute's own throws when one is running.
+            IReadOnlyList<LineupRecord> everything = All(player.SteamID);
 
             IReadOnlyList<LineupRecord> library =
                 everything.Count > 0 ? everything : new[] { lineup };
@@ -559,14 +593,22 @@ public class PracticeReplay
 
     private IReadOnlyList<LineupRecord> Restricted(IReadOnlyList<LineupRecord> lineups)
     {
-        IReadOnlyCollection<string>? only = LibraryRestriction;
+        IReadOnlyList<string>? only = LibraryRestriction;
 
         if (only == null || only.Count == 0)
         {
             return lineups;
         }
 
-        return lineups.Where(lineup => only.Contains(lineup.client_id)).ToList();
+        // Drawn in the execute's own order, so the colours run 1..n the way the
+        // steps do rather than in whatever order the library came back in.
+        return only.Select(id =>
+                lineups.FirstOrDefault(lineup =>
+                    string.Equals(lineup.client_id, id, StringComparison.OrdinalIgnoreCase)
+                )
+            )
+            .OfType<LineupRecord>()
+            .ToList();
     }
 
     /// <summary>
@@ -1235,7 +1277,10 @@ public class PracticeReplay
             return;
         }
 
-        List<LineupRecord> all = lineups.ToList();
+        // Applied here rather than at the call site: ShowLibrary is also called
+        // on a refresh and after a .save, and either of those arriving mid
+        // execute would quietly put the whole map back on screen.
+        IReadOnlyList<LineupRecord> all = Restricted(lineups.ToList());
         List<LineupRecord> drawn = all.Take(MaxLibraryDrawn).ToList();
 
         // Redrawing means despawning and respawning every marker on the map,
@@ -1268,11 +1313,17 @@ public class PracticeReplay
             );
         }
 
-        lineups = drawn;
-
-        foreach (LineupRecord lineup in lineups)
+        foreach (LineupRecord lineup in drawn)
         {
-            Color type = ColorFor(lineup.utility_type);
+            PracticeStepColors.StepColor? step = StepColorFor(lineup.client_id);
+
+            // In an execute the step's colour beats both of the usual ones:
+            // amber for where you stand and the utility's own for where it
+            // lands. Telling the four smokes apart is the whole job while one
+            // is running, and both ends have to wear the same colour or the
+            // line between them is guesswork.
+            Color type = step == null ? ColorFor(lineup.utility_type) : Rgb(step.Value);
+            Color needle = step == null ? AmberDim : Rgb(step.Value);
             Vec3 feet = Grounded(lineup.release.feet_position);
 
             // Seven beams where there used to be twenty-one. A map holds
@@ -1283,11 +1334,11 @@ public class PracticeReplay
             // No name on the ground and no post: the chevron says which way,
             // the glowing model says what and where, and the name arrives in
             // centre text when the player points at the grenade.
-            Needle(feet, lineup.release.yaw, 13f, AmberDim, MarkerWidth);
+            Needle(feet, lineup.release.yaw, 13f, needle, MarkerWidth);
             Diamond(lineup.detonation_position, 22f, type, MarkerWidth);
         }
 
-        ShowSpotUtility(lineups);
+        ShowSpotUtility(drawn);
     }
 
     // What to bring, not which throw to make. A model belongs to the SPOT: two
@@ -1295,7 +1346,7 @@ public class PracticeReplay
     // spot reads as six grenades rather than one place to stand. A spot holding
     // a smoke and a flash still shows both, because that is a real choice about
     // what to equip.
-    private void ShowSpotUtility(IEnumerable<LineupRecord> lineups)
+    private void ShowSpotUtility(IReadOnlyList<LineupRecord> lineups)
     {
         List<(float x, float y, float z, List<string> types)> spots =
             PracticeLineupUtility.UtilityBySpot(
@@ -1317,9 +1368,60 @@ public class PracticeReplay
                 // ring and two straddle it rather than one sitting off to a side.
                 float offset = (index - ((spot.types.Count - 1) / 2f)) * UtilityModelSpacing;
 
-                UtilityModel(spot.types[index], new Vec3(spot.x + offset, spot.y, spot.z));
+                // The glowing grenade is the most visible thing on a spot, so
+                // in an execute it wears the step's colour like everything else
+                // does -- otherwise the one marker a player actually looks at
+                // is the one that does not say which throw it is.
+                Color? glow = StepGlowAt(lineups, spot.types[index], spot.x, spot.y, spot.z);
+
+                UtilityModel(
+                    spot.types[index],
+                    new Vec3(spot.x + offset, spot.y, spot.z),
+                    glow
+                );
             }
         }
+    }
+
+    private Color? StepGlowAt(
+        IReadOnlyList<LineupRecord> lineups,
+        string utilityType,
+        float x,
+        float y,
+        float z
+    )
+    {
+        if (LibraryRestriction == null)
+        {
+            return null;
+        }
+
+        foreach (LineupRecord lineup in lineups)
+        {
+            if (lineup.utility_type != utilityType)
+            {
+                continue;
+            }
+
+            Vec3 feet = Grounded(lineup.release.feet_position);
+
+            if (
+                new Vec3(feet.x - x, feet.y - y, 0f).LengthXY() > SpotRadius
+                || Math.Abs(feet.z - z) > SpotHeight
+            )
+            {
+                continue;
+            }
+
+            PracticeStepColors.StepColor? step = StepColorFor(lineup.client_id);
+
+            if (step != null)
+            {
+                return Rgb(step.Value);
+            }
+        }
+
+        return null;
     }
 
     // One player's focused lineups: the big ring, the STAND label and the aim
@@ -2043,7 +2145,7 @@ public class PracticeReplay
         AddMarkerBeam(west, north, color, width);
     }
 
-    private void UtilityModel(string utilityType, Vec3 at)
+    private void UtilityModel(string utilityType, Vec3 at, Color? glow = null)
     {
         if (!DrawModels)
         {
@@ -2124,7 +2226,7 @@ public class PracticeReplay
             // that forced the beam rebuilds. Type 3 is the through-walls
             // outline; team -1 shows it to everyone.
             prop.Glow.GlowType = 3;
-            prop.Glow.GlowColorOverride = ColorFor(utilityType);
+            prop.Glow.GlowColorOverride = glow ?? ColorFor(utilityType);
             prop.Glow.GlowRange = UtilityGlowRange;
             prop.Glow.GlowRangeMin = 0;
             prop.Glow.GlowTeam = -1;

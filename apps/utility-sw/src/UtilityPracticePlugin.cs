@@ -915,6 +915,18 @@ public partial class UtilityPracticePlugin : BasePlugin
     private string Title(IPlayer player, LineupRecord lineup)
     {
         string name = PracticeLineupUtility.TitleCase(lineup.name);
+
+        // In an execute the colour beats the position in the library walk.
+        // Several grenades are up at once and they all look the same in the
+        // air, so "you are throwing the cyan one" is the thing that lets a
+        // player find their own smoke on the ground afterwards.
+        PracticeStepColors.StepColor? step = _replay.StepColorFor(lineup.client_id);
+
+        if (step != null)
+        {
+            return $"{step.Value.Name.ToUpperInvariant()} - {name}";
+        }
+
         PracticeState state = _system.StateFor(player.SteamID);
 
         if (state.Results.Count < 2 || state.Index < 0 || state.Index >= state.Results.Count)

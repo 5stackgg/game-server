@@ -66,10 +66,14 @@ public class PracticePlaybook
     // Set for the length of a run so the map shows the execute and nothing
     // else. Wired rather than injected for the same reason Load is: the replay
     // already owns what gets drawn, and this only says which subset.
-    public Action<IReadOnlyCollection<string>?>? Restrict { get; set; }
+    public Action<IReadOnlyList<string>?>? Restrict { get; set; }
     public Action<string>? Chat { get; set; }
     public Action<ulong, string>? Tell { get; set; }
     public Action<ulong, string>? Center { get; set; }
+
+    // The lineups of the running execute, in step order. Position is the
+    // colour, so this is the one list both the map and the chat read from.
+    private List<string> _order = new List<string>();
 
     public bool Running => _phase != Phase.Idle;
 
@@ -114,13 +118,17 @@ public class PracticePlaybook
         _elapsedMs = -1;
         _announced = -1;
 
-        Restrict?.Invoke(
-            steps
-                .Select(step => step.utility_lineup_id)
-                .Where(id => !string.IsNullOrEmpty(id))
-                .Select(id => id!)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase)
-        );
+        // In step order, because position is what picks the colour each throw
+        // wears on the map. Kept, so the chat line and the marker cannot
+        // disagree about which colour a step is.
+        _order = steps
+            .Select(step => step.utility_lineup_id)
+            .Where(id => !string.IsNullOrEmpty(id))
+            .Select(id => id!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        Restrict?.Invoke(_order);
 
         return ePlaybookStart.Started;
     }
@@ -134,6 +142,7 @@ public class PracticePlaybook
 
         _phase = Phase.Idle;
         _steps = new List<UtilityPlaybookStep>();
+        _order = new List<string>();
 
         Restrict?.Invoke(null);
 
@@ -145,6 +154,7 @@ public class PracticePlaybook
     {
         _phase = Phase.Idle;
         _steps = new List<UtilityPlaybookStep>();
+        _order = new List<string>();
         _lineups.Clear();
 
         Restrict?.Invoke(null);
@@ -225,6 +235,11 @@ public class PracticePlaybook
         string name = string.IsNullOrEmpty(lineup.name) ? lineup.utility_type : lineup.name;
         string note = string.IsNullOrWhiteSpace(step.note) ? "" : $" - {step.note}";
 
+        // Said in chat as well as drawn on the map: the marker answers "which
+        // one is mine" while you are standing on it, and the chat line is what
+        // is still there to read once four smokes are in the air.
+        string colour = ColorName(lineup.client_id);
+
         var targets = _system
             .ConnectedSteamIds()
             .Where(steamId => PlaybookUtility.IsFor(step, steamId))
@@ -246,8 +261,19 @@ public class PracticePlaybook
         foreach (ulong steamId in targets)
         {
             Load?.Invoke(steamId, lineup);
-            Tell?.Invoke(steamId, $"{order}/{_steps.Count} {name}{note}");
+            Tell?.Invoke(steamId, $"{order}/{_steps.Count} {name}{note}{colour}");
         }
+    }
+
+    // Which colour this throw is wearing on the map, by its position in the
+    // execute -- the same arithmetic the replay layer uses to paint it.
+    private string ColorName(string clientId)
+    {
+        int index = _order.FindIndex(id =>
+            string.Equals(id, clientId, StringComparison.OrdinalIgnoreCase)
+        );
+
+        return index < 0 ? "" : $" - throw the {PracticeStepColors.For(index).Name} one";
     }
 
     private LineupRecord? LineupFor(UtilityPlaybookStep step)
