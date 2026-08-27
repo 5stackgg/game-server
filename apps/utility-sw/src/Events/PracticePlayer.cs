@@ -110,9 +110,12 @@ public partial class UtilityPracticePlugin
             return HookResult.Continue;
         }
 
-        // DmgHealth is the raw figure and overkills a bot on low health, which
-        // would read as a better grenade than it was.
-        int dealt = Math.Min(@event.DmgHealth, @event.Health + @event.DmgHealth);
+        // The RAW damage, deliberately -- the opposite of what the match plugin
+        // reports. There, overkill must not be credited to a player's stats.
+        // Here the question is "what would this grenade do to somebody", and
+        // clamping it to what was left of a half-dead bot answers a question
+        // about the bot instead of about the throw.
+        int dealt = @event.ActualDmgHealth;
 
         Tell(
             attacker.SteamID,
@@ -120,8 +123,21 @@ public partial class UtilityPracticePlugin
                 + $"{ChatColors.Default}({Friendly(weapon)})"
         );
 
+        // Topped back up so the next throw is measured against the same target.
+        // Without this a second HE onto a hurt bot reads lower than the first
+        // and the two numbers cannot be compared, which is the only reason to
+        // have put a bot there.
+        CCSPlayerPawn? pawn = hurt.PlayerPawn;
+
+        if (pawn != null && pawn.IsValid && @event.ActualHealth > 0)
+        {
+            pawn.Health = BotFullHealth;
+        }
+
         return HookResult.Continue;
     }
+
+    private const int BotFullHealth = 100;
 
     private void ReportFlash(IPlayer? thrower, float duration)
     {
