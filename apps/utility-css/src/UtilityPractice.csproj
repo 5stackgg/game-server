@@ -5,7 +5,7 @@
     <RootNamespace>UtilityPractice</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.371" />
+    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.373" />
   </ItemGroup>
   <!-- Same shared glob the match plugin uses, narrowed to the practice types:
        pulling all of shared/dotnet would drag in match entities this plugin has
