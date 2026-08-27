@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using FiveStack.Entities.Practice;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
@@ -87,6 +88,29 @@ public class PracticeReplay
         "point_worldtext",
     };
 
+    // Brushes you can walk through. A trigger is an invisible volume with no
+    // surface to aim at, but the trace treated one as a wall -- which is why
+    // the crosshair for the Ancient InstaMid smokes from CT landed in mid-air
+    // well short of the wall, sitting on the edge of the CT buy zone. Named
+    // explicitly rather than by a "trigger_" prefix alone because func_buyzone,
+    // func_bomb_target and func_hostage_rescue are the same kind of thing
+    // wearing a different name.
+    private static readonly HashSet<string> TracePassThrough = new()
+    {
+        "func_buyzone",
+        "func_bomb_target",
+        "func_hostage_rescue",
+        "func_nav_blocker",
+        "trigger_multiple",
+        "trigger_once",
+        "trigger_push",
+        "trigger_hurt",
+        "trigger_teleport",
+        "trigger_soundscape",
+        "trigger_look",
+        "trigger_proximity",
+    };
+
     private static TraceParams SkipMarkers()
     {
         var parameters = new TraceParams();
@@ -99,6 +123,8 @@ public class PracticeReplay
             // Held weapons follow players through rays, and projectiles are
             // wherever somebody last threw one.
             return !TraceInvisible.Contains(designer)
+                && !TracePassThrough.Contains(designer)
+                && !designer.StartsWith("trigger_")
                 && !designer.StartsWith("weapon_")
                 && !designer.EndsWith("_projectile");
         };
@@ -342,7 +368,7 @@ public class PracticeReplay
 
         // The same floor the stance marker is drawn on, so .load puts the
         // player standing on the ring rather than dropping into it.
-        Vec3 feet = Grounded(lineup.release.feet_position);
+        Vec3 feet = Standable(Grounded(lineup.release.feet_position));
         var position = new Vector(feet.x, feet.y, feet.z);
 
         // Yaw for the body, pitch for the eyes, and never the two together: a
@@ -947,7 +973,8 @@ public class PracticeReplay
             Math.Atan2(stance.y - landing.y, stance.x - landing.x) * 180.0 / Math.PI
         );
 
-        var position = new Vector(landing.x, landing.y, landing.z);
+        Vec3 standable = Standable(landing);
+        var position = new Vector(standable.x, standable.y, standable.z);
         var facing = new QAngle(0, yaw, 0);
 
         player.Teleport(position, facing, new Vector(0, 0, 0));
@@ -1030,6 +1057,36 @@ public class PracticeReplay
     // newest first, so what survives the cap is the newest.
     private const int MaxLibraryDrawn = 150;
 
+    // What the library layer currently has on the map. Geometry is part of it,
+    // not just identity: a lineup that was edited keeps its id and has to
+    // redraw, and a refresh that changed nothing must not.
+    private string? _librarySignature;
+
+    private static string LibrarySignature(IReadOnlyList<LineupRecord> lineups)
+    {
+        var builder = new StringBuilder(lineups.Count * 48);
+
+        foreach (LineupRecord lineup in lineups)
+        {
+            Vec3 feet = lineup.release.feet_position;
+            Vec3 land = lineup.detonation_position;
+
+            builder
+                .Append(lineup.client_id)
+                .Append(':')
+                .Append(lineup.utility_type)
+                .Append(':')
+                .Append((int)feet.x).Append(',').Append((int)feet.y).Append(',').Append((int)feet.z)
+                .Append(':')
+                .Append((int)lineup.release.yaw)
+                .Append(':')
+                .Append((int)land.x).Append(',').Append((int)land.y).Append(',').Append((int)land.z)
+                .Append('|');
+        }
+
+        return builder.ToString();
+    }
+
     public void ShowLibrary(IEnumerable<LineupRecord> lineups)
     {
         if (!DrawMarkers)
@@ -1037,12 +1094,28 @@ public class PracticeReplay
             return;
         }
 
+        List<LineupRecord> all = lineups.ToList();
+        List<LineupRecord> drawn = all.Take(MaxLibraryDrawn).ToList();
+
+        // Redrawing means despawning and respawning every marker on the map,
+        // and this runs on every .load, .next, .prev, .rethrow, drill step and
+        // playbook beat -- fired by ANY player, against one shared set of
+        // entities. So one person walking their library blinked out the circle
+        // somebody else was standing in, which is the "circle sometimes
+        // disappears" nobody could pin to an angle. Nothing is rebuilt unless
+        // the library being drawn actually changed.
+        string signature = LibrarySignature(drawn);
+
+        if (signature == _librarySignature && _markerBeams.Count > 0)
+        {
+            return;
+        }
+
+        _librarySignature = signature;
+
         ClearSharedMarkers();
 
         _drawingInto = null;
-
-        List<LineupRecord> all = lineups.ToList();
-        List<LineupRecord> drawn = all.Take(MaxLibraryDrawn).ToList();
 
         if (drawn.Count < all.Count)
         {
@@ -1266,7 +1339,7 @@ public class PracticeReplay
     // how close you were once you arrived.
     private void GroundReticle(Vec3 at, Color color)
     {
-        float z = at.z + 1.5f;
+        float z = at.z + StanceRingHeight;
 
         for (int index = 0; index < StanceRingSegments; index++)
         {
@@ -1608,6 +1681,20 @@ public class PracticeReplay
     // the recorder learned to keep the standstill hold the release origin,
     // which for a jump throw is a jump height up in the air -- and a marker
     // floating at head height is not somewhere anyone can stand.
+    // Where to PUT a player, as opposed to where to draw a mark.
+    //
+    // Grounded traces a line, and a line finds the floor between things a
+    // player hull cannot fit between -- the rubble at Ancient ruins is the
+    // reported case, where the trace lands in a gap and the pawn arrives
+    // wedged in the stones. Dropping them from just above instead lets the
+    // engine resolve the standing position itself, which it does correctly and
+    // a trace here cannot. Markers keep using the true floor: a reticle
+    // hovering above the ground for this reason would be a different bug.
+    private static Vec3 Standable(Vec3 grounded)
+    {
+        return new Vec3(grounded.x, grounded.y, grounded.z + TeleportClearance);
+    }
+
     private Vec3 Grounded(Vec3 position)
     {
         try
@@ -1674,6 +1761,20 @@ public class PracticeReplay
     private const float StanceRingRadius = 22f;
     private const int StanceRingSegments = 14;
 
+    // Knee height, not the floor. Drawn flat on the ground the reticle vanishes
+    // into anything the floor is not -- water at Ancient T spawn swallowed it
+    // completely, and rubble hides it just as well. Standing on the spot is
+    // judged on XY alone, so lifting it costs nothing and it still reads as
+    // being on the ground from a player's eye line.
+    private const float StanceRingHeight = 26f;
+
+    // Which face of the text plane is the front. Zero put the back of it toward
+    // the reader and every label came out mirrored.
+    private const float LabelYaw = 180f;
+
+    // Enough to clear an uneven floor without being a noticeable drop.
+    private const float TeleportClearance = 4f;
+
     // Legible without being architecture. These labels sit on the spot they
     // name, at arm's length, not across the map.
     private const int LabelFontSize = 34;
@@ -1707,6 +1808,14 @@ public class PracticeReplay
     // forgets the handles. Safe to call when there is nothing to find.
     public int SweepMarkers()
     {
+        _librarySignature = null;
+
+        // The aim trace is memoised per lineup for the life of the map, so a
+        // point that was cached while the trace still stopped on trigger
+        // brushes would outlive the fix for it. A sweep is the one moment the
+        // world is known to be empty of ours, so it is where that is dropped.
+        _aimHits.Clear();
+
         int swept = 0;
 
         foreach (string designer in MarkerClasses)
@@ -1931,9 +2040,6 @@ public class PracticeReplay
         return length < 0.0001f ? v : new Vec3(v.x / length, v.y / length, v.z / length);
     }
 
-    // facing: where the text should read from, normally the spot the player is
-    // standing on. Passing null keeps the auto-reorient, which is right for a
-    // label lying on the floor and wrong for one on a wall.
     private CPointWorldText? Label(Vec3 at, string text, Color color)
     {
         if (!Sane(at))
@@ -1963,12 +2069,16 @@ public class PracticeReplay
             label.JustifyVertical = PointWorldTextJustifyVertical_t
                 .POINT_WORLD_TEXT_JUSTIFY_VERTICAL_CENTER;
 
-            // Every label spins to face whoever is reading it, and is spawned
-            // with no angle of its own. Aiming one by hand is what produced
-            // text lying on its side and mirrored: point_worldtext draws in its
-            // own flat plane, so any hand-set angle is a plane you end up
-            // reading edge-on or from behind. There is no orientation worth
-            // computing here -- the engine already knows where the reader is.
+            // Every label spins to face whoever is reading it, so nothing here
+            // computes where the reader is. What it does have to get right is
+            // which FACE the text is written on: reorient turns the entity to
+            // the viewer, and with a zero yaw that presented the back of the
+            // plane, so every name came out mirrored. The flip is a property of
+            // the entity, not of anybody looking at it.
+            //
+            // Reading it from directly underneath still foreshortens it to the
+            // point of illegibility -- reorient only turns around the up axis,
+            // so there is no yaw that fixes a label being read from below.
             label.ReorientMode = PointWorldTextReorientMode_t
                 .POINT_WORLD_TEXT_REORIENT_AROUND_UP;
 
@@ -1978,7 +2088,7 @@ public class PracticeReplay
             label.FontSize = LabelFontSize;
             label.WorldUnitsPerPx = LabelUnitsPerPx;
 
-            var angle = new QAngle(0, 0, 0);
+            var angle = new QAngle(0, LabelYaw, 0);
 
             label.Teleport(
                 new Vector(at.x, at.y, at.z),
@@ -1987,6 +2097,15 @@ public class PracticeReplay
             );
 
             label.DispatchSpawn(Tagged());
+
+            // Again after the spawn: DispatchSpawn re-derives the transform
+            // from the entity's own keyvalues, so an angle set only before it
+            // is the angle that gets thrown away.
+            label.Teleport(
+                new Vector(at.x, at.y, at.z),
+                angle,
+                new Vector(0, 0, 0)
+            );
 
             if (_drawingInto != null)
             {
@@ -2012,6 +2131,7 @@ public class PracticeReplay
     // makes despawning it actively harmful. Drop the references instead.
     public void ForgetMarkers()
     {
+        _librarySignature = null;
         _aimHits.Clear();
         _markerBeams.Clear();
         _markerTexts.Clear();
@@ -2055,6 +2175,8 @@ public class PracticeReplay
 
     public void ClearMarkers()
     {
+        _librarySignature = null;
+
         foreach (ulong steamId in _selections.Keys.ToList())
         {
             ClearSelection(steamId);
