@@ -19,6 +19,10 @@ public class PracticeState
     public Dictionary<string, ThrowSnapshot> Positions { get; } =
         new Dictionary<string, ThrowSnapshot>(StringComparer.OrdinalIgnoreCase);
 
+    // Where .spawn next/prev has walked to. Separate from Index because that
+    // one walks lineups and a spawn is not one.
+    public int SpawnIndex { get; set; } = -1;
+
     public bool Noclip { get; set; }
     public bool God { get; set; }
 

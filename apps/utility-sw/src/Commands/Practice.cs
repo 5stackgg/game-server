@@ -605,16 +605,122 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        if (!int.TryParse(string.Join(" ", context.Args).Trim(), out int index))
+        string arg = string.Join(" ", context.Args).Trim();
+        PracticeState state = _system.StateFor(player.SteamID);
+        int index;
+
+        // Walking them is how you find the one you want; a spawn has no name
+        // and nobody knows which number they are looking for.
+        if (
+            arg.Equals("next", StringComparison.OrdinalIgnoreCase)
+            || arg.Equals("prev", StringComparison.OrdinalIgnoreCase)
+        )
         {
-            Reply(context, $" {ChatColors.Red}usage: .spawn <1-{spawns.Count}>");
+            int direction = arg.Equals("next", StringComparison.OrdinalIgnoreCase) ? 1 : -1;
+
+            state.SpawnIndex =
+                state.SpawnIndex < 0
+                    ? (direction > 0 ? 0 : spawns.Count - 1)
+                    : ((state.SpawnIndex + direction) % spawns.Count + spawns.Count)
+                        % spawns.Count;
+
+            index = state.SpawnIndex + 1;
+        }
+        else if (int.TryParse(arg, out int typed))
+        {
+            index = Math.Clamp(typed, 1, spawns.Count);
+            state.SpawnIndex = index - 1;
+        }
+        else
+        {
+            Reply(context, $" {ChatColors.Red}usage: .spawn <1-{spawns.Count} | next | prev>");
             return;
         }
 
-        index = Math.Clamp(index, 1, spawns.Count);
-
         PracticeSystem.TeleportTo(player, spawns[index - 1]);
         Reply(context, $" {ChatColors.Green}spawn {index}/{spawns.Count}");
+    }
+
+    // Off by default: a ring per spawn is a few hundred entities nobody asked
+    // for, and the map is quieter without them.
+    [Command("spawns", registerRaw: false, permission: "")]
+    public void OnSpawns(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        if (_replay.SpawnsShown)
+        {
+            _replay.ClearSpawns();
+            Reply(context, $" {ChatColors.Grey}spawn rings off");
+            return;
+        }
+
+        List<ThrowSnapshot> spawns = _system.SpawnPoints();
+
+        if (spawns.Count == 0)
+        {
+            Reply(context, $" {ChatColors.Red}this map has no spawn points");
+            return;
+        }
+
+        _replay.ShowSpawns(spawns);
+
+        Reply(
+            context,
+            $" {ChatColors.Green}showing {spawns.Count} spawn(s) "
+                + $"{ChatColors.Grey}-- .spawn next walks them"
+        );
+    }
+
+    // Something to throw at. A smoke tells you where it landed on its own; a
+    // flash and an HE only tell you anything if there is somebody standing
+    // there to be flashed or hurt.
+    [Command("bot", registerRaw: false, permission: "")]
+    public void OnBot(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        if (!AddBot(player))
+        {
+            Reply(context, $" {ChatColors.Red}unable to place a bot here");
+            return;
+        }
+
+        Reply(
+            context,
+            $" {ChatColors.Green}bot placed {ChatColors.Grey}-- "
+                + $"{ChatColors.Default}.nobots{ChatColors.Grey} clears them"
+        );
+    }
+
+    [Command("nobots", registerRaw: false, permission: "")]
+    public void OnNoBots(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        int had = ClearBots();
+
+        Reply(
+            context,
+            had == 0
+                ? $" {ChatColors.Grey}no bots to clear"
+                : $" {ChatColors.Green}cleared {had} bot(s)"
+        );
     }
 
     [Command("noclip", registerRaw: false, permission: "")]
@@ -1083,6 +1189,8 @@ public partial class UtilityPracticePlugin
         $" {ChatColors.Default}.drill [count] [worst] / .skip {ChatColors.Grey}drills your book and scores it",
         $" {ChatColors.Default}.drill / .cancel {ChatColors.Grey}stops a drill you are in",
         $" {ChatColors.Default}.playbook / .run / .playbook stop {ChatColors.Grey}the loaded execute",
+        $" {ChatColors.Default}.bot / .nobots {ChatColors.Grey}something to flash and blow up",
+        $" {ChatColors.Default}.spawns / .spawn next {ChatColors.Grey}where rounds start from",
         $" {ChatColors.Default}.noclip / .god / .timer / .solo / .clear",
     };
 

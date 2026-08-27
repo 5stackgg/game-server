@@ -172,6 +172,12 @@ public class PracticeReplay
     // grenade model. Shared on purpose -- everyone on the server should see
     // where the lineups are.
     private readonly List<CEnvBeam> _markerBeams = new();
+
+    // Spawn rings live outside the library layer on purpose: ShowLibrary
+    // despawns and rebuilds everything it owns, and a toggle the player asked
+    // for must not blink out because somebody ran .next.
+    private readonly List<CEnvBeam> _spawnBeams = new();
+    private List<CEnvBeam>? _spawnInto;
     private readonly List<CPointWorldText> _markerTexts = new();
     private readonly List<CPhysicsProp> _markerProps = new();
 
@@ -479,6 +485,78 @@ public class PracticeReplay
         player.SendCenter(Describe(lineup));
     }
 
+    // A map has a few dozen of these and each ring is a handful of entities, so
+    // the ring is coarser than a stance reticle and the count is capped. It is
+    // a "where can I start from" overview, not something to line a throw up on.
+    private const int SpawnRingSegments = 8;
+    private const float SpawnRingRadius = 20f;
+    private const int MaxSpawnsDrawn = 32;
+
+    public bool SpawnsShown => _spawnBeams.Count > 0;
+
+    public void ShowSpawns(IReadOnlyList<ThrowSnapshot> spawns)
+    {
+        ClearSpawns();
+
+        if (!DrawMarkers)
+        {
+            return;
+        }
+
+        _spawnInto = _spawnBeams;
+
+        try
+        {
+            foreach (ThrowSnapshot spawn in spawns.Take(MaxSpawnsDrawn))
+            {
+                Vec3 feet = Grounded(spawn.feet_position);
+                float z = feet.z + StanceRingHeight;
+
+                for (int index = 0; index < SpawnRingSegments; index++)
+                {
+                    double a = index * 2 * Math.PI / SpawnRingSegments;
+                    double b = (index + 1) * 2 * Math.PI / SpawnRingSegments;
+
+                    AddMarkerBeam(
+                        new Vec3(
+                            feet.x + (float)(Math.Cos(a) * SpawnRingRadius),
+                            feet.y + (float)(Math.Sin(a) * SpawnRingRadius),
+                            z
+                        ),
+                        new Vec3(
+                            feet.x + (float)(Math.Cos(b) * SpawnRingRadius),
+                            feet.y + (float)(Math.Sin(b) * SpawnRingRadius),
+                            z
+                        ),
+                        AmberDim,
+                        MarkerWidth
+                    );
+                }
+
+                // Which way you face when you spawn there, which is half of
+                // what makes a spawn worth knowing about.
+                Needle(feet, spawn.yaw, 13f, AmberDim, MarkerWidth);
+            }
+        }
+        finally
+        {
+            _spawnInto = null;
+        }
+    }
+
+    public void ClearSpawns()
+    {
+        foreach (CEnvBeam beam in _spawnBeams)
+        {
+            if (beam.IsValid)
+            {
+                beam.Despawn();
+            }
+        }
+
+        _spawnBeams.Clear();
+    }
+
     private IReadOnlyList<LineupRecord> Restricted(IReadOnlyList<LineupRecord> lineups)
     {
         IReadOnlyCollection<string>? only = LibraryRestriction;
@@ -489,6 +567,45 @@ public class PracticeReplay
         }
 
         return lineups.Where(lineup => only.Contains(lineup.client_id)).ToList();
+    }
+
+    /// <summary>
+    /// Put a player on a lineup's stance without reloading the lineup.
+    ///
+    /// Walking into a circle tells you where to stand but not exactly where,
+    /// and "exactly" is the whole point of a stance -- so being near one and
+    /// pressing use finishes the walk. Deliberately not a Load: the lineup is
+    /// already the one in hand, and re-giving the grenade mid-run-up would take
+    /// a thrown one back.
+    /// </summary>
+    public bool StandOn(IPlayer player, LineupRecord lineup)
+    {
+        CCSPlayerPawn? pawn = player.PlayerPawn;
+
+        if (pawn == null || !pawn.IsValid)
+        {
+            return false;
+        }
+
+        Vec3 feet = Standable(Grounded(lineup.release.feet_position));
+
+        if (!Sane(feet))
+        {
+            return false;
+        }
+
+        var position = new Vector(feet.x, feet.y, feet.z);
+        var facing = new QAngle(0, lineup.release.yaw, 0);
+        var aim = new QAngle(lineup.release.pitch, lineup.release.yaw, 0);
+
+        player.Teleport(position, facing, new Vector(0, 0, 0));
+        pawn.EyeAngles = aim;
+
+        // The client re-predicts from the command it had in flight and snaps
+        // the view back, so once is not enough.
+        ReapplyAngles(player, facing, aim, 2);
+
+        return true;
     }
 
     // The measured bloom, outlined where it would actually sit. Answers how
@@ -2035,6 +2152,12 @@ public class PracticeReplay
             return;
         }
 
+        if (_spawnInto != null)
+        {
+            _spawnInto.Add(beam);
+            return;
+        }
+
         _aimInto?.Beams.Add(beam);
         _stanceInto?.Add(beam);
 
@@ -2156,6 +2279,7 @@ public class PracticeReplay
     public void ForgetMarkers()
     {
         _librarySignature = null;
+        _spawnBeams.Clear();
         _aimHits.Clear();
         _markerBeams.Clear();
         _markerTexts.Clear();
