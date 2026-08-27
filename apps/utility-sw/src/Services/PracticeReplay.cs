@@ -43,6 +43,7 @@ public class PracticeReplay
     private enum GhostKind
     {
         Bloom,
+        Trail,
     }
 
     private class Ghost
@@ -953,6 +954,11 @@ public class PracticeReplay
             if (_ghosts[index].OwnerSteamId != steamId)
             {
                 continue;
+            }
+
+            if (_ghosts[index].Kind == GhostKind.Trail)
+            {
+                _trails.Remove(_ghosts[index].OwnerSteamId);
             }
 
             Kill(_ghosts[index]);
@@ -2516,6 +2522,78 @@ public class PracticeReplay
             _logger.LogError(error, "unable to draw a lineup preview");
             return null;
         }
+    }
+
+    // How long a coloured trail stays up. Matches the engine trail it replaces
+    // (sv_grenade_trajectory_prac_trailtime), so turning ours on does not also
+    // silently change how long you have to walk over and look at it.
+    private const float TrailSeconds = 10f;
+
+    // Only drawn while an execute is running, and only for a throw that has a
+    // step colour -- outside one the engine's own trail is fine, and two trails
+    // down the same arc is worse than either.
+    private const float TrailWidth = 0.5f;
+
+    private readonly Dictionary<ulong, (Ghost ghost, Vec3 last)> _trails = new();
+
+    /// <summary>
+    /// One sampled point of a live grenade, drawn in the colour of the step it
+    /// belongs to.
+    ///
+    /// The engine's practice trail is coloured by the thrower's TEAM, so on a
+    /// practice server -- where everybody is usually on the same side -- four
+    /// smokes in an execute leave four identical trails and the whole point of
+    /// colouring the throws is lost the moment they are in the air.
+    /// </summary>
+    public void TrailPoint(ulong steamId, LineupRecord? lineup, Vec3 at)
+    {
+        if (!DrawMarkers || lineup == null)
+        {
+            return;
+        }
+
+        PracticeStepColors.StepColor? step = StepColorFor(lineup.client_id);
+
+        if (step == null)
+        {
+            return;
+        }
+
+        if (!_trails.TryGetValue(steamId, out (Ghost ghost, Vec3 last) trail))
+        {
+            var started = new Ghost
+            {
+                OwnerSteamId = steamId,
+                Kind = GhostKind.Trail,
+                ExpiresAt = DateTime.UtcNow.AddSeconds(TrailSeconds),
+                Beams = new List<CEnvBeam>(),
+            };
+
+            _ghosts.Add(started);
+            _trails[steamId] = (started, at);
+
+            return;
+        }
+
+        CEnvBeam? beam = CreateBeam(trail.last, at, Rgb(step.Value), TrailWidth);
+
+        if (beam != null)
+        {
+            trail.ghost.Beams.Add(beam);
+        }
+
+        // Pushed out as the grenade flies, so the whole arc fades together from
+        // the moment it lands rather than the start of it disappearing while
+        // the smoke is still in the air.
+        trail.ghost.ExpiresAt = DateTime.UtcNow.AddSeconds(TrailSeconds);
+
+        _trails[steamId] = (trail.ghost, at);
+    }
+
+    /// <summary>The grenade is gone; the next one starts a new arc.</summary>
+    public void TrailEnded(ulong steamId)
+    {
+        _trails.Remove(steamId);
     }
 
     private void Kill(Ghost ghost)

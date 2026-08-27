@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using FiveStack.Entities.Practice;
 using FiveStack.Utilities;
 using Microsoft.Extensions.DependencyInjection;
@@ -95,6 +96,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _playbook = _serviceProvider.GetRequiredService<PracticePlaybook>();
         _drill = _serviceProvider.GetRequiredService<PracticeDrill>();
         _solver = _serviceProvider.GetRequiredService<PracticeSolver>();
+        _hud = ResolveHud();
 
         // addons/swiftlys2/configs is two levels up from
         // addons/swiftlys2/plugins/UtilityPractice.
@@ -110,6 +112,13 @@ public partial class UtilityPracticePlugin : BasePlugin
         _recorder.Thrown += _system.OnThrown;
         _recorder.Finalized += _score.OnFinalized;
         _recorder.Thrown += _drill.OnThrown;
+
+        // The flight, in the colour of the step it belongs to. The engine's own
+        // practice trail is coloured by TEAM, so on a server where everybody is
+        // on the same side an execute leaves four identical arcs.
+        _recorder.Sampled += (steamId, at) =>
+            _replay.TrailPoint(steamId, _system.StateFor(steamId).Loaded, at);
+        _recorder.Ended += _replay.TrailEnded;
         _system.HoldUtility = _drill.Waiting;
         _score.Scored += _drill.OnScored;
         _score.Scored += OnScoredHint;
@@ -119,6 +128,11 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         _tickHandler = OnGameTick;
         Core.Event.OnTick += _tickHandler;
+
+        if (_hud != null)
+        {
+            WireHudClicks();
+        }
 
         // A grenade's thrower and initial velocity are not populated at the
         // moment the entity is created -- read them there and every throw is
@@ -227,11 +241,13 @@ public partial class UtilityPracticePlugin : BasePlugin
         _session.Refreshed -= OnSessionRefreshed;
         _recorder.Thrown -= _system.OnThrown;
         _recorder.Finalized -= _score.OnFinalized;
+        _recorder.Ended -= _replay.TrailEnded;
         _recorder.Thrown -= _drill.OnThrown;
         _score.Scored -= _drill.OnScored;
         _score.Scored -= OnScoredHint;
-
+        if (_hud != null)
         {
+            UnwireHudClicks();
         }
 
         if (_tickHandler != null)
@@ -1318,7 +1334,21 @@ public partial class UtilityPracticePlugin : BasePlugin
             }
         };
 
-        _playbook.Restrict = only => _replay.LibraryRestriction = only;
+        _playbook.Restrict = only =>
+        {
+            _replay.LibraryRestriction = only;
+
+            // The engine's practice trail is team-coloured, so leaving it on
+            // during an execute draws a second arc down the same flight in a
+            // colour that says nothing. Ours is the one with the answer while
+            // a run is on; outside one the engine's is better than nothing and
+            // costs us no entities.
+            Core.Engine.ExecuteCommand(
+                only == null
+                    ? $"sv_grenade_trajectory_prac_trailtime {EngineTrailSeconds}"
+                    : "sv_grenade_trajectory_prac_trailtime 0"
+            );
+        };
 
         _playbook.Chat = message =>
             Core.PlayerManager.SendChat($" {ChatColors.Green}{message}".Colored());
@@ -1397,6 +1427,44 @@ public partial class UtilityPracticePlugin : BasePlugin
         _showing.Remove((steamId, PanelKind.Steps));
     }
 
+    // here: on a SwiftlyS2 older than 1.4.6-beta.9 the type does not exist, and
+    // touching it anywhere inside Load would take the whole plugin down instead
+    // of just the HUD. Losing the panel and keeping centre text is the point of
+    // having both.
+    // Isolated so the JIT resolves CCSCustomHudLayout only here.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    {
+        try
+        {
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                "custom hud unavailable on this SwiftlyS2 build ({Reason}); panels stay on centre text",
+                exception.Message
+            );
+
+            return null;
+        }
+    }
+
+    // Only ever called when _hud resolved, which is the same thing as the custom
+    // hud types existing. The guard has to sit at the CALL: naming
+    // compiles this method, so a try/catch inside would never get to run.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void WireHudClicks()
+    {
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void UnwireHudClicks()
+    {
+        {
+            return;
+        }
+
+    }
+
     // Swiftly's client events carry a slot, not a steam id.
     private void ForPlayer(int playerId, Action<ulong> action)
     {
@@ -1412,6 +1480,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void OnMapLoad(string mapName)
     {
+        _hud?.Reset();
         _menus.Clear();
         _recorder.Reset();
         _playbook.Reset();
@@ -1562,7 +1631,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         "sv_grenade_trajectory_prac_pipreview 1",
         // The trail is how you see WHERE it went wrong rather than just that it
         // did. Ten seconds outlives the throw and the walk back to the spot.
-        "sv_grenade_trajectory_prac_trailtime 10",
+        "sv_grenade_trajectory_prac_trailtime " + EngineTrailSeconds,
         // Valve's own map-guide editor. Every annotation_* command is client
         // side, so a plugin can never draw one for a player -- but this cvar
         // decides whether they may draw their own, and it ships at view-only.
@@ -1587,6 +1656,10 @@ public partial class UtilityPracticePlugin : BasePlugin
     // throw at. Kept out of PracticeCfg because that list is re-run on every
     // map change and twice on load, and a bot placed to practise against must
     // not be swept away by housekeeping a second later.
+    // Ten seconds outlives the throw and the walk back to the spot. Named
+    // because an execute turns it off and has to be able to put it back.
+    private const int EngineTrailSeconds = 10;
+
     private static readonly string[] NoBotsCfg = new[] { "bot_quota 0", "bot_kick" };
 
     // What a bot is for here: something to flash and to blow up, that stays
