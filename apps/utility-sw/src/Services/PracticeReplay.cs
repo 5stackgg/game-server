@@ -567,9 +567,10 @@ public class PracticeReplay
                     );
                 }
 
-                // Which way you face when you spawn there, which is half of
-                // what makes a spawn worth knowing about.
-                Needle(feet, spawn.yaw, 13f, AmberDim, MarkerWidth);
+                // No facing needle. Which way a spawn points is not something
+                // anybody practising utility cares about, and thirty arrows
+                // pointing in thirty directions read as clutter rather than as
+                // information.
             }
         }
         finally

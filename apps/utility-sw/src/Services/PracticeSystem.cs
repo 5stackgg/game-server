@@ -1,3 +1,4 @@
+using System.Linq;
 using FiveStack.Entities.Practice;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
@@ -346,42 +347,90 @@ public class PracticeSystem
         }
     }
 
+    /// <summary>
+    /// The spawns this game mode actually uses.
+    ///
+    /// Every info_player_* on the map is NOT the answer: Mirage ships dozens
+    /// of them for deathmatch and casual, and showing all of them buries the
+    /// ten a competitive round can start from. The game has already made this
+    /// choice -- game rules keep the selected list separately from the master
+    /// list of every spawn entity -- so this reads the selection rather than
+    /// re-deriving it from priorities and guessing at the mode.
+    /// </summary>
     public List<ThrowSnapshot> SpawnPoints()
     {
         var spawns = new List<ThrowSnapshot>();
 
-        foreach (
-            string designer in new[] { "info_player_terrorist", "info_player_counterterrorist" }
-        )
+        CCSGameRules? rules = _core
+            .EntitySystem.GetAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+            .FirstOrDefault()
+            ?.GameRules;
+
+        if (rules != null)
+        {
+            Collect(spawns, rules.TerroristSpawnPoints);
+            Collect(spawns, rules.CTSpawnPoints);
+        }
+
+        // Before the rules are populated there is nothing to read, and an
+        // empty ring toggle would look like a broken command rather than an
+        // early one. Every spawn beats no spawn.
+        if (spawns.Count == 0)
         {
             foreach (
-                CBaseEntity spawn in _core.EntitySystem.GetAllEntitiesByDesignerName<CBaseEntity>(
-                    designer
-                )
+                string designer in new[]
+                {
+                    "info_player_terrorist",
+                    "info_player_counterterrorist",
+                }
             )
             {
-                Vector? origin = spawn.AbsOrigin;
-
-                if (origin == null)
+                foreach (
+                    CBaseEntity spawn in _core.EntitySystem.GetAllEntitiesByDesignerName<CBaseEntity>(
+                        designer
+                    )
+                )
                 {
-                    continue;
+                    Add(spawns, spawn);
                 }
-
-                spawns.Add(
-                    new ThrowSnapshot
-                    {
-                        feet_position = new Vec3(
-                            origin.Value.X,
-                            origin.Value.Y,
-                            origin.Value.Z
-                        ),
-                        yaw = spawn.AbsRotation?.Y ?? 0f,
-                    }
-                );
             }
         }
 
         return spawns;
+    }
+
+    private static void Collect(
+        List<ThrowSnapshot> spawns,
+        CUtlVector<CHandle<SpawnPoint>> selected
+    )
+    {
+        for (int index = 0; index < selected.Count; index++)
+        {
+            Add(spawns, selected[index].Value);
+        }
+    }
+
+    private static void Add(List<ThrowSnapshot> spawns, CBaseEntity? spawn)
+    {
+        if (spawn == null || !spawn.IsValid)
+        {
+            return;
+        }
+
+        Vector? origin = spawn.AbsOrigin;
+
+        if (origin == null)
+        {
+            return;
+        }
+
+        spawns.Add(
+            new ThrowSnapshot
+            {
+                feet_position = new Vec3(origin.Value.X, origin.Value.Y, origin.Value.Z),
+                yaw = spawn.AbsRotation?.Y ?? 0f,
+            }
+        );
     }
 
     // Somebody who has never run a practice command still gets caught by a
