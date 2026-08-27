@@ -303,6 +303,17 @@ public class PracticeReplay
 
     // The whole library for a player, so loading one lineup still draws the
     // rest. Supplied by the plugin, which owns the library.
+    /// <summary>
+    /// Narrows the library layer to a named set of lineups.
+    ///
+    /// Starting an execute drew every smoke on the map, because a playbook step
+    /// goes through the same Load as a typed .load and Load draws the whole
+    /// library. That buries the four throws the execute is actually about in a
+    /// hundred that it is not. Null means the whole library, which is the
+    /// resting state.
+    /// </summary>
+    public IReadOnlyCollection<string>? LibraryRestriction { get; set; }
+
     public Func<ulong, IReadOnlyList<LineupRecord>> All { get; set; } =
         _ => Array.Empty<LineupRecord>();
 
@@ -446,8 +457,9 @@ public class PracticeReplay
                 );
             }
 
-            // Everything on the map, with this one in focus.
-            IReadOnlyList<LineupRecord> everything = All(player.SteamID);
+            // Everything on the map, with this one in focus -- or just the
+            // execute's own throws while one is running.
+            IReadOnlyList<LineupRecord> everything = Restricted(All(player.SteamID));
 
             IReadOnlyList<LineupRecord> library =
                 everything.Count > 0 ? everything : new[] { lineup };
@@ -465,6 +477,18 @@ public class PracticeReplay
         });
 
         player.SendCenter(Describe(lineup));
+    }
+
+    private IReadOnlyList<LineupRecord> Restricted(IReadOnlyList<LineupRecord> lineups)
+    {
+        IReadOnlyCollection<string>? only = LibraryRestriction;
+
+        if (only == null || only.Count == 0)
+        {
+            return lineups;
+        }
+
+        return lineups.Where(lineup => only.Contains(lineup.client_id)).ToList();
     }
 
     // The measured bloom, outlined where it would actually sit. Answers how

@@ -62,6 +62,11 @@ public class PracticePlaybook
     // what .load already does, and a second implementation of it would be a
     // second answer to the same question.
     public Action<ulong, LineupRecord>? Load { get; set; }
+
+    // Set for the length of a run so the map shows the execute and nothing
+    // else. Wired rather than injected for the same reason Load is: the replay
+    // already owns what gets drawn, and this only says which subset.
+    public Action<IReadOnlyCollection<string>?>? Restrict { get; set; }
     public Action<string>? Chat { get; set; }
     public Action<ulong, string>? Tell { get; set; }
     public Action<ulong, string>? Center { get; set; }
@@ -109,6 +114,14 @@ public class PracticePlaybook
         _elapsedMs = -1;
         _announced = -1;
 
+        Restrict?.Invoke(
+            steps
+                .Select(step => step.utility_lineup_id)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .Select(id => id!)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase)
+        );
+
         return ePlaybookStart.Started;
     }
 
@@ -122,6 +135,8 @@ public class PracticePlaybook
         _phase = Phase.Idle;
         _steps = new List<UtilityPlaybookStep>();
 
+        Restrict?.Invoke(null);
+
         return true;
     }
 
@@ -131,6 +146,8 @@ public class PracticePlaybook
         _phase = Phase.Idle;
         _steps = new List<UtilityPlaybookStep>();
         _lineups.Clear();
+
+        Restrict?.Invoke(null);
     }
 
     // The shared fast job. Sub-second offsets are the whole point of an execute,

@@ -36,6 +36,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     private PracticeReplay _replay = null!;
     private PracticeSystem _system = null!;
     private PracticeScore _score = null!;
+    private PracticeRelay _relay = null!;
     private PracticePlaybook _playbook = null!;
     private PracticeDrill _drill = null!;
     private PracticeSolver _solver = null!;
@@ -75,6 +76,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             .AddSingleton<PracticeReplay>()
             .AddSingleton<PracticeSystem>()
             .AddSingleton<PracticeScore>()
+            .AddSingleton<PracticeRelay>()
             .AddSingleton<PracticePlaybook>()
             .AddSingleton<PracticeDrill>()
             .AddSingleton<PracticeSolver>();
@@ -89,6 +91,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _replay = _serviceProvider.GetRequiredService<PracticeReplay>();
         _system = _serviceProvider.GetRequiredService<PracticeSystem>();
         _score = _serviceProvider.GetRequiredService<PracticeScore>();
+        _relay = _serviceProvider.GetRequiredService<PracticeRelay>();
         _playbook = _serviceProvider.GetRequiredService<PracticePlaybook>();
         _drill = _serviceProvider.GetRequiredService<PracticeDrill>();
         _solver = _serviceProvider.GetRequiredService<PracticeSolver>();
@@ -986,7 +989,9 @@ public partial class UtilityPracticePlugin : BasePlugin
             }
         }
 
-        _ = Task.Run(() => _api.Occupancy(present));
+        string? relay = _relay.AccountId();
+
+        _ = Task.Run(() => _api.Occupancy(present, relay));
     }
 
     private int _warmupTicks;
@@ -1051,6 +1056,8 @@ public partial class UtilityPracticePlugin : BasePlugin
                 Apply(player, lineup);
             }
         };
+
+        _playbook.Restrict = only => _replay.LibraryRestriction = only;
 
         _playbook.Chat = message =>
             Core.PlayerManager.SendChat($" {ChatColors.Green}{message}".Colored());

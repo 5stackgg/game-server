@@ -128,10 +128,17 @@ public class UtilityApiClient
     // reports connects over the match-events socket; a practice server has no
     // such socket, and without this every session reads as empty and gets
     // reaped out from under whoever is throwing.
-    public async Task Occupancy(IReadOnlyCollection<ulong> steamIds)
+    // steamRelay rides along rather than getting a heartbeat of its own: it is
+    // the same fact about the same server on the same schedule, and null means
+    // "nothing to say" rather than "clear it".
+    public async Task Occupancy(IReadOnlyCollection<ulong> steamIds, string? steamRelay)
     {
         string body = JsonSerializer.Serialize(
-            new { steam_ids = steamIds.Select(id => id.ToString()).ToArray() },
+            new
+            {
+                steam_ids = steamIds.Select(id => id.ToString()).ToArray(),
+                steam_relay = steamRelay,
+            },
             PracticeJson.Options
         );
 
