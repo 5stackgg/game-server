@@ -104,6 +104,14 @@ public partial class UtilityPracticePlugin
         );
         state.Index = state.Results.FindIndex(match => match.client_id == lineup.client_id);
 
+        // Resolve and Filter are different matchers, so what was loaded is not
+        // always inside the walk that was just built.
+        if (state.Index < 0)
+        {
+            state.Results.Insert(0, lineup);
+            state.Index = 0;
+        }
+
         Apply(player, lineup);
     }
 
@@ -668,6 +676,17 @@ public partial class UtilityPracticePlugin
             return;
         }
 
+        // Always re-read before resolving. The panel pushing a load IS the
+        // signal that something changed: a draft tested from the website keeps
+        // the same client id on purpose so it replaces itself, so answering out
+        // of the cache stood the player on the first version of the throw every
+        // time afterwards.
+        if (!refreshed)
+        {
+            _library.Refresh(steamId, _ => RemoteLoad(steamId, lineupId, refreshed: true));
+            return;
+        }
+
         LineupRecord? lineup = PracticeLineupUtility.ById(_library.For(steamId), lineupId);
 
         if (lineup != null)
@@ -676,19 +695,9 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        // Not in the cached library. That is the normal case rather than an
-        // error: the panel sends lineups this player has never loaded here --
-        // a scratch throw off the meta browser, or one saved on another
-        // device -- and the cache is only refreshed on demand. One refresh,
-        // then give up; retrying past that would hammer the panel every time
-        // somebody sends a lineup that really is gone.
-        if (refreshed)
-        {
-            Tell(steamId, $" {ChatColors.Red}that lineup is not available on this server");
-            return;
-        }
-
-        _library.Refresh(steamId, _ => RemoteLoad(steamId, lineupId, refreshed: true));
+        // One refresh, then give up: retrying past that would hammer the panel
+        // every time somebody sends a lineup that really is gone.
+        Tell(steamId, $" {ChatColors.Red}that lineup is not available on this server");
     }
 
     // Server-only, like the load above. Everything on this server goes through a
@@ -934,9 +943,15 @@ public partial class UtilityPracticePlugin
             return;
         }
 
+        // Index is -1 until something has been loaded, which is "before the
+        // start" rather than a position. Feeding that through the modulo made
+        // the first .prev land on the second-to-last lineup and skip the last
+        // one entirely.
         state.Index =
-            ((state.Index + direction) % state.Results.Count + state.Results.Count)
-            % state.Results.Count;
+            state.Index < 0
+                ? (direction > 0 ? 0 : state.Results.Count - 1)
+                : ((state.Index + direction) % state.Results.Count + state.Results.Count)
+                    % state.Results.Count;
 
         Apply(player, state.Results[state.Index]);
     }

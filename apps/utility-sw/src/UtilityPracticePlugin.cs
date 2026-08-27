@@ -636,11 +636,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         // Null, not "": an empty string is CONTENT to Send, and the title would
         // never clear.
-        Send(
-            player,
-            PanelKind.Title,
-            lineup == null ? null : PracticeLineupUtility.TitleCase(lineup.name)
-        );
+        Send(player, PanelKind.Title, lineup == null ? null : Title(player, lineup));
         if (lineup != null)
         {
             Hint(player, HintCooldownTicks);
@@ -656,6 +652,30 @@ public partial class UtilityPracticePlugin : BasePlugin
             PanelKind.Steps,
             lineup == null ? null : Headline(lineup, onSpot, onAngle)
         );
+    }
+
+    // "[3/24] Shorta". Where you are in the walk is the one thing .next and
+    // .prev cannot tell you themselves -- without it there is no way to know
+    // whether you have seen everything on the map or how far round you are.
+    // Only shown while a walk is actually loaded and the focused lineup is the
+    // one it is pointing at; drifting onto a neighbour's spot must not label it
+    // with somebody else's position.
+    private string Title(IPlayer player, LineupRecord lineup)
+    {
+        string name = PracticeLineupUtility.TitleCase(lineup.name);
+        PracticeState state = _system.StateFor(player.SteamID);
+
+        if (state.Results.Count < 2 || state.Index < 0 || state.Index >= state.Results.Count)
+        {
+            return name;
+        }
+
+        if (state.Results[state.Index].client_id != lineup.client_id)
+        {
+            return name;
+        }
+
+        return $"[{state.Index + 1}/{state.Results.Count}] {name}";
     }
 
     private enum PanelKind

@@ -2,6 +2,7 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities.Practice;
+using FiveStack.Utilities;
 
 namespace UtilityPractice;
 
@@ -75,6 +76,21 @@ public class PracticeScore
         Vec3 landing = thrown.detonation_position;
         float distance = (landing - loaded.detonation_position).Length();
 
+        string name = string.IsNullOrEmpty(loaded.name) ? "that lineup" : loaded.name;
+
+        // A scratch throw -- a meta spot, or a draft being tested from the
+        // panel before it is saved -- has no row behind it, and the panel
+        // rejects a result whose lineup id is not a uuid. Asking anyway got a
+        // 400 back and told the player "the panel did not answer", which reads
+        // as a broken panel when everything needed to judge the throw is
+        // already here. There is nothing to persist it against, which is why it
+        // carries no streak and no tally.
+        if (!PracticeLineupUtility.IsPanelId(loaded.id))
+        {
+            ScoreLocally(steamId, loaded.client_id, name, distance);
+            return;
+        }
+
         var payload = UtilityPracticeResultPayload.For(
             _config.ServerId,
             _session.Current?.id ?? Guid.Empty,
@@ -86,7 +102,6 @@ public class PracticeScore
 
         string lineupId = loaded.id;
         string key = $"{lineupId}:{steamId}";
-        string name = string.IsNullOrEmpty(loaded.name) ? "that lineup" : loaded.name;
 
         _ = Task.Run(async () =>
         {
@@ -94,6 +109,40 @@ public class PracticeScore
 
             Server.NextFrame(() => Report(steamId, lineupId, key, name, result, distance));
         });
+    }
+
+    // Judged here rather than by the panel, for a throw the panel has no row
+    // for. The radius is still the panel's whenever it has said one this
+    // session; the fallback only stands in before it ever has.
+    private void ScoreLocally(ulong steamId, string lineupId, string name, float distance)
+    {
+        float radius = _radius ?? PracticeLineupUtility.FallbackSuccessRadius;
+        bool success = distance <= radius;
+
+        CCSPlayerController? player = Utilities.GetPlayerFromSteamId(steamId);
+
+        if (player != null && player.IsValid)
+        {
+            player.PrintToChat(
+                success
+                    ? $" {ChatColors.Green}hit {ChatColors.Default}{name} {ChatColors.Grey}{distance:0}u - not saved, so it is not counted"
+                    : $" {ChatColors.Red}miss {ChatColors.Default}{name} {ChatColors.Grey}{distance:0}u, needs {radius:0}u"
+            );
+        }
+
+        // A drill counts on being able to tell a miss from an unanswered throw,
+        // and this is an answer -- so it carries one, with the tallies left at
+        // zero because there is nothing behind them.
+        Scored?.Invoke(
+            steamId,
+            lineupId,
+            new UtilityPracticeResult
+            {
+                success = success,
+                distance = distance,
+                radius = radius,
+            }
+        );
     }
 
     private void Report(

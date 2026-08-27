@@ -385,6 +385,31 @@ public static class PracticeLineupUtility
         );
     }
 
+    /// <summary>
+    /// Whether an id is one the panel owns a row for.
+    ///
+    /// A scratch throw -- a meta spot or a draft still being written, sent over
+    /// for a test -- is deliberately given a non-uuid id so nothing downstream
+    /// can mistake it for something it can load, edit or delete. That makes the
+    /// shape of the id the only thing that has to be checked, and it is the
+    /// same question on both sides of the wire: the panel rejects a
+    /// practice-result whose lineup id is not a uuid.
+    /// </summary>
+    public static bool IsPanelId(string? id)
+    {
+        return !string.IsNullOrWhiteSpace(id) && Guid.TryParse(id, out _);
+    }
+
+    /// <summary>
+    /// The radius a throw is judged against when the panel has not said.
+    ///
+    /// Mirrors the API's own default. Only ever reached for a throw the panel
+    /// never sees -- everything with a row behind it is judged by the radius
+    /// the panel hands back, because a number invented here would tell a player
+    /// they missed a throw the panel counted.
+    /// </summary>
+    public const float FallbackSuccessRadius = 96f;
+
     public static List<LineupRecord> Filter(
         IEnumerable<LineupRecord> lineups,
         string query,

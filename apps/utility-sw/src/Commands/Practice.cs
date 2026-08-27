@@ -109,51 +109,93 @@ public partial class UtilityPracticePlugin
         }
 
         string query = string.Join(" ", context.Args).Trim().Trim('"');
-        PracticeState state = _system.StateFor(player.SteamID);
+        ulong steamId = player.SteamID;
+
+        // An empty library and a query that matches nothing are different
+        // problems, and saying "no lineup matches" for both sends people
+        // hunting for a typo when the library never loaded at all.
+        if (_library.For(steamId).Count == 0)
+        {
+            Reply(
+                context,
+                $" {ChatColors.Red}no lineups loaded for this map. "
+                    + $"{ChatColors.Default}fetching..."
+            );
+
+            _library.Refresh(
+                steamId,
+                count =>
+                {
+                    if (count < 0)
+                    {
+                        Tell(
+                            steamId,
+                            $" {ChatColors.Red}could not reach the library (check the server logs)"
+                        );
+                        return;
+                    }
+
+                    if (count == 0)
+                    {
+                        Tell(
+                            steamId,
+                            $" {ChatColors.Red}you have no lineups saved for this map"
+                        );
+                        return;
+                    }
+
+                    // Finish the command that started the fetch. It used to
+                    // stop here and say "try .load again", which meant the
+                    // first .load of a session never loaded anything and
+                    // .next answered "load something first" in between.
+                    Tell(steamId, $" {ChatColors.Green}loaded {count} lineup(s)");
+                    LoadFrom(steamId, query);
+                }
+            );
+
+            return;
+        }
+
+        LoadFrom(steamId, query);
+    }
+
+    // Resolve a query against the library and stand the player on the answer.
+    // Split out because .load may have to fetch the library first and then has
+    // to finish itself once that lands.
+    private void LoadFrom(ulong steamId, string query)
+    {
+        IPlayer? player = _system.Find(steamId);
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        PracticeState state = _system.StateFor(steamId);
         Vec3? near = PracticeSystem.Where(player)?.feet_position;
 
-        LineupRecord? lineup = _library.Resolve(player.SteamID, query, near);
+        LineupRecord? lineup = _library.Resolve(steamId, query, near);
 
         if (lineup == null)
         {
-            // An empty library and a query that matches nothing are different
-            // problems, and saying "no lineup matches" for both sends people
-            // hunting for a typo when the library never loaded at all.
-            if (_library.For(player.SteamID).Count == 0)
-            {
-                Reply(
-                    context,
-                    $" {ChatColors.Red}no lineups loaded for this map. "
-                        + $"{ChatColors.Default}fetching..."
-                );
-
-                ulong steamId = player.SteamID;
-
-                _library.Refresh(
-                    steamId,
-                    count =>
-                        Tell(
-                            steamId,
-                            count < 0
-                                ? $" {ChatColors.Red}could not reach the library (check the server logs)"
-                                : count == 0
-                                    ? $" {ChatColors.Red}you have no lineups saved for this map"
-                                    : $" {ChatColors.Green}loaded {count} lineup(s) -- try .load again"
-                        )
-                );
-
-                return;
-            }
-
-            Reply(context, $" {ChatColors.Red}no lineup matches \"{query}\"");
+            Tell(steamId, $" {ChatColors.Red}no lineup matches \"{query}\"");
             return;
         }
 
         state.Results.Clear();
         state.Results.AddRange(
-            PracticeLineupUtility.Filter(_library.For(player.SteamID), query, near)
+            PracticeLineupUtility.Filter(_library.For(steamId), query, near)
         );
         state.Index = state.Results.FindIndex(match => match.client_id == lineup.client_id);
+
+        // Resolve and Filter are different matchers, so what was loaded is not
+        // always inside the walk that was just built. An index of -1 left here
+        // sends the next .prev two short of the end instead of onto it.
+        if (state.Index < 0)
+        {
+            state.Results.Insert(0, lineup);
+            state.Index = 0;
+        }
 
         Apply(player, lineup);
     }
@@ -825,6 +867,15 @@ public partial class UtilityPracticePlugin
             return;
         }
 
+        // Same reasoning as RemoteLoad: the panel pushing a drill is itself the
+        // signal that the cached library may be behind, so re-read before
+        // resolving rather than only when an id turns up missing.
+        if (!refreshed)
+        {
+            _library.Refresh(steamId, _ => RemoteDrill(steamId, ids, refreshed: true));
+            return;
+        }
+
         IReadOnlyList<LineupRecord> library = _library.For(steamId);
 
         List<LineupRecord> queue = ids.Select(id =>
@@ -832,15 +883,6 @@ public partial class UtilityPracticePlugin
             )
             .OfType<LineupRecord>()
             .ToList();
-
-        // Same reasoning as RemoteLoad: the panel sends lineups this server has
-        // never cached, so one refresh before giving up. All or nothing --
-        // drilling half a set silently would be worse than saying no.
-        if (queue.Count < ids.Length && !refreshed)
-        {
-            _library.Refresh(steamId, _ => RemoteDrill(steamId, ids, refreshed: true));
-            return;
-        }
 
         if (queue.Count == 0)
         {
@@ -874,6 +916,18 @@ public partial class UtilityPracticePlugin
             return;
         }
 
+        // Always re-read before resolving. The panel pushing a load IS the
+        // signal that something changed: a draft tested from the website keeps
+        // the same client id on purpose so it replaces itself rather than
+        // piling up copies, so answering this out of the cache stood the player
+        // on the FIRST version of the throw every time afterwards -- move the
+        // points, press test again, land in the same place.
+        if (!refreshed)
+        {
+            _library.Refresh(steamId, _ => RemoteLoad(steamId, lineupId, refreshed: true));
+            return;
+        }
+
         LineupRecord? lineup = PracticeLineupUtility.ById(_library.For(steamId), lineupId);
 
         if (lineup != null)
@@ -882,19 +936,9 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        // Not in the cached library. That is the normal case rather than an
-        // error: the panel sends lineups this player has never loaded here --
-        // a scratch throw off the meta browser, or one saved on another
-        // device -- and the cache is only refreshed on demand. One refresh,
-        // then give up; retrying past that would hammer the panel every time
-        // somebody sends a lineup that really is gone.
-        if (refreshed)
-        {
-            Tell(steamId, $" {ChatColors.Red}that lineup is not available on this server");
-            return;
-        }
-
-        _library.Refresh(steamId, _ => RemoteLoad(steamId, lineupId, refreshed: true));
+        // One refresh, then give up: retrying past that would hammer the panel
+        // every time somebody sends a lineup that really is gone.
+        Tell(steamId, $" {ChatColors.Red}that lineup is not available on this server");
     }
 
     // Server-only, like the two above. Everything on this server goes through a
@@ -1150,9 +1194,16 @@ public partial class UtilityPracticePlugin
             return;
         }
 
+        // Index is -1 until something has been loaded, which is "before the
+        // start" rather than a position. Feeding that through the modulo made
+        // the first .prev land on the second-to-last lineup and skip the last
+        // one entirely, so the walk was missing an entry until you had gone all
+        // the way round.
         state.Index =
-            ((state.Index + direction) % state.Results.Count + state.Results.Count)
-            % state.Results.Count;
+            state.Index < 0
+                ? (direction > 0 ? 0 : state.Results.Count - 1)
+                : ((state.Index + direction) % state.Results.Count + state.Results.Count)
+                    % state.Results.Count;
 
         Apply(player, state.Results[state.Index]);
     }

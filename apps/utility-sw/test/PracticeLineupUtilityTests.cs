@@ -425,4 +425,28 @@ public class TitleCaseTests
     {
         Assert.Equal("Two  Gaps", PracticeLineupUtility.TitleCase("two  gaps"));
     }
+
+    // The panel rejects a practice-result whose lineup id is not a uuid, so
+    // this is what decides whether a throw is worth reporting at all. Getting
+    // it wrong in either direction is a real failure: too strict and saved
+    // lineups stop being scored, too loose and every scratch throw goes back to
+    // telling the player the panel did not answer.
+    [Theory]
+    [InlineData("2ba3c04c-715d-4c4e-bce8-860b97ca6fc3")]
+    [InlineData("2BA3C04C-715D-4C4E-BCE8-860B97CA6FC3")]
+    public void PanelIdsAreUuids(string id)
+    {
+        Assert.True(PracticeLineupUtility.IsPanelId(id));
+    }
+
+    [Theory]
+    [InlineData("scratch-draft")]
+    [InlineData("scratch-de_mirage:Smoke:-29,14:-8,5")]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void ScratchIdsAreNotPanelIds(string? id)
+    {
+        Assert.False(PracticeLineupUtility.IsPanelId(id));
+    }
 }
