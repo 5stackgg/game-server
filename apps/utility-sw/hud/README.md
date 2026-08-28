@@ -136,8 +136,10 @@ exactly one addon — the map — which is the entire reason that plugin exists.
 
 ### Publishing
 
-The published item is **3791537475**. Pass it as `item_id` on every run; a blank
-one creates a second item rather than updating it.
+The published item is **3791548068**. Pass it as `item_id` on every run; a blank
+one creates a second item rather than updating it. (3791537475 was a first
+attempt under a different account and is abandoned — an item cannot be
+transferred between accounts, so switching publisher means republishing.)
 
 Valve does not review Workshop items — there is no submission and no queue. The
 only Valve review in CS2 is for maps being considered for official matchmaking,

@@ -8,6 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Compile-time only; the runtime comes from SWIFTLYS2_VERSION in the
+         Dockerfile, which is v1.4.7. NuGet has no 1.4.7 yet, and 1.4.7 changed
+         nothing we compile against. Bump when the package ships. -->
     <PackageReference Include="SwiftlyS2.CS2" Version="1.4.6" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" ExcludeAssets="runtime" PrivateAssets="all" />
