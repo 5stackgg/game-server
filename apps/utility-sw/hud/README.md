@@ -150,6 +150,47 @@ list. Publish without adding them and you get a valid, public, *empty* item — 
 error anywhere. Workshop Manager's contents preview must list `[vxml_c]` and
 `[vcss_c]` before you submit.
 
+### Publishing from CI
+
+`.github/workflows/hud-workshop.yaml` is the reliable route: run **Publish HUD
+Addon** from the Actions tab. It runs the slot contract, builds the addon,
+refuses to upload one that is missing a layout or the `panorama/` prefix, and
+publishes. `dry_run` does everything except the upload.
+
+Leave `item_id` blank the first time; the run logs the id it created. Pass that
+id on every run afterwards or you will publish a second item rather than update
+the first.
+
+Two secrets:
+
+- `STEAM_USERNAME` — the account that owns the item.
+- `STEAM_PASSWORD` — its password.
+
+That is enough because the publishing account has Steam Guard off. Use an
+account that owns nothing else you care about: these credentials can upload
+Workshop content as that user, and a password in CI is a password on a machine
+you do not watch.
+
+If Steam ever does demand a guard code — it can when a login arrives from an
+unfamiliar address, and runner addresses change every run — the job fails with a
+clear message rather than hanging. The way round it is a pre-authorised session
+instead of a password: log in once by hand on any machine with SteamCMD, then
+hand the runner the resulting `config.vdf`.
+
+```sh
+steamcmd +login <account> +quit      # answer the prompt once
+base64 -i ~/Steam/config/config.vdf | pbcopy
+```
+
+Restore it to `~/Steam/config/config.vdf` on the runner before the publish step
+and drop the password from the login line.
+
+### Publishing by hand
+
+`publish.sh` does the same thing locally and needs SteamCMD installed. The CI
+route is preferred — it cannot skip the contract check, and it cannot publish
+from a working tree with uncommitted layout edits in it.
+
 That collection step is also Windows-only. `publish.sh` skips both by uploading
 the packed vpk straight through SteamCMD:
 
