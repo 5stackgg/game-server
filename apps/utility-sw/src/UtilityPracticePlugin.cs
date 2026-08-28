@@ -211,6 +211,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             // Outside ForPlayer: somebody left either way, and a player we
             // cannot resolve is exactly when the roster most needs re-reading.
             _occupancyDirty = true;
+            _prompt?.Cancel(@event.PlayerId);
 
             ForPlayer(
                 @event.PlayerId,
@@ -1387,6 +1388,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         _playbook.Second();
         _drill.Second();
         _solver.RefreshVisibility();
+        // A no-op once the map has answered; see MapCalloutsReporter.Report.
+        _callouts.Report(_session.Map);
         DrainPendingMapLoad();
     }
 

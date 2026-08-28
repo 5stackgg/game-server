@@ -29,6 +29,7 @@ public class HudPrompt
 
     private class Pending
     {
+        public required ulong SteamId { get; init; }
         public required Action<string> Answered { get; init; }
         public required DateTime Expires { get; init; }
     }
@@ -53,10 +54,11 @@ public class HudPrompt
         _waiting.Clear();
     }
 
-    public void Ask(int playerId, Action<string> answered)
+    public void Ask(int playerId, ulong steamId, Action<string> answered)
     {
         _waiting[playerId] = new Pending
         {
+            SteamId = steamId,
             Answered = answered,
             Expires = DateTime.UtcNow + Window,
         };
@@ -80,6 +82,15 @@ public class HudPrompt
         }
 
         _waiting.Remove(playerId);
+
+        // A prompt belongs to the PLAYER, not to the slot they were in. Slots
+        // are recycled the moment somebody leaves, so without this the next
+        // occupant's first chat line answers a question they were never asked
+        // -- and is swallowed on the way, never reaching the server.
+        if (_core.PlayerManager.GetPlayer(playerId)?.SteamID != pending.SteamId)
+        {
+            return HookResult.Continue;
+        }
 
         if (DateTime.UtcNow > pending.Expires)
         {

@@ -68,7 +68,7 @@ public partial class UtilityPracticePlugin
             int playerId = player.PlayerID;
             ulong steamId = player.SteamID;
 
-            _prompt.Ask(playerId, answer => SaveThrow(steamId, answer));
+            _prompt.Ask(playerId, steamId, answer => SaveThrow(steamId, answer));
 
             Reply(
                 context,

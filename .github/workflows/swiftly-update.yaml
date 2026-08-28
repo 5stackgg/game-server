@@ -63,7 +63,10 @@ jobs:
           git config user.email github-actions@github.com
           git add apps/swiftly/Dockerfile
 
-          CSPROJS=$(grep -rl 'Include="SwiftlyS2.CS2"' --include='*.csproj' apps)
+          # `|| true` because grep exits 1 when it matches nothing, and
+          # `set -e` would abort the step before the friendly error below --
+          # which is the whole reason that branch exists.
+          CSPROJS=$(grep -rl 'Include="SwiftlyS2.CS2"' --include='*.csproj' apps || true)
           if [ -z "$CSPROJS" ]; then
             echo "::error::no csproj references SwiftlyS2.CS2 -- the pin pattern must have changed"
             exit 1

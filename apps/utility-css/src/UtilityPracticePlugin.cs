@@ -155,6 +155,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         _system.Tick();
         _playbook.Second();
         _drill.Second();
+        // A no-op once the map has answered; see MapCalloutsReporter.Report.
+        _callouts.Report(_session.Map);
         DrainPendingMapLoad();
     }
 

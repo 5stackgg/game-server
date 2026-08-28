@@ -24,7 +24,17 @@ public class MapCalloutsReporter
     private readonly UtilityApiClient _api;
     private readonly ILogger<MapCalloutsReporter> _logger;
 
+    // env_cs_place entities are not guaranteed to have spawned by the time the
+    // map-load handler runs, so an empty walk means "not yet", not "this map
+    // has none". Report is asked again on the per-second tick until one of them
+    // answers or the attempts run out -- without it a map that was slow to
+    // spawn stays unnamed for the whole session, silently: no HUD kicker, no
+    // auto-named save, and nothing ever POSTed for the workshop maps this
+    // endpoint exists for.
+    private const int MaxAttempts = 10;
+
     private string _reported = string.Empty;
+    private int _attempts;
     private List<MapCalloutPayload> _cached = new List<MapCalloutPayload>();
 
     public MapCalloutsReporter(UtilityApiClient api, ILogger<MapCalloutsReporter> logger)
@@ -36,6 +46,7 @@ public class MapCalloutsReporter
     public void Reset()
     {
         _reported = string.Empty;
+        _attempts = 0;
         _cached = new List<MapCalloutPayload>();
     }
 
@@ -137,15 +148,18 @@ public class MapCalloutsReporter
     }
 
     /// <summary>
-    /// Reports the level's callouts once per map. Nothing is retried: the next
-    /// map load reports again, and a level nobody opens again needs nothing.
+    /// Reports the level's callouts once per map. Safe to call every tick: it
+    /// stops the moment it has an answer, and gives up after MaxAttempts so a
+    /// map that genuinely has no places is not walked for ever.
     /// </summary>
-    public void Report(string mapName)
+    public void Report(string? mapName)
     {
-        if (string.IsNullOrEmpty(mapName) || _reported == mapName)
+        if (string.IsNullOrEmpty(mapName) || _reported == mapName || _attempts >= MaxAttempts)
         {
             return;
         }
+
+        _attempts++;
 
         List<MapCalloutPayload> callouts;
 

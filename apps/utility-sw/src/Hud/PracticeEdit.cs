@@ -140,6 +140,7 @@ public partial class UtilityPracticePlugin
 
                 _prompt.Ask(
                     player.PlayerID,
+                    steamId,
                     answer =>
                     {
                         if (!_edits.TryGetValue(steamId, out EditDraft? open))

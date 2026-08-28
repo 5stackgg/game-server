@@ -64,7 +64,10 @@ jobs:
           git config user.email github-actions@github.com
           git add apps/counterstrikesharp/Dockerfile
 
-          CSPROJS=$(grep -rl 'Include="CounterStrikeSharp.API"' --include='*.csproj' apps)
+          # `|| true` because grep exits 1 when it matches nothing, and
+          # `set -e` would abort the step before the friendly error below --
+          # which is the whole reason that branch exists.
+          CSPROJS=$(grep -rl 'Include="CounterStrikeSharp.API"' --include='*.csproj' apps || true)
           if [ -z "$CSPROJS" ]; then
             echo "::error::no csproj references CounterStrikeSharp.API -- the pin pattern must have changed"
             exit 1
