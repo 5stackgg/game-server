@@ -252,8 +252,13 @@ public class PracticeDrill
         return $"Drill {run.Position}/{run.Length} - rep {run.Rep}/{run.Reps} - {tally}";
     }
 
-    // The same run, sized for a HUD slot rather than a chat line: a position and
-    // the fraction of the queue behind it.
+    // Landing it this many times is what "drilled" means. The bar is progress
+    // towards that, not towards the end of a queue.
+    public const int MasteryTarget = 10;
+
+    // What a drill is for, sized for a HUD slot: how many landed out of how many
+    // thrown. Position in the queue was the old readout and it said nothing --
+    // on a single-lineup drill it read "1 / 1" for the whole run.
     public (string Label, int Tenths)? HudProgress(ulong steamId)
     {
         if (!_runs.TryGetValue(steamId, out PracticeDrillRun? run) || run.Finished)
@@ -261,12 +266,11 @@ public class PracticeDrill
             return null;
         }
 
-        int tenths =
-            run.Length <= 0
-                ? 0
-                : (int)Math.Round((run.Position - 1) / (double)run.Length * (HudSlots.MeterSteps - 1));
+        int tenths = Math.Clamp(run.Hits, 0, MasteryTarget)
+            * (HudSlots.MeterSteps - 1)
+            / MasteryTarget;
 
-        return ($"{run.Position} / {run.Length}", tenths);
+        return ($"{run.Hits} / {run.Attempts}", tenths);
     }
 
     public void Forget(ulong steamId)

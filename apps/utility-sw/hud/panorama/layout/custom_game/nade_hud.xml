@@ -35,7 +35,7 @@
 
 			<Panel id="drillrow" class="nh-drill" hittest="false">
 				<Panel class="nh-readout" hittest="false">
-					<Label class="nh-readout-key" text="DRILL" />
+					<Label class="nh-readout-key" text="LANDED" />
 					<Label id="drill" class="nh-readout-val nh-readout-cyan" text="{s:drill}" />
 				</Panel>
 				<Panel class="nh-meter" hittest="false">

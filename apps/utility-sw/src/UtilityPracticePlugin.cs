@@ -9,6 +9,8 @@ using SwiftlyS2.Shared.Events;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Plugins;
 using static SwiftlyS2.Shared.Helper;
+using SwiftlyS2.Shared.GameEventDefinitions;
+using SwiftlyS2.Shared.Misc;
 using SwiftlyS2.Shared.Natives;
 using SwiftlyS2.Shared.SchemaDefinitions;
 
@@ -183,6 +185,13 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         _mapLoadHandler = @event => OnMapLoad(@event.MapName);
         Core.Event.OnMapLoad += _mapLoadHandler;
+
+        Core.GameEvent.HookPre<EventRoundStart>(_ =>
+        {
+            KeepRoundsMoving();
+
+            return HookResult.Continue;
+        });
 
         // The grenade models floated over each lineup have to be in the map's
         // precache list or they render as ERROR. This fires at map load, which
@@ -1828,6 +1837,16 @@ public partial class UtilityPracticePlugin : BasePlugin
         // mp_warmup_end there ends nothing and the server sits in a countdown.
         Core.Scheduler.NextTick(() => RunPracticeCfg());
         Core.Scheduler.DelayBySeconds(CfgReapplySeconds, () => RunPracticeCfg());
+    }
+
+    // Freeze time is the one cvar a restart can beat us to. The cfg above lands
+    // a tick after the map loads and again three seconds later, and a restart
+    // inside that window begins its countdown with whatever the map's own cfg
+    // left behind -- so it is asserted again as each round begins, where nothing
+    // can exec over it afterwards.
+    private void KeepRoundsMoving()
+    {
+        Core.Engine.ExecuteCommand("mp_freezetime 0;mp_warmup_pausetimer 0;mp_warmup_end");
     }
 
     // Nobody is here but the thrower unless somebody has asked for a bot to

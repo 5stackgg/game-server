@@ -84,6 +84,26 @@ public partial class UtilityPracticePlugin
 
     // Shared by ".save <name>" and by the prompt, which answers later and has no
     // command context to reply into.
+    // What a bare .drill should rep. Focused already answers "which lineup is
+    // this player indicating", including the two-on-one-spot case where aim
+    // decides, so this is that answer plus the loaded fallback.
+    private LineupRecord? DrillTarget(IPlayer player)
+    {
+        CCSPlayerPawn? pawn = player.PlayerPawn;
+
+        if (pawn != null && pawn.IsValid)
+        {
+            (LineupRecord? focused, _, _) = Focused(player, pawn);
+
+            if (focused != null)
+            {
+                return focused;
+            }
+        }
+
+        return _system.StateFor(player.SteamID).Loaded;
+    }
+
     private void SaveThrow(ulong steamId, string name)
     {
         IPlayer? player = _system.Find(steamId);
@@ -551,6 +571,29 @@ public partial class UtilityPracticePlugin
                 Reply(context, $" {ChatColors.Red}you are not drilling");
             }
             return;
+        }
+
+        // A bare .drill takes the lineup the player is indicating: the one they
+        // are standing on, or -- when a spot holds more than one -- the one they
+        // are pointing at. Failing that, the last one they loaded, which after a
+        // drill is the last one they drilled. Only somebody standing nowhere in
+        // particular gets their whole book.
+        if (string.IsNullOrWhiteSpace(string.Join(" ", context.Args)))
+        {
+            LineupRecord? here = DrillTarget(player);
+
+            if (here != null)
+            {
+                if (_drill.StartWith(player.SteamID, new[] { here }) == eDrillStart.Started)
+                {
+                    Reply(
+                        context,
+                        $" {ChatColors.Green}drilling {ChatColors.Default}{here.name}"
+                    );
+
+                    return;
+                }
+            }
         }
 
         switch (_drill.Start(player.SteamID, request.Order, request.Count))
@@ -1344,7 +1387,7 @@ public partial class UtilityPracticePlugin
         $" {ChatColors.Default}.spawn <n> {ChatColors.Grey}teleports to a spawn point",
         $" {ChatColors.Default}.bloom {ChatColors.Grey}outlines where the loaded smoke lands",
         $" {ChatColors.Default}.solve [name] {ChatColors.Grey}finds a throw onto the spot you are looking at",
-        $" {ChatColors.Default}.drill [count] [worst] / .skip {ChatColors.Grey}drills your book and scores it",
+        $" {ChatColors.Default}.drill {ChatColors.Grey}reps the lineup you are on; {ChatColors.Default}.drill [count] [worst] {ChatColors.Grey}drills your book",
         $" {ChatColors.Default}.drill / .cancel {ChatColors.Grey}stops a drill you are in",
         $" {ChatColors.Default}.playbook / .run / .playbook stop {ChatColors.Grey}the loaded execute",
         $" {ChatColors.Default}.hud {ChatColors.Grey}swaps the panel for centre text",
