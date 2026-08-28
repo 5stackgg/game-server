@@ -265,6 +265,10 @@ public partial class UtilityPracticePlugin : BasePlugin
         if (_hud != null)
         {
             UnwireHudClicks();
+
+            // Before anything else tears down: a panel left on screen with the
+            // cursor still captured survives the reload and needs a map change
+            // to clear.
         }
 
         if (_tickHandler != null)
@@ -1761,14 +1765,14 @@ public partial class UtilityPracticePlugin : BasePlugin
         "mp_solid_teammates 0",
         "mp_teammates_are_enemies 0",
         "sv_grenade_trajectory_prac_pipreview 1",
-        // The trail is how you see WHERE it went wrong rather than just that it
-        // did. Ten seconds outlives the throw and the walk back to the spot.
-        // Off, because the plugin draws its own. The engine's is coloured by
-        // the thrower's TEAM, which on a practice server makes every arc look
-        // the same -- and two arcs down one flight, one of them in a colour
-        // that means nothing, is worse than either alone. The pip preview
-        // above is independent of this and stays on.
-        "sv_grenade_trajectory_prac_trailtime 0",
+        // This is what keeps the practice camera up after the grenade lands,
+        // which is the only way to watch a smoke actually bloom -- the pip
+        // above turns the camera on, this decides how long it and the trail
+        // survive it. Setting it to 0 to suppress the engine's team-coloured
+        // trail took the bloom view with it. Longer than the ten it was
+        // before: a smoke detonates and then takes a couple of seconds to
+        // fill, and the point is to see the end of that, not the start.
+        "sv_grenade_trajectory_prac_trailtime " + EngineTrailSeconds,
         // Valve's own map-guide editor. Every annotation_* command is client
         // side, so a plugin can never draw one for a player -- but this cvar
         // decides whether they may draw their own, and it ships at view-only.
@@ -1793,6 +1797,8 @@ public partial class UtilityPracticePlugin : BasePlugin
     // throw at. Kept out of PracticeCfg because that list is re-run on every
     // map change and twice on load, and a bot placed to practise against must
     // not be swept away by housekeeping a second later.
+    private const int EngineTrailSeconds = 20;
+
     private static readonly string[] NoBotsCfg = new[] { "bot_quota 0", "bot_kick" };
 
     // What a bot is for here: something to flash and to blow up, that stays

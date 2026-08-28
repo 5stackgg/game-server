@@ -414,7 +414,9 @@ public partial class UtilityPracticePlugin : BasePlugin
         "sv_grenade_trajectory_prac_pipreview 1",
         // The trail is how you see WHERE it went wrong rather than just that it
         // did. Ten seconds outlives the throw and the walk back to the spot.
-        "sv_grenade_trajectory_prac_trailtime 10",
+        // Long enough to still be up once a smoke has finished blooming, which
+        // is the thing being practised. Ten only covered the flight.
+        "sv_grenade_trajectory_prac_trailtime 20",
         // Valve's own map-guide editor. Every annotation_* command is client
         // side, so a plugin can never draw one for a player -- but this cvar
         // decides whether they may draw their own, and it ships at view-only.

@@ -386,6 +386,18 @@ public class PracticeReplay
     // The measured bloom outline.
     public const bool DrawBloom = true;
 
+    /// <summary>
+    /// Our own coloured flight trail. OFF, because the engine already draws one
+    /// and ITS trail time is what keeps the practice camera up after the
+    /// grenade lands -- suppressing it to make room for this took away the
+    /// ability to watch a smoke bloom, which is worth more than a coloured arc.
+    /// The throw's colour still reaches the player on the cloud itself, on the
+    /// markers and on the panel. Flip this to true to get the coloured arc
+    /// back, and set the engine's trailtime to 0 in the same change or there
+    /// will be two arcs down every flight.
+    /// </summary>
+    public const bool DrawTrail = false;
+
     // REAL projectiles: EmitSmokeGrenade / EmitFlashbang / EmitHEGrenade /
     // EmitMolotov, plus the bloom's live smoke.
     public const bool EmitGrenades = true;
@@ -2596,7 +2608,7 @@ public class PracticeReplay
     /// </summary>
     public void TrailPoint(ulong steamId, PracticeStepColors.StepColor step, Vec3 at)
     {
-        if (!DrawMarkers)
+        if (!DrawMarkers || !DrawTrail)
         {
             return;
         }
