@@ -995,7 +995,13 @@ public partial class UtilityPracticePlugin : BasePlugin
     /// attempts. Everywhere else the player's own cycle owns it, so ten smokes
     /// in a row come out as ten different arcs instead of ten identical ones.
     /// </summary>
-    private PracticeStepColors.StepColor ThrowColor(ulong steamId)
+    /// <summary>
+    /// The colour the NEXT grenade off this player will wear. Public because
+    /// anything showing a player their own colour -- centre text, a HUD panel,
+    /// chat -- has to get it from one place: the step-beats-cycle rule below is
+    /// the sort of thing that silently drifts once it exists twice.
+    /// </summary>
+    public PracticeStepColors.StepColor ThrowColor(ulong steamId)
     {
         return ColorFor(steamId, _system.StateFor(steamId).ThrowColorIndex);
     }
@@ -1041,11 +1047,16 @@ public partial class UtilityPracticePlugin : BasePlugin
     }
 
     /// <summary>The colour of the throw already in the air.</summary>
-    private PracticeStepColors.StepColor InFlightColor(ulong steamId)
+    public PracticeStepColors.StepColor InFlightColor(ulong steamId)
     {
         return ColorFor(steamId, _system.StateFor(steamId).InFlightColorIndex);
     }
 
+    /// <summary>
+    /// A running execute owns the colour, because it is a fact about the throw
+    /// everybody is rehearsing and has to mean the same thing across attempts
+    /// and across players. Everywhere else the player's own cycle owns it.
+    /// </summary>
     private PracticeStepColors.StepColor ColorFor(ulong steamId, int cycle)
     {
         LineupRecord? loaded = _system.StateFor(steamId).Loaded;
