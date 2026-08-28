@@ -177,29 +177,42 @@ exist). Steam caps it at 1 MB, which a full-resolution PNG screenshot exceeds �
 publish paths check the size first, because Steam reports an oversized preview
 as a generic upload failure that never mentions the image.
 
-Two secrets:
+`STEAM_USERNAME` names the account that owns the item, and how it authenticates
+depends on whether that account has a guard:
 
-- `STEAM_USERNAME` — the account that owns the item.
-- `STEAM_PASSWORD` — its password.
+- no Steam Guard — set `STEAM_PASSWORD`;
+- Steam Guard on — set `STEAM_CONFIG_VDF`, below.
 
-That is enough because the publishing account has Steam Guard off. Use an
-account that owns nothing else you care about: these credentials can upload
-Workshop content as that user, and a password in CI is a password on a machine
-you do not watch.
+Set both and the session wins. Use an account that owns nothing else you care
+about either way: these credentials upload Workshop content as that user, and a
+secret in CI lives on a machine you do not watch.
 
-If Steam ever does demand a guard code — it can when a login arrives from an
-unfamiliar address, and runner addresses change every run — the job fails with a
-clear message rather than hanging. The way round it is a pre-authorised session
-instead of a password: log in once by hand on any machine with SteamCMD, then
-hand the runner the resulting `config.vdf`.
+### A publishing account with Steam Guard
+
+`STEAM_PASSWORD` only works on an account with no guard; with one, SteamCMD sits
+waiting for a code no workflow can answer. Set **`STEAM_CONFIG_VDF`** instead —
+base64 of a `config.vdf` from a session that already answered the prompt. The
+workflow prefers it over the password whenever it is set, and the password
+secret can then be deleted.
+
+Do **not** use the `steamcmd/steamcmd` Docker image on an Apple Silicon Mac. Its
+SteamCMD is a 32-bit Linux binary, QEMU cannot run it, and Rosetta does not do
+32-bit either, so it dies on `futex robust_list not initialized by pthreads`.
+The macOS build is 64-bit x86 and runs fine under Rosetta:
 
 ```sh
-steamcmd +login <account> +quit      # answer the prompt once
-base64 -i ~/Steam/config/config.vdf | pbcopy
+mkdir -p ~/steamcmd && cd ~/steamcmd
+curl -sSL https://steamcdn-a.akamaihd.net/client/installer/steamcmd_osx.tar.gz | tar zx
+./steamcmd.sh +login <account> +quit     # password, then the guard code
+base64 -i ~/Library/Application\ Support/Steam/config/config.vdf | pbcopy
 ```
 
-Restore it to `~/Steam/config/config.vdf` on the runner before the publish step
-and drop the password from the login line.
+Stop if the login does not reach `Waiting for user info...OK` — a failed login
+writes no session, and the `config.vdf` copied after one authorises nothing.
+
+That file is a bearer credential: whoever holds it is that account for Workshop
+purposes. Steam also expires it, so expect to repeat this occasionally. The job
+fails naming the cause rather than hanging when it does.
 
 ### Publishing by hand
 
