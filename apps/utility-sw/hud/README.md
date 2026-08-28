@@ -173,6 +173,23 @@ Leave `item_id` blank the first time; the run logs the id it created. Pass that
 id on every run afterwards or you will publish a second item rather than update
 the first.
 
+**An unchanged addon is not republished.** A Workshop update notifies every
+subscriber and bumps the item, so the run first hashes everything that decides
+the published bytes — the `panorama/` tree, `build.sh`, `addoninfo.txt`, the
+preview, the compiler ref — and skips the upload if a `hud-published/<key>` tag
+says those exact sources already went up. The tag is written only after Steam
+answers `Success.`, so a failed upload never suppresses the retry.
+
+It hashes sources rather than the vpk because nothing guarantees PanoramaCompiler
+is byte-reproducible, and a compiler that stamped a timestamp would defeat an
+artifact hash silently — always republishing, which is the failure you would not
+notice.
+
+Two things it deliberately does not cover: the item title and description live in
+the workflow, not in the hashed sources, so changing those needs `force: true`.
+And a dry run always builds, since verifying an unchanged addon is the point of
+one.
+
 The storefront image is `preview.jpg` (or `preview.png`; jpg wins if both
 exist). Steam caps it at 1 MB, which a full-resolution PNG screenshot exceeds —
 `preview.jpg` is the same frame at quality 80, 1915x1078 and 453 KB. Both

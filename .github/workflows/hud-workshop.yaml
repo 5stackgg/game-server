@@ -14,16 +14,69 @@ on:
         required: false
         type: boolean
         default: false
+      force:
+        description: "Publish even if the addon is unchanged (e.g. a title or description edit)."
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+
+      # A Workshop update notifies every subscriber and bumps the item, so an
+      # identical republish is not free. Hashing the sources rather than the vpk
+      # sidesteps the question of whether the compiler is deterministic.
+      - name: Has the addon actually changed?
+        id: changed
+        run: |
+          set -euo pipefail
+          HUD=apps/utility-sw/hud
+
+          PREVIEW=""
+          for c in "$HUD/preview.jpg" "$HUD/preview.png"; do
+            [ -f "$c" ] && { PREVIEW="$c"; break; }
+          done
+
+          KEY=$( { git rev-parse "HEAD:$HUD/panorama"
+                   git hash-object "$HUD/build.sh" "$HUD/addoninfo.txt" ${PREVIEW:+"$PREVIEW"}
+                   echo "${PANORAMA_COMPILER_REF:-main}"
+                 } | sha256sum | cut -c1-16 )
+          TAG="hud-published/$KEY"
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+          PUBLISHED=no
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            PUBLISHED=yes
+            echo "::notice::$KEY is already on the Workshop."
+          fi
+          echo "published=$PUBLISHED" >> "$GITHUB_OUTPUT"
+
+          # A dry run still builds -- verifying an unchanged addon is the point of
+          # one. Only the upload is suppressed by an unchanged key.
+          if [ "$PUBLISHED" = no ] || [ "${{ inputs.force }}" = true ] || [ "${{ inputs.dry_run }}" = true ]; then
+            echo "proceed=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "proceed=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Nothing to publish
+        if: steps.changed.outputs.proceed != 'yes'
+        run: |
+          echo "::notice::The addon is byte-identical to the last publish, so nothing"
+          echo "::notice::was sent to Steam. Re-run with force: true to publish anyway"
+          echo "::notice::(a title or description edit needs that)."
 
       - uses: actions/setup-dotnet@v6
+        if: steps.changed.outputs.proceed == 'yes'
         with:
           dotnet-version: "10.0.x"
 
@@ -31,17 +84,20 @@ jobs:
       # variable, and a broken layout fails silently in game rather than at
       # build time. Never publish an addon whose contract has not been checked.
       - name: Verify the slot contract
+        if: steps.changed.outputs.proceed == 'yes'
         run: dotnet test apps/utility-sw/test/FiveStack.Tests.csproj --nologo
 
       # PanoramaCompiler needs only the .NET SDK and build.sh fetches vpkeditcli
       # into .tools on Linux, so nothing here needs Windows or a CS2 install.
       - name: Build the addon
+        if: steps.changed.outputs.proceed == 'yes'
         run: ./apps/utility-sw/hud/build.sh
 
       # An addon that mounts and resolves nothing is the failure mode with no
       # symptom: the layouts must sit under panorama/, and there must be five of
       # them plus the stylesheet.
       - name: Verify what was packed
+        if: steps.changed.outputs.proceed == 'yes'
         run: |
           set -euo pipefail
           VPK=apps/utility-sw/hud/build/upload/5stack_utility_hud.vpk
@@ -88,11 +144,11 @@ jobs:
           echo "PREVIEW=$GITHUB_WORKSPACE/$PREVIEW" >> "$GITHUB_ENV"
 
       - name: Stop here
-        if: inputs.dry_run
+        if: inputs.dry_run && steps.changed.outputs.proceed == 'yes'
         run: echo "::notice::dry run - built and verified, nothing published"
 
       - name: Install SteamCMD
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && steps.changed.outputs.proceed == 'yes' }}
         run: |
           sudo add-apt-repository -y multiverse
           sudo dpkg --add-architecture i386
@@ -102,7 +158,7 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq steamcmd
 
       - name: Publish
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && steps.changed.outputs.proceed == 'yes' }}
         env:
           STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
           STEAM_PASSWORD: ${{ secrets.STEAM_PASSWORD }}
@@ -236,3 +292,15 @@ jobs:
           if [ -n "$ID" ]; then
             echo "::notice::published workshop item $ID - pass it as item_id next time to update in place"
           fi
+
+      # Only after Steam confirms. Tagging on anything less would make the next
+      # run skip an upload that never landed.
+      - name: Record what was published
+        if: ${{ !inputs.dry_run && steps.changed.outputs.proceed == 'yes' }}
+        env:
+          TAG: ${{ steps.changed.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git tag -f "$TAG"
+          git push -f origin "refs/tags/$TAG"
+          echo "::notice::tagged $TAG - a later run with these sources will skip"
