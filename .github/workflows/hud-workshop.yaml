@@ -103,10 +103,23 @@ jobs:
               ;;
           esac
 
-          [ -f "$HUD/preview.png" ] || {
-            echo "::error::apps/utility-sw/hud/preview.png is missing; Steam requires a preview image"
+          PREVIEW=""
+          for candidate in "$HUD/preview.jpg" "$HUD/preview.png"; do
+            [ -f "$candidate" ] && { PREVIEW="$candidate"; break; }
+          done
+          [ -n "$PREVIEW" ] || {
+            echo "::error::no preview image at apps/utility-sw/hud/preview.{jpg,png}"
             exit 1
           }
+
+          # Steam rejects a preview over 1 MB and reports it as a generic upload
+          # failure that never mentions the image.
+          BYTES=$(wc -c < "$PREVIEW")
+          if [ "$BYTES" -gt 1000000 ]; then
+            echo "::error::preview is $((BYTES / 1024)) KB; Steam's limit is 1 MB"
+            exit 1
+          fi
+          echo "preview: $PREVIEW ($((BYTES / 1024)) KB)"
 
           cat > "$HUD/build/workshop.vdf" <<EOF
           "workshopitem"
@@ -114,7 +127,7 @@ jobs:
             "appid"           "730"
             "publishedfileid" "${ITEM_ID:-0}"
             "contentfolder"   "$HUD/build/upload"
-            "previewfile"     "$HUD/preview.png"
+            "previewfile"     "$PREVIEW"
             "visibility"      "0"
             "title"           "5Stack Utility HUD"
             "description"     "On-screen grenade lineup guidance for 5stack practice servers. Panorama resources for the utility-practice plugin; no effect without it."

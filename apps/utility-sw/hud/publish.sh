@@ -23,7 +23,8 @@ VISIBILITY=0
 PUBLISHED_FILE_ID="${WORKSHOP_ITEM_ID:-0}"
 
 STEAM_USER="${STEAM_USER:-}"
-PREVIEW="${HUD_DIR}/preview.png"
+PREVIEW="${HUD_DIR}/preview.jpg"
+[ -f "${PREVIEW}" ] || PREVIEW="${HUD_DIR}/preview.png"
 
 log() { printf '\033[36m==>\033[0m %s\n' "$1"; }
 die() { printf '\033[31mx\033[0m %s\n' "$1" >&2; exit 1; }
@@ -42,7 +43,8 @@ fi
 # whole file exists to avoid.
 find "${CONTENT_DIR}" -name '*.vpk' | grep -q . || die "no .vpk in ${CONTENT_DIR}"
 
-[ -f "${PREVIEW}" ] || die "workshop items need a preview image at ${PREVIEW}"
+[ -f "${PREVIEW}" ] || die "workshop items need a preview image at ${HUD_DIR}/preview.{jpg,png}"
+[ "$(wc -c < "${PREVIEW}")" -le 1000000 ] || die "preview exceeds Steam's 1 MB limit: ${PREVIEW}"
 
 cat > "${VDF}" <<EOF
 "workshopitem"

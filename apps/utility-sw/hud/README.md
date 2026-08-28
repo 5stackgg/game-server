@@ -161,6 +161,12 @@ Leave `item_id` blank the first time; the run logs the id it created. Pass that
 id on every run afterwards or you will publish a second item rather than update
 the first.
 
+The storefront image is `preview.jpg` (or `preview.png`; jpg wins if both
+exist). Steam caps it at 1 MB, which a full-resolution PNG screenshot exceeds —
+`preview.jpg` is the same frame at quality 80, 1915x1078 and 453 KB. Both
+publish paths check the size first, because Steam reports an oversized preview
+as a generic upload failure that never mentions the image.
+
 Two secrets:
 
 - `STEAM_USERNAME` — the account that owns the item.
@@ -199,7 +205,7 @@ STEAM_USER=<account> ./publish.sh          # first publish, prints an item id
 WORKSHOP_ITEM_ID=<id> STEAM_USER=<account> ./publish.sh   # updates in place
 ```
 
-It needs a `preview.png` beside it and refuses to publish a content folder with
+It needs a preview image beside it and refuses to publish a content folder with
 no vpk in it — the empty-item failure has no other symptom. Whether app 730
 accepts a SteamCMD workshop upload at all is unverified; if it does not, fall
 back to Workshop Manager and read its contents preview before submitting.
