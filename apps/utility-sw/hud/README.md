@@ -136,8 +136,18 @@ exactly one addon — the map — which is the entire reason that plugin exists.
 
 ### Publishing
 
-Workshop items go live at whatever visibility you set — there is no review queue
-to wait on. Two things do gate it:
+The published item is **3791537475**. Pass it as `item_id` on every run; a blank
+one creates a second item rather than updating it.
+
+Valve does not review Workshop items — there is no submission and no queue. The
+only Valve review in CS2 is for maps being considered for official matchmaking,
+which has nothing to do with an addon a server mounts. Three things do gate it:
+
+**The Steam Workshop Legal Agreement.** An account that has never accepted it
+publishes items that exist, report `Success.`, and are invisible to everyone
+including the server. Accept it once on the item page while signed in as the
+publishing account. This is the first thing to check when an item uploads
+cleanly and still will not download.
 
 **Visibility must be Public.** AddonsManager fetches by id over the anonymous
 workshop path, so a Private item is not downloadable by the server or by anyone
@@ -206,9 +216,12 @@ WORKSHOP_ITEM_ID=<id> STEAM_USER=<account> ./publish.sh   # updates in place
 ```
 
 It needs a preview image beside it and refuses to publish a content folder with
-no vpk in it — the empty-item failure has no other symptom. Whether app 730
-accepts a SteamCMD workshop upload at all is unverified; if it does not, fall
-back to Workshop Manager and read its contents preview before submitting.
+no vpk in it — the empty-item failure has no other symptom.
+
+App 730 does accept a SteamCMD workshop upload — verified on 2026-08-28, item
+3791537475, created and committed from an Ubuntu runner. Workshop Manager and
+its `VpkDirectories` whitelist are therefore avoidable entirely, which is the
+whole reason this path exists.
 
 Practice servers first. A one-time addon download is a fair price for someone
 who typed `.drill`; it is not something to ask ten people for before a match.

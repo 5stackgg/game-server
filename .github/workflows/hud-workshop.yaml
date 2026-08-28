@@ -21,9 +21,9 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "10.0.x"
 
@@ -106,13 +106,32 @@ jobs:
         env:
           STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
           STEAM_PASSWORD: ${{ secrets.STEAM_PASSWORD }}
+          STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
           ITEM_ID: ${{ inputs.item_id }}
         run: |
           set -euo pipefail
           HUD="$GITHUB_WORKSPACE/apps/utility-sw/hud"
 
-          if [ -z "${STEAM_USERNAME:-}" ] || [ -z "${STEAM_PASSWORD:-}" ]; then
-            echo "::error::STEAM_USERNAME and STEAM_PASSWORD secrets are required"
+          if [ -z "${STEAM_USERNAME:-}" ]; then
+            echo "::error::the STEAM_USERNAME secret is required"
+            exit 1
+          fi
+
+          # An account with Steam Guard cannot be logged in by password alone --
+          # SteamCMD would sit waiting for a code no workflow can supply. Handing
+          # it a config.vdf from a session that already answered the prompt is
+          # the way in. Password login stays for accounts without a guard.
+          if [ -n "${STEAM_CONFIG_VDF:-}" ]; then
+            mkdir -p ~/Steam/config
+            printf '%s' "$STEAM_CONFIG_VDF" | base64 -d > ~/Steam/config/config.vdf
+            chmod 600 ~/Steam/config/config.vdf
+            LOGIN="$STEAM_USERNAME"
+            echo "auth: restored session for $STEAM_USERNAME"
+          elif [ -n "${STEAM_PASSWORD:-}" ]; then
+            LOGIN="$STEAM_USERNAME $STEAM_PASSWORD"
+            echo "auth: password login"
+          else
+            echo "::error::set STEAM_CONFIG_VDF (guarded account) or STEAM_PASSWORD"
             exit 1
           fi
 
@@ -141,10 +160,10 @@ jobs:
           }
           EOF
 
-          # The account has no Steam Guard, so a plain login is enough. Both
-          # values are secrets, so Actions masks them in the log; the password
-          # never appears in a command echo because -x is not set.
-          steamcmd +login "$STEAM_USERNAME" "$STEAM_PASSWORD" \
+          # Unquoted on purpose: $LOGIN is either one word or "user pass", and
+          # both halves are secrets Actions masks. -x is off, so neither is echoed.
+          # shellcheck disable=SC2086
+          steamcmd +login $LOGIN \
                    +workshop_build_item "$HUD/build/workshop.vdf" \
                    +quit | tee /tmp/steam.log
 
