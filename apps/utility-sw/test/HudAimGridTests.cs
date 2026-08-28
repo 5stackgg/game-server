@@ -118,4 +118,36 @@ public class HudAimGridTests
             Assert.InRange(HudAimGrid.Row(degrees, 0f, Tolerance, Rows), 0, Rows - 1);
         }
     }
+
+    // The words and the dot must never disagree: the dot sits where the player
+    // is aiming, so a target to the right puts the dot LEFT and the text has to
+    // say LOOK RIGHT. Source yaw increases anticlockwise, so a target BELOW the
+    // player's yaw is the one on their right.
+    [Fact]
+    public void DirectionAgreesWithTheDot()
+    {
+        Assert.True(HudAimGrid.Column(90f, 89f, Tolerance, Columns) < CentreColumn);
+        Assert.Equal("LOOK RIGHT", HudAimGrid.Direction(90f, 0f, 89f, 0f, Tolerance));
+
+        Assert.True(HudAimGrid.Column(90f, 91f, Tolerance, Columns) > CentreColumn);
+        Assert.Equal("LOOK LEFT", HudAimGrid.Direction(90f, 0f, 91f, 0f, Tolerance));
+
+        Assert.True(HudAimGrid.Row(5f, 0f, Tolerance, Rows) > CentreRow);
+        Assert.Equal("LOOK UP", HudAimGrid.Direction(90f, 5f, 90f, 0f, Tolerance));
+
+        Assert.True(HudAimGrid.Row(-5f, 0f, Tolerance, Rows) < CentreRow);
+        Assert.Equal("LOOK DOWN", HudAimGrid.Direction(90f, -5f, 90f, 0f, Tolerance));
+    }
+
+    [Fact]
+    public void DirectionNamesBothAxesWhenBothAreOut()
+    {
+        Assert.Equal("LOOK RIGHT AND DOWN", HudAimGrid.Direction(90f, -5f, 89f, 0f, Tolerance));
+    }
+
+    [Fact]
+    public void OnTheAngleSaysSo()
+    {
+        Assert.Equal("LINED UP - THROW IT", HudAimGrid.Direction(90f, -12f, 90f, -12f, Tolerance));
+    }
 }

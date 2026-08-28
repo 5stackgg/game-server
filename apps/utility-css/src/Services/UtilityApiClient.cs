@@ -496,10 +496,21 @@ public class UtilityApiClient
                 if (outcome != null)
                 {
                     int status = (int)response.StatusCode;
-                    // 408 and 429 are the two the panel expects to be asked
-                    // again; every other 4xx is a refusal of this payload.
+                    // A refusal is the panel saying this payload is wrong, and
+                    // it will still be wrong next time -- so it is dropped
+                    // rather than queued. 401 and 403 are NOT that: a rotated
+                    // plugin key, or a pod that came up before the panel
+                    // authorised it, refuses every request until the credential
+                    // is right and then accepts them all. Treating those as
+                    // refusals threw away a player's whole session of scored
+                    // attempts, and took the already-queued ones with it.
                     outcome.Rejected =
-                        status >= 400 && status < 500 && status != 408 && status != 429;
+                        status >= 400
+                        && status < 500
+                        && status != 401
+                        && status != 403
+                        && status != 408
+                        && status != 429;
                 }
 
                 return null;

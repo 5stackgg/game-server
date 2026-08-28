@@ -93,7 +93,13 @@ public static class HudAimGrid
             tolerance = PracticeLineupUtility.DefaultAimTolerance;
         }
 
-        float yaw = Delta(targetYaw, eyeYaw);
+        // Both axes are measured EYE minus TARGET, which is the direction the
+        // player has to move to close the gap. Source yaw increases
+        // anticlockwise -- mouse right lowers it -- so a target below the
+        // player's yaw is to their right, and the operand order is what carries
+        // that. Reversed on yaw alone, this told the player to look away from
+        // the lineup while the pitch half was still right.
+        float yaw = Delta(eyeYaw, targetYaw);
         float pitch = Delta(eyePitch, targetPitch);
 
         var parts = new List<string>();
