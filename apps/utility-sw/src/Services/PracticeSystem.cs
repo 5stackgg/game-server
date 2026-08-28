@@ -24,7 +24,18 @@ public class PracticeState
     // throw so ten smokes in a row are ten different arcs -- without it a
     // player rehearsing the same lineup cannot tell their last throw from the
     // one before it, which is the only thing they are trying to compare.
+    // On by default -- telling your throws apart is the point of the feature.
+    // Off is for somebody judging a smoke's coverage, where a cyan cloud is a
+    // distraction and vanilla is the thing being practised against.
+    public bool Colors { get; set; } = true;
+
     public int ThrowColorIndex { get; set; }
+
+    // The colour of the throw currently in the air, captured when the pin left
+    // rather than read back later: the cursor above has already moved on to the
+    // next one by the time a projectile exists, so re-deriving it would paint
+    // the arc and the smoke in a colour the player was never promised.
+    public int InFlightColorIndex { get; set; }
 
     // Where .spawn next/prev has walked to. Separate from Index because that
     // one walks lineups and a spawn is not one.

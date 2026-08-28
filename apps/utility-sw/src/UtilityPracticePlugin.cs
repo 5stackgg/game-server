@@ -117,12 +117,24 @@ public partial class UtilityPracticePlugin : BasePlugin
         // practice trail is coloured by TEAM, so on a server where everybody is
         // on the same side every arc looks the same.
         _recorder.Sampled += (steamId, at) =>
-            _replay.TrailPoint(steamId, ThrowColor(steamId), at);
+        {
+            if (_system.StateFor(steamId).Colors)
+            {
+                _replay.TrailPoint(steamId, InFlightColor(steamId), at);
+            }
+        };
         _recorder.Ended += _replay.TrailEnded;
 
-        // Advanced once per throw, so the colour a player was shown before
-        // pulling the pin is the colour the arc actually comes out in.
-        _recorder.Thrown += (steamId, _) => _system.StateFor(steamId).ThrowColorIndex++;
+        // The promised colour is claimed by the throw and the cursor moves on,
+        // so what the player was shown before pulling the pin is what the arc
+        // and the smoke actually come out in.
+        _recorder.Thrown += (steamId, _) =>
+        {
+            PracticeState state = _system.StateFor(steamId);
+
+            state.InFlightColorIndex = state.ThrowColorIndex;
+            state.ThrowColorIndex++;
+        };
         _system.HoldUtility = _drill.Waiting;
         _score.Scored += _drill.OnScored;
         _score.Scored += OnScoredHint;
@@ -149,6 +161,7 @@ public partial class UtilityPracticePlugin : BasePlugin
                 if (entity.IsValid)
                 {
                     _recorder.OnProjectileCreated(entity);
+                    TintSmoke(entity);
                 }
             });
         };
@@ -919,9 +932,10 @@ public partial class UtilityPracticePlugin : BasePlugin
         // anybody is asking while walking around with a rifle out. Said before
         // the throw on purpose -- afterwards it is just a label on something
         // already in the air.
-        string? colour = HoldingUtility(pawn)
-            ? $"NEXT: {ThrowColor(player.SteamID).Name.ToUpperInvariant()}"
-            : null;
+        string? colour =
+            HoldingUtility(pawn) && _system.StateFor(player.SteamID).Colors
+                ? $"NEXT: {ThrowColor(player.SteamID).Name.ToUpperInvariant()}"
+                : null;
 
         string? card = lineup == null
             ? colour
@@ -983,6 +997,57 @@ public partial class UtilityPracticePlugin : BasePlugin
     /// </summary>
     private PracticeStepColors.StepColor ThrowColor(ulong steamId)
     {
+        return ColorFor(steamId, _system.StateFor(steamId).ThrowColorIndex);
+    }
+
+    // Done after the recorder has seen the projectile, because that is what
+    // claims the colour for this throw. Before it, the cursor still points at
+    // the colour the NEXT grenade will be.
+    private void TintSmoke(CEntityInstance entity)
+    {
+        if ((entity.DesignerName ?? "") != "smokegrenade_projectile")
+        {
+            return;
+        }
+
+        try
+        {
+            CBaseEntity? thrower = entity.As<CBaseCSGrenadeProjectile>().Thrower.Value;
+
+            if (thrower == null || !thrower.IsValid)
+            {
+                return;
+            }
+
+            IPlayer? player = Core.PlayerManager.GetPlayerFromPawn(
+                thrower.As<CBasePlayerPawn>()
+            );
+
+            if (player == null || !player.IsValid)
+            {
+                return;
+            }
+
+            if (_system.StateFor(player.SteamID).Colors)
+            {
+                _replay.TintSmoke(entity, InFlightColor(player.SteamID));
+            }
+        }
+        catch
+        {
+            // A projectile whose thrower cannot be read is one the recorder
+            // has already dropped; a grey smoke is not worth a log line.
+        }
+    }
+
+    /// <summary>The colour of the throw already in the air.</summary>
+    private PracticeStepColors.StepColor InFlightColor(ulong steamId)
+    {
+        return ColorFor(steamId, _system.StateFor(steamId).InFlightColorIndex);
+    }
+
+    private PracticeStepColors.StepColor ColorFor(ulong steamId, int cycle)
+    {
         LineupRecord? loaded = _system.StateFor(steamId).Loaded;
 
         if (loaded != null)
@@ -995,7 +1060,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             }
         }
 
-        return PracticeStepColors.For(_system.StateFor(steamId).ThrowColorIndex);
+        return PracticeStepColors.For(cycle);
     }
 
     private string Title(IPlayer player, LineupRecord lineup)

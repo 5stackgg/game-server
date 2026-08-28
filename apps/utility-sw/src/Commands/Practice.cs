@@ -723,6 +723,28 @@ public partial class UtilityPracticePlugin
         );
     }
 
+    [Command("colors", registerRaw: false, permission: "")]
+    public void OnColors(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        PracticeState state = _system.StateFor(player.SteamID);
+
+        state.Colors = !state.Colors;
+
+        Reply(
+            context,
+            state.Colors
+                ? $" {ChatColors.Green}throw colours on {ChatColors.Grey}-- each grenade gets its own"
+                : $" {ChatColors.Grey}throw colours off -- smokes come out vanilla"
+        );
+    }
+
     [Command("noclip", registerRaw: false, permission: "")]
     public void OnNoclip(ICommandContext context)
     {
@@ -1190,6 +1212,7 @@ public partial class UtilityPracticePlugin
         $" {ChatColors.Default}.drill / .cancel {ChatColors.Grey}stops a drill you are in",
         $" {ChatColors.Default}.playbook / .run / .playbook stop {ChatColors.Grey}the loaded execute",
         $" {ChatColors.Default}.bot / .nobots {ChatColors.Grey}something to flash and blow up",
+        $" {ChatColors.Default}.colors {ChatColors.Grey}a colour per throw, smoke and trail",
         $" {ChatColors.Default}.spawns / .spawn next {ChatColors.Grey}where rounds start from",
         $" {ChatColors.Default}.noclip / .god / .timer / .solo / .clear",
     };

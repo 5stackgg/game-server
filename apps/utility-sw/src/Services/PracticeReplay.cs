@@ -2606,6 +2606,47 @@ public class PracticeReplay
         _trails[steamId] = (trail.ghost, at);
     }
 
+    /// <summary>
+    /// Tint the smoke cloud itself, so the thing a player is actually looking
+    /// at is the thing that carries the colour.
+    ///
+    /// A trail says where a grenade went; the bloom is what it DID, and after
+    /// four of them are up the trails have faded and all that is left on the
+    /// map is four identical grey clouds. Set at creation, before the grenade
+    /// has landed: the colour is read when the smoke starts blooming, so there
+    /// is nothing to change afterwards.
+    /// </summary>
+    public bool TintSmoke(CEntityInstance entity, PracticeStepColors.StepColor step)
+    {
+        if (!DrawMarkers)
+        {
+            return false;
+        }
+
+        try
+        {
+            CSmokeGrenadeProjectile smoke = entity.As<CSmokeGrenadeProjectile>();
+
+            if (!smoke.IsValid)
+            {
+                return false;
+            }
+
+            smoke.SmokeColor = new Vector(step.R, step.G, step.B);
+
+            // The schema write alone does not reach clients -- the same rule
+            // the beams follow, where a bare colour assignment never networks.
+            smoke.SmokeColorUpdated();
+
+            return true;
+        }
+        catch (Exception error)
+        {
+            _logger.LogWarning(error, "unable to tint a smoke");
+            return false;
+        }
+    }
+
     /// <summary>The grenade is gone; the next one starts a new arc.</summary>
     public void TrailEnded(ulong steamId)
     {
