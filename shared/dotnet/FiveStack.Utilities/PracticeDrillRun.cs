@@ -54,18 +54,30 @@ public class PracticeDrillRun
 
     public int Reps => _reps;
 
+    // How many steps of help have been taken away. Earned by landing the
+    // throw, given back by missing it -- never a function of the rep number,
+    // which would take the crosshair away from somebody who has missed every
+    // attempt and is exactly who still needs it.
+    private int _faded;
+
+    private int FadeSteps => Math.Max(1, _reps - 1);
+
     /// <summary>
-    /// How visible the aim crosshair should still be, 1 on the first rep down
-    /// to 0 on the last.
+    /// How visible the aim crosshair should still be, 1 for all of it down to
+    /// 0 for none.
     ///
     /// A drill is reps of one throw, and a crosshair that is as loud on the
     /// last as on the first trains a player to read the crosshair rather than
-    /// the map. Fading it means the final rep is thrown off what they have
-    /// actually learned -- which is the only rep that says whether they have
-    /// it. A single-rep run keeps full help: one throw is practice, not a test.
+    /// the map -- so landing one fades it, and the final rep is thrown off what
+    /// they have actually learned. Missing gives a step back rather than
+    /// resetting: one bad throw at the end of a good run is a bad throw, not
+    /// evidence they never knew it, and a full reset there would make the drill
+    /// feel like it was punishing them.
+    ///
+    /// A single-rep run keeps full help -- one throw is practice, not a test.
     /// </summary>
     public float Assist =>
-        _reps <= 1 ? 1f : Math.Clamp(1f - (_rep / (float)(_reps - 1)), 0f, 1f);
+        _reps <= 1 ? 1f : Math.Clamp(1f - (_faded / (float)FadeSteps), 0f, 1f);
 
     public int Hits { get; private set; }
     public int Misses { get; private set; }
@@ -102,6 +114,7 @@ public class PracticeDrillRun
         }
 
         _rep = 0;
+        _faded = 0;
         _index++;
 
         if (_index >= _queue.Count)
@@ -189,12 +202,14 @@ public class PracticeDrillRun
             Hits++;
             Streak++;
             BestStreak = Math.Max(BestStreak, Streak);
+            _faded = Math.Min(_faded + 1, FadeSteps);
 
             return true;
         }
 
         Misses++;
         Streak = 0;
+        _faded = Math.Max(_faded - 1, 0);
 
         if (Current != null)
         {
