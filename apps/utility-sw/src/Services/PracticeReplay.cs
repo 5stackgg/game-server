@@ -2529,32 +2529,35 @@ public class PracticeReplay
     // silently change how long you have to walk over and look at it.
     private const float TrailSeconds = 10f;
 
-    // Only drawn while an execute is running, and only for a throw that has a
-    // step colour -- outside one the engine's own trail is fine, and two trails
-    // down the same arc is worse than either.
     private const float TrailWidth = 0.5f;
+
+    // The recorder samples at 32Hz, which down a three second arc is ~96 beams
+    // for ONE grenade -- five players rehearsing would be thousands of live
+    // entities, which is a server falling over because the feature works. A
+    // grenade flies a smooth parabola, so a beam every so many units is the
+    // same curve for a fraction of the cost, and a stuck or rolling grenade
+    // stops adding to it entirely.
+    private const float TrailStepUnits = 26f;
+
+    // Backstop for a grenade that travels a very long way.
+    private const int MaxTrailBeams = 48;
 
     private readonly Dictionary<ulong, (Ghost ghost, Vec3 last)> _trails = new();
 
     /// <summary>
-    /// One sampled point of a live grenade, drawn in the colour of the step it
-    /// belongs to.
+    /// One sampled point of a live grenade, in the colour that throw was
+    /// promised.
     ///
     /// The engine's practice trail is coloured by the thrower's TEAM, so on a
-    /// practice server -- where everybody is usually on the same side -- four
-    /// smokes in an execute leave four identical trails and the whole point of
-    /// colouring the throws is lost the moment they are in the air.
+    /// practice server -- where everybody is usually on the same side -- every
+    /// arc looks the same and the colour says nothing about which throw it
+    /// belonged to. Which colour a given throw gets is the caller's business:
+    /// its step in a running execute, otherwise the next one off the player's
+    /// own cycle.
     /// </summary>
-    public void TrailPoint(ulong steamId, LineupRecord? lineup, Vec3 at)
+    public void TrailPoint(ulong steamId, PracticeStepColors.StepColor step, Vec3 at)
     {
-        if (!DrawMarkers || lineup == null)
-        {
-            return;
-        }
-
-        PracticeStepColors.StepColor? step = StepColorFor(lineup.client_id);
-
-        if (step == null)
+        if (!DrawMarkers)
         {
             return;
         }
@@ -2575,11 +2578,24 @@ public class PracticeReplay
             return;
         }
 
-        CEnvBeam? beam = CreateBeam(trail.last, at, Rgb(step.Value), TrailWidth);
+        Vec3 moved = new Vec3(at.x - trail.last.x, at.y - trail.last.y, at.z - trail.last.z);
 
-        if (beam != null)
+        if (moved.Length() < TrailStepUnits)
         {
-            trail.ghost.Beams.Add(beam);
+            // Not far enough to be worth an entity, and the arc is unchanged.
+            // The cursor deliberately stays put so the next beam spans the
+            // whole gap rather than starting from a point never drawn.
+            return;
+        }
+
+        if (trail.ghost.Beams.Count < MaxTrailBeams)
+        {
+            CEnvBeam? beam = CreateBeam(trail.last, at, Rgb(step), TrailWidth);
+
+            if (beam != null)
+            {
+                trail.ghost.Beams.Add(beam);
+            }
         }
 
         // Pushed out as the grenade flies, so the whole arc fades together from

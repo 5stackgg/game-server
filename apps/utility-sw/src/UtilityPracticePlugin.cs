@@ -113,12 +113,16 @@ public partial class UtilityPracticePlugin : BasePlugin
         _recorder.Finalized += _score.OnFinalized;
         _recorder.Thrown += _drill.OnThrown;
 
-        // The flight, in the colour of the step it belongs to. The engine's own
+        // The flight, in the colour that throw was promised. The engine's own
         // practice trail is coloured by TEAM, so on a server where everybody is
-        // on the same side an execute leaves four identical arcs.
+        // on the same side every arc looks the same.
         _recorder.Sampled += (steamId, at) =>
-            _replay.TrailPoint(steamId, _system.StateFor(steamId).Loaded, at);
+            _replay.TrailPoint(steamId, ThrowColor(steamId), at);
         _recorder.Ended += _replay.TrailEnded;
+
+        // Advanced once per throw, so the colour a player was shown before
+        // pulling the pin is the colour the arc actually comes out in.
+        _recorder.Thrown += (steamId, _) => _system.StateFor(steamId).ThrowColorIndex++;
         _system.HoldUtility = _drill.Waiting;
         _score.Scored += _drill.OnScored;
         _score.Scored += OnScoredHint;
@@ -910,11 +914,21 @@ public partial class UtilityPracticePlugin : BasePlugin
             Hint(player, HintCooldownTicks);
         }
 
-        Send(
-            player,
-            PanelKind.Card,
-            lineup == null ? null : Card(lineup, _drill.Progress(player.SteamID))
-        );
+        // The colour is only worth saying while there is a grenade in hand: it
+        // answers "which arc is about to be mine", and that is not a question
+        // anybody is asking while walking around with a rifle out. Said before
+        // the throw on purpose -- afterwards it is just a label on something
+        // already in the air.
+        string? colour = HoldingUtility(pawn)
+            ? $"NEXT: {ThrowColor(player.SteamID).Name.ToUpperInvariant()}"
+            : null;
+
+        string? card = lineup == null
+            ? colour
+            : Card(lineup, _drill.Progress(player.SteamID))
+                + (colour == null ? "" : $"\n{colour}");
+
+        Send(player, PanelKind.Card, card);
         Send(
             player,
             PanelKind.Steps,
@@ -928,6 +942,62 @@ public partial class UtilityPracticePlugin : BasePlugin
     // Only shown while a walk is actually loaded and the focused lineup is the
     // one it is pointing at; drifting onto a neighbour's spot must not label it
     // with somebody else's position.
+    // A grenade in hand, which is the only time the next colour matters. Read
+    // the same way the recorder reads it, so the panel and the recording never
+    // disagree about whether somebody is holding one.
+    private static bool HoldingUtility(CCSPlayerPawn pawn)
+    {
+        try
+        {
+            CBasePlayerWeapon? active = pawn.WeaponServices?.ActiveWeapon.Value;
+
+            if (active == null || !active.IsValid)
+            {
+                return false;
+            }
+
+            string designer = active.Entity?.DesignerName ?? "";
+
+            return designer.StartsWith("weapon_")
+                && (
+                    designer.Contains("grenade")
+                    || designer.Contains("flashbang")
+                    || designer.Contains("molotov")
+                    || designer.Contains("incgrenade")
+                    || designer.Contains("decoy")
+                );
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// The colour the next grenade off this player will wear.
+    ///
+    /// In a running execute the step owns the colour -- it is a fact about the
+    /// throw everybody is rehearsing, and it has to stay the same across
+    /// attempts. Everywhere else the player's own cycle owns it, so ten smokes
+    /// in a row come out as ten different arcs instead of ten identical ones.
+    /// </summary>
+    private PracticeStepColors.StepColor ThrowColor(ulong steamId)
+    {
+        LineupRecord? loaded = _system.StateFor(steamId).Loaded;
+
+        if (loaded != null)
+        {
+            PracticeStepColors.StepColor? step = _replay.StepColorFor(loaded.client_id);
+
+            if (step != null)
+            {
+                return step.Value;
+            }
+        }
+
+        return PracticeStepColors.For(_system.StateFor(steamId).ThrowColorIndex);
+    }
+
     private string Title(IPlayer player, LineupRecord lineup)
     {
         string name = PracticeLineupUtility.TitleCase(lineup.name);
@@ -1334,21 +1404,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             }
         };
 
-        _playbook.Restrict = only =>
-        {
-            _replay.LibraryRestriction = only;
-
-            // The engine's practice trail is team-coloured, so leaving it on
-            // during an execute draws a second arc down the same flight in a
-            // colour that says nothing. Ours is the one with the answer while
-            // a run is on; outside one the engine's is better than nothing and
-            // costs us no entities.
-            Core.Engine.ExecuteCommand(
-                only == null
-                    ? $"sv_grenade_trajectory_prac_trailtime {EngineTrailSeconds}"
-                    : "sv_grenade_trajectory_prac_trailtime 0"
-            );
-        };
+        _playbook.Restrict = only => _replay.LibraryRestriction = only;
 
         _playbook.Chat = message =>
             Core.PlayerManager.SendChat($" {ChatColors.Green}{message}".Colored());
@@ -1631,7 +1687,12 @@ public partial class UtilityPracticePlugin : BasePlugin
         "sv_grenade_trajectory_prac_pipreview 1",
         // The trail is how you see WHERE it went wrong rather than just that it
         // did. Ten seconds outlives the throw and the walk back to the spot.
-        "sv_grenade_trajectory_prac_trailtime " + EngineTrailSeconds,
+        // Off, because the plugin draws its own. The engine's is coloured by
+        // the thrower's TEAM, which on a practice server makes every arc look
+        // the same -- and two arcs down one flight, one of them in a colour
+        // that means nothing, is worse than either alone. The pip preview
+        // above is independent of this and stays on.
+        "sv_grenade_trajectory_prac_trailtime 0",
         // Valve's own map-guide editor. Every annotation_* command is client
         // side, so a plugin can never draw one for a player -- but this cvar
         // decides whether they may draw their own, and it ships at view-only.
@@ -1656,10 +1717,6 @@ public partial class UtilityPracticePlugin : BasePlugin
     // throw at. Kept out of PracticeCfg because that list is re-run on every
     // map change and twice on load, and a bot placed to practise against must
     // not be swept away by housekeeping a second later.
-    // Ten seconds outlives the throw and the walk back to the spot. Named
-    // because an execute turns it off and has to be able to put it back.
-    private const int EngineTrailSeconds = 10;
-
     private static readonly string[] NoBotsCfg = new[] { "bot_quota 0", "bot_kick" };
 
     // What a bot is for here: something to flash and to blow up, that stays

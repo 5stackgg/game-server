@@ -74,4 +74,39 @@ public class PracticeStepColorsTests
     {
         Assert.Equal(PracticeStepColors.For(0).Name, PracticeStepColors.For(-1).Name);
     }
+
+    // The per-throw cycle: rehearsing one lineup ten times has to produce ten
+    // arcs a player can tell apart, which is the only reason to colour a trail
+    // at all. Consecutive throws must never share a colour.
+    [Fact]
+    public void ConsecutiveThrowsNeverShareAColor()
+    {
+        for (int throwIndex = 0; throwIndex < 32; throwIndex++)
+        {
+            Assert.NotEqual(
+                PracticeStepColors.For(throwIndex).Name,
+                PracticeStepColors.For(throwIndex + 1).Name
+            );
+        }
+    }
+
+    // Ten in a row is the case that was asked for, and the palette is eight
+    // long -- so the tenth repeats the second. That is intended, but a colour
+    // must not come back sooner than the palette allows.
+    [Fact]
+    public void AColorDoesNotComeBackBeforeTheWholePaletteHasBeenUsed()
+    {
+        for (int start = 0; start < 16; start++)
+        {
+            var window = new HashSet<string>();
+
+            for (int step = 0; step < PracticeStepColors.Count; step++)
+            {
+                Assert.True(
+                    window.Add(PracticeStepColors.For(start + step).Name),
+                    $"a colour repeated within {PracticeStepColors.Count} throws of {start}"
+                );
+            }
+        }
+    }
 }

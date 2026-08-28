@@ -20,6 +20,12 @@ public class PracticeState
     public Dictionary<string, ThrowSnapshot> Positions { get; } =
         new Dictionary<string, ThrowSnapshot>(StringComparer.OrdinalIgnoreCase);
 
+    // Which colour the NEXT grenade off this player will wear. Cycled on every
+    // throw so ten smokes in a row are ten different arcs -- without it a
+    // player rehearsing the same lineup cannot tell their last throw from the
+    // one before it, which is the only thing they are trying to compare.
+    public int ThrowColorIndex { get; set; }
+
     // Where .spawn next/prev has walked to. Separate from Index because that
     // one walks lineups and a spawn is not one.
     public int SpawnIndex { get; set; } = -1;
