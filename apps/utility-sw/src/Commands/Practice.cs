@@ -584,7 +584,10 @@ public partial class UtilityPracticePlugin
 
             if (here != null)
             {
-                if (_drill.StartWith(player.SteamID, new[] { here }) == eDrillStart.Started)
+                if (
+                    _drill.StartWith(player.SteamID, new[] { here }, endless: true)
+                    == eDrillStart.Started
+                )
                 {
                     Reply(
                         context,

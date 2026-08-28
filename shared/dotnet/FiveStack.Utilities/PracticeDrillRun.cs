@@ -31,11 +31,26 @@ public class PracticeDrillRun
     // Reps are consecutive: a lineup is thrown until it is learned, then the
     // run moves on. Interleaving them would make the drill a memory test of
     // where the spots are rather than practice at hitting one.
-    public PracticeDrillRun(IReadOnlyList<LineupRecord> queue, int reps = 1)
+    /// <param name="endless">
+    /// Keeps repping rather than completing. A drill somebody started by
+    /// standing on a spot is "work this until I say stop", and a run that ends
+    /// itself after three throws cannot be toggled off -- it has already gone.
+    /// Reps still bound the crosshair fade; they just stop ending the run.
+    /// </param>
+    public PracticeDrillRun(
+        IReadOnlyList<LineupRecord> queue,
+        int reps = 1,
+        bool endless = false
+    )
     {
         _queue = queue.ToList();
         _reps = Math.Max(1, reps);
+        _endless = endless;
     }
+
+    private readonly bool _endless;
+
+    public bool Endless => _endless;
 
     private readonly int _reps;
     private int _rep;
@@ -114,15 +129,27 @@ public class PracticeDrillRun
         }
 
         _rep = 0;
-        _faded = 0;
         _index++;
 
         if (_index >= _queue.Count)
         {
+            // Round the queue again rather than ending. The assist is NOT reset
+            // here: they have already learned this throw once, and handing the
+            // crosshair back every few reps would undo the point of fading it.
+            if (_endless)
+            {
+                _index = 0;
+                Current = _queue[0];
+
+                return Current;
+            }
+
             Current = null;
             Ending = eDrillEnd.Completed;
             return null;
         }
+
+        _faded = 0;
 
         Current = _queue[_index];
 
