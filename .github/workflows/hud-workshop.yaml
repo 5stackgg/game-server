@@ -133,18 +133,28 @@ jobs:
           # character must reach steamcmd as one argument, and an unquoted
           # expansion would split or expand it into something else entirely.
           if [ -n "${STEAM_CONFIG_VDF:-}" ]; then
-            mkdir -p ~/Steam/config
             # macOS base64 wraps at 76 columns; strip whitespace before decoding
             # so a secret created there is not rejected on a Linux runner.
-            printf '%s' "$STEAM_CONFIG_VDF" | tr -d '[:space:]' | base64 -d > ~/Steam/config/config.vdf
-            if ! grep -q ConnectCache ~/Steam/config/config.vdf; then
+            printf '%s' "$STEAM_CONFIG_VDF" | tr -d '[:space:]' | base64 -d > /tmp/config.vdf
+            if ! grep -q ConnectCache /tmp/config.vdf; then
               echo "::error::the restored config.vdf has no ConnectCache - it holds no session."
               echo "::error::Re-run the local steamcmd login and re-copy the file."
               exit 1
             fi
-            chmod 600 ~/Steam/config/config.vdf
+
+            # Which root SteamCMD reads depends on how it was installed: the
+            # Ubuntu package uses ~/.local/share/Steam. Write all three rather
+            # than guess -- guessing wrong reports "Cached credentials not
+            # found" and silently falls through to a password prompt.
+            for root in "$HOME/.local/share/Steam" "$HOME/Steam" "$HOME/.steam/steam"; do
+              mkdir -p "$root/config"
+              cp /tmp/config.vdf "$root/config/config.vdf"
+              chmod 600 "$root/config/config.vdf"
+            done
+            rm -f /tmp/config.vdf
+            echo "auth: restored session into $HOME/.local/share/Steam and 2 fallbacks"
+
             LOGIN=("$STEAM_USERNAME")
-            echo "auth: restored session"
           elif [ -n "$STEAM_PASSWORD" ]; then
             LOGIN=("$STEAM_USERNAME" "$STEAM_PASSWORD")
             echo "auth: password login"
@@ -189,6 +199,12 @@ jobs:
 
           # Steam says "Invalid Password" when it cannot resolve the account at
           # all, so a wrong username looks exactly like a wrong password.
+          if grep -qi "Cached credentials not found" /tmp/steam.log; then
+            echo "::error::SteamCMD did not read the restored session."
+            echo "::error::Its Steam root is not one of the three written above."
+            exit 1
+          fi
+
           if grep -qi "Invalid Password" /tmp/steam.log; then
             echo "::error::Steam rejected the credentials. In order of likelihood:"
             echo "::error::  the password is wrong or was rotated;"
