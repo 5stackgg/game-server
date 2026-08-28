@@ -403,14 +403,34 @@ public class PracticeSystem
         return spawns;
     }
 
+    // A competitive side starts five players. The team lists hold every spawn
+    // the map registers for that side -- Mirage has thirty-three across both --
+    // because casual and deathmatch draw from the same pool.
+    private const int CompetitiveTeamSize = 5;
+
+    // The game picks by priority: enabled spawns sorted ascending, and it takes
+    // as many as the mode seats. Anything past that is filler for larger modes,
+    // which is what buried the five that a competitive round can actually use.
     private static void Collect(
         List<ThrowSnapshot> spawns,
-        CUtlVector<CHandle<SpawnPoint>> selected
+        CUtlVector<CHandle<SpawnPoint>> team
     )
     {
-        for (int index = 0; index < selected.Count; index++)
+        var usable = new List<SpawnPoint>();
+
+        for (int index = 0; index < team.Count; index++)
         {
-            Add(spawns, selected[index].Value);
+            SpawnPoint? point = team[index].Value;
+
+            if (point != null && point.IsValid && point.Enabled)
+            {
+                usable.Add(point);
+            }
+        }
+
+        foreach (SpawnPoint point in usable.OrderBy(p => p.Priority).Take(CompetitiveTeamSize))
+        {
+            Add(spawns, point);
         }
     }
 
