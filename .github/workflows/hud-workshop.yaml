@@ -117,18 +117,36 @@ jobs:
             exit 1
           fi
 
-          # An account with Steam Guard cannot be logged in by password alone --
-          # SteamCMD would sit waiting for a code no workflow can supply. Handing
-          # it a config.vdf from a session that already answered the prompt is
-          # the way in. Password login stays for accounts without a guard.
+          # Secrets pasted through a UI or piped in pick up trailing newlines,
+          # and Steam reports the resulting credential as Invalid Password.
+          RAW_U=${#STEAM_USERNAME}; RAW_P=${#STEAM_PASSWORD}
+          STEAM_USERNAME=$(printf '%s' "$STEAM_USERNAME" | tr -d '[:space:]')
+          STEAM_PASSWORD=$(printf '%s' "${STEAM_PASSWORD:-}" | tr -d '\r\n')
+
+          # Whether trimming changed anything, never by how much: this log is
+          # public and a password length is not something to publish.
+          [ "${#STEAM_USERNAME}" -ne "$RAW_U" ] && echo "::warning::STEAM_USERNAME had surrounding whitespace; trimmed"
+          [ "${#STEAM_PASSWORD}" -ne "$RAW_P" ] && echo "::warning::STEAM_PASSWORD had a trailing newline; trimmed"
+          true
+
+          # An array, not a string: a password containing a space or a glob
+          # character must reach steamcmd as one argument, and an unquoted
+          # expansion would split or expand it into something else entirely.
           if [ -n "${STEAM_CONFIG_VDF:-}" ]; then
             mkdir -p ~/Steam/config
-            printf '%s' "$STEAM_CONFIG_VDF" | base64 -d > ~/Steam/config/config.vdf
+            # macOS base64 wraps at 76 columns; strip whitespace before decoding
+            # so a secret created there is not rejected on a Linux runner.
+            printf '%s' "$STEAM_CONFIG_VDF" | tr -d '[:space:]' | base64 -d > ~/Steam/config/config.vdf
+            if ! grep -q ConnectCache ~/Steam/config/config.vdf; then
+              echo "::error::the restored config.vdf has no ConnectCache - it holds no session."
+              echo "::error::Re-run the local steamcmd login and re-copy the file."
+              exit 1
+            fi
             chmod 600 ~/Steam/config/config.vdf
-            LOGIN="$STEAM_USERNAME"
-            echo "auth: restored session for $STEAM_USERNAME"
-          elif [ -n "${STEAM_PASSWORD:-}" ]; then
-            LOGIN="$STEAM_USERNAME $STEAM_PASSWORD"
+            LOGIN=("$STEAM_USERNAME")
+            echo "auth: restored session"
+          elif [ -n "$STEAM_PASSWORD" ]; then
+            LOGIN=("$STEAM_USERNAME" "$STEAM_PASSWORD")
             echo "auth: password login"
           else
             echo "::error::set STEAM_CONFIG_VDF (guarded account) or STEAM_PASSWORD"
@@ -160,23 +178,41 @@ jobs:
           }
           EOF
 
-          # Unquoted on purpose: $LOGIN is either one word or "user pass", and
-          # both halves are secrets Actions masks. -x is off, so neither is echoed.
-          # shellcheck disable=SC2086
-          steamcmd +login $LOGIN \
+          # pipefail would abort on steamcmd's own exit code before the log can be
+          # read, and the log is where the actionable reason lives.
+          set +e
+          steamcmd +login "${LOGIN[@]}" \
                    +workshop_build_item "$HUD/build/workshop.vdf" \
                    +quit | tee /tmp/steam.log
+          STATUS=${PIPESTATUS[0]}
+          set -e
 
-          # A guard prompt would otherwise look like a generic failure.
-          if grep -qiE "Steam Guard|two-factor|Rate Limit" /tmp/steam.log; then
-            echo "::error::Steam asked for a guard code or rate limited this login."
-            echo "::error::See apps/utility-sw/hud/README.md for the config.vdf route."
+          # Steam says "Invalid Password" when it cannot resolve the account at
+          # all, so a wrong username looks exactly like a wrong password.
+          if grep -qi "Invalid Password" /tmp/steam.log; then
+            echo "::error::Steam rejected the credentials. In order of likelihood:"
+            echo "::error::  the password is wrong or was rotated;"
+            echo "::error::  the secret carries a trailing newline or stray whitespace;"
+            echo "::error::  STEAM_USERNAME is the account name, not the profile display name."
+            echo "::error::Steam also says Invalid Password when it cannot resolve the account."
             exit 1
           fi
 
-          # SteamCMD exits 0 on some upload failures, so the log is the evidence.
+          if grep -qiE "Steam Guard|two-factor|Account Login Denied" /tmp/steam.log; then
+            echo "::error::this account needs a guard code, which no workflow can answer."
+            echo "::error::Set STEAM_CONFIG_VDF - see apps/utility-sw/hud/README.md."
+            exit 1
+          fi
+
+          if grep -qi "Rate Limit" /tmp/steam.log; then
+            echo "::error::Steam rate limited this login; wait a few minutes."
+            exit 1
+          fi
+
+          # SteamCMD exits 0 on some upload failures, so the log is the evidence
+          # and the exit code is only corroborating.
           if ! grep -q "Success" /tmp/steam.log; then
-            echo "::error::steamcmd did not report success"
+            echo "::error::steamcmd did not report success (exit $STATUS)"
             exit 1
           fi
 
