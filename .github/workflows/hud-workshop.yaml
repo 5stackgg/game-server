@@ -1,0 +1,148 @@
+name: Publish HUD Addon
+
+# Manual only. Publishing pushes files to every player who joins a practice
+# server, so it is a decision rather than a consequence of merging.
+on:
+  workflow_dispatch:
+    inputs:
+      item_id:
+        description: "Workshop item id to update. Leave blank to create a new item (once)."
+        required: false
+        type: string
+      dry_run:
+        description: "Build and verify the addon without publishing."
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      # The slot contract is the only thing that catches a renamed dialog
+      # variable, and a broken layout fails silently in game rather than at
+      # build time. Never publish an addon whose contract has not been checked.
+      - name: Verify the slot contract
+        run: dotnet test apps/utility-sw/test/FiveStack.Tests.csproj --nologo
+
+      # PanoramaCompiler needs only the .NET SDK and build.sh fetches vpkeditcli
+      # into .tools on Linux, so nothing here needs Windows or a CS2 install.
+      - name: Build the addon
+        run: ./apps/utility-sw/hud/build.sh
+
+      # An addon that mounts and resolves nothing is the failure mode with no
+      # symptom: the layouts must sit under panorama/, and there must be five of
+      # them plus the stylesheet.
+      - name: Verify what was packed
+        run: |
+          set -euo pipefail
+          VPK=apps/utility-sw/hud/build/upload/5stack_utility_hud.vpk
+          [ -f "$VPK" ] || { echo "::error::no vpk was produced"; exit 1; }
+
+          TREE=$(apps/utility-sw/hud/.tools/vpkeditcli --file-tree "$VPK" 2>&1 || true)
+          echo "$TREE"
+
+          for expected in \
+            panorama \
+            nade_hud.vxml_c nade_list.vxml_c nade_map.vxml_c \
+            nade_run.vxml_c nade_edit.vxml_c nadehud.vcss_c
+          do
+            case "$TREE" in
+              *"$expected"*) ;;
+              *) echo "::error::packed addon is missing $expected"; exit 1 ;;
+            esac
+          done
+
+          echo "addon: $(du -h "$VPK" | cut -f1)"
+
+      - name: Stop here
+        if: inputs.dry_run
+        run: echo "::notice::dry run - built and verified, nothing published"
+
+      - name: Install SteamCMD
+        if: ${{ !inputs.dry_run }}
+        run: |
+          sudo add-apt-repository -y multiverse
+          sudo dpkg --add-architecture i386
+          sudo apt-get update -qq
+          echo steam steam/question select "I AGREE" | sudo debconf-set-selections
+          echo steam steam/license note '' | sudo debconf-set-selections
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq steamcmd
+
+      - name: Publish
+        if: ${{ !inputs.dry_run }}
+        env:
+          STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
+          STEAM_PASSWORD: ${{ secrets.STEAM_PASSWORD }}
+          ITEM_ID: ${{ inputs.item_id }}
+        run: |
+          set -euo pipefail
+          HUD="$GITHUB_WORKSPACE/apps/utility-sw/hud"
+
+          if [ -z "${STEAM_USERNAME:-}" ] || [ -z "${STEAM_PASSWORD:-}" ]; then
+            echo "::error::STEAM_USERNAME and STEAM_PASSWORD secrets are required"
+            exit 1
+          fi
+
+          # Digits or nothing. It is interpolated into the vdf below, and a
+          # workshop id has never legitimately contained a quote.
+          case "${ITEM_ID:-}" in
+            ""|*[!0-9]*)
+              if [ -n "${ITEM_ID:-}" ]; then
+                echo "::error::item_id must be digits"
+                exit 1
+              fi
+              ;;
+          esac
+
+          [ -f "$HUD/preview.png" ] || {
+            echo "::error::apps/utility-sw/hud/preview.png is missing; Steam requires a preview image"
+            exit 1
+          }
+
+          cat > "$HUD/build/workshop.vdf" <<EOF
+          "workshopitem"
+          {
+            "appid"           "730"
+            "publishedfileid" "${ITEM_ID:-0}"
+            "contentfolder"   "$HUD/build/upload"
+            "previewfile"     "$HUD/preview.png"
+            "visibility"      "0"
+            "title"           "5Stack Utility HUD"
+            "description"     "On-screen grenade lineup guidance for 5stack practice servers. Panorama resources for the utility-practice plugin; no effect without it."
+            "changenote"      "${GITHUB_SHA:0:7}"
+          }
+          EOF
+
+          # The account has no Steam Guard, so a plain login is enough. Both
+          # values are secrets, so Actions masks them in the log; the password
+          # never appears in a command echo because -x is not set.
+          steamcmd +login "$STEAM_USERNAME" "$STEAM_PASSWORD" \
+                   +workshop_build_item "$HUD/build/workshop.vdf" \
+                   +quit | tee /tmp/steam.log
+
+          # A guard prompt would otherwise look like a generic failure.
+          if grep -qiE "Steam Guard|two-factor|Rate Limit" /tmp/steam.log; then
+            echo "::error::Steam asked for a guard code or rate limited this login."
+            echo "::error::See apps/utility-sw/hud/README.md for the config.vdf route."
+            exit 1
+          fi
+
+          # SteamCMD exits 0 on some upload failures, so the log is the evidence.
+          if ! grep -q "Success" /tmp/steam.log; then
+            echo "::error::steamcmd did not report success"
+            exit 1
+          fi
+
+          ID=$(grep -oE 'PublishedFileID *[0-9]+' /tmp/steam.log | grep -oE '[0-9]+' | tail -1 || true)
+          if [ -n "$ID" ]; then
+            echo "::notice::published workshop item $ID - pass it as item_id next time to update in place"
+          fi
