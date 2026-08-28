@@ -217,6 +217,23 @@ public class PracticeDrill
     // panel has not scored it yet. Used to hold their next grenade back: a
     // drill where you can spam three smokes before the first is judged is not
     // measuring anything.
+    /// <summary>
+    /// How visible the aim crosshair should still be for this player, 1 down to
+    /// 0.
+    ///
+    /// A drill is reps of the same throw, and a crosshair that is just as loud
+    /// on the third as on the first trains you to read the crosshair rather
+    /// than the map. It fades across the reps so the last one is thrown off
+    /// what you have actually learned -- which is also the only rep that tells
+    /// you anything about whether you have it.
+    ///
+    /// Outside a drill nothing is faded: that is practice, not a test.
+    /// </summary>
+    public float Assist(ulong steamId)
+    {
+        return _runs.TryGetValue(steamId, out PracticeDrillRun? run) ? run.Assist : 1f;
+    }
+
     public bool Waiting(ulong steamId)
     {
         return _runs.TryGetValue(steamId, out PracticeDrillRun? run) && run.Waiting;
@@ -233,6 +250,21 @@ public class PracticeDrill
         string tally = run.Attempts == 0 ? "no throws yet" : Tally(run);
 
         return $"Drill {run.Position}/{run.Length} - rep {run.Rep}/{run.Reps} - {tally}";
+    }
+
+    // The same run, sized for a HUD slot rather than a chat line: a position and
+    // the fraction of the queue behind it.
+    {
+        if (!_runs.TryGetValue(steamId, out PracticeDrillRun? run) || run.Finished)
+        {
+            return null;
+        }
+
+        int tenths =
+            run.Length <= 0
+                ? 0
+
+        return ($"{run.Position} / {run.Length}", tenths);
     }
 
     public void Forget(ulong steamId)

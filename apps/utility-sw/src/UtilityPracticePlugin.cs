@@ -100,8 +100,12 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         // addons/swiftlys2/configs is two levels up from
         // addons/swiftlys2/plugins/UtilityPractice.
-        string pluginDirectory =
-            Path.GetDirectoryName(typeof(UtilityPracticePlugin).Assembly.Location) ?? "";
+        //
+        // Core.PluginPath rather than Assembly.Location: plugins are loaded from
+        // bytes so hot reload can replace the file on disk, which leaves Location
+        // empty and resolves both of these against the server's working
+        // directory instead. Env vars were masking it here.
+        string pluginDirectory = Core.PluginPath;
         _config.Load(Path.Join(pluginDirectory, "../../configs"), pluginDirectory);
 
         _replay.IsSolo = _system.IsSolo;
@@ -1485,6 +1489,11 @@ public partial class UtilityPracticePlugin : BasePlugin
         };
 
         _playbook.Restrict = only => _replay.LibraryRestriction = only;
+
+        // Off means off, and a drill fades it out across its reps so the last
+        // one is thrown off what the player has actually learned.
+        _replay.AimVisibility = steamId =>
+            _system.StateFor(steamId).Crosshair ? _drill.Assist(steamId) : 0f;
 
         _playbook.Chat = message =>
             Core.PlayerManager.SendChat($" {ChatColors.Green}{message}".Colored());

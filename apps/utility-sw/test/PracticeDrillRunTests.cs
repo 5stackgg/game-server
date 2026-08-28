@@ -498,6 +498,44 @@ public class PracticeDrillRunTests
     }
 }
 
+// Fading the crosshair across a run is what makes the last rep worth
+// anything: with it up the whole way, a drill measures how well somebody reads
+// a crosshair.
+public class PracticeDrillAssistTests
+{
+    private static LineupRecord Lineup(string id)
+    {
+        return new LineupRecord { id = id, client_id = id, utility_type = "Smoke" };
+    }
+
+    [Fact]
+    public void FirstRepGetsFullHelpAndLastRepGetsNone()
+    {
+        var run = new PracticeDrillRun(new[] { Lineup("a") }, 3);
+
+        Assert.Equal(1f, run.Assist, 3);
+    }
+
+    [Fact]
+    public void ASingleRepRunIsPracticeNotATest()
+    {
+        var run = new PracticeDrillRun(new[] { Lineup("a") }, 1);
+
+        Assert.Equal(1f, run.Assist, 3);
+    }
+
+    [Fact]
+    public void AssistNeverLeavesTheZeroToOneRange()
+    {
+        foreach (int reps in new[] { 1, 2, 3, 5, 10 })
+        {
+            var run = new PracticeDrillRun(new[] { Lineup("a") }, reps);
+
+            Assert.InRange(run.Assist, 0f, 1f);
+        }
+    }
+}
+
 public class PracticeDrillRunRepTests
 {
     private static LineupRecord Lineup(string id)

@@ -54,6 +54,19 @@ public class PracticeDrillRun
 
     public int Reps => _reps;
 
+    /// <summary>
+    /// How visible the aim crosshair should still be, 1 on the first rep down
+    /// to 0 on the last.
+    ///
+    /// A drill is reps of one throw, and a crosshair that is as loud on the
+    /// last as on the first trains a player to read the crosshair rather than
+    /// the map. Fading it means the final rep is thrown off what they have
+    /// actually learned -- which is the only rep that says whether they have
+    /// it. A single-rep run keeps full help: one throw is practice, not a test.
+    /// </summary>
+    public float Assist =>
+        _reps <= 1 ? 1f : Math.Clamp(1f - (_rep / (float)(_reps - 1)), 0f, 1f);
+
     public int Hits { get; private set; }
     public int Misses { get; private set; }
     public int Unscored { get; private set; }

@@ -29,6 +29,11 @@ public class PracticeState
     // distraction and vanilla is the thing being practised against.
     public bool Colors { get; set; } = true;
 
+    // On by default. Off is how you find out whether you actually know a
+    // lineup: the crosshair is the answer written on the wall, and a throw made
+    // with it up says nothing about whether you could make it without.
+    public bool Crosshair { get; set; } = true;
+
     public int ThrowColorIndex { get; set; }
 
     // The colour of the throw currently in the air, captured when the pin left

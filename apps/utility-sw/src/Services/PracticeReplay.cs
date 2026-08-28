@@ -208,6 +208,12 @@ public class PracticeReplay
         public LineupRecord Lineup = null!;
         public readonly List<CEnvBeam> Beams = new();
         public int Bucket = -1;
+
+        // Tracked alongside the bucket because the colour is a product of both:
+        // during a drill the fade moves while the player holds the same angle,
+        // and keying the redraw on the bucket alone would hold the crosshair at
+        // whatever brightness it had when the rep started.
+        public float Visibility = 1f;
     }
 
     // The lined-up crosshair: barely-there green. Beams render bright against
@@ -269,6 +275,10 @@ public class PracticeReplay
     // reticle can be created in the right colour instead of being corrected a
     // tick later. Null on the paths that draw for nobody in particular.
     private (float yaw, float pitch)? _viewer;
+
+    // Same lifetime as _viewer: whose crosshair is being drawn decides how
+    // visible it is, and a library draw belongs to nobody.
+    private float _viewerVisibility = 1f;
 
     // Which of the drawn throws is the one the player is looking toward. Every
     // throw off a spot is drawn -- you cannot choose between options you cannot
@@ -358,6 +368,28 @@ public class PracticeReplay
     private static Color Rgb(PracticeStepColors.StepColor step)
     {
         return new Color((int)step.R, (int)step.G, (int)step.B, 255);
+    }
+
+    /// <summary>
+    /// How visible this player's aim crosshair should be, 1 down to 0. Wired by
+    /// the plugin like All below, because what it depends on -- a per-player
+    /// switch and how far into a drill they are -- is not the replay layer's
+    /// business. 0 means draw nothing at all.
+    /// </summary>
+    public Func<ulong, float> AimVisibility { get; set; } = _ => 1f;
+
+    private static Color Faded(Color color, float visibility)
+    {
+        // Beams render bright against the world, so fading one is scaling it
+        // toward black -- the same trick AimSettled uses to whisper.
+        float amount = Math.Clamp(visibility, 0f, 1f);
+
+        return new Color(
+            (int)(color.R * amount),
+            (int)(color.G * amount),
+            (int)(color.B * amount),
+            255
+        );
     }
 
     public Func<ulong, IReadOnlyList<LineupRecord>> All { get; set; } =
@@ -1503,6 +1535,8 @@ public class PracticeReplay
             _viewer = (eyes.Y, eyes.X);
         }
 
+        _viewerVisibility = AimVisibility(owner.SteamID);
+
         // The gate marks the RECORDED spot, never where the player happens to
         // be standing -- SpotWatch passes the player's own position, and a gate
         // drawn under their feet can never tell them they are off it.
@@ -1530,6 +1564,7 @@ public class PracticeReplay
         {
             _drawingInto = null;
             _viewer = null;
+            _viewerVisibility = 1f;
         }
 
     }
@@ -1816,7 +1851,20 @@ public class PracticeReplay
             )
         );
 
-        var aim = new Aim { Lineup = lineup, Bucket = bucket };
+        // Nothing to draw rather than something invisible: a crosshair switched
+        // off should not still be costing entities, and the last rep of a drill
+        // is meant to have no crosshair in it at all.
+        if (_viewerVisibility <= 0f)
+        {
+            return;
+        }
+
+        var aim = new Aim
+        {
+            Lineup = lineup,
+            Bucket = bucket,
+            Visibility = _viewerVisibility,
+        };
 
         _aimInto = aim;
 
@@ -1826,7 +1874,10 @@ public class PracticeReplay
                 center,
                 dir,
                 size,
-                bucket == 0 ? AimSettled : ColorForBucket(bucket),
+                Faded(
+                    bucket == 0 ? AimSettled : ColorForBucket(bucket),
+                    _viewerVisibility
+                ),
                 weight
             );
         }
@@ -1890,12 +1941,15 @@ public class PracticeReplay
                 )
             );
 
-            if (bucket == aim.Bucket)
+            float visibility = AimVisibility(player.SteamID);
+
+            if (bucket == aim.Bucket && Math.Abs(visibility - aim.Visibility) < 0.01f)
             {
                 continue;
             }
 
             aim.Bucket = bucket;
+            aim.Visibility = visibility;
 
             // On the angle the crosshair has done its job, and full-strength
             // beams would now be sitting exactly where the player needs to see
@@ -1903,7 +1957,7 @@ public class PracticeReplay
             // reference point if they drift, without costing them the view.
             Recolour(
                 aim.Beams,
-                bucket == 0 ? AimSettled : ColorForBucket(bucket)
+                Faded(bucket == 0 ? AimSettled : ColorForBucket(bucket), visibility)
             );
         }
     }

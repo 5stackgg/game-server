@@ -723,6 +723,35 @@ public partial class UtilityPracticePlugin
         );
     }
 
+    // The crosshair is the answer written on the wall. A throw made with it up
+    // says nothing about whether you could make it without, which is the only
+    // question "have I got this yet" is asking.
+    [Command("crosshair", registerRaw: false, permission: "")]
+    public void OnCrosshair(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        PracticeState state = _system.StateFor(player.SteamID);
+
+        state.Crosshair = !state.Crosshair;
+
+        // Redrawn rather than left until the player steps off the spot and back
+        // on: a toggle that appears to do nothing gets pressed again.
+        _replay.ClearMarkers();
+
+        Reply(
+            context,
+            state.Crosshair
+                ? $" {ChatColors.Green}aim crosshair on"
+                : $" {ChatColors.Grey}aim crosshair off {ChatColors.Default}-- throw it blind"
+        );
+    }
+
     [Command("colors", registerRaw: false, permission: "")]
     public void OnColors(ICommandContext context)
     {
@@ -1203,6 +1232,7 @@ public partial class UtilityPracticePlugin
         $" {ChatColors.Default}.jump {ChatColors.Grey}stand where the loaded lineup lands",
         $" {ChatColors.Default}.rethrow {ChatColors.Grey}back to the loaded lineup",
         $" {ChatColors.Default}.last / .back <n> {ChatColors.Grey}back to a throw you made",
+        $" {ChatColors.Default}.find <text> / .here {ChatColors.Grey}narrow the list",
         $" {ChatColors.Default}.list / .reload / .delete {ChatColors.Grey}manage your library",
         $" {ChatColors.Default}.pos save <name> / .pos <name> {ChatColors.Grey}saved positions",
         $" {ChatColors.Default}.spawn <n> {ChatColors.Grey}teleports to a spawn point",
@@ -1213,6 +1243,7 @@ public partial class UtilityPracticePlugin
         $" {ChatColors.Default}.playbook / .run / .playbook stop {ChatColors.Grey}the loaded execute",
         $" {ChatColors.Default}.bot / .nobots {ChatColors.Grey}something to flash and blow up",
         $" {ChatColors.Default}.colors {ChatColors.Grey}a colour per throw, smoke and trail",
+        $" {ChatColors.Default}.crosshair {ChatColors.Grey}hide the aim marker and throw it blind",
         $" {ChatColors.Default}.spawns / .spawn next {ChatColors.Grey}where rounds start from",
         $" {ChatColors.Default}.noclip / .god / .timer / .solo / .clear",
     };
