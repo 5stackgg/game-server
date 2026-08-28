@@ -1,0 +1,36 @@
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/custom_game/nadehud.vcss_c" />
+	</styles>
+	<Panel class="nh-screen" hittest="false">
+		<Panel id="NadeEdit" class="nh-edit" hittest="true">
+			<Panel class="nh-list-head" hittest="false">
+				<Panel class="nh-list-titles" hittest="false">
+					<Label id="tag" class="nh-kicker" text="{s:tag}" />
+					<Label id="title" class="nh-list-title" text="{s:title}" />
+				</Panel>
+				<Button id="close" class="nh-nav nh-nav-close"><Label class="nh-nav-glyph" text="&#10005;" /></Button>
+			</Panel>
+
+			<Label class="nh-edit-key" text="NAME" />
+			<Button id="name" class="nh-edit-field"><Label id="fname" class="nh-edit-value" text="{s:fname}" /></Button>
+
+			<Label class="nh-edit-key" text="WRITE-UP" />
+			<Button id="desc" class="nh-edit-field"><Label id="fdesc" class="nh-edit-value" text="{s:fdesc}" /></Button>
+
+			<Label class="nh-edit-key" text="VISIBILITY" />
+			<Panel class="nh-chiprow" hittest="false">
+				<Button id="vis_private" class="nh-chip"><Label class="nh-chip-label" text="PRIVATE" /></Button>
+				<Button id="vis_team" class="nh-chip"><Label class="nh-chip-label" text="TEAM" /></Button>
+				<Button id="vis_public" class="nh-chip"><Label class="nh-chip-label" text="PUBLIC" /></Button>
+			</Panel>
+
+			<Label id="hint" class="nh-edit-hint" text="{s:hint}" />
+
+			<Panel class="nh-detail-actions" hittest="true">
+				<Button id="save" class="nh-detail-btn nh-detail-go"><Label class="nh-detail-btn-label" text="SAVE" /></Button>
+				<Button id="revert" class="nh-detail-btn"><Label class="nh-detail-btn-label" text="REVERT" /></Button>
+			</Panel>
+		</Panel>
+	</Panel>
+</root>

@@ -1,0 +1,62 @@
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/custom_game/nadehud.vcss_c" />
+	</styles>
+	<Panel class="nh-screen" hittest="false">
+		<Panel id="NadeList" class="nh-list" hittest="true">
+			<Panel class="nh-list-head" hittest="false">
+				<Panel class="nh-list-titles" hittest="false">
+					<Label id="tag" class="nh-kicker" text="{s:tag}" />
+					<Label id="title" class="nh-list-title" text="{s:title}" />
+				</Panel>
+				<Button id="close" class="nh-nav nh-nav-close"><Label class="nh-nav-glyph" text="&#10005;" /></Button>
+			</Panel>
+
+			<Panel class="nh-chiprow" hittest="false">
+				<Button id="side_all" class="nh-chip"><Label class="nh-chip-label" text="ALL" /></Button>
+				<Button id="side_t" class="nh-chip"><Label class="nh-chip-label" text="T" /></Button>
+				<Button id="side_ct" class="nh-chip"><Label class="nh-chip-label" text="CT" /></Button>
+			</Panel>
+
+			<Panel class="nh-chiprow" hittest="false">
+				<Button id="scope_all" class="nh-chip"><Label class="nh-chip-label" text="ALL" /></Button>
+				<Button id="scope_mine" class="nh-chip"><Label class="nh-chip-label" text="MINE" /></Button>
+				<Button id="scope_team" class="nh-chip"><Label class="nh-chip-label" text="TEAM" /></Button>
+				<Button id="scope_public" class="nh-chip"><Label class="nh-chip-label" text="PUBLIC" /></Button>
+			</Panel>
+
+			<Panel class="nh-chiprow" hittest="false">
+				<Button id="type_all" class="nh-chip"><Label class="nh-chip-label" text="ALL" /></Button>
+				<Button id="type_smoke" class="nh-chip"><Label class="nh-chip-label" text="SMOKE" /></Button>
+				<Button id="type_flash" class="nh-chip"><Label class="nh-chip-label" text="FLASH" /></Button>
+				<Button id="type_molly" class="nh-chip"><Label class="nh-chip-label" text="MOLLY" /></Button>
+				<Button id="type_he" class="nh-chip"><Label class="nh-chip-label" text="HE" /></Button>
+			</Panel>
+
+			<Panel id="body" class="nh-list-body" hittest="true">
+				<Button id="row1" class="nh-row"><Label class="nh-row-key" text="1" /><Label id="row1l" class="nh-row-label" text="{s:row1}" /><Label id="row1v" class="nh-row-value" text="{s:row1v}" /></Button>
+				<Button id="row2" class="nh-row"><Label class="nh-row-key" text="2" /><Label id="row2l" class="nh-row-label" text="{s:row2}" /><Label id="row2v" class="nh-row-value" text="{s:row2v}" /></Button>
+				<Button id="row3" class="nh-row"><Label class="nh-row-key" text="3" /><Label id="row3l" class="nh-row-label" text="{s:row3}" /><Label id="row3v" class="nh-row-value" text="{s:row3v}" /></Button>
+				<Button id="row4" class="nh-row"><Label class="nh-row-key" text="4" /><Label id="row4l" class="nh-row-label" text="{s:row4}" /><Label id="row4v" class="nh-row-value" text="{s:row4v}" /></Button>
+				<Button id="row5" class="nh-row"><Label class="nh-row-key" text="5" /><Label id="row5l" class="nh-row-label" text="{s:row5}" /><Label id="row5v" class="nh-row-value" text="{s:row5v}" /></Button>
+				<Button id="row6" class="nh-row"><Label class="nh-row-key" text="6" /><Label id="row6l" class="nh-row-label" text="{s:row6}" /><Label id="row6v" class="nh-row-value" text="{s:row6v}" /></Button>
+				<Button id="row7" class="nh-row"><Label class="nh-row-key" text="7" /><Label id="row7l" class="nh-row-label" text="{s:row7}" /><Label id="row7v" class="nh-row-value" text="{s:row7v}" /></Button>
+				<Button id="row8" class="nh-row"><Label class="nh-row-key" text="8" /><Label id="row8l" class="nh-row-label" text="{s:row8}" /><Label id="row8v" class="nh-row-value" text="{s:row8v}" /></Button>
+				<Button id="row9" class="nh-row"><Label class="nh-row-key" text="9" /><Label id="row9l" class="nh-row-label" text="{s:row9}" /><Label id="row9v" class="nh-row-value" text="{s:row9v}" /></Button>
+				<Button id="row10" class="nh-row"><Label class="nh-row-key" text="10" /><Label id="row10l" class="nh-row-label" text="{s:row10}" /><Label id="row10v" class="nh-row-value" text="{s:row10v}" /></Button>
+				<Button id="row11" class="nh-row"><Label class="nh-row-key" text="11" /><Label id="row11l" class="nh-row-label" text="{s:row11}" /><Label id="row11v" class="nh-row-value" text="{s:row11v}" /></Button>
+				<Button id="row12" class="nh-row"><Label class="nh-row-key" text="12" /><Label id="row12l" class="nh-row-label" text="{s:row12}" /><Label id="row12v" class="nh-row-value" text="{s:row12v}" /></Button>
+				<Button id="row13" class="nh-row"><Label class="nh-row-key" text="13" /><Label id="row13l" class="nh-row-label" text="{s:row13}" /><Label id="row13v" class="nh-row-value" text="{s:row13v}" /></Button>
+				<Button id="row14" class="nh-row"><Label class="nh-row-key" text="14" /><Label id="row14l" class="nh-row-label" text="{s:row14}" /><Label id="row14v" class="nh-row-value" text="{s:row14v}" /></Button>
+				<Button id="row15" class="nh-row"><Label class="nh-row-key" text="15" /><Label id="row15l" class="nh-row-label" text="{s:row15}" /><Label id="row15v" class="nh-row-value" text="{s:row15v}" /></Button>
+				<Button id="row16" class="nh-row"><Label class="nh-row-key" text="16" /><Label id="row16l" class="nh-row-label" text="{s:row16}" /><Label id="row16v" class="nh-row-value" text="{s:row16v}" /></Button>
+			</Panel>
+
+			<Panel id="pager" class="nh-pager" hittest="false">
+				<Button id="prev" class="nh-pager-btn"><Label class="nh-pager-label" text="&#8249; PREV" /></Button>
+				<Label id="page" class="nh-pager-info" text="{s:page}" />
+				<Button id="next" class="nh-pager-btn"><Label class="nh-pager-label" text="NEXT &#8250;" /></Button>
+			</Panel>
+		</Panel>
+	</Panel>
+</root>

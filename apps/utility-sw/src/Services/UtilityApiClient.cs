@@ -128,14 +128,38 @@ public class UtilityApiClient
     // reports connects over the match-events socket; a practice server has no
     // such socket, and without this every session reads as empty and gets
     // reaped out from under whoever is throwing.
-    public async Task Occupancy(IReadOnlyCollection<ulong> steamIds)
+    // steamRelay rides along rather than getting a heartbeat of its own: it is
+    // the same fact about the same server on the same schedule, and null means
+    // "nothing to say" rather than "clear it".
+    public async Task Occupancy(IReadOnlyCollection<ulong> steamIds, string? steamRelay)
     {
         string body = JsonSerializer.Serialize(
-            new { steam_ids = steamIds.Select(id => id.ToString()).ToArray() },
+            new
+            {
+                steam_ids = steamIds.Select(id => id.ToString()).ToArray(),
+                steam_relay = steamRelay,
+            },
             PracticeJson.Options
         );
 
         await SendText(HttpMethod.Post, "/utility/occupancy", body);
+    }
+
+    // Fire and forget on map load. A failure is not retried: the next map load
+    // reports again, and a map nobody ever loads again does not need callouts.
+    public async Task Callouts(string map, IReadOnlyCollection<MapCalloutPayload> callouts)
+    {
+        if (string.IsNullOrEmpty(map) || callouts.Count == 0)
+        {
+            return;
+        }
+
+        string body = JsonSerializer.Serialize(
+            new MapCalloutsPayload { map = map, callouts = callouts.ToList() },
+            PracticeJson.Options
+        );
+
+        await SendText(HttpMethod.Post, "/utility/callouts", body);
     }
 
     public async Task<PracticeSessionData?> Session(string? map = null)
@@ -170,11 +194,18 @@ public class UtilityApiClient
     // then, which is why only the live attempt answers.
     public async Task<UtilityPracticeResult?> PracticeResult(UtilityPracticeResultPayload payload)
     {
-        UtilityPracticeResult? result = await PostResult(payload);
+        var outcome = new SendOutcome();
+        UtilityPracticeResult? result = await PostResult(payload, outcome);
 
         if (result == null)
         {
-            EnqueueResult(payload);
+            // Only worth keeping if asking again could go differently. A
+            // refusal queued here is one the queue would replay at the head
+            // forever, and everything behind it would never be delivered.
+            if (!outcome.Rejected)
+            {
+                EnqueueResult(payload);
+            }
             return null;
         }
 
@@ -233,11 +264,15 @@ public class UtilityApiClient
                     }
                 }
 
-                if (await PostResult(result) == null)
+                var outcome = new SendOutcome();
+
+                if (await PostResult(result, outcome) == null && !outcome.Rejected)
                 {
                     return;
                 }
 
+                // Delivered, or refused outright -- either way it leaves the
+                // queue, so one bad payload cannot hold up the ones behind it.
                 lock (_queueLock)
                 {
                     _resultQueue.TryDequeue(out _);
@@ -273,6 +308,121 @@ public class UtilityApiClient
             }
 
             _resultQueue.Enqueue(payload);
+        }
+    }
+
+    // Metadata only. Geometry is deliberately not sendable: a lineup that moves
+    // silently turns every scored attempt against it into a measurement of
+    // something else, and the row keeps its id precisely so that history stays
+    // attached.
+    public enum eEditOutcome
+    {
+        Saved,
+        NotYours,
+        AlreadyPractised,
+        Failed,
+    }
+
+    public sealed class EditResult
+    {
+        public eEditOutcome Outcome { get; init; }
+
+        // The author's own hit rate on this lineup was cleared, which is worth
+        // saying out loud rather than letting them discover it.
+        public bool ProgressReset { get; init; }
+    }
+
+    public async Task<EditResult> Update(
+        string lineupId,
+        ulong steamId,
+        string name,
+        string? description,
+        string visibility
+    )
+    {
+        var payload = new Dictionary<string, object?>
+        {
+            ["steam_id"] = steamId.ToString(),
+            ["name"] = name,
+            ["description"] = description,
+            ["visibility"] = visibility,
+        };
+
+        string body;
+
+        try
+        {
+            body = JsonSerializer.Serialize(payload, PracticeJson.Options);
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to serialize an edit for {lineup}", lineupId);
+
+            return new EditResult { Outcome = eEditOutcome.Failed };
+        }
+
+        var outcome = new SendOutcome();
+        string? response = await SendText(
+            new HttpMethod("PATCH"),
+            $"/utility/{Uri.EscapeDataString(lineupId)}",
+            body,
+            outcome
+        );
+
+        if (response != null)
+        {
+            return new EditResult
+            {
+                Outcome = eEditOutcome.Saved,
+                ProgressReset = Flag(response, "progress_reset"),
+            };
+        }
+
+        // Both refusals are 403 and mean completely different things to the
+        // player. Read the machine-readable reason, never the prose: the
+        // wording is the panel's to change.
+        if (outcome.Status == 403)
+        {
+            return new EditResult
+            {
+                Outcome = Reason(outcome.Reason) == "already_practised"
+                    ? eEditOutcome.AlreadyPractised
+                    : eEditOutcome.NotYours,
+            };
+        }
+
+        return new EditResult { Outcome = eEditOutcome.Failed };
+    }
+
+    private static string Reason(string json)
+    {
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(json);
+
+            return document.RootElement.TryGetProperty("reason", out JsonElement value)
+                && value.ValueKind == JsonValueKind.String
+                ? value.GetString() ?? ""
+                : "";
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    private static bool Flag(string json, string property)
+    {
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(json);
+
+            return document.RootElement.TryGetProperty(property, out JsonElement value)
+                && value.ValueKind == JsonValueKind.True;
+        }
+        catch
+        {
+            return false;
         }
     }
 
@@ -313,7 +463,10 @@ public class UtilityApiClient
         }
     }
 
-    private async Task<UtilityPracticeResult?> PostResult(UtilityPracticeResultPayload payload)
+    private async Task<UtilityPracticeResult?> PostResult(
+        UtilityPracticeResultPayload payload,
+        SendOutcome? outcome = null
+    )
     {
         payload.server_id = string.IsNullOrEmpty(_config.ServerId) ? null : _config.ServerId;
 
@@ -329,7 +482,12 @@ public class UtilityApiClient
             return null;
         }
 
-        string? response = await SendText(HttpMethod.Post, "/utility/practice-result", body);
+        string? response = await SendText(
+            HttpMethod.Post,
+            "/utility/practice-result",
+            body,
+            outcome
+        );
 
         if (response == null)
         {
@@ -377,14 +535,38 @@ public class UtilityApiClient
         return null;
     }
 
-    private async Task<string?> SendText(HttpMethod method, string path, string? body)
+    // Why a request failed, for the two callers that queue what they could not
+    // deliver. A 4xx is the panel saying this request is wrong and will stay
+    // wrong; retrying one forever is how a single rejected throw stopped every
+    // later one from ever being scored.
+    private sealed class SendOutcome
     {
-        byte[]? response = await Send(method, path, body);
+        public bool Rejected { get; set; }
+
+        // The edit endpoint answers 403 for two different refusals a player can
+        // act on, so the status and the body both have to survive the call.
+        public int Status { get; set; }
+        public string Reason { get; set; } = "";
+    }
+
+    private async Task<string?> SendText(
+        HttpMethod method,
+        string path,
+        string? body,
+        SendOutcome? outcome = null
+    )
+    {
+        byte[]? response = await Send(method, path, body, outcome);
 
         return response == null ? null : PracticeJson.Text(response);
     }
 
-    private async Task<byte[]?> Send(HttpMethod method, string path, string? body)
+    private async Task<byte[]?> Send(
+        HttpMethod method,
+        string path,
+        string? body,
+        SendOutcome? outcome = null
+    )
     {
         if (!_config.IsConnected())
         {
@@ -437,6 +619,31 @@ public class UtilityApiClient
                     (int)response.StatusCode,
                     reason.Length > 500 ? reason.Substring(0, 500) : reason
                 );
+
+                if (outcome != null)
+                {
+                    int status = (int)response.StatusCode;
+
+                    outcome.Status = status;
+                    outcome.Reason = reason;
+
+                    // A refusal is the panel saying this payload is wrong, and
+                    // it will still be wrong next time -- so it is dropped
+                    // rather than queued. 401 and 403 are NOT that: a rotated
+                    // plugin key, or a pod that came up before the panel
+                    // authorised it, refuses every request until the credential
+                    // is right and then accepts them all. Treating those as
+                    // refusals threw away a player's whole session of scored
+                    // attempts, and took the already-queued ones with it.
+                    outcome.Rejected =
+                        status >= 400
+                        && status < 500
+                        && status != 401
+                        && status != 403
+                        && status != 408
+                        && status != 429;
+                }
+
                 return null;
             }
 

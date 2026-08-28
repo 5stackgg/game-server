@@ -18,7 +18,7 @@ jobs:
       validator: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.validator == 'true' }}
       channel: ${{ steps.channel.outputs.channel }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # the channel IS the published tag, and workflow_dispatch runs from any branch,
       # so refuse rather than default an unreviewed ref onto :latest
@@ -33,7 +33,7 @@ jobs:
               ;;
           esac
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         if: github.event_name != 'workflow_dispatch'
         with:

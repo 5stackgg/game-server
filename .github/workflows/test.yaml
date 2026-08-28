@@ -11,7 +11,7 @@ jobs:
   scripts:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Test setup scripts
         run: bash shared/scripts/test/util.test.sh
@@ -23,10 +23,10 @@ jobs:
       matrix:
         plugin: [counterstrikesharp, swiftly]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "10.0.x"
 

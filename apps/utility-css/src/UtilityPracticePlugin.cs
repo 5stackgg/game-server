@@ -29,6 +29,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     private readonly PracticeScore _score;
     private readonly PracticePlaybook _playbook;
     private readonly PracticeDrill _drill;
+    private readonly MapCalloutsReporter _callouts;
     private readonly ILogger<UtilityPracticePlugin> _logger;
 
     private Timer? _secondTimer;
@@ -51,6 +52,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         PracticeScore score,
         PracticePlaybook playbook,
         PracticeDrill drill,
+        MapCalloutsReporter callouts,
         ILogger<UtilityPracticePlugin> logger
     )
     {
@@ -64,6 +66,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _score = score;
         _playbook = playbook;
         _drill = drill;
+        _callouts = callouts;
         _logger = logger;
     }
 
@@ -152,6 +155,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         _system.Tick();
         _playbook.Second();
         _drill.Second();
+        // A no-op once the map has answered; see MapCalloutsReporter.Report.
+        _callouts.Report(_session.Map);
         DrainPendingMapLoad();
     }
 
@@ -333,6 +338,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         _system.Reset();
         _library.SetMap(mapName);
         _session.Map = mapName;
+        _callouts.Reset();
+        _callouts.Report(mapName);
 
         ApplyPracticeCfg();
 
@@ -414,7 +421,9 @@ public partial class UtilityPracticePlugin : BasePlugin
         "sv_grenade_trajectory_prac_pipreview 1",
         // The trail is how you see WHERE it went wrong rather than just that it
         // did. Ten seconds outlives the throw and the walk back to the spot.
-        "sv_grenade_trajectory_prac_trailtime 10",
+        // Long enough to still be up once a smoke has finished blooming, which
+        // is the thing being practised. Ten only covered the flight.
+        "sv_grenade_trajectory_prac_trailtime 20",
         // Valve's own map-guide editor. Every annotation_* command is client
         // side, so a plugin can never draw one for a player -- but this cvar
         // decides whether they may draw their own, and it ships at view-only.

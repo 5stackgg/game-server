@@ -13,7 +13,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Resolve current and latest SwiftlyS2 versions
         env:
@@ -30,15 +30,55 @@ jobs:
           echo "LATEST=$LATEST" >> "$GITHUB_ENV"
           echo "current=$CURRENT latest=$LATEST"
 
-      # the runtime zip and the nuget must move together or the ABI breaks.
-      - name: Update Dockerfile and csproj
-        if: env.LATEST != '' && env.LATEST != 'null' && env.CURRENT != env.LATEST
+      # A job that goes green every week while doing nothing is how the csproj
+      # pins drifted behind the runtime in the first place, so a deliberate skip
+      # says so in the run log.
+      - name: Report a deliberate beta pin
+        if: contains(env.CURRENT, '-beta')
         run: |
+          echo "::notice::pinned to $CURRENT (prerelease); leaving it alone. Latest stable is $LATEST."
+
+      # The runtime zip and EVERY plugin's nuget must move together or the ABI
+      # breaks. The csproj list is discovered rather than written down: this step
+      # used to name apps/swiftly alone, so when the practice plugin arrived with
+      # its own pin it silently stayed a version behind the runtime it gets
+      # loaded into.
+      #
+      # A deliberate beta pin outranks "latest stable": this only ever picks a
+      # non-prerelease, so left alone it walks a beta back to the release before
+      # it and takes whatever the beta was pinned for with it.
+      - name: Update Dockerfile and csprojs
+        if: >-
+          env.LATEST != '' && env.LATEST != 'null' && env.CURRENT != env.LATEST
+          && !contains(env.CURRENT, '-beta')
+        run: |
+          set -euo pipefail
           NUGET_VERSION="${LATEST#v}"
+
           sed -i "s|SWIFTLYS2_VERSION=\"[^\"]*\"|SWIFTLYS2_VERSION=\"${LATEST}\"|" apps/swiftly/Dockerfile
-          sed -i "s|<PackageReference Include=\"SwiftlyS2.CS2\" Version=\"[^\"]*\"|<PackageReference Include=\"SwiftlyS2.CS2\" Version=\"${NUGET_VERSION}\"|" apps/swiftly/src/FiveStack.csproj
+          grep -q "SWIFTLYS2_VERSION=\"${LATEST}\"" apps/swiftly/Dockerfile \
+            || { echo "::error::could not set SWIFTLYS2_VERSION in apps/swiftly/Dockerfile"; exit 1; }
+
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add apps/swiftly/Dockerfile apps/swiftly/src/FiveStack.csproj
+          git add apps/swiftly/Dockerfile
+
+          # `|| true` because grep exits 1 when it matches nothing, and
+          # `set -e` would abort the step before the friendly error below --
+          # which is the whole reason that branch exists.
+          CSPROJS=$(grep -rl 'Include="SwiftlyS2.CS2"' --include='*.csproj' apps || true)
+          if [ -z "$CSPROJS" ]; then
+            echo "::error::no csproj references SwiftlyS2.CS2 -- the pin pattern must have changed"
+            exit 1
+          fi
+
+          for csproj in $CSPROJS; do
+            sed -i "s|<PackageReference Include=\"SwiftlyS2.CS2\" Version=\"[^\"]*\"|<PackageReference Include=\"SwiftlyS2.CS2\" Version=\"${NUGET_VERSION}\"|" "$csproj"
+            grep -q "Include=\"SwiftlyS2.CS2\" Version=\"${NUGET_VERSION}\"" "$csproj" \
+              || { echo "::error::could not pin SwiftlyS2.CS2 to ${NUGET_VERSION} in ${csproj}"; exit 1; }
+            echo "pinned ${csproj} to ${NUGET_VERSION}"
+            git add "$csproj"
+          done
+
           git commit -m "chore: update SwiftlyS2 to ${LATEST}"
           git push

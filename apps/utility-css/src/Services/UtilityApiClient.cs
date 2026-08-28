@@ -138,6 +138,23 @@ public class UtilityApiClient
         await SendText(HttpMethod.Post, "/utility/occupancy", body);
     }
 
+    // Fire and forget on map load. A failure is not retried: the next map load
+    // reports again, and a map nobody ever loads again does not need callouts.
+    public async Task Callouts(string map, IReadOnlyCollection<MapCalloutPayload> callouts)
+    {
+        if (string.IsNullOrEmpty(map) || callouts.Count == 0)
+        {
+            return;
+        }
+
+        string body = JsonSerializer.Serialize(
+            new MapCalloutsPayload { map = map, callouts = callouts.ToList() },
+            PracticeJson.Options
+        );
+
+        await SendText(HttpMethod.Post, "/utility/callouts", body);
+    }
+
     public async Task<PracticeSessionData?> Session(string? map = null)
     {
         string route = string.IsNullOrEmpty(map)
@@ -170,11 +187,18 @@ public class UtilityApiClient
     // then, which is why only the live attempt answers.
     public async Task<UtilityPracticeResult?> PracticeResult(UtilityPracticeResultPayload payload)
     {
-        UtilityPracticeResult? result = await PostResult(payload);
+        var outcome = new SendOutcome();
+        UtilityPracticeResult? result = await PostResult(payload, outcome);
 
         if (result == null)
         {
-            EnqueueResult(payload);
+            // Only worth keeping if asking again could go differently. A
+            // refusal queued here is one the queue would replay at the head
+            // forever, and everything behind it would never be delivered.
+            if (!outcome.Rejected)
+            {
+                EnqueueResult(payload);
+            }
             return null;
         }
 
@@ -233,11 +257,15 @@ public class UtilityApiClient
                     }
                 }
 
-                if (await PostResult(result) == null)
+                var outcome = new SendOutcome();
+
+                if (await PostResult(result, outcome) == null && !outcome.Rejected)
                 {
                     return;
                 }
 
+                // Delivered, or refused outright -- either way it leaves the
+                // queue, so one bad payload cannot hold up the ones behind it.
                 lock (_queueLock)
                 {
                     _resultQueue.TryDequeue(out _);
@@ -313,7 +341,10 @@ public class UtilityApiClient
         }
     }
 
-    private async Task<UtilityPracticeResult?> PostResult(UtilityPracticeResultPayload payload)
+    private async Task<UtilityPracticeResult?> PostResult(
+        UtilityPracticeResultPayload payload,
+        SendOutcome? outcome = null
+    )
     {
         payload.server_id = string.IsNullOrEmpty(_config.ServerId) ? null : _config.ServerId;
 
@@ -329,7 +360,12 @@ public class UtilityApiClient
             return null;
         }
 
-        string? response = await SendText(HttpMethod.Post, "/utility/practice-result", body);
+        string? response = await SendText(
+            HttpMethod.Post,
+            "/utility/practice-result",
+            body,
+            outcome
+        );
 
         if (response == null)
         {
@@ -377,14 +413,33 @@ public class UtilityApiClient
         return null;
     }
 
-    private async Task<string?> SendText(HttpMethod method, string path, string? body)
+    // Why a request failed, for the two callers that queue what they could not
+    // deliver. A 4xx is the panel saying this request is wrong and will stay
+    // wrong; retrying one forever is how a single rejected throw stopped every
+    // later one from ever being scored.
+    private sealed class SendOutcome
     {
-        byte[]? response = await Send(method, path, body);
+        public bool Rejected { get; set; }
+    }
+
+    private async Task<string?> SendText(
+        HttpMethod method,
+        string path,
+        string? body,
+        SendOutcome? outcome = null
+    )
+    {
+        byte[]? response = await Send(method, path, body, outcome);
 
         return response == null ? null : PracticeJson.Text(response);
     }
 
-    private async Task<byte[]?> Send(HttpMethod method, string path, string? body)
+    private async Task<byte[]?> Send(
+        HttpMethod method,
+        string path,
+        string? body,
+        SendOutcome? outcome = null
+    )
     {
         if (!_config.IsConnected())
         {
@@ -437,6 +492,27 @@ public class UtilityApiClient
                     (int)response.StatusCode,
                     reason.Length > 500 ? reason.Substring(0, 500) : reason
                 );
+
+                if (outcome != null)
+                {
+                    int status = (int)response.StatusCode;
+                    // A refusal is the panel saying this payload is wrong, and
+                    // it will still be wrong next time -- so it is dropped
+                    // rather than queued. 401 and 403 are NOT that: a rotated
+                    // plugin key, or a pod that came up before the panel
+                    // authorised it, refuses every request until the credential
+                    // is right and then accepts them all. Treating those as
+                    // refusals threw away a player's whole session of scored
+                    // attempts, and took the already-queued ones with it.
+                    outcome.Rejected =
+                        status >= 400
+                        && status < 500
+                        && status != 401
+                        && status != 403
+                        && status != 408
+                        && status != 429;
+                }
+
                 return null;
             }
 

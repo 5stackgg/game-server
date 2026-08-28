@@ -498,6 +498,148 @@ public class PracticeDrillRunTests
     }
 }
 
+// Fading the crosshair across a run is what makes the last rep worth
+// anything: with it up the whole way, a drill measures how well somebody reads
+// a crosshair.
+public class PracticeDrillAssistTests
+{
+    private static readonly DateTime Now = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+
+    private static LineupRecord Lineup(string id)
+    {
+        return new LineupRecord { id = id, client_id = id, utility_type = "Smoke" };
+    }
+
+    private static UtilityPracticeResult Result(bool success)
+    {
+        return new UtilityPracticeResult { success = success, radius = 80f };
+    }
+
+    private static void Throws(PracticeDrillRun run, bool hit)
+    {
+        LineupRecord? lineup = run.Next();
+
+        Assert.NotNull(lineup);
+        Assert.True(run.Thrown(lineup!.utility_type, Now));
+        Assert.True(run.Score(lineup.id, Result(hit)));
+    }
+
+    [Fact]
+    public void ARunStartsWithFullHelp()
+    {
+        Assert.Equal(1f, new PracticeDrillRun(new[] { Lineup("a") }, 3).Assist, 3);
+    }
+
+    [Fact]
+    public void ASingleRepRunIsPracticeNotATest()
+    {
+        var run = new PracticeDrillRun(new[] { Lineup("a") }, 1);
+
+        Throws(run, hit: true);
+
+        Assert.Equal(1f, run.Assist, 3);
+    }
+
+    // The point of the whole mechanism: help is EARNED away by landing it, so
+    // the last rep is thrown off what the player actually learned.
+    [Fact]
+    public void LandingItTakesTheCrosshairAway()
+    {
+        var run = new PracticeDrillRun(new[] { Lineup("a") }, 3);
+
+        Throws(run, hit: true);
+        Assert.Equal(0.5f, run.Assist, 3);
+
+        Throws(run, hit: true);
+        Assert.Equal(0f, run.Assist, 3);
+    }
+
+    // And the reason it is not just the rep number: somebody missing every
+    // throw is exactly who still needs the crosshair.
+    [Fact]
+    public void MissingEveryThrowNeverTakesTheCrosshairAway()
+    {
+        var run = new PracticeDrillRun(new[] { Lineup("a") }, 3);
+
+        Throws(run, hit: false);
+        Throws(run, hit: false);
+
+        Assert.Equal(1f, run.Assist, 3);
+    }
+
+    // A miss gives a step back rather than resetting: one bad throw at the end
+    // of a good run is a bad throw, not evidence they never knew it.
+    [Fact]
+    public void AMissGivesOneStepBackRatherThanAllOfIt()
+    {
+        var run = new PracticeDrillRun(new[] { Lineup("a") }, 5);
+
+        Throws(run, hit: true);
+        Throws(run, hit: true);
+        Throws(run, hit: true);
+        Assert.Equal(0.25f, run.Assist, 3);
+
+        Throws(run, hit: false);
+        Assert.Equal(0.5f, run.Assist, 3);
+    }
+
+    // A throw the panel never scored says nothing about whether they know it,
+    // so it must not move the help in either direction.
+    [Fact]
+    public void AnUnscoredThrowLeavesTheHelpAlone()
+    {
+        var run = new PracticeDrillRun(new[] { Lineup("a") }, 3);
+
+        Throws(run, hit: true);
+        float earned = run.Assist;
+
+        LineupRecord? lineup = run.Next();
+        Assert.NotNull(lineup);
+        Assert.True(run.Thrown(lineup!.utility_type, Now));
+        run.Score(lineup.id, null);
+
+        Assert.Equal(earned, run.Assist, 3);
+    }
+
+    // A different throw is a different thing to have learned.
+    [Fact]
+    public void MovingToTheNextLineupStartsFromFullHelpAgain()
+    {
+        // Note the queue runs a,a,b,b at two reps -- both goes at "a" come
+        // before "b" starts.
+        var run = new PracticeDrillRun(new[] { Lineup("a"), Lineup("b") }, 2);
+
+        Throws(run, hit: true);
+        Assert.Equal(0f, run.Assist, 3);
+
+        Throws(run, hit: true);
+        Assert.Equal(0f, run.Assist, 3);
+
+        // Checked as the run ARRIVES at "b", before that throw is scored --
+        // scoring it would earn the help straight back off and hide whether it
+        // was ever restored.
+        Assert.Equal("b", run.Next()!.id);
+        Assert.Equal(1f, run.Assist, 3);
+    }
+
+    [Fact]
+    public void AssistNeverLeavesTheZeroToOneRange()
+    {
+        foreach (int reps in new[] { 1, 2, 3, 5, 10 })
+        {
+            var run = new PracticeDrillRun(new[] { Lineup("a") }, reps);
+
+            // Exactly the run's length: past the last rep Next() hands back
+            // null and there is nothing left to score.
+            for (int index = 0; index < reps; index++)
+            {
+                Throws(run, hit: index % 3 != 0);
+                Assert.InRange(run.Assist, 0f, 1f);
+            }
+        }
+    }
+}
+
 public class PracticeDrillRunRepTests
 {
     private static LineupRecord Lineup(string id)

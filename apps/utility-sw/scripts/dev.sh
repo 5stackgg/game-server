@@ -9,10 +9,16 @@
 # reloads the plugin when UtilityPractice.dll changes.
 #
 # Chain: dotnet watch build -> apps/utility-sw/src/build/net10.0 -> cp -> /opt/dev -> SwiftlyS2 reload
+#
+# The Panorama addon is built alongside it. That half is NOT hot-reloadable: the
+# vpk has to reach a game client, which means a local gameinfo.gi override or the
+# Workshop. Building it here just keeps it compiled and catches layout errors at
+# the same time as C# ones.
 
 log() { echo "[dev.sh $(date '+%H:%M:%S')] $*"; }
 
 PROJECT="/opt/5stack/apps/utility-sw/src/UtilityPractice.csproj"
+HUD_DIR="/opt/5stack/apps/utility-sw/hud"
 BUILD_OUTPUT="/opt/5stack/apps/utility-sw/src/build/net10.0"
 
 # Write straight into the shared plugin-dir mount when the pod provides it
@@ -32,12 +38,41 @@ log "  build output: $BUILD_OUTPUT"
 log "  dev dir:      $DEV_DIR"
 
 log "installing inotify-tools"
-if apt-get update -qq && apt-get install -y -qq inotify-tools; then
+if apt-get update -qq && apt-get install -y -qq inotify-tools unzip; then
   log "inotify-tools ready"
 else
   log "ERROR: failed to install inotify-tools (are we root?) - aborting"
   exit 1
 fi
+
+# Never fatal: a broken layout must not stop the plugin from hot-reloading.
+hud_build() {
+  if [ ! -x "$HUD_DIR/build.sh" ]; then
+    return 0
+  fi
+  if bash "$HUD_DIR/build.sh" >/tmp/hud-build.log 2>&1; then
+    local vpk
+    vpk=$(find "$HUD_DIR/build/upload" -name '*.vpk' 2>/dev/null | head -1)
+    if [ -n "$vpk" ]; then
+      log "hud packed -> $vpk ($(stat -c%s "$vpk" 2>/dev/null || echo '?') bytes)"
+    else
+      log "hud compiled -> $HUD_DIR/build/stage (not packed; see /tmp/hud-build.log)"
+    fi
+  else
+    log "WARNING: hud build failed, see /tmp/hud-build.log"
+    tail -5 /tmp/hud-build.log | while read -r line; do log "  $line"; done
+  fi
+}
+
+hud_watch_pid=""
+
+hud_watch() {
+  while true; do
+    inotifywait -r -e modify,create,delete,move -qq "$HUD_DIR/panorama" 2>/dev/null || sleep 5
+    log "hud sources changed, rebuilding"
+    hud_build
+  done
+}
 
 mkdir -p "$DEV_DIR"
 
@@ -68,8 +103,17 @@ kill_dotnet_watch() {
     log "stopping dotnet watch (pid $dotnet_watch_pid)"
     kill "$dotnet_watch_pid" 2>/dev/null
   fi
+  if [ -n "$hud_watch_pid" ]; then
+    kill "$hud_watch_pid" 2>/dev/null
+  fi
 }
 trap kill_dotnet_watch EXIT
+
+log "building hud addon"
+hud_build
+hud_watch &
+hud_watch_pid=$!
+log "watching $HUD_DIR/panorama (pid $hud_watch_pid)"
 
 log "running initial build"
 if dotnet build "$PROJECT"; then

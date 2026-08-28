@@ -12,3 +12,13 @@ __pycache__/
 *.pyc
 
 apps/gamedata-validator/gamedata/ccs.gamedata.json
+
+# panorama build artifacts
+apps/utility-sw/hud/build/
+apps/utility-sw/hud/.compiler/
+
+# panorama tool cache
+apps/utility-sw/hud/.tools/
+
+# packed addon; synced back from the pod, not committed
+apps/utility-sw/hud/dist/

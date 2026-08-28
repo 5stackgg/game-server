@@ -74,7 +74,11 @@ public class PracticeDrill
 
     // A drill over lineups somebody picked rather than a slice of their book --
     // the website sending "drill these" is the same run, chosen differently.
-    public eDrillStart StartWith(ulong steamId, IReadOnlyList<LineupRecord> queue)
+    public eDrillStart StartWith(
+        ulong steamId,
+        IReadOnlyList<LineupRecord> queue,
+        bool endless = false
+    )
     {
         if (_runs.ContainsKey(steamId))
         {
@@ -91,23 +95,30 @@ public class PracticeDrill
             return eDrillStart.NotConnected;
         }
 
-        return Begin(steamId, queue.ToList(), "as sent");
+        return Begin(steamId, queue.ToList(), "as sent", endless);
     }
 
-    private eDrillStart Begin(ulong steamId, List<LineupRecord> queue, string ordering)
+    private eDrillStart Begin(
+        ulong steamId,
+        List<LineupRecord> queue,
+        string ordering,
+        bool endless = false
+    )
     {
         if (queue.Count == 0)
         {
             return eDrillStart.NothingToDrill;
         }
 
-        var run = new PracticeDrillRun(queue, DrillReps);
+        var run = new PracticeDrillRun(queue, DrillReps, endless);
         _runs[steamId] = run;
 
         Tell?.Invoke(
             steamId,
-            $"drill started - {queue.Count} lineups x{DrillReps}, {ordering}"
-                + " (.skip to pass, .cancel to end)"
+            endless
+                ? "drilling until you stop it (.drill again to stop, .next for the next one)"
+                : $"drill started - {queue.Count} lineups x{DrillReps}, {ordering}"
+                    + " (.skip to pass, .cancel to end)"
         );
 
         Advance(steamId, run);
@@ -217,6 +228,23 @@ public class PracticeDrill
     // panel has not scored it yet. Used to hold their next grenade back: a
     // drill where you can spam three smokes before the first is judged is not
     // measuring anything.
+    /// <summary>
+    /// How visible the aim crosshair should still be for this player, 1 down to
+    /// 0.
+    ///
+    /// A drill is reps of the same throw, and a crosshair that is just as loud
+    /// on the third as on the first trains you to read the crosshair rather
+    /// than the map. It fades across the reps so the last one is thrown off
+    /// what you have actually learned -- which is also the only rep that tells
+    /// you anything about whether you have it.
+    ///
+    /// Outside a drill nothing is faded: that is practice, not a test.
+    /// </summary>
+    public float Assist(ulong steamId)
+    {
+        return _runs.TryGetValue(steamId, out PracticeDrillRun? run) ? run.Assist : 1f;
+    }
+
     public bool Waiting(ulong steamId)
     {
         return _runs.TryGetValue(steamId, out PracticeDrillRun? run) && run.Waiting;
@@ -232,7 +260,30 @@ public class PracticeDrill
 
         string tally = run.Attempts == 0 ? "no throws yet" : Tally(run);
 
-        return $"Drill {run.Position}/{run.Length} - rep {run.Rep}/{run.Reps} - {tally}";
+        return run.Endless
+            ? $"Drill - {tally}"
+            : $"Drill {run.Position}/{run.Length} - rep {run.Rep}/{run.Reps} - {tally}";
+    }
+
+    // Landing it this many times is what "drilled" means. The bar is progress
+    // towards that, not towards the end of a queue.
+    public const int MasteryTarget = 10;
+
+    // What a drill is for, sized for a HUD slot: how many landed out of how many
+    // thrown. Position in the queue was the old readout and it said nothing --
+    // on a single-lineup drill it read "1 / 1" for the whole run.
+    public (string Label, int Tenths)? HudProgress(ulong steamId)
+    {
+        if (!_runs.TryGetValue(steamId, out PracticeDrillRun? run) || run.Finished)
+        {
+            return null;
+        }
+
+        int tenths = Math.Clamp(run.Hits, 0, MasteryTarget)
+            * (HudSlots.MeterSteps - 1)
+            / MasteryTarget;
+
+        return ($"{run.Hits} / {run.Attempts}", tenths);
     }
 
     public void Forget(ulong steamId)

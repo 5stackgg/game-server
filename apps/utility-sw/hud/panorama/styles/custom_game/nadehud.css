@@ -1,0 +1,1405 @@
+/* nadehud.vcss -- one stylesheet for every 5stack utility-practice layout.
+
+   Positions that a dialog variable cannot carry (the aim dot, the drill meter)
+   are encoded as one-of-N class groups the server picks between. The C# side
+   owns the mapping in HudSlots; both ends are asserted against this file by
+   HudLayoutContractTests. */
+
+.nh-screen
+{
+	width: 100%;
+	height: 100%;
+}
+
+/* ── shared type ─────────────────────────────────────────── */
+
+.nh-kicker
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	color: #e4ae39;
+	font-size: 15px;
+	font-weight: bold;
+	letter-spacing: 1.4px;
+	text-transform: uppercase;
+	margin-bottom: 1px;
+}
+
+/* "3 / 14". The only navigation complaint anyone filed was not knowing where
+   they were in their own library -- walking with .next and .prev told them
+   nothing about how far along they had got. */
+.nh-kickerrow
+{
+	width: 100%;
+	flow-children: right;
+}
+
+.nh-pos
+{
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: bold;
+	letter-spacing: 0.5px;
+	color: #82d7ff;
+	horizontal-align: right;
+}
+
+.nh-rule
+{
+	width: 100%;
+	height: 1px;
+	margin-bottom: 12px;
+	background-color: gradient(linear, 0% 0%, 100% 0%, from(rgba(228, 174, 57, 0.62)), color-stop(0.55, rgba(50, 129, 172, 0.26)), to(rgba(50, 129, 172, 0)));
+}
+
+/* ══════════════════════════════════════════════════════════
+   nade_hud -- passive guidance. Never captures input.
+   ══════════════════════════════════════════════════════════ */
+
+/* Two homes, by whether the player has COMMITTED to a lineup. Loaded or
+   drilling, it docks bottom right and stays there -- clear of the top-right
+   minimap and the ammo counter below. Top centre is only for a lineup that
+   happens to be in focus because you walked past it, and a committed lineup
+   never passes through it: .load teleports you onto the spot, so the old
+   on-the-circle test made the panel flash across the screen on every load. */
+.nh-root
+{
+	width: 300px;
+	horizontal-align: center;
+	vertical-align: top;
+	margin-top: 96px;
+	flow-children: down;
+	padding: 18px 20px 18px;
+	visibility: collapse;
+	opacity: 0;
+	background-color: gradient(linear, 75% 100%, 0% 0%, from(rgba(9, 15, 21, 0.94)), to(rgba(15, 23, 31, 0.91)));
+	border: 1px solid rgba(255, 255, 255, 0.055);
+	border-left: 3px solid #e4ae39;
+	border-radius: 2px;
+	box-shadow: rgba(0, 0, 0, 0.7) 0px 0px 26px 0px;
+	transition-property: opacity;
+	transition-duration: 0.12s;
+}
+
+.nh-root.shown
+{
+	visibility: visible;
+	opacity: 1;
+	animation-name: 'PanelIn';
+	animation-duration: 0.14s;
+	animation-timing-function: ease-out;
+	animation-iteration-count: 1;
+}
+
+.nh-root.docked
+{
+	horizontal-align: right;
+	vertical-align: bottom;
+	margin-top: 0px;
+	margin-right: 42px;
+	margin-bottom: 130px;
+}
+
+.nh-head
+{
+	width: 100%;
+	flow-children: down;
+	margin-bottom: 9px;
+}
+
+.nh-title
+{
+	font-family: Stratum2, 'Arial Unicode MS';
+	color: #f3f6fb;
+	font-size: 26px;
+	font-weight: bold;
+	text-overflow: ellipsis;
+	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.65);
+}
+
+.nh-pills
+{
+	width: 100%;
+	flow-children: right;
+	margin-bottom: 12px;
+}
+
+.nh-pill
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: bold;
+	letter-spacing: 1.2px;
+	text-transform: uppercase;
+	padding: 3px 7px 2px;
+	margin-right: 5px;
+	border-radius: 2px;
+	color: #f99e2f;
+	background-color: rgba(249, 158, 47, 0.1);
+	border: 1px solid rgba(249, 158, 47, 0.55);
+}
+
+.nh-pill.on
+{
+	color: #6fd08c;
+	background-color: rgba(111, 208, 140, 0.11);
+	border: 1px solid rgba(111, 208, 140, 0.6);
+}
+
+/* Instructions get their own full-width row rather than a pill: a throw can
+   want several clauses, and a pill either clipped them or wrapped into a shape
+   that pushed the aim box around. */
+.nh-tech
+{
+	width: 100%;
+	margin-bottom: 12px;
+	padding: 7px 9px;
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 15px;
+	font-weight: bold;
+	letter-spacing: 0.8px;
+	line-height: 1.35;
+	text-transform: uppercase;
+	color: #c3d0dc;
+	background-color: rgba(255, 255, 255, 0.035);
+	border-left: 2px solid rgba(146, 178, 208, 0.35);
+	border-radius: 2px;
+}
+
+.nh-pill.hidden
+{
+	visibility: collapse;
+}
+
+/* Generated from PracticeStepColors.Palette. That palette deliberately has no
+   green and no red -- those are the reticle's ramp -- so a colour chip can sit
+   beside ON ANGLE without the two arguing. */
+.nh-colour.cyan
+{
+	color: rgb(0, 220, 255);
+	background-color: rgba(0, 220, 255, 0.12);
+	border: 1px solid rgba(0, 220, 255, 0.6);
+}
+
+.nh-colour.yellow
+{
+	color: rgb(255, 225, 60);
+	background-color: rgba(255, 225, 60, 0.12);
+	border: 1px solid rgba(255, 225, 60, 0.6);
+}
+
+.nh-colour.magenta
+{
+	color: rgb(255, 90, 220);
+	background-color: rgba(255, 90, 220, 0.12);
+	border: 1px solid rgba(255, 90, 220, 0.6);
+}
+
+.nh-colour.blue
+{
+	color: rgb(90, 130, 255);
+	background-color: rgba(90, 130, 255, 0.12);
+	border: 1px solid rgba(90, 130, 255, 0.6);
+}
+
+.nh-colour.orange
+{
+	color: rgb(255, 150, 40);
+	background-color: rgba(255, 150, 40, 0.12);
+	border: 1px solid rgba(255, 150, 40, 0.6);
+}
+
+.nh-colour.purple
+{
+	color: rgb(185, 120, 255);
+	background-color: rgba(185, 120, 255, 0.12);
+	border: 1px solid rgba(185, 120, 255, 0.6);
+}
+
+.nh-colour.white
+{
+	color: rgb(240, 240, 240);
+	background-color: rgba(240, 240, 240, 0.12);
+	border: 1px solid rgba(240, 240, 240, 0.6);
+}
+
+.nh-colour.pink
+{
+	color: rgb(255, 150, 190);
+	background-color: rgba(255, 150, 190, 0.12);
+	border: 1px solid rgba(255, 150, 190, 0.6);
+}
+
+
+/* ── aim error box ───────────────────────────────────────── */
+
+.nh-steer
+{
+	width: 100%;
+	margin-bottom: 8px;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 20px;
+	font-weight: bold;
+	letter-spacing: 0.6px;
+	color: #f99e2f;
+	text-align: center;
+}
+
+/* Fires as the class lands, which is the instant the player becomes lined up.
+   In practice you are staring at the crosshair, not the panel, so this is the
+   only feedback that reaches you without looking away. */
+.nh-steer.on
+{
+	color: #6fd08c;
+	sound: "UIPanorama.generic_button_click";
+	animation-name: 'LinedUp';
+	animation-duration: 0.22s;
+	animation-timing-function: ease-out;
+	animation-iteration-count: 1;
+}
+
+@keyframes 'LinedUp'
+{
+	0%   { transform: scaleX(1.0) scaleY(1.0); wash-color: #ffffff; }
+	40%  { transform: scaleX(1.06) scaleY(1.06); }
+	100% { transform: scaleX(1.0) scaleY(1.0); wash-color: none; }
+}
+
+/* ── readouts ────────────────────────────────────────────── */
+
+.nh-readout
+{
+	width: 100%;
+	flow-children: right;
+	margin-bottom: 4px;
+}
+
+.nh-readout-key
+{
+	width: fill-parent-flow(1);
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: bold;
+	letter-spacing: 1.3px;
+	text-transform: uppercase;
+	color: #5d6f80;
+}
+
+.nh-readout-val
+{
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 16px;
+	font-weight: bold;
+	color: #f99e2f;
+}
+
+.nh-readout-val.on
+{
+	color: #6fd08c;
+}
+
+.nh-readout-cyan
+{
+	color: #82d7ff;
+}
+
+.nh-note
+{
+	width: 100%;
+	margin-top: 4px;
+	margin-bottom: 4px;
+	visibility: collapse;
+}
+
+.nh-note.shown
+{
+	visibility: visible;
+}
+
+.nh-note-text
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 14px;
+	letter-spacing: 1.1px;
+	text-transform: uppercase;
+	color: #82d7ff;
+}
+
+.nh-drill
+{
+	width: 100%;
+	flow-children: down;
+	margin-top: 8px;
+	visibility: collapse;
+}
+
+.nh-drill.shown
+{
+	visibility: visible;
+}
+
+.nh-meter
+{
+	width: 100%;
+	height: 5px;
+	background-color: rgba(255, 255, 255, 0.07);
+	border-radius: 1px;
+	flow-children: none;
+}
+
+.nh-meter-fill
+{
+	height: 100%;
+	horizontal-align: left;
+	background-color: #82d7ff;
+	border-radius: 1px;
+	transition-property: width;
+	transition-duration: 0.15s;
+}
+
+#drillbar.p0 { width: 0%; }
+#drillbar.p1 { width: 10%; }
+#drillbar.p2 { width: 20%; }
+#drillbar.p3 { width: 30%; }
+#drillbar.p4 { width: 40%; }
+#drillbar.p5 { width: 50%; }
+#drillbar.p6 { width: 60%; }
+#drillbar.p7 { width: 70%; }
+#drillbar.p8 { width: 80%; }
+#drillbar.p9 { width: 90%; }
+#drillbar.p10 { width: 100%; }
+
+/* ══════════════════════════════════════════════════════════
+   nade_list -- interactive. Captures input while open.
+   ══════════════════════════════════════════════════════════ */
+
+.nh-list
+{
+	width: 520px;
+	horizontal-align: center;
+	vertical-align: center;
+	flow-children: down;
+	padding: 18px 20px 14px;
+	visibility: collapse;
+	opacity: 0;
+	background-color: gradient(linear, 75% 100%, 0% 0%, from(rgba(9, 15, 21, 0.96)), to(rgba(15, 23, 31, 0.94)));
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-left: 3px solid #82d7ff;
+	border-radius: 2px;
+	box-shadow: rgba(0, 0, 0, 0.78) 0px 0px 34px 0px;
+	transition-property: opacity;
+	transition-duration: 0.12s;
+}
+
+.nh-list.shown
+{
+	visibility: visible;
+	opacity: 1;
+	animation-name: 'PanelIn';
+	animation-duration: 0.14s;
+	animation-timing-function: ease-out;
+	animation-iteration-count: 1;
+}
+
+.nh-list-head
+{
+	width: 100%;
+	flow-children: right;
+	margin-bottom: 10px;
+}
+
+.nh-list-titles
+{
+	width: fill-parent-flow(1);
+	flow-children: down;
+}
+
+.nh-list-title
+{
+	font-family: Stratum2, 'Arial Unicode MS';
+	color: #f3f6fb;
+	font-size: 27px;
+	font-weight: bold;
+	text-overflow: ellipsis;
+}
+
+.nh-nav
+{
+	width: 30px;
+	height: 30px;
+	margin-right: 10px;
+	vertical-align: center;
+	background-color: rgba(130, 215, 255, 0.04);
+	border: 1px solid rgba(130, 215, 255, 0.16);
+	border-radius: 2px;
+}
+
+.nh-nav:hover
+{
+	sound: "UIPanorama.generic_button_rollover";
+	background-color: rgba(130, 215, 255, 0.14);
+	border: 1px solid rgba(130, 215, 255, 0.4);
+}
+
+.nh-nav.hidden
+{
+	visibility: collapse;
+}
+
+.nh-nav-close
+{
+	margin-right: 0px;
+	margin-left: 10px;
+}
+
+.nh-nav-glyph
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 17px;
+	font-weight: bold;
+	color: #82d7ff;
+	horizontal-align: center;
+	vertical-align: center;
+}
+
+
+/* Filter chips. Everything the old chat commands did, in the panel, because a
+   filter you have to leave the panel to set is not a filter anyone uses. */
+.nh-chiprow
+{
+	width: 100%;
+	flow-children: right;
+	margin-bottom: 5px;
+}
+
+.nh-chip
+{
+	width: fill-parent-flow(1);
+	height: 24px;
+	margin-right: 4px;
+	background-color: rgba(255, 255, 255, 0.025);
+	border: 1px solid rgba(255, 255, 255, 0.05);
+	border-radius: 2px;
+}
+
+
+.nh-chip:hover
+{
+	background-color: rgba(255, 255, 255, 0.08);
+	sound: "UIPanorama.generic_button_rollover";
+}
+
+.nh-chip:active
+{
+	sound: "UIPanorama.generic_button_click";
+}
+
+.nh-chip.on
+{
+	background-color: #e4ae39;
+	border: 1px solid #e4ae39;
+}
+
+.nh-chip-label
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 13px;
+	font-weight: bold;
+	letter-spacing: 1.2px;
+	text-transform: uppercase;
+	color: #7e8fa1;
+	horizontal-align: center;
+	vertical-align: center;
+}
+
+.nh-chip.on .nh-chip-label
+{
+	color: #0c1218;
+}
+
+/* Native scroll, so a long library is a long list rather than a page count.
+   Fixed height or there is nothing to scroll within. */
+.nh-list-body
+{
+	width: 100%;
+	height: 340px;
+	flow-children: down;
+	margin-top: 3px;
+	overflow: squish scroll;
+}
+
+.nh-row
+{
+	width: 100%;
+	height: 38px;
+	margin-bottom: 5px;
+	flow-children: right;
+	padding: 0px 12px;
+	background-color: gradient(linear, 0% 0%, 100% 0%, from(rgba(255, 255, 255, 0.035)), color-stop(0.55, rgba(88, 112, 136, 0.11)), to(rgba(0, 0, 0, 0.2)));
+	border: 1px solid rgba(255, 255, 255, 0.05);
+	border-left: 3px solid rgba(228, 174, 57, 0.42);
+	border-radius: 2px;
+}
+
+.nh-row:active
+{
+	sound: "UIPanorama.generic_button_click";
+}
+
+.nh-row:hover
+{
+	sound: "UIPanorama.generic_button_rollover";
+	border-left: 3px solid #e4ae39;
+	background-color: gradient(linear, 0% 0%, 100% 0%, from(rgba(228, 174, 57, 0.14)), to(rgba(0, 0, 0, 0.2)));
+}
+
+.nh-row.selected
+{
+	border-left: 3px solid #82d7ff;
+	background-color: gradient(linear, 0% 0%, 100% 0%, from(rgba(130, 215, 255, 0.13)), color-stop(0.6, rgba(130, 215, 255, 0.045)), to(rgba(0, 0, 0, 0.2)));
+}
+
+.nh-row.disabled
+{
+	opacity: 0.4;
+}
+
+.nh-row.hidden
+{
+	visibility: collapse;
+}
+
+.nh-row-key
+{
+	width: 22px;
+	height: 22px;
+	vertical-align: center;
+	margin-right: 11px;
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 15px;
+	font-weight: bold;
+	color: #82d7ff;
+	text-align: center;
+	background-color: rgba(130, 215, 255, 0.05);
+	border: 1px solid rgba(130, 215, 255, 0.18);
+	border-radius: 2px;
+}
+
+.nh-row-label
+{
+	width: fill-parent-flow(1);
+	vertical-align: center;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 19px;
+	font-weight: bold;
+	color: #e9eff5;
+	text-overflow: ellipsis;
+}
+
+.nh-row-value
+{
+	vertical-align: center;
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: bold;
+	letter-spacing: 1.2px;
+	text-transform: uppercase;
+	color: #7e8fa1;
+}
+
+.nh-pager
+{
+	width: 100%;
+	flow-children: right;
+	margin-top: 4px;
+}
+
+.nh-pager.hidden
+{
+	visibility: collapse;
+}
+
+.nh-pager-btn
+{
+	width: 90px;
+	height: 24px;
+	background-color: rgba(255, 255, 255, 0.025);
+	border: 1px solid rgba(255, 255, 255, 0.05);
+	border-radius: 2px;
+}
+
+.nh-pager-btn:hover
+{
+	background-color: rgba(130, 215, 255, 0.12);
+	sound: "UIPanorama.generic_button_rollover";
+}
+
+.nh-pager-btn.hidden
+{
+	visibility: collapse;
+}
+
+.nh-pager-label
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: bold;
+	letter-spacing: 1.3px;
+	text-transform: uppercase;
+	color: #82d7ff;
+	horizontal-align: center;
+	vertical-align: center;
+}
+
+.nh-pager-info
+{
+	width: fill-parent-flow(1);
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 14px;
+	letter-spacing: 1.3px;
+	text-transform: uppercase;
+	color: #5d6f80;
+	text-align: center;
+	vertical-align: center;
+}
+
+/* ══════════════════════════════════════════════════════════
+   nade_map -- the minimap picker. Interactive.
+   Markers are TARGETS (a place utility lands), not lineups: a worked
+   map has hundreds of lineups but a couple of dozen spots worth hitting.
+   ══════════════════════════════════════════════════════════ */
+
+.nh-map
+{
+	width: 340px;
+	horizontal-align: right;
+	vertical-align: top;
+	margin-right: 42px;
+	margin-top: 70px;
+	flow-children: down;
+	padding: 16px 20px 14px;
+	visibility: collapse;
+	opacity: 0;
+	background-color: gradient(linear, 75% 100%, 0% 0%, from(rgba(9, 15, 21, 0.95)), to(rgba(15, 23, 31, 0.92)));
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-left: 3px solid #82d7ff;
+	border-radius: 2px;
+	box-shadow: rgba(0, 0, 0, 0.75) 0px 0px 30px 0px;
+	transition-property: opacity;
+	transition-duration: 0.12s;
+}
+
+.nh-map.shown
+{
+	visibility: visible;
+	opacity: 1;
+	animation-name: 'PanelIn';
+	animation-duration: 0.14s;
+	animation-timing-function: ease-out;
+	animation-iteration-count: 1;
+}
+
+.nh-map-head
+{
+	width: 100%;
+	flow-children: right;
+	margin-bottom: 10px;
+}
+
+.nh-map-titles
+{
+	width: fill-parent-flow(1);
+	flow-children: down;
+}
+
+.nh-map-title
+{
+	font-family: Stratum2, 'Arial Unicode MS';
+	color: #f3f6fb;
+	font-size: 24px;
+	font-weight: bold;
+}
+
+/* The radar itself. flow-children none so every marker positions independently. */
+.nh-radar
+{
+	overflow: noclip;
+	width: 300px;
+	height: 300px;
+	horizontal-align: center;
+	flow-children: none;
+	background-color: #16202a;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: 50% 50%;
+	border: 1px solid rgba(146, 178, 208, 0.14);
+	border-radius: 2px;
+}
+
+
+/* Zero-size anchors: the marker hangs off them, so the two class groups
+   below are shared by all 24 markers rather than duplicated per id. */
+
+
+
+/* Positioned by two independent class groups on the SAME element: margin-left
+   and margin-top never collide, so a marker needs no wrapper. The earlier
+   version hung each marker off nested 0x0 anchor panels, and Panorama laid out
+   nothing inside a parent with no size -- markers existed, were positioned
+   correctly, and never drew. Half the dot is subtracted from each offset so the
+   class value is the CENTRE of the marker. */
+.nh-marker
+{
+	horizontal-align: left;
+	vertical-align: top;
+	overflow: noclip;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background-color: rgba(200, 214, 228, 0.75);
+	border: 1px solid rgba(10, 14, 19, 0.9);
+	transition-property: background-color, width, height, margin-left, margin-top;
+	transition-duration: 0.1s;
+}
+
+.nh-marker:hover
+{
+	width: 20px;
+	height: 20px;
+	sound: "UIPanorama.generic_button_rollover";
+}
+
+.nh-marker:active
+{
+	sound: "UIPanorama.generic_button_click";
+}
+
+.nh-marker.hidden { visibility: collapse; }
+
+.nh-marker.smoke  { background-color: rgba(214, 224, 234, 0.85); }
+.nh-marker.flash  { background-color: rgba(240, 214, 92, 0.9); }
+.nh-marker.molly  { background-color: rgba(240, 130, 48, 0.9); }
+.nh-marker.he     { background-color: rgba(226, 92, 74, 0.9); }
+
+/* Throwable from where the player is standing right now. This is the search:
+   walk somewhere and the map shows what you can actually hit from there. */
+.nh-marker.reachable
+{
+	border: 2px solid #6fd08c;
+	box-shadow: rgba(111, 208, 140, 0.7) 0px 0px 8px 0px;
+}
+
+.nh-marker.loaded
+{
+	border: 2px solid #82d7ff;
+	box-shadow: rgba(130, 215, 255, 0.85) 0px 0px 10px 0px;
+}
+
+.nh-marker.selected
+{
+	width: 20px;
+	height: 20px;
+	border: 2px solid #e4ae39;
+	box-shadow: rgba(228, 174, 57, 0.9) 0px 0px 12px 0px;
+}
+
+/* Named on hover, entirely client-side: every marker already carries its
+   target name, so revealing one costs no round trip and works while the server
+   is doing nothing. This is the only interaction in the HUD with no latency. */
+.nh-marker-name
+{
+	visibility: collapse;
+	horizontal-align: center;
+	margin-bottom: 22px;
+	vertical-align: bottom;
+	padding: 3px 6px;
+	white-space: nowrap;
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: bold;
+	letter-spacing: 0.7px;
+	text-transform: uppercase;
+	color: #f3f6fb;
+	background-color: rgba(8, 12, 17, 0.95);
+	border: 1px solid rgba(146, 178, 208, 0.3);
+	border-radius: 2px;
+	z-index: 10;
+}
+
+.nh-marker:hover .nh-marker-name
+{
+	visibility: visible;
+}
+
+.nh-marker-count
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 11px;
+	font-weight: bold;
+	color: #0c1218;
+	horizontal-align: center;
+	vertical-align: center;
+}
+
+/* Clicking a marker answers on the map rather than throwing the player into
+   another screen. The list is still one button away when there are several
+   lineups onto the same spot. */
+.nh-map-detail
+{
+	width: 100%;
+	margin-top: 10px;
+	padding: 9px 11px;
+	flow-children: down;
+	visibility: collapse;
+	background-color: rgba(255, 255, 255, 0.035);
+	border-left: 2px solid #e4ae39;
+	border-radius: 2px;
+}
+
+.nh-map-detail.shown
+{
+	visibility: visible;
+}
+
+.nh-detail-name
+{
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 19px;
+	font-weight: bold;
+	color: #f3f6fb;
+	text-overflow: ellipsis;
+}
+
+.nh-detail-meta
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 13px;
+	letter-spacing: 1px;
+	text-transform: uppercase;
+	color: #7e8fa1;
+	margin-bottom: 7px;
+}
+
+.nh-detail-actions
+{
+	width: 100%;
+	flow-children: right;
+}
+
+.nh-detail-btn
+{
+	width: fill-parent-flow(1);
+	height: 26px;
+	margin-right: 5px;
+	background-color: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 2px;
+}
+
+.nh-detail-btn:hover
+{
+	background-color: rgba(255, 255, 255, 0.12);
+	sound: "UIPanorama.generic_button_rollover";
+}
+
+.nh-detail-btn:active
+{
+	sound: "UIPanorama.generic_button_click";
+}
+
+.nh-detail-btn.hidden
+{
+	visibility: collapse;
+}
+
+.nh-detail-go
+{
+	background-color: rgba(228, 174, 57, 0.9);
+	border: 1px solid #e4ae39;
+}
+
+.nh-detail-go:hover
+{
+	background-color: #e4ae39;
+}
+
+.nh-detail-btn-label
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 13px;
+	font-weight: bold;
+	letter-spacing: 1.1px;
+	text-transform: uppercase;
+	color: #cdd8e2;
+	horizontal-align: center;
+	vertical-align: center;
+}
+
+.nh-detail-go .nh-detail-btn-label
+{
+	color: #0c1218;
+}
+
+.nh-map-focus
+{
+	width: 100%;
+	margin-top: 10px;
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 15px;
+	letter-spacing: 1.1px;
+	text-transform: uppercase;
+	color: #7e8fa1;
+	text-align: center;
+}
+
+.nh-marker.x0 { margin-left: -7px; }
+.nh-marker.x1 { margin-left: -2px; }
+.nh-marker.x2 { margin-left: 3px; }
+.nh-marker.x3 { margin-left: 7px; }
+.nh-marker.x4 { margin-left: 12px; }
+.nh-marker.x5 { margin-left: 17px; }
+.nh-marker.x6 { margin-left: 22px; }
+.nh-marker.x7 { margin-left: 26px; }
+.nh-marker.x8 { margin-left: 31px; }
+.nh-marker.x9 { margin-left: 36px; }
+.nh-marker.x10 { margin-left: 41px; }
+.nh-marker.x11 { margin-left: 45px; }
+.nh-marker.x12 { margin-left: 50px; }
+.nh-marker.x13 { margin-left: 55px; }
+.nh-marker.x14 { margin-left: 60px; }
+.nh-marker.x15 { margin-left: 64px; }
+.nh-marker.x16 { margin-left: 69px; }
+.nh-marker.x17 { margin-left: 74px; }
+.nh-marker.x18 { margin-left: 79px; }
+.nh-marker.x19 { margin-left: 83px; }
+.nh-marker.x20 { margin-left: 88px; }
+.nh-marker.x21 { margin-left: 93px; }
+.nh-marker.x22 { margin-left: 98px; }
+.nh-marker.x23 { margin-left: 103px; }
+.nh-marker.x24 { margin-left: 107px; }
+.nh-marker.x25 { margin-left: 112px; }
+.nh-marker.x26 { margin-left: 117px; }
+.nh-marker.x27 { margin-left: 122px; }
+.nh-marker.x28 { margin-left: 126px; }
+.nh-marker.x29 { margin-left: 131px; }
+.nh-marker.x30 { margin-left: 136px; }
+.nh-marker.x31 { margin-left: 141px; }
+.nh-marker.x32 { margin-left: 145px; }
+.nh-marker.x33 { margin-left: 150px; }
+.nh-marker.x34 { margin-left: 155px; }
+.nh-marker.x35 { margin-left: 160px; }
+.nh-marker.x36 { margin-left: 164px; }
+.nh-marker.x37 { margin-left: 169px; }
+.nh-marker.x38 { margin-left: 174px; }
+.nh-marker.x39 { margin-left: 179px; }
+.nh-marker.x40 { margin-left: 183px; }
+.nh-marker.x41 { margin-left: 188px; }
+.nh-marker.x42 { margin-left: 193px; }
+.nh-marker.x43 { margin-left: 198px; }
+.nh-marker.x44 { margin-left: 203px; }
+.nh-marker.x45 { margin-left: 207px; }
+.nh-marker.x46 { margin-left: 212px; }
+.nh-marker.x47 { margin-left: 217px; }
+.nh-marker.x48 { margin-left: 222px; }
+.nh-marker.x49 { margin-left: 226px; }
+.nh-marker.x50 { margin-left: 231px; }
+.nh-marker.x51 { margin-left: 236px; }
+.nh-marker.x52 { margin-left: 241px; }
+.nh-marker.x53 { margin-left: 245px; }
+.nh-marker.x54 { margin-left: 250px; }
+.nh-marker.x55 { margin-left: 255px; }
+.nh-marker.x56 { margin-left: 260px; }
+.nh-marker.x57 { margin-left: 264px; }
+.nh-marker.x58 { margin-left: 269px; }
+.nh-marker.x59 { margin-left: 274px; }
+.nh-marker.x60 { margin-left: 279px; }
+.nh-marker.x61 { margin-left: 283px; }
+.nh-marker.x62 { margin-left: 288px; }
+.nh-marker.x63 { margin-left: 293px; }
+
+.nh-marker.y0 { margin-top: -7px; }
+.nh-marker.y1 { margin-top: -2px; }
+.nh-marker.y2 { margin-top: 3px; }
+.nh-marker.y3 { margin-top: 7px; }
+.nh-marker.y4 { margin-top: 12px; }
+.nh-marker.y5 { margin-top: 17px; }
+.nh-marker.y6 { margin-top: 22px; }
+.nh-marker.y7 { margin-top: 26px; }
+.nh-marker.y8 { margin-top: 31px; }
+.nh-marker.y9 { margin-top: 36px; }
+.nh-marker.y10 { margin-top: 41px; }
+.nh-marker.y11 { margin-top: 45px; }
+.nh-marker.y12 { margin-top: 50px; }
+.nh-marker.y13 { margin-top: 55px; }
+.nh-marker.y14 { margin-top: 60px; }
+.nh-marker.y15 { margin-top: 64px; }
+.nh-marker.y16 { margin-top: 69px; }
+.nh-marker.y17 { margin-top: 74px; }
+.nh-marker.y18 { margin-top: 79px; }
+.nh-marker.y19 { margin-top: 83px; }
+.nh-marker.y20 { margin-top: 88px; }
+.nh-marker.y21 { margin-top: 93px; }
+.nh-marker.y22 { margin-top: 98px; }
+.nh-marker.y23 { margin-top: 103px; }
+.nh-marker.y24 { margin-top: 107px; }
+.nh-marker.y25 { margin-top: 112px; }
+.nh-marker.y26 { margin-top: 117px; }
+.nh-marker.y27 { margin-top: 122px; }
+.nh-marker.y28 { margin-top: 126px; }
+.nh-marker.y29 { margin-top: 131px; }
+.nh-marker.y30 { margin-top: 136px; }
+.nh-marker.y31 { margin-top: 141px; }
+.nh-marker.y32 { margin-top: 145px; }
+.nh-marker.y33 { margin-top: 150px; }
+.nh-marker.y34 { margin-top: 155px; }
+.nh-marker.y35 { margin-top: 160px; }
+.nh-marker.y36 { margin-top: 164px; }
+.nh-marker.y37 { margin-top: 169px; }
+.nh-marker.y38 { margin-top: 174px; }
+.nh-marker.y39 { margin-top: 179px; }
+.nh-marker.y40 { margin-top: 183px; }
+.nh-marker.y41 { margin-top: 188px; }
+.nh-marker.y42 { margin-top: 193px; }
+.nh-marker.y43 { margin-top: 198px; }
+.nh-marker.y44 { margin-top: 203px; }
+.nh-marker.y45 { margin-top: 207px; }
+.nh-marker.y46 { margin-top: 212px; }
+.nh-marker.y47 { margin-top: 217px; }
+.nh-marker.y48 { margin-top: 222px; }
+.nh-marker.y49 { margin-top: 226px; }
+.nh-marker.y50 { margin-top: 231px; }
+.nh-marker.y51 { margin-top: 236px; }
+.nh-marker.y52 { margin-top: 241px; }
+.nh-marker.y53 { margin-top: 245px; }
+.nh-marker.y54 { margin-top: 250px; }
+.nh-marker.y55 { margin-top: 255px; }
+.nh-marker.y56 { margin-top: 260px; }
+.nh-marker.y57 { margin-top: 264px; }
+.nh-marker.y58 { margin-top: 269px; }
+.nh-marker.y59 { margin-top: 274px; }
+.nh-marker.y60 { margin-top: 279px; }
+.nh-marker.y61 { margin-top: 283px; }
+.nh-marker.y62 { margin-top: 288px; }
+.nh-marker.y63 { margin-top: 293px; }
+
+@keyframes 'PanelIn'
+{
+	0%   { opacity: 0.0; transform: translateY(-6px); }
+	100% { opacity: 1.0; transform: translateY(0px); }
+}
+
+/* Frosted, so the panel reads as glass over the map rather than a hole in it.
+   The probe uses the same trick. */
+.nh-root,
+.nh-list,
+.nh-map
+{
+	world-blur: gaussian(3, 3, 3);
+}
+
+/* ══════════════════════════════════════════════════════════
+   nade_run -- the execute, as asked for: who throws what and when,
+   yours in colour and everyone else's greyed. Passive; never takes
+   the cursor, because it is up while the round is being run.
+   ══════════════════════════════════════════════════════════ */
+
+.nh-run
+{
+	width: 290px;
+	horizontal-align: left;
+	vertical-align: center;
+	margin-left: 42px;
+	flow-children: down;
+	padding: 16px 18px 14px;
+	visibility: collapse;
+	opacity: 0;
+	background-color: gradient(linear, 75% 100%, 0% 0%, from(rgba(9, 15, 21, 0.94)), to(rgba(15, 23, 31, 0.91)));
+	border: 1px solid rgba(255, 255, 255, 0.055);
+	border-left: 3px solid #e4ae39;
+	border-radius: 2px;
+	box-shadow: rgba(0, 0, 0, 0.7) 0px 0px 26px 0px;
+	world-blur: gaussian(3, 3, 3);
+	transition-property: opacity;
+	transition-duration: 0.12s;
+}
+
+.nh-run.shown
+{
+	visibility: visible;
+	opacity: 1;
+	animation-name: 'PanelIn';
+	animation-duration: 0.14s;
+	animation-timing-function: ease-out;
+	animation-iteration-count: 1;
+}
+
+.nh-run-head
+{
+	width: 100%;
+	flow-children: right;
+	margin-bottom: 8px;
+}
+
+.nh-run-titles
+{
+	width: fill-parent-flow(1);
+	flow-children: down;
+}
+
+.nh-run-title
+{
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 22px;
+	font-weight: bold;
+	color: #f3f6fb;
+	text-overflow: ellipsis;
+}
+
+.nh-run-clock
+{
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 26px;
+	font-weight: bold;
+	color: #e4ae39;
+	vertical-align: center;
+}
+
+.nh-run-steps
+{
+	width: 100%;
+	flow-children: down;
+	max-height: 300px;
+	overflow: squish scroll;
+}
+
+.nh-step
+{
+	width: 100%;
+	flow-children: right;
+	margin-bottom: 4px;
+	padding: 3px 0px;
+}
+
+.nh-step.hidden { visibility: collapse; }
+
+/* Done is struck through rather than hidden: the point of the list is seeing
+   the whole execute, including the part that has already gone up. */
+.nh-step.done .nh-step-name
+{
+	color: #5d6f80;
+	text-decoration: line-through;
+}
+
+.nh-step.done .nh-step-swatch { opacity: 0.3; }
+
+.nh-step.now .nh-step-name { color: #f3f6fb; }
+.nh-step.now .nh-step-time { color: #e4ae39; }
+
+/* Somebody else's throw, greyed so a glance finds yours. */
+.nh-step.theirs .nh-step-name { color: #7e8fa1; }
+.nh-step.theirs .nh-step-swatch { opacity: 0.28; }
+
+.nh-step-time
+{
+	width: 40px;
+	flex-shrink: 0;
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 13px;
+	color: #5d6f80;
+	vertical-align: center;
+}
+
+.nh-step-swatch
+{
+	width: 9px;
+	height: 9px;
+	margin-right: 9px;
+	border-radius: 50%;
+	vertical-align: center;
+	background-color: #7e8fa1;
+}
+
+.nh-step-swatch.cyan
+{
+	background-color: rgb(0, 220, 255);
+}
+
+.nh-step-swatch.yellow
+{
+	background-color: rgb(255, 225, 60);
+}
+
+.nh-step-swatch.magenta
+{
+	background-color: rgb(255, 90, 220);
+}
+
+.nh-step-swatch.blue
+{
+	background-color: rgb(90, 130, 255);
+}
+
+.nh-step-swatch.orange
+{
+	background-color: rgb(255, 150, 40);
+}
+
+.nh-step-swatch.purple
+{
+	background-color: rgb(185, 120, 255);
+}
+
+.nh-step-swatch.white
+{
+	background-color: rgb(240, 240, 240);
+}
+
+.nh-step-swatch.pink
+{
+	background-color: rgb(255, 150, 190);
+}
+
+.nh-step-name
+{
+	width: fill-parent-flow(1);
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 16px;
+	font-weight: bold;
+	color: #c3d0dc;
+	vertical-align: center;
+	text-overflow: ellipsis;
+}
+
+.nh-step-who
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: bold;
+	letter-spacing: 1px;
+	text-transform: uppercase;
+	color: #5d6f80;
+	vertical-align: center;
+}
+
+.nh-step.mine .nh-step-who { color: #82d7ff; }
+
+/* ══════════════════════════════════════════════════════════
+   nade_edit -- rename, describe, change who can see it.
+   No geometry: editing where a smoke lands would silently turn every
+   scored attempt against it into a measurement of something else.
+   ══════════════════════════════════════════════════════════ */
+
+.nh-edit
+{
+	width: 400px;
+	horizontal-align: center;
+	vertical-align: center;
+	flow-children: down;
+	padding: 18px 20px 16px;
+	visibility: collapse;
+	opacity: 0;
+	background-color: gradient(linear, 75% 100%, 0% 0%, from(rgba(9, 15, 21, 0.96)), to(rgba(15, 23, 31, 0.94)));
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-left: 3px solid #e4ae39;
+	border-radius: 2px;
+	box-shadow: rgba(0, 0, 0, 0.78) 0px 0px 34px 0px;
+	world-blur: gaussian(3, 3, 3);
+	transition-property: opacity;
+	transition-duration: 0.12s;
+}
+
+.nh-edit.shown
+{
+	visibility: visible;
+	opacity: 1;
+	animation-name: 'PanelIn';
+	animation-duration: 0.14s;
+	animation-timing-function: ease-out;
+	animation-iteration-count: 1;
+}
+
+.nh-edit-key
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 13px;
+	font-weight: bold;
+	letter-spacing: 1.3px;
+	text-transform: uppercase;
+	color: #5d6f80;
+	margin-top: 8px;
+	margin-bottom: 3px;
+}
+
+/* A field is a button: clicking it asks for the value in chat, because a
+   Panorama panel has no way to accept typing. */
+.nh-edit-field
+{
+	width: 100%;
+	height: 30px;
+	padding: 0px 10px;
+	margin-bottom: 2px;
+	background-color: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.07);
+	border-radius: 2px;
+}
+
+.nh-edit-field:hover
+{
+	background-color: rgba(255, 255, 255, 0.1);
+	border: 1px solid rgba(228, 174, 57, 0.5);
+	sound: "UIPanorama.generic_button_rollover";
+}
+
+.nh-edit-field:active
+{
+	sound: "UIPanorama.generic_button_click";
+}
+
+/* Waiting for the player to type the answer in chat. */
+.nh-edit-field.asking
+{
+	border: 1px solid #e4ae39;
+	background-color: rgba(228, 174, 57, 0.12);
+}
+
+.nh-edit-value
+{
+	width: 100%;
+	vertical-align: center;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 16px;
+	color: #e9eff5;
+	text-overflow: ellipsis;
+}
+
+.nh-edit-value.empty
+{
+	color: #5d6f80;
+}
+
+.nh-edit-hint
+{
+	width: 100%;
+	margin-top: 10px;
+	margin-bottom: 8px;
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 13px;
+	letter-spacing: 0.9px;
+	text-transform: uppercase;
+	color: #7e8fa1;
+	text-align: center;
+}
+
+.nh-edit-hint.warn { color: #f99e2f; }
+.nh-edit-hint.bad { color: #f2554b; }
+.nh-edit-hint.good { color: #6fd08c; }
+
+#radar.de_ancient { background-image: url("s2r://panorama/images/overheadmaps/de_ancient_radar.psd"); }
+#radar.de_anubis { background-image: url("s2r://panorama/images/overheadmaps/de_anubis_radar.psd"); }
+#radar.de_cache { background-image: url("s2r://panorama/images/overheadmaps/de_cache_radar.psd"); }
+#radar.de_dust2 { background-image: url("s2r://panorama/images/overheadmaps/de_dust2_radar.psd"); }
+#radar.de_inferno { background-image: url("s2r://panorama/images/overheadmaps/de_inferno_radar.psd"); }
+#radar.de_mirage { background-image: url("s2r://panorama/images/overheadmaps/de_mirage_radar.psd"); }
+#radar.de_nuke { background-image: url("s2r://panorama/images/overheadmaps/de_nuke_radar.psd"); }
+#radar.de_overpass { background-image: url("s2r://panorama/images/overheadmaps/de_overpass_radar.psd"); }
+#radar.de_train { background-image: url("s2r://panorama/images/overheadmaps/de_train_radar.psd"); }
+#radar.de_vertigo { background-image: url("s2r://panorama/images/overheadmaps/de_vertigo_radar.psd"); }

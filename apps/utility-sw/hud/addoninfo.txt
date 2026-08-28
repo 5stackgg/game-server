@@ -1,0 +1,7 @@
+"addoninfo"
+{
+	"addontitle"		"5Stack Utility HUD"
+	"addonauthor"		"5Stack.gg"
+	"addonversion"		"1.0"
+	"addontagline"		"On-screen grenade lineup guidance for 5stack practice servers"
+}

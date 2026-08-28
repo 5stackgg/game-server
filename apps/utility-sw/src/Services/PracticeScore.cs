@@ -1,4 +1,5 @@
 using FiveStack.Entities.Practice;
+using FiveStack.Utilities;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Players;
 using static SwiftlyS2.Shared.Helper;
@@ -78,6 +79,21 @@ public class PracticeScore
         Vec3 landing = thrown.detonation_position;
         float distance = (landing - loaded.detonation_position).Length();
 
+        string name = string.IsNullOrEmpty(loaded.name) ? "that lineup" : loaded.name;
+
+        // A scratch throw -- a meta spot, or a draft being tested from the
+        // panel before it is saved -- has no row behind it, and the panel
+        // rejects a result whose lineup id is not a uuid. Asking anyway got a
+        // 400 back and told the player "the panel did not answer", which reads
+        // as a broken panel when in fact everything needed to judge the throw
+        // is already here. So judge it here. There is nothing to persist it
+        // against, which is why it carries no streak and no tally.
+        if (!PracticeLineupUtility.IsPanelId(loaded.id))
+        {
+            ScoreLocally(steamId, loaded.client_id, name, distance);
+            return;
+        }
+
         var payload = UtilityPracticeResultPayload.For(
             _config.ServerId,
             _session.Current?.id ?? Guid.Empty,
@@ -89,7 +105,6 @@ public class PracticeScore
 
         string lineupId = loaded.id;
         string key = $"{lineupId}:{steamId}";
-        string name = string.IsNullOrEmpty(loaded.name) ? "that lineup" : loaded.name;
 
         _ = Task.Run(async () =>
         {
@@ -97,6 +112,42 @@ public class PracticeScore
 
             _core.Scheduler.NextTick(() => Report(steamId, lineupId, key, name, result, distance));
         });
+    }
+
+    // Judged here rather than by the panel, for a throw the panel has no row
+    // for. The radius is still the panel's whenever it has said one this
+    // session; the fallback only stands in before it ever has.
+    private void ScoreLocally(ulong steamId, string lineupId, string name, float distance)
+    {
+        float radius = _radius ?? PracticeLineupUtility.FallbackSuccessRadius;
+        bool success = distance <= radius;
+
+        IPlayer? player = _system.Find(steamId);
+
+        if (player != null && player.IsValid)
+        {
+            player.SendChat(
+                (
+                    success
+                        ? $" {ChatColors.Green}hit {ChatColors.Default}{name} {ChatColors.Grey}{PracticeLineupUtility.Metres(distance)} off - not saved, so it is not counted"
+                        : $" {ChatColors.Red}miss {ChatColors.Default}{name} {ChatColors.Grey}{PracticeLineupUtility.Metres(distance)} off, needs {PracticeLineupUtility.Metres(radius)}"
+                ).Colored()
+            );
+        }
+
+        // A drill counts on being able to tell a miss from an unanswered throw,
+        // and this is an answer -- so it carries one, with the tallies left at
+        // zero because there is nothing behind them.
+        Scored?.Invoke(
+            steamId,
+            lineupId,
+            new UtilityPracticeResult
+            {
+                success = success,
+                distance = distance,
+                radius = radius,
+            }
+        );
     }
 
     private void Report(
@@ -139,7 +190,7 @@ public class PracticeScore
         if (result == null)
         {
             player.SendChat(
-                $" {ChatColors.Grey}{measured:0}u from {name} {ChatColors.Default}(not scored; the panel did not answer)".Colored()
+                $" {ChatColors.Grey}{PracticeLineupUtility.Metres(measured)} from {name} {ChatColors.Default}(not scored; the panel did not answer)".Colored()
             );
             return;
         }
@@ -147,8 +198,8 @@ public class PracticeScore
         player.SendChat(
             (
                 result.success
-                    ? $" {ChatColors.Green}hit {ChatColors.Default}{name} {ChatColors.Grey}{result.distance:0}u - streak {result.current_streak} (best {result.best_streak})"
-                    : $" {ChatColors.Red}miss {ChatColors.Default}{name} {ChatColors.Grey}{result.distance:0}u, needs {result.radius:0}u - {result.successes}/{result.attempts}"
+                    ? $" {ChatColors.Green}hit {ChatColors.Default}{name} {ChatColors.Grey}{PracticeLineupUtility.Metres(result.distance)} off - streak {result.current_streak} (best {result.best_streak})"
+                    : $" {ChatColors.Red}miss {ChatColors.Default}{name} {ChatColors.Grey}{PracticeLineupUtility.Metres(result.distance)} off, needs {PracticeLineupUtility.Metres(result.radius)} - {result.successes}/{result.attempts}"
             ).Colored()
         );
 

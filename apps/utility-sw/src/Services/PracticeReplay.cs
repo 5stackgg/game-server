@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using FiveStack.Entities.Practice;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
@@ -42,6 +43,7 @@ public class PracticeReplay
     private enum GhostKind
     {
         Bloom,
+        Trail,
     }
 
     private class Ghost
@@ -87,6 +89,29 @@ public class PracticeReplay
         "point_worldtext",
     };
 
+    // Brushes you can walk through. A trigger is an invisible volume with no
+    // surface to aim at, but the trace treated one as a wall -- which is why
+    // the crosshair for the Ancient InstaMid smokes from CT landed in mid-air
+    // well short of the wall, sitting on the edge of the CT buy zone. Named
+    // explicitly rather than by a "trigger_" prefix alone because func_buyzone,
+    // func_bomb_target and func_hostage_rescue are the same kind of thing
+    // wearing a different name.
+    private static readonly HashSet<string> TracePassThrough = new()
+    {
+        "func_buyzone",
+        "func_bomb_target",
+        "func_hostage_rescue",
+        "func_nav_blocker",
+        "trigger_multiple",
+        "trigger_once",
+        "trigger_push",
+        "trigger_hurt",
+        "trigger_teleport",
+        "trigger_soundscape",
+        "trigger_look",
+        "trigger_proximity",
+    };
+
     private static TraceParams SkipMarkers()
     {
         var parameters = new TraceParams();
@@ -99,6 +124,8 @@ public class PracticeReplay
             // Held weapons follow players through rays, and projectiles are
             // wherever somebody last threw one.
             return !TraceInvisible.Contains(designer)
+                && !TracePassThrough.Contains(designer)
+                && !designer.StartsWith("trigger_")
                 && !designer.StartsWith("weapon_")
                 && !designer.EndsWith("_projectile");
         };
@@ -146,6 +173,12 @@ public class PracticeReplay
     // grenade model. Shared on purpose -- everyone on the server should see
     // where the lineups are.
     private readonly List<CEnvBeam> _markerBeams = new();
+
+    // Spawn rings live outside the library layer on purpose: ShowLibrary
+    // despawns and rebuilds everything it owns, and a toggle the player asked
+    // for must not blink out because somebody ran .next.
+    private readonly List<CEnvBeam> _spawnBeams = new();
+    private List<CEnvBeam>? _spawnInto;
     private readonly List<CPointWorldText> _markerTexts = new();
     private readonly List<CPhysicsProp> _markerProps = new();
 
@@ -175,6 +208,12 @@ public class PracticeReplay
         public LineupRecord Lineup = null!;
         public readonly List<CEnvBeam> Beams = new();
         public int Bucket = -1;
+
+        // Tracked alongside the bucket because the colour is a product of both:
+        // during a drill the fade moves while the player holds the same angle,
+        // and keying the redraw on the bucket alone would hold the crosshair at
+        // whatever brightness it had when the rep started.
+        public float Visibility = 1f;
     }
 
     // The lined-up crosshair: barely-there green. Beams render bright against
@@ -232,6 +271,15 @@ public class PracticeReplay
     // Which list the drawing helpers append to. Null means the shared layer.
     private Selection? _drawingInto;
 
+    // Where the player this selection is being drawn for is looking, so a
+    // reticle can be created in the right colour instead of being corrected a
+    // tick later. Null on the paths that draw for nobody in particular.
+    private (float yaw, float pitch)? _viewer;
+
+    // Same lifetime as _viewer: whose crosshair is being drawn decides how
+    // visible it is, and a library draw belongs to nobody.
+    private float _viewerVisibility = 1f;
+
     // Which of the drawn throws is the one the player is looking toward. Every
     // throw off a spot is drawn -- you cannot choose between options you cannot
     // see -- and this one is drawn heavier so it stands out from its siblings.
@@ -275,8 +323,81 @@ public class PracticeReplay
     // on this service, so asking for it back would close the cycle.
     public Func<ulong, bool> IsSolo { get; set; } = _ => true;
 
+    // Whether loading a lineup should still announce it on centre text. False
+    // for a player whose HUD panel is up: the panel already names the lineup and
+    // holds it there, so the centre line is the same fact said twice, once in a
+    // channel that fades.
+    public Func<ulong, bool> AnnouncesLoad { get; set; } = _ => true;
+
     // The whole library for a player, so loading one lineup still draws the
     // rest. Supplied by the plugin, which owns the library.
+    /// <summary>
+    /// Narrows the library layer to a named set of lineups, IN ORDER.
+    ///
+    /// Starting an execute drew every smoke on the map, because a playbook step
+    /// goes through the same Load as a typed .load and Load draws the whole
+    /// library. That buries the four throws the execute is actually about in a
+    /// hundred that it is not. Null means the whole library, which is the
+    /// resting state.
+    ///
+    /// Ordered rather than a set because the position IS the colour: an execute
+    /// puts several grenades up at once and drawn in the utility's own colour
+    /// they are all the same white, so nothing on the ground says which one
+    /// landed where.
+    /// </summary>
+    public IReadOnlyList<string>? LibraryRestriction { get; set; }
+
+    /// <summary>
+    /// The colour a lineup is wearing in the running execute, or null when it
+    /// is not in one. Position in LibraryRestriction decides it.
+    /// </summary>
+    public PracticeStepColors.StepColor? StepColorFor(string clientId)
+    {
+        IReadOnlyList<string>? order = LibraryRestriction;
+
+        if (order == null)
+        {
+            return null;
+        }
+
+        for (int index = 0; index < order.Count; index++)
+        {
+            if (string.Equals(order[index], clientId, StringComparison.OrdinalIgnoreCase))
+            {
+                return PracticeStepColors.For(index);
+            }
+        }
+
+        return null;
+    }
+
+    private static Color Rgb(PracticeStepColors.StepColor step)
+    {
+        return new Color((int)step.R, (int)step.G, (int)step.B, 255);
+    }
+
+    /// <summary>
+    /// How visible this player's aim crosshair should be, 1 down to 0. Wired by
+    /// the plugin like All below, because what it depends on -- a per-player
+    /// switch and how far into a drill they are -- is not the replay layer's
+    /// business. 0 means draw nothing at all.
+    /// </summary>
+    public Func<ulong, float> AimVisibility { get; set; } = _ => 1f;
+
+    private static Color Faded(Color color, float visibility)
+    {
+        // Beams render bright against the world, so fading one is scaling it
+        // toward black -- the same trick AimSettled uses to whisper.
+        float amount = Math.Clamp(visibility, 0f, 1f);
+
+        return new Color(
+            (int)(color.R * amount),
+            (int)(color.G * amount),
+            (int)(color.B * amount),
+            255
+        );
+    }
+
     public Func<ulong, IReadOnlyList<LineupRecord>> All { get; set; } =
         _ => Array.Empty<LineupRecord>();
 
@@ -302,6 +423,18 @@ public class PracticeReplay
 
     // The measured bloom outline.
     public const bool DrawBloom = true;
+
+    /// <summary>
+    /// Our own coloured flight trail. OFF, because the engine already draws one
+    /// and ITS trail time is what keeps the practice camera up after the
+    /// grenade lands -- suppressing it to make room for this took away the
+    /// ability to watch a smoke bloom, which is worth more than a coloured arc.
+    /// The throw's colour still reaches the player on the cloud itself, on the
+    /// markers and on the panel. Flip this to true to get the coloured arc
+    /// back, and set the engine's trailtime to 0 in the same change or there
+    /// will be two arcs down every flight.
+    /// </summary>
+    public const bool DrawTrail = false;
 
     // REAL projectiles: EmitSmokeGrenade / EmitFlashbang / EmitHEGrenade /
     // EmitMolotov, plus the bloom's live smoke.
@@ -342,7 +475,7 @@ public class PracticeReplay
 
         // The same floor the stance marker is drawn on, so .load puts the
         // player standing on the ring rather than dropping into it.
-        Vec3 feet = Grounded(lineup.release.feet_position);
+        Vec3 feet = Standable(Grounded(lineup.release.feet_position));
         var position = new Vector(feet.x, feet.y, feet.z);
 
         // Yaw for the body, pitch for the eyes, and never the two together: a
@@ -420,7 +553,8 @@ public class PracticeReplay
                 );
             }
 
-            // Everything on the map, with this one in focus.
+            // Everything on the map, with this one in focus. ShowLibrary
+            // narrows it to the execute's own throws when one is running.
             IReadOnlyList<LineupRecord> everything = All(player.SteamID);
 
             IReadOnlyList<LineupRecord> library =
@@ -438,7 +572,142 @@ public class PracticeReplay
             ShowSelection(player, here, standing);
         });
 
-        player.SendCenter(Describe(lineup));
+        if (AnnouncesLoad(player.SteamID))
+        {
+            player.SendCenter(Describe(lineup));
+        }
+    }
+
+    // A map has a few dozen of these and each ring is a handful of entities, so
+    // the ring is coarser than a stance reticle and the count is capped. It is
+    // a "where can I start from" overview, not something to line a throw up on.
+    private const int SpawnRingSegments = 8;
+    private const float SpawnRingRadius = 20f;
+    private const int MaxSpawnsDrawn = 32;
+
+    public bool SpawnsShown => _spawnBeams.Count > 0;
+
+    public void ShowSpawns(IReadOnlyList<ThrowSnapshot> spawns)
+    {
+        ClearSpawns();
+
+        if (!DrawMarkers)
+        {
+            return;
+        }
+
+        _spawnInto = _spawnBeams;
+
+        try
+        {
+            foreach (ThrowSnapshot spawn in spawns.Take(MaxSpawnsDrawn))
+            {
+                Vec3 feet = Grounded(spawn.feet_position);
+                float z = feet.z + StanceRingHeight;
+
+                for (int index = 0; index < SpawnRingSegments; index++)
+                {
+                    double a = index * 2 * Math.PI / SpawnRingSegments;
+                    double b = (index + 1) * 2 * Math.PI / SpawnRingSegments;
+
+                    AddMarkerBeam(
+                        new Vec3(
+                            feet.x + (float)(Math.Cos(a) * SpawnRingRadius),
+                            feet.y + (float)(Math.Sin(a) * SpawnRingRadius),
+                            z
+                        ),
+                        new Vec3(
+                            feet.x + (float)(Math.Cos(b) * SpawnRingRadius),
+                            feet.y + (float)(Math.Sin(b) * SpawnRingRadius),
+                            z
+                        ),
+                        AmberDim,
+                        MarkerWidth
+                    );
+                }
+
+                // No facing needle. Which way a spawn points is not something
+                // anybody practising utility cares about, and thirty arrows
+                // pointing in thirty directions read as clutter rather than as
+                // information.
+            }
+        }
+        finally
+        {
+            _spawnInto = null;
+        }
+    }
+
+    public void ClearSpawns()
+    {
+        foreach (CEnvBeam beam in _spawnBeams)
+        {
+            if (beam.IsValid)
+            {
+                beam.Despawn();
+            }
+        }
+
+        _spawnBeams.Clear();
+    }
+
+    private IReadOnlyList<LineupRecord> Restricted(IReadOnlyList<LineupRecord> lineups)
+    {
+        IReadOnlyList<string>? only = LibraryRestriction;
+
+        if (only == null || only.Count == 0)
+        {
+            return lineups;
+        }
+
+        // Drawn in the execute's own order, so the colours run 1..n the way the
+        // steps do rather than in whatever order the library came back in.
+        return only.Select(id =>
+                lineups.FirstOrDefault(lineup =>
+                    string.Equals(lineup.client_id, id, StringComparison.OrdinalIgnoreCase)
+                )
+            )
+            .OfType<LineupRecord>()
+            .ToList();
+    }
+
+    /// <summary>
+    /// Put a player on a lineup's stance without reloading the lineup.
+    ///
+    /// Walking into a circle tells you where to stand but not exactly where,
+    /// and "exactly" is the whole point of a stance -- so being near one and
+    /// pressing use finishes the walk. Deliberately not a Load: the lineup is
+    /// already the one in hand, and re-giving the grenade mid-run-up would take
+    /// a thrown one back.
+    /// </summary>
+    public bool StandOn(IPlayer player, LineupRecord lineup)
+    {
+        CCSPlayerPawn? pawn = player.PlayerPawn;
+
+        if (pawn == null || !pawn.IsValid)
+        {
+            return false;
+        }
+
+        Vec3 feet = Standable(Grounded(lineup.release.feet_position));
+
+        if (!Sane(feet))
+        {
+            return false;
+        }
+
+        var position = new Vector(feet.x, feet.y, feet.z);
+        var facing = new QAngle(0, lineup.release.yaw, 0);
+        var aim = new QAngle(lineup.release.pitch, lineup.release.yaw, 0);
+
+        player.Teleport(position, facing, new Vector(0, 0, 0));
+        pawn.EyeAngles = aim;
+
+        // The client re-predicts from the command it had in flight and snaps
+        // the view back, so once is not enough.
+        ReapplyAngles(player, facing, aim, 2);
+
+        return true;
     }
 
     // The measured bloom, outlined where it would actually sit. Answers how
@@ -745,6 +1014,11 @@ public class PracticeReplay
                 continue;
             }
 
+            if (_ghosts[index].Kind == GhostKind.Trail)
+            {
+                _trails.Remove(_ghosts[index].OwnerSteamId);
+            }
+
             Kill(_ghosts[index]);
             _ghosts.RemoveAt(index);
         }
@@ -947,7 +1221,8 @@ public class PracticeReplay
             Math.Atan2(stance.y - landing.y, stance.x - landing.x) * 180.0 / Math.PI
         );
 
-        var position = new Vector(landing.x, landing.y, landing.z);
+        Vec3 standable = Standable(landing);
+        var position = new Vector(standable.x, standable.y, standable.z);
         var facing = new QAngle(0, yaw, 0);
 
         player.Teleport(position, facing, new Vector(0, 0, 0));
@@ -1030,6 +1305,36 @@ public class PracticeReplay
     // newest first, so what survives the cap is the newest.
     private const int MaxLibraryDrawn = 150;
 
+    // What the library layer currently has on the map. Geometry is part of it,
+    // not just identity: a lineup that was edited keeps its id and has to
+    // redraw, and a refresh that changed nothing must not.
+    private string? _librarySignature;
+
+    private static string LibrarySignature(IReadOnlyList<LineupRecord> lineups)
+    {
+        var builder = new StringBuilder(lineups.Count * 48);
+
+        foreach (LineupRecord lineup in lineups)
+        {
+            Vec3 feet = lineup.release.feet_position;
+            Vec3 land = lineup.detonation_position;
+
+            builder
+                .Append(lineup.client_id)
+                .Append(':')
+                .Append(lineup.utility_type)
+                .Append(':')
+                .Append((int)feet.x).Append(',').Append((int)feet.y).Append(',').Append((int)feet.z)
+                .Append(':')
+                .Append((int)lineup.release.yaw)
+                .Append(':')
+                .Append((int)land.x).Append(',').Append((int)land.y).Append(',').Append((int)land.z)
+                .Append('|');
+        }
+
+        return builder.ToString();
+    }
+
     public void ShowLibrary(IEnumerable<LineupRecord> lineups)
     {
         if (!DrawMarkers)
@@ -1037,12 +1342,31 @@ public class PracticeReplay
             return;
         }
 
+        // Applied here rather than at the call site: ShowLibrary is also called
+        // on a refresh and after a .save, and either of those arriving mid
+        // execute would quietly put the whole map back on screen.
+        IReadOnlyList<LineupRecord> all = Restricted(lineups.ToList());
+        List<LineupRecord> drawn = all.Take(MaxLibraryDrawn).ToList();
+
+        // Redrawing means despawning and respawning every marker on the map,
+        // and this runs on every .load, .next, .prev, .rethrow, drill step and
+        // playbook beat -- fired by ANY player, against one shared set of
+        // entities. So one person walking their library blinked out the circle
+        // somebody else was standing in, which is the "circle sometimes
+        // disappears" nobody could pin to an angle. Nothing is rebuilt unless
+        // the library being drawn actually changed.
+        string signature = LibrarySignature(drawn);
+
+        if (signature == _librarySignature && _markerBeams.Count > 0)
+        {
+            return;
+        }
+
+        _librarySignature = signature;
+
         ClearSharedMarkers();
 
         _drawingInto = null;
-
-        List<LineupRecord> all = lineups.ToList();
-        List<LineupRecord> drawn = all.Take(MaxLibraryDrawn).ToList();
 
         if (drawn.Count < all.Count)
         {
@@ -1054,11 +1378,17 @@ public class PracticeReplay
             );
         }
 
-        lineups = drawn;
-
-        foreach (LineupRecord lineup in lineups)
+        foreach (LineupRecord lineup in drawn)
         {
-            Color type = ColorFor(lineup.utility_type);
+            PracticeStepColors.StepColor? step = StepColorFor(lineup.client_id);
+
+            // In an execute the step's colour beats both of the usual ones:
+            // amber for where you stand and the utility's own for where it
+            // lands. Telling the four smokes apart is the whole job while one
+            // is running, and both ends have to wear the same colour or the
+            // line between them is guesswork.
+            Color type = step == null ? ColorFor(lineup.utility_type) : Rgb(step.Value);
+            Color needle = step == null ? AmberDim : Rgb(step.Value);
             Vec3 feet = Grounded(lineup.release.feet_position);
 
             // Seven beams where there used to be twenty-one. A map holds
@@ -1069,11 +1399,11 @@ public class PracticeReplay
             // No name on the ground and no post: the chevron says which way,
             // the glowing model says what and where, and the name arrives in
             // centre text when the player points at the grenade.
-            Needle(feet, lineup.release.yaw, 13f, AmberDim, MarkerWidth);
+            Needle(feet, lineup.release.yaw, 13f, needle, MarkerWidth);
             Diamond(lineup.detonation_position, 22f, type, MarkerWidth);
         }
 
-        ShowSpotUtility(lineups);
+        ShowSpotUtility(drawn);
     }
 
     // What to bring, not which throw to make. A model belongs to the SPOT: two
@@ -1081,7 +1411,7 @@ public class PracticeReplay
     // spot reads as six grenades rather than one place to stand. A spot holding
     // a smoke and a flash still shows both, because that is a real choice about
     // what to equip.
-    private void ShowSpotUtility(IEnumerable<LineupRecord> lineups)
+    private void ShowSpotUtility(IReadOnlyList<LineupRecord> lineups)
     {
         List<(float x, float y, float z, List<string> types)> spots =
             PracticeLineupUtility.UtilityBySpot(
@@ -1103,9 +1433,60 @@ public class PracticeReplay
                 // ring and two straddle it rather than one sitting off to a side.
                 float offset = (index - ((spot.types.Count - 1) / 2f)) * UtilityModelSpacing;
 
-                UtilityModel(spot.types[index], new Vec3(spot.x + offset, spot.y, spot.z));
+                // The glowing grenade is the most visible thing on a spot, so
+                // in an execute it wears the step's colour like everything else
+                // does -- otherwise the one marker a player actually looks at
+                // is the one that does not say which throw it is.
+                Color? glow = StepGlowAt(lineups, spot.types[index], spot.x, spot.y, spot.z);
+
+                UtilityModel(
+                    spot.types[index],
+                    new Vec3(spot.x + offset, spot.y, spot.z),
+                    glow
+                );
             }
         }
+    }
+
+    private Color? StepGlowAt(
+        IReadOnlyList<LineupRecord> lineups,
+        string utilityType,
+        float x,
+        float y,
+        float z
+    )
+    {
+        if (LibraryRestriction == null)
+        {
+            return null;
+        }
+
+        foreach (LineupRecord lineup in lineups)
+        {
+            if (lineup.utility_type != utilityType)
+            {
+                continue;
+            }
+
+            Vec3 feet = Grounded(lineup.release.feet_position);
+
+            if (
+                new Vec3(feet.x - x, feet.y - y, 0f).LengthXY() > SpotRadius
+                || Math.Abs(feet.z - z) > SpotHeight
+            )
+            {
+                continue;
+            }
+
+            PracticeStepColors.StepColor? step = StepColorFor(lineup.client_id);
+
+            if (step != null)
+            {
+                return Rgb(step.Value);
+            }
+        }
+
+        return null;
     }
 
     // One player's focused lineups: the big ring, the STAND label and the aim
@@ -1155,6 +1536,16 @@ public class PracticeReplay
         _selections[owner.SteamID] = selection;
         _drawingInto = selection;
 
+        CCSPlayerPawn? viewing = owner.PlayerPawn;
+
+        if (viewing != null && viewing.IsValid)
+        {
+            QAngle eyes = viewing.EyeAngles;
+            _viewer = (eyes.Y, eyes.X);
+        }
+
+        _viewerVisibility = AimVisibility(owner.SteamID);
+
         // The gate marks the RECORDED spot, never where the player happens to
         // be standing -- SpotWatch passes the player's own position, and a gate
         // drawn under their feet can never tell them they are off it.
@@ -1181,6 +1572,8 @@ public class PracticeReplay
         finally
         {
             _drawingInto = null;
+            _viewer = null;
+            _viewerVisibility = 1f;
         }
 
     }
@@ -1266,7 +1659,7 @@ public class PracticeReplay
     // how close you were once you arrived.
     private void GroundReticle(Vec3 at, Color color)
     {
-        float z = at.z + 1.5f;
+        float z = at.z + StanceRingHeight;
 
         for (int index = 0; index < StanceRingSegments; index++)
         {
@@ -1448,13 +1841,54 @@ public class PracticeReplay
         // one you are on is said in COLOUR, not in scale: a smaller crosshair
         // reads as "further away", which is exactly the wrong thing to say
         // about a point you are being asked to cover precisely.
-        var aim = new Aim { Lineup = lineup };
+        // Born the colour it should already be, and remembering that it is.
+        // Hard-coding fully red here meant a reticle drawn while the player was
+        // ALREADY on the angle came up red and stayed that way until something
+        // moved -- the panel saying "lined up" beside a red crosshair, which is
+        // the one disagreement this whole scheme exists to prevent. Aim.Bucket
+        // is set from the same predicate, so the tint tick agrees rather than
+        // skipping it as unchanged.
+        int bucket = _viewer == null ? MissBuckets - 1 : BucketFor(
+            PracticeLineupUtility.AimMiss(
+                PracticeLineupUtility.AimError(
+                    _viewer.Value.yaw,
+                    _viewer.Value.pitch,
+                    lineup.release.yaw,
+                    lineup.release.pitch
+                ),
+                lineup.aim_tolerance
+            )
+        );
+
+        // Nothing to draw rather than something invisible: a crosshair switched
+        // off should not still be costing entities, and the last rep of a drill
+        // is meant to have no crosshair in it at all.
+        if (_viewerVisibility <= 0f)
+        {
+            return;
+        }
+
+        var aim = new Aim
+        {
+            Lineup = lineup,
+            Bucket = bucket,
+            Visibility = _viewerVisibility,
+        };
 
         _aimInto = aim;
 
         try
         {
-            Reticle(center, dir, size, ColorForBucket(MissBuckets - 1), weight);
+            Reticle(
+                center,
+                dir,
+                size,
+                Faded(
+                    bucket == 0 ? AimSettled : ColorForBucket(bucket),
+                    _viewerVisibility
+                ),
+                weight
+            );
         }
         finally
         {
@@ -1516,12 +1950,15 @@ public class PracticeReplay
                 )
             );
 
-            if (bucket == aim.Bucket)
+            float visibility = AimVisibility(player.SteamID);
+
+            if (bucket == aim.Bucket && Math.Abs(visibility - aim.Visibility) < 0.01f)
             {
                 continue;
             }
 
             aim.Bucket = bucket;
+            aim.Visibility = visibility;
 
             // On the angle the crosshair has done its job, and full-strength
             // beams would now be sitting exactly where the player needs to see
@@ -1529,7 +1966,7 @@ public class PracticeReplay
             // reference point if they drift, without costing them the view.
             Recolour(
                 aim.Beams,
-                bucket == 0 ? AimSettled : ColorForBucket(bucket)
+                Faded(bucket == 0 ? AimSettled : ColorForBucket(bucket), visibility)
             );
         }
     }
@@ -1608,6 +2045,20 @@ public class PracticeReplay
     // the recorder learned to keep the standstill hold the release origin,
     // which for a jump throw is a jump height up in the air -- and a marker
     // floating at head height is not somewhere anyone can stand.
+    // Where to PUT a player, as opposed to where to draw a mark.
+    //
+    // Grounded traces a line, and a line finds the floor between things a
+    // player hull cannot fit between -- the rubble at Ancient ruins is the
+    // reported case, where the trace lands in a gap and the pawn arrives
+    // wedged in the stones. Dropping them from just above instead lets the
+    // engine resolve the standing position itself, which it does correctly and
+    // a trace here cannot. Markers keep using the true floor: a reticle
+    // hovering above the ground for this reason would be a different bug.
+    private static Vec3 Standable(Vec3 grounded)
+    {
+        return new Vec3(grounded.x, grounded.y, grounded.z + TeleportClearance);
+    }
+
     private Vec3 Grounded(Vec3 position)
     {
         try
@@ -1674,6 +2125,20 @@ public class PracticeReplay
     private const float StanceRingRadius = 22f;
     private const int StanceRingSegments = 14;
 
+    // Knee height, not the floor. Drawn flat on the ground the reticle vanishes
+    // into anything the floor is not -- water at Ancient T spawn swallowed it
+    // completely, and rubble hides it just as well. Standing on the spot is
+    // judged on XY alone, so lifting it costs nothing and it still reads as
+    // being on the ground from a player's eye line.
+    private const float StanceRingHeight = 26f;
+
+    // Which face of the text plane is the front. Zero put the back of it toward
+    // the reader and every label came out mirrored.
+    private const float LabelYaw = 180f;
+
+    // Enough to clear an uneven floor without being a noticeable drop.
+    private const float TeleportClearance = 4f;
+
     // Legible without being architecture. These labels sit on the spot they
     // name, at arm's length, not across the map.
     private const int LabelFontSize = 34;
@@ -1707,6 +2172,14 @@ public class PracticeReplay
     // forgets the handles. Safe to call when there is nothing to find.
     public int SweepMarkers()
     {
+        _librarySignature = null;
+
+        // The aim trace is memoised per lineup for the life of the map, so a
+        // point that was cached while the trace still stopped on trigger
+        // brushes would outlive the fix for it. A sweep is the one moment the
+        // world is known to be empty of ours, so it is where that is dropped.
+        _aimHits.Clear();
+
         int swept = 0;
 
         foreach (string designer in MarkerClasses)
@@ -1793,7 +2266,7 @@ public class PracticeReplay
         AddMarkerBeam(west, north, color, width);
     }
 
-    private void UtilityModel(string utilityType, Vec3 at)
+    private void UtilityModel(string utilityType, Vec3 at, Color? glow = null)
     {
         if (!DrawModels)
         {
@@ -1874,7 +2347,7 @@ public class PracticeReplay
             // that forced the beam rebuilds. Type 3 is the through-walls
             // outline; team -1 shows it to everyone.
             prop.Glow.GlowType = 3;
-            prop.Glow.GlowColorOverride = ColorFor(utilityType);
+            prop.Glow.GlowColorOverride = glow ?? ColorFor(utilityType);
             prop.Glow.GlowRange = UtilityGlowRange;
             prop.Glow.GlowRangeMin = 0;
             prop.Glow.GlowTeam = -1;
@@ -1899,6 +2372,12 @@ public class PracticeReplay
 
         if (beam == null)
         {
+            return;
+        }
+
+        if (_spawnInto != null)
+        {
+            _spawnInto.Add(beam);
             return;
         }
 
@@ -1931,9 +2410,6 @@ public class PracticeReplay
         return length < 0.0001f ? v : new Vec3(v.x / length, v.y / length, v.z / length);
     }
 
-    // facing: where the text should read from, normally the spot the player is
-    // standing on. Passing null keeps the auto-reorient, which is right for a
-    // label lying on the floor and wrong for one on a wall.
     private CPointWorldText? Label(Vec3 at, string text, Color color)
     {
         if (!Sane(at))
@@ -1963,12 +2439,16 @@ public class PracticeReplay
             label.JustifyVertical = PointWorldTextJustifyVertical_t
                 .POINT_WORLD_TEXT_JUSTIFY_VERTICAL_CENTER;
 
-            // Every label spins to face whoever is reading it, and is spawned
-            // with no angle of its own. Aiming one by hand is what produced
-            // text lying on its side and mirrored: point_worldtext draws in its
-            // own flat plane, so any hand-set angle is a plane you end up
-            // reading edge-on or from behind. There is no orientation worth
-            // computing here -- the engine already knows where the reader is.
+            // Every label spins to face whoever is reading it, so nothing here
+            // computes where the reader is. What it does have to get right is
+            // which FACE the text is written on: reorient turns the entity to
+            // the viewer, and with a zero yaw that presented the back of the
+            // plane, so every name came out mirrored. The flip is a property of
+            // the entity, not of anybody looking at it.
+            //
+            // Reading it from directly underneath still foreshortens it to the
+            // point of illegibility -- reorient only turns around the up axis,
+            // so there is no yaw that fixes a label being read from below.
             label.ReorientMode = PointWorldTextReorientMode_t
                 .POINT_WORLD_TEXT_REORIENT_AROUND_UP;
 
@@ -1978,7 +2458,7 @@ public class PracticeReplay
             label.FontSize = LabelFontSize;
             label.WorldUnitsPerPx = LabelUnitsPerPx;
 
-            var angle = new QAngle(0, 0, 0);
+            var angle = new QAngle(0, LabelYaw, 0);
 
             label.Teleport(
                 new Vector(at.x, at.y, at.z),
@@ -1987,6 +2467,15 @@ public class PracticeReplay
             );
 
             label.DispatchSpawn(Tagged());
+
+            // Again after the spawn: DispatchSpawn re-derives the transform
+            // from the entity's own keyvalues, so an angle set only before it
+            // is the angle that gets thrown away.
+            label.Teleport(
+                new Vector(at.x, at.y, at.z),
+                angle,
+                new Vector(0, 0, 0)
+            );
 
             if (_drawingInto != null)
             {
@@ -2012,6 +2501,8 @@ public class PracticeReplay
     // makes despawning it actively harmful. Drop the references instead.
     public void ForgetMarkers()
     {
+        _librarySignature = null;
+        _spawnBeams.Clear();
         _aimHits.Clear();
         _markerBeams.Clear();
         _markerTexts.Clear();
@@ -2055,6 +2546,8 @@ public class PracticeReplay
 
     public void ClearMarkers()
     {
+        _librarySignature = null;
+
         foreach (ulong steamId in _selections.Keys.ToList())
         {
             ClearSelection(steamId);
@@ -2143,6 +2636,135 @@ public class PracticeReplay
             _logger.LogError(error, "unable to draw a lineup preview");
             return null;
         }
+    }
+
+    // How long a coloured trail stays up. Matches the engine trail it replaces
+    // (sv_grenade_trajectory_prac_trailtime), so turning ours on does not also
+    // silently change how long you have to walk over and look at it.
+    private const float TrailSeconds = 10f;
+
+    private const float TrailWidth = 0.5f;
+
+    // The recorder samples at 32Hz, which down a three second arc is ~96 beams
+    // for ONE grenade -- five players rehearsing would be thousands of live
+    // entities, which is a server falling over because the feature works. A
+    // grenade flies a smooth parabola, so a beam every so many units is the
+    // same curve for a fraction of the cost, and a stuck or rolling grenade
+    // stops adding to it entirely.
+    private const float TrailStepUnits = 26f;
+
+    // Backstop for a grenade that travels a very long way.
+    private const int MaxTrailBeams = 48;
+
+    private readonly Dictionary<ulong, (Ghost ghost, Vec3 last)> _trails = new();
+
+    /// <summary>
+    /// One sampled point of a live grenade, in the colour that throw was
+    /// promised.
+    ///
+    /// The engine's practice trail is coloured by the thrower's TEAM, so on a
+    /// practice server -- where everybody is usually on the same side -- every
+    /// arc looks the same and the colour says nothing about which throw it
+    /// belonged to. Which colour a given throw gets is the caller's business:
+    /// its step in a running execute, otherwise the next one off the player's
+    /// own cycle.
+    /// </summary>
+    public void TrailPoint(ulong steamId, PracticeStepColors.StepColor step, Vec3 at)
+    {
+        if (!DrawMarkers || !DrawTrail)
+        {
+            return;
+        }
+
+        if (!_trails.TryGetValue(steamId, out (Ghost ghost, Vec3 last) trail))
+        {
+            var started = new Ghost
+            {
+                OwnerSteamId = steamId,
+                Kind = GhostKind.Trail,
+                ExpiresAt = DateTime.UtcNow.AddSeconds(TrailSeconds),
+                Beams = new List<CEnvBeam>(),
+            };
+
+            _ghosts.Add(started);
+            _trails[steamId] = (started, at);
+
+            return;
+        }
+
+        Vec3 moved = new Vec3(at.x - trail.last.x, at.y - trail.last.y, at.z - trail.last.z);
+
+        if (moved.Length() < TrailStepUnits)
+        {
+            // Not far enough to be worth an entity, and the arc is unchanged.
+            // The cursor deliberately stays put so the next beam spans the
+            // whole gap rather than starting from a point never drawn.
+            return;
+        }
+
+        if (trail.ghost.Beams.Count < MaxTrailBeams)
+        {
+            CEnvBeam? beam = CreateBeam(trail.last, at, Rgb(step), TrailWidth);
+
+            if (beam != null)
+            {
+                trail.ghost.Beams.Add(beam);
+            }
+        }
+
+        // Pushed out as the grenade flies, so the whole arc fades together from
+        // the moment it lands rather than the start of it disappearing while
+        // the smoke is still in the air.
+        trail.ghost.ExpiresAt = DateTime.UtcNow.AddSeconds(TrailSeconds);
+
+        _trails[steamId] = (trail.ghost, at);
+    }
+
+    /// <summary>
+    /// Tint the smoke cloud itself, so the thing a player is actually looking
+    /// at is the thing that carries the colour.
+    ///
+    /// A trail says where a grenade went; the bloom is what it DID, and after
+    /// four of them are up the trails have faded and all that is left on the
+    /// map is four identical grey clouds. Set at creation, before the grenade
+    /// has landed: the colour is read when the smoke starts blooming, so there
+    /// is nothing to change afterwards.
+    /// </summary>
+    public bool TintSmoke(CEntityInstance entity, PracticeStepColors.StepColor step)
+    {
+        if (!DrawMarkers)
+        {
+            return false;
+        }
+
+        try
+        {
+            CSmokeGrenadeProjectile smoke = entity.As<CSmokeGrenadeProjectile>();
+
+            if (!smoke.IsValid)
+            {
+                return false;
+            }
+
+            smoke.SmokeColor = new Vector(step.R, step.G, step.B);
+
+            // The schema write alone does not reach clients -- the same rule
+            // the beams follow, where a bare colour assignment never networks.
+            smoke.SmokeColorUpdated();
+
+            return true;
+        }
+        catch (Exception error)
+        {
+            _logger.LogWarning(error, "unable to tint a smoke");
+            return false;
+        }
+    }
+
+    /// <summary>The grenade is gone; the next one starts a new arc.</summary>
+    public void TrailEnded(ulong steamId)
+    {
+        _trails.Remove(steamId);
     }
 
     private void Kill(Ghost ghost)

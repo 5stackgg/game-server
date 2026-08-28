@@ -14,16 +14,69 @@ on:
         required: false
         type: boolean
         default: false
+      force:
+        description: "Publish even if the addon is unchanged (e.g. a title or description edit)."
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
-      - uses: actions/setup-dotnet@v4
+
+      # A Workshop update notifies every subscriber and bumps the item, so an
+      # identical republish is not free. Hashing the sources rather than the vpk
+      # sidesteps the question of whether the compiler is deterministic.
+      - name: Has the addon actually changed?
+        id: changed
+        run: |
+          set -euo pipefail
+          HUD=apps/utility-sw/hud
+
+          PREVIEW=""
+          for c in "$HUD/preview.jpg" "$HUD/preview.png"; do
+            [ -f "$c" ] && { PREVIEW="$c"; break; }
+          done
+
+          KEY=$( { git rev-parse "HEAD:$HUD/panorama"
+                   git hash-object "$HUD/build.sh" "$HUD/addoninfo.txt" ${PREVIEW:+"$PREVIEW"}
+                   echo "${PANORAMA_COMPILER_REF:-main}"
+                 } | sha256sum | cut -c1-16 )
+          TAG="hud-published/$KEY"
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+          PUBLISHED=no
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            PUBLISHED=yes
+            echo "::notice::$KEY is already on the Workshop."
+          fi
+          echo "published=$PUBLISHED" >> "$GITHUB_OUTPUT"
+
+          # A dry run still builds -- verifying an unchanged addon is the point of
+          # one. Only the upload is suppressed by an unchanged key.
+          if [ "$PUBLISHED" = no ] || [ "${{ inputs.force }}" = true ] || [ "${{ inputs.dry_run }}" = true ]; then
+            echo "proceed=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "proceed=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Nothing to publish
+        if: steps.changed.outputs.proceed != 'yes'
+        run: |
+          echo "::notice::The addon is byte-identical to the last publish, so nothing"
+          echo "::notice::was sent to Steam. Re-run with force: true to publish anyway"
+          echo "::notice::(a title or description edit needs that)."
+
+      - uses: actions/setup-dotnet@v6
+        if: steps.changed.outputs.proceed == 'yes'
         with:
           dotnet-version: "10.0.x"
 
@@ -31,17 +84,20 @@ jobs:
       # variable, and a broken layout fails silently in game rather than at
       # build time. Never publish an addon whose contract has not been checked.
       - name: Verify the slot contract
+        if: steps.changed.outputs.proceed == 'yes'
         run: dotnet test apps/utility-sw/test/FiveStack.Tests.csproj --nologo
 
       # PanoramaCompiler needs only the .NET SDK and build.sh fetches vpkeditcli
       # into .tools on Linux, so nothing here needs Windows or a CS2 install.
       - name: Build the addon
+        if: steps.changed.outputs.proceed == 'yes'
         run: ./apps/utility-sw/hud/build.sh
 
       # An addon that mounts and resolves nothing is the failure mode with no
       # symptom: the layouts must sit under panorama/, and there must be five of
       # them plus the stylesheet.
       - name: Verify what was packed
+        if: steps.changed.outputs.proceed == 'yes'
         run: |
           set -euo pipefail
           VPK=apps/utility-sw/hud/build/upload/5stack_utility_hud.vpk
@@ -63,12 +119,36 @@ jobs:
 
           echo "addon: $(du -h "$VPK" | cut -f1)"
 
+          # Checked here rather than in the publish step so that a dry run fails
+          # on a missing preview instead of reporting green and leaving the real
+          # run to discover it after a 90s SteamCMD install.
+          HUD=apps/utility-sw/hud
+          PREVIEW=""
+          for candidate in "$HUD/preview.jpg" "$HUD/preview.png"; do
+            [ -f "$candidate" ] && { PREVIEW="$candidate"; break; }
+          done
+          [ -n "$PREVIEW" ] || {
+            echo "::error::no preview image at $HUD/preview.{jpg,png}"
+            exit 1
+          }
+
+          # Steam reports an oversized preview as a generic upload failure that
+          # never mentions the image.
+          BYTES=$(wc -c < "$PREVIEW")
+          if [ "$BYTES" -gt 1000000 ]; then
+            echo "::error::preview is $((BYTES / 1024)) KB; Steam's limit is 1 MB"
+            exit 1
+          fi
+
+          echo "preview: $PREVIEW ($((BYTES / 1024)) KB)"
+          echo "PREVIEW=$GITHUB_WORKSPACE/$PREVIEW" >> "$GITHUB_ENV"
+
       - name: Stop here
-        if: inputs.dry_run
+        if: inputs.dry_run && steps.changed.outputs.proceed == 'yes'
         run: echo "::notice::dry run - built and verified, nothing published"
 
       - name: Install SteamCMD
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && steps.changed.outputs.proceed == 'yes' }}
         run: |
           sudo add-apt-repository -y multiverse
           sudo dpkg --add-architecture i386
@@ -78,17 +158,64 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq steamcmd
 
       - name: Publish
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && steps.changed.outputs.proceed == 'yes' }}
         env:
           STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
           STEAM_PASSWORD: ${{ secrets.STEAM_PASSWORD }}
+          STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
           ITEM_ID: ${{ inputs.item_id }}
         run: |
           set -euo pipefail
           HUD="$GITHUB_WORKSPACE/apps/utility-sw/hud"
 
-          if [ -z "${STEAM_USERNAME:-}" ] || [ -z "${STEAM_PASSWORD:-}" ]; then
-            echo "::error::STEAM_USERNAME and STEAM_PASSWORD secrets are required"
+          if [ -z "${STEAM_USERNAME:-}" ]; then
+            echo "::error::the STEAM_USERNAME secret is required"
+            exit 1
+          fi
+
+          # Secrets pasted through a UI or piped in pick up trailing newlines,
+          # and Steam reports the resulting credential as Invalid Password.
+          RAW_U=${#STEAM_USERNAME}; RAW_P=${#STEAM_PASSWORD}
+          STEAM_USERNAME=$(printf '%s' "$STEAM_USERNAME" | tr -d '[:space:]')
+          STEAM_PASSWORD=$(printf '%s' "${STEAM_PASSWORD:-}" | tr -d '\r\n')
+
+          # Whether trimming changed anything, never by how much: this log is
+          # public and a password length is not something to publish.
+          [ "${#STEAM_USERNAME}" -ne "$RAW_U" ] && echo "::warning::STEAM_USERNAME had surrounding whitespace; trimmed"
+          [ "${#STEAM_PASSWORD}" -ne "$RAW_P" ] && echo "::warning::STEAM_PASSWORD had a trailing newline; trimmed"
+          true
+
+          # An array, not a string: a password containing a space or a glob
+          # character must reach steamcmd as one argument, and an unquoted
+          # expansion would split or expand it into something else entirely.
+          if [ -n "${STEAM_CONFIG_VDF:-}" ]; then
+            # macOS base64 wraps at 76 columns; strip whitespace before decoding
+            # so a secret created there is not rejected on a Linux runner.
+            printf '%s' "$STEAM_CONFIG_VDF" | tr -d '[:space:]' | base64 -d > /tmp/config.vdf
+            if ! grep -q ConnectCache /tmp/config.vdf; then
+              echo "::error::the restored config.vdf has no ConnectCache - it holds no session."
+              echo "::error::Re-run the local steamcmd login and re-copy the file."
+              exit 1
+            fi
+
+            # Which root SteamCMD reads depends on how it was installed: the
+            # Ubuntu package uses ~/.local/share/Steam. Write all three rather
+            # than guess -- guessing wrong reports "Cached credentials not
+            # found" and silently falls through to a password prompt.
+            for root in "$HOME/.local/share/Steam" "$HOME/Steam" "$HOME/.steam/steam"; do
+              mkdir -p "$root/config"
+              cp /tmp/config.vdf "$root/config/config.vdf"
+              chmod 600 "$root/config/config.vdf"
+            done
+            rm -f /tmp/config.vdf
+            echo "auth: restored session into $HOME/.local/share/Steam and 2 fallbacks"
+
+            LOGIN=("$STEAM_USERNAME")
+          elif [ -n "$STEAM_PASSWORD" ]; then
+            LOGIN=("$STEAM_USERNAME" "$STEAM_PASSWORD")
+            echo "auth: password login"
+          else
+            echo "::error::set STEAM_CONFIG_VDF (guarded account) or STEAM_PASSWORD"
             exit 1
           fi
 
@@ -103,18 +230,13 @@ jobs:
               ;;
           esac
 
-          [ -f "$HUD/preview.png" ] || {
-            echo "::error::apps/utility-sw/hud/preview.png is missing; Steam requires a preview image"
-            exit 1
-          }
-
           cat > "$HUD/build/workshop.vdf" <<EOF
           "workshopitem"
           {
             "appid"           "730"
             "publishedfileid" "${ITEM_ID:-0}"
             "contentfolder"   "$HUD/build/upload"
-            "previewfile"     "$HUD/preview.png"
+            "previewfile"     "$PREVIEW"
             "visibility"      "0"
             "title"           "5Stack Utility HUD"
             "description"     "On-screen grenade lineup guidance for 5stack practice servers. Panorama resources for the utility-practice plugin; no effect without it."
@@ -122,23 +244,47 @@ jobs:
           }
           EOF
 
-          # The account has no Steam Guard, so a plain login is enough. Both
-          # values are secrets, so Actions masks them in the log; the password
-          # never appears in a command echo because -x is not set.
-          steamcmd +login "$STEAM_USERNAME" "$STEAM_PASSWORD" \
+          # pipefail would abort on steamcmd's own exit code before the log can be
+          # read, and the log is where the actionable reason lives.
+          set +e
+          steamcmd +login "${LOGIN[@]}" \
                    +workshop_build_item "$HUD/build/workshop.vdf" \
                    +quit | tee /tmp/steam.log
+          STATUS=${PIPESTATUS[0]}
+          set -e
 
-          # A guard prompt would otherwise look like a generic failure.
-          if grep -qiE "Steam Guard|two-factor|Rate Limit" /tmp/steam.log; then
-            echo "::error::Steam asked for a guard code or rate limited this login."
-            echo "::error::See apps/utility-sw/hud/README.md for the config.vdf route."
+          # Steam says "Invalid Password" when it cannot resolve the account at
+          # all, so a wrong username looks exactly like a wrong password.
+          if grep -qi "Cached credentials not found" /tmp/steam.log; then
+            echo "::error::SteamCMD did not read the restored session."
+            echo "::error::Its Steam root is not one of the three written above."
             exit 1
           fi
 
-          # SteamCMD exits 0 on some upload failures, so the log is the evidence.
+          if grep -qi "Invalid Password" /tmp/steam.log; then
+            echo "::error::Steam rejected the credentials. In order of likelihood:"
+            echo "::error::  the password is wrong or was rotated;"
+            echo "::error::  the secret carries a trailing newline or stray whitespace;"
+            echo "::error::  STEAM_USERNAME is the account name, not the profile display name."
+            echo "::error::Steam also says Invalid Password when it cannot resolve the account."
+            exit 1
+          fi
+
+          if grep -qiE "Steam Guard|two-factor|Account Login Denied" /tmp/steam.log; then
+            echo "::error::this account needs a guard code, which no workflow can answer."
+            echo "::error::Set STEAM_CONFIG_VDF - see apps/utility-sw/hud/README.md."
+            exit 1
+          fi
+
+          if grep -qi "Rate Limit" /tmp/steam.log; then
+            echo "::error::Steam rate limited this login; wait a few minutes."
+            exit 1
+          fi
+
+          # SteamCMD exits 0 on some upload failures, so the log is the evidence
+          # and the exit code is only corroborating.
           if ! grep -q "Success" /tmp/steam.log; then
-            echo "::error::steamcmd did not report success"
+            echo "::error::steamcmd did not report success (exit $STATUS)"
             exit 1
           fi
 
@@ -146,3 +292,15 @@ jobs:
           if [ -n "$ID" ]; then
             echo "::notice::published workshop item $ID - pass it as item_id next time to update in place"
           fi
+
+      # Only after Steam confirms. Tagging on anything less would make the next
+      # run skip an upload that never landed.
+      - name: Record what was published
+        if: ${{ !inputs.dry_run && steps.changed.outputs.proceed == 'yes' }}
+        env:
+          TAG: ${{ steps.changed.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git tag -f "$TAG"
+          git push -f origin "refs/tags/$TAG"
+          echo "::notice::tagged $TAG - a later run with these sources will skip"

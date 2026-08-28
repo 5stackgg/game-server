@@ -1,0 +1,33 @@
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/custom_game/nadehud.vcss_c" />
+	</styles>
+	<Panel class="nh-screen" hittest="false">
+		<Panel id="NadeRun" class="nh-run" hittest="false">
+			<Panel class="nh-run-head" hittest="false">
+				<Panel class="nh-run-titles" hittest="false">
+					<Label id="kicker" class="nh-kicker" text="{s:kicker}" />
+					<Label id="title" class="nh-run-title" text="{s:title}" />
+				</Panel>
+				<Label id="clock" class="nh-run-clock" text="{s:clock}" />
+			</Panel>
+
+			<Panel class="nh-rule" hittest="false" />
+
+			<Panel id="steps" class="nh-run-steps" hittest="false">
+				<Panel id="s1" class="nh-step" hittest="false"><Label id="st1" class="nh-step-time" text="{s:st1}" /><Panel id="sw1" class="nh-step-swatch" hittest="false" /><Label id="sn1" class="nh-step-name" text="{s:sn1}" /><Label id="sy1" class="nh-step-who" text="{s:sy1}" /></Panel>
+				<Panel id="s2" class="nh-step" hittest="false"><Label id="st2" class="nh-step-time" text="{s:st2}" /><Panel id="sw2" class="nh-step-swatch" hittest="false" /><Label id="sn2" class="nh-step-name" text="{s:sn2}" /><Label id="sy2" class="nh-step-who" text="{s:sy2}" /></Panel>
+				<Panel id="s3" class="nh-step" hittest="false"><Label id="st3" class="nh-step-time" text="{s:st3}" /><Panel id="sw3" class="nh-step-swatch" hittest="false" /><Label id="sn3" class="nh-step-name" text="{s:sn3}" /><Label id="sy3" class="nh-step-who" text="{s:sy3}" /></Panel>
+				<Panel id="s4" class="nh-step" hittest="false"><Label id="st4" class="nh-step-time" text="{s:st4}" /><Panel id="sw4" class="nh-step-swatch" hittest="false" /><Label id="sn4" class="nh-step-name" text="{s:sn4}" /><Label id="sy4" class="nh-step-who" text="{s:sy4}" /></Panel>
+				<Panel id="s5" class="nh-step" hittest="false"><Label id="st5" class="nh-step-time" text="{s:st5}" /><Panel id="sw5" class="nh-step-swatch" hittest="false" /><Label id="sn5" class="nh-step-name" text="{s:sn5}" /><Label id="sy5" class="nh-step-who" text="{s:sy5}" /></Panel>
+				<Panel id="s6" class="nh-step" hittest="false"><Label id="st6" class="nh-step-time" text="{s:st6}" /><Panel id="sw6" class="nh-step-swatch" hittest="false" /><Label id="sn6" class="nh-step-name" text="{s:sn6}" /><Label id="sy6" class="nh-step-who" text="{s:sy6}" /></Panel>
+				<Panel id="s7" class="nh-step" hittest="false"><Label id="st7" class="nh-step-time" text="{s:st7}" /><Panel id="sw7" class="nh-step-swatch" hittest="false" /><Label id="sn7" class="nh-step-name" text="{s:sn7}" /><Label id="sy7" class="nh-step-who" text="{s:sy7}" /></Panel>
+				<Panel id="s8" class="nh-step" hittest="false"><Label id="st8" class="nh-step-time" text="{s:st8}" /><Panel id="sw8" class="nh-step-swatch" hittest="false" /><Label id="sn8" class="nh-step-name" text="{s:sn8}" /><Label id="sy8" class="nh-step-who" text="{s:sy8}" /></Panel>
+				<Panel id="s9" class="nh-step" hittest="false"><Label id="st9" class="nh-step-time" text="{s:st9}" /><Panel id="sw9" class="nh-step-swatch" hittest="false" /><Label id="sn9" class="nh-step-name" text="{s:sn9}" /><Label id="sy9" class="nh-step-who" text="{s:sy9}" /></Panel>
+				<Panel id="s10" class="nh-step" hittest="false"><Label id="st10" class="nh-step-time" text="{s:st10}" /><Panel id="sw10" class="nh-step-swatch" hittest="false" /><Label id="sn10" class="nh-step-name" text="{s:sn10}" /><Label id="sy10" class="nh-step-who" text="{s:sy10}" /></Panel>
+				<Panel id="s11" class="nh-step" hittest="false"><Label id="st11" class="nh-step-time" text="{s:st11}" /><Panel id="sw11" class="nh-step-swatch" hittest="false" /><Label id="sn11" class="nh-step-name" text="{s:sn11}" /><Label id="sy11" class="nh-step-who" text="{s:sy11}" /></Panel>
+				<Panel id="s12" class="nh-step" hittest="false"><Label id="st12" class="nh-step-time" text="{s:st12}" /><Panel id="sw12" class="nh-step-swatch" hittest="false" /><Label id="sn12" class="nh-step-name" text="{s:sn12}" /><Label id="sy12" class="nh-step-who" text="{s:sy12}" /></Panel>
+			</Panel>
+		</Panel>
+	</Panel>
+</root>

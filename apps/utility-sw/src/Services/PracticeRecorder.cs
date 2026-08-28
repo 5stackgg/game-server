@@ -82,6 +82,16 @@ public class PracticeRecorder
         public List<TrajectoryPoint> Raw = new List<TrajectoryPoint>();
     }
 
+    /// <summary>
+    /// Raised for each sampled point of a live grenade, so the flight can be
+    /// drawn as it happens. Wired by the plugin rather than injected, like the
+    /// rest of the drawing hooks.
+    /// </summary>
+    public event Action<ulong, Vec3>? Sampled;
+
+    /// <summary>Raised once a grenade is finished with, arc and all.</summary>
+    public event Action<ulong>? Ended;
+
     private readonly Dictionary<ulong, ArmedState> _armed = new();
     private readonly Dictionary<ulong, StationaryAnchor> _stationary = new();
     private readonly Dictionary<ulong, int> _settling = new();
@@ -503,14 +513,22 @@ public class PracticeRecorder
 
             if (bounced || _tick % SampleEveryTicks == 0)
             {
+                var at = new Vec3(origin.Value.X, origin.Value.Y, origin.Value.Z);
+
                 tracked.Raw.Add(
                     new TrajectoryPoint
                     {
-                        p = new Vec3(origin.Value.X, origin.Value.Y, origin.Value.Z),
+                        p = at,
                         t = _tick,
                         bounce = bounced,
                     }
                 );
+
+                // The same samples the recording is built from, handed to
+                // whoever wants to draw the flight. Nothing extra is tracked
+                // for it: a second sampler would be a second answer to where
+                // the grenade was.
+                Sampled?.Invoke(tracked.ThrowerSteamId, at);
             }
         }
 
@@ -559,6 +577,11 @@ public class PracticeRecorder
         {
             return;
         }
+
+        // Said before anything else, so the next grenade from this player
+        // starts its own arc rather than being joined to the last one by a
+        // beam straight across the map.
+        Ended?.Invoke(tracked.ThrowerSteamId);
 
         Vec3 landing =
             detonation

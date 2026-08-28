@@ -1,3 +1,4 @@
+using System.Linq;
 using FiveStack.Entities.Practice;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
@@ -18,6 +19,32 @@ public class PracticeState
 
     public Dictionary<string, ThrowSnapshot> Positions { get; } =
         new Dictionary<string, ThrowSnapshot>(StringComparer.OrdinalIgnoreCase);
+
+    // Which colour the NEXT grenade off this player will wear. Cycled on every
+    // throw so ten smokes in a row are ten different arcs -- without it a
+    // player rehearsing the same lineup cannot tell their last throw from the
+    // one before it, which is the only thing they are trying to compare.
+    // On by default -- telling your throws apart is the point of the feature.
+    // Off is for somebody judging a smoke's coverage, where a cyan cloud is a
+    // distraction and vanilla is the thing being practised against.
+    public bool Colors { get; set; } = true;
+
+    // On by default. Off is how you find out whether you actually know a
+    // lineup: the crosshair is the answer written on the wall, and a throw made
+    // with it up says nothing about whether you could make it without.
+    public bool Crosshair { get; set; } = true;
+
+    public int ThrowColorIndex { get; set; }
+
+    // The colour of the throw currently in the air, captured when the pin left
+    // rather than read back later: the cursor above has already moved on to the
+    // next one by the time a projectile exists, so re-deriving it would paint
+    // the arc and the smoke in a colour the player was never promised.
+    public int InFlightColorIndex { get; set; }
+
+    // Where .spawn next/prev has walked to. Separate from Index because that
+    // one walks lineups and a spawn is not one.
+    public int SpawnIndex { get; set; } = -1;
 
     public bool Noclip { get; set; }
     public bool God { get; set; }
@@ -342,42 +369,92 @@ public class PracticeSystem
         }
     }
 
+    /// <summary>
+    /// The spawns this game mode actually uses.
+    ///
+    /// Every info_player_* on the map is NOT the answer: Mirage ships dozens
+    /// of them for deathmatch and casual, and showing all of them buries the
+    /// ten a competitive round can start from. The game has already made this
+    /// choice -- game rules keep the selected list separately from the master
+    /// list of every spawn entity -- so this reads the selection rather than
+    /// re-deriving it from priorities and guessing at the mode.
+    ///
+    /// Empty rather than everything when the rules are not populated yet. There
+    /// used to be a fall back to enumerating info_player_* here, which on Mirage
+    /// is the same unreadable pile of dozens this method exists to avoid, shown
+    /// with nothing to say it had fallen back. A caller that gets none can say
+    /// so and be asked again a moment later.
+    /// </summary>
     public List<ThrowSnapshot> SpawnPoints()
     {
         var spawns = new List<ThrowSnapshot>();
 
-        foreach (
-            string designer in new[] { "info_player_terrorist", "info_player_counterterrorist" }
-        )
+        CCSGameRules? rules = _core
+            .EntitySystem.GetAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+            .FirstOrDefault()
+            ?.GameRules;
+
+        if (rules != null)
         {
-            foreach (
-                CBaseEntity spawn in _core.EntitySystem.GetAllEntitiesByDesignerName<CBaseEntity>(
-                    designer
-                )
-            )
-            {
-                Vector? origin = spawn.AbsOrigin;
-
-                if (origin == null)
-                {
-                    continue;
-                }
-
-                spawns.Add(
-                    new ThrowSnapshot
-                    {
-                        feet_position = new Vec3(
-                            origin.Value.X,
-                            origin.Value.Y,
-                            origin.Value.Z
-                        ),
-                        yaw = spawn.AbsRotation?.Y ?? 0f,
-                    }
-                );
-            }
+            Collect(spawns, rules.TerroristSpawnPoints);
+            Collect(spawns, rules.CTSpawnPoints);
         }
 
         return spawns;
+    }
+
+    // A competitive side starts five players. The team lists hold every spawn
+    // the map registers for that side -- Mirage has thirty-three across both --
+    // because casual and deathmatch draw from the same pool.
+    private const int CompetitiveTeamSize = 5;
+
+    // The game picks by priority: enabled spawns sorted ascending, and it takes
+    // as many as the mode seats. Anything past that is filler for larger modes,
+    // which is what buried the five that a competitive round can actually use.
+    private static void Collect(
+        List<ThrowSnapshot> spawns,
+        CUtlVector<CHandle<SpawnPoint>> team
+    )
+    {
+        var usable = new List<SpawnPoint>();
+
+        for (int index = 0; index < team.Count; index++)
+        {
+            SpawnPoint? point = team[index].Value;
+
+            if (point != null && point.IsValid && point.Enabled)
+            {
+                usable.Add(point);
+            }
+        }
+
+        foreach (SpawnPoint point in usable.OrderBy(p => p.Priority).Take(CompetitiveTeamSize))
+        {
+            Add(spawns, point);
+        }
+    }
+
+    private static void Add(List<ThrowSnapshot> spawns, CBaseEntity? spawn)
+    {
+        if (spawn == null || !spawn.IsValid)
+        {
+            return;
+        }
+
+        Vector? origin = spawn.AbsOrigin;
+
+        if (origin == null)
+        {
+            return;
+        }
+
+        spawns.Add(
+            new ThrowSnapshot
+            {
+                feet_position = new Vec3(origin.Value.X, origin.Value.Y, origin.Value.Z),
+                yaw = spawn.AbsRotation?.Y ?? 0f,
+            }
+        );
     }
 
     // Somebody who has never run a practice command still gets caught by a

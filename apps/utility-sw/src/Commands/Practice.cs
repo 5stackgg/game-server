@@ -29,26 +29,106 @@ public partial class UtilityPracticePlugin
 
         string name = string.Join(" ", context.Args).Trim().Trim('"');
 
+        // No name: ask for one instead of refusing. The next thing they type is
+        // captured and never reaches chat, which is as close to a text field as
+        // a Panorama panel gets.
         if (string.IsNullOrEmpty(name))
         {
-            Reply(context, $" {ChatColors.Red}usage: .save <name>");
+            LineupRecord? unnamed = _recorder.LastThrow(player.SteamID);
+
+            if (unnamed == null)
+            {
+                Reply(context, $" {ChatColors.Red}throw something first");
+
+                return;
+            }
+
+            // The map already knows what this throw is called. Naming it is only
+            // a question worth asking when the level has no callouts to answer
+            // it with.
+            string automatic = LineupNaming.Auto(
+                unnamed.utility_type,
+                unnamed.release.feet_position,
+                unnamed.detonation_position,
+                _callouts.Callouts
+            );
+
+            if (automatic.Length > 0)
+            {
+                SaveThrow(player.SteamID, automatic);
+                Reply(
+                    context,
+                    $" {ChatColors.Grey}named by the map -- "
+                        + $"{ChatColors.Default}.edit{ChatColors.Grey} to change it"
+                );
+
+                return;
+            }
+
+            int playerId = player.PlayerID;
+            ulong steamId = player.SteamID;
+
+            _prompt.Ask(playerId, steamId, answer => SaveThrow(steamId, answer));
+
+            Reply(
+                context,
+                $" {ChatColors.Green}type a name for that throw "
+                    + $"{ChatColors.Grey}(anything you say next, or {ChatColors.Default}.save <name>{ChatColors.Grey})"
+            );
+
             return;
         }
 
-        LineupRecord? thrown = _recorder.LastThrow(player.SteamID);
+        SaveThrow(player.SteamID, name);
+    }
+
+    // Shared by ".save <name>" and by the prompt, which answers later and has no
+    // command context to reply into.
+    // What a bare .drill should rep. Focused already answers "which lineup is
+    // this player indicating", including the two-on-one-spot case where aim
+    // decides, so this is that answer plus the loaded fallback.
+    private LineupRecord? DrillTarget(IPlayer player)
+    {
+        CCSPlayerPawn? pawn = player.PlayerPawn;
+
+        if (pawn != null && pawn.IsValid)
+        {
+            (LineupRecord? focused, _, _) = Focused(player, pawn);
+
+            if (focused != null)
+            {
+                return focused;
+            }
+        }
+
+        return _system.StateFor(player.SteamID).Loaded;
+    }
+
+    private void SaveThrow(ulong steamId, string name)
+    {
+        IPlayer? player = _system.Find(steamId);
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        LineupRecord? thrown = _recorder.LastThrow(steamId);
 
         if (thrown == null)
         {
-            Reply(context, $" {ChatColors.Red}throw something first");
+            Tell(steamId, $" {ChatColors.Red}throw something first");
+
             return;
         }
 
-        if (_library.For(player.SteamID).Count >= _config.MaxSaved)
+        if (_library.For(steamId).Count >= _config.MaxSaved)
         {
-            Reply(
-                context,
+            Tell(
+                steamId,
                 $" {ChatColors.Red}you already have {_config.MaxSaved} saved lineups on this map"
             );
+
             return;
         }
 
@@ -58,14 +138,11 @@ public partial class UtilityPracticePlugin
         thrown.visibility = nameof(eLineupVisibility.Private);
         thrown.plugin_version = ModuleVersion;
 
-        _library.Add(player.SteamID, thrown);
+        _library.Add(steamId, thrown);
 
         // A lineup you just saved is the lineup you are working on, so it
-        // becomes the loaded one and gets its markers straight away. Without
-        // this the library holds it but nothing on screen does, and it takes a
-        // .next or .prev -- which only walk results from an EARLIER query -- to
-        // make it appear.
-        PracticeState saved = _system.StateFor(player.SteamID);
+        // becomes the loaded one and gets its markers straight away.
+        PracticeState saved = _system.StateFor(steamId);
 
         saved.Loaded = thrown;
         saved.Results.Clear();
@@ -77,9 +154,7 @@ public partial class UtilityPracticePlugin
         // yank the view for no reason.
         _replay.ShowMarkersFor(player, thrown);
 
-        Reply(context, $" {ChatColors.Green}saved {ChatColors.Default}{name}");
-
-        ulong steamId = player.SteamID;
+        Tell(steamId, $" {ChatColors.Green}saved {ChatColors.Default}{name}");
 
         _ = Task.Run(async () =>
         {
@@ -109,51 +184,93 @@ public partial class UtilityPracticePlugin
         }
 
         string query = string.Join(" ", context.Args).Trim().Trim('"');
-        PracticeState state = _system.StateFor(player.SteamID);
+        ulong steamId = player.SteamID;
+
+        // An empty library and a query that matches nothing are different
+        // problems, and saying "no lineup matches" for both sends people
+        // hunting for a typo when the library never loaded at all.
+        if (_library.For(steamId).Count == 0)
+        {
+            Reply(
+                context,
+                $" {ChatColors.Red}no lineups loaded for this map. "
+                    + $"{ChatColors.Default}fetching..."
+            );
+
+            _library.Refresh(
+                steamId,
+                count =>
+                {
+                    if (count < 0)
+                    {
+                        Tell(
+                            steamId,
+                            $" {ChatColors.Red}could not reach the library (check the server logs)"
+                        );
+                        return;
+                    }
+
+                    if (count == 0)
+                    {
+                        Tell(
+                            steamId,
+                            $" {ChatColors.Red}you have no lineups saved for this map"
+                        );
+                        return;
+                    }
+
+                    // Finish the command that started the fetch. It used to
+                    // stop here and say "try .load again", which meant the
+                    // first .load of a session never loaded anything and
+                    // .next answered "load something first" in between.
+                    Tell(steamId, $" {ChatColors.Green}loaded {count} lineup(s)");
+                    LoadFrom(steamId, query);
+                }
+            );
+
+            return;
+        }
+
+        LoadFrom(steamId, query);
+    }
+
+    // Resolve a query against the library and stand the player on the answer.
+    // Split out because .load may have to fetch the library first and then has
+    // to finish itself once that lands.
+    private void LoadFrom(ulong steamId, string query)
+    {
+        IPlayer? player = _system.Find(steamId);
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        PracticeState state = _system.StateFor(steamId);
         Vec3? near = PracticeSystem.Where(player)?.feet_position;
 
-        LineupRecord? lineup = _library.Resolve(player.SteamID, query, near);
+        LineupRecord? lineup = _library.Resolve(steamId, query, near);
 
         if (lineup == null)
         {
-            // An empty library and a query that matches nothing are different
-            // problems, and saying "no lineup matches" for both sends people
-            // hunting for a typo when the library never loaded at all.
-            if (_library.For(player.SteamID).Count == 0)
-            {
-                Reply(
-                    context,
-                    $" {ChatColors.Red}no lineups loaded for this map. "
-                        + $"{ChatColors.Default}fetching..."
-                );
-
-                ulong steamId = player.SteamID;
-
-                _library.Refresh(
-                    steamId,
-                    count =>
-                        Tell(
-                            steamId,
-                            count < 0
-                                ? $" {ChatColors.Red}could not reach the library (check the server logs)"
-                                : count == 0
-                                    ? $" {ChatColors.Red}you have no lineups saved for this map"
-                                    : $" {ChatColors.Green}loaded {count} lineup(s) -- try .load again"
-                        )
-                );
-
-                return;
-            }
-
-            Reply(context, $" {ChatColors.Red}no lineup matches \"{query}\"");
+            Tell(steamId, $" {ChatColors.Red}no lineup matches \"{query}\"");
             return;
         }
 
         state.Results.Clear();
         state.Results.AddRange(
-            PracticeLineupUtility.Filter(_library.For(player.SteamID), query, near)
+            PracticeLineupUtility.Filter(_library.For(steamId), query, near)
         );
         state.Index = state.Results.FindIndex(match => match.client_id == lineup.client_id);
+
+        // Resolve and Filter are different matchers, so what was loaded is not
+        // always inside the walk that was just built. An index of -1 left here
+        // sends the next .prev two short of the end instead of onto it.
+        if (state.Index < 0)
+        {
+            state.Results.Insert(0, lineup);
+            state.Index = 0;
+        }
 
         Apply(player, lineup);
     }
@@ -237,6 +354,48 @@ public partial class UtilityPracticePlugin
         }
 
         Back(context, back);
+    }
+
+    // A read-only dump of what the level says its areas are called. This is the
+    // check to run before trusting a map's callouts: compare it against the
+    // published extract for the same map, or just against the names you know.
+    [Command("callouts", registerRaw: false, permission: "")]
+    public void OnCallouts(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        List<MapCalloutPayload> callouts = _callouts.Collect();
+
+        if (callouts.Count == 0)
+        {
+            Reply(context, $" {ChatColors.Red}this map defines no callouts");
+
+            return;
+        }
+
+        Reply(
+            context,
+            $" {ChatColors.Green}{callouts.Count} {ChatColors.Default}callouts on {_library.Map}"
+        );
+
+        foreach (MapCalloutPayload callout in callouts.OrderBy(entry => entry.name))
+        {
+            MapCalloutBox box = callout.boxes[0];
+
+            Reply(
+                context,
+                $" {ChatColors.Default}{callout.name} {ChatColors.Grey}"
+                    + $"x {box.min[0]:F0}..{box.max[0]:F0} "
+                    + $"y {box.min[1]:F0}..{box.max[1]:F0} "
+                    + $"z {box.min[2]:F0}..{box.max[2]:F0}"
+                    + (callout.boxes.Count > 1 ? $" (+{callout.boxes.Count - 1})" : string.Empty)
+            );
+        }
     }
 
     [Command("clear", registerRaw: false, permission: "")]
@@ -414,6 +573,32 @@ public partial class UtilityPracticePlugin
             return;
         }
 
+        // A bare .drill takes the lineup the player is indicating: the one they
+        // are standing on, or -- when a spot holds more than one -- the one they
+        // are pointing at. Failing that, the last one they loaded, which after a
+        // drill is the last one they drilled. Only somebody standing nowhere in
+        // particular gets their whole book.
+        if (string.IsNullOrWhiteSpace(string.Join(" ", context.Args)))
+        {
+            LineupRecord? here = DrillTarget(player);
+
+            if (here != null)
+            {
+                if (
+                    _drill.StartWith(player.SteamID, new[] { here }, endless: true)
+                    == eDrillStart.Started
+                )
+                {
+                    Reply(
+                        context,
+                        $" {ChatColors.Green}drilling {ChatColors.Default}{here.name}"
+                    );
+
+                    return;
+                }
+            }
+        }
+
         switch (_drill.Start(player.SteamID, request.Order, request.Count))
         {
             case eDrillStart.AlreadyRunning:
@@ -563,16 +748,180 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        if (!int.TryParse(string.Join(" ", context.Args).Trim(), out int index))
+        string arg = string.Join(" ", context.Args).Trim();
+        PracticeState state = _system.StateFor(player.SteamID);
+        int index;
+
+        // Walking them is how you find the one you want; a spawn has no name
+        // and nobody knows which number they are looking for.
+        if (
+            arg.Equals("next", StringComparison.OrdinalIgnoreCase)
+            || arg.Equals("prev", StringComparison.OrdinalIgnoreCase)
+        )
         {
-            Reply(context, $" {ChatColors.Red}usage: .spawn <1-{spawns.Count}>");
+            int direction = arg.Equals("next", StringComparison.OrdinalIgnoreCase) ? 1 : -1;
+
+            state.SpawnIndex =
+                state.SpawnIndex < 0
+                    ? (direction > 0 ? 0 : spawns.Count - 1)
+                    : ((state.SpawnIndex + direction) % spawns.Count + spawns.Count)
+                        % spawns.Count;
+
+            index = state.SpawnIndex + 1;
+        }
+        else if (int.TryParse(arg, out int typed))
+        {
+            index = Math.Clamp(typed, 1, spawns.Count);
+            state.SpawnIndex = index - 1;
+        }
+        else
+        {
+            Reply(context, $" {ChatColors.Red}usage: .spawn <1-{spawns.Count} | next | prev>");
             return;
         }
 
-        index = Math.Clamp(index, 1, spawns.Count);
-
         PracticeSystem.TeleportTo(player, spawns[index - 1]);
         Reply(context, $" {ChatColors.Green}spawn {index}/{spawns.Count}");
+    }
+
+    // Off by default: a ring per spawn is a few hundred entities nobody asked
+    // for, and the map is quieter without them.
+    [Command("spawns", registerRaw: false, permission: "")]
+    public void OnSpawns(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        if (_replay.SpawnsShown)
+        {
+            _replay.ClearSpawns();
+            Reply(context, $" {ChatColors.Grey}spawn rings off");
+            return;
+        }
+
+        List<ThrowSnapshot> spawns = _system.SpawnPoints();
+
+        // Distinguished from "this map has none": the round has not started, so
+        // the game has not chosen its spawns yet.
+        if (spawns.Count == 0)
+        {
+            Reply(
+                context,
+                $" {ChatColors.Red}no competitive spawns yet "
+                    + $"{ChatColors.Grey}-- the round has not set them; try again in a moment"
+            );
+
+            return;
+        }
+
+        _replay.ShowSpawns(spawns);
+
+        Reply(
+            context,
+            $" {ChatColors.Green}showing {spawns.Count} spawn(s) "
+                + $"{ChatColors.Grey}-- .spawn next walks them"
+        );
+    }
+
+    // Something to throw at. A smoke tells you where it landed on its own; a
+    // flash and an HE only tell you anything if there is somebody standing
+    // there to be flashed or hurt.
+    [Command("bot", registerRaw: false, permission: "")]
+    public void OnBot(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        if (!AddBot(player))
+        {
+            Reply(context, $" {ChatColors.Red}unable to place a bot here");
+            return;
+        }
+
+        Reply(
+            context,
+            $" {ChatColors.Green}bot placed {ChatColors.Grey}-- "
+                + $"{ChatColors.Default}.nobots{ChatColors.Grey} clears them"
+        );
+    }
+
+    [Command("nobots", registerRaw: false, permission: "")]
+    public void OnNoBots(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        int had = ClearBots();
+
+        Reply(
+            context,
+            had == 0
+                ? $" {ChatColors.Grey}no bots to clear"
+                : $" {ChatColors.Green}cleared {had} bot(s)"
+        );
+    }
+
+    // The crosshair is the answer written on the wall. A throw made with it up
+    // says nothing about whether you could make it without, which is the only
+    // question "have I got this yet" is asking.
+    [Command("crosshair", registerRaw: false, permission: "")]
+    public void OnCrosshair(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        PracticeState state = _system.StateFor(player.SteamID);
+
+        state.Crosshair = !state.Crosshair;
+
+        // Redrawn rather than left until the player steps off the spot and back
+        // on: a toggle that appears to do nothing gets pressed again.
+        _replay.ClearMarkers();
+
+        Reply(
+            context,
+            state.Crosshair
+                ? $" {ChatColors.Green}aim crosshair on"
+                : $" {ChatColors.Grey}aim crosshair off {ChatColors.Default}-- throw it blind"
+        );
+    }
+
+    [Command("colors", registerRaw: false, permission: "")]
+    public void OnColors(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        PracticeState state = _system.StateFor(player.SteamID);
+
+        state.Colors = !state.Colors;
+
+        Reply(
+            context,
+            state.Colors
+                ? $" {ChatColors.Green}throw colours on {ChatColors.Grey}-- each grenade gets its own"
+                : $" {ChatColors.Grey}throw colours off -- smokes come out vanilla"
+        );
     }
 
     [Command("noclip", registerRaw: false, permission: "")]
@@ -825,6 +1174,15 @@ public partial class UtilityPracticePlugin
             return;
         }
 
+        // Same reasoning as RemoteLoad: the panel pushing a drill is itself the
+        // signal that the cached library may be behind, so re-read before
+        // resolving rather than only when an id turns up missing.
+        if (!refreshed)
+        {
+            _library.Refresh(steamId, _ => RemoteDrill(steamId, ids, refreshed: true));
+            return;
+        }
+
         IReadOnlyList<LineupRecord> library = _library.For(steamId);
 
         List<LineupRecord> queue = ids.Select(id =>
@@ -832,15 +1190,6 @@ public partial class UtilityPracticePlugin
             )
             .OfType<LineupRecord>()
             .ToList();
-
-        // Same reasoning as RemoteLoad: the panel sends lineups this server has
-        // never cached, so one refresh before giving up. All or nothing --
-        // drilling half a set silently would be worse than saying no.
-        if (queue.Count < ids.Length && !refreshed)
-        {
-            _library.Refresh(steamId, _ => RemoteDrill(steamId, ids, refreshed: true));
-            return;
-        }
 
         if (queue.Count == 0)
         {
@@ -874,6 +1223,18 @@ public partial class UtilityPracticePlugin
             return;
         }
 
+        // Always re-read before resolving. The panel pushing a load IS the
+        // signal that something changed: a draft tested from the website keeps
+        // the same client id on purpose so it replaces itself rather than
+        // piling up copies, so answering this out of the cache stood the player
+        // on the FIRST version of the throw every time afterwards -- move the
+        // points, press test again, land in the same place.
+        if (!refreshed)
+        {
+            _library.Refresh(steamId, _ => RemoteLoad(steamId, lineupId, refreshed: true));
+            return;
+        }
+
         LineupRecord? lineup = PracticeLineupUtility.ById(_library.For(steamId), lineupId);
 
         if (lineup != null)
@@ -882,19 +1243,9 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        // Not in the cached library. That is the normal case rather than an
-        // error: the panel sends lineups this player has never loaded here --
-        // a scratch throw off the meta browser, or one saved on another
-        // device -- and the cache is only refreshed on demand. One refresh,
-        // then give up; retrying past that would hammer the panel every time
-        // somebody sends a lineup that really is gone.
-        if (refreshed)
-        {
-            Tell(steamId, $" {ChatColors.Red}that lineup is not available on this server");
-            return;
-        }
-
-        _library.Refresh(steamId, _ => RemoteLoad(steamId, lineupId, refreshed: true));
+        // One refresh, then give up: retrying past that would hammer the panel
+        // every time somebody sends a lineup that really is gone.
+        Tell(steamId, $" {ChatColors.Red}that lineup is not available on this server");
     }
 
     // Server-only, like the two above. Everything on this server goes through a
@@ -1025,20 +1376,28 @@ public partial class UtilityPracticePlugin
     private static readonly string[] HelpLines = new[]
     {
         $" {ChatColors.Green}utility practice",
-        $" {ChatColors.Default}.save <name> {ChatColors.Grey}saves your last throw",
+        $" {ChatColors.Default}.save [name] {ChatColors.Grey}saves your last throw (asks if you skip the name)",
         $" {ChatColors.Default}.load <query> {ChatColors.Grey}teleports you to a lineup",
         $" {ChatColors.Default}.next / .prev {ChatColors.Grey}walk the last search",
         $" {ChatColors.Default}.jump {ChatColors.Grey}stand where the loaded lineup lands",
         $" {ChatColors.Default}.rethrow {ChatColors.Grey}back to the loaded lineup",
         $" {ChatColors.Default}.last / .back <n> {ChatColors.Grey}back to a throw you made",
+        $" {ChatColors.Default}.map / .here {ChatColors.Grey}pick off the minimap, or only what you can throw from here",
+        $" {ChatColors.Default}.edit {ChatColors.Grey}rename the loaded lineup or change who sees it",
+        $" {ChatColors.Default}.menu {ChatColors.Grey}pick a lineup from the on-screen list",
         $" {ChatColors.Default}.list / .reload / .delete {ChatColors.Grey}manage your library",
         $" {ChatColors.Default}.pos save <name> / .pos <name> {ChatColors.Grey}saved positions",
         $" {ChatColors.Default}.spawn <n> {ChatColors.Grey}teleports to a spawn point",
         $" {ChatColors.Default}.bloom {ChatColors.Grey}outlines where the loaded smoke lands",
         $" {ChatColors.Default}.solve [name] {ChatColors.Grey}finds a throw onto the spot you are looking at",
-        $" {ChatColors.Default}.drill [count] [worst] / .skip {ChatColors.Grey}drills your book and scores it",
+        $" {ChatColors.Default}.drill {ChatColors.Grey}reps the lineup you are on; {ChatColors.Default}.drill [count] [worst] {ChatColors.Grey}drills your book",
         $" {ChatColors.Default}.drill / .cancel {ChatColors.Grey}stops a drill you are in",
         $" {ChatColors.Default}.playbook / .run / .playbook stop {ChatColors.Grey}the loaded execute",
+        $" {ChatColors.Default}.hud {ChatColors.Grey}swaps the panel for centre text",
+        $" {ChatColors.Default}.bot / .nobots {ChatColors.Grey}something to flash and blow up",
+        $" {ChatColors.Default}.colors {ChatColors.Grey}a colour per throw, smoke and trail",
+        $" {ChatColors.Default}.crosshair {ChatColors.Grey}hide the aim marker and throw it blind",
+        $" {ChatColors.Default}.spawns / .spawn next {ChatColors.Grey}where rounds start from",
         $" {ChatColors.Default}.noclip / .god / .timer / .solo / .clear",
     };
 
@@ -1150,9 +1509,16 @@ public partial class UtilityPracticePlugin
             return;
         }
 
+        // Index is -1 until something has been loaded, which is "before the
+        // start" rather than a position. Feeding that through the modulo made
+        // the first .prev land on the second-to-last lineup and skip the last
+        // one entirely, so the walk was missing an entry until you had gone all
+        // the way round.
         state.Index =
-            ((state.Index + direction) % state.Results.Count + state.Results.Count)
-            % state.Results.Count;
+            state.Index < 0
+                ? (direction > 0 ? 0 : state.Results.Count - 1)
+                : ((state.Index + direction) % state.Results.Count + state.Results.Count)
+                    % state.Results.Count;
 
         Apply(player, state.Results[state.Index]);
     }
