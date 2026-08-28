@@ -52,7 +52,9 @@ spec:
             - name: TV_PORT
               value: '27021'
             - name: EXTRA_GAME_PARAMS
-              value: '-maxplayers 13 +map de_overpass'
+              # -insecure turns VAC off. Dev only: clients have to launch with
+              # -insecure too, and a VAC-secured client will refuse to connect.
+              value: '-maxplayers 13 +map de_overpass -insecure'
             - name: ALLOW_BOTS
               value: 'true'
             - name: STEAM_RELAY

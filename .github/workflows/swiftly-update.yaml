@@ -30,13 +30,27 @@ jobs:
           echo "LATEST=$LATEST" >> "$GITHUB_ENV"
           echo "current=$CURRENT latest=$LATEST"
 
+      # A job that goes green every week while doing nothing is how the csproj
+      # pins drifted behind the runtime in the first place, so a deliberate skip
+      # says so in the run log.
+      - name: Report a deliberate beta pin
+        if: contains(env.CURRENT, '-beta')
+        run: |
+          echo "::notice::pinned to $CURRENT (prerelease); leaving it alone. Latest stable is $LATEST."
+
       # The runtime zip and EVERY plugin's nuget must move together or the ABI
-      # breaks. The csproj list is discovered rather than written down: this
-      # step used to name apps/swiftly alone, so when the practice plugin
-      # arrived with its own pin it silently stayed a version behind the
-      # runtime it gets loaded into.
+      # breaks. The csproj list is discovered rather than written down: this step
+      # used to name apps/swiftly alone, so when the practice plugin arrived with
+      # its own pin it silently stayed a version behind the runtime it gets
+      # loaded into.
+      #
+      # A deliberate beta pin outranks "latest stable": this only ever picks a
+      # non-prerelease, so left alone it walks a beta back to the release before
+      # it and takes whatever the beta was pinned for with it.
       - name: Update Dockerfile and csprojs
-        if: env.LATEST != '' && env.LATEST != 'null' && env.CURRENT != env.LATEST
+        if: >-
+          env.LATEST != '' && env.LATEST != 'null' && env.CURRENT != env.LATEST
+          && !contains(env.CURRENT, '-beta')
         run: |
           set -euo pipefail
           NUGET_VERSION="${LATEST#v}"

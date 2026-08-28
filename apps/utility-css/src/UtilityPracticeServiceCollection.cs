@@ -19,5 +19,6 @@ public class UtilityPracticeServiceCollection : IPluginServiceCollection<Utility
         serviceCollection.AddSingleton<PracticeScore>();
         serviceCollection.AddSingleton<PracticePlaybook>();
         serviceCollection.AddSingleton<PracticeDrill>();
+        serviceCollection.AddSingleton<MapCalloutsReporter>();
     }
 }

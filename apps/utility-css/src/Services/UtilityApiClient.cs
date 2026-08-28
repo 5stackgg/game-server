@@ -138,6 +138,23 @@ public class UtilityApiClient
         await SendText(HttpMethod.Post, "/utility/occupancy", body);
     }
 
+    // Fire and forget on map load. A failure is not retried: the next map load
+    // reports again, and a map nobody ever loads again does not need callouts.
+    public async Task Callouts(string map, IReadOnlyCollection<MapCalloutPayload> callouts)
+    {
+        if (string.IsNullOrEmpty(map) || callouts.Count == 0)
+        {
+            return;
+        }
+
+        string body = JsonSerializer.Serialize(
+            new MapCalloutsPayload { map = map, callouts = callouts.ToList() },
+            PracticeJson.Options
+        );
+
+        await SendText(HttpMethod.Post, "/utility/callouts", body);
+    }
+
     public async Task<PracticeSessionData?> Session(string? map = null)
     {
         string route = string.IsNullOrEmpty(map)

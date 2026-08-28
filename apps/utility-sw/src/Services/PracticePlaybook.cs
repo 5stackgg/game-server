@@ -77,6 +77,11 @@ public class PracticePlaybook
 
     public bool Running => _phase != Phase.Idle;
 
+    // Negative while the countdown is still going, so a caller can render "3"
+    // and "t+1.2" off the same number.
+    public TimeSpan Elapsed =>
+        _phase == Phase.Idle ? TimeSpan.Zero : DateTime.UtcNow - _startsAt;
+
     public UtilityPlaybook? Loaded => _session.Current?.playbook;
 
     public IReadOnlyList<UtilityPlaybookStep> Steps => PlaybookUtility.Ordered(Loaded);

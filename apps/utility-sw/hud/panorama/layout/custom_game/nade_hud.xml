@@ -1,0 +1,47 @@
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/custom_game/nadehud.vcss_c" />
+	</styles>
+	<Panel class="nh-screen" hittest="false">
+		<Panel id="NadeHud" class="nh-root" hittest="false">
+			<Panel class="nh-head" hittest="false">
+			<Panel class="nh-kickerrow" hittest="false">
+				<Label id="kicker" class="nh-kicker" text="{s:kicker}" />
+				<Label id="pos" class="nh-pos" text="{s:pos}" />
+			</Panel>
+				<Label id="title" class="nh-title" text="{s:title}" />
+			</Panel>
+
+			<Panel class="nh-rule" hittest="false" />
+
+			<Panel class="nh-pills" hittest="false">
+				<Label id="spot" class="nh-pill" text="ON SPOT" />
+				<Label id="aim" class="nh-pill" text="ON ANGLE" />
+				<Label id="throwcolor" class="nh-pill nh-colour" text="{s:throwcolor}" />
+			</Panel>
+
+			<Label id="tech" class="nh-tech" text="{s:tech}" />
+
+			<Label id="steer" class="nh-steer" text="{s:steer}" />
+
+			<Panel class="nh-readout" hittest="false">
+				<Label class="nh-readout-key" text="OFF BY" />
+				<Label id="aimerr" class="nh-readout-val" text="{s:aimerr}" />
+			</Panel>
+
+			<Panel id="noterow" class="nh-note" hittest="false">
+				<Label class="nh-note-text" text="WRITE-UP ON THE WEB" />
+			</Panel>
+
+			<Panel id="drillrow" class="nh-drill" hittest="false">
+				<Panel class="nh-readout" hittest="false">
+					<Label class="nh-readout-key" text="DRILL" />
+					<Label id="drill" class="nh-readout-val nh-readout-cyan" text="{s:drill}" />
+				</Panel>
+				<Panel class="nh-meter" hittest="false">
+					<Panel id="drillbar" class="nh-meter-fill" hittest="false" />
+				</Panel>
+			</Panel>
+		</Panel>
+	</Panel>
+</root>

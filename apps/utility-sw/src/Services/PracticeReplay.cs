@@ -323,6 +323,12 @@ public class PracticeReplay
     // on this service, so asking for it back would close the cycle.
     public Func<ulong, bool> IsSolo { get; set; } = _ => true;
 
+    // Whether loading a lineup should still announce it on centre text. False
+    // for a player whose HUD panel is up: the panel already names the lineup and
+    // holds it there, so the centre line is the same fact said twice, once in a
+    // channel that fades.
+    public Func<ulong, bool> AnnouncesLoad { get; set; } = _ => true;
+
     // The whole library for a player, so loading one lineup still draws the
     // rest. Supplied by the plugin, which owns the library.
     /// <summary>
@@ -566,7 +572,10 @@ public class PracticeReplay
             ShowSelection(player, here, standing);
         });
 
-        player.SendCenter(Describe(lineup));
+        if (AnnouncesLoad(player.SteamID))
+        {
+            player.SendCenter(Describe(lineup));
+        }
     }
 
     // A map has a few dozen of these and each ring is a handful of entities, so

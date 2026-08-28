@@ -22,6 +22,10 @@ public class UtilityConfig
     public bool GhostProjectile { get; private set; } = false;
     public int MaxSaved { get; private set; } = 200;
 
+    // Costs nothing where the Panorama addon is not mounted: the layout
+    // fails to spawn and every panel falls back to centre text.
+    public bool HudEnabled { get; private set; } = true;
+
     private readonly ILogger<UtilityConfig> _logger;
 
     public UtilityConfig(ILogger<UtilityConfig> logger)
@@ -41,6 +45,7 @@ public class UtilityConfig
         public bool? np_ghost_preview { get; set; }
         public bool? np_ghost_projectile { get; set; }
         public int? np_max_saved { get; set; }
+        public bool? np_hud_enabled { get; set; }
     }
 
     // Candidates rather than one path: the registry writes
@@ -89,6 +94,7 @@ public class UtilityConfig
                     GhostPreview = parsed.np_ghost_preview ?? GhostPreview;
                     GhostProjectile = parsed.np_ghost_projectile ?? GhostProjectile;
                     MaxSaved = parsed.np_max_saved ?? MaxSaved;
+                    HudEnabled = parsed.np_hud_enabled ?? HudEnabled;
                 }
             }
             catch (Exception error)

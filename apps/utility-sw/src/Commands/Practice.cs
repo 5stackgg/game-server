@@ -29,26 +29,86 @@ public partial class UtilityPracticePlugin
 
         string name = string.Join(" ", context.Args).Trim().Trim('"');
 
+        // No name: ask for one instead of refusing. The next thing they type is
+        // captured and never reaches chat, which is as close to a text field as
+        // a Panorama panel gets.
         if (string.IsNullOrEmpty(name))
         {
-            Reply(context, $" {ChatColors.Red}usage: .save <name>");
+            LineupRecord? unnamed = _recorder.LastThrow(player.SteamID);
+
+            if (unnamed == null)
+            {
+                Reply(context, $" {ChatColors.Red}throw something first");
+
+                return;
+            }
+
+            // The map already knows what this throw is called. Naming it is only
+            // a question worth asking when the level has no callouts to answer
+            // it with.
+            string automatic = LineupNaming.Auto(
+                unnamed.utility_type,
+                unnamed.release.feet_position,
+                unnamed.detonation_position,
+                _callouts.Callouts
+            );
+
+            if (automatic.Length > 0)
+            {
+                SaveThrow(player.SteamID, automatic);
+                Reply(
+                    context,
+                    $" {ChatColors.Grey}named by the map -- "
+                        + $"{ChatColors.Default}.edit{ChatColors.Grey} to change it"
+                );
+
+                return;
+            }
+
+            int playerId = player.PlayerID;
+            ulong steamId = player.SteamID;
+
+            _prompt.Ask(playerId, answer => SaveThrow(steamId, answer));
+
+            Reply(
+                context,
+                $" {ChatColors.Green}type a name for that throw "
+                    + $"{ChatColors.Grey}(anything you say next, or {ChatColors.Default}.save <name>{ChatColors.Grey})"
+            );
+
             return;
         }
 
-        LineupRecord? thrown = _recorder.LastThrow(player.SteamID);
+        SaveThrow(player.SteamID, name);
+    }
+
+    // Shared by ".save <name>" and by the prompt, which answers later and has no
+    // command context to reply into.
+    private void SaveThrow(ulong steamId, string name)
+    {
+        IPlayer? player = _system.Find(steamId);
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        LineupRecord? thrown = _recorder.LastThrow(steamId);
 
         if (thrown == null)
         {
-            Reply(context, $" {ChatColors.Red}throw something first");
+            Tell(steamId, $" {ChatColors.Red}throw something first");
+
             return;
         }
 
-        if (_library.For(player.SteamID).Count >= _config.MaxSaved)
+        if (_library.For(steamId).Count >= _config.MaxSaved)
         {
-            Reply(
-                context,
+            Tell(
+                steamId,
                 $" {ChatColors.Red}you already have {_config.MaxSaved} saved lineups on this map"
             );
+
             return;
         }
 
@@ -58,14 +118,11 @@ public partial class UtilityPracticePlugin
         thrown.visibility = nameof(eLineupVisibility.Private);
         thrown.plugin_version = ModuleVersion;
 
-        _library.Add(player.SteamID, thrown);
+        _library.Add(steamId, thrown);
 
         // A lineup you just saved is the lineup you are working on, so it
-        // becomes the loaded one and gets its markers straight away. Without
-        // this the library holds it but nothing on screen does, and it takes a
-        // .next or .prev -- which only walk results from an EARLIER query -- to
-        // make it appear.
-        PracticeState saved = _system.StateFor(player.SteamID);
+        // becomes the loaded one and gets its markers straight away.
+        PracticeState saved = _system.StateFor(steamId);
 
         saved.Loaded = thrown;
         saved.Results.Clear();
@@ -77,9 +134,7 @@ public partial class UtilityPracticePlugin
         // yank the view for no reason.
         _replay.ShowMarkersFor(player, thrown);
 
-        Reply(context, $" {ChatColors.Green}saved {ChatColors.Default}{name}");
-
-        ulong steamId = player.SteamID;
+        Tell(steamId, $" {ChatColors.Green}saved {ChatColors.Default}{name}");
 
         _ = Task.Run(async () =>
         {
@@ -279,6 +334,48 @@ public partial class UtilityPracticePlugin
         }
 
         Back(context, back);
+    }
+
+    // A read-only dump of what the level says its areas are called. This is the
+    // check to run before trusting a map's callouts: compare it against the
+    // published extract for the same map, or just against the names you know.
+    [Command("callouts", registerRaw: false, permission: "")]
+    public void OnCallouts(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        List<MapCalloutPayload> callouts = _callouts.Collect();
+
+        if (callouts.Count == 0)
+        {
+            Reply(context, $" {ChatColors.Red}this map defines no callouts");
+
+            return;
+        }
+
+        Reply(
+            context,
+            $" {ChatColors.Green}{callouts.Count} {ChatColors.Default}callouts on {_library.Map}"
+        );
+
+        foreach (MapCalloutPayload callout in callouts.OrderBy(entry => entry.name))
+        {
+            MapCalloutBox box = callout.boxes[0];
+
+            Reply(
+                context,
+                $" {ChatColors.Default}{callout.name} {ChatColors.Grey}"
+                    + $"x {box.min[0]:F0}..{box.max[0]:F0} "
+                    + $"y {box.min[1]:F0}..{box.max[1]:F0} "
+                    + $"z {box.min[2]:F0}..{box.max[2]:F0}"
+                    + (callout.boxes.Count > 1 ? $" (+{callout.boxes.Count - 1})" : string.Empty)
+            );
+        }
     }
 
     [Command("clear", registerRaw: false, permission: "")]
@@ -1226,13 +1323,15 @@ public partial class UtilityPracticePlugin
     private static readonly string[] HelpLines = new[]
     {
         $" {ChatColors.Green}utility practice",
-        $" {ChatColors.Default}.save <name> {ChatColors.Grey}saves your last throw",
+        $" {ChatColors.Default}.save [name] {ChatColors.Grey}saves your last throw (asks if you skip the name)",
         $" {ChatColors.Default}.load <query> {ChatColors.Grey}teleports you to a lineup",
         $" {ChatColors.Default}.next / .prev {ChatColors.Grey}walk the last search",
         $" {ChatColors.Default}.jump {ChatColors.Grey}stand where the loaded lineup lands",
         $" {ChatColors.Default}.rethrow {ChatColors.Grey}back to the loaded lineup",
         $" {ChatColors.Default}.last / .back <n> {ChatColors.Grey}back to a throw you made",
-        $" {ChatColors.Default}.find <text> / .here {ChatColors.Grey}narrow the list",
+        $" {ChatColors.Default}.map / .here {ChatColors.Grey}pick off the minimap, or only what you can throw from here",
+        $" {ChatColors.Default}.edit {ChatColors.Grey}rename the loaded lineup or change who sees it",
+        $" {ChatColors.Default}.menu {ChatColors.Grey}pick a lineup from the on-screen list",
         $" {ChatColors.Default}.list / .reload / .delete {ChatColors.Grey}manage your library",
         $" {ChatColors.Default}.pos save <name> / .pos <name> {ChatColors.Grey}saved positions",
         $" {ChatColors.Default}.spawn <n> {ChatColors.Grey}teleports to a spawn point",
@@ -1241,6 +1340,7 @@ public partial class UtilityPracticePlugin
         $" {ChatColors.Default}.drill [count] [worst] / .skip {ChatColors.Grey}drills your book and scores it",
         $" {ChatColors.Default}.drill / .cancel {ChatColors.Grey}stops a drill you are in",
         $" {ChatColors.Default}.playbook / .run / .playbook stop {ChatColors.Grey}the loaded execute",
+        $" {ChatColors.Default}.hud {ChatColors.Grey}swaps the panel for centre text",
         $" {ChatColors.Default}.bot / .nobots {ChatColors.Grey}something to flash and blow up",
         $" {ChatColors.Default}.colors {ChatColors.Grey}a colour per throw, smoke and trail",
         $" {ChatColors.Default}.crosshair {ChatColors.Grey}hide the aim marker and throw it blind",

@@ -29,6 +29,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     private readonly PracticeScore _score;
     private readonly PracticePlaybook _playbook;
     private readonly PracticeDrill _drill;
+    private readonly MapCalloutsReporter _callouts;
     private readonly ILogger<UtilityPracticePlugin> _logger;
 
     private Timer? _secondTimer;
@@ -51,6 +52,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         PracticeScore score,
         PracticePlaybook playbook,
         PracticeDrill drill,
+        MapCalloutsReporter callouts,
         ILogger<UtilityPracticePlugin> logger
     )
     {
@@ -64,6 +66,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _score = score;
         _playbook = playbook;
         _drill = drill;
+        _callouts = callouts;
         _logger = logger;
     }
 
@@ -333,6 +336,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         _system.Reset();
         _library.SetMap(mapName);
         _session.Map = mapName;
+        _callouts.Reset();
+        _callouts.Report(mapName);
 
         ApplyPracticeCfg();
 

@@ -24,13 +24,10 @@ public partial class UtilityPracticePlugin
             return;
         }
 
+        // An empty name is allowed: the panel names the throw from the map's
+        // own callouts -- where it lands and where it was thrown from -- which
+        // is a better name than most people type anyway.
         string name = command.ArgString.Trim().Trim('"');
-
-        if (string.IsNullOrEmpty(name))
-        {
-            command.ReplyToCommand($" {ChatColors.Red}usage: .save <name>");
-            return;
-        }
 
         LineupRecord? thrown = _recorder.LastThrow(player.SteamID);
 
@@ -56,7 +53,11 @@ public partial class UtilityPracticePlugin
 
         _library.Add(player.SteamID, thrown);
 
-        command.ReplyToCommand($" {ChatColors.Green}saved {ChatColors.Default}{name}");
+        command.ReplyToCommand(
+            name.Length > 0
+                ? $" {ChatColors.Green}saved {ChatColors.Default}{name}"
+                : $" {ChatColors.Green}saved {ChatColors.Default}(named from the map)"
+        );
 
         ulong steamId = player.SteamID;
 
@@ -72,9 +73,50 @@ public partial class UtilityPracticePlugin
                     return;
                 }
 
-                Tell(steamId, $" {ChatColors.Red}{name} could not reach the panel; it will retry");
+                Tell(
+                    steamId,
+                    $" {ChatColors.Red}that throw could not reach the panel; it will retry"
+                );
             });
         });
+    }
+
+    // A read-only dump of what the level says its areas are called. This is the
+    // check to run before trusting a map's callouts: compare it against the
+    // published extract for the same map, or just against the names you know.
+    [ConsoleCommand("css_callouts", "Lists the callouts this map defines")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    public void OnCallouts(CCSPlayerController? player, CommandInfo command)
+    {
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        List<MapCalloutPayload> callouts = _callouts.Collect();
+
+        if (callouts.Count == 0)
+        {
+            command.ReplyToCommand($" {ChatColors.Red}this map defines no callouts");
+            return;
+        }
+
+        command.ReplyToCommand(
+            $" {ChatColors.Green}{callouts.Count} {ChatColors.Default}callouts on {_library.Map}"
+        );
+
+        foreach (MapCalloutPayload callout in callouts.OrderBy(c => c.name))
+        {
+            MapCalloutBox box = callout.boxes[0];
+
+            command.ReplyToCommand(
+                $" {ChatColors.Default}{callout.name} {ChatColors.Grey}"
+                    + $"x {box.min[0]:F0}..{box.max[0]:F0} "
+                    + $"y {box.min[1]:F0}..{box.max[1]:F0} "
+                    + $"z {box.min[2]:F0}..{box.max[2]:F0}"
+                    + (callout.boxes.Count > 1 ? $" (+{callout.boxes.Count - 1})" : string.Empty)
+            );
+        }
     }
 
     [ConsoleCommand("css_load", "Teleports you to a saved lineup")]

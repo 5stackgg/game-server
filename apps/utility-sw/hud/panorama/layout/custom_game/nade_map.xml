@@ -1,0 +1,70 @@
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/custom_game/nadehud.vcss_c" />
+	</styles>
+	<Panel class="nh-screen" hittest="false">
+		<Panel id="NadeMap" class="nh-map" hittest="true">
+			<Panel class="nh-map-head" hittest="false">
+				<Panel class="nh-map-titles" hittest="false">
+					<Label id="tag" class="nh-kicker" text="{s:tag}" />
+					<Label id="title" class="nh-map-title" text="{s:title}" />
+				</Panel>
+				<Button id="close" class="nh-nav nh-nav-close"><Label class="nh-nav-glyph" text="&#10005;" /></Button>
+			</Panel>
+
+			<Panel id="radar" class="nh-radar" hittest="false">
+				<Button id="m1" class="nh-marker"><Label id="c1" class="nh-marker-count" text="{s:c1}" /><Label id="n1" class="nh-marker-name" text="{s:n1}" /></Button>
+				<Button id="m2" class="nh-marker"><Label id="c2" class="nh-marker-count" text="{s:c2}" /><Label id="n2" class="nh-marker-name" text="{s:n2}" /></Button>
+				<Button id="m3" class="nh-marker"><Label id="c3" class="nh-marker-count" text="{s:c3}" /><Label id="n3" class="nh-marker-name" text="{s:n3}" /></Button>
+				<Button id="m4" class="nh-marker"><Label id="c4" class="nh-marker-count" text="{s:c4}" /><Label id="n4" class="nh-marker-name" text="{s:n4}" /></Button>
+				<Button id="m5" class="nh-marker"><Label id="c5" class="nh-marker-count" text="{s:c5}" /><Label id="n5" class="nh-marker-name" text="{s:n5}" /></Button>
+				<Button id="m6" class="nh-marker"><Label id="c6" class="nh-marker-count" text="{s:c6}" /><Label id="n6" class="nh-marker-name" text="{s:n6}" /></Button>
+				<Button id="m7" class="nh-marker"><Label id="c7" class="nh-marker-count" text="{s:c7}" /><Label id="n7" class="nh-marker-name" text="{s:n7}" /></Button>
+				<Button id="m8" class="nh-marker"><Label id="c8" class="nh-marker-count" text="{s:c8}" /><Label id="n8" class="nh-marker-name" text="{s:n8}" /></Button>
+				<Button id="m9" class="nh-marker"><Label id="c9" class="nh-marker-count" text="{s:c9}" /><Label id="n9" class="nh-marker-name" text="{s:n9}" /></Button>
+				<Button id="m10" class="nh-marker"><Label id="c10" class="nh-marker-count" text="{s:c10}" /><Label id="n10" class="nh-marker-name" text="{s:n10}" /></Button>
+				<Button id="m11" class="nh-marker"><Label id="c11" class="nh-marker-count" text="{s:c11}" /><Label id="n11" class="nh-marker-name" text="{s:n11}" /></Button>
+				<Button id="m12" class="nh-marker"><Label id="c12" class="nh-marker-count" text="{s:c12}" /><Label id="n12" class="nh-marker-name" text="{s:n12}" /></Button>
+				<Button id="m13" class="nh-marker"><Label id="c13" class="nh-marker-count" text="{s:c13}" /><Label id="n13" class="nh-marker-name" text="{s:n13}" /></Button>
+				<Button id="m14" class="nh-marker"><Label id="c14" class="nh-marker-count" text="{s:c14}" /><Label id="n14" class="nh-marker-name" text="{s:n14}" /></Button>
+				<Button id="m15" class="nh-marker"><Label id="c15" class="nh-marker-count" text="{s:c15}" /><Label id="n15" class="nh-marker-name" text="{s:n15}" /></Button>
+				<Button id="m16" class="nh-marker"><Label id="c16" class="nh-marker-count" text="{s:c16}" /><Label id="n16" class="nh-marker-name" text="{s:n16}" /></Button>
+				<Button id="m17" class="nh-marker"><Label id="c17" class="nh-marker-count" text="{s:c17}" /><Label id="n17" class="nh-marker-name" text="{s:n17}" /></Button>
+				<Button id="m18" class="nh-marker"><Label id="c18" class="nh-marker-count" text="{s:c18}" /><Label id="n18" class="nh-marker-name" text="{s:n18}" /></Button>
+				<Button id="m19" class="nh-marker"><Label id="c19" class="nh-marker-count" text="{s:c19}" /><Label id="n19" class="nh-marker-name" text="{s:n19}" /></Button>
+				<Button id="m20" class="nh-marker"><Label id="c20" class="nh-marker-count" text="{s:c20}" /><Label id="n20" class="nh-marker-name" text="{s:n20}" /></Button>
+				<Button id="m21" class="nh-marker"><Label id="c21" class="nh-marker-count" text="{s:c21}" /><Label id="n21" class="nh-marker-name" text="{s:n21}" /></Button>
+				<Button id="m22" class="nh-marker"><Label id="c22" class="nh-marker-count" text="{s:c22}" /><Label id="n22" class="nh-marker-name" text="{s:n22}" /></Button>
+				<Button id="m23" class="nh-marker"><Label id="c23" class="nh-marker-count" text="{s:c23}" /><Label id="n23" class="nh-marker-name" text="{s:n23}" /></Button>
+				<Button id="m24" class="nh-marker"><Label id="c24" class="nh-marker-count" text="{s:c24}" /><Label id="n24" class="nh-marker-name" text="{s:n24}" /></Button>
+				<Button id="m25" class="nh-marker"><Label id="c25" class="nh-marker-count" text="{s:c25}" /><Label id="n25" class="nh-marker-name" text="{s:n25}" /></Button>
+				<Button id="m26" class="nh-marker"><Label id="c26" class="nh-marker-count" text="{s:c26}" /><Label id="n26" class="nh-marker-name" text="{s:n26}" /></Button>
+				<Button id="m27" class="nh-marker"><Label id="c27" class="nh-marker-count" text="{s:c27}" /><Label id="n27" class="nh-marker-name" text="{s:n27}" /></Button>
+				<Button id="m28" class="nh-marker"><Label id="c28" class="nh-marker-count" text="{s:c28}" /><Label id="n28" class="nh-marker-name" text="{s:n28}" /></Button>
+				<Button id="m29" class="nh-marker"><Label id="c29" class="nh-marker-count" text="{s:c29}" /><Label id="n29" class="nh-marker-name" text="{s:n29}" /></Button>
+				<Button id="m30" class="nh-marker"><Label id="c30" class="nh-marker-count" text="{s:c30}" /><Label id="n30" class="nh-marker-name" text="{s:n30}" /></Button>
+				<Button id="m31" class="nh-marker"><Label id="c31" class="nh-marker-count" text="{s:c31}" /><Label id="n31" class="nh-marker-name" text="{s:n31}" /></Button>
+				<Button id="m32" class="nh-marker"><Label id="c32" class="nh-marker-count" text="{s:c32}" /><Label id="n32" class="nh-marker-name" text="{s:n32}" /></Button>
+				<Button id="m33" class="nh-marker"><Label id="c33" class="nh-marker-count" text="{s:c33}" /><Label id="n33" class="nh-marker-name" text="{s:n33}" /></Button>
+				<Button id="m34" class="nh-marker"><Label id="c34" class="nh-marker-count" text="{s:c34}" /><Label id="n34" class="nh-marker-name" text="{s:n34}" /></Button>
+				<Button id="m35" class="nh-marker"><Label id="c35" class="nh-marker-count" text="{s:c35}" /><Label id="n35" class="nh-marker-name" text="{s:n35}" /></Button>
+				<Button id="m36" class="nh-marker"><Label id="c36" class="nh-marker-count" text="{s:c36}" /><Label id="n36" class="nh-marker-name" text="{s:n36}" /></Button>
+				<Button id="m37" class="nh-marker"><Label id="c37" class="nh-marker-count" text="{s:c37}" /><Label id="n37" class="nh-marker-name" text="{s:n37}" /></Button>
+				<Button id="m38" class="nh-marker"><Label id="c38" class="nh-marker-count" text="{s:c38}" /><Label id="n38" class="nh-marker-name" text="{s:n38}" /></Button>
+				<Button id="m39" class="nh-marker"><Label id="c39" class="nh-marker-count" text="{s:c39}" /><Label id="n39" class="nh-marker-name" text="{s:n39}" /></Button>
+				<Button id="m40" class="nh-marker"><Label id="c40" class="nh-marker-count" text="{s:c40}" /><Label id="n40" class="nh-marker-name" text="{s:n40}" /></Button>
+			</Panel>
+
+			<Panel id="detail" class="nh-map-detail" hittest="true">
+				<Label id="dname" class="nh-detail-name" text="{s:dname}" />
+				<Label id="dmeta" class="nh-detail-meta" text="{s:dmeta}" />
+				<Panel class="nh-detail-actions" hittest="true">
+					<Button id="load" class="nh-detail-btn nh-detail-go"><Label id="dload" class="nh-detail-btn-label" text="{s:dload}" /></Button>
+					<Button id="list" class="nh-detail-btn"><Label id="dlist" class="nh-detail-btn-label" text="{s:dlist}" /></Button>
+				</Panel>
+			</Panel>
+
+			<Label id="focus" class="nh-map-focus" text="{s:focus}" />
+		</Panel>
+	</Panel>
+</root>

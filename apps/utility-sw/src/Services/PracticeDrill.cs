@@ -254,6 +254,7 @@ public class PracticeDrill
 
     // The same run, sized for a HUD slot rather than a chat line: a position and
     // the fraction of the queue behind it.
+    public (string Label, int Tenths)? HudProgress(ulong steamId)
     {
         if (!_runs.TryGetValue(steamId, out PracticeDrillRun? run) || run.Finished)
         {
@@ -263,6 +264,7 @@ public class PracticeDrill
         int tenths =
             run.Length <= 0
                 ? 0
+                : (int)Math.Round((run.Position - 1) / (double)run.Length * (HudSlots.MeterSteps - 1));
 
         return ($"{run.Position} / {run.Length}", tenths);
     }

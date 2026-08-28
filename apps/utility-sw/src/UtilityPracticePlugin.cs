@@ -40,6 +40,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     private PracticeRelay _relay = null!;
     private PracticePlaybook _playbook = null!;
     private PracticeDrill _drill = null!;
+    private MapCalloutsReporter _callouts = null!;
     private PracticeSolver _solver = null!;
 
     private CancellationTokenSource? _secondTimer;
@@ -57,6 +58,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     private EventDelegates.OnClientDisconnected? _disconnectHandler;
     private EventDelegates.OnPrecacheResource? _precacheHandler;
     private EventDelegates.OnClientSteamAuthorize? _authorizeHandler;
+    private EventDelegates.OnCustomHudClicked? _hudClickHandler;
 
     public UtilityPracticePlugin(ISwiftlyCore core)
         : base(core) { }
@@ -81,6 +83,9 @@ public partial class UtilityPracticePlugin : BasePlugin
             .AddSingleton<PracticePlaybook>()
             .AddSingleton<PracticeDrill>()
             .AddSingleton<PracticeSolver>()
+            .AddSingleton<HudKit>()
+            .AddSingleton<HudPrompt>()
+            .AddSingleton<MapCalloutsReporter>();
 
         _serviceProvider = services.BuildServiceProvider();
         _logger = _serviceProvider.GetRequiredService<ILogger<UtilityPracticePlugin>>();
@@ -95,8 +100,11 @@ public partial class UtilityPracticePlugin : BasePlugin
         _relay = _serviceProvider.GetRequiredService<PracticeRelay>();
         _playbook = _serviceProvider.GetRequiredService<PracticePlaybook>();
         _drill = _serviceProvider.GetRequiredService<PracticeDrill>();
+        _callouts = _serviceProvider.GetRequiredService<MapCalloutsReporter>();
         _solver = _serviceProvider.GetRequiredService<PracticeSolver>();
         _hud = ResolveHud();
+        _prompt = _serviceProvider.GetRequiredService<HudPrompt>();
+        _prompt.Start();
 
         // addons/swiftlys2/configs is two levels up from
         // addons/swiftlys2/plugins/UtilityPractice.
@@ -109,6 +117,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _config.Load(Path.Join(pluginDirectory, "../../configs"), pluginDirectory);
 
         _replay.IsSolo = _system.IsSolo;
+        _replay.AnnouncesLoad = steamId => !UseHud(steamId);
         _replay.All = steamId => _library.For(steamId);
         // A solve rains live HE and molotovs on a map people are standing in.
         _system.SolveRunning = () => _solver.IsBusy;
@@ -151,6 +160,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         if (_hud != null)
         {
+            _hud.Clicked += OnHudClicked;
             WireHudClicks();
         }
 
@@ -198,6 +208,7 @@ public partial class UtilityPracticePlugin : BasePlugin
                 steamId =>
                 {
                     _welcomed.Remove(steamId);
+                    ForgetHud(steamId, @event.PlayerId);
                     OnPlayerGone(steamId);
                 }
             );
@@ -268,12 +279,16 @@ public partial class UtilityPracticePlugin : BasePlugin
         _score.Scored -= OnScoredHint;
         if (_hud != null)
         {
+            _hud.Clicked -= OnHudClicked;
             UnwireHudClicks();
 
             // Before anything else tears down: a panel left on screen with the
             // cursor still captured survives the reload and needs a map change
             // to clear.
+            _hud.Shutdown();
         }
+
+        _prompt?.Stop();
 
         if (_tickHandler != null)
         {
@@ -879,6 +894,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         // Where the panel is up, the thing worth teaching is the panel that
         // replaces the typing, not two more commands to type.
+        if (UseHud(player.SteamID) && _hud!.Available(HudSlots.List))
         {
             Tell(
                 player.SteamID,
@@ -918,6 +934,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         (LineupRecord? lineup, bool onSpot, bool onAngle) = Focused(player, pawn);
 
+        if (HudPanels(player, pawn, lineup, onSpot, onAngle))
         {
             if (lineup != null)
             {
@@ -1572,15 +1589,18 @@ public partial class UtilityPracticePlugin : BasePlugin
         _showing.Remove((steamId, PanelKind.Steps));
     }
 
+    // Isolated and never inlined so the JIT resolves OnCustomHudClicked only
     // here: on a SwiftlyS2 older than 1.4.6-beta.9 the type does not exist, and
     // touching it anywhere inside Load would take the whole plugin down instead
     // of just the HUD. Losing the panel and keeping centre text is the point of
     // having both.
     // Isolated so the JIT resolves CCSCustomHudLayout only here.
     [MethodImpl(MethodImplOptions.NoInlining)]
+    private HudKit? ResolveHud()
     {
         try
         {
+            return _serviceProvider.GetRequiredService<HudKit>();
         }
         catch (Exception exception)
         {
@@ -1595,19 +1615,25 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     // Only ever called when _hud resolved, which is the same thing as the custom
     // hud types existing. The guard has to sit at the CALL: naming
+    // OnCustomHudClicked anywhere in here means the JIT resolves it as it
     // compiles this method, so a try/catch inside would never get to run.
     [MethodImpl(MethodImplOptions.NoInlining)]
     private void WireHudClicks()
     {
+        _hudClickHandler = _hud!.OnClicked;
+        Core.Event.OnCustomHudClicked += _hudClickHandler;
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private void UnwireHudClicks()
     {
+        if (_hudClickHandler == null)
         {
             return;
         }
 
+        Core.Event.OnCustomHudClicked -= _hudClickHandler;
+        _hudClickHandler = null;
     }
 
     // Swiftly's client events carry a slot, not a steam id.
@@ -1643,6 +1669,8 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         _library.SetMap(mapName);
         _session.Map = mapName;
+        _callouts.Reset();
+        _callouts.Report(mapName);
 
         ApplyPracticeCfg();
 

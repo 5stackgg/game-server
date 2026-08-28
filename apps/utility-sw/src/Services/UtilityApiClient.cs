@@ -145,6 +145,23 @@ public class UtilityApiClient
         await SendText(HttpMethod.Post, "/utility/occupancy", body);
     }
 
+    // Fire and forget on map load. A failure is not retried: the next map load
+    // reports again, and a map nobody ever loads again does not need callouts.
+    public async Task Callouts(string map, IReadOnlyCollection<MapCalloutPayload> callouts)
+    {
+        if (string.IsNullOrEmpty(map) || callouts.Count == 0)
+        {
+            return;
+        }
+
+        string body = JsonSerializer.Serialize(
+            new MapCalloutsPayload { map = map, callouts = callouts.ToList() },
+            PracticeJson.Options
+        );
+
+        await SendText(HttpMethod.Post, "/utility/callouts", body);
+    }
+
     public async Task<PracticeSessionData?> Session(string? map = null)
     {
         string route = string.IsNullOrEmpty(map)
@@ -294,6 +311,121 @@ public class UtilityApiClient
         }
     }
 
+    // Metadata only. Geometry is deliberately not sendable: a lineup that moves
+    // silently turns every scored attempt against it into a measurement of
+    // something else, and the row keeps its id precisely so that history stays
+    // attached.
+    public enum eEditOutcome
+    {
+        Saved,
+        NotYours,
+        AlreadyPractised,
+        Failed,
+    }
+
+    public sealed class EditResult
+    {
+        public eEditOutcome Outcome { get; init; }
+
+        // The author's own hit rate on this lineup was cleared, which is worth
+        // saying out loud rather than letting them discover it.
+        public bool ProgressReset { get; init; }
+    }
+
+    public async Task<EditResult> Update(
+        string lineupId,
+        ulong steamId,
+        string name,
+        string? description,
+        string visibility
+    )
+    {
+        var payload = new Dictionary<string, object?>
+        {
+            ["steam_id"] = steamId.ToString(),
+            ["name"] = name,
+            ["description"] = description,
+            ["visibility"] = visibility,
+        };
+
+        string body;
+
+        try
+        {
+            body = JsonSerializer.Serialize(payload, PracticeJson.Options);
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to serialize an edit for {lineup}", lineupId);
+
+            return new EditResult { Outcome = eEditOutcome.Failed };
+        }
+
+        var outcome = new SendOutcome();
+        string? response = await SendText(
+            new HttpMethod("PATCH"),
+            $"/utility/{Uri.EscapeDataString(lineupId)}",
+            body,
+            outcome
+        );
+
+        if (response != null)
+        {
+            return new EditResult
+            {
+                Outcome = eEditOutcome.Saved,
+                ProgressReset = Flag(response, "progress_reset"),
+            };
+        }
+
+        // Both refusals are 403 and mean completely different things to the
+        // player. Read the machine-readable reason, never the prose: the
+        // wording is the panel's to change.
+        if (outcome.Status == 403)
+        {
+            return new EditResult
+            {
+                Outcome = Reason(outcome.Reason) == "already_practised"
+                    ? eEditOutcome.AlreadyPractised
+                    : eEditOutcome.NotYours,
+            };
+        }
+
+        return new EditResult { Outcome = eEditOutcome.Failed };
+    }
+
+    private static string Reason(string json)
+    {
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(json);
+
+            return document.RootElement.TryGetProperty("reason", out JsonElement value)
+                && value.ValueKind == JsonValueKind.String
+                ? value.GetString() ?? ""
+                : "";
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    private static bool Flag(string json, string property)
+    {
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(json);
+
+            return document.RootElement.TryGetProperty(property, out JsonElement value)
+                && value.ValueKind == JsonValueKind.True;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private async Task<string?> Post(LineupRecord record)
     {
         string? body;
@@ -410,6 +542,11 @@ public class UtilityApiClient
     private sealed class SendOutcome
     {
         public bool Rejected { get; set; }
+
+        // The edit endpoint answers 403 for two different refusals a player can
+        // act on, so the status and the body both have to survive the call.
+        public int Status { get; set; }
+        public string Reason { get; set; } = "";
     }
 
     private async Task<string?> SendText(
@@ -486,6 +623,10 @@ public class UtilityApiClient
                 if (outcome != null)
                 {
                     int status = (int)response.StatusCode;
+
+                    outcome.Status = status;
+                    outcome.Reason = reason;
+
                     // 408 and 429 are the two the panel expects to be asked
                     // again; every other 4xx is a refusal of this payload.
                     outcome.Rejected =
