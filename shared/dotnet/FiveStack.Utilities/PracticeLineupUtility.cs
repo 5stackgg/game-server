@@ -410,6 +410,29 @@ public static class PracticeLineupUtility
     /// </summary>
     public const float FallbackSuccessRadius = 96f;
 
+    /// <summary>
+    /// A distance in source units, said the way a person would say it.
+    ///
+    /// "2171u, needs 96u" is two numbers in a unit nobody thinks in -- it does
+    /// not say whether the throw was close or nowhere near, which is the only
+    /// thing the line exists to answer. A source unit is three quarters of an
+    /// inch, so the same throw is 41m out needing 1.8m, and 41-versus-2 is a
+    /// verdict rather than a measurement.
+    /// </summary>
+    public const float MetresPerUnit = 0.01905f;
+
+    public static string Metres(float units)
+    {
+        float metres = Math.Abs(units) * MetresPerUnit;
+
+        // Under ten metres the decimal is the whole point: a smoke half a metre
+        // off is a good throw and one three metres off is not, and both round
+        // to the same whole number. Past that the decimal is noise.
+        return metres < 10f
+            ? $"{metres:0.0}m"
+            : $"{metres:0}m";
+    }
+
     public static List<LineupRecord> Filter(
         IEnumerable<LineupRecord> lineups,
         string query,

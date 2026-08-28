@@ -265,6 +265,11 @@ public class PracticeReplay
     // Which list the drawing helpers append to. Null means the shared layer.
     private Selection? _drawingInto;
 
+    // Where the player this selection is being drawn for is looking, so a
+    // reticle can be created in the right colour instead of being corrected a
+    // tick later. Null on the paths that draw for nobody in particular.
+    private (float yaw, float pitch)? _viewer;
+
     // Which of the drawn throws is the one the player is looking toward. Every
     // throw off a spot is drawn -- you cannot choose between options you cannot
     // see -- and this one is drawn heavier so it stands out from its siblings.
@@ -1478,6 +1483,14 @@ public class PracticeReplay
         _selections[owner.SteamID] = selection;
         _drawingInto = selection;
 
+        CCSPlayerPawn? viewing = owner.PlayerPawn;
+
+        if (viewing != null && viewing.IsValid)
+        {
+            QAngle eyes = viewing.EyeAngles;
+            _viewer = (eyes.Y, eyes.X);
+        }
+
         // The gate marks the RECORDED spot, never where the player happens to
         // be standing -- SpotWatch passes the player's own position, and a gate
         // drawn under their feet can never tell them they are off it.
@@ -1504,6 +1517,7 @@ public class PracticeReplay
         finally
         {
             _drawingInto = null;
+            _viewer = null;
         }
 
     }
@@ -1771,13 +1785,38 @@ public class PracticeReplay
         // one you are on is said in COLOUR, not in scale: a smaller crosshair
         // reads as "further away", which is exactly the wrong thing to say
         // about a point you are being asked to cover precisely.
-        var aim = new Aim { Lineup = lineup };
+        // Born the colour it should already be, and remembering that it is.
+        // Hard-coding fully red here meant a reticle drawn while the player was
+        // ALREADY on the angle came up red and stayed that way until something
+        // moved -- the panel saying "lined up" beside a red crosshair, which is
+        // the one disagreement this whole scheme exists to prevent. Aim.Bucket
+        // is set from the same predicate, so the tint tick agrees rather than
+        // skipping it as unchanged.
+        int bucket = _viewer == null ? MissBuckets - 1 : BucketFor(
+            PracticeLineupUtility.AimMiss(
+                PracticeLineupUtility.AimError(
+                    _viewer.Value.yaw,
+                    _viewer.Value.pitch,
+                    lineup.release.yaw,
+                    lineup.release.pitch
+                ),
+                lineup.aim_tolerance
+            )
+        );
+
+        var aim = new Aim { Lineup = lineup, Bucket = bucket };
 
         _aimInto = aim;
 
         try
         {
-            Reticle(center, dir, size, ColorForBucket(MissBuckets - 1), weight);
+            Reticle(
+                center,
+                dir,
+                size,
+                bucket == 0 ? AimSettled : ColorForBucket(bucket),
+                weight
+            );
         }
         finally
         {

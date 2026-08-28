@@ -129,8 +129,8 @@ public class PracticeScore
             player.SendChat(
                 (
                     success
-                        ? $" {ChatColors.Green}hit {ChatColors.Default}{name} {ChatColors.Grey}{distance:0}u - not saved, so it is not counted"
-                        : $" {ChatColors.Red}miss {ChatColors.Default}{name} {ChatColors.Grey}{distance:0}u, needs {radius:0}u"
+                        ? $" {ChatColors.Green}hit {ChatColors.Default}{name} {ChatColors.Grey}{PracticeLineupUtility.Metres(distance)} off - not saved, so it is not counted"
+                        : $" {ChatColors.Red}miss {ChatColors.Default}{name} {ChatColors.Grey}{PracticeLineupUtility.Metres(distance)} off, needs {PracticeLineupUtility.Metres(radius)}"
                 ).Colored()
             );
         }
@@ -190,7 +190,7 @@ public class PracticeScore
         if (result == null)
         {
             player.SendChat(
-                $" {ChatColors.Grey}{measured:0}u from {name} {ChatColors.Default}(not scored; the panel did not answer)".Colored()
+                $" {ChatColors.Grey}{PracticeLineupUtility.Metres(measured)} from {name} {ChatColors.Default}(not scored; the panel did not answer)".Colored()
             );
             return;
         }
@@ -198,8 +198,8 @@ public class PracticeScore
         player.SendChat(
             (
                 result.success
-                    ? $" {ChatColors.Green}hit {ChatColors.Default}{name} {ChatColors.Grey}{result.distance:0}u - streak {result.current_streak} (best {result.best_streak})"
-                    : $" {ChatColors.Red}miss {ChatColors.Default}{name} {ChatColors.Grey}{result.distance:0}u, needs {result.radius:0}u - {result.successes}/{result.attempts}"
+                    ? $" {ChatColors.Green}hit {ChatColors.Default}{name} {ChatColors.Grey}{PracticeLineupUtility.Metres(result.distance)} off - streak {result.current_streak} (best {result.best_streak})"
+                    : $" {ChatColors.Red}miss {ChatColors.Default}{name} {ChatColors.Grey}{PracticeLineupUtility.Metres(result.distance)} off, needs {PracticeLineupUtility.Metres(result.radius)} - {result.successes}/{result.attempts}"
             ).Colored()
         );
 

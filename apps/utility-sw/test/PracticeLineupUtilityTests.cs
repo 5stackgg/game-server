@@ -439,6 +439,32 @@ public class TitleCaseTests
         Assert.True(PracticeLineupUtility.IsPanelId(id));
     }
 
+    // "2171u, needs 96u" is two numbers in a unit nobody thinks in. The line
+    // exists to say whether a throw was close or nowhere near, and units answer
+    // neither.
+    [Fact]
+    public void DistancesAreSaidInMetres()
+    {
+        Assert.Equal("41m", PracticeLineupUtility.Metres(2171f));
+        Assert.Equal("1.8m", PracticeLineupUtility.Metres(96f));
+    }
+
+    // Under ten metres the decimal is the whole point: half a metre off is a
+    // good smoke and three metres off is not, and both round to the same whole
+    // number.
+    [Fact]
+    public void ShortDistancesKeepTheirDecimal()
+    {
+        Assert.Contains(".", PracticeLineupUtility.Metres(30f));
+        Assert.DoesNotContain(".", PracticeLineupUtility.Metres(2171f));
+    }
+
+    [Fact]
+    public void ADistanceIsNeverNegative()
+    {
+        Assert.Equal(PracticeLineupUtility.Metres(96f), PracticeLineupUtility.Metres(-96f));
+    }
+
     [Theory]
     [InlineData("scratch-draft")]
     [InlineData("scratch-de_mirage:Smoke:-29,14:-8,5")]
