@@ -378,6 +378,12 @@ public class PracticeSystem
     /// choice -- game rules keep the selected list separately from the master
     /// list of every spawn entity -- so this reads the selection rather than
     /// re-deriving it from priorities and guessing at the mode.
+    ///
+    /// Empty rather than everything when the rules are not populated yet. There
+    /// used to be a fall back to enumerating info_player_* here, which on Mirage
+    /// is the same unreadable pile of dozens this method exists to avoid, shown
+    /// with nothing to say it had fallen back. A caller that gets none can say
+    /// so and be asked again a moment later.
     /// </summary>
     public List<ThrowSnapshot> SpawnPoints()
     {
@@ -392,30 +398,6 @@ public class PracticeSystem
         {
             Collect(spawns, rules.TerroristSpawnPoints);
             Collect(spawns, rules.CTSpawnPoints);
-        }
-
-        // Before the rules are populated there is nothing to read, and an
-        // empty ring toggle would look like a broken command rather than an
-        // early one. Every spawn beats no spawn.
-        if (spawns.Count == 0)
-        {
-            foreach (
-                string designer in new[]
-                {
-                    "info_player_terrorist",
-                    "info_player_counterterrorist",
-                }
-            )
-            {
-                foreach (
-                    CBaseEntity spawn in _core.EntitySystem.GetAllEntitiesByDesignerName<CBaseEntity>(
-                        designer
-                    )
-                )
-                {
-                    Add(spawns, spawn);
-                }
-            }
         }
 
         return spawns;

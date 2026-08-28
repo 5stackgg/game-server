@@ -759,9 +759,16 @@ public partial class UtilityPracticePlugin
 
         List<ThrowSnapshot> spawns = _system.SpawnPoints();
 
+        // Distinguished from "this map has none": the round has not started, so
+        // the game has not chosen its spawns yet.
         if (spawns.Count == 0)
         {
-            Reply(context, $" {ChatColors.Red}this map has no spawn points");
+            Reply(
+                context,
+                $" {ChatColors.Red}no competitive spawns yet "
+                    + $"{ChatColors.Grey}-- the round has not set them; try again in a moment"
+            );
+
             return;
         }
 
