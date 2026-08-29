@@ -56,6 +56,12 @@ public partial class UtilityPracticePlugin : BasePlugin
     // field: the plugin instance survives a map change, which is the only
     // reason this works at all.
     private PracticeMapChangePending? _pendingMapLoad;
+
+    // Which map each player has their library for, and who has a fetch in
+    // flight. Keyed by map rather than cleared on a change, so a fetch that
+    // lands on the wrong side of a changelevel does not count as done.
+    private readonly Dictionary<ulong, string> _libraryFor = new();
+    private readonly HashSet<ulong> _libraryFetching = new();
     private EventDelegates.OnMapLoad? _mapLoadHandler;
     private EventDelegates.OnClientDisconnected? _disconnectHandler;
     private EventDelegates.OnPrecacheResource? _precacheHandler;
@@ -218,6 +224,7 @@ public partial class UtilityPracticePlugin : BasePlugin
                 steamId =>
                 {
                     _welcomed.Remove(steamId);
+                    _libraryFor.Remove(steamId);
                     ForgetHud(steamId, @event.PlayerId);
                     OnPlayerGone(steamId);
                 }
@@ -1390,6 +1397,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _solver.RefreshVisibility();
         // A no-op once the map has answered; see MapCalloutsReporter.Report.
         _callouts.Report(_session.Map);
+        DrainLibraryLoads();
         DrainPendingMapLoad();
     }
 
@@ -1692,13 +1700,45 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     // The panel is the only source of both the roster and the library, so a
     // refresh is one round trip followed by one per connected player.
-    private void RefreshAndShow(ulong steamId)
+    private void RefreshAndShow(ulong steamId, bool announce = false)
     {
+        // The map this fetch is answering for. Compared again when it lands,
+        // because a changelevel in between makes the answer worthless.
+        string map = _library.Map;
+
+        // At most one in flight per player. The second tick reconciles as well
+        // as the client events do, and two fetches racing each other would both
+        // draw the whole map.
+        if (!_libraryFetching.Add(steamId))
+        {
+            return;
+        }
+
         _library.Refresh(
             steamId,
             count =>
             {
-                if (count <= 0)
+                _libraryFetching.Remove(steamId);
+
+                // Left while the panel was answering. Marking them done would
+                // outlive them: the entry is keyed by steam id, and a rejoin
+                // would be skipped by the drain.
+                if (_system.Find(steamId) == null)
+                {
+                    return;
+                }
+
+                // Below zero is "could not reach the panel", or the map moved
+                // under the request. Deliberately not marked, so the second
+                // tick asks again; an empty library IS an answer.
+                if (count < 0)
+                {
+                    return;
+                }
+
+                _libraryFor[steamId] = map;
+
+                if (count == 0)
                 {
                     return;
                 }
@@ -1719,8 +1759,49 @@ public partial class UtilityPracticePlugin : BasePlugin
                 state.Results.Clear();
                 state.Results.AddRange(library);
                 state.Index = -1;
+
+                if (announce)
+                {
+                    Tell(
+                        steamId,
+                        $" {ChatColors.Green}{count} lineup(s) {ChatColors.Grey}on "
+                            + $"{ChatColors.Default}{map} {ChatColors.Grey}-- "
+                            + $"{ChatColors.Default}.next{ChatColors.Grey} to walk them"
+                    );
+                }
             }
         );
+    }
+
+    /**
+     * Everybody in the server ends up holding the library for the map they are
+     * standing in, without anybody having typed .load.
+     *
+     * Driven off the second tick for the same reason the pending map load is:
+     * a changelevel puts every client through its own reconnect, and a client
+     * event that fires on the wrong side of it either finds no players yet or
+     * fetches the map the server is leaving. Both used to end with a player
+     * arriving on a new map to an empty library and no markers. Reconciling
+     * costs one lookup per player per second and does not care which hook fired.
+     */
+    private void DrainLibraryLoads()
+    {
+        string map = _library.Map;
+
+        if (string.IsNullOrEmpty(map))
+        {
+            return;
+        }
+
+        foreach (ulong steamId in _system.ConnectedSteamIds())
+        {
+            if (_libraryFor.TryGetValue(steamId, out string? loaded) && loaded == map)
+            {
+                continue;
+            }
+
+            RefreshAndShow(steamId, announce: true);
+        }
     }
 
     private void RefreshEverything()

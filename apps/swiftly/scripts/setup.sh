@@ -204,6 +204,34 @@ if $INSTALL_UTILITY_PRACTICE_PLUGIN = true ; then
   else
     echo "---Utility Practice: plugin dir already present, skipping /opt/utility-practice symlink---"
   fi
+
+  # The HUD's Panorama layouts live in a workshop addon, and CS2 has no
+  # server-to-client file transfer -- AddonsManager names the id to connecting
+  # clients and Steam delivers it. Without this the plugin still works, falling
+  # back to centre text, so a failure here must not stop the server.
+  if [ -n "${HUD_WORKSHOP_ID}" ]; then
+    ADDONS_MANAGER_PLUGIN_DIR="${INSTANCE_SERVER_DIR}/game/csgo/addons/swiftlys2/plugins/AddonsManager"
+    if [ ! -e "$ADDONS_MANAGER_PLUGIN_DIR" ]; then
+      ln -s "/opt/addons-manager/AddonsManager" "$ADDONS_MANAGER_PLUGIN_DIR"
+    fi
+
+    # Rewritten every boot: the id is ours, and a stale copy from an older image
+    # would silently serve the wrong addon.
+    ADDONS_MANAGER_CONFIG_DIR="${INSTANCE_SERVER_DIR}/game/csgo/addons/swiftlys2/configs/plugins/AddonsManager"
+    mkdir -p "$ADDONS_MANAGER_CONFIG_DIR"
+    cat > "$ADDONS_MANAGER_CONFIG_DIR/config.jsonc" <<EOF
+{
+  "Main": {
+    "Addons": [
+      "${HUD_WORKSHOP_ID}"
+    ]
+  }
+}
+EOF
+    echo "---Utility Practice: HUD addon ${HUD_WORKSHOP_ID} via AddonsManager---"
+  else
+    echo "---Utility Practice: HUD_WORKSHOP_ID unset, HUD falls back to centre text---"
+  fi
 fi
 
 if [ ! -e "$INSTANCE_SERVER_DIR/game/csgo/addons/swiftlys2/configs/core.jsonc" ]; then

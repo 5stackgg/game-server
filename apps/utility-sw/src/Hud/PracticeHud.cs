@@ -573,19 +573,17 @@ public partial class UtilityPracticePlugin
             }
         }
 
-        if (_reachableOnly.Contains(steamId))
+        IPlayer? player = _system.Find(steamId);
+        Vec3? standing = player == null ? null : PracticeSystem.Where(player)?.feet_position;
+
+        if (_reachableOnly.Contains(steamId) && standing != null)
         {
-            Vec3? at = PracticeSystem.Where(_system.Find(steamId))?.feet_position;
+            var here = PracticeReplay
+                .SpotAt(_library.For(steamId), standing.Value)
+                .Select(UtilityTargetCluster.Key)
+                .ToHashSet(StringComparer.Ordinal);
 
-            if (at != null)
-            {
-                var here = PracticeReplay
-                    .SpotAt(_library.For(steamId), at.Value)
-                    .Select(UtilityTargetCluster.Key)
-                    .ToHashSet(StringComparer.Ordinal);
-
-                lineups = lineups.Where(l => here.Contains(UtilityTargetCluster.Key(l)));
-            }
+            lineups = lineups.Where(l => here.Contains(UtilityTargetCluster.Key(l)));
         }
 
         List<LineupRecord> matched = lineups
@@ -598,8 +596,6 @@ public partial class UtilityPracticePlugin
                 )
             )
             .ToList();
-
-        Vec3? standing = PracticeSystem.Where(_system.Find(steamId))?.feet_position;
 
         if (standing == null)
         {

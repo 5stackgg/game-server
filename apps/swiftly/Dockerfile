@@ -108,6 +108,13 @@ ENV METAMOD_CSGO_URL=https://mms.alliedmods.net/mmsdrop/1.12/mmsource-1.12.0-git
 ENV SOURCEMOD_CSGO_URL=https://sm.alliedmods.net/smdrop/1.13/sourcemod-1.13.0-git7297-linux.tar.gz
 ENV NO_LOBBY_RESERVATION_URL=https://github.com/nuxencs/NoLobbyReservation/releases/download/v0.0.1/NoLobbyReservation.zip
 
+# The engine natively mounts exactly one addon -- the map -- so the HUD workshop
+# item needs this to reach clients at all. Practice servers only; see setup.sh.
+# Blank disables the mount: the plugin degrades to centre text without it.
+ENV HUD_WORKSHOP_ID="3791548068"
+ENV ADDONS_MANAGER_VERSION="v2.0.3"
+ENV ADDONS_MANAGER_URL=https://github.com/SwiftlyS2-Plugins/AddonsManager/releases/download/${ADDONS_MANAGER_VERSION}/AddonsManager.zip
+
 RUN apt-get update && \
 	apt-get install -y --no-install-recommends \
 	wget locales procps jq ca-certificates curl unzip rsync \
@@ -127,6 +134,10 @@ RUN mkdir -p $DATA_DIR $STEAMCMD_DIR $BASE_SERVER_DIR $INSTANCE_SERVER_DIR && \
 RUN wget -q $SWIFTLYS2_URL -O /tmp/swiftlys2.zip && \
 	unzip -q /tmp/swiftlys2.zip -d /opt/swiftlys2 && \
 	rm /tmp/swiftlys2.zip
+
+RUN wget -q $ADDONS_MANAGER_URL -O /tmp/addons-manager.zip && \
+	unzip -q /tmp/addons-manager.zip -d /opt/addons-manager && \
+	rm /tmp/addons-manager.zip
 
 RUN mkdir -p /opt/metamod /opt/counterstrikesharp && \
 	wget -q $METAMOD_URL -O /tmp/metamod.tar.gz && \
