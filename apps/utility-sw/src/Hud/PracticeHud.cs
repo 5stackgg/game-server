@@ -573,19 +573,16 @@ public partial class UtilityPracticePlugin
             }
         }
 
-        if (_reachableOnly.Contains(steamId))
+        Vec3? standing = Standing(steamId);
+
+        if (_reachableOnly.Contains(steamId) && standing != null)
         {
-            Vec3? at = PracticeSystem.Where(_system.Find(steamId))?.feet_position;
+            var here = PracticeReplay
+                .SpotAt(_library.For(steamId), standing.Value)
+                .Select(UtilityTargetCluster.Key)
+                .ToHashSet(StringComparer.Ordinal);
 
-            if (at != null)
-            {
-                var here = PracticeReplay
-                    .SpotAt(_library.For(steamId), at.Value)
-                    .Select(UtilityTargetCluster.Key)
-                    .ToHashSet(StringComparer.Ordinal);
-
-                lineups = lineups.Where(l => here.Contains(UtilityTargetCluster.Key(l)));
-            }
+            lineups = lineups.Where(l => here.Contains(UtilityTargetCluster.Key(l)));
         }
 
         List<LineupRecord> matched = lineups
@@ -598,8 +595,6 @@ public partial class UtilityPracticePlugin
                 )
             )
             .ToList();
-
-        Vec3? standing = PracticeSystem.Where(_system.Find(steamId))?.feet_position;
 
         if (standing == null)
         {
@@ -692,7 +687,20 @@ public partial class UtilityPracticePlugin
             }
         }
 
-        return _reachableOnly.Contains(steamId) ? "Throwable from here" : null;
+        // Only while it is actually narrowing anything. A player who is dead or
+        // between pawns has nowhere to be throwing from, so the filter stands
+        // down -- and a full list under a heading that says otherwise reads as
+        // broken just as surely as an empty one with no heading at all.
+        return _reachableOnly.Contains(steamId) && Standing(steamId) != null
+            ? "Throwable from here"
+            : null;
+    }
+
+    private Vec3? Standing(ulong steamId)
+    {
+        IPlayer? player = _system.Find(steamId);
+
+        return player == null ? null : PracticeSystem.Where(player)?.feet_position;
     }
 
     private string Tag(ulong steamId, int shown)

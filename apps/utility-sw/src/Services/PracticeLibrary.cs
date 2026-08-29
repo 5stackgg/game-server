@@ -17,6 +17,25 @@ public class PracticeLibrary
     private readonly Dictionary<ulong, List<LineupRecord>> _lineups = new();
     private string _map = "";
 
+    // Everyone who asked for the same player's library while one request was
+    // already out, in the order they asked. Two requests in flight for one
+    // player landed in whatever order the panel answered, so the older one
+    // could overwrite what the newer one had already applied -- a pushed load
+    // that teleported someone and then had its markers redrawn a tick later.
+    private sealed class PendingFetch
+    {
+        public DateTime StartedAt;
+
+        // The map it went out asking about. An answer for the map the server
+        // has left is no answer at all, so a request made after a changelevel
+        // cannot ride one made before it.
+        public string Map = "";
+
+        public List<Action<int>> Waiting { get; } = new();
+    }
+
+    private readonly Dictionary<ulong, PendingFetch> _fetching = new();
+
     public PracticeLibrary(
         ISwiftlyCore core,
         UtilityApiClient api,
@@ -108,31 +127,107 @@ public class PracticeLibrary
     // stall a tick and the dictionary is only ever touched from one thread.
     public void Refresh(ulong steamId, Action<int>? done = null)
     {
+        DateTime now = DateTime.UtcNow;
         string map = _map;
+        var fetch = new PendingFetch { StartedAt = now, Map = map };
+
+        if (_fetching.TryGetValue(steamId, out PendingFetch? existing))
+        {
+            bool expired = PracticeLibraryLoadUtility.IsFetchExpired(existing.StartedAt, now);
+
+            if (!expired && existing.Map == map)
+            {
+                if (done != null)
+                {
+                    existing.Waiting.Add(done);
+                }
+
+                return;
+            }
+
+            if (expired)
+            {
+                // Presumed dead rather than merely slow. An in-flight marker
+                // that only an answer can clear is what pinned a player's
+                // library shut for the rest of the process.
+                _logger.LogWarning(
+                    "library fetch for {steamId} never answered; asking again",
+                    steamId
+                );
+            }
+
+            // Whoever was waiting on it rides the new request rather than
+            // being dropped along with the old one.
+            fetch.Waiting.AddRange(existing.Waiting);
+        }
+
+        if (done != null)
+        {
+            fetch.Waiting.Add(done);
+        }
+
+        _fetching[steamId] = fetch;
 
         _ = Task.Run(async () =>
         {
-            List<LineupRecord>? lineups = await _api.Library(map, steamId);
+            List<LineupRecord>? lineups = null;
 
-            _core.Scheduler.NextTick(() =>
+            try
             {
-                if (lineups == null)
-                {
-                    done?.Invoke(-1);
-                    return;
-                }
+                lineups = await _api.Library(map, steamId);
+            }
+            catch (Exception error)
+            {
+                // Nothing below this may be skipped: everything waiting on the
+                // answer is only ever released by the callback, so a throw that
+                // escaped here left the player's library pinned for good.
+                _logger.LogError(error, "unable to fetch the lineup library");
+            }
 
-                // The map can change while the request is in flight; dropping
-                // the answer beats showing inferno lineups on mirage.
-                if (map != _map)
-                {
-                    done?.Invoke(-1);
-                    return;
-                }
-
-                _lineups[steamId] = lineups;
-                done?.Invoke(lineups.Count);
-            });
+            _core.Scheduler.NextTick(() => Landed(steamId, fetch, map, lineups));
         });
+    }
+
+    private void Landed(
+        ulong steamId,
+        PendingFetch fetch,
+        string map,
+        List<LineupRecord>? lineups
+    )
+    {
+        // An answer to a request that was already given up on. The callers it
+        // was carrying moved to the one that replaced it, and its rows are the
+        // older of the two.
+        if (!_fetching.TryGetValue(steamId, out PendingFetch? current) || current != fetch)
+        {
+            return;
+        }
+
+        _fetching.Remove(steamId);
+
+        int count = -1;
+
+        // The map can change while the request is in flight; dropping the
+        // answer beats showing inferno lineups on mirage.
+        if (lineups != null && map == _map)
+        {
+            _lineups[steamId] = lineups;
+            count = lineups.Count;
+        }
+
+        foreach (Action<int> waiting in fetch.Waiting)
+        {
+            try
+            {
+                waiting(count);
+            }
+            catch (Exception error)
+            {
+                // One caller throwing is not the rest of them missing their
+                // answer, and an exception let back out of here crosses into
+                // native SwiftlyS2 and takes the server down.
+                _logger.LogError(error, "a library refresh callback threw");
+            }
+        }
     }
 }

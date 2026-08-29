@@ -21,7 +21,13 @@ DIST_DIR="${HUD_DIR}/dist"
 COMPILER_REPO="https://github.com/nicedayzhu/PanoramaCompiler.git"
 COMPILER_REF="${PANORAMA_COMPILER_REF:-main}"
 
-ADDON_NAME="5stack_utility_hud"
+# CS2 resolves a workshop addon by its published file id, not by a friendly
+# name: AddonsManager (and the engine) look for
+# steamapps/workshop/content/730/<id>/<id>.vpk. A differently-named vpk
+# downloads fine and then fails to mount, with the error pointing at a path that
+# looks unrelated to the name you chose. WORKSHOP_ITEM_ID is unset only for the
+# very first publish, before an id exists.
+ADDON_NAME="${WORKSHOP_ITEM_ID:-5stack_utility_hud}"
 
 log() { printf '\033[36m==>\033[0m %s\n' "$1"; }
 die() { printf '\033[31mx\033[0m %s\n' "$1" >&2; exit 1; }

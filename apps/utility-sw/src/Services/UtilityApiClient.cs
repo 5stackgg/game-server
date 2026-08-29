@@ -558,7 +558,24 @@ public class UtilityApiClient
     {
         byte[]? response = await Send(method, path, body, outcome);
 
-        return response == null ? null : PracticeJson.Text(response);
+        if (response == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return PracticeJson.Text(response);
+        }
+        catch (Exception error)
+        {
+            // A truncated or half-written gzip body throws out here rather than
+            // inside Send, where every other failure is already turned into "no
+            // answer". Callers read a null the same way; a throw escapes into
+            // whichever discarded task made the call and is never seen again.
+            _logger.LogError(error, "unreadable response body from {path}", path);
+            return null;
+        }
     }
 
     private async Task<byte[]?> Send(

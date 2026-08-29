@@ -39,6 +39,13 @@ fi
 
 [ -d "${CONTENT_DIR}" ] || die "build.sh produced no ${CONTENT_DIR} (is vpkeditcli installed?)"
 
+# CS2 resolves an addon by its id: steamapps/workshop/content/730/<id>/<id>.vpk.
+# build.sh reads WORKSHOP_ITEM_ID for exactly this, so a mismatch here means the
+# build ran without it -- the item would download and then fail to mount.
+if [ "${PUBLISHED_FILE_ID}" != "0" ] && [ ! -f "${CONTENT_DIR}/${PUBLISHED_FILE_ID}.vpk" ]; then
+	die "expected ${CONTENT_DIR}/${PUBLISHED_FILE_ID}.vpk; re-run build.sh with WORKSHOP_ITEM_ID=${PUBLISHED_FILE_ID}"
+fi
+
 # An item with no vpk publishes fine and does nothing, which is the failure this
 # whole file exists to avoid.
 find "${CONTENT_DIR}" -name '*.vpk' | grep -q . || die "no .vpk in ${CONTENT_DIR}"

@@ -84,7 +84,15 @@ By hand:
 
 Clones and builds [PanoramaCompiler](https://github.com/nicedayzhu/PanoramaCompiler),
 compiles `panorama/` into `build/stage/panorama/`, and packs
-`build/upload/5stack_utility_hud.vpk`. PanoramaCompiler writes Source 2
+`build/upload/<WORKSHOP_ITEM_ID>.vpk`.
+
+**The vpk must be named after the workshop item id.** CS2 resolves an addon as
+`steamapps/workshop/content/730/<id>/<id>.vpk`, so a friendly name downloads
+correctly and then fails to mount, and the mount error names a path rather than
+the mismatch. Set `WORKSHOP_ITEM_ID` when building anything destined for the
+Workshop; it falls back to `5stack_utility_hud` only for the very first publish,
+before an id exists. The CI workflow passes `item_id` through for this and
+refuses to upload a vpk whose name does not match. PanoramaCompiler writes Source 2
 containers directly and never invokes `resourcecompiler.exe`, so this needs only
 the .NET 10 SDK — no Windows, no CS2 install.
 
@@ -124,8 +132,14 @@ text that has always worked, and `.hud` lets a player choose the text path
 anyway.
 
 - **Development** — point CS2 at `build/` as a local override via `gameinfo.gi`.
-- **Production** — publish `build/` to the Steam Workshop and name its id in
-  [AddonsManager](https://github.com/SwiftlyS2-Plugins/AddonsManager).
+- **Production** — already wired. `HUD_WORKSHOP_ID` in `apps/swiftly/Dockerfile`
+  holds the published id, and `setup.sh` installs
+  [AddonsManager](https://github.com/SwiftlyS2-Plugins/AddonsManager) and writes
+  its config on practice servers only. Set the variable empty to disable the
+  mount; the plugin then falls back to centre text. It must be a bare numeric
+  id — anything else is refused with a log line and treated as unset, because
+  AddonsManager validates its config on start and would otherwise fail to load
+  rather than degrade.
 
 There is no way round the Workshop, and it is not a gap in SwiftlyS2. CS2 has no
 server-to-client file transfer at all — no `sv_downloadurl`, no file netmessage;
@@ -255,5 +269,20 @@ App 730 does accept a SteamCMD workshop upload — verified on 2026-08-28, item
 its `VpkDirectories` whitelist are therefore avoidable entirely, which is the
 whole reason this path exists.
 
-Practice servers first. A one-time addon download is a fair price for someone
-who typed `.drill`; it is not something to ask ten people for before a match.
+Practice servers first, which is why the install sits inside the
+`INSTALL_UTILITY_PRACTICE_PLUGIN` branch of `setup.sh` rather than beside the
+match plugin. A one-time addon download is a fair price for someone who typed
+`.drill`; it is not something to ask ten people for before a match.
+
+Verify a published item is actually downloadable before relying on it — this is
+exactly what a joining client does, and it fails for reasons the Workshop page
+does not show:
+
+```sh
+steamcmd +login anonymous +workshop_download_item 730 3791548068 +quit
+```
+
+A newly published item returns `Access Denied` for some minutes until Steam
+finishes processing it, while the API already reports `result: 1` and
+`visibility: 0`. That gap is not an error and not a review queue; it just
+resolves on its own.

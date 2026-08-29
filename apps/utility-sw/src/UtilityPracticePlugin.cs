@@ -56,6 +56,29 @@ public partial class UtilityPracticePlugin : BasePlugin
     // field: the plugin instance survives a map change, which is the only
     // reason this works at all.
     private PracticeMapChangePending? _pendingMapLoad;
+
+    // What the drain knows about one player's library. The map is held rather
+    // than cleared on a change, so a fetch that lands on the wrong side of a
+    // changelevel does not count as done.
+    private sealed class LibraryLoad
+    {
+        public string? LoadedFor;
+
+        public DateTime? FetchingSince;
+
+        // A panel that cannot be reached stays unreachable for minutes, so the
+        // drain widens the gap between attempts rather than asking every second
+        // for the life of the server.
+        public int Failures;
+        public DateTime? RetryAt;
+
+        // A refresh the panel pushed while a fetch was already out. That fetch
+        // predates whatever was edited on the website, so its answer is stale
+        // by definition and the ask is re-issued rather than dropped.
+        public bool Requeue;
+    }
+
+    private readonly Dictionary<ulong, LibraryLoad> _libraryLoads = new();
     private EventDelegates.OnMapLoad? _mapLoadHandler;
     private EventDelegates.OnClientDisconnected? _disconnectHandler;
     private EventDelegates.OnPrecacheResource? _precacheHandler;
@@ -218,6 +241,10 @@ public partial class UtilityPracticePlugin : BasePlugin
                 steamId =>
                 {
                     _welcomed.Remove(steamId);
+                    // Best effort only -- a player the engine has already
+                    // invalidated never reaches this at all, which is why the
+                    // drain prunes off the roster as well.
+                    _libraryLoads.Remove(steamId);
                     ForgetHud(steamId, @event.PlayerId);
                     OnPlayerGone(steamId);
                 }
@@ -225,13 +252,13 @@ public partial class UtilityPracticePlugin : BasePlugin
         };
         Core.Event.OnClientDisconnected += _disconnectHandler;
 
-        // Refresh FETCHES; it does not draw. Somebody who joins and runs no
-        // command should still see every lineup on the map.
+        // Deliberately does not fetch the library: this fires before the map is
+        // known on a cold boot, which asked the panel for the lineups on map ""
+        // and then recorded that as the player's answer. The drain picks them up
+        // off the roster on the next second tick instead -- see DrainLibraryLoads.
         _authorizeHandler = @event =>
         {
             _occupancyDirty = true;
-
-            ForPlayer(@event.PlayerId, steamId => RefreshAndShow(steamId));
         };
         Core.Event.OnClientSteamAuthorize += _authorizeHandler;
 
@@ -273,7 +300,43 @@ public partial class UtilityPracticePlugin : BasePlugin
         );
     }
 
+    // SwiftlyS2 hot reloads a plugin from a thread pool thread -- its file
+    // watcher schedules the reload through Task.Run -- and the game thread is
+    // never one of those. Every native call throws off the game thread, so the
+    // teardown below has to be handed back to it, and waited for: the moment
+    // this returns the reload puts a second instance in the world.
     public override void Unload()
+    {
+        if (!Thread.CurrentThread.IsThreadPoolThread)
+        {
+            TearDown();
+            return;
+        }
+
+        try
+        {
+            if (!Core.Scheduler.NextTickAsync(TearDown).Wait(TearDownWait))
+            {
+                // The queued call holds the assembly load context open, so it
+                // still runs -- just late, next to whatever the new instance
+                // has already drawn.
+                _logger.LogWarning(
+                    "teardown did not reach the game thread within {seconds}s",
+                    TearDownWait.TotalSeconds
+                );
+            }
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "teardown failed");
+        }
+    }
+
+    // A tick is milliseconds away. Only a server that has stopped running them
+    // waits this out, and nothing was coming down cleanly there anyway.
+    private static readonly TimeSpan TearDownWait = TimeSpan.FromSeconds(5);
+
+    private void TearDown()
     {
         // Drawn entities are not the plugin's to leave behind: without this a
         // hot reload orphans every beam, label and model in the world, with no
@@ -1390,6 +1453,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _solver.RefreshVisibility();
         // A no-op once the map has answered; see MapCalloutsReporter.Report.
         _callouts.Report(_session.Map);
+        DrainLibraryLoads();
         DrainPendingMapLoad();
     }
 
@@ -1692,35 +1756,201 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     // The panel is the only source of both the roster and the library, so a
     // refresh is one round trip followed by one per connected player.
-    private void RefreshAndShow(ulong steamId)
+    //
+    // Pushed is the panel or the player asking outright, which says the rows in
+    // hand are behind; the drain's own asks are not, and give way to whatever
+    // the player is in the middle of.
+    private void RefreshAndShow(ulong steamId, bool pushed)
     {
-        _library.Refresh(
-            steamId,
-            count =>
+        // The map this fetch is answering for. Compared again when it lands,
+        // because a changelevel in between makes the answer worthless.
+        string map = _library.Map;
+
+        if (string.IsNullOrEmpty(map))
+        {
+            return;
+        }
+
+        LibraryLoad load = LibraryLoadFor(steamId);
+        DateTime now = DateTime.UtcNow;
+
+        // At most one in flight per player. A pushed refresh cannot ride the
+        // one already out -- that request predates whatever the panel is
+        // telling us about -- so it is re-asked the moment this one lands.
+        if (
+            load.FetchingSince != null
+            && !PracticeLibraryLoadUtility.IsFetchExpired(load.FetchingSince.Value, now)
+        )
+        {
+            load.Requeue |= pushed;
+            return;
+        }
+
+        load.FetchingSince = now;
+
+        _library.Refresh(steamId, count => LibraryLanded(steamId, map, count, pushed));
+    }
+
+    private void LibraryLanded(ulong steamId, string map, int count, bool pushed)
+    {
+        LibraryLoad load = LibraryLoadFor(steamId);
+
+        load.FetchingSince = null;
+
+        bool requeue = load.Requeue;
+        load.Requeue = false;
+
+        // Left while the panel was answering. Marking them done would outlive
+        // them: the entry is keyed by steam id, and a rejoin would be skipped
+        // by the drain.
+        if (_system.Find(steamId) == null)
+        {
+            _libraryLoads.Remove(steamId);
+            return;
+        }
+
+        // Below zero is "could not reach the panel", or the map moved under the
+        // request. Deliberately not marked, so the drain asks again -- but on a
+        // widening delay: a panel that is down stays down, and one request per
+        // player per second for the life of the server is a storm, not a retry.
+        // An empty library IS an answer.
+        if (count < 0)
+        {
+            load.Failures++;
+            load.RetryAt = DateTime.UtcNow + PracticeLibraryLoadUtility.RetryDelay(load.Failures);
+            return;
+        }
+
+        load.Failures = 0;
+        load.RetryAt = null;
+        load.LoadedFor = map;
+
+        if (count > 0)
+        {
+            IReadOnlyList<LineupRecord> library = _library.For(steamId);
+
+            ShowLibraryFor(steamId, library);
+
+            // .next and .prev walk state.Results, and a refresh never filled it
+            // -- so every lineup on the map was drawn and none of them could be
+            // stepped through until the player ran a search. If they can SEE
+            // them, they can walk them.
+            //
+            // Only when the panel pushed, or when there is nothing to lose: the
+            // drain retries at a moment nobody chose, and replacing the results
+            // of a .load or a target picked off the minimap turns somebody's
+            // walk into the whole map halfway through it.
+            PracticeState state = _system.StateFor(steamId);
+
+            if (pushed || state.Results.Count == 0)
             {
-                if (count <= 0)
-                {
-                    return;
-                }
-
-                IReadOnlyList<LineupRecord> library = _library.For(steamId);
-
-                _replay.ShowLibrary(library);
-
-                // .next and .prev walk state.Results, and a refresh never filled
-                // it -- so every lineup on the map was drawn and none of them
-                // could be stepped through until the player ran a search. If
-                // they can SEE them, they can walk them. Any earlier search is
-                // discarded on purpose: this only runs on join, map change and
-                // an explicit refresh, and a search from before any of those is
-                // describing a map state that no longer exists.
-                PracticeState state = _system.StateFor(steamId);
-
                 state.Results.Clear();
                 state.Results.AddRange(library);
                 state.Index = -1;
+
+                if (!pushed)
+                {
+                    Tell(
+                        steamId,
+                        $" {ChatColors.Green}{count} lineup(s) {ChatColors.Grey}on "
+                            + $"{ChatColors.Default}{map} {ChatColors.Grey}-- "
+                            + $"{ChatColors.Default}.next{ChatColors.Grey} to walk them"
+                    );
+                }
             }
-        );
+        }
+
+        if (requeue)
+        {
+            RefreshAndShow(steamId, pushed: true);
+        }
+    }
+
+    // Markers are one shared set of entities for the whole server (see
+    // PracticeReplay.ShowLibrary) while a library is filtered per player by the
+    // panel, so drawing one on somebody's behalf only holds while there is
+    // nobody else it could be shown to. With company it drew whoever's fetch
+    // landed last, which put one player's private lineups in front of everyone.
+    // Their own .load, .next and .menu still draw, because those were asked for.
+    private void ShowLibraryFor(ulong steamId, IReadOnlyList<LineupRecord> library)
+    {
+        List<ulong> connected = _system.ConnectedSteamIds();
+
+        if (connected.Count != 1 || connected[0] != steamId)
+        {
+            return;
+        }
+
+        _replay.ShowLibrary(library);
+    }
+
+    private LibraryLoad LibraryLoadFor(ulong steamId)
+    {
+        if (!_libraryLoads.TryGetValue(steamId, out LibraryLoad? load))
+        {
+            load = new LibraryLoad();
+            _libraryLoads[steamId] = load;
+        }
+
+        return load;
+    }
+
+    /**
+     * Everybody in the server ends up holding the library for the map they are
+     * standing in, without anybody having typed .load.
+     *
+     * Driven off the second tick for the same reason the pending map load is:
+     * a changelevel puts every client through its own reconnect, and a client
+     * event that fires on the wrong side of it either finds no players yet or
+     * fetches the map the server is leaving. Both used to end with a player
+     * arriving on a new map to an empty library and no markers. Reconciling
+     * costs one lookup per player per second and does not care which hook fired.
+     *
+     * What it costs the PANEL is decided by PracticeLibraryLoadUtility: a hit
+     * once per map per player, and after a failure a widening wait rather than
+     * another request every second.
+     */
+    private void DrainLibraryLoads()
+    {
+        string map = _library.Map;
+
+        if (string.IsNullOrEmpty(map))
+        {
+            return;
+        }
+
+        List<ulong> connected = _system.ConnectedSteamIds();
+
+        // Entries outlive the disconnect hook in both directions -- the leaving
+        // player is still on the roster when it fires, and one the engine has
+        // already invalidated never resolves there at all -- so the roster this
+        // loop is holding anyway is the only thing that cannot go stale.
+        foreach (ulong gone in _libraryLoads.Keys.Where(id => !connected.Contains(id)).ToList())
+        {
+            _libraryLoads.Remove(gone);
+        }
+
+        DateTime now = DateTime.UtcNow;
+
+        foreach (ulong steamId in connected)
+        {
+            _libraryLoads.TryGetValue(steamId, out LibraryLoad? load);
+
+            if (
+                !PracticeLibraryLoadUtility.ShouldFetch(
+                    map,
+                    load?.LoadedFor,
+                    load?.FetchingSince,
+                    load?.RetryAt,
+                    now
+                )
+            )
+            {
+                continue;
+            }
+
+            RefreshAndShow(steamId, pushed: false);
+        }
     }
 
     private void RefreshEverything()
@@ -1735,7 +1965,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         {
             if (player != null && player.IsValid && !player.IsFakeClient)
             {
-                RefreshAndShow(player.SteamID);
+                RefreshAndShow(player.SteamID, pushed: true);
             }
         }
     }
