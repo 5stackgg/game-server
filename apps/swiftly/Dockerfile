@@ -112,8 +112,12 @@ ENV NO_LOBBY_RESERVATION_URL=https://github.com/nuxencs/NoLobbyReservation/relea
 # item needs this to reach clients at all. Practice servers only; see setup.sh.
 # Blank disables the mount: the plugin degrades to centre text without it.
 ENV HUD_WORKSHOP_ID="3791548068"
-ENV ADDONS_MANAGER_VERSION="v2.0.3"
-ENV ADDONS_MANAGER_URL=https://github.com/SwiftlyS2-Plugins/AddonsManager/releases/download/${ADDONS_MANAGER_VERSION}/AddonsManager.zip
+
+# ARG, not ENV: the download below happens once at build time, so these are set
+# with --build-arg. As ENV they read as runtime knobs beside HUD_WORKSHOP_ID and
+# would silently do nothing when overridden at docker run.
+ARG ADDONS_MANAGER_VERSION="v2.0.3"
+ARG ADDONS_MANAGER_URL=https://github.com/SwiftlyS2-Plugins/AddonsManager/releases/download/${ADDONS_MANAGER_VERSION}/AddonsManager.zip
 
 RUN apt-get update && \
 	apt-get install -y --no-install-recommends \

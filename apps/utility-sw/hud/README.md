@@ -136,7 +136,10 @@ anyway.
   holds the published id, and `setup.sh` installs
   [AddonsManager](https://github.com/SwiftlyS2-Plugins/AddonsManager) and writes
   its config on practice servers only. Set the variable empty to disable the
-  mount; the plugin then falls back to centre text.
+  mount; the plugin then falls back to centre text. It must be a bare numeric
+  id — anything else is refused with a log line and treated as unset, because
+  AddonsManager validates its config on start and would otherwise fail to load
+  rather than degrade.
 
 There is no way round the Workshop, and it is not a gap in SwiftlyS2. CS2 has no
 server-to-client file transfer at all — no `sv_downloadurl`, no file netmessage;

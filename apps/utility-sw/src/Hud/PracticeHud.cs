@@ -573,8 +573,7 @@ public partial class UtilityPracticePlugin
             }
         }
 
-        IPlayer? player = _system.Find(steamId);
-        Vec3? standing = player == null ? null : PracticeSystem.Where(player)?.feet_position;
+        Vec3? standing = Standing(steamId);
 
         if (_reachableOnly.Contains(steamId) && standing != null)
         {
@@ -688,7 +687,20 @@ public partial class UtilityPracticePlugin
             }
         }
 
-        return _reachableOnly.Contains(steamId) ? "Throwable from here" : null;
+        // Only while it is actually narrowing anything. A player who is dead or
+        // between pawns has nowhere to be throwing from, so the filter stands
+        // down -- and a full list under a heading that says otherwise reads as
+        // broken just as surely as an empty one with no heading at all.
+        return _reachableOnly.Contains(steamId) && Standing(steamId) != null
+            ? "Throwable from here"
+            : null;
+    }
+
+    private Vec3? Standing(ulong steamId)
+    {
+        IPlayer? player = _system.Find(steamId);
+
+        return player == null ? null : PracticeSystem.Where(player)?.feet_position;
     }
 
     private string Tag(ulong steamId, int shown)
