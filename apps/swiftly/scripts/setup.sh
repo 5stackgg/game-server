@@ -217,6 +217,12 @@ if $INSTALL_UTILITY_PRACTICE_PLUGIN = true ; then
 
     # Rewritten every boot: the id is ours, and a stale copy from an older image
     # would silently serve the wrong addon.
+    #
+    # RedownloadAddonOnMount matters because this addon changes -- unlike a map,
+    # which is published once. AddonsManager only checks that an item is
+    # installed, not that it is current, so without this a server that cached an
+    # older HUD keeps serving those layouts forever and never picks up a
+    # republish.
     ADDONS_MANAGER_CONFIG_DIR="${INSTANCE_SERVER_DIR}/game/csgo/addons/swiftlys2/configs/plugins/AddonsManager"
     mkdir -p "$ADDONS_MANAGER_CONFIG_DIR"
     cat > "$ADDONS_MANAGER_CONFIG_DIR/config.jsonc" <<EOF
@@ -224,7 +230,8 @@ if $INSTALL_UTILITY_PRACTICE_PLUGIN = true ; then
   "Main": {
     "Addons": [
       "${HUD_WORKSHOP_ID}"
-    ]
+    ],
+    "RedownloadAddonOnMount": true
   }
 }
 EOF
