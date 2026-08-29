@@ -84,7 +84,15 @@ By hand:
 
 Clones and builds [PanoramaCompiler](https://github.com/nicedayzhu/PanoramaCompiler),
 compiles `panorama/` into `build/stage/panorama/`, and packs
-`build/upload/5stack_utility_hud.vpk`. PanoramaCompiler writes Source 2
+`build/upload/<WORKSHOP_ITEM_ID>.vpk`.
+
+**The vpk must be named after the workshop item id.** CS2 resolves an addon as
+`steamapps/workshop/content/730/<id>/<id>.vpk`, so a friendly name downloads
+correctly and then fails to mount, and the mount error names a path rather than
+the mismatch. Set `WORKSHOP_ITEM_ID` when building anything destined for the
+Workshop; it falls back to `5stack_utility_hud` only for the very first publish,
+before an id exists. The CI workflow passes `item_id` through for this and
+refuses to upload a vpk whose name does not match. PanoramaCompiler writes Source 2
 containers directly and never invokes `resourcecompiler.exe`, so this needs only
 the .NET 10 SDK — no Windows, no CS2 install.
 

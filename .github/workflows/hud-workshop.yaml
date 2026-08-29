@@ -48,6 +48,7 @@ jobs:
           KEY=$( { git rev-parse "HEAD:$HUD/panorama"
                    git hash-object "$HUD/build.sh" "$HUD/addoninfo.txt" ${PREVIEW:+"$PREVIEW"}
                    echo "${PANORAMA_COMPILER_REF:-main}"
+                   echo "${{ inputs.item_id }}"
                  } | sha256sum | cut -c1-16 )
           TAG="hud-published/$KEY"
           echo "key=$KEY" >> "$GITHUB_OUTPUT"
@@ -91,6 +92,10 @@ jobs:
       # into .tools on Linux, so nothing here needs Windows or a CS2 install.
       - name: Build the addon
         if: steps.changed.outputs.proceed == 'yes'
+        # The vpk must be named after the item it will live in, so an update
+        # needs the id at BUILD time, not just at upload time.
+        env:
+          WORKSHOP_ITEM_ID: ${{ inputs.item_id }}
         run: ./apps/utility-sw/hud/build.sh
 
       # An addon that mounts and resolves nothing is the failure mode with no
@@ -100,8 +105,20 @@ jobs:
         if: steps.changed.outputs.proceed == 'yes'
         run: |
           set -euo pipefail
-          VPK=apps/utility-sw/hud/build/upload/5stack_utility_hud.vpk
-          [ -f "$VPK" ] || { echo "::error::no vpk was produced"; exit 1; }
+          ITEM_ID="${{ inputs.item_id }}"
+          VPK=$(ls apps/utility-sw/hud/build/upload/*.vpk 2>/dev/null | head -1)
+          [ -n "$VPK" ] && [ -f "$VPK" ] || { echo "::error::no vpk was produced"; exit 1; }
+
+          # An addon named anything but its id downloads and then fails to mount,
+          # and the mount error names a path rather than the mismatch.
+          if [ -n "$ITEM_ID" ] && [ "$(basename "$VPK")" != "$ITEM_ID.vpk" ]; then
+            echo "::error::packed $(basename "$VPK") but item $ITEM_ID needs $ITEM_ID.vpk"
+            exit 1
+          fi
+          if [ -z "$ITEM_ID" ]; then
+            echo "::warning::no item_id given, so the vpk is not named after an id."
+            echo "::warning::Only correct for a first publish; re-run with item_id afterwards."
+          fi
 
           TREE=$(apps/utility-sw/hud/.tools/vpkeditcli --file-tree "$VPK" 2>&1 || true)
           echo "$TREE"
