@@ -155,8 +155,10 @@ public class ReadySystem
         // minimum, so more players can ready up than expectedCount and an
         // equality would never fire -- warmup would hang forever. Every other
         // match keeps the exact == it has always used.
+        var flexOptions = currentMatch?.GetMatchData()?.options;
         bool flexible =
-            currentMatch?.GetMatchData()?.options.min_players_per_lineup != null;
+            flexOptions?.min_players_per_lineup != null
+            || flexOptions?.expected_players != null;
 
         if (flexible ? TotalReady() >= expectedCount : TotalReady() == expectedCount)
         {

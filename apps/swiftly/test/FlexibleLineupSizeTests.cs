@@ -50,13 +50,50 @@ public class FlexibleLineupSizeTests
         Assert.Null(Match(PlainWingman).options.min_players_per_lineup);
     }
 
-    // Mirrors MatchManager.GetExpectedPlayerCount(): the snapshot wins, and it
-    // counts starters a side x2 rather than the roster, so substitutes never
-    // inflate what warmup waits for.
+    // An uneven short-handed start: the panel records the SMALLER side in
+    // min_players_per_lineup (its gates apply that to both lineups, so a 1v2 has
+    // to record 1 or the short side never clears) and the real total separately.
+    private const string UnevenOneVTwo =
+        """
+        {
+          "options": {
+            "type": "Competitive",
+            "min_players_per_lineup": 1,
+            "expected_players": 3,
+            "number_of_substitutes": 0
+          },
+          "lineup_1": { "lineup_players": [ { "steam_id": "1" } ] },
+          "lineup_2": { "lineup_players": [ { "steam_id": "2" }, { "steam_id": "3" } ] }
+        }
+        """;
+
+    // Mirrors MatchManager.GetExpectedPlayerCount(), in precedence order: the
+    // explicit total, then the per-lineup snapshot doubled, then the type.
     private static int Expected(MatchData m) =>
-        m.options.min_players_per_lineup != null
-            ? m.options.min_players_per_lineup.Value * 2
-            : m.options.type switch { "Wingman" => 4, "Duel" => 2, _ => 10 };
+        m.options.expected_players
+            ?? (m.options.min_players_per_lineup != null
+                ? m.options.min_players_per_lineup.Value * 2
+                : m.options.type switch { "Wingman" => 4, "Duel" => 2, _ => 10 });
+
+    [Fact]
+    public void UnevenStartWaitsForEveryone()
+    {
+        // The bug this pins: min x 2 gives 2 here, so the match would go live
+        // with the third player still connecting.
+        Assert.Equal(3, Expected(Match(UnevenOneVTwo)));
+    }
+
+    [Fact]
+    public void UnevenStartStillRecordsTheSmallerSideForTheGates()
+    {
+        Assert.Equal(1, Match(UnevenOneVTwo).options.min_players_per_lineup);
+    }
+
+    [Fact]
+    public void EvenStartNeedsNoTotal()
+    {
+        Assert.Null(Match(OneVOneCustomMode).options.expected_players);
+    }
 
     [Fact]
     public void SizedModeExpectsTwoPlayers()

@@ -842,6 +842,14 @@ public class MatchManager
             return 10;
         }
 
+        // An uneven start sends the total outright, because doubling the
+        // per-lineup minimum under-counts it: a 1v2 records 1 there (the panel's
+        // gates apply that to both sides) but three people still have to show up.
+        if (_matchData.options.expected_players != null)
+        {
+            return _matchData.options.expected_players.Value;
+        }
+
         // Starters only, matching what the type table below counts: a
         // Competitive match expects 10 whether or not substitutes are rostered.
         // Reading the lineups instead would count those substitutes and hang
