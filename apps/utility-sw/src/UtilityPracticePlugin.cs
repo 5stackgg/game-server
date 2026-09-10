@@ -476,6 +476,14 @@ public partial class UtilityPracticePlugin : BasePlugin
     // light up everything throwable from it without redrawing every tick.
     private readonly Dictionary<ulong, string> _standingIn = new();
 
+    // What the watcher believes is drawn for a player. Anything that wipes the
+    // world without moving them has to say so here: left stale, the key matches
+    // on the next pass and suppresses the redraw that was supposed to follow.
+    private void ForgetSpot(ulong steamId)
+    {
+        _standingIn.Remove(steamId);
+    }
+
     // IN_USE. Read every tick rather than on the 4Hz spot sweep because a tap
     // is shorter than a quarter of a second and a walk-up that does nothing is
     // worse than not offering it.
@@ -556,6 +564,74 @@ public partial class UtilityPracticePlugin : BasePlugin
             return;
         }
 
+        // A bot added to a live round never gets a spawn of its own: nothing
+        // here ends a round (mp_ignore_round_win_conditions), so the second
+        // .bot only ever added a dead name to the scoreboard. The same call
+        // brings back one a practice HE killed outright.
+        //
+        // Placed a beat later when anything was revived: a respawn has no pawn
+        // until the engine has run a tick, and the spots are handed out in
+        // order -- standing up only the bots that are already alive would give
+        // one of them the spot belonging to the bot still on its way back.
+        if (ReviveBots())
+        {
+            Core.Scheduler.DelayBySeconds(BotPlaceDelaySeconds, StandBotsOnSpots);
+
+            return;
+        }
+
+        StandBotsOnSpots();
+    }
+
+    // A bot on no team cannot be spawned, and asking would put the engine in
+    // the position of choosing one -- which is how a bot ends up playing the
+    // round it was placed to stand still through.
+    private bool ReviveBots()
+    {
+        bool revived = false;
+
+        foreach (IPlayer player in Core.PlayerManager.GetAllPlayers())
+        {
+            if (player == null || !player.IsValid || !player.IsFakeClient || player.IsAlive)
+            {
+                continue;
+            }
+
+            if (player.Controller.Team is not (Team.CT or Team.T))
+            {
+                continue;
+            }
+
+            player.Respawn();
+            revived = true;
+        }
+
+        return revived;
+    }
+
+    // Nothing here brings a bot back on its own -- see PlaceBots -- so a dead
+    // one is a target that has quietly stopped being one. Checked rather than
+    // run blind: with every bot up this is one loop and no teleports.
+    private void KeepBotsStanding()
+    {
+        if (_bots.Count == 0)
+        {
+            return;
+        }
+
+        foreach (IPlayer player in Core.PlayerManager.GetAllPlayers())
+        {
+            if (player != null && player.IsValid && player.IsFakeClient && !player.IsAlive)
+            {
+                PlaceBots();
+
+                return;
+            }
+        }
+    }
+
+    private void StandBotsOnSpots()
+    {
         int index = 0;
 
         foreach (IPlayer player in Core.PlayerManager.GetAllPlayers())
@@ -676,7 +752,11 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         if (_replay.StandOn(player, target))
         {
-            _system.StateFor(player.SteamID).Loaded = target;
+            PracticeState state = _system.StateFor(player.SteamID);
+
+            // Walking onto a spot on purpose is asking to see it again.
+            state.Cleared = false;
+            state.Loaded = target;
         }
     }
 
@@ -714,6 +794,14 @@ public partial class UtilityPracticePlugin : BasePlugin
             CCSPlayerPawn? pawn = player.PlayerPawn;
 
             if (pawn == null || !pawn.IsValid)
+            {
+                continue;
+            }
+
+            // .clear asked for an empty world, and this is the loop that would
+            // otherwise hand it straight back: both the markers and the
+            // Loaded assignment below.
+            if (_system.StateFor(player.SteamID).Cleared)
             {
                 continue;
             }
@@ -1445,6 +1533,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _session.RetryIfMissing(TimeSpan.FromSeconds(15));
         EndWarmup();
         RespawnTheDead();
+        KeepBotsStanding();
         KeepEveryoneStocked();
         ReportOccupancy();
         _system.Tick();
@@ -1877,6 +1966,14 @@ public partial class UtilityPracticePlugin : BasePlugin
         List<ulong> connected = _system.ConnectedSteamIds();
 
         if (connected.Count != 1 || connected[0] != steamId)
+        {
+            return;
+        }
+
+        // A refresh nobody asked for does not get to undo .clear: the drain
+        // runs on its own schedule, and the panel pushing an edit is not the
+        // player asking for their markers back.
+        if (_system.StateFor(steamId).Cleared)
         {
             return;
         }

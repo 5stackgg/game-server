@@ -46,6 +46,31 @@ public partial class UtilityPracticePlugin
         return HookResult.Continue;
     }
 
+    // The ping key, because that is where every other practice server put it
+    // and because clearing is the one thing you want BETWEEN two attempts --
+    // the moment chat is worst at. The smoke in the way is in front of you now,
+    // not after you have typed six characters into it.
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnPlayerPing(EventPlayerPing @event)
+    {
+        IPlayer? player = @event.UserIdPlayer;
+
+        if (player == null || !player.IsValid || player.IsFakeClient)
+        {
+            return HookResult.Continue;
+        }
+
+        int cleared = _replay.ClearThrownUtility();
+
+        // Silent when there was nothing to clear: a ping is also just a ping.
+        if (cleared > 0)
+        {
+            Tell(player.SteamID, $" {ChatColors.Green}cleared {ChatColors.Grey}the utility in the world");
+        }
+
+        return HookResult.Continue;
+    }
+
     [GameEventHandler(HookMode.Post)]
     public HookResult OnPlayerBlind(EventPlayerBlind @event)
     {
@@ -56,12 +81,25 @@ public partial class UtilityPracticePlugin
         IPlayer? blinded = @event.UserIdPlayer;
         IPlayer? thrower = @event.AttackerPlayer;
 
-        // Only a bot's blindness is worth reporting. A player who flashed
-        // themselves already knows, and one who flashed a team-mate is told by
-        // the team-mate.
-        if (blinded != null && blinded.IsValid && blinded.IsFakeClient && duration > 0f)
+        if (duration > 0f && blinded != null && blinded.IsValid)
         {
-            ReportFlash(thrower, duration);
+            if (blinded.IsFakeClient)
+            {
+                ReportFlash(thrower, duration, "a bot");
+            }
+            else
+            {
+                // NoFlash below zeroes the blindness, so the screen never goes
+                // white and the number IS the feedback: "how long would that
+                // have had me" is the whole question a flash lineup asks, and
+                // the server was answering it for the bot only.
+                ReportFlash(blinded, duration, "you");
+
+                if (thrower != null && thrower.IsValid && thrower.SteamID != blinded.SteamID)
+                {
+                    ReportFlash(thrower, duration, blinded.Controller.PlayerName);
+                }
+            }
         }
 
         if (!_config.NoFlash)
@@ -139,16 +177,16 @@ public partial class UtilityPracticePlugin
 
     private const int BotFullHealth = 100;
 
-    private void ReportFlash(IPlayer? thrower, float duration)
+    private void ReportFlash(IPlayer? told, float duration, string who)
     {
-        if (thrower == null || !thrower.IsValid || thrower.IsFakeClient)
+        if (told == null || !told.IsValid || told.IsFakeClient)
         {
             return;
         }
 
         Tell(
-            thrower.SteamID,
-            $" {ChatColors.Default}{duration:0.00}s {ChatColors.Grey}of flash on a bot"
+            told.SteamID,
+            $" {ChatColors.Default}{duration:0.00}s {ChatColors.Grey}of flash on {who}"
         );
     }
 
