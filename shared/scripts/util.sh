@@ -232,7 +232,20 @@ ensure_command_prefix() {
     return 0
   fi
 
-  printf '%s\n' "$updated" > "$file"
+  # Every server on the node reads this file through the configs symlink, so it is
+  # swapped in whole rather than truncated and rewritten under a booting server.
+  local staged
+  if ! staged="$(mktemp "$(dirname "$file")/.$(basename "$file").XXXXXX")"; then
+    echo "---Command Prefixes: could not stage ${file}---" >&2
+    return 0
+  fi
+
+  if ! { cp -p "$file" "$staged" && printf '%s\n' "$updated" > "$staged" && mv -f "$staged" "$file"; }; then
+    rm -f "$staged"
+    echo "---Command Prefixes: could not write ${file}---" >&2
+    return 0
+  fi
+
   echo "---Command Prefixes: added ${prefix} to ${key}---"
 }
 

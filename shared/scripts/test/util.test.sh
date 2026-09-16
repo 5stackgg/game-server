@@ -281,6 +281,24 @@ case "$output" in
 esac
 teardown
 
+echo "ensure_command_prefix swaps the node core.jsonc in whole, keeping its mode"
+setup
+printf '{\n  "CommandPrefixes": ["!"]\n}\n' > "$(node_core_jsonc)"
+chmod 644 "$(node_core_jsonc)"
+original_inode="$(ls -i "$(node_core_jsonc)" | awk '{print $1}')"
+exec 3< "$(node_core_jsonc)"
+ensure_command_prefix "$(instance_core_jsonc)" "CommandPrefixes" "." "!" > /dev/null 2>&1
+assert_equals "$(cat <&3)" "$(printf '{\n  "CommandPrefixes": ["!"]\n}')" \
+  "a reader holding the old core.jsonc saw it rewritten underneath it"
+exec 3<&-
+if [ "$(ls -i "$(node_core_jsonc)" | awk '{print $1}')" = "$original_inode" ]; then
+  fail "core.jsonc was rewritten in place instead of replaced"
+fi
+assert_equals "$(ls -l "$(node_core_jsonc)" | cut -c2-10)" "rw-r--r--" "core.jsonc lost its mode"
+assert_equals "$(ls -A "$workdir/plugins/addons/swiftlys2/configs" | grep -c '^\.core\.jsonc\.')" "0" \
+  "a staged core.jsonc was left behind"
+teardown
+
 if [ "$failures" -gt 0 ]; then
   echo "$failures assertion(s) failed" >&2
   exit 1
