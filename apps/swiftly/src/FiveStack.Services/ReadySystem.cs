@@ -150,7 +150,17 @@ public class ReadySystem
                 break;
         }
 
-        if (TotalReady() == expectedCount)
+        // A flexible-size match needs >=, not ==: an uneven roster (a 3v2 that
+        // started short-handed) reports the smaller side as its per-lineup
+        // minimum, so more players can ready up than expectedCount and an
+        // equality would never fire -- warmup would hang forever. Every other
+        // match keeps the exact == it has always used.
+        var flexOptions = currentMatch?.GetMatchData()?.options;
+        bool flexible =
+            flexOptions?.min_players_per_lineup != null
+            || flexOptions?.expected_players != null;
+
+        if (flexible ? TotalReady() >= expectedCount : TotalReady() == expectedCount)
         {
             Reset();
             currentMatch?.UpdateMapStatus(eMapStatus.Knife);

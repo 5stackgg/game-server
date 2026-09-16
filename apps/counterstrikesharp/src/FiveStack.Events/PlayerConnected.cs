@@ -87,7 +87,7 @@ public partial class FiveStackPlugin
         }
 
         CsTeam expectedTeam = match.GetExpectedTeam(player);
-        int expectedTeamCount = match.GetExpectedPlayerCount() / 2;
+        int expectedTeamCount = match.GetExpectedTeamCount(lineup_id);
         int teamCount = TeamUtility.GetTeamCount(expectedTeam);
 
         if (player.Team == expectedTeam)

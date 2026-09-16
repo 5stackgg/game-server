@@ -849,6 +849,23 @@ public class MatchManager
             return 10;
         }
 
+        // An uneven start sends the total outright, because doubling the
+        // per-lineup minimum under-counts it: a 1v2 records 1 there (the panel's
+        // gates apply that to both sides) but three people still have to show up.
+        if (_matchData.options.expected_players != null)
+        {
+            return _matchData.options.expected_players.Value;
+        }
+
+        // Starters only, matching what the type table below counts: a
+        // Competitive match expects 10 whether or not substitutes are rostered.
+        // Reading the lineups instead would count those substitutes and hang
+        // warmup waiting for players who were never required.
+        if (_matchData.options.min_players_per_lineup != null)
+        {
+            return _matchData.options.min_players_per_lineup.Value * 2;
+        }
+
         if (_matchData.options.type == "Wingman")
         {
             return 4;
@@ -860,6 +877,34 @@ public class MatchManager
         }
 
         return 10;
+    }
+
+    // How many players may sit on one side. A short-handed match is capped at
+    // whatever that lineup was actually given, so the third player of a 3v2 is
+    // not kicked on connect.
+    public int GetExpectedTeamCount(Guid? lineupId)
+    {
+        if (_matchData == null)
+        {
+            return 5;
+        }
+
+        if (_matchData.options.min_players_per_lineup == null || lineupId == null)
+        {
+            return GetExpectedPlayerCount() / 2;
+        }
+
+        if (lineupId == _matchData.lineup_1_id)
+        {
+            return _matchData.lineup_1?.lineup_players?.Count ?? 0;
+        }
+
+        if (lineupId == _matchData.lineup_2_id)
+        {
+            return _matchData.lineup_2?.lineup_players?.Count ?? 0;
+        }
+
+        return GetExpectedPlayerCount() / 2;
     }
 
     private void StartWarmup()

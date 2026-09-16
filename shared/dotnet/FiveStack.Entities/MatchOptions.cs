@@ -14,6 +14,16 @@ public class MatchOptions
     public bool camera_required { get; set; } = false;
     public bool coaches { get; set; } = true;
     public int number_of_substitutes { get; set; } = 0;
+
+    // Set only when this match is not the size its type implies -- a custom mode
+    // with its own team size, or a draft lobby that started short-handed. Null
+    // means fall back to the type's fixed count.
+    public int? min_players_per_lineup { get; set; } = null;
+
+    // The total across both lineups, sent only when a lobby started
+    // short-handed. Set whenever the sides are uneven, where doubling
+    // min_players_per_lineup would under-count -- a 1v2 needs 3, not 2.
+    public int? expected_players { get; set; } = null;
     public bool knife_round { get; set; } = true;
     public bool? default_models { get; set; } = false;
     public string ready_setting { get; set; } = "Players";
