@@ -1,4 +1,5 @@
 using FiveStack.Entities;
+using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SwiftlyS2.Shared;
@@ -55,14 +56,63 @@ public class EnvironmentService
 
     public string GetPublicChatTrigger()
     {
-        return Environment.GetEnvironmentVariable("PUBLIC_CHAT_TRIGGER")
-            ?? GetConfig().PUBLIC_CHAT_TRIGGER;
+        return ResolveChatTrigger(
+            Environment.GetEnvironmentVariable("PUBLIC_CHAT_TRIGGER")
+                ?? GetConfig().PUBLIC_CHAT_TRIGGER,
+            "CommandPrefixes",
+            "!"
+        );
     }
 
     public string GetSilentChatTrigger()
     {
-        return Environment.GetEnvironmentVariable("SILENT_CHAT_TRIGGER")
-            ?? GetConfig().SILENT_CHAT_TRIGGER;
+        return ResolveChatTrigger(
+            Environment.GetEnvironmentVariable("SILENT_CHAT_TRIGGER")
+                ?? GetConfig().SILENT_CHAT_TRIGGER,
+            "CommandSilentPrefixes",
+            "/"
+        );
+    }
+
+    private string ResolveChatTrigger(string configured, string key, string runtimeDefault)
+    {
+        string coreConfigPath = Path.Join(
+            _core.GameDirectory,
+            "csgo",
+            "addons",
+            "swiftlys2",
+            "configs",
+            "core.jsonc"
+        );
+
+        string? coreConfig = null;
+        try
+        {
+            coreConfig = File.ReadAllText(coreConfigPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                $"Could not read {coreConfigPath}, chat hints use \"{configured}\" unchecked"
+            );
+        }
+
+        string trigger = CommandUtility.ResolveTrigger(
+            configured,
+            coreConfig,
+            key,
+            runtimeDefault
+        );
+
+        if (trigger != configured)
+        {
+            _logger.LogWarning(
+                $"\"{configured}\" is not in {key} in {coreConfigPath}, so SwiftlyS2 ignores it; chat hints use \"{trigger}\" instead"
+            );
+        }
+
+        return trigger;
     }
 
     public bool AllowBots()
