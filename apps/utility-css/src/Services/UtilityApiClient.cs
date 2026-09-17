@@ -157,6 +157,14 @@ public class UtilityApiClient
 
     public async Task<PracticeSessionData?> Session(string? map = null)
     {
+        // Send answers null without a word when it is not configured, which
+        // would read as a failed fetch with no reason given.
+        if (!_config.IsConnected())
+        {
+            _logger.LogWarning("no panel url or api password; cannot fetch the practice session");
+            return null;
+        }
+
         string route = string.IsNullOrEmpty(map)
             ? "/utility/session"
             : $"/utility/session?map={Uri.EscapeDataString(map)}";

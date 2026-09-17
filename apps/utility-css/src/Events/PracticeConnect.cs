@@ -51,42 +51,46 @@ public partial class UtilityPracticePlugin
 
     private HookResult ConnectClientHook(DynamicHook hook)
     {
+        var name = hook.GetParam<string>(1) ?? "";
         var authTicket = hook.GetParamArray<byte>(6, 7);
         var token = hook.GetParam<string>(5);
-        var steamId = MemoryMarshal.Read<ulong>(authTicket[..8]);
+        ulong steamId = authTicket.Length >= 8 ? MemoryMarshal.Read<ulong>(authTicket[..8]) : 0;
 
-        PracticeConnectDecision decision = PracticeConnectUtility.Authorize(
+        ConnectRules? rules = PracticeConnectUtility.Rules(
             _session.Current,
             steamId,
-            token
+            _session.LoadedAt
         );
+
+        ConnectDecision decision = ConnectUtility.Authorize(rules, steamId, token);
 
         if (decision.pending_role != null)
         {
             PendingPlayers[steamId] = decision.pending_role;
         }
 
-        // Never the token itself -- it is the server password. Everything else
-        // about the decision, because a connect that fails silently is the
-        // hardest thing here to diagnose from the outside.
         _logger.LogInformation(
-            "connect {steamId}: {action} (token: {hasToken}, roster: {roster}, password ready: {ready})",
-            steamId,
-            decision.action,
-            token != null,
-            _session.Current?.allowed_steam_ids.Count ?? -1,
-            PasswordBuffer != nint.Zero
+            "{connect}",
+            ConnectUtility.Describe(
+                rules,
+                decision,
+                steamId,
+                name,
+                token,
+                authTicket.Length,
+                PasswordBuffer != nint.Zero
+            )
         );
 
         switch (decision.action)
         {
-            case ePracticeConnect.Authorized:
+            case eConnectAction.Authorized:
                 if (PasswordBuffer != nint.Zero)
                 {
                     hook.SetParam(5, PasswordBuffer);
                 }
                 break;
-            case ePracticeConnect.Reject:
+            case eConnectAction.Reject:
                 hook.SetParam(6, 0);
                 hook.SetParam(7, 0);
                 break;
