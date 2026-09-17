@@ -98,6 +98,7 @@ public partial class UtilityPracticePlugin
                         bool param9
                     ) =>
                     {
+                        var name = Marshal.PtrToStringUTF8(param2) ?? "";
                         var token = Marshal.PtrToStringUTF8(param6);
 
                         ulong steamId = 0;
@@ -110,32 +111,34 @@ public partial class UtilityPracticePlugin
                             }
                         }
 
-                        PracticeConnectDecision decision = PracticeConnectUtility.Authorize(
+                        ConnectRules? rules = PracticeConnectUtility.Rules(
                             _session.Current,
                             steamId,
-                            token
+                            _session.LoadedAt
                         );
+
+                        ConnectDecision decision = ConnectUtility.Authorize(rules, steamId, token);
 
                         if (decision.pending_role != null)
                         {
                             PendingPlayers[steamId] = decision.pending_role;
                         }
 
-                        // Never the token itself -- it is the server password.
-                        // Everything else about the decision, because a connect
-                        // that fails silently is the hardest thing here to
-                        // diagnose from the outside.
                         _logger.LogInformation(
-                            "connect {steamId}: {action} (token: {hasToken}, roster: {roster}, password ready: {ready})",
-                            steamId,
-                            decision.action,
-                            token != null,
-                            _session.Current?.allowed_steam_ids.Count ?? -1,
-                            PasswordBuffer != nint.Zero
+                            "{connect}",
+                            ConnectUtility.Describe(
+                                rules,
+                                decision,
+                                steamId,
+                                name,
+                                token,
+                                param8,
+                                PasswordBuffer != nint.Zero
+                            )
                         );
 
                         if (
-                            decision.action == ePracticeConnect.Authorized
+                            decision.action == eConnectAction.Authorized
                             && PasswordBuffer != nint.Zero
                         )
                         {
@@ -152,7 +155,7 @@ public partial class UtilityPracticePlugin
                             );
                         }
 
-                        if (decision.action == ePracticeConnect.Reject)
+                        if (decision.action == eConnectAction.Reject)
                         {
                             return next()(
                                 param1,

@@ -115,180 +115,62 @@ public partial class FiveStackPlugin
 
                         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
-                        if (match == null)
+                        ConnectRules? rules =
+                            match == null
+                                ? null
+                                : MatchUtility.GetConnectRules(match, steamId, name);
+
+                        ConnectDecision decision = ConnectUtility.Authorize(rules, steamId, token);
+
+                        if (decision.pending_role != null)
                         {
-                            return next()(
-                                param1,
-                                param2,
-                                param3,
-                                param4,
-                                param5,
-                                param6,
-                                param7,
+                            PendingPlayers[steamId] = decision.pending_role;
+                        }
+
+                        _logger.LogInformation(
+                            "{connect}",
+                            ConnectUtility.Describe(
+                                rules,
+                                decision,
+                                steamId,
+                                name,
+                                token,
                                 param8,
-                                param9
-                            );
-                        }
-
-                        var matchPassword = match.password;
-
-                        if (token == null)
-                        {
-                            return next()(
-                                param1,
-                                param2,
-                                param3,
-                                param4,
-                                param5,
-                                param6,
-                                nint.Zero,
-                                0,
-                                param9
-                            );
-                        }
-
-                        nint effectivePassword =
-                            PasswordBuffer != nint.Zero ? PasswordBuffer : param6;
-
-                        if (token == matchPassword)
-                        {
-                            if (MatchUtility.HasPlaceholderMembers(match))
-                            {
-                                return next()(
-                                    param1,
-                                    param2,
-                                    param3,
-                                    param4,
-                                    param5,
-                                    effectivePassword,
-                                    param7,
-                                    param8,
-                                    param9
-                                );
-                            }
-
-                            PendingPlayers[steamId] = "streamer";
-                            return next()(
-                                param1,
-                                param2,
-                                param3,
-                                param4,
-                                param5,
-                                param6,
-                                param7,
-                                param8,
-                                param9
-                            );
-                        }
-
-                        MatchMember? member = MatchUtility.GetMemberFromLineup(
-                            match,
-                            steamId.ToString(),
-                            name
+                                PasswordBuffer != nint.Zero
+                            )
                         );
-
-                        if (member != null)
-                        {
-                            return next()(
-                                param1,
-                                param2,
-                                param3,
-                                param4,
-                                param5,
-                                effectivePassword,
-                                param7,
-                                param8,
-                                param9
-                            );
-                        }
-
-                        var matchId = match.id;
-
-                        string[] parts = token.Split(':');
-
-                        if (parts.Length != 3)
-                        {
-                            return next()(
-                                param1,
-                                param2,
-                                param3,
-                                param4,
-                                param5,
-                                param6,
-                                nint.Zero,
-                                0,
-                                param9
-                            );
-                        }
-
-                        string type = parts[0];
-                        string role = parts[1];
-                        string password = parts[2];
-
-                        var computedToken = ConnectAuth.ComputeExpectedToken(
-                            matchPassword,
-                            type,
-                            role,
-                            steamId,
-                            matchId
-                        );
-
-                        password = ConnectAuth.NormalizeClientToken(password);
-
-                        if (computedToken != password)
-                        {
-                            if (type == "tv")
-                            {
-                                return next()(
-                                    param1,
-                                    param2,
-                                    param3,
-                                    param4,
-                                    param5,
-                                    param6,
-                                    nint.Zero,
-                                    0,
-                                    param9
-                                );
-                            }
-
-                            return next()(
-                                param1,
-                                param2,
-                                param3,
-                                param4,
-                                param5,
-                                param6,
-                                param7,
-                                param8,
-                                param9
-                            );
-                        }
-
-                        ePlayerRoles playerRole = PlayerRoleUtility.PlayerRoleStringToEnum(role);
 
                         if (
-                            type == "game"
-                            && (
-                                playerRole == ePlayerRoles.Administrator
-                                || playerRole == ePlayerRoles.TournamentOrganizer
-                                || playerRole == ePlayerRoles.MatchOrganizer
-                                || playerRole == ePlayerRoles.Streamer
-                            )
+                            decision.action == eConnectAction.Authorized
+                            && PasswordBuffer != nint.Zero
                         )
                         {
-                            if (playerRole == ePlayerRoles.Administrator)
-                            {
-                                PendingPlayers[steamId] = "admin";
-                            }
-                            else if (playerRole == ePlayerRoles.Streamer)
-                            {
-                                PendingPlayers[steamId] = "streamer";
-                            }
-                            else
-                            {
-                                PendingPlayers[steamId] = "organizer";
-                            }
+                            return next()(
+                                param1,
+                                param2,
+                                param3,
+                                param4,
+                                param5,
+                                PasswordBuffer,
+                                param7,
+                                param8,
+                                param9
+                            );
+                        }
+
+                        if (decision.action == eConnectAction.Reject)
+                        {
+                            return next()(
+                                param1,
+                                param2,
+                                param3,
+                                param4,
+                                param5,
+                                param6,
+                                nint.Zero,
+                                0,
+                                param9
+                            );
                         }
 
                         return next()(
@@ -297,7 +179,7 @@ public partial class FiveStackPlugin
                             param3,
                             param4,
                             param5,
-                            effectivePassword,
+                            param6,
                             param7,
                             param8,
                             param9

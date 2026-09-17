@@ -70,6 +70,9 @@ public class PracticeSession
         });
     }
 
+    // When the roster the connect hook is deciding on was fetched.
+    public DateTime? LoadedAt { get; private set; }
+
     public async Task Refresh()
     {
         PracticeSessionData? session = await _api.Session(Map);
@@ -78,19 +81,38 @@ public class PracticeSession
         // stays connected, and the door keeps the policy it had.
         if (session == null)
         {
-            _logger.LogWarning("unable to refresh the practice session; keeping the last roster");
+            _logger.LogWarning(
+                "unable to refresh the practice session; keeping the last roster ({roster})",
+                _session == null
+                    ? "none loaded"
+                    : $"{_session.allowed_steam_ids.Count} players, loaded {LoadedAt:u}"
+            );
             return;
         }
 
+        List<string> previous = _session?.allowed_steam_ids ?? new List<string>();
+
         _session = session;
+        LoadedAt = DateTime.UtcNow;
 
         _logger.LogInformation(
-            "practice session {id} ({players} players allowed)",
+            "practice session {id} match {match} ({players} players allowed: {roster} | added: {added} | removed: {removed})",
             session.id,
-            session.allowed_steam_ids.Count
+            session.match_id,
+            session.allowed_steam_ids.Count,
+            Ids(session.allowed_steam_ids),
+            Ids(session.allowed_steam_ids.Except(previous)),
+            Ids(previous.Except(session.allowed_steam_ids))
         );
 
         Refreshed?.Invoke(session);
+    }
+
+    private static string Ids(IEnumerable<string> ids)
+    {
+        string joined = string.Join(", ", ids);
+
+        return joined.Length == 0 ? "none" : joined;
     }
 
     public bool IsAllowed(ulong steamId)

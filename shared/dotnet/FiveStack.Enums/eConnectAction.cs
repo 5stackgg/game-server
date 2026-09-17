@@ -1,8 +1,8 @@
 namespace FiveStack.Enums;
 
-// What a practice server's connect hook should do with a joining client. The
-// decision is taken before any engine state is touched, so it can be tested.
-public enum ePracticeConnect
+// What a ConnectClient hook should do with a joining client. The decision is
+// taken before any engine state is touched, so it can be tested.
+public enum eConnectAction
 {
     // Known client: swap the password parameter for the server's own so the
     // engine's check passes.
