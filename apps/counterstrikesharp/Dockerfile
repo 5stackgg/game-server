@@ -1,4 +1,11 @@
-FROM registry.gitlab.steamos.cloud/steamrt/sniper/platform:latest-container-runtime-depot AS dotnet-sdk
+FROM registry.gitlab.steamos.cloud/steamrt/sniper/platform:latest-container-runtime-depot AS sniper
+
+# bullseye went end-of-life in August 2026 and Debian pulled its security pool,
+# so the base image's bullseye-security sources now 404 on every package fetch.
+# Everything we install comes from bullseye main (archive.debian.org) or Valve.
+RUN sed -i '/deb\.debian\.org/d' /etc/apt/sources.list
+
+FROM sniper AS dotnet-sdk
 
 # Install .NET SDK 10.0
 RUN apt-get update && \
@@ -73,7 +80,7 @@ RUN apt-get update && \
     zip -r /mod-release.zip . && \
     rm -rf /var/lib/apt/lists/*
 
-FROM registry.gitlab.steamos.cloud/steamrt/sniper/platform:latest-container-runtime-depot
+FROM sniper
 
 ENV DATA_DIR="/serverdata"
 ENV STEAMCMD_DIR="${DATA_DIR}/steamcmd"
@@ -111,10 +118,11 @@ ENV METAMOD_CSGO_URL=https://mms.alliedmods.net/mmsdrop/1.12/mmsource-1.12.0-git
 ENV SOURCEMOD_CSGO_URL=https://sm.alliedmods.net/smdrop/1.13/sourcemod-1.13.0-git7297-linux.tar.gz
 ENV NO_LOBBY_RESERVATION_URL=https://github.com/nuxencs/NoLobbyReservation/releases/download/v0.0.1/NoLobbyReservation.zip
 
+# steamcmd's 32-bit deps and .NET's libicu67 already ship in the sniper image
+# as i386 multiarch packages, so no lib32* / libicu-dev here.
 RUN apt-get update && \
 	apt-get install -y --no-install-recommends \
-	wget locales procps jq ca-certificates curl unzip rsync \
-	lib32gcc-s1 lib32stdc++6 lib32z1 lsof libicu-dev && \
+	wget locales procps jq ca-certificates curl unzip rsync lsof && \
 	echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
 	locale-gen && \
 	rm -rf /var/lib/apt/lists/*
