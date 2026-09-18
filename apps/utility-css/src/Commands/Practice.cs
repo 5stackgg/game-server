@@ -6,6 +6,7 @@ using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities.Practice;
 using FiveStack.Enums;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Logging;
 
 namespace UtilityPractice;
 
@@ -851,6 +852,8 @@ public partial class UtilityPracticePlugin
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnRefresh(CCSPlayerController? player, CommandInfo command)
     {
+        _logger.LogInformation("utility_practice_refresh received");
+
         RefreshEverything();
     }
 

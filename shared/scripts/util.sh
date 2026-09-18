@@ -203,6 +203,52 @@ write_plugin_configs() {
   done <<< "$paths"
 }
 
+# Only whole-line // comments are stripped; a trailing // may be inside a URL.
+ensure_command_prefix() {
+  local file="$1"
+  local key="$2"
+  local prefix="$3"
+  shift 3
+
+  if [ ! -f "$file" ]; then
+    return 0
+  fi
+
+  local current
+  if ! current="$(grep -v '^[[:space:]]*//' "$file" | jq -e 'objects' 2>/dev/null)"; then
+    echo "---Command Prefixes: ${file} is not plain JSON, leaving ${key} as it is---" >&2
+    return 0
+  fi
+
+  if printf '%s' "$current" | jq -e --arg key "$key" --arg prefix "$prefix" \
+    '.[$key] | arrays | any(.[]; . == $prefix)' > /dev/null 2>&1; then
+    return 0
+  fi
+
+  local updated
+  if ! updated="$(printf '%s' "$current" | jq --arg key "$key" --arg prefix "$prefix" \
+    '.[$key] = [$prefix] + ((.[$key] | arrays // $ARGS.positional) - [$prefix])' --args "$@")"; then
+    echo "---Command Prefixes: could not add ${prefix} to ${key} in ${file}---" >&2
+    return 0
+  fi
+
+  # Every server on the node reads this file through the configs symlink, so it is
+  # swapped in whole rather than truncated and rewritten under a booting server.
+  local staged
+  if ! staged="$(mktemp "$(dirname "$file")/.$(basename "$file").XXXXXX")"; then
+    echo "---Command Prefixes: could not stage ${file}---" >&2
+    return 0
+  fi
+
+  if ! { cp -p "$file" "$staged" && printf '%s\n' "$updated" > "$staged" && mv -f "$staged" "$file"; }; then
+    rm -f "$staged"
+    echo "---Command Prefixes: could not write ${file}---" >&2
+    return 0
+  fi
+
+  echo "---Command Prefixes: added ${prefix} to ${key}---"
+}
+
 
 # Links a plugins directory into a server instance, leaving out managed plugins
 # the match's mode did not ask for. Managed and hand-placed files share this

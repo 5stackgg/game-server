@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Text;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Memory;
@@ -7,6 +6,7 @@ using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
@@ -51,116 +51,49 @@ public partial class FiveStackPlugin
 
     private HookResult ConnectClientHook(DynamicHook hook)
     {
-        var name = hook.GetParam<string>(1);
+        var name = hook.GetParam<string>(1) ?? "";
         var authTicket = hook.GetParamArray<byte>(6, 7);
         var token = hook.GetParam<string>(5);
-        var steamId = MemoryMarshal.Read<ulong>(authTicket[..8]);
+        ulong steamId = authTicket.Length >= 8 ? MemoryMarshal.Read<ulong>(authTicket[..8]) : 0;
 
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
 
-        if (match == null)
+        ConnectRules? rules =
+            match == null ? null : MatchUtility.GetConnectRules(match, steamId, name);
+
+        ConnectDecision decision = ConnectUtility.Authorize(rules, steamId, token);
+
+        if (decision.pending_role != null)
         {
-            return HookResult.Continue;
+            PendingPlayers[steamId] = decision.pending_role;
         }
 
-        var matchPassword = match.password;
-
-        if (token == null)
-        {
-            hook.SetParam(6, 0);
-            hook.SetParam(7, 0);
-            return HookResult.Continue;
-        }
-
-        if (token == matchPassword)
-        {
-            if (MatchUtility.HasPlaceholderMembers(match))
-            {
-                hook.SetParam(5, PasswordBuffer);
-                return HookResult.Continue;
-            }
-
-            PendingPlayers[steamId] = "streamer";
-            return HookResult.Continue;
-        }
-
-        MatchMember? member = MatchUtility.GetMemberFromLineup(match, steamId.ToString(), name);
-
-        if (member != null)
-        {
-            hook.SetParam(5, PasswordBuffer);
-            return HookResult.Continue;
-        }
-
-        var matchId = match.id;
-
-        string[] parts = token.Split(':');
-
-        if (parts.Length != 3)
-        {
-            hook.SetParam(6, 0);
-            hook.SetParam(7, 0);
-            return HookResult.Continue;
-        }
-
-        string type = parts[0];
-        string role = parts[1];
-        string password = parts.Length > 1 ? parts[2] : "";
-
-        var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(matchPassword));
-        var computedHash = hmac.ComputeHash(
-            Encoding.UTF8.GetBytes($"{type}:{role}:{steamId}:{matchId}")
-        );
-        var computedToken = Convert.ToBase64String(computedHash);
-
-        // fix + and - for URL safe characters
-        password = password.Replace("-", "+");
-        password = password.Replace("_", "/");
-
-        // Constant-time comparison so verifying the connect token does not leak
-        // the correct value through response timing.
-        bool tokenMatches = CryptographicOperations.FixedTimeEquals(
-            Encoding.UTF8.GetBytes(computedToken),
-            Encoding.UTF8.GetBytes(password)
+        _logger.LogInformation(
+            "{connect}",
+            ConnectUtility.Describe(
+                rules,
+                decision,
+                steamId,
+                name,
+                token,
+                authTicket.Length,
+                PasswordBuffer != nint.Zero
+            )
         );
 
-        if (!tokenMatches)
+        switch (decision.action)
         {
-            if (type == "tv")
-            {
+            case eConnectAction.Authorized:
+                if (PasswordBuffer != nint.Zero)
+                {
+                    hook.SetParam(5, PasswordBuffer);
+                }
+                break;
+            case eConnectAction.Reject:
                 hook.SetParam(6, 0);
                 hook.SetParam(7, 0);
-            }
-            return HookResult.Continue;
+                break;
         }
-
-        ePlayerRoles playerRole = PlayerRoleUtility.PlayerRoleStringToEnum(role);
-
-        if (
-            type == "game"
-            && (
-                playerRole == ePlayerRoles.Administrator
-                || playerRole == ePlayerRoles.TournamentOrganizer
-                || playerRole == ePlayerRoles.MatchOrganizer
-                || playerRole == ePlayerRoles.Streamer
-            )
-        )
-        {
-            if (playerRole == ePlayerRoles.Administrator)
-            {
-                PendingPlayers[steamId] = "admin";
-            }
-            else if (playerRole == ePlayerRoles.Streamer)
-            {
-                PendingPlayers[steamId] = "streamer";
-            }
-            else
-            {
-                PendingPlayers[steamId] = "organizer";
-            }
-        }
-
-        hook.SetParam(5, PasswordBuffer);
 
         return HookResult.Continue;
     }

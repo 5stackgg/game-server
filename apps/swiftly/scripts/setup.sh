@@ -260,6 +260,10 @@ if [ ! -e "$INSTANCE_SERVER_DIR/game/csgo/addons/swiftlys2/configs/core.jsonc" ]
     cp "/opt/server-cfg/core.jsonc" "$INSTANCE_SERVER_DIR/game/csgo/addons/swiftlys2/configs"
 fi
 
+# SwiftlyS2 core, not the plugin, decides which chat prefixes reach a command.
+ensure_command_prefix "$INSTANCE_SERVER_DIR/game/csgo/addons/swiftlys2/configs/core.jsonc" "CommandPrefixes" "${PUBLIC_CHAT_TRIGGER:-.}" "!"
+ensure_command_prefix "$INSTANCE_SERVER_DIR/game/csgo/addons/swiftlys2/configs/core.jsonc" "CommandSilentPrefixes" "${SILENT_CHAT_TRIGGER:-/}" "/"
+
 # Elo ranks and any plugin the panel says needs it both land here: the
 # framework refuses the calls they make while this is true, and it can only be
 # changed before the server starts.

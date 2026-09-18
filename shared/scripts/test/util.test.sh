@@ -201,6 +201,104 @@ PLUGIN_CONFIGS="$(printf '%s' 'not json' | base64)" \
 assert_equals "$?" "0" "invalid JSON should not abort setup"
 teardown
 
+shipped_core_jsonc="${SCRIPT_DIR}/../../../apps/swiftly/cfg/core.jsonc"
+node_core_jsonc() { printf '%s' "$workdir/plugins/addons/swiftlys2/configs/core.jsonc"; }
+instance_core_jsonc() { printf '%s' "$workdir/instance/game/csgo/addons/swiftlys2/configs/core.jsonc"; }
+
+echo "ensure_command_prefix adds . to a node core.jsonc that only has !"
+setup
+printf '{\n  "CommandPrefixes": ["!"],\n  "CommandSilentPrefixes": ["/"]\n}\n' > "$(node_core_jsonc)"
+ensure_command_prefix "$(instance_core_jsonc)" "CommandPrefixes" "." "!" > /dev/null 2>&1
+assert_equals "$?" "0" "ensure_command_prefix should succeed"
+assert_equals "$(jq -c '.CommandPrefixes' "$(node_core_jsonc)" 2>/dev/null)" '[".","!"]' \
+  "node core.jsonc did not gain the . prefix"
+if [ ! -L "$workdir/instance/game/csgo/addons/swiftlys2/configs" ]; then
+  fail "configs directory is no longer a symlink onto the node volume"
+fi
+teardown
+
+echo "ensure_command_prefix is idempotent"
+setup
+printf '{\n  "CommandPrefixes": ["!"]\n}\n' > "$(node_core_jsonc)"
+ensure_command_prefix "$(instance_core_jsonc)" "CommandPrefixes" "." "!" > /dev/null 2>&1
+first_run="$(cat "$(node_core_jsonc)")"
+ensure_command_prefix "$(instance_core_jsonc)" "CommandPrefixes" "." "!" > /dev/null 2>&1
+assert_equals "$(jq -c '.CommandPrefixes' "$(node_core_jsonc)" 2>/dev/null)" '[".","!"]' \
+  "second run duplicated a prefix"
+assert_equals "$(cat "$(node_core_jsonc)")" "$first_run" "second run rewrote an already-correct file"
+teardown
+
+echo "ensure_command_prefix leaves the shipped core.jsonc byte-for-byte alone"
+setup
+cp "$shipped_core_jsonc" "$(node_core_jsonc)"
+ensure_command_prefix "$(instance_core_jsonc)" "CommandPrefixes" "." "!" > /dev/null 2>&1
+ensure_command_prefix "$(instance_core_jsonc)" "CommandSilentPrefixes" "/" "/" > /dev/null 2>&1
+assert_equals "$(cat "$(node_core_jsonc)")" "$(cat "$shipped_core_jsonc")" \
+  "an already-correct commented core.jsonc was rewritten"
+teardown
+
+echo "ensure_command_prefix fixes a commented core.jsonc without losing other keys"
+setup
+grep -v '^[[:space:]]*"\.",$' "$shipped_core_jsonc" > "$(node_core_jsonc)"
+ensure_command_prefix "$(instance_core_jsonc)" "CommandPrefixes" "." "!" > /dev/null 2>&1
+assert_equals "$(jq -c '.CommandPrefixes' "$(node_core_jsonc)" 2>/dev/null)" '[".","!"]' \
+  "commented core.jsonc did not gain the . prefix"
+assert_equals "$(jq -c '.CommandSilentPrefixes' "$(node_core_jsonc)" 2>/dev/null)" '["/"]' \
+  "silent prefixes were lost"
+assert_equals "$(jq -r '.FollowCS2ServerGuidelines' "$(node_core_jsonc)" 2>/dev/null)" "true" \
+  "FollowCS2ServerGuidelines was lost"
+assert_equals "$(jq -r '.Menu.ItemsPerPage' "$(node_core_jsonc)" 2>/dev/null)" "5" \
+  "Menu.ItemsPerPage was lost"
+assert_equals "$(jq -r '.Menu.NavigationPrefix' "$(node_core_jsonc)" 2>/dev/null)" "➤" \
+  "Menu.NavigationPrefix was mangled"
+assert_equals "$(jq -r '.CS2ServerGuidelines' "$(node_core_jsonc)" 2>/dev/null)" \
+  "https://blog.counter-strike.net/index.php/server_guidelines/" \
+  "a // inside a string value was treated as a comment"
+teardown
+
+echo "ensure_command_prefix keeps the runtime default when the key is missing"
+setup
+printf '{\n  "Language": "en"\n}\n' > "$(node_core_jsonc)"
+ensure_command_prefix "$(instance_core_jsonc)" "CommandPrefixes" "." "!" > /dev/null 2>&1
+ensure_command_prefix "$(instance_core_jsonc)" "CommandSilentPrefixes" "/" "/" > /dev/null 2>&1
+assert_equals "$(jq -c '.CommandPrefixes' "$(node_core_jsonc)" 2>/dev/null)" '[".","!"]' \
+  "missing CommandPrefixes did not keep the runtime's ! alongside ."
+assert_equals "$(jq -c '.CommandSilentPrefixes' "$(node_core_jsonc)" 2>/dev/null)" '["/"]' \
+  "missing CommandSilentPrefixes was not filled"
+assert_equals "$(jq -r '.Language' "$(node_core_jsonc)" 2>/dev/null)" "en" "Language was lost"
+teardown
+
+echo "ensure_command_prefix leaves a malformed core.jsonc untouched"
+setup
+printf '{\n  "CommandPrefixes": ["!"], // trailing\n' > "$(node_core_jsonc)"
+malformed="$(cat "$(node_core_jsonc)")"
+output="$(ensure_command_prefix "$(instance_core_jsonc)" "CommandPrefixes" "." "!" 2>&1)"
+assert_equals "$?" "0" "a malformed core.jsonc should not abort setup"
+assert_equals "$(cat "$(node_core_jsonc)")" "$malformed" "a malformed core.jsonc was modified"
+case "$output" in
+  *"CommandPrefixes"*) ;;
+  *) fail "a malformed core.jsonc was skipped without a warning" ;;
+esac
+teardown
+
+echo "ensure_command_prefix swaps the node core.jsonc in whole, keeping its mode"
+setup
+printf '{\n  "CommandPrefixes": ["!"]\n}\n' > "$(node_core_jsonc)"
+chmod 644 "$(node_core_jsonc)"
+original_inode="$(ls -i "$(node_core_jsonc)" | awk '{print $1}')"
+exec 3< "$(node_core_jsonc)"
+ensure_command_prefix "$(instance_core_jsonc)" "CommandPrefixes" "." "!" > /dev/null 2>&1
+assert_equals "$(cat <&3)" "$(printf '{\n  "CommandPrefixes": ["!"]\n}')" \
+  "a reader holding the old core.jsonc saw it rewritten underneath it"
+exec 3<&-
+if [ "$(ls -i "$(node_core_jsonc)" | awk '{print $1}')" = "$original_inode" ]; then
+  fail "core.jsonc was rewritten in place instead of replaced"
+fi
+assert_equals "$(ls -l "$(node_core_jsonc)" | cut -c2-10)" "rw-r--r--" "core.jsonc lost its mode"
+assert_equals "$(ls -A "$workdir/plugins/addons/swiftlys2/configs" | grep -c '^\.core\.jsonc\.')" "0" \
+  "a staged core.jsonc was left behind"
+teardown
+
 if [ "$failures" -gt 0 ]; then
   echo "$failures assertion(s) failed" >&2
   exit 1

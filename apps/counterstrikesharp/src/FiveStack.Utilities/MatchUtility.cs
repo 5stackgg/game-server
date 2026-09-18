@@ -39,6 +39,31 @@ namespace FiveStack.Utilities
             });
         }
 
+        // A client presenting the raw match password is a streamer, unless the
+        // lineup still has placeholder seats: then it may be the player
+        // meant to fill one.
+        public static ConnectRules GetConnectRules(
+            MatchData matchData,
+            ulong steamId,
+            string playerName
+        )
+        {
+            List<MatchMember> players = matchData
+                .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
+                .ToList();
+
+            return new ConnectRules
+            {
+                match_id = matchData.id,
+                password = matchData.password,
+                is_member = GetMemberFromLineup(matchData, steamId.ToString(), playerName) != null,
+                password_role = HasPlaceholderMembers(matchData) ? null : "streamer",
+                roster = players
+                    .Select(member => member.steam_id ?? $"placeholder '{member.placeholder_name}'")
+                    .ToList(),
+            };
+        }
+
         public static Guid? GetPlayerLineup(MatchData matchData, CCSPlayerController player)
         {
             MatchMember? member = MatchUtility.GetMemberFromLineup(

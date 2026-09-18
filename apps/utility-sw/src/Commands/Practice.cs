@@ -1356,6 +1356,8 @@ public partial class UtilityPracticePlugin
             return;
         }
 
+        _logger.LogInformation("utility_practice_refresh received");
+
         RefreshEverything();
     }
 
