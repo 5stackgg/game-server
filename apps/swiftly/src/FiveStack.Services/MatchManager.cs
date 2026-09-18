@@ -506,6 +506,8 @@ public class MatchManager
 
         _rankSystem.OnMatchSetup(_matchData);
 
+        _surrenderSystem.OnMatchSetup(_matchData);
+
         MatchMap? _currentMap = GetCurrentMap();
 
         if (_currentMap == null)

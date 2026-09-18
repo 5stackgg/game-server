@@ -98,4 +98,32 @@ public class MatchUtilityTests
     {
         Assert.Throws<ArgumentException>(() => MatchUtility.MapStatusStringToEnum("Bogus"));
     }
+
+    [Fact]
+    public void RosterSteamIds_SpansBothLineups()
+    {
+        MatchData match = BuildMatch();
+        match.lineup_2.lineup_players[0].steam_id = "76561198000000002";
+        match.lineup_2.lineup_players[0].placeholder_name = "";
+
+        HashSet<string> roster = MatchUtility.RosterSteamIds(match);
+
+        Assert.Equal(new HashSet<string> { "76561198000000001", "76561198000000002" }, roster);
+    }
+
+    [Fact]
+    public void RosterSteamIds_SkipsPlaceholderSeats()
+    {
+        HashSet<string> roster = MatchUtility.RosterSteamIds(BuildMatch());
+
+        Assert.Equal(new HashSet<string> { "76561198000000001" }, roster);
+    }
+
+    [Fact]
+    public void RosterSteamIds_ExcludesNonRosterSteamIds()
+    {
+        HashSet<string> roster = MatchUtility.RosterSteamIds(BuildMatch());
+
+        Assert.DoesNotContain("76561198000009999", roster);
+    }
 }

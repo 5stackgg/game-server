@@ -1,3 +1,4 @@
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
@@ -20,6 +21,10 @@ public class SurrenderSystem
 
     private Dictionary<CsTeam, Dictionary<ulong, Timer>> _disconnectTimers =
         new Dictionary<CsTeam, Dictionary<ulong, Timer>>();
+
+    // Survives Reset(), which runs on every map of a series.
+    private readonly HashSet<ulong> _reportedAbandons = new HashSet<ulong>();
+    private Guid? _reportedAbandonsMatchId;
 
     private Guid? winningLineupId;
 
@@ -59,6 +64,10 @@ public class SurrenderSystem
             return;
         }
 
+        // Overwriting the slot without killing what is in it leaves a live timer
+        // nothing can reach, and it fires its own abandon three minutes later.
+        KillDisconnectTimer(steamId);
+
         if (!_disconnectTimers.ContainsKey(team))
         {
             _disconnectTimers[team] = new Dictionary<ulong, Timer>();
@@ -77,39 +86,61 @@ public class SurrenderSystem
     // we dont pass the team in because they may not be on the team immediately after reconnecting
     public void CancelDisconnectTimer(ulong steamId)
     {
-        bool canceledTimer = false;
-        foreach (var _team in MatchUtility.Teams())
-        {
-            CsTeam team = TeamUtility.TeamNumToCSTeam(_team.TeamNum);
-
-            if (_disconnectTimers.ContainsKey(team))
-            {
-                if (_disconnectTimers[team].ContainsKey(steamId))
-                {
-                    _disconnectTimers[team][steamId].Kill();
-                    _disconnectTimers[team].Remove(steamId);
-                    canceledTimer = true;
-                }
-            }
-        }
-
-        if (!canceledTimer)
+        if (!KillDisconnectTimer(steamId))
         {
             return;
         }
 
-        int currentPlayers = MatchUtility.Players().Count;
+        ResumeIfRosterWhole();
+    }
 
-        int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
-
-        if (
-            _matchService.GetCurrentMatch()?.IsPaused() == true
-            && currentPlayers == expectedPlayers
-        )
+    // player_connect_full runs before the connecting client is on the runtime's
+    // player list, so the roster is only whole a frame later.
+    public void ResumeIfRosterWhole()
+    {
+        Server.NextFrame(() =>
         {
+            MatchManager? match = _matchService.GetCurrentMatch();
+            MatchData? matchData = match?.GetMatchData();
+
+            if (match == null || matchData == null || !match.IsPaused())
+            {
+                return;
+            }
+
+            // A tactical or technical pause is released by the teams themselves.
+            if (match.timeoutSystem.ShouldRequireTeamResume())
+            {
+                return;
+            }
+
+            if (MatchUtility.ConnectedRosterCount(matchData) < match.GetExpectedPlayerCount())
+            {
+                return;
+            }
+
             Reset();
-            _matchService.GetCurrentMatch()?.ResumeMatch();
+            match.ResumeMatch();
+        });
+    }
+
+    // Swept across every bucket, not just the team the player is on now: a
+    // player who reconnects onto the other side leaves a timer filed under the
+    // side they left from.
+    private bool KillDisconnectTimer(ulong steamId)
+    {
+        bool killed = false;
+
+        foreach (Dictionary<ulong, Timer> timers in _disconnectTimers.Values)
+        {
+            if (timers.Remove(steamId, out Timer? timer))
+            {
+                timer?.Kill();
+                killed = true;
+            }
         }
+
+        return killed;
     }
 
     public void SetupSurrender(CsTeam team, CCSPlayerController? player = null)
@@ -162,6 +193,19 @@ public class SurrenderSystem
             false,
             30
         );
+    }
+
+    // Abandons are reported once per match, never once per map, so the reported
+    // set is only cleared when a different match loads.
+    public void OnMatchSetup(MatchData matchData)
+    {
+        if (_reportedAbandonsMatchId == matchData.id)
+        {
+            return;
+        }
+
+        _reportedAbandonsMatchId = matchData.id;
+        _reportedAbandons.Clear();
     }
 
     public void Reset()
@@ -254,6 +298,15 @@ public class SurrenderSystem
 
     public void PlayerAbandonedMatch(ulong steamId)
     {
+        // The api escalates the ban on every report, so one leave reported twice
+        // -- after a reconnect, or again on the next map -- costs the player a
+        // longer ban than they earned.
+        if (!_reportedAbandons.Add(steamId))
+        {
+            _logger.LogInformation($"{steamId} was already reported as abandoned this match");
+            return;
+        }
+
         _matchEvents.PublishGameEvent(
             "abandoned",
             new Dictionary<string, object>

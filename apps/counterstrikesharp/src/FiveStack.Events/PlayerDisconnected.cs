@@ -62,7 +62,7 @@ public partial class FiveStackPlugin
                 match.PauseMatch(
                     "Player disconnected, pausing match",
                     stillRequired: () =>
-                        ConnectedRosterCount(match.GetMatchData() ?? matchData)
+                        MatchUtility.ConnectedRosterCount(match.GetMatchData() ?? matchData)
                         < match.GetExpectedPlayerCount()
                 );
             }
