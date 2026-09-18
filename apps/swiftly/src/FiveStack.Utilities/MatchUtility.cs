@@ -207,6 +207,26 @@ namespace FiveStack.Utilities
             return count;
         }
 
+        public static HashSet<string> RosterSteamIds(MatchData matchData)
+        {
+            return matchData
+                .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
+                .Select(member => member.steam_id)
+                .Where(steamId => !string.IsNullOrEmpty(steamId))
+                .Select(steamId => steamId!)
+                .ToHashSet();
+        }
+
+        // How many of the two lineups are actually in the server right now.
+        // Players() also returns casters and admins, who must never count
+        // towards a match being whole again.
+        public static int ConnectedRosterCount(MatchData matchData)
+        {
+            HashSet<string> roster = RosterSteamIds(matchData);
+
+            return Players().Count(player => roster.Contains(player.SteamID.ToString()));
+        }
+
         public static IEnumerable<CCSTeam> Teams()
         {
             if (_cachedTeams != null)
