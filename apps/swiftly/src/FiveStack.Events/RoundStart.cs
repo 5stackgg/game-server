@@ -36,9 +36,11 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        if (_gameBackupRounds.IsResettingRound())
+        if (_gameBackupRounds.BlocksPlay())
         {
-            _logger.LogInformation("OnRoundStart skipping publish: restoring round");
+            _logger.LogInformation(
+                "OnRoundStart skipping publish: round restore pending or in progress"
+            );
             return HookResult.Continue;
         }
 
