@@ -1,18 +1,39 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Cvars;
+using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
+using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
 namespace FiveStack;
 
 public class GameBackUpRounds
 {
     private int? _resetRound;
+
+    // A restore that has to happen before play may continue: the backend knows
+    // rounds this game does not (fresh process, map reload), or an organizer
+    // asked for one while the roster was short.
+    private int? _pendingRestoreRound;
+    private int? _forcedRestoreRound;
+    private bool _recoveryNeedsOrganizer;
+    private bool _behindNeedsConfirmation;
+    private int _restoreAttempts;
+    private Guid? _syncedMapId;
+    private DateTime _lastRestoreRequestAt = DateTime.MinValue;
+    private Timer? _recoveryTimer;
+
+    private const int RecoveryTickSeconds = 5;
+    private const int RestoreRequestRetrySeconds = 15;
+    private const int MaxRestoreAttempts = 3;
+
+
     private readonly MatchEvents _matchEvents;
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
@@ -52,6 +73,8 @@ public class GameBackUpRounds
         }
     }
 
+    private string BackupDirectory => Path.Join(Server.GameDirectory, "csgo");
+
     public void RemovePlayerVoteOnDisconnect(ulong steamId)
     {
         restoreRoundVote?.RemovePlayerVote(steamId);
@@ -74,50 +97,316 @@ public class GameBackUpRounds
         return _resetRound != null;
     }
 
+    public void Reset()
+    {
+        _recoveryTimer?.Kill();
+        _recoveryTimer = null;
+        _resetRound = null;
+        _pendingRestoreRound = null;
+        _forcedRestoreRound = null;
+        _recoveryNeedsOrganizer = false;
+        _behindNeedsConfirmation = false;
+        _restoreAttempts = 0;
+        _syncedMapId = null;
+        restoreRoundVote = null;
+    }
+
+    public bool IsRecoveryPending()
+    {
+        return _pendingRestoreRound != null || _recoveryNeedsOrganizer;
+    }
+
+    // Nothing that advances the match -- resuming, capturing or publishing a
+    // round -- may run while the game state is not the backend's.
+    public bool BlocksPlay()
+    {
+        return IsResettingRound() || IsRecoveryPending();
+    }
+
+    private int MinPlayersPerTeam()
+    {
+        return BackupRoundUtility.MinPlayersPerTeam(
+            _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10
+        );
+    }
+
+    // Runs on every match setup, not just the first: a map reload mid-match
+    // leaves a long-lived process exactly as far behind as a crash does.
     public void CheckForBackupRestore()
     {
-        MatchMap? matchMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
+        MatchManager? matchManager = _matchService.GetCurrentMatch();
+        MatchData? match = matchManager?.GetMatchData();
+        MatchMap? matchMap = matchManager?.GetCurrentMap();
 
-        if (matchMap == null)
+        if (matchManager == null || match == null || matchMap == null || BlocksPlay())
         {
             return;
         }
 
-        var availableRounds = matchMap.rounds.Where(
-            (backupRound) =>
-            {
-                return backupRound.deleted_at == null;
-            }
-        );
-
-        if (availableRounds.Count() == 0)
+        eMapStatus backendStatus = MatchUtility.MapStatusStringToEnum(matchMap.status);
+        if (
+            backendStatus != eMapStatus.Live
+            && backendStatus != eMapStatus.Paused
+            && backendStatus != eMapStatus.Overtime
+        )
         {
             return;
         }
 
-        int highestNumber = availableRounds.Max(
-            (backupRound) =>
-            {
-                return backupRound.round;
-            }
-        );
+        if (_environmentService.IsOfflineMode())
+        {
+            LoadBackupRoundsFromDisk(match, matchMap);
+        }
 
+        int highestRound = BackupRoundUtility.HighestRound(matchMap.rounds);
         int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
 
         _logger.LogInformation(
-            $"Highest Backup Round: {highestNumber}, and total rounds played is {totalRoundsPlayed}"
+            $"Highest recorded round: {highestRound}, and total rounds played is {totalRoundsPlayed}"
         );
 
-        if (totalRoundsPlayed > 0 && totalRoundsPlayed >= highestNumber)
+        if (highestRound <= totalRoundsPlayed)
         {
-            // we are already live, do not restart the match accidently
+            _syncedMapId = matchMap.id;
+            _behindNeedsConfirmation = false;
             return;
         }
 
-        if (highestNumber > totalRoundsPlayed)
+        // A process that was in step a moment ago only looks behind if this
+        // match data predates a restore it just ran. Believe it on a second,
+        // fresh read; a new process has nothing to be stale against.
+        if (_syncedMapId == matchMap.id && !_behindNeedsConfirmation)
         {
-            _logger.LogInformation("Server restarted, requires a vote to restore round");
-            RequestRestoreBackupRound(highestNumber, null, true);
+            _behindNeedsConfirmation = true;
+            _logger.LogWarning(
+                $"Game is at round {totalRoundsPlayed} but round {highestRound} is recorded, confirming with a fresh match fetch"
+            );
+            _matchService.GetMatchFromApi();
+            return;
+        }
+
+        _behindNeedsConfirmation = false;
+
+        int restorableRound = BackupRoundUtility.HighestRestorableRound(
+            matchMap.rounds,
+            MinPlayersPerTeam()
+        );
+
+        if (restorableRound <= totalRoundsPlayed)
+        {
+            _logger.LogCritical(
+                $"Game is at round {totalRoundsPlayed} but round {highestRound} is recorded, and no recorded round has a usable backup"
+            );
+            _recoveryNeedsOrganizer = true;
+        }
+        else
+        {
+            if (restorableRound < highestRound)
+            {
+                _logger.LogCritical(
+                    $"Rounds {restorableRound + 1}-{highestRound} have no usable backup, recovering to round {restorableRound}"
+                );
+            }
+
+            _logger.LogWarning(
+                $"Game is at round {totalRoundsPlayed} but round {highestRound} is recorded, holding the match until round {restorableRound} is restored"
+            );
+            _pendingRestoreRound = restorableRound;
+        }
+
+        _restoreAttempts = 0;
+        StartRecoveryTimer();
+    }
+
+    private void StartRecoveryTimer()
+    {
+        _recoveryTimer?.Kill();
+        _recoveryTimer = TimerUtility.AddTimer(
+            RecoveryTickSeconds,
+            RecoveryTick,
+            TimerFlags.REPEAT
+        );
+    }
+
+    private void RecoveryTick()
+    {
+        if (!IsRecoveryPending())
+        {
+            _recoveryTimer?.Kill();
+            _recoveryTimer = null;
+            return;
+        }
+
+        if (IsResettingRound())
+        {
+            return;
+        }
+
+        MatchManager? match = _matchService.GetCurrentMatch();
+        if (match == null || !match.IsInPlay())
+        {
+            return;
+        }
+
+        // Held by CS2 as well as by the plugin: a pause a restart dropped
+        // would otherwise let rounds play out that can never count.
+        _gameServer.SendCommands(["mp_pause_match"]);
+        if (!match.IsPaused())
+        {
+            match.PauseMatch();
+        }
+
+        if (_recoveryNeedsOrganizer)
+        {
+            _gameServer.Message(
+                HudDestination.Alert,
+                " No usable round backup. An organizer must run restore_round <round> (0 restarts the map)."
+            );
+            return;
+        }
+
+        int round = _pendingRestoreRound!.Value;
+
+        if (!IsRosterWhole(out int connected, out int expected) && _forcedRestoreRound != round)
+        {
+            _gameServer.Message(
+                HudDestination.Alert,
+                $" Round {round} will be restored once everyone is back ({connected}/{expected}). {CommandUtility.PublicChatTrigger}resume to vote to restore now."
+            );
+            return;
+        }
+
+        if ((DateTime.UtcNow - _lastRestoreRequestAt).TotalSeconds < RestoreRequestRetrySeconds)
+        {
+            return;
+        }
+
+        RequestPendingRestore();
+    }
+
+    private void RequestPendingRestore()
+    {
+        if (_pendingRestoreRound == null)
+        {
+            return;
+        }
+
+        _lastRestoreRequestAt = DateTime.UtcNow;
+
+        if (_environmentService.IsOfflineMode())
+        {
+            RestoreRound(_pendingRestoreRound.Value);
+            return;
+        }
+
+        // Through the backend, not straight to CS2: it voids the stats of the
+        // round that was cut short before that round is played again.
+        SendRestoreRoundToBackend(_pendingRestoreRound.Value);
+    }
+
+    // The way out when someone is not coming back: .resume during a recovery
+    // asks to restore with whoever is here rather than to unpause a game
+    // that must not be played.
+    public void RequestRecoveryNow(CCSPlayerController? player, bool isAdmin)
+    {
+        if (_recoveryNeedsOrganizer || _pendingRestoreRound == null)
+        {
+            _gameServer.Message(
+                HudDestination.Chat,
+                $" {ChatColors.Red}No usable round backup. An organizer must run restore_round <round>.",
+                player
+            );
+            return;
+        }
+
+        int round = _pendingRestoreRound.Value;
+
+        if (IsResettingRound())
+        {
+            return;
+        }
+
+        if (player == null || isAdmin || IsRosterWhole(out _, out _))
+        {
+            restoreRoundVote?.CancelVote();
+            _forcedRestoreRound = round;
+            RequestPendingRestore();
+            return;
+        }
+
+        if (restoreRoundVote != null)
+        {
+            restoreRoundVote.CastVote(player, true);
+            return;
+        }
+
+        restoreRoundVote = _serviceProvider.GetRequiredService(typeof(VoteSystem)) as VoteSystem;
+
+        if (restoreRoundVote == null)
+        {
+            return;
+        }
+
+        restoreRoundVote.StartVote(
+            $"Restore round {round} without waiting for everyone",
+            new CsTeam[] { CsTeam.CounterTerrorist, CsTeam.Terrorist },
+            () =>
+            {
+                _logger.LogInformation("restore without full roster vote passed");
+                restoreRoundVote = null;
+                _forcedRestoreRound = round;
+                RequestPendingRestore();
+            },
+            () =>
+            {
+                _logger.LogInformation("restore without full roster vote failed");
+                restoreRoundVote = null;
+            },
+            true,
+            30
+        );
+
+        restoreRoundVote?.CastVote(player, true);
+    }
+
+    // Offline matches have no backend to hold the rounds; the files CS2 wrote
+    // are all there is. Online they are never trusted past the backend: a
+    // file for a round whose score was never published would restore a round
+    // the backend has no record of.
+    private void LoadBackupRoundsFromDisk(MatchData match, MatchMap matchMap)
+    {
+        string csgoDir = BackupDirectory;
+        string prefix = MatchUtility.GetSafeMatchPrefix(match);
+
+        if (!Directory.Exists(csgoDir))
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (string file in Directory.GetFiles(csgoDir, $"{prefix}_round*.txt"))
+            {
+                string name = Path.GetFileNameWithoutExtension(file);
+                int idx = name.LastIndexOf("_round", StringComparison.Ordinal);
+                if (
+                    idx < 0
+                    || !int.TryParse(name.Substring(idx + "_round".Length), out int round)
+                    || matchMap.rounds.Any(backupRound => backupRound.round == round)
+                )
+                {
+                    continue;
+                }
+
+                matchMap.rounds = BackupRoundUtility.Upsert(
+                    matchMap.rounds,
+                    new BackupRound { round = round, backup_file = File.ReadAllText(file) }
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed scanning for backup round files");
         }
     }
 
@@ -145,16 +434,16 @@ public class GameBackUpRounds
             return;
         }
 
-        BackupRound? backupRound = matchMap.rounds.FirstOrDefault(
-            (backupRound) =>
-            {
-                return backupRound.round == round;
-            }
-        );
-
-        if (backupRound == null)
+        if (
+            BackupRoundUtility.FindRestorable(matchMap.rounds, round, MinPlayersPerTeam()) == null
+        )
         {
-            _logger.LogWarning($"missing backup round: {round}");
+            _logger.LogWarning($"no usable backup for round: {round}");
+            _gameServer.Message(
+                HudDestination.Chat,
+                $" {ChatColors.Red}Round {round} has no usable backup.",
+                player
+            );
             return;
         }
 
@@ -162,8 +451,6 @@ public class GameBackUpRounds
 
         if (player != null || vote == true)
         {
-            _resetRound = round;
-
             restoreRoundVote =
                 _serviceProvider.GetRequiredService(typeof(VoteSystem)) as VoteSystem;
 
@@ -172,14 +459,17 @@ public class GameBackUpRounds
                 return;
             }
 
+            _resetRound = round;
+
             restoreRoundVote.StartVote(
                 _localizer["backup.vote.restore_to", round],
                 new CsTeam[] { CsTeam.CounterTerrorist, CsTeam.Terrorist },
                 () =>
                 {
                     _logger.LogInformation("restore round vote passed");
-                    SendRestoreRoundToBackend(round);
+                    restoreRoundVote = null;
                     _resetRound = null;
+                    SendRestoreRoundToBackend(round);
                 },
                 () =>
                 {
@@ -239,13 +529,28 @@ public class GameBackUpRounds
 
             string backupRoundFile = File.ReadAllText(backupRoundFilePath);
 
+            string? invalidReason = BackupRoundUtility.Validate(
+                backupRoundFile,
+                round,
+                MinPlayersPerTeam()
+            );
+
+            if (invalidReason != null)
+            {
+                _logger.LogCritical(
+                    $"Not publishing backup round {round}: {invalidReason} ({backupRoundFilePath})"
+                );
+                return null;
+            }
+
             MatchMap? currentMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
 
             if (currentMap != null)
             {
-                currentMap.rounds = currentMap
-                    .rounds.Append(new BackupRound { round = round, backup_file = backupRoundFile })
-                    .ToArray();
+                currentMap.rounds = BackupRoundUtility.Upsert(
+                    currentMap.rounds,
+                    new BackupRound { round = round, backup_file = backupRoundFile }
+                );
             }
 
             return backupRoundFile;
@@ -275,7 +580,7 @@ public class GameBackUpRounds
         );
     }
 
-    public void RestoreRound(int round)
+    public void RestoreRound(int round, bool force = false)
     {
         if (IsResettingRound())
         {
@@ -283,77 +588,206 @@ public class GameBackUpRounds
             return;
         }
 
-        if (!CanRestoreRound(round))
+        MatchManager? matchManager = _matchService.GetCurrentMatch();
+        MatchData? match = matchManager?.GetMatchData();
+        MatchMap? matchMap = matchManager?.GetCurrentMap();
+
+        if (matchManager == null || match == null || matchMap == null)
         {
+            _logger.LogWarning(
+                "RestoreRound({Round}) dropped: no current match/map (match={HasMatch} map={HasMap})",
+                round,
+                match != null,
+                matchMap != null
+            );
             return;
         }
 
-        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
-        MatchMap? matchMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
-
-        if (match == null || matchMap == null)
+        if (round == 0)
         {
+            RestartMap(matchMap);
             return;
         }
 
-        BackupRound? backupRound = matchMap.rounds.FirstOrDefault(
-            (backupRound) =>
-            {
-                return backupRound.round == round;
-            }
+        BackupRound? backupRound = BackupRoundUtility.FindRestorable(
+            matchMap.rounds,
+            round,
+            MinPlayersPerTeam()
         );
 
         if (backupRound == null)
         {
-            _logger.LogWarning($"missing backup round: {round}");
+            _logger.LogWarning(
+                "no usable backup for round: {Round} (known rounds: [{Rounds}])",
+                round,
+                string.Join(", ", matchMap.rounds.Select(r => r.round))
+            );
+            _gameServer.Message(
+                HudDestination.Alert,
+                $" Round {round} has no usable backup and was not restored."
+            );
+            return;
+        }
+
+        // Queued, never dropped: the backend has already voided the rounds
+        // past this one, so giving up here would strand the match between
+        // the two.
+        if (!force && _forcedRestoreRound != round && !IsRosterWhole(out _, out _))
+        {
+            _logger.LogWarning($"Restore round {round} queued until the roster is whole");
+            _recoveryNeedsOrganizer = false;
+            _pendingRestoreRound = round;
+            _restoreAttempts = 0;
+            _lastRestoreRequestAt = DateTime.UtcNow;
+            StartRecoveryTimer();
+            RecoveryTick();
             return;
         }
 
         string backupRoundFileName =
             $"restore-{MatchUtility.GetSafeMatchPrefix(match)}round{round.ToString().PadLeft(2, '0')}.txt";
         string backupRoundFilePath = Path.Join(
-            Server.GameDirectory + "/csgo/",
+            BackupDirectory,
             backupRoundFileName
         );
 
-        File.WriteAllText(backupRoundFilePath, backupRound.backup_file);
+        // Pending first: cancelling a vote runs its failure path, which
+        // resumes the match unless something is already holding it.
+        _pendingRestoreRound = round;
+        _recoveryNeedsOrganizer = false;
+        restoreRoundVote?.CancelVote();
+        restoreRoundVote = null;
 
         _resetRound = round;
+        _restoreAttempts++;
+
+        _matchEvents.ClearPendingRoundResult();
+        matchMap.rounds = BackupRoundUtility.DropAbove(matchMap.rounds, round);
 
         _logger.LogInformation($"Loading backup round file {backupRoundFileName}");
 
-        Server.NextFrame(async () =>
+        string backupFileContents = backupRound.backup_file;
+
+        try
+        {
+            File.WriteAllText(backupRoundFilePath, backupFileContents);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed writing restore backup round file {File}",
+                backupRoundFileName
+            );
+            Server.NextFrame(() => FinishRestore(round));
+            return;
+        }
+
+        Server.NextFrame(() =>
         {
             _gameServer.SendCommands([$"mp_backup_restore_load_file {backupRoundFileName}"]);
             _matchService.GetCurrentMatch()?.PauseMatch();
 
-            await Task.Delay(5 * 1000);
-
-            Server.NextFrame(() =>
-            {
-                _resetRound = null;
-
-                _logger.LogInformation($"Sending Message for Round {round}");
-
-                _gameServer.Message(
-                    HudDestination.Alert,
-                    _localizer[
-                        "backup.round_restored",
-                        ChatColors.Red,
-                        round,
-                        CommandUtility.PublicChatTrigger
-                    ]
-                );
-            });
+            TimerUtility.AddTimer(5, () => FinishRestore(round));
         });
+    }
+
+    // The restore is only over once CS2 is actually at that round. Anything
+    // else -- an unwritable file, a load CS2 refused -- leaves the recovery
+    // pending so it is retried rather than played through.
+    private void FinishRestore(int round)
+    {
+        _resetRound = null;
+
+        MatchManager? match = _matchService.GetCurrentMatch();
+        int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
+
+        if (totalRoundsPlayed != round)
+        {
+            _logger.LogCritical(
+                $"Restore of round {round} did not take: game is at round {totalRoundsPlayed} (attempt {_restoreAttempts}/{MaxRestoreAttempts})"
+            );
+
+            if (_restoreAttempts >= MaxRestoreAttempts)
+            {
+                _pendingRestoreRound = null;
+                _recoveryNeedsOrganizer = true;
+            }
+
+            _lastRestoreRequestAt = DateTime.UtcNow;
+            StartRecoveryTimer();
+            return;
+        }
+
+        _pendingRestoreRound = null;
+        _forcedRestoreRound = null;
+        _restoreAttempts = 0;
+        _behindNeedsConfirmation = false;
+        _syncedMapId = match?.GetCurrentMap()?.id;
+
+        // CS2 seats players from the file; anyone it could not place is put
+        // back where the lineups say they belong.
+        if (match != null)
+        {
+            foreach (CCSPlayerController player in MatchUtility.Players())
+            {
+                match.EnforceMemberTeam(player);
+            }
+        }
+
+        _logger.LogInformation($"Sending Message for Round {round}");
+
+        _gameServer.Message(
+            HudDestination.Alert,
+            _localizer[
+                "backup.round_restored",
+                ChatColors.Red,
+                round,
+                CommandUtility.PublicChatTrigger
+            ]
+        );
+    }
+
+    // restore_round 0: the backend has voided every round, so the map starts
+    // over. The only way forward when no round has a usable backup.
+    private void RestartMap(MatchMap matchMap)
+    {
+        _logger.LogWarning("Restoring to round 0: restarting the map");
+
+        restoreRoundVote?.CancelVote();
+        _matchEvents.ClearPendingRoundResult();
+        matchMap.rounds = new BackupRound[0];
+
+        _pendingRestoreRound = null;
+        _forcedRestoreRound = null;
+        _recoveryNeedsOrganizer = false;
+        _behindNeedsConfirmation = false;
+        _restoreAttempts = 0;
+        _syncedMapId = matchMap.id;
+
+        _gameServer.SendCommands(["mp_restartgame 1"]);
+        _matchService.GetCurrentMatch()?.PauseMatch();
+    }
+
+    // Casters and admins never make a match whole. Placeholder lineups have
+    // no steam ids to match against, so there a head count is the best there is.
+    private bool IsRosterWhole(out int connected, out int expected)
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+
+        expected = match?.GetExpectedPlayerCount() ?? 10;
+        connected =
+            matchData == null || MatchUtility.HasPlaceholderMembers(matchData)
+                ? MatchUtility.Players().Count
+                : MatchUtility.ConnectedRosterCount(matchData);
+
+        return connected >= expected;
     }
 
     private bool CanRestoreRound(int round)
     {
-        int connectedPlayers = MatchUtility.Players().Count;
-        int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
-
-        if (connectedPlayers >= expectedPlayers)
+        if (IsRosterWhole(out int connectedPlayers, out int expectedPlayers))
         {
             return true;
         }

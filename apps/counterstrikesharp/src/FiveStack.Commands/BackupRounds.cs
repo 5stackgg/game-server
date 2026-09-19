@@ -50,7 +50,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        _gameBackupRounds.RestoreRound(round);
+        _gameBackupRounds.RestoreRound(round, command.ArgByIndex(2) == "force");
     }
 
     [ConsoleCommand("css_reset", "Restores to a previous round")]

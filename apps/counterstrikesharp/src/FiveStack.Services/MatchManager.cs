@@ -273,7 +273,7 @@ public class MatchManager
             3,
             () =>
             {
-                if (!IsFreezePeriod() || !IsPaused() || _backUpManagement.IsResettingRound())
+                if (!IsFreezePeriod() || !IsPaused() || _backUpManagement.BlocksPlay())
                 {
                     return;
                 }
@@ -302,9 +302,9 @@ public class MatchManager
             return;
         }
 
-        if (_backUpManagement.IsResettingRound())
+        if (_backUpManagement.BlocksPlay())
         {
-            _logger.LogInformation("Resetting round, cannot resume match");
+            _logger.LogInformation("Round restore pending or in progress, cannot resume match");
             return;
         }
 
@@ -375,11 +375,6 @@ public class MatchManager
         }
 
         _logger.LogInformation($"Update Map Status {_currentMapStatus} -> {status}");
-
-        if (_currentMapStatus == eMapStatus.Unknown)
-        {
-            _backUpManagement.CheckForBackupRestore();
-        }
 
         var currentMap = GetCurrentMap();
 
@@ -631,6 +626,9 @@ public class MatchManager
             }
             ConVar.Find("mp_match_restart_delay")?.SetValue(matchRestartDelay);
             ConVar.Find("hostname")?.SetValue("5Stack.gg");
+
+            _backUpManagement.Setup();
+            _backUpManagement.CheckForBackupRestore();
 
             if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
             {
@@ -1473,5 +1471,6 @@ public class MatchManager
         captainSystem.Reset();
         knifeSystem.Reset();
         _surrenderSystem.Reset();
+        _backUpManagement.Reset();
     }
 }

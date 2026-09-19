@@ -27,10 +27,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        if (_gameBackupRounds.IsResettingRound())
-        {
-            _gameBackupRounds.restoreRoundVote?.CastVote(player, answer);
-        }
+        _gameBackupRounds.restoreRoundVote?.CastVote(player, answer);
 
         if (_surrenderSystem.IsSurrendering())
         {

@@ -53,7 +53,9 @@ public partial class FiveStackPlugin
             return;
         }
 
-        _gameBackupRounds.RestoreRound(round);
+        bool force = context.Args.Length > 1 && context.Args[1] == "force";
+
+        _gameBackupRounds.RestoreRound(round, force);
     }
 
     [Command("reset", registerRaw: false, permission: "")]
