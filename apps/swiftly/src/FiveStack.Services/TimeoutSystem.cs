@@ -245,6 +245,15 @@ public class TimeoutSystem
             return;
         }
 
+        if (_backUpManagement.IsRecoveryPending())
+        {
+            _backUpManagement.RequestRecoveryNow(
+                player,
+                player == null || IsAdminOrOrganizer(player, matchData)
+            );
+            return;
+        }
+
         string resumeMessage = _localizer["timeout.admin_resumed"];
 
         // Refuse while a required camera is still down, on the same terms as the

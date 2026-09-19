@@ -16,13 +16,10 @@ public partial class FiveStackPlugin
             return;
         }
 
-        if (_gameBackupRounds.IsResettingRound())
-        {
-            _gameBackupRounds.restoreRoundVote?.CastVote(
-                player,
-                command.GetCommandString == "css_y"
-            );
-        }
+        _gameBackupRounds.restoreRoundVote?.CastVote(
+            player,
+            command.GetCommandString == "css_y"
+        );
 
         if (_surrenderSystem.IsSurrendering())
         {

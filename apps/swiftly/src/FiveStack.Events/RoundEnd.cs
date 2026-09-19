@@ -36,9 +36,11 @@ public partial class FiveStackPlugin
             match.UpdateMapStatus(eMapStatus.Overtime);
         }
 
-        if (_gameBackupRounds.IsResettingRound())
+        if (_gameBackupRounds.BlocksPlay())
         {
-            _logger.LogInformation("OnRoundOfficiallyEnded skipping capture: restoring round");
+            _logger.LogInformation(
+                "OnRoundOfficiallyEnded skipping capture: round restore pending or in progress"
+            );
             return HookResult.Continue;
         }
 
@@ -56,10 +58,10 @@ public partial class FiveStackPlugin
     [GameEventHandler(HookMode.Post)]
     public HookResult OnRoundEnd(EventRoundEnd @event)
     {
-        if (_gameBackupRounds.IsResettingRound())
+        if (_gameBackupRounds.BlocksPlay())
         {
             _logger.LogInformation(
-                $"OnRoundEnd ignored (restoring round): message={@event.Message}"
+                $"OnRoundEnd ignored (round restore pending or in progress): message={@event.Message}"
             );
             return HookResult.Continue;
         }
@@ -188,6 +190,12 @@ public partial class FiveStackPlugin
 
     public void PublishPendingRound(bool SendBackupRound)
     {
+        if (_gameBackupRounds.BlocksPlay())
+        {
+            _matchEvents.ClearPendingRoundResult();
+            return;
+        }
+
         MatchEvents.RoundResultSnapshot? snap = _matchEvents.PendingRoundResult;
         if (snap == null)
         {
