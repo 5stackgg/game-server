@@ -48,7 +48,7 @@ public partial class UtilityPracticePlugin
      * </pre>
      */
     private static string ConnectClientSignature = RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
-        ? "55 48 89 E5 41 57 49 89 D7 41 56 41 89 CE 41 55 41 54 49 89 F4 53 48 89 FB 48 81 EC ? ? ? ?"
+        ? "55 48 89 E5 41 57 49 89 D7 41 56 49 89 FE 41 55 41 54 53 89 CB 48 81 EC ? ? ? ?"
         : "48 89 5C 24 18 44 89 4C 24 20 55 41 54 41 55 41 56 41 57 48 8D 6C 24 F1 48 81 EC ? ? ? ? 81 64 24 54 FF FF 0F FF";
 
     private IUnmanagedFunction<ConnectClientDelegate>? _connectClientFunc;
