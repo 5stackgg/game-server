@@ -2,7 +2,7 @@
 
 # gh auth login --scopes read:packages,write:packages,delete:packages
 
-read -p "Which plugin to prune? (css/sw): " prefix
+read -e -p "Which plugin to prune? (css/sw): " prefix
 
 case "$prefix" in
   css) package="game-server-css" ;;
@@ -17,13 +17,15 @@ latest_tag=$(gh release list | grep "^${prefix}-v" | head -n 1 | awk '{print $1}
 
 echo "Latest $prefix tag: $latest_tag"
 
-read -p "Enter from version: " from_tag
-read -p "Enter to version: " to_tag
+read -e -p "Enter from version: " from_tag
+read -e -p "Enter to version: " to_tag
 
-from_num=$(echo "$from_tag" | grep -oE '[0-9]+$')
-to_num=$(echo "$to_tag" | grep -oE '[0-9]+$')
+# accepts 417, v0.0.417, or css-v0.0.417; anything else (e.g. stray control chars) is rejected
+version_re="^(${prefix}-)?v?(0\.0\.)?([0-9]+)$"
+[[ "$from_tag" =~ $version_re ]] && from_num="${BASH_REMATCH[3]}"
+[[ "$to_tag" =~ $version_re ]] && to_num="${BASH_REMATCH[3]}"
 
-if [[ -z "$from_num" || -z "$to_num" ]]; then
+if [[ -z "$from_num" || -z "$to_num" || "$from_num" -gt "$to_num" ]]; then
   echo "Invalid versions"
   exit 1
 fi
