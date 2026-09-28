@@ -27,6 +27,11 @@ public partial class FiveStackPlugin
             return;
         }
 
+        if (_gameBackupRounds.RoundRestoresDisabled())
+        {
+            return;
+        }
+
         _gameBackupRounds.SendRestoreRoundToBackend(round);
     }
 

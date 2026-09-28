@@ -1,4 +1,5 @@
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -132,7 +133,7 @@ public class GameBackUpRounds
         return _resetRound != null;
     }
 
-    public void CheckForBackupRestore()
+    public bool CheckForBackupRestore(eMapStatus status)
     {
         MatchManager? matchManager = _matchService.GetCurrentMatch();
         MatchData? match = matchManager?.GetMatchData();
@@ -140,7 +141,7 @@ public class GameBackUpRounds
 
         if (match == null || matchMap == null)
         {
-            return;
+            return false;
         }
 
         // Detect from the backup files on disk (written by mp_backup_round_auto),
@@ -159,7 +160,7 @@ public class GameBackUpRounds
         // Nothing ahead of the current round — we are live where we should be.
         if (highestNumber <= totalRoundsPlayed)
         {
-            return;
+            return false;
         }
 
         // A backup file exists ahead of the current round (server/match restarted).
@@ -184,13 +185,56 @@ public class GameBackUpRounds
         catch (Exception ex)
         {
             _logger.LogError(ex, $"Failed to read backup round file {backupFilePath}");
-            return;
+            return false;
+        }
+
+        if (!match.options.CanRestoreRounds())
+        {
+            return ReplayMapAfterRestart(status, csgoDir, prefix);
         }
 
         _logger.LogInformation(
             $"Backup round {highestNumber} is ahead of current round {totalRoundsPlayed}, prompting restore"
         );
         RequestRestoreBackupRound(highestNumber, null, true);
+
+        return false;
+    }
+
+    // A match whose rounds can't be restored replays the map from warmup, but
+    // only while the map is still being played: a restart after it ended must
+    // keep the rounds it recorded. The old backup files go too, or the next
+    // plugin load would read them as a crash ahead of the replayed rounds.
+    private bool ReplayMapAfterRestart(eMapStatus status, string csgoDir, string prefix)
+    {
+        if (
+            status != eMapStatus.Live
+            && status != eMapStatus.Overtime
+            && status != eMapStatus.Paused
+        )
+        {
+            return false;
+        }
+
+        _logger.LogInformation(
+            "Server restarted, round restores are disabled for this match type, replaying the map from warmup"
+        );
+
+        try
+        {
+            foreach (string file in Directory.GetFiles(csgoDir, $"{prefix}_round*.txt"))
+            {
+                File.Delete(file);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed removing stale backup round files");
+        }
+
+        SendRestoreRoundToBackend(0);
+
+        return true;
     }
 
     // Scans the game dir for CS2 round backup files ({prefix}_round<NN>.txt) and
@@ -566,8 +610,31 @@ public class GameBackUpRounds
         });
     }
 
+    public bool RoundRestoresDisabled()
+    {
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (match == null || match.options.CanRestoreRounds())
+        {
+            return false;
+        }
+
+        _logger.LogWarning($"Restore round blocked: {match.options.type} matches can't restore rounds");
+        _gameServer.Message(
+            MessageType.Alert,
+            $" Round restores are disabled in {match.options.type}."
+        );
+
+        return true;
+    }
+
     private bool CanRestoreRound(int round)
     {
+        if (RoundRestoresDisabled())
+        {
+            return false;
+        }
+
         int connectedPlayers = MatchUtility.PlayerCount();
         int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
 
