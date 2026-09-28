@@ -1423,6 +1423,46 @@ public class MatchManager
         }
     }
 
+    // CS2 reverts names to the Steam name when a match begins, so reapply the lineup name
+    public void RestorePlayerName(CCSPlayerController player)
+    {
+        MatchData? matchData = GetMatchData();
+        if (matchData == null || !player.IsValid || player.IsBot)
+        {
+            return;
+        }
+
+        MatchMember? member = MatchUtility.GetMemberFromLineup(
+            matchData,
+            player.SteamID.ToString(),
+            player.PlayerName
+        );
+
+        if (
+            member == null
+            || string.IsNullOrEmpty(member.name)
+            || player.PlayerName == member.name
+        )
+        {
+            return;
+        }
+
+        _logger.LogInformation(
+            $"Restoring lineup name for {player.SteamID}: {player.PlayerName} -> {member.name}"
+        );
+
+        // keep the current tag so ready, camera and role tags survive
+        UpdatePlayerName(player, member.name, player.Clan);
+    }
+
+    public void RestorePlayerNames()
+    {
+        foreach (var player in MatchUtility.Players())
+        {
+            RestorePlayerName(player);
+        }
+    }
+
     public void SetupBroadcast()
     {
         if (_matchData == null || IsMapFinished())

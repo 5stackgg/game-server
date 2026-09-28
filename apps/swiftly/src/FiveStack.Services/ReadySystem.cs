@@ -88,7 +88,9 @@ public class ReadySystem
 
             if (_readyStatusTimer == null)
             {
-                _matchService.GetCurrentMatch()?.UpdatePlayerName(player, player.Name);
+                _matchService
+                    .GetCurrentMatch()
+                    ?.UpdatePlayerName(player, player.Controller.PlayerName);
                 continue;
             }
 
@@ -96,12 +98,12 @@ public class ReadySystem
             {
                 _matchService
                     .GetCurrentMatch()
-                    ?.UpdatePlayerName(player, player.Name, "ready");
+                    ?.UpdatePlayerName(player, player.Controller.PlayerName, "ready");
                 continue;
             }
             _matchService
                 .GetCurrentMatch()
-                ?.UpdatePlayerName(player, player.Name, "not ready");
+                ?.UpdatePlayerName(player, player.Controller.PlayerName, "not ready");
         }
     }
 

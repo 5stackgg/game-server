@@ -1356,7 +1356,8 @@ public class MatchManager
 
         bool changed = false;
 
-        if (player.Name != name)
+        // player.Name is the engine's client name, which never reflects our rename
+        if (player.Controller.PlayerName != name)
         {
             player.Controller.PlayerName = name;
             player.Controller.PlayerNameUpdated();
@@ -1399,6 +1400,46 @@ public class MatchManager
         if (changed)
         {
             _core.GameEvent.FireToPlayer<EventNextlevelChanged>(player.Slot);
+        }
+    }
+
+    // CS2 reverts names to the Steam name when a match begins, so reapply the lineup name
+    public void RestorePlayerName(IPlayer player)
+    {
+        MatchData? matchData = GetMatchData();
+        if (matchData == null || !player.IsValid || player.IsFakeClient)
+        {
+            return;
+        }
+
+        MatchMember? member = MatchUtility.GetMemberFromLineup(
+            matchData,
+            player.SteamID.ToString(),
+            player.Name
+        );
+
+        if (
+            member == null
+            || string.IsNullOrEmpty(member.name)
+            || player.Controller.PlayerName == member.name
+        )
+        {
+            return;
+        }
+
+        _logger.LogInformation(
+            $"Restoring lineup name for {player.SteamID}: {player.Controller.PlayerName} -> {member.name}"
+        );
+
+        // keep the current tag so ready, camera and role tags survive
+        UpdatePlayerName(player, member.name, player.Controller.Clan);
+    }
+
+    public void RestorePlayerNames()
+    {
+        foreach (var player in MatchUtility.Players())
+        {
+            RestorePlayerName(player);
         }
     }
 
