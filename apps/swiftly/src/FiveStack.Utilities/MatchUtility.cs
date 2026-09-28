@@ -103,7 +103,7 @@ namespace FiveStack.Utilities
                 return null;
             }
 
-            return $"[{tag.Trim()}]";
+            return tag.Trim();
         }
 
         public static eMapStatus MapStatusStringToEnum(string state)

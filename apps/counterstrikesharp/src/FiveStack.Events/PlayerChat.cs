@@ -19,9 +19,11 @@ public partial class FiveStackPlugin
         {
             PublishChatEvent(player, info.ArgString.Trim('"'));
 
+            string clan = string.IsNullOrEmpty(player.Clan) ? "" : $"[{player.Clan}]";
+
             _gameServer.Message(
                 HudDestination.Chat,
-                $" {ChatColors.Red}{player.Clan}{ChatColors.White} {player.PlayerName}: {info.ArgString.Trim('"')}"
+                $" {ChatColors.Red}{clan}{ChatColors.White} {player.PlayerName}: {info.ArgString.Trim('"')}"
             );
 
             return HookResult.Stop;

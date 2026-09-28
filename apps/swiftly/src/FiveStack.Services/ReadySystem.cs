@@ -76,9 +76,11 @@ public class ReadySystem
         {
             int userId = player.UserID;
 
+            // only overwrite our own ready tags; leave team, role and camera tags alone
             if (
                 !string.IsNullOrEmpty(player.Controller.Clan)
-                && !player.Controller.Clan.EndsWith(" |")
+                && player.Controller.Clan != "ready"
+                && player.Controller.Clan != "not ready"
             )
             {
                 continue;

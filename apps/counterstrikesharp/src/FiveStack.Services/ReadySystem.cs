@@ -80,8 +80,12 @@ public class ReadySystem
                 continue;
             }
 
-            // ready tags end in " |"; leave real "[..]" clan tags alone
-            if (!string.IsNullOrEmpty(player.Clan) && !player.Clan.EndsWith(" |"))
+            // only overwrite our own ready tags; leave team, role and camera tags alone
+            if (
+                !string.IsNullOrEmpty(player.Clan)
+                && player.Clan != "ready"
+                && player.Clan != "not ready"
+            )
             {
                 continue;
             }
