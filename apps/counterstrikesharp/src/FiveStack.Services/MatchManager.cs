@@ -1423,6 +1423,78 @@ public class MatchManager
         }
     }
 
+    public void RestorePlayerName(CCSPlayerController player)
+    {
+        MatchData? matchData = GetMatchData();
+        if (matchData == null || !player.IsValid || player.IsBot)
+        {
+            return;
+        }
+
+        MatchMember? member = MatchUtility.GetMemberFromLineup(
+            matchData,
+            player.SteamID.ToString(),
+            player.PlayerName
+        );
+
+        if (
+            member == null
+            || string.IsNullOrEmpty(member.name)
+            || player.PlayerName == member.name
+        )
+        {
+            return;
+        }
+
+        _logger.LogInformation(
+            $"Restoring lineup name for {player.SteamID}: {player.PlayerName} -> {member.name}"
+        );
+
+        // keep the current tag so ready, camera and role tags survive
+        UpdatePlayerName(player, member.name, player.Clan);
+    }
+
+    public void RestorePlayerNames()
+    {
+        foreach (var player in MatchUtility.Players())
+        {
+            RestorePlayerName(player);
+        }
+    }
+
+    private const float PlayerNameWatchSeconds = 5.0f;
+
+    private float _playerNameWatchUntil;
+    private bool _watchingPlayerNames;
+
+    // A few ticks after a match begins (knife / live) CS2 resets every player back to
+    // their Steam name without firing any event, so watch briefly and undo it.
+    public void WatchPlayerNames()
+    {
+        _playerNameWatchUntil = Server.CurrentTime + PlayerNameWatchSeconds;
+
+        if (_watchingPlayerNames)
+        {
+            return;
+        }
+
+        _watchingPlayerNames = true;
+        WatchPlayerNamesTick();
+    }
+
+    private void WatchPlayerNamesTick()
+    {
+        if (Server.CurrentTime > _playerNameWatchUntil)
+        {
+            _watchingPlayerNames = false;
+            return;
+        }
+
+        Server.NextFrame(WatchPlayerNamesTick);
+
+        RestorePlayerNames();
+    }
+
     public void SetupBroadcast()
     {
         if (_matchData == null || IsMapFinished())

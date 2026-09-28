@@ -1356,7 +1356,8 @@ public class MatchManager
 
         bool changed = false;
 
-        if (player.Name != name)
+        // player.Name is the engine's client name, which never reflects our rename
+        if (player.Controller.PlayerName != name)
         {
             player.Controller.PlayerName = name;
             player.Controller.PlayerNameUpdated();
@@ -1400,6 +1401,78 @@ public class MatchManager
         {
             _core.GameEvent.FireToPlayer<EventNextlevelChanged>(player.Slot);
         }
+    }
+
+    public void RestorePlayerName(IPlayer player)
+    {
+        MatchData? matchData = GetMatchData();
+        if (matchData == null || !player.IsValid || player.IsFakeClient)
+        {
+            return;
+        }
+
+        MatchMember? member = MatchUtility.GetMemberFromLineup(
+            matchData,
+            player.SteamID.ToString(),
+            player.Name
+        );
+
+        if (
+            member == null
+            || string.IsNullOrEmpty(member.name)
+            || player.Controller.PlayerName == member.name
+        )
+        {
+            return;
+        }
+
+        _logger.LogInformation(
+            $"Restoring lineup name for {player.SteamID}: {player.Controller.PlayerName} -> {member.name}"
+        );
+
+        // keep the current tag so ready, camera and role tags survive
+        UpdatePlayerName(player, member.name, player.Controller.Clan);
+    }
+
+    public void RestorePlayerNames()
+    {
+        foreach (var player in MatchUtility.Players())
+        {
+            RestorePlayerName(player);
+        }
+    }
+
+    private const float PlayerNameWatchSeconds = 5.0f;
+
+    private float _playerNameWatchUntil;
+    private bool _watchingPlayerNames;
+
+    // A few ticks after a match begins (knife / live) CS2 resets every player back to
+    // their Steam name without firing any event, so watch briefly and undo it.
+    public void WatchPlayerNames()
+    {
+        _playerNameWatchUntil = _core.Engine.GlobalVars.CurrentTime + PlayerNameWatchSeconds;
+
+        if (_watchingPlayerNames)
+        {
+            return;
+        }
+
+        _watchingPlayerNames = true;
+        WatchPlayerNamesTick();
+    }
+
+    private void WatchPlayerNamesTick()
+    {
+        if (_core.Engine.GlobalVars.CurrentTime > _playerNameWatchUntil)
+        {
+            _watchingPlayerNames = false;
+            return;
+        }
+
+        _core.Scheduler.NextTick(WatchPlayerNamesTick);
+
+        RestorePlayerNames();
     }
 
     public void SetupBroadcast()
