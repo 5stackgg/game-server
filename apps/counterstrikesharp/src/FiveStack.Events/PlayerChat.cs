@@ -35,6 +35,9 @@ public partial class FiveStackPlugin
         {
             RelayTeamChat(player, message);
 
+            // CSS skips the remaining say_team listeners once one returns
+            // Handled or Stop, and GagPlayer after this one is what blocks a
+            // gagged speaker in game and tells them why.
             return HookResult.Continue;
         }
 
@@ -85,31 +88,20 @@ public partial class FiveStackPlugin
         return HookResult.Continue;
     }
 
-    // CSS skips the remaining say_team listeners once one returns Stop, so the
-    // gag is left to GagPlayer, which also tells the speaker they are gagged.
     private void RelayTeamChat(CCSPlayerController player, string message)
     {
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
 
-        if (matchData == null || !matchData.relay_team_chat)
+        if (matchData == null)
         {
             return;
         }
 
-        string steamId = player.SteamID.ToString();
-
-        MatchMember? member = MatchUtility.GetMemberFromLineup(
+        string? lineupId = MatchUtility.GetTeamChatRelayLineupId(
             matchData,
-            steamId,
+            player.SteamID.ToString(),
             player.PlayerName
         );
-
-        if (member != null && member.is_gagged)
-        {
-            return;
-        }
-
-        string? lineupId = MatchUtility.GetTeamChatLineupId(matchData, steamId, player.PlayerName);
 
         if (lineupId == null)
         {
@@ -125,18 +117,9 @@ public partial class FiveStackPlugin
         string? teamLineupId = null
     )
     {
-        Dictionary<string, object> data = new Dictionary<string, object>
-        {
-            { "player", player.SteamID.ToString() },
-            { "message", message },
-        };
-
-        if (teamLineupId != null)
-        {
-            data["teamOnly"] = true;
-            data["lineupId"] = teamLineupId;
-        }
-
-        _matchEvents.PublishGameEvent("chat", data);
+        _matchEvents.PublishGameEvent(
+            "chat",
+            MatchUtility.ChatEventData(player.SteamID.ToString(), message, teamLineupId)
+        );
     }
 }

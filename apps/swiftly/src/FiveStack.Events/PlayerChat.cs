@@ -71,27 +71,20 @@ public partial class FiveStackPlugin
         return HookResult.Continue;
     }
 
-    // A gagged speaker is blocked by GagPlayer, which the chat hook runs
-    // after this and which also tells them why.
     private void RelayTeamChat(IPlayer player, string message)
     {
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
 
-        if (matchData == null || !matchData.relay_team_chat)
+        if (matchData == null)
         {
             return;
         }
 
-        string steamId = player.SteamID.ToString();
-
-        MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, steamId, player.Name);
-
-        if (member != null && member.is_gagged)
-        {
-            return;
-        }
-
-        string? lineupId = MatchUtility.GetTeamChatLineupId(matchData, steamId, player.Name);
+        string? lineupId = MatchUtility.GetTeamChatRelayLineupId(
+            matchData,
+            player.SteamID.ToString(),
+            player.Name
+        );
 
         if (lineupId == null)
         {
@@ -103,18 +96,9 @@ public partial class FiveStackPlugin
 
     private void PublishChatEvent(IPlayer player, string message, string? teamLineupId = null)
     {
-        Dictionary<string, object> data = new Dictionary<string, object>
-        {
-            { "player", player.SteamID.ToString() },
-            { "message", message },
-        };
-
-        if (teamLineupId != null)
-        {
-            data["teamOnly"] = true;
-            data["lineupId"] = teamLineupId;
-        }
-
-        _matchEvents.PublishGameEvent("chat", data);
+        _matchEvents.PublishGameEvent(
+            "chat",
+            MatchUtility.ChatEventData(player.SteamID.ToString(), message, teamLineupId)
+        );
     }
 }

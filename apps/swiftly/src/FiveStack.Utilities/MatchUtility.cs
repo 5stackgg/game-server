@@ -48,32 +48,56 @@ namespace FiveStack.Utilities
             });
         }
 
+        public static string? GetTeamChatRelayLineupId(
+            MatchData matchData,
+            string steamId,
+            string playerName
+        )
+        {
+            if (!matchData.relay_team_chat)
+            {
+                return null;
+            }
+
+            bool gagged =
+                GetMemberFromLineup(matchData, steamId, playerName)?.is_gagged == true
+                || matchData
+                    .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
+                    .Any(member => member.is_gagged && member.steam_id == steamId);
+
+            if (gagged)
+            {
+                return null;
+            }
+
+            return GetTeamChatLineupId(matchData, steamId, playerName);
+        }
+
+        // A lineup_1 placeholder whose name prefixes a lineup_2 player would
+        // otherwise claim them, so exact steam ids are matched before names.
         public static string? GetTeamChatLineupId(
             MatchData matchData,
             string steamId,
             string playerName
         )
         {
-            Guid lineupId =
-                GetMemberFromLineup(matchData, steamId, playerName)?.match_lineup_id ?? Guid.Empty;
+            List<MatchMember> players = matchData
+                .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
+                .ToList();
 
-            if (lineupId == Guid.Empty)
-            {
-                if (
-                    !string.IsNullOrEmpty(matchData.lineup_1.coach_steam_id)
-                    && matchData.lineup_1.coach_steam_id == steamId
-                )
-                {
-                    lineupId = matchData.lineup_1.id;
-                }
-                else if (
-                    !string.IsNullOrEmpty(matchData.lineup_2.coach_steam_id)
-                    && matchData.lineup_2.coach_steam_id == steamId
-                )
-                {
-                    lineupId = matchData.lineup_2.id;
-                }
-            }
+            Guid lineupId =
+                players
+                    .Find(member =>
+                        !string.IsNullOrEmpty(member.steam_id) && member.steam_id == steamId
+                    )
+                    ?.match_lineup_id
+                ?? GetCoachLineupId(matchData, steamId)
+                ?? players
+                    .Find(member =>
+                        member.steam_id == null && member.placeholder_name.StartsWith(playerName)
+                    )
+                    ?.match_lineup_id
+                ?? Guid.Empty;
 
             if (lineupId == Guid.Empty)
             {
@@ -81,6 +105,47 @@ namespace FiveStack.Utilities
             }
 
             return lineupId.ToString();
+        }
+
+        private static Guid? GetCoachLineupId(MatchData matchData, string steamId)
+        {
+            if (!matchData.options.coaches || string.IsNullOrEmpty(steamId))
+            {
+                return null;
+            }
+
+            if (matchData.lineup_1.coach_steam_id == steamId)
+            {
+                return matchData.lineup_1.id;
+            }
+
+            if (matchData.lineup_2.coach_steam_id == steamId)
+            {
+                return matchData.lineup_2.id;
+            }
+
+            return null;
+        }
+
+        public static Dictionary<string, object> ChatEventData(
+            string steamId,
+            string message,
+            string? teamLineupId
+        )
+        {
+            Dictionary<string, object> data = new Dictionary<string, object>
+            {
+                { "player", steamId },
+                { "message", message },
+            };
+
+            if (teamLineupId != null)
+            {
+                data["teamOnly"] = true;
+                data["lineupId"] = teamLineupId;
+            }
+
+            return data;
         }
 
         // A client presenting the raw match password is a streamer, unless the
