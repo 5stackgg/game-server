@@ -38,4 +38,38 @@ public class TeamRotationTests
         Assert.False(TeamRotation.IsOnOppositeSide(7, 8, 6));
         Assert.True(TeamRotation.IsOnOppositeSide(8, 8, 6));
     }
+
+    [Theory]
+    [InlineData(0, 10, false)]
+    [InlineData(1, 10, true)]
+    [InlineData(4, 10, true)]
+    [InlineData(5, 10, false)]
+    [InlineData(6, 10, false)]
+    [InlineData(10, 10, false)]
+    [InlineData(1, 2, false)]
+    [InlineData(1, 3, true)]
+    [InlineData(0, 0, false)]
+    [InlineData(1, 0, false)]
+    public void ShouldReconcile_OnlyAStrictMinority(int mismatched, int placed, bool expected)
+    {
+        Assert.Equal(expected, TeamRotation.ShouldReconcile(mismatched, placed));
+    }
+
+    [Theory]
+    [InlineData(2, false, 2)]
+    [InlineData(3, false, 3)]
+    [InlineData(1, false, 1)]
+    [InlineData(0, false, 0)]
+    [InlineData(2, true, 3)]
+    [InlineData(3, true, 2)]
+    [InlineData(1, true, 1)]
+    [InlineData(0, true, 0)]
+    public void PlacementSide_PreSwapSideOnlyWhileSwitching(
+        int expectedTeamNum,
+        bool switchingAtReset,
+        int placement
+    )
+    {
+        Assert.Equal(placement, TeamRotation.PlacementSide(expectedTeamNum, switchingAtReset));
+    }
 }

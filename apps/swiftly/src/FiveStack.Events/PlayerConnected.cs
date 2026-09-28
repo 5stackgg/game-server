@@ -75,11 +75,11 @@ public partial class FiveStackPlugin
             }
         }
 
-        Team expectedTeam = match.GetExpectedTeam(player);
+        Team placementTeam = match.GetPlacementSide(match.GetExpectedTeam(player));
         int expectedTeamCount = match.GetExpectedPlayerCount() / 2;
-        int teamCount = TeamUtility.GetTeamCount(expectedTeam);
+        int teamCount = TeamUtility.GetTeamCount(placementTeam);
 
-        if (player.Controller.Team == expectedTeam)
+        if (player.Controller.Team == placementTeam)
         {
             teamCount--;
         }
@@ -175,9 +175,9 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        Team expectedTeam = match.GetExpectedTeam(player);
+        Team placementTeam = match.GetPlacementSide(match.GetExpectedTeam(player));
 
-        if (expectedTeam != Team.None && joiningTeam != expectedTeam)
+        if (placementTeam != Team.None && joiningTeam != placementTeam)
         {
             return HookResult.Stop;
         }

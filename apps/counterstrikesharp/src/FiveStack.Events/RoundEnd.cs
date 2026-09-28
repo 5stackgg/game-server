@@ -130,7 +130,7 @@ public partial class FiveStackPlugin
                 liveCtScoreAtEnd = team.Score;
         }
         _logger.LogInformation(
-            $"OnRoundEnd totalRoundsPlayed={_gameServer.GetTotalRoundsPlayed()} winner={roundWinner} reason={reason} live_t={liveTScoreAtEnd} live_ct={liveCtScoreAtEnd} isKnife={match.IsKnife()}"
+            $"OnRoundEnd totalRoundsPlayed={_gameServer.GetTotalRoundsPlayed()} winner={roundWinner} reason={reason} live_t={liveTScoreAtEnd} live_ct={liveCtScoreAtEnd} isKnife={match.IsKnife()} {match.TeamSwitchState()}"
         );
 
         return HookResult.Continue;

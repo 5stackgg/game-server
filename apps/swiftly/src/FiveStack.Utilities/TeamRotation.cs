@@ -20,5 +20,34 @@ namespace FiveStack.Utilities
 
             return block >= (overtimeMr / 2);
         }
+
+        private const int TerroristTeamNum = 2;
+        private const int CounterTerroristTeamNum = 3;
+
+        // A majority out of place means our side model is what's wrong, not the players.
+        public static bool ShouldReconcile(int mismatched, int placed)
+        {
+            return mismatched > 0 && mismatched * 2 < placed;
+        }
+
+        // While a halftime swap is pending, the engine flips every T/CT player at the
+        // round reset, so landing on the expected side means joining the other one now.
+        public static int PlacementSide(int expectedTeamNum, bool switchingAtReset)
+        {
+            if (!switchingAtReset)
+            {
+                return expectedTeamNum;
+            }
+
+            switch (expectedTeamNum)
+            {
+                case TerroristTeamNum:
+                    return CounterTerroristTeamNum;
+                case CounterTerroristTeamNum:
+                    return TerroristTeamNum;
+                default:
+                    return expectedTeamNum;
+            }
+        }
     }
 }

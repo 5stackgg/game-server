@@ -46,6 +46,40 @@ public class TeamUtilityTests
     {
         Assert.Equal(team, TeamUtility.TeamStringToCsTeam(TeamUtility.CSTeamToString(team)));
     }
+
+    [Theory]
+    [InlineData(0, 10, false)]
+    [InlineData(1, 10, true)]
+    [InlineData(4, 10, true)]
+    [InlineData(5, 10, false)]
+    [InlineData(6, 10, false)]
+    [InlineData(10, 10, false)]
+    [InlineData(1, 2, false)]
+    [InlineData(1, 3, true)]
+    [InlineData(0, 0, false)]
+    [InlineData(1, 0, false)]
+    public void ShouldReconcile_OnlyAStrictMinority(int mismatched, int placed, bool expected)
+    {
+        Assert.Equal(expected, TeamUtility.ShouldReconcile(mismatched, placed));
+    }
+
+    [Theory]
+    [InlineData(CsTeam.Terrorist, false, CsTeam.Terrorist)]
+    [InlineData(CsTeam.CounterTerrorist, false, CsTeam.CounterTerrorist)]
+    [InlineData(CsTeam.Spectator, false, CsTeam.Spectator)]
+    [InlineData(CsTeam.None, false, CsTeam.None)]
+    [InlineData(CsTeam.Terrorist, true, CsTeam.CounterTerrorist)]
+    [InlineData(CsTeam.CounterTerrorist, true, CsTeam.Terrorist)]
+    [InlineData(CsTeam.Spectator, true, CsTeam.Spectator)]
+    [InlineData(CsTeam.None, true, CsTeam.None)]
+    public void PlacementSide_PreSwapSideOnlyWhileSwitching(
+        CsTeam expected,
+        bool switchingAtReset,
+        CsTeam placement
+    )
+    {
+        Assert.Equal(placement, TeamUtility.PlacementSide(expected, switchingAtReset));
+    }
 }
 
 public class GetLineupSideTests
