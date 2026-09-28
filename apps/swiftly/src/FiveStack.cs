@@ -144,13 +144,10 @@ public partial class FiveStackPlugin : BasePlugin
 
                 HookResult result = HookResult.Continue;
 
-                if (!teamonly)
+                HookResult chatResult = OnPlayerChat(player, message, teamonly);
+                if (chatResult != HookResult.Continue)
                 {
-                    HookResult chatResult = OnPlayerChat(player, message, teamonly);
-                    if (chatResult != HookResult.Continue)
-                    {
-                        result = chatResult;
-                    }
+                    result = chatResult;
                 }
 
                 HookResult gagResult = GagPlayer(player, message, teamonly);

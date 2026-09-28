@@ -10,20 +10,43 @@ public partial class FiveStackPlugin
 {
     public HookResult OnPlayerChat(CCSPlayerController? player, CommandInfo info)
     {
+        return HandlePlayerChat(player, info, false);
+    }
+
+    public HookResult OnPlayerTeamChat(CCSPlayerController? player, CommandInfo info)
+    {
+        return HandlePlayerChat(player, info, true);
+    }
+
+    private HookResult HandlePlayerChat(
+        CCSPlayerController? player,
+        CommandInfo info,
+        bool teamOnly
+    )
+    {
         if (player == null || !player.IsValid)
         {
             return HookResult.Continue;
         }
 
+        string message = info.ArgString.Trim('"');
+
+        if (teamOnly)
+        {
+            RelayTeamChat(player, message);
+
+            return HookResult.Continue;
+        }
+
         if (player.Team == CsTeam.Spectator)
         {
-            PublishChatEvent(player, info.ArgString.Trim('"'));
+            PublishChatEvent(player, message);
 
             string clan = string.IsNullOrEmpty(player.Clan) ? "" : $"[{player.Clan}]";
 
             _gameServer.Message(
                 HudDestination.Chat,
-                $" {ChatColors.Red}{clan}{ChatColors.White} {player.PlayerName}: {info.ArgString.Trim('"')}"
+                $" {ChatColors.Red}{clan}{ChatColors.White} {player.PlayerName}: {message}"
             );
 
             return HookResult.Stop;
@@ -57,20 +80,63 @@ public partial class FiveStackPlugin
             }
         }
 
-        PublishChatEvent(player, info.ArgString.Trim('"'));
+        PublishChatEvent(player, message);
 
         return HookResult.Continue;
     }
 
-    private void PublishChatEvent(CCSPlayerController player, string message)
+    // CSS skips the remaining say_team listeners once one returns Stop, so the
+    // gag is left to GagPlayer, which also tells the speaker they are gagged.
+    private void RelayTeamChat(CCSPlayerController player, string message)
     {
-        _matchEvents.PublishGameEvent(
-            "chat",
-            new Dictionary<string, object>
-            {
-                { "player", player.SteamID.ToString() },
-                { "message", message },
-            }
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (matchData == null || !matchData.relay_team_chat)
+        {
+            return;
+        }
+
+        string steamId = player.SteamID.ToString();
+
+        MatchMember? member = MatchUtility.GetMemberFromLineup(
+            matchData,
+            steamId,
+            player.PlayerName
         );
+
+        if (member != null && member.is_gagged)
+        {
+            return;
+        }
+
+        string? lineupId = MatchUtility.GetTeamChatLineupId(matchData, steamId, player.PlayerName);
+
+        if (lineupId == null)
+        {
+            return;
+        }
+
+        PublishChatEvent(player, message, lineupId);
+    }
+
+    private void PublishChatEvent(
+        CCSPlayerController player,
+        string message,
+        string? teamLineupId = null
+    )
+    {
+        Dictionary<string, object> data = new Dictionary<string, object>
+        {
+            { "player", player.SteamID.ToString() },
+            { "message", message },
+        };
+
+        if (teamLineupId != null)
+        {
+            data["teamOnly"] = true;
+            data["lineupId"] = teamLineupId;
+        }
+
+        _matchEvents.PublishGameEvent("chat", data);
     }
 }

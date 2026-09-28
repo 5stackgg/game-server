@@ -39,6 +39,41 @@ namespace FiveStack.Utilities
             });
         }
 
+        public static string? GetTeamChatLineupId(
+            MatchData matchData,
+            string steamId,
+            string playerName
+        )
+        {
+            Guid lineupId =
+                GetMemberFromLineup(matchData, steamId, playerName)?.match_lineup_id ?? Guid.Empty;
+
+            if (lineupId == Guid.Empty)
+            {
+                if (
+                    !string.IsNullOrEmpty(matchData.lineup_1.coach_steam_id)
+                    && matchData.lineup_1.coach_steam_id == steamId
+                )
+                {
+                    lineupId = matchData.lineup_1.id;
+                }
+                else if (
+                    !string.IsNullOrEmpty(matchData.lineup_2.coach_steam_id)
+                    && matchData.lineup_2.coach_steam_id == steamId
+                )
+                {
+                    lineupId = matchData.lineup_2.id;
+                }
+            }
+
+            if (lineupId == Guid.Empty)
+            {
+                return null;
+            }
+
+            return lineupId.ToString();
+        }
+
         // A client presenting the raw match password is a streamer, unless the
         // lineup still has placeholder seats: then it may be the player
         // meant to fill one.

@@ -102,4 +102,107 @@ public class MatchUtilityTests
 
         Assert.DoesNotContain("76561198000009999", roster);
     }
+
+    private static readonly Guid Lineup1Id = Guid.Parse("33333333-3333-3333-3333-333333333333");
+    private static readonly Guid Lineup2Id = Guid.Parse("44444444-4444-4444-4444-444444444444");
+
+    private static MatchData BuildTeamChatMatch()
+    {
+        return new MatchData
+        {
+            lineup_1 = new MatchLineUp
+            {
+                id = Lineup1Id,
+                coach_steam_id = "76561198000000011",
+                lineup_players = new List<MatchMember>
+                {
+                    new MatchMember
+                    {
+                        steam_id = "76561198000000001",
+                        name = "Real",
+                        match_lineup_id = Lineup1Id,
+                    },
+                },
+            },
+            lineup_2 = new MatchLineUp
+            {
+                id = Lineup2Id,
+                coach_steam_id = "76561198000000022",
+                lineup_players = new List<MatchMember>
+                {
+                    new MatchMember
+                    {
+                        steam_id = null,
+                        placeholder_name = "AceBot",
+                        match_lineup_id = Lineup2Id,
+                    },
+                },
+            },
+        };
+    }
+
+    [Fact]
+    public void GetTeamChatLineupId_ResolvesMemberLineup()
+    {
+        Assert.Equal(
+            Lineup1Id.ToString(),
+            MatchUtility.GetTeamChatLineupId(BuildTeamChatMatch(), "76561198000000001", "ignored")
+        );
+    }
+
+    [Fact]
+    public void GetTeamChatLineupId_ResolvesPlaceholderByNamePrefix()
+    {
+        Assert.Equal(
+            Lineup2Id.ToString(),
+            MatchUtility.GetTeamChatLineupId(BuildTeamChatMatch(), "9999", "Ace")
+        );
+    }
+
+    [Theory]
+    [InlineData("76561198000000011", "33333333-3333-3333-3333-333333333333")]
+    [InlineData("76561198000000022", "44444444-4444-4444-4444-444444444444")]
+    public void GetTeamChatLineupId_ResolvesCoachLineup(string steamId, string expected)
+    {
+        Assert.Equal(
+            expected,
+            MatchUtility.GetTeamChatLineupId(BuildTeamChatMatch(), steamId, "Coach")
+        );
+    }
+
+    [Fact]
+    public void GetTeamChatLineupId_ReturnsNullForUnknownPlayer()
+    {
+        Assert.Null(
+            MatchUtility.GetTeamChatLineupId(BuildTeamChatMatch(), "76561198000009999", "Nobody")
+        );
+    }
+
+    [Fact]
+    public void GetTeamChatLineupId_ReturnsNullWhenMemberLineupIsEmpty()
+    {
+        MatchData match = BuildTeamChatMatch();
+        match.lineup_1.lineup_players[0].match_lineup_id = Guid.Empty;
+
+        Assert.Null(MatchUtility.GetTeamChatLineupId(match, "76561198000000001", "Real"));
+    }
+
+    [Fact]
+    public void GetTeamChatLineupId_ReturnsNullWhenCoachLineupIsEmpty()
+    {
+        MatchData match = BuildTeamChatMatch();
+        match.lineup_2.id = Guid.Empty;
+
+        Assert.Null(MatchUtility.GetTeamChatLineupId(match, "76561198000000022", "Coach"));
+    }
+
+    [Fact]
+    public void GetTeamChatLineupId_ToleratesLineupsWithoutCoach()
+    {
+        MatchData match = BuildTeamChatMatch();
+        match.lineup_1.coach_steam_id = null!;
+        match.lineup_2.coach_steam_id = "";
+
+        Assert.Null(MatchUtility.GetTeamChatLineupId(match, "76561198000009999", "Nobody"));
+    }
 }
