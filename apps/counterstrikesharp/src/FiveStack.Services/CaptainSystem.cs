@@ -177,6 +177,11 @@ public class CaptainSystem
             return;
         }
 
+        if (team != CsTeam.Terrorist && team != CsTeam.CounterTerrorist)
+        {
+            return;
+        }
+
         CsTeam captainTeam = team;
         CsTeam? expectedCaptainTeam = ResolveExpectedCaptainTeam(player);
         if (expectedCaptainTeam.HasValue && expectedCaptainTeam.Value != team)

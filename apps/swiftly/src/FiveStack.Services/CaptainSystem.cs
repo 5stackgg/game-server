@@ -184,6 +184,11 @@ public class CaptainSystem
             return;
         }
 
+        if (team != Team.T && team != Team.CT)
+        {
+            return;
+        }
+
         Team captainTeam = team;
         Team? expectedCaptainTeam = ResolveExpectedCaptainTeam(player);
         if (expectedCaptainTeam.HasValue && expectedCaptainTeam.Value != team)
