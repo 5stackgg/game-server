@@ -1001,14 +1001,30 @@ public class MatchManager
             .Select(key => $"exec 5stack.{key.ToLower()}.cfg")
             .ToArray();
 
-        if (_matchData == null || _matchData.options.IsRush())
+        if (_matchData == null)
         {
             return execs;
         }
 
+        // The type cfgs set bot_quota 0 for real matches and are re-run on
+        // every resume, knife end and go-live, so a server that allows bots
+        // puts them back in the same batch, before the bot manager sees 0.
+        string[] botCommands = AllowedBotCommands();
+
+        if (_matchData.options.IsRush())
+        {
+            return [.. execs, .. botCommands];
+        }
+
         // Rush's map script and cfg set these, and a dedicated server reused
         // for another match type keeps them: no other cfg sets them back.
-        return ["mp_ignore_round_win_conditions 0", "cash_team_per_dead_enemy 0", .. execs];
+        return
+        [
+            "mp_ignore_round_win_conditions 0",
+            "cash_team_per_dead_enemy 0",
+            .. execs,
+            .. botCommands,
+        ];
     }
 
     private void ApplyWorkshopBlockedCvars()
@@ -1266,14 +1282,22 @@ public class MatchManager
         if (_environmentService.AllowBots())
         {
             _logger.LogInformation("Environment allows bots");
-            int expectedPlayers = GetExpectedPlayerCount();
-
-            _gameServer.SendCommands(["bot_quota_mode normal", $"bot_quota {expectedPlayers / 2}"]);
+            _gameServer.SendCommands(AllowedBotCommands());
 
             return;
         }
 
         _gameServer.SendCommands(["bot_kick"]);
+    }
+
+    private string[] AllowedBotCommands()
+    {
+        if (_matchData == null || !_environmentService.AllowBots())
+        {
+            return [];
+        }
+
+        return ["bot_quota_mode normal", $"bot_quota {GetExpectedPlayerCount() / 2}"];
     }
 
     private void SendUpdatedMatchLineups()
