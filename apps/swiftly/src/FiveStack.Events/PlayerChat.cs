@@ -96,9 +96,12 @@ public partial class FiveStackPlugin
 
     private void PublishChatEvent(IPlayer player, string message, string? teamLineupId = null)
     {
-        _matchEvents.PublishGameEvent(
-            "chat",
-            MatchUtility.ChatEventData(player.SteamID.ToString(), message, teamLineupId)
+        (string eventName, Dictionary<string, object> data) = MatchUtility.ChatEvent(
+            player.SteamID.ToString(),
+            message,
+            teamLineupId
         );
+
+        _matchEvents.PublishGameEvent(eventName, data);
     }
 }

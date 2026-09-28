@@ -118,7 +118,10 @@ namespace FiveStack.Utilities
             return null;
         }
 
-        public static Dictionary<string, object> ChatEventData(
+        // Team lines go out under their own event so an api that predates
+        // them drops them as unknown, instead of treating them as all chat and
+        // posting them where the other team reads.
+        public static (string Event, Dictionary<string, object> Data) ChatEvent(
             string steamId,
             string message,
             string? teamLineupId
@@ -130,13 +133,14 @@ namespace FiveStack.Utilities
                 { "message", message },
             };
 
-            if (teamLineupId != null)
+            if (teamLineupId == null)
             {
-                data["teamOnly"] = true;
-                data["lineupId"] = teamLineupId;
+                return ("chat", data);
             }
 
-            return data;
+            data["lineupId"] = teamLineupId;
+
+            return ("teamChat", data);
         }
 
         // A client presenting the raw match password is a streamer, unless the

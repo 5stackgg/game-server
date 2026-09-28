@@ -308,14 +308,15 @@ public class MatchUtilityTests
     }
 
     [Fact]
-    public void ChatEventData_KeepsTheAllChatShape()
+    public void ChatEvent_KeepsTheAllChatShape()
     {
-        Dictionary<string, object> data = MatchUtility.ChatEventData(
+        (string eventName, Dictionary<string, object> data) = MatchUtility.ChatEvent(
             "76561198000000001",
             "gl hf",
             null
         );
 
+        Assert.Equal("chat", eventName);
         Assert.Equal(
             new[] { "message", "player" },
             data.Keys.OrderBy(key => key, StringComparer.Ordinal)
@@ -324,20 +325,24 @@ public class MatchUtilityTests
         Assert.Equal("gl hf", data["message"]);
     }
 
+    // an api that predates team chat drops an event it has no handler for,
+    // but would post anything sent as chat to the room both teams read
     [Fact]
-    public void ChatEventData_TagsTeamChatWithItsLineup()
+    public void ChatEvent_SendsTeamChatUnderItsOwnEvent()
     {
-        Dictionary<string, object> data = MatchUtility.ChatEventData(
+        (string eventName, Dictionary<string, object> data) = MatchUtility.ChatEvent(
             "76561198000000001",
             "stack b",
             Lineup1Id.ToString()
         );
 
+        Assert.Equal("teamChat", eventName);
         Assert.Equal(
-            new[] { "lineupId", "message", "player", "teamOnly" },
+            new[] { "lineupId", "message", "player" },
             data.Keys.OrderBy(key => key, StringComparer.Ordinal)
         );
-        Assert.Equal(true, data["teamOnly"]);
+        Assert.Equal("76561198000000001", data["player"]);
+        Assert.Equal("stack b", data["message"]);
         Assert.Equal(Lineup1Id.ToString(), data["lineupId"]);
     }
 }

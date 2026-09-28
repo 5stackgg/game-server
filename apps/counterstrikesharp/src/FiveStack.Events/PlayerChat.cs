@@ -117,9 +117,12 @@ public partial class FiveStackPlugin
         string? teamLineupId = null
     )
     {
-        _matchEvents.PublishGameEvent(
-            "chat",
-            MatchUtility.ChatEventData(player.SteamID.ToString(), message, teamLineupId)
+        (string eventName, Dictionary<string, object> data) = MatchUtility.ChatEvent(
+            player.SteamID.ToString(),
+            message,
+            teamLineupId
         );
+
+        _matchEvents.PublishGameEvent(eventName, data);
     }
 }
