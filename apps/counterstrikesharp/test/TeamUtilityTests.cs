@@ -56,14 +56,15 @@ public class GetLineupSideTests
     private static (MatchData match, MatchMap map) BuildMatch(
         int mr = 12,
         string lineup1Side = "CT",
-        string lineup2Side = "TERRORIST"
+        string lineup2Side = "TERRORIST",
+        string type = "Competitive"
     )
     {
         var match = new MatchData
         {
             lineup_1_id = Lineup1,
             lineup_2_id = Lineup2,
-            options = new MatchOptions { mr = mr },
+            options = new MatchOptions { mr = mr, type = type },
         };
         var map = new MatchMap { lineup_1_side = lineup1Side, lineup_2_side = lineup2Side };
         return (match, map);
@@ -100,6 +101,21 @@ public class GetLineupSideTests
             TeamUtility.GetLineupSide(match, map, Lineup1, 7)
         );
         Assert.Equal(CsTeam.Terrorist, TeamUtility.GetLineupSide(match, map, Lineup1, 8));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(7)]
+    [InlineData(8)]
+    [InlineData(14)]
+    public void Rush_NeverSwitchesSides(int round)
+    {
+        var (match, map) = BuildMatch(mr: 8, type: "Rush");
+        Assert.Equal(
+            CsTeam.CounterTerrorist,
+            TeamUtility.GetLineupSide(match, map, Lineup1, round)
+        );
+        Assert.Equal(CsTeam.Terrorist, TeamUtility.GetLineupSide(match, map, Lineup2, round));
     }
 
     [Fact]

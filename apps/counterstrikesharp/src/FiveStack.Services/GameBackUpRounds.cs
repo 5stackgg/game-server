@@ -3,6 +3,7 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -74,13 +75,13 @@ public class GameBackUpRounds
         return _resetRound != null;
     }
 
-    public void CheckForBackupRestore()
+    public bool CheckForBackupRestore(eMapStatus status)
     {
         MatchMap? matchMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
 
         if (matchMap == null)
         {
-            return;
+            return false;
         }
 
         var availableRounds = matchMap.rounds.Where(
@@ -92,7 +93,7 @@ public class GameBackUpRounds
 
         if (availableRounds.Count() == 0)
         {
-            return;
+            return false;
         }
 
         int highestNumber = availableRounds.Max(
@@ -111,15 +112,45 @@ public class GameBackUpRounds
         if (totalRoundsPlayed > 0 && totalRoundsPlayed >= highestNumber)
         {
             // we are already live, do not restart the match accidently
-            return;
+            return false;
         }
 
         if (highestNumber > totalRoundsPlayed)
         {
+            if (_matchService.GetCurrentMatch()?.GetMatchData()?.options.CanRestoreRounds() == false)
+            {
+                return ReplayMapAfterRestart(status);
+            }
+
             _logger.LogInformation("Server restarted, requires a vote to restore round");
             RequestRestoreBackupRound(highestNumber, null, true);
         }
+
+        return false;
     }
+
+    // A match whose rounds can't be restored replays the map from warmup, but
+    // only while the map is still being played: a restart after it ended must
+    // keep the rounds it recorded.
+    private bool ReplayMapAfterRestart(eMapStatus status)
+    {
+        if (
+            status != eMapStatus.Live
+            && status != eMapStatus.Overtime
+            && status != eMapStatus.Paused
+        )
+        {
+            return false;
+        }
+
+        _logger.LogInformation(
+            "Server restarted, round restores are disabled for this match type, replaying the map from warmup"
+        );
+        SendRestoreRoundToBackend(0);
+
+        return true;
+    }
+
 
     public void RequestRestoreBackupRound(
         int round,
@@ -348,8 +379,31 @@ public class GameBackUpRounds
         });
     }
 
+    public bool RoundRestoresDisabled()
+    {
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (match == null || match.options.CanRestoreRounds())
+        {
+            return false;
+        }
+
+        _logger.LogWarning($"Restore round blocked: {match.options.type} matches can't restore rounds");
+        _gameServer.Message(
+            HudDestination.Alert,
+            $" Round restores are disabled in {match.options.type}."
+        );
+
+        return true;
+    }
+
     private bool CanRestoreRound(int round)
     {
+        if (RoundRestoresDisabled())
+        {
+            return false;
+        }
+
         int connectedPlayers = MatchUtility.Players().Count;
         int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
 

@@ -68,13 +68,13 @@ public partial class FiveStackPlugin
 
         bool hasDetails = false;
 
-        if (match.options.overtime)
+        if (match.options.OvertimeEnabled())
         {
             hasDetails = true;
             matchDetails += $" {_localizer["rules.with_overtime"]}";
         }
 
-        if (match.options.knife_round)
+        if (match.options.KnifeRoundEnabled())
         {
             matchDetails +=
                 $" {(hasDetails ? _localizer["common.with"] : _localizer["common.and"])} {_localizer["rules.knife_round"]}";

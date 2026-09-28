@@ -376,9 +376,12 @@ public class MatchManager
 
         _logger.LogInformation($"Update Map Status {_currentMapStatus} -> {status}");
 
-        if (_currentMapStatus == eMapStatus.Unknown)
+        if (
+            _currentMapStatus == eMapStatus.Unknown
+            && _backUpManagement.CheckForBackupRestore(status)
+        )
         {
-            _backUpManagement.CheckForBackupRestore();
+            status = eMapStatus.Warmup;
         }
 
         var currentMap = GetCurrentMap();
@@ -405,7 +408,7 @@ public class MatchManager
                 StartWarmup();
                 break;
             case eMapStatus.Knife:
-                if (!_matchData.options.knife_round)
+                if (!_matchData.options.KnifeRoundEnabled())
                 {
                     UpdateMapStatus(eMapStatus.Live);
                     return;
@@ -806,7 +809,7 @@ public class MatchManager
     }
 
     // game_type/game_mode are integers, not mode names: game_type 0 (Classic)
-    // with game_mode 1 = Competitive, game_mode 2 = Wingman/2v2. Sent as console
+    // with game_mode 1 = Competitive, 2 = Wingman/2v2, 6 = Rush. Sent as console
     // commands rather than typed ConVar writes — ConVar.Find returning null or a
     // differently-typed handle would silently leave the server in the wrong mode.
     private string[] GetGameModeCommands()
@@ -816,10 +819,7 @@ public class MatchManager
             return [];
         }
 
-        int gameMode =
-            _matchData.options.type == "Duel" || _matchData.options.type == "Wingman" ? 2 : 1;
-
-        return ["game_type 0", $"game_mode {gameMode}"];
+        return ["game_type 0", $"game_mode {_matchData.options.GameMode()}"];
     }
 
     private void SetupGameMode()
@@ -851,17 +851,7 @@ public class MatchManager
             return 10;
         }
 
-        if (_matchData.options.type == "Wingman")
-        {
-            return 4;
-        }
-
-        if (_matchData.options.type == "Duel")
-        {
-            return 2;
-        }
-
-        return 10;
+        return _matchData.options.ExpectedPlayerCount();
     }
 
     private void StartWarmup()
@@ -1014,7 +1004,18 @@ public class MatchManager
 
     public string[] MatchConfigExecCommands()
     {
-        return ConfigLayerKeys().Select(key => $"exec 5stack.{key.ToLower()}.cfg").ToArray();
+        string[] execs = ConfigLayerKeys()
+            .Select(key => $"exec 5stack.{key.ToLower()}.cfg")
+            .ToArray();
+
+        if (_matchData == null || _matchData.options.IsRush())
+        {
+            return execs;
+        }
+
+        // Rush's map script and cfg set these, and a dedicated server reused
+        // for another match type keeps them: no other cfg sets them back.
+        return ["mp_ignore_round_win_conditions 0", "cash_team_per_dead_enemy 0", .. execs];
     }
 
     private void ApplyWorkshopBlockedCvars()
@@ -1093,8 +1094,8 @@ public class MatchManager
 
         ConVar.Find("mp_backup_round_auto")?.SetValue(1);
 
-        ConVar.Find("mp_maxrounds")?.SetValue(_matchData.options.mr * 2);
-        ConVar.Find("mp_overtime_enable")?.SetValue(_matchData.options.overtime);
+        ConVar.Find("mp_maxrounds")?.SetValue(_matchData.options.MaxRounds());
+        ConVar.Find("mp_overtime_enable")?.SetValue(_matchData.options.OvertimeEnabled());
         ConVar.Find("mp_halftime_pausematch")?.SetValue(
             _matchData.options.halftime_pausematch
         );

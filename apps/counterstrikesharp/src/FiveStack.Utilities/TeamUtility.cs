@@ -35,6 +35,11 @@ namespace FiveStack.Utilities
                 return CsTeam.None;
             }
 
+            if (!matchData.options.SwapsSides())
+            {
+                return startingSide;
+            }
+
             // Calculate which side based on round number
             // Regular time: rounds 0 to (MR-1) on starting side, rounds MR to (MR*2-1) on opposite side
             if (round < mr * 2)

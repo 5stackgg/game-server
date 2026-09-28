@@ -33,6 +33,11 @@ namespace FiveStack.Utilities
                 return Team.None;
             }
 
+            if (!matchData.options.SwapsSides())
+            {
+                return startingSide;
+            }
+
             int overtimeMr =
                 MatchUtility.Core.ConVar.Find<int>("mp_overtime_maxrounds")?.Value ?? 6;
 
