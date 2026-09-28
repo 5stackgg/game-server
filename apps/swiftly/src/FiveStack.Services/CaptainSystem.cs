@@ -85,9 +85,25 @@ public class CaptainSystem
             || !(match.IsWarmup() || match.IsKnife())
             || team == Team.None
             || team == Team.Spectator
-            || _captains[team] == null
-            || _captains[team]?.SteamID.ToString() != player.SteamID.ToString()
         )
+        {
+            return;
+        }
+
+        IPlayer? current = _captains[team];
+
+        if (current == null)
+        {
+            return;
+        }
+
+        if (!current.IsValid)
+        {
+            _captains[team] = null;
+            return;
+        }
+
+        if (current.SteamID != player.SteamID)
         {
             return;
         }
@@ -190,7 +206,7 @@ public class CaptainSystem
             return;
         }
 
-        if (_captains[captainTeam] == null || force)
+        if (force || GetTeamCaptain(captainTeam) == null)
         {
             SetCaptain(player, captainTeam, announce: true);
             _logger.LogInformation(
@@ -361,7 +377,14 @@ public class CaptainSystem
                 continue;
             }
 
-            if (_captains[side]?.SteamID.ToString() == steamId)
+            IPlayer? captain = _captains[side];
+
+            if (captain == null)
+            {
+                continue;
+            }
+
+            if (!captain.IsValid || captain.SteamID.ToString() == steamId)
             {
                 _captains[side] = null;
             }
