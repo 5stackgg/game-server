@@ -1462,6 +1462,39 @@ public class MatchManager
         }
     }
 
+    private const float PlayerNameWatchSeconds = 5.0f;
+
+    private float _playerNameWatchUntil;
+    private bool _watchingPlayerNames;
+
+    // A few ticks after a match begins (knife / live) CS2 resets every player back to
+    // their Steam name without firing any event, so watch briefly and undo it.
+    public void WatchPlayerNames()
+    {
+        _playerNameWatchUntil = Server.CurrentTime + PlayerNameWatchSeconds;
+
+        if (_watchingPlayerNames)
+        {
+            return;
+        }
+
+        _watchingPlayerNames = true;
+        WatchPlayerNamesTick();
+    }
+
+    private void WatchPlayerNamesTick()
+    {
+        if (Server.CurrentTime > _playerNameWatchUntil)
+        {
+            _watchingPlayerNames = false;
+            return;
+        }
+
+        Server.NextFrame(WatchPlayerNamesTick);
+
+        RestorePlayerNames();
+    }
+
     public void SetupBroadcast()
     {
         if (_matchData == null || IsMapFinished())
