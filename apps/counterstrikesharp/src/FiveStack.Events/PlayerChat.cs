@@ -97,30 +97,26 @@ public partial class FiveStackPlugin
             return;
         }
 
-        string? lineupId = MatchUtility.GetTeamChatRelayLineupId(
+        (string Event, Dictionary<string, object> Data)? teamChat = MatchUtility.TeamChatEvent(
             matchData,
             player.SteamID.ToString(),
-            player.PlayerName
+            player.PlayerName,
+            message
         );
 
-        if (lineupId == null)
+        if (teamChat == null)
         {
             return;
         }
 
-        PublishChatEvent(player, message, lineupId);
+        _matchEvents.PublishGameEvent(teamChat.Value.Event, teamChat.Value.Data);
     }
 
-    private void PublishChatEvent(
-        CCSPlayerController player,
-        string message,
-        string? teamLineupId = null
-    )
+    private void PublishChatEvent(CCSPlayerController player, string message)
     {
         (string eventName, Dictionary<string, object> data) = MatchUtility.ChatEvent(
             player.SteamID.ToString(),
-            message,
-            teamLineupId
+            message
         );
 
         _matchEvents.PublishGameEvent(eventName, data);

@@ -312,8 +312,7 @@ public class MatchUtilityTests
     {
         (string eventName, Dictionary<string, object> data) = MatchUtility.ChatEvent(
             "76561198000000001",
-            "gl hf",
-            null
+            "gl hf"
         );
 
         Assert.Equal("chat", eventName);
@@ -327,22 +326,61 @@ public class MatchUtilityTests
 
     // an api that predates team chat drops an event it has no handler for,
     // but would post anything sent as chat to the room both teams read
-    [Fact]
-    public void ChatEvent_SendsTeamChatUnderItsOwnEvent()
+    [Theory]
+    [InlineData("76561198000000001", "Real", "33333333-3333-3333-3333-333333333333")]
+    [InlineData("76561198000000011", "Coach", "33333333-3333-3333-3333-333333333333")]
+    [InlineData("76561198000000022", "Coach", "44444444-4444-4444-4444-444444444444")]
+    public void TeamChatEvent_SendsTeamChatUnderItsOwnEvent(
+        string steamId,
+        string playerName,
+        string lineupId
+    )
     {
-        (string eventName, Dictionary<string, object> data) = MatchUtility.ChatEvent(
-            "76561198000000001",
-            "stack b",
-            Lineup1Id.ToString()
+        MatchData match = BuildTeamChatMatch();
+        match.relay_team_chat = true;
+
+        (string Event, Dictionary<string, object> Data)? teamChat = MatchUtility.TeamChatEvent(
+            match,
+            steamId,
+            playerName,
+            "stack b"
         );
 
-        Assert.Equal("teamChat", eventName);
+        Assert.NotNull(teamChat);
+        Assert.Equal("teamChat", teamChat.Value.Event);
         Assert.Equal(
             new[] { "lineupId", "message", "player" },
-            data.Keys.OrderBy(key => key, StringComparer.Ordinal)
+            teamChat.Value.Data.Keys.OrderBy(key => key, StringComparer.Ordinal)
         );
-        Assert.Equal("76561198000000001", data["player"]);
-        Assert.Equal("stack b", data["message"]);
-        Assert.Equal(Lineup1Id.ToString(), data["lineupId"]);
+        Assert.Equal(steamId, teamChat.Value.Data["player"]);
+        Assert.Equal("stack b", teamChat.Value.Data["message"]);
+        Assert.Equal(lineupId, teamChat.Value.Data["lineupId"]);
+    }
+
+    [Fact]
+    public void TeamChatEvent_SendsNothingWhenApiDoesNotAdvertiseIt()
+    {
+        Assert.Null(
+            MatchUtility.TeamChatEvent(BuildTeamChatMatch(), "76561198000000001", "Real", "stack b")
+        );
+    }
+
+    [Fact]
+    public void TeamChatEvent_SendsNothingForGaggedMember()
+    {
+        MatchData match = BuildTeamChatMatch();
+        match.relay_team_chat = true;
+        match.lineup_1.lineup_players[0].is_gagged = true;
+
+        Assert.Null(MatchUtility.TeamChatEvent(match, "76561198000000001", "Real", "stack b"));
+    }
+
+    [Fact]
+    public void TeamChatEvent_SendsNothingForPlayerOffTheRoster()
+    {
+        MatchData match = BuildTeamChatMatch();
+        match.relay_team_chat = true;
+
+        Assert.Null(MatchUtility.TeamChatEvent(match, "76561198000009999", "Caster", "stack b"));
     }
 }
