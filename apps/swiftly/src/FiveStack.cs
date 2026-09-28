@@ -126,9 +126,6 @@ public partial class FiveStackPlugin : BasePlugin
 
         _rankSystem.Start();
 
-        // CS2 reverts renamed players to their Steam name when a match begins (warmup end)
-        TimerUtility.Repeat(1, () => _matchService.GetCurrentMatch()?.RestorePlayerNames());
-
         Core.Event.OnMapLoad += OnMapLoad;
 
         _precacheHandler = (@event) =>

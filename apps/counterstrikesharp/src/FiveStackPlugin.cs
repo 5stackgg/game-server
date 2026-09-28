@@ -85,13 +85,6 @@ public partial class FiveStackPlugin : BasePlugin
             CounterStrikeSharp.API.Modules.Timers.TimerFlags.REPEAT
         );
 
-        // CS2 reverts renamed players to their Steam name when a match begins (warmup end)
-        TimerUtility.AddTimer(
-            1.0f,
-            () => _matchService.GetCurrentMatch()?.RestorePlayerNames(),
-            CounterStrikeSharp.API.Modules.Timers.TimerFlags.REPEAT
-        );
-
         if (hotReload)
         {
             _steamAPI.OnSteamAPIActivated();

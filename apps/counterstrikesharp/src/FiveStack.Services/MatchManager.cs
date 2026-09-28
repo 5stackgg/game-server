@@ -1423,7 +1423,6 @@ public class MatchManager
         }
     }
 
-    // CS2 reverts names to the Steam name when a match begins, so reapply the lineup name
     public void RestorePlayerName(CCSPlayerController player)
     {
         MatchData? matchData = GetMatchData();
