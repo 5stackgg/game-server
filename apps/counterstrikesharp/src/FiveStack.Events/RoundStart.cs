@@ -27,7 +27,7 @@ public partial class FiveStackPlugin
         bool isWarmup = matchManager.IsWarmup();
 
         _logger.LogInformation(
-            $"OnRoundStart totalRoundsPlayed={totalRoundsPlayed} isInPlay={isInPlay} isWarmup={isWarmup} isKnife={isKnife} {matchManager.TeamSwitchState()}"
+            $"OnRoundStart totalRoundsPlayed={totalRoundsPlayed} isInPlay={isInPlay} isWarmup={isWarmup} isKnife={isKnife}"
         );
 
         if (!isInPlay)
@@ -42,6 +42,8 @@ public partial class FiveStackPlugin
         }
 
         PublishPendingRound(SendBackupRound: true);
+
+        _logger.LogInformation($"OnRoundStart {matchManager.TeamSwitchState()}");
 
         matchManager.ReconcileMemberTeams();
 

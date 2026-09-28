@@ -1143,9 +1143,7 @@ public class MatchManager
 
         Team placementTeam = GetPlacementSide(expectedTeam);
 
-        bool shouldRespawn =
-            IsWarmup()
-            || (MatchUtility.Rules()?.FreezePeriod == true) && expectedTeam != Team.Spectator;
+        bool shouldRespawn = ShouldRespawnOnTeamChange(expectedTeam);
 
         if (currentTeam != placementTeam)
         {
@@ -1173,15 +1171,11 @@ public class MatchManager
 
                     player.ChangeTeam(applyPlacementTeam);
 
-                    _logger.LogInformation(
-                        $"[team] ChangeTeam applied {player.Name} ({player.SteamID}) -> {applyPlacementTeam} (expected: {applyExpectedTeam}, playerSwitchTeamsOnNextRoundReset: {player.Controller.SwitchTeamsOnNextRoundReset}, {TeamSwitchState()})"
-                    );
-
                     // Respawn only once the team change has landed. Respawning
                     // first spawns the player while still unassigned, and the
                     // weapons a spawn creates are what the inventory plugin
                     // skins — a spawn on the wrong team wastes that one shot.
-                    if (shouldRespawn)
+                    if (shouldRespawn || ShouldRespawnOnTeamChange(applyExpectedTeam))
                     {
                         _core.Scheduler.NextTick(() =>
                         {
@@ -1196,6 +1190,10 @@ public class MatchManager
                             player.Respawn();
                         });
                     }
+
+                    _logger.LogInformation(
+                        $"[team] ChangeTeam applied {player.Name} ({player.SteamID}) -> {applyPlacementTeam} (expected: {applyExpectedTeam}, playerSwitchTeamsOnNextRoundReset: {player.Controller.SwitchTeamsOnNextRoundReset}, {TeamSwitchState()})"
+                    );
                 }
             );
 
@@ -1214,6 +1212,12 @@ public class MatchManager
         }
 
         captainSystem.IsCaptain(player, expectedTeam);
+    }
+
+    private bool ShouldRespawnOnTeamChange(Team team)
+    {
+        return IsWarmup()
+            || (MatchUtility.Rules()?.FreezePeriod == true) && team != Team.Spectator;
     }
 
     public void ReconcileMemberTeams()

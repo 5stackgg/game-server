@@ -2,6 +2,9 @@ namespace FiveStack.Utilities
 {
     public static class TeamRotation
     {
+        private const int TerroristTeamNum = 2;
+        private const int CounterTerroristTeamNum = 3;
+
         public static bool IsOnOppositeSide(int round, int mr, int overtimeMr)
         {
             if (round < mr * 2)
@@ -21,17 +24,14 @@ namespace FiveStack.Utilities
             return block >= (overtimeMr / 2);
         }
 
-        private const int TerroristTeamNum = 2;
-        private const int CounterTerroristTeamNum = 3;
-
         // A majority out of place means our side model is what's wrong, not the players.
         public static bool ShouldReconcile(int mismatched, int placed)
         {
             return mismatched > 0 && mismatched * 2 < placed;
         }
 
-        // While a halftime swap is pending, the engine flips every T/CT player at the
-        // round reset, so landing on the expected side means joining the other one now.
+        // A pending halftime swap flips T/CT players at the round reset, so a player
+        // the swap will carry must join the side opposite the one they should end on.
         public static int PlacementSide(int expectedTeamNum, bool switchingAtReset)
         {
             if (!switchingAtReset)

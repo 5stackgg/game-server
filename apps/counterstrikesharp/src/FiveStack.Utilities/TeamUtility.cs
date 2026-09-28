@@ -73,8 +73,8 @@ namespace FiveStack.Utilities
             return mismatched > 0 && mismatched * 2 < placed;
         }
 
-        // While a halftime swap is pending, the engine flips every T/CT player at the
-        // round reset, so landing on the expected side means joining the other one now.
+        // A pending halftime swap flips T/CT players at the round reset, so a player
+        // the swap will carry must join the side opposite the one they should end on.
         public static CsTeam PlacementSide(CsTeam expected, bool switchingAtReset)
         {
             if (!switchingAtReset)

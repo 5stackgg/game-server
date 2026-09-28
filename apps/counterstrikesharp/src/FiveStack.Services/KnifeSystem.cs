@@ -318,8 +318,21 @@ public class KnifeSystem
 
     private static void SwapLineupSides(MatchMap currentMap)
     {
-        currentMap.lineup_1_side = currentMap.lineup_1_side == "CT" ? "TERRORIST" : "CT";
-        currentMap.lineup_2_side = currentMap.lineup_2_side == "CT" ? "TERRORIST" : "CT";
+        currentMap.lineup_1_side = OppositeSide(currentMap.lineup_1_side);
+        currentMap.lineup_2_side = OppositeSide(currentMap.lineup_2_side);
+    }
+
+    private static string OppositeSide(string side)
+    {
+        switch (side)
+        {
+            case "CT":
+                return "TERRORIST";
+            case "TERRORIST":
+                return "CT";
+            default:
+                return side;
+        }
     }
 
     public void Reset()
