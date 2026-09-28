@@ -1373,7 +1373,7 @@ public class MatchManager
 
         if (tag != null)
         {
-            tag = $"{tag.Trim()} |";
+            tag = tag.Trim();
         }
         else
         {
