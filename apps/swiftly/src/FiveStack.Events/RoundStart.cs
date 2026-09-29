@@ -44,6 +44,10 @@ public partial class FiveStackPlugin
 
         PublishPendingRound(SendBackupRound: true);
 
+        _logger.LogInformation($"OnRoundStart {matchManager.TeamSwitchState()}");
+
+        matchManager.ReconcileMemberTeams();
+
         int currentPlayers = MatchUtility.PlayerCount();
 
         int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;

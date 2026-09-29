@@ -67,6 +67,50 @@ namespace FiveStack.Utilities
                 : startingSide;
         }
 
+        // A majority out of place means our side model is what's wrong, not the players.
+        public static bool ShouldReconcile(int mismatched, int placed)
+        {
+            return mismatched > 0 && mismatched * 2 < placed;
+        }
+
+        // A pending halftime swap flips T/CT players at the round reset, so a player
+        // the swap will carry must join the side opposite the one they should end on.
+        public static CsTeam PlacementSide(CsTeam expected, bool switchingAtReset)
+        {
+            if (!switchingAtReset)
+            {
+                return expected;
+            }
+
+            switch (expected)
+            {
+                case CsTeam.Terrorist:
+                case CsTeam.CounterTerrorist:
+                    return GetOppositeSide(expected);
+                default:
+                    return expected;
+            }
+        }
+
+        public static void SwapLineupSides(MatchMap currentMap)
+        {
+            currentMap.lineup_1_side = GetOppositeSideName(currentMap.lineup_1_side);
+            currentMap.lineup_2_side = GetOppositeSideName(currentMap.lineup_2_side);
+        }
+
+        private static string GetOppositeSideName(string side)
+        {
+            switch (side)
+            {
+                case "CT":
+                    return "TERRORIST";
+                case "TERRORIST":
+                    return "CT";
+                default:
+                    return side;
+            }
+        }
+
         private static CsTeam GetOppositeSide(CsTeam side)
         {
             switch (side)

@@ -232,6 +232,13 @@ public class KnifeSystem
 
         if (_environmentService.IsOfflineMode())
         {
+            MatchMap? currentMap = match.GetCurrentMap();
+
+            if (currentMap != null)
+            {
+                TeamRotation.SwapLineupSides(currentMap);
+            }
+
             match.UpdateMapStatus(eMapStatus.Live);
             _gameServer.SendCommands(["mp_swapteams; mp_restartgame 1"]);
             return;
@@ -284,8 +291,7 @@ public class KnifeSystem
             return;
         }
 
-        currentMap.lineup_1_side = currentMap.lineup_1_side == "CT" ? "TERRORIST" : "CT";
-        currentMap.lineup_2_side = currentMap.lineup_2_side == "CT" ? "TERRORIST" : "CT";
+        TeamRotation.SwapLineupSides(currentMap);
 
         _gameServer.SendCommands(["mp_swapteams"]);
 

@@ -1,3 +1,4 @@
+using FiveStack.Entities;
 using FiveStack.Utilities;
 using Xunit;
 
@@ -37,5 +38,68 @@ public class TeamRotationTests
     {
         Assert.False(TeamRotation.IsOnOppositeSide(7, 8, 6));
         Assert.True(TeamRotation.IsOnOppositeSide(8, 8, 6));
+    }
+
+    [Theory]
+    [InlineData(0, 10, false)]
+    [InlineData(1, 10, true)]
+    [InlineData(4, 10, true)]
+    [InlineData(5, 10, false)]
+    [InlineData(6, 10, false)]
+    [InlineData(10, 10, false)]
+    [InlineData(1, 2, false)]
+    [InlineData(1, 3, true)]
+    [InlineData(0, 0, false)]
+    [InlineData(1, 0, false)]
+    public void ShouldReconcile_OnlyAStrictMinority(int mismatched, int placed, bool expected)
+    {
+        Assert.Equal(expected, TeamRotation.ShouldReconcile(mismatched, placed));
+    }
+
+    [Theory]
+    [InlineData(2, false, 2)]
+    [InlineData(3, false, 3)]
+    [InlineData(1, false, 1)]
+    [InlineData(0, false, 0)]
+    [InlineData(2, true, 3)]
+    [InlineData(3, true, 2)]
+    [InlineData(1, true, 1)]
+    [InlineData(0, true, 0)]
+    public void PlacementSide_PreSwapSideOnlyWhileSwitching(
+        int expectedTeamNum,
+        bool switchingAtReset,
+        int placement
+    )
+    {
+        Assert.Equal(placement, TeamRotation.PlacementSide(expectedTeamNum, switchingAtReset));
+    }
+
+    [Theory]
+    [InlineData("CT", "TERRORIST", "TERRORIST", "CT")]
+    [InlineData("TERRORIST", "CT", "CT", "TERRORIST")]
+    public void SwapLineupSides_FlipsKnownSides(
+        string lineup1Side,
+        string lineup2Side,
+        string swapped1,
+        string swapped2
+    )
+    {
+        var map = new MatchMap { lineup_1_side = lineup1Side, lineup_2_side = lineup2Side };
+
+        TeamRotation.SwapLineupSides(map);
+
+        Assert.Equal(swapped1, map.lineup_1_side);
+        Assert.Equal(swapped2, map.lineup_2_side);
+    }
+
+    [Fact]
+    public void SwapLineupSides_LeavesUnsetSidesUnset()
+    {
+        var map = new MatchMap { lineup_1_side = "", lineup_2_side = "CT" };
+
+        TeamRotation.SwapLineupSides(map);
+
+        Assert.Equal("", map.lineup_1_side);
+        Assert.Equal("TERRORIST", map.lineup_2_side);
     }
 }

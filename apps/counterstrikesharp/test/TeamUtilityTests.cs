@@ -46,6 +46,69 @@ public class TeamUtilityTests
     {
         Assert.Equal(team, TeamUtility.TeamStringToCsTeam(TeamUtility.CSTeamToString(team)));
     }
+
+    [Theory]
+    [InlineData(0, 10, false)]
+    [InlineData(1, 10, true)]
+    [InlineData(4, 10, true)]
+    [InlineData(5, 10, false)]
+    [InlineData(6, 10, false)]
+    [InlineData(10, 10, false)]
+    [InlineData(1, 2, false)]
+    [InlineData(1, 3, true)]
+    [InlineData(0, 0, false)]
+    [InlineData(1, 0, false)]
+    public void ShouldReconcile_OnlyAStrictMinority(int mismatched, int placed, bool expected)
+    {
+        Assert.Equal(expected, TeamUtility.ShouldReconcile(mismatched, placed));
+    }
+
+    [Theory]
+    [InlineData(CsTeam.Terrorist, false, CsTeam.Terrorist)]
+    [InlineData(CsTeam.CounterTerrorist, false, CsTeam.CounterTerrorist)]
+    [InlineData(CsTeam.Spectator, false, CsTeam.Spectator)]
+    [InlineData(CsTeam.None, false, CsTeam.None)]
+    [InlineData(CsTeam.Terrorist, true, CsTeam.CounterTerrorist)]
+    [InlineData(CsTeam.CounterTerrorist, true, CsTeam.Terrorist)]
+    [InlineData(CsTeam.Spectator, true, CsTeam.Spectator)]
+    [InlineData(CsTeam.None, true, CsTeam.None)]
+    public void PlacementSide_PreSwapSideOnlyWhileSwitching(
+        CsTeam expected,
+        bool switchingAtReset,
+        CsTeam placement
+    )
+    {
+        Assert.Equal(placement, TeamUtility.PlacementSide(expected, switchingAtReset));
+    }
+
+    [Theory]
+    [InlineData("CT", "TERRORIST", "TERRORIST", "CT")]
+    [InlineData("TERRORIST", "CT", "CT", "TERRORIST")]
+    public void SwapLineupSides_FlipsKnownSides(
+        string lineup1Side,
+        string lineup2Side,
+        string swapped1,
+        string swapped2
+    )
+    {
+        var map = new MatchMap { lineup_1_side = lineup1Side, lineup_2_side = lineup2Side };
+
+        TeamUtility.SwapLineupSides(map);
+
+        Assert.Equal(swapped1, map.lineup_1_side);
+        Assert.Equal(swapped2, map.lineup_2_side);
+    }
+
+    [Fact]
+    public void SwapLineupSides_LeavesUnsetSidesUnset()
+    {
+        var map = new MatchMap { lineup_1_side = "", lineup_2_side = "CT" };
+
+        TeamUtility.SwapLineupSides(map);
+
+        Assert.Equal("", map.lineup_1_side);
+        Assert.Equal("TERRORIST", map.lineup_2_side);
+    }
 }
 
 public class GetLineupSideTests
@@ -132,6 +195,17 @@ public class GetLineupSideTests
     {
         var (match, map) = BuildMatch(lineup1Side: side);
         Assert.Equal(CsTeam.None, TeamUtility.GetLineupSide(match, map, Lineup1, 0));
+    }
+
+    [Fact]
+    public void KnifeSwapOfUnsetSides_KeepsBothLineupsUnplaced()
+    {
+        var (match, map) = BuildMatch(lineup1Side: "", lineup2Side: "");
+
+        TeamUtility.SwapLineupSides(map);
+
+        Assert.Equal(CsTeam.None, TeamUtility.GetLineupSide(match, map, Lineup1, 0));
+        Assert.Equal(CsTeam.None, TeamUtility.GetLineupSide(match, map, Lineup2, 0));
     }
 
     [Fact]

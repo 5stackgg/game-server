@@ -1134,6 +1134,11 @@ public class MatchManager
         });
     }
 
+    // Off until verified on a live server through a regulation and an overtime
+    // halftime: CS2 also keeps a per-controller m_bSwitchTeamsOnNextRoundReset,
+    // so the pending swap may skip a player who joined after it was armed.
+    private static readonly bool PlaceOnPreSwapSideWhileSwitching = false;
+
     public void EnforceMemberTeam(CCSPlayerController player, CsTeam? currentTeam = null)
     {
         CsTeam expectedTeam = GetExpectedTeam(player);
@@ -1148,14 +1153,14 @@ public class MatchManager
             currentTeam = player.Team;
         }
 
-        bool shouldRespawn =
-            IsWarmup()
-            || (MatchUtility.Rules()?.FreezePeriod == true) && expectedTeam != CsTeam.Spectator;
+        CsTeam placementTeam = GetPlacementSide(expectedTeam);
 
-        if (currentTeam != expectedTeam)
+        bool shouldRespawn = ShouldRespawnOnTeamChange(expectedTeam);
+
+        if (currentTeam != placementTeam)
         {
             _logger.LogInformation(
-                $"[team] Changing Team {player.PlayerName} ({player.SteamID}) {currentTeam} -> {expectedTeam} (respawn: {shouldRespawn})"
+                $"[team] Changing Team {player.PlayerName} ({player.SteamID}) {currentTeam} -> {placementTeam} (expected: {expectedTeam}, respawn: {shouldRespawn})"
             );
 
             TimerUtility.AddTimer(
@@ -1167,17 +1172,22 @@ public class MatchManager
                         return;
                     }
 
-                    player.ChangeTeam(expectedTeam);
+                    CsTeam applyExpectedTeam = GetExpectedSide(player);
 
-                    _logger.LogInformation(
-                        $"[team] ChangeTeam applied {player.PlayerName} ({player.SteamID}) -> {expectedTeam}"
-                    );
+                    if (applyExpectedTeam == CsTeam.None)
+                    {
+                        return;
+                    }
+
+                    CsTeam applyPlacementTeam = GetPlacementSide(applyExpectedTeam);
+
+                    player.ChangeTeam(applyPlacementTeam);
 
                     // Respawn only once the team change has landed. Respawning
                     // first spawns the player while still unassigned, and the
                     // weapons a spawn creates are what the inventory plugin
                     // skins — a spawn on the wrong team wastes that one shot.
-                    if (shouldRespawn)
+                    if (shouldRespawn || ShouldRespawnOnTeamChange(applyExpectedTeam))
                     {
                         Server.NextFrame(() =>
                         {
@@ -1187,11 +1197,15 @@ public class MatchManager
                             }
 
                             _logger.LogInformation(
-                                $"[team] Respawning {player.PlayerName} ({player.SteamID}) after team change -> {expectedTeam}"
+                                $"[team] Respawning {player.PlayerName} ({player.SteamID}) after team change -> {applyPlacementTeam}"
                             );
                             player.Respawn();
                         });
                     }
+
+                    _logger.LogInformation(
+                        $"[team] ChangeTeam applied {player.PlayerName} ({player.SteamID}) -> {applyPlacementTeam} (expected: {applyExpectedTeam}, playerSwitchTeamsOnNextRoundReset: {player.SwitchTeamsOnNextRoundReset}, {TeamSwitchState()})"
+                    );
                 }
             );
 
@@ -1204,12 +1218,79 @@ public class MatchManager
         else if (shouldRespawn)
         {
             _logger.LogInformation(
-                $"[team] Respawning {player.PlayerName} ({player.SteamID}) (already on {expectedTeam})"
+                $"[team] Respawning {player.PlayerName} ({player.SteamID}) (already on {placementTeam})"
             );
             player.Respawn();
         }
 
         captainSystem.IsCaptain(player, expectedTeam);
+    }
+
+    private bool ShouldRespawnOnTeamChange(CsTeam team)
+    {
+        return IsWarmup()
+            || (MatchUtility.Rules()?.FreezePeriod == true) && team != CsTeam.Spectator;
+    }
+
+    public void ReconcileMemberTeams()
+    {
+        List<CCSPlayerController> mismatched = new List<CCSPlayerController>();
+        int placed = 0;
+
+        foreach (var player in MatchUtility.Players())
+        {
+            CsTeam expectedSide = GetExpectedSide(player);
+
+            if (expectedSide != CsTeam.Terrorist && expectedSide != CsTeam.CounterTerrorist)
+            {
+                continue;
+            }
+
+            placed++;
+
+            if (player.Team != expectedSide)
+            {
+                mismatched.Add(player);
+            }
+        }
+
+        if (mismatched.Count == 0)
+        {
+            return;
+        }
+
+        if (!TeamUtility.ShouldReconcile(mismatched.Count, placed))
+        {
+            _logger.LogWarning(
+                $"[team] Skipping round start reconcile: {mismatched.Count} of {placed} players are off their expected side ({TeamSwitchState()})"
+            );
+            return;
+        }
+
+        _logger.LogInformation(
+            $"[team] Round start reconcile: moving {mismatched.Count} of {placed} players to their expected side"
+        );
+
+        foreach (var player in mismatched)
+        {
+            EnforceMemberTeam(player);
+        }
+    }
+
+    public CsTeam GetPlacementSide(CsTeam expectedSide)
+    {
+        bool switchingAtReset =
+            PlaceOnPreSwapSideWhileSwitching
+            && MatchUtility.Rules()?.SwitchingTeamsAtRoundReset == true;
+
+        return TeamUtility.PlacementSide(expectedSide, switchingAtReset);
+    }
+
+    public string TeamSwitchState()
+    {
+        CCSGameRules? rules = MatchUtility.Rules();
+
+        return $"switchingTeamsAtRoundReset={rules?.SwitchingTeamsAtRoundReset} gamePhase={rules?.GamePhase} freezePeriod={rules?.FreezePeriod}";
     }
 
     public CsTeam GetExpectedTeam(CCSPlayerController player)
@@ -1250,17 +1331,34 @@ public class MatchManager
             player.VoiceFlags = VoiceFlags.Normal;
         }
 
-        Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
+        return GetExpectedSide(player);
+    }
 
-        if (lineup_id == null)
+    public CsTeam GetExpectedSide(CCSPlayerController player)
+    {
+        MatchData? matchData = GetMatchData();
+        MatchMap? currentMap = GetCurrentMap();
+
+        if (matchData == null || currentMap == null)
         {
             return CsTeam.None;
+        }
+
+        MatchMember? member = MatchUtility.GetMemberFromLineup(
+            matchData,
+            player.SteamID.ToString(),
+            player.PlayerName
+        );
+
+        if (member == null)
+        {
+            return CsTeam.Spectator;
         }
 
         return TeamUtility.GetLineupSide(
             matchData,
             currentMap,
-            lineup_id.Value,
+            member.match_lineup_id,
             _gameServer.GetTotalRoundsPlayed()
         );
     }
