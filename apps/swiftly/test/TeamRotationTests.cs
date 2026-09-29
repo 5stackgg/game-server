@@ -1,3 +1,4 @@
+using FiveStack.Entities;
 using FiveStack.Utilities;
 using Xunit;
 
@@ -71,5 +72,34 @@ public class TeamRotationTests
     )
     {
         Assert.Equal(placement, TeamRotation.PlacementSide(expectedTeamNum, switchingAtReset));
+    }
+
+    [Theory]
+    [InlineData("CT", "TERRORIST", "TERRORIST", "CT")]
+    [InlineData("TERRORIST", "CT", "CT", "TERRORIST")]
+    public void SwapLineupSides_FlipsKnownSides(
+        string lineup1Side,
+        string lineup2Side,
+        string swapped1,
+        string swapped2
+    )
+    {
+        var map = new MatchMap { lineup_1_side = lineup1Side, lineup_2_side = lineup2Side };
+
+        TeamRotation.SwapLineupSides(map);
+
+        Assert.Equal(swapped1, map.lineup_1_side);
+        Assert.Equal(swapped2, map.lineup_2_side);
+    }
+
+    [Fact]
+    public void SwapLineupSides_LeavesUnsetSidesUnset()
+    {
+        var map = new MatchMap { lineup_1_side = "", lineup_2_side = "CT" };
+
+        TeamRotation.SwapLineupSides(map);
+
+        Assert.Equal("", map.lineup_1_side);
+        Assert.Equal("TERRORIST", map.lineup_2_side);
     }
 }

@@ -92,6 +92,25 @@ namespace FiveStack.Utilities
             }
         }
 
+        public static void SwapLineupSides(MatchMap currentMap)
+        {
+            currentMap.lineup_1_side = GetOppositeSideName(currentMap.lineup_1_side);
+            currentMap.lineup_2_side = GetOppositeSideName(currentMap.lineup_2_side);
+        }
+
+        private static string GetOppositeSideName(string side)
+        {
+            switch (side)
+            {
+                case "CT":
+                    return "TERRORIST";
+                case "TERRORIST":
+                    return "CT";
+                default:
+                    return side;
+            }
+        }
+
         private static CsTeam GetOppositeSide(CsTeam side)
         {
             switch (side)
