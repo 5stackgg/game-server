@@ -28,19 +28,10 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        MatchMember? member = MatchUtility.GetMemberFromLineup(
-            matchData,
-            player.SteamID.ToString(),
-            player.Name
-        );
-
-        if (member != null)
+        if (MatchUtility.IsGagged(matchData, player.SteamID.ToString(), player.Name))
         {
-            if (member.is_gagged)
-            {
-                _gameServer.Message(MessageType.Chat, _localizer["gag.you_are_gagged"], player);
-                return HookResult.Stop;
-            }
+            _gameServer.Message(MessageType.Chat, _localizer["gag.you_are_gagged"], player);
+            return HookResult.Stop;
         }
 
         return HookResult.Continue;

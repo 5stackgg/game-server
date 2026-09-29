@@ -1,4 +1,5 @@
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using SwiftlyS2.Shared.Misc;
 using SwiftlyS2.Shared.Players;
@@ -22,51 +23,38 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        if (player.Controller.Team == Team.Spectator)
+        eAllChatRoute route = MatchUtility.AllChatRoute(
+            _matchService.GetCurrentMatch()?.GetMatchData(),
+            player.SteamID.ToString(),
+            player.Name,
+            player.Controller.Team == Team.Spectator
+        );
+
+        if (route == eAllChatRoute.Block)
+        {
+            return HookResult.Stop;
+        }
+
+        if (route == eAllChatRoute.Spectator)
         {
             PublishChatEvent(player, message);
 
             string clan = string.IsNullOrEmpty(player.Controller.Clan)
                 ? ""
-                : $"[{player.Controller.Clan}]";
+                : ChatUtility.StripFormatting($"[{player.Controller.Clan}]");
 
-            _gameServer.Message(
-                MessageType.Chat,
-                $" [red]{clan}[white] {player.Name}: {message}"
-            );
+            string name = ChatUtility.StripFormatting(player.Name);
+            string text = ChatUtility.StripFormatting(message);
+
+            _gameServer.Message(MessageType.Chat, $" [red]{clan}[white] {name}: {text}");
 
             return HookResult.Stop;
         }
 
-        MatchManager? match = _matchService.GetCurrentMatch();
-
-        if (match == null)
+        if (route == eAllChatRoute.Publish)
         {
-            return HookResult.Continue;
+            PublishChatEvent(player, message);
         }
-
-        MatchData? matchData = match.GetMatchData();
-
-        if (matchData == null)
-        {
-            return HookResult.Continue;
-        }
-
-        MatchMember? member = MatchUtility.GetMemberFromLineup(
-            matchData,
-            player.SteamID.ToString(),
-            player.Name
-        );
-
-        if (member != null)
-        {
-            if (member.is_gagged)
-            {
-                return HookResult.Stop;
-            }
-        }
-
-        PublishChatEvent(player, message);
 
         return HookResult.Continue;
     }
