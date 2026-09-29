@@ -214,6 +214,15 @@ public class MatchUtilityTests
     }
 
     [Fact]
+    public void GetTeamChatLineupId_PrefersCoachSeatOverPlaceholderPrefix()
+    {
+        Assert.Equal(
+            Lineup1Id.ToString(),
+            MatchUtility.GetTeamChatLineupId(BuildTeamChatMatch(), "76561198000000011", "Ace")
+        );
+    }
+
+    [Fact]
     public void GetTeamChatLineupId_IgnoresCoachWhenCoachesAreDisabled()
     {
         MatchData match = BuildTeamChatMatch();
