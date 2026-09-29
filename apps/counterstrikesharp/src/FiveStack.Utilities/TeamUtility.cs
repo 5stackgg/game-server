@@ -242,14 +242,5 @@ namespace FiveStack.Utilities
 
             return totalCash;
         }
-
-        public static int GetTeamCount(CsTeam csTeam)
-        {
-            return MatchUtility
-                .Teams()
-                .Count(matchTeam =>
-                    matchTeam.PlayerControllers.Count > 0 && matchTeam.TeamNum == (int)csTeam
-                );
-        }
     }
 }

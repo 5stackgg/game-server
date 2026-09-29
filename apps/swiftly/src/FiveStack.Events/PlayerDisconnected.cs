@@ -30,6 +30,11 @@ public partial class FiveStackPlugin
 
         IPlayer player = @event.UserIdPlayer;
 
+        if (_overCapacityKicks.Remove(player.SteamID))
+        {
+            return HookResult.Continue;
+        }
+
         MatchMember? member = MatchUtility.GetMemberFromLineup(
             matchData,
             player.SteamID.ToString(),
