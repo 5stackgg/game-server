@@ -27,6 +27,11 @@ public partial class FiveStackPlugin
 
         CCSPlayerController player = @event.Userid;
 
+        if (_overCapacityKicks.Remove(player.SteamID))
+        {
+            return HookResult.Continue;
+        }
+
         MatchMember? member = MatchUtility.GetMemberFromLineup(
             matchData,
             player.SteamID.ToString(),

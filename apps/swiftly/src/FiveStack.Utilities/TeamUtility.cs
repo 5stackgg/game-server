@@ -170,10 +170,5 @@ namespace FiveStack.Utilities
 
             return totalCash;
         }
-
-        public static int GetTeamCount(Team team)
-        {
-            return MatchUtility.Core.PlayerManager.GetInTeam(team).Any() ? 1 : 0;
-        }
     }
 }

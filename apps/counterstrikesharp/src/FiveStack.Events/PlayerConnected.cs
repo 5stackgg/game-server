@@ -5,11 +5,14 @@ using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
+    private readonly HashSet<ulong> _overCapacityKicks = new();
+
     [GameEventHandler]
     public HookResult OnPlayerConnect(EventPlayerConnectFull @event, GameEventInfo info)
     {
@@ -27,7 +30,45 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        _surrenderSystem.CancelDisconnectTimer(@event.Userid.SteamID);
+        CCSPlayerController player = @event.Userid;
+
+        _overCapacityKicks.Remove(player.SteamID);
+
+        Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
+
+        CsTeam placementTeam = match.GetPlacementSide(match.GetExpectedTeam(player));
+        int capacity = match.GetExpectedPlayerCount() / 2;
+
+        // Decided before the disconnect timer and the roster resume: the player
+        // is about to be kicked, so they must neither count towards a whole
+        // roster nor have the kick treated as them leaving the match.
+        if (
+            LineupCapacityUtility.IsOverCapacity(
+                MatchUtility
+                    .Players()
+                    .Select(connected =>
+                        (
+                            connected.SteamID.ToString(),
+                            MatchUtility.GetPlayerLineup(matchData, connected),
+                            (int)connected.Team
+                        )
+                    ),
+                player.SteamID.ToString(),
+                lineup_id,
+                (int)placementTeam,
+                capacity
+            )
+        )
+        {
+            _logger.LogInformation(
+                $"Kicking {player.PlayerName} ({player.SteamID}): their lineup already has {capacity} playing"
+            );
+            _overCapacityKicks.Add(player.SteamID);
+            Server.ExecuteCommand($"kickid {player.UserId}");
+            return HookResult.Continue;
+        }
+
+        _surrenderSystem.CancelDisconnectTimer(player.SteamID);
 
         // CancelDisconnectTimer only resumes when that player actually had a
         // timer, which is never the case for someone who left during warmup or
@@ -35,9 +76,6 @@ public partial class FiveStackPlugin
         // the roster is whole again there is nothing left to wait for.
         _surrenderSystem.ResumeIfRosterWhole();
 
-        CCSPlayerController player = @event.Userid;
-
-        Guid? lineup_id = MatchUtility.GetPlayerLineup(matchData, player);
         List<MatchMember> players = matchData
             .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
             .ToList();
@@ -72,21 +110,6 @@ public partial class FiveStackPlugin
                 Server.ExecuteCommand($"kickid {player.UserId}");
                 return HookResult.Continue;
             }
-        }
-
-        CsTeam placementTeam = match.GetPlacementSide(match.GetExpectedTeam(player));
-        int expectedTeamCount = match.GetExpectedPlayerCount() / 2;
-        int teamCount = TeamUtility.GetTeamCount(placementTeam);
-
-        if (player.Team == placementTeam)
-        {
-            teamCount--;
-        }
-
-        if (teamCount > expectedTeamCount)
-        {
-            Server.ExecuteCommand($"kickid {player.UserId}");
-            return HookResult.Continue;
         }
 
         match.EnforceMemberTeam(player, CsTeam.None);
