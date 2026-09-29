@@ -48,6 +48,124 @@ namespace FiveStack.Utilities
             });
         }
 
+        public static string? GetTeamChatRelayLineupId(
+            MatchData matchData,
+            string steamId,
+            string playerName
+        )
+        {
+            if (!matchData.relay_team_chat)
+            {
+                return null;
+            }
+
+            bool gagged =
+                GetMemberFromLineup(matchData, steamId, playerName)?.is_gagged == true
+                || matchData
+                    .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
+                    .Any(member => member.is_gagged && member.steam_id == steamId);
+
+            if (gagged)
+            {
+                return null;
+            }
+
+            return GetTeamChatLineupId(matchData, steamId, playerName);
+        }
+
+        // A lineup_1 placeholder whose name prefixes a lineup_2 player would
+        // otherwise claim them, so exact steam ids are matched before names.
+        public static string? GetTeamChatLineupId(
+            MatchData matchData,
+            string steamId,
+            string playerName
+        )
+        {
+            List<MatchMember> players = matchData
+                .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
+                .ToList();
+
+            Guid lineupId =
+                players
+                    .Find(member =>
+                        !string.IsNullOrEmpty(member.steam_id) && member.steam_id == steamId
+                    )
+                    ?.match_lineup_id
+                ?? GetCoachLineupId(matchData, steamId)
+                ?? players
+                    .Find(member =>
+                        member.steam_id == null && member.placeholder_name.StartsWith(playerName)
+                    )
+                    ?.match_lineup_id
+                ?? Guid.Empty;
+
+            if (lineupId == Guid.Empty)
+            {
+                return null;
+            }
+
+            return lineupId.ToString();
+        }
+
+        private static Guid? GetCoachLineupId(MatchData matchData, string steamId)
+        {
+            if (!matchData.options.coaches || string.IsNullOrEmpty(steamId))
+            {
+                return null;
+            }
+
+            if (matchData.lineup_1.coach_steam_id == steamId)
+            {
+                return matchData.lineup_1.id;
+            }
+
+            if (matchData.lineup_2.coach_steam_id == steamId)
+            {
+                return matchData.lineup_2.id;
+            }
+
+            return null;
+        }
+
+        public static (string Event, Dictionary<string, object> Data) ChatEvent(
+            string steamId,
+            string message
+        )
+        {
+            return (
+                "chat",
+                new Dictionary<string, object> { { "player", steamId }, { "message", message } }
+            );
+        }
+
+        // Team lines go out under their own event so an api that predates
+        // them drops them as unknown, instead of treating them as all chat and
+        // posting them where the other team reads.
+        public static (string Event, Dictionary<string, object> Data)? TeamChatEvent(
+            MatchData matchData,
+            string steamId,
+            string playerName,
+            string message
+        )
+        {
+            string? lineupId = GetTeamChatRelayLineupId(matchData, steamId, playerName);
+
+            if (lineupId == null)
+            {
+                return null;
+            }
+
+            return (
+                "teamChat",
+                new Dictionary<string, object>
+                {
+                    { "player", steamId },
+                    { "message", message },
+                    { "lineupId", lineupId },
+                }
+            );
+        }
+
         // A client presenting the raw match password is a streamer, unless the
         // lineup still has placeholder seats: then it may be the player
         // meant to fill one.

@@ -149,6 +149,20 @@ public class EntityContractTests
     }
 
     [Fact]
+    public void RelayTeamChat_DefaultsOffWhenApiOmitsIt()
+    {
+        Assert.False(Deserialize().relay_team_chat);
+    }
+
+    [Fact]
+    public void RelayTeamChat_MapsWhenApiAdvertisesIt()
+    {
+        MatchData? match = JsonSerializer.Deserialize<MatchData>("""{ "relay_team_chat": true }""");
+        Assert.NotNull(match);
+        Assert.True(match!.relay_team_chat);
+    }
+
+    [Fact]
     public void EmptyBody_MustBeLengthGuarded()
     {
         Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<MatchData>(""));

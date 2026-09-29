@@ -10,6 +10,10 @@ public class MatchData
     public bool is_tournament_match { get; set; } = false;
     public bool is_draft_match { get; set; } = false;
 
+    // Older APIs omit this and route every chat event into the shared match
+    // room, so team chat must only be relayed when the API advertises it.
+    public bool relay_team_chat { get; set; } = false;
+
     // When the API will cancel this match if it never gets going. Null once the
     // match is underway or the deadline has been cleared.
     public DateTime? cancels_at { get; set; } = null;

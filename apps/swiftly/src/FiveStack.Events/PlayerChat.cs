@@ -15,6 +15,13 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        if (teamOnly)
+        {
+            RelayTeamChat(player, message);
+
+            return HookResult.Continue;
+        }
+
         if (player.Controller.Team == Team.Spectator)
         {
             PublishChatEvent(player, message);
@@ -64,15 +71,37 @@ public partial class FiveStackPlugin
         return HookResult.Continue;
     }
 
+    private void RelayTeamChat(IPlayer player, string message)
+    {
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        if (matchData == null)
+        {
+            return;
+        }
+
+        (string Event, Dictionary<string, object> Data)? teamChat = MatchUtility.TeamChatEvent(
+            matchData,
+            player.SteamID.ToString(),
+            player.Name,
+            message
+        );
+
+        if (teamChat == null)
+        {
+            return;
+        }
+
+        _matchEvents.PublishGameEvent(teamChat.Value.Event, teamChat.Value.Data);
+    }
+
     private void PublishChatEvent(IPlayer player, string message)
     {
-        _matchEvents.PublishGameEvent(
-            "chat",
-            new Dictionary<string, object>
-            {
-                { "player", player.SteamID.ToString() },
-                { "message", message },
-            }
+        (string eventName, Dictionary<string, object> data) = MatchUtility.ChatEvent(
+            player.SteamID.ToString(),
+            message
         );
+
+        _matchEvents.PublishGameEvent(eventName, data);
     }
 }
