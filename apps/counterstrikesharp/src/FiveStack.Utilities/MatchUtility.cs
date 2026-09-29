@@ -39,6 +39,31 @@ namespace FiveStack.Utilities
             });
         }
 
+        public static eAllChatRoute AllChatRoute(
+            MatchData? matchData,
+            string steamId,
+            string playerName,
+            bool spectator
+        )
+        {
+            if (matchData != null && IsGagged(matchData, steamId, playerName))
+            {
+                return eAllChatRoute.Block;
+            }
+
+            if (spectator)
+            {
+                return eAllChatRoute.Spectator;
+            }
+
+            if (matchData == null)
+            {
+                return eAllChatRoute.NoMatch;
+            }
+
+            return eAllChatRoute.Publish;
+        }
+
         public static string? GetTeamChatRelayLineupId(
             MatchData matchData,
             string steamId,
@@ -50,18 +75,20 @@ namespace FiveStack.Utilities
                 return null;
             }
 
-            bool gagged =
-                GetMemberFromLineup(matchData, steamId, playerName)?.is_gagged == true
-                || matchData
-                    .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
-                    .Any(member => member.is_gagged && member.steam_id == steamId);
-
-            if (gagged)
+            if (IsGagged(matchData, steamId, playerName))
             {
                 return null;
             }
 
             return GetTeamChatLineupId(matchData, steamId, playerName);
+        }
+
+        public static bool IsGagged(MatchData matchData, string steamId, string playerName)
+        {
+            return GetMemberFromLineup(matchData, steamId, playerName)?.is_gagged == true
+                || matchData
+                    .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
+                    .Any(member => member.is_gagged && member.steam_id == steamId);
         }
 
         // A lineup_1 placeholder whose name prefixes a lineup_2 player would

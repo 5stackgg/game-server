@@ -1,3 +1,4 @@
+using FiveStack.Utilities;
 using SwiftlyS2.Shared.Commands;
 using SwiftlyS2.Shared.Players;
 
@@ -8,23 +9,18 @@ public partial class FiveStackPlugin
     [Command("web_chat", registerRaw: false, permission: "")]
     public void OnWebMessage(ICommandContext context)
     {
-        if (context.IsSentByPlayer)
+        if (context.IsSentByPlayer || context.Args.Length == 0)
         {
             return;
         }
 
-        string? message = context.Args.Length > 0 ? context.Args[0] : null;
+        (string text, bool organizer) = ChatUtility.ParseWebChat(context.Args);
 
-        if (message == null)
+        if (organizer)
         {
-            return;
+            text = $" [red]{ChatUtility.OrganizerTag}[white] {text}";
         }
 
-        if (message.StartsWith("[organizer]"))
-        {
-            message = $" [red][organizer][white] {message.Replace("[organizer]", "")}";
-        }
-
-        _gameServer.Message(MessageType.Chat, message);
+        _gameServer.Message(MessageType.Chat, text);
     }
 }

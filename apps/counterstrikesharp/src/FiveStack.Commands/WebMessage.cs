@@ -2,6 +2,7 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.Utilities;
 
 namespace FiveStack;
 
@@ -11,24 +12,20 @@ public partial class FiveStackPlugin
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnWebMessage(CCSPlayerController? player, CommandInfo? command)
     {
-        if (command == null)
+        if (command == null || command.ArgCount < 2)
         {
             return;
         }
 
-        string message = command.ArgByIndex(1);
+        (string text, bool organizer) = ChatUtility.ParseWebChat(
+            Enumerable.Range(1, command.ArgCount - 1).Select(command.ArgByIndex).ToList()
+        );
 
-        if (message == null)
+        if (organizer)
         {
-            return;
+            text = $" {ChatColors.Red}{ChatUtility.OrganizerTag}{ChatColors.White} {text}";
         }
 
-        if (message.StartsWith("[organizer]"))
-        {
-            message =
-                $" {ChatColors.Red}[organizer]{ChatColors.White} {message.Replace("[organizer]", "")}";
-        }
-
-        _gameServer.Message(HudDestination.Chat, message);
+        _gameServer.Message(HudDestination.Chat, text);
     }
 }

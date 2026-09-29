@@ -2,6 +2,7 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 
 namespace FiveStack;
@@ -41,49 +42,41 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        if (player.Team == CsTeam.Spectator)
+        eAllChatRoute route = MatchUtility.AllChatRoute(
+            _matchService.GetCurrentMatch()?.GetMatchData(),
+            player.SteamID.ToString(),
+            player.PlayerName,
+            player.Team == CsTeam.Spectator
+        );
+
+        if (route == eAllChatRoute.Block)
+        {
+            return HookResult.Stop;
+        }
+
+        if (route == eAllChatRoute.Spectator)
         {
             PublishChatEvent(player, message);
 
-            string clan = string.IsNullOrEmpty(player.Clan) ? "" : $"[{player.Clan}]";
+            string clan = string.IsNullOrEmpty(player.Clan)
+                ? ""
+                : ChatUtility.StripFormatting($"[{player.Clan}]");
+
+            string name = ChatUtility.StripFormatting(player.PlayerName);
+            string text = ChatUtility.StripFormatting(message);
 
             _gameServer.Message(
                 HudDestination.Chat,
-                $" {ChatColors.Red}{clan}{ChatColors.White} {player.PlayerName}: {message}"
+                $" {ChatColors.Red}{clan}{ChatColors.White} {name}: {text}"
             );
 
             return HookResult.Stop;
         }
 
-        MatchManager? match = _matchService.GetCurrentMatch();
-
-        if (match == null)
+        if (route == eAllChatRoute.Publish)
         {
-            return HookResult.Continue;
+            PublishChatEvent(player, message);
         }
-
-        MatchData? matchData = match.GetMatchData();
-
-        if (matchData == null)
-        {
-            return HookResult.Continue;
-        }
-
-        MatchMember? member = MatchUtility.GetMemberFromLineup(
-            matchData,
-            player.SteamID.ToString(),
-            player.PlayerName
-        );
-
-        if (member != null)
-        {
-            if (member.is_gagged)
-            {
-                return HookResult.Stop;
-            }
-        }
-
-        PublishChatEvent(player, message);
 
         return HookResult.Continue;
     }
