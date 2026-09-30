@@ -5,5 +5,6 @@
   "sanction.ungagged": " [green]你的禁言已解除",
   "sanction.reason": " [grey]原因：{0}",
   "sanction.until": " [grey]截止：{0}",
-  "sanction.permanent": " [grey]永久"
+  "sanction.permanent": " [grey]永久",
+  "access.denied": "此服务器为私人服务器：你不在其访问名单中"
 }

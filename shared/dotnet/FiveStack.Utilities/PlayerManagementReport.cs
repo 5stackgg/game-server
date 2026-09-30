@@ -28,6 +28,7 @@ public static class PlayerManagementReport
         PlayerManagementSettings settings,
         DateTimeOffset? lastSyncAt,
         string? lastError,
+        ServerAccessSnapshot access,
         IReadOnlyCollection<PlayerManagementPlayer> players,
         DateTimeOffset now
     )
@@ -41,6 +42,7 @@ public static class PlayerManagementReport
             $"API: {settings.API_DOMAIN}",
             $"Configured: {(settings.IsConnected() ? "yes" : "no")}",
             $"Last Sync: {LastSync(lastSyncAt, lastError, now)}",
+            $"Access: {Access(access)}",
             $"Players: {players.Count}",
         ];
 
@@ -72,6 +74,15 @@ public static class PlayerManagementReport
         }
 
         return parts.Count == 0 ? "clean" : string.Join(", ", parts);
+    }
+
+    public static string Access(ServerAccessSnapshot access)
+    {
+        string state = access.Loaded
+            ? $"loaded yes, restricted {(access.Restricted ? "yes" : "no")}, version {access.Version}, allowlist {access.Allowed}"
+            : "loaded no, restricted unknown, version none, allowlist 0";
+
+        return access.Error == null ? state : $"{state}; last fetch failed ({access.Error})";
     }
 
     private static string LastSync(DateTimeOffset? at, string? error, DateTimeOffset now)

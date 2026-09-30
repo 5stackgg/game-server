@@ -5,5 +5,6 @@
   "sanction.ungagged": " [green]Du bist nicht mehr geknebelt",
   "sanction.reason": " [grey]Grund: {0}",
   "sanction.until": " [grey]Bis {0}",
-  "sanction.permanent": " [grey]Dauerhaft"
+  "sanction.permanent": " [grey]Dauerhaft",
+  "access.denied": "Dieser Server ist privat: du stehst nicht auf seiner Zugangsliste"
 }

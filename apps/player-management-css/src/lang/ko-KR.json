@@ -5,5 +5,6 @@
   "sanction.ungagged": " {green}텍스트 채팅 차단이 해제되었습니다",
   "sanction.reason": " {grey}사유: {0}",
   "sanction.until": " {grey}만료: {0}",
-  "sanction.permanent": " {grey}영구"
+  "sanction.permanent": " {grey}영구",
+  "access.denied": "비공개 서버입니다: 접근 목록에 등록되어 있지 않습니다"
 }

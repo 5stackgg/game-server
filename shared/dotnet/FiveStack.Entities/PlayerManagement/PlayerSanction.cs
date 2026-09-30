@@ -18,4 +18,7 @@ public class PlayerSanctionsRequest
 public class PlayerSanctionsResponse
 {
     public List<PlayerSanction> sanctions { get; set; } = new();
+
+    // Absent from panels that predate access lists.
+    public ServerAccessSync? access { get; set; }
 }

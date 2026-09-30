@@ -32,6 +32,7 @@ public class PlayerManagementReportTests
             },
             Now.AddSeconds(-12),
             null,
+            new ServerAccessSnapshot(true, true, "abc123", 3, null),
             [
                 new PlayerManagementPlayer("clean", "1", SanctionState.None),
                 new PlayerManagementPlayer(
@@ -50,6 +51,7 @@ public class PlayerManagementReportTests
         Assert.Contains("Plugin Version: 0.0.9", report);
         Assert.Contains("Configured: yes", report);
         Assert.Contains("Last Sync: 12s ago", report);
+        Assert.Contains("Access: loaded yes, restricted yes, version abc123, allowlist 3", report);
         Assert.Contains("Players: 2", report);
         Assert.Contains("  clean (1): clean", report);
         Assert.Contains("  noisy (2): muted, gagged", report);
@@ -65,11 +67,26 @@ public class PlayerManagementReportTests
             new PlayerManagementSettings(),
             null,
             "401 unauthorized",
+            new ServerAccessSnapshot(false, false, null, 0, null),
             [],
             Now
         );
 
         Assert.Contains("Configured: no", report);
         Assert.Contains("Last Sync: failed (401 unauthorized); last success never", report);
+        Assert.Contains("Access: loaded no, restricted unknown, version none, allowlist 0", report);
+    }
+
+    [Fact]
+    public void AnOpenServerAndAFailedFetchAreBothShown()
+    {
+        Assert.Equal(
+            "loaded yes, restricted no, version open, allowlist 0",
+            PlayerManagementReport.Access(new ServerAccessSnapshot(true, false, "open", 0, null))
+        );
+        Assert.Equal(
+            "loaded yes, restricted yes, version v1, allowlist 2; last fetch failed (503 down)",
+            PlayerManagementReport.Access(new ServerAccessSnapshot(true, true, "v1", 2, "503 down"))
+        );
     }
 }

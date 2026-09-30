@@ -23,9 +23,9 @@ namespace PlayerManagement;
     Version = "__RELEASE_VERSION__",
     Name = "5stack-player-management",
     Author = "5Stack.gg",
-    Description = "Enforces 5Stack bans, mutes and gags on community servers"
+    Description = "Enforces 5Stack bans, mutes, gags and access lists on community servers"
 )]
-public class PlayerManagementPlugin : BasePlugin
+public partial class PlayerManagementPlugin : BasePlugin
 {
     private const string Runtime = "swiftlys2";
 
@@ -37,6 +37,7 @@ public class PlayerManagementPlugin : BasePlugin
     private SanctionSyncLoop? _loop;
 
     private readonly SanctionBook _book = new();
+    private readonly ServerAccessBook _access = new();
 
     // What was last applied to each player present, so changes are announced
     // once, and whose mute bit this plugin set, so it only ever lifts its own
@@ -88,7 +89,7 @@ public class PlayerManagementPlugin : BasePlugin
         if (!settings.IsConnected())
         {
             _logger.LogWarning(
-                "player management is not configured; bans, mutes and gags are not enforced until API_DOMAIN, SERVER_ID and SERVER_API_PASSWORD are set"
+                "player management is not configured; bans, mutes, gags and access lists are not enforced until API_DOMAIN, SERVER_ID and SERVER_API_PASSWORD are set"
             );
         }
 
@@ -115,6 +116,7 @@ public class PlayerManagementPlugin : BasePlugin
             ulong steamId = SteamIdOf(player);
 
             _book.Left(steamId.ToString());
+            _access.Left(steamId.ToString());
             _applied.Remove(steamId);
             _mutedByUs.Remove(steamId);
             _kicked.Remove(steamId);
@@ -123,8 +125,11 @@ public class PlayerManagementPlugin : BasePlugin
 
         _chatHookId = Core.Command.HookClientChat((playerId, text, teamonly) => OnChat(playerId));
 
+        InstallConnectGate();
+
         _loop = new SanctionSyncLoop(
             _book,
+            _access,
             new SanctionsClient(),
             Settings,
             ModuleVersion,
@@ -139,6 +144,8 @@ public class PlayerManagementPlugin : BasePlugin
     {
         _loop?.Dispose();
         _loop = null;
+
+        UninstallConnectGate();
 
         if (_tickHandler != null)
         {
@@ -205,6 +212,7 @@ public class PlayerManagementPlugin : BasePlugin
                 Settings(),
                 lastSyncAt,
                 lastError,
+                _access.Snapshot(),
                 Humans()
                     .Select(player => new PlayerManagementPlayer(
                         player.Name,
@@ -301,6 +309,27 @@ public class PlayerManagementPlugin : BasePlugin
                     player.Kick(
                         SanctionBook.KickReason(state.Ban!),
                         ENetworkDisconnectionReason.NETWORK_DISCONNECT_BANADDED
+                    );
+                }
+
+                continue;
+            }
+
+            if (_access.IsDenied(steamId.ToString()))
+            {
+                if (_kicked.Add(steamId))
+                {
+                    _logger.LogInformation(
+                        "kicking {name} ({steamId}): not on the server's access list",
+                        player.Name,
+                        steamId
+                    );
+
+                    player.Kick(
+                        _access.KickReason(
+                            Core.Translation.GetPlayerLocalizer(player)["access.denied"]
+                        ),
+                        ENetworkDisconnectionReason.NETWORK_DISCONNECT_KICKED
                     );
                 }
 

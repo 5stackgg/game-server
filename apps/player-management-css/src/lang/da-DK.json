@@ -5,5 +5,6 @@
   "sanction.ungagged": " {green}Du er ikke længere gagged",
   "sanction.reason": " {grey}Årsag: {0}",
   "sanction.until": " {grey}Indtil {0}",
-  "sanction.permanent": " {grey}Permanent"
+  "sanction.permanent": " {grey}Permanent",
+  "access.denied": "Denne server er privat: du er ikke på dens adgangsliste"
 }
