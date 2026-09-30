@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        plugin: [counterstrikesharp, swiftly]
+        plugin: [counterstrikesharp, swiftly, player-management-sw]
     steps:
       - uses: actions/checkout@v7
 
@@ -32,3 +32,23 @@ jobs:
 
       - name: Test
         run: dotnet test apps/${{ matrix.plugin }}/test/FiveStack.Tests.csproj -c Release
+
+  # The player management plugins are only compiled by the image build after
+  # merge, and that build also releases the match plugins, so a broken plugin
+  # would block both; build them on every PR instead.
+  player-management-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [player-management-css, player-management-sw]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build
+        run: dotnet build apps/${{ matrix.app }}/src/PlayerManagement.csproj -c Release

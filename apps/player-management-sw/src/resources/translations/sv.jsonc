@@ -1,0 +1,9 @@
+{
+  "sanction.muted": " [red]Du är tystad: din röstchatt är avstängd",
+  "sanction.unmuted": " [green]Du är inte längre tystad",
+  "sanction.gagged": " [red]Du har chattförbud: din textchatt är avstängd",
+  "sanction.ungagged": " [green]Ditt chattförbud har hävts",
+  "sanction.reason": " [grey]Anledning: {0}",
+  "sanction.until": " [grey]Till {0}",
+  "sanction.permanent": " [grey]Permanent"
+}

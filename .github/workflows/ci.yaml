@@ -46,16 +46,19 @@ jobs:
               - 'Directory.Build.props'
               - '.github/workflows/ci.yaml'
               - '.github/workflows/plugin-build.yaml'
-            # each game-server image builds both its match plugin and the
-            # practice plugin, so either source tree rebuilds it
+            # each game-server image builds its match plugin, the practice
+            # plugin and the player management plugin, so any of those source
+            # trees rebuilds it
             css:
               - *shared
               - 'apps/counterstrikesharp/**'
               - 'apps/utility-css/**'
+              - 'apps/player-management-css/**'
             sw:
               - *shared
               - 'apps/swiftly/**'
               - 'apps/utility-sw/**'
+              - 'apps/player-management-sw/**'
             validator:
               - 'apps/gamedata-validator/**'
               - 'shared/gamedata/**'
@@ -75,7 +78,7 @@ jobs:
       version_tag_regex: '^(?:css-)?v0\.0\.(\d+)$'
       channel: ${{ needs.changes.outputs.channel }}
       run_tests: true
-      extra_test_dir: apps/utility-css
+      extra_test_dirs: apps/utility-css
     secrets: inherit
 
   swiftly:
@@ -91,7 +94,8 @@ jobs:
       version_floor: 41
       channel: ${{ needs.changes.outputs.channel }}
       run_tests: true
-      extra_test_dir: apps/utility-sw
+      # the player management suite covers the shared code both runtimes build
+      extra_test_dirs: apps/utility-sw apps/player-management-sw
     secrets: inherit
 
   gamedata-validator:

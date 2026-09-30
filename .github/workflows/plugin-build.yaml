@@ -29,8 +29,8 @@ on:
         required: false
         default: false
         type: boolean
-      extra_test_dir:
-        description: "second app whose suite ships in this image (the practice plugin)"
+      extra_test_dirs:
+        description: "space-separated apps whose suites ship in this image (the practice and player management plugins)"
         required: false
         default: ""
         type: string
@@ -54,12 +54,12 @@ jobs:
         if: inputs.run_tests
         env:
           APP_DIR: ${{ inputs.app_dir }}
-          EXTRA_TEST_DIR: ${{ inputs.extra_test_dir }}
+          EXTRA_TEST_DIRS: ${{ inputs.extra_test_dirs }}
         run: |
           dotnet test "$APP_DIR/test/FiveStack.Tests.csproj" -c Release
-          if [ -n "$EXTRA_TEST_DIR" ]; then
-            dotnet test "$EXTRA_TEST_DIR/test/FiveStack.Tests.csproj" -c Release
-          fi
+          for dir in $EXTRA_TEST_DIRS; do
+            dotnet test "$dir/test/FiveStack.Tests.csproj" -c Release
+          done
 
       - name: Resolve version and tags
         id: resolve
@@ -87,6 +87,7 @@ jobs:
               core.setOutput('release_tag', `${prefix}-${sha}`);
               core.setOutput('release_name', `Build ${prefix} ${sha}`);
               core.setOutput('zip', `FiveStack-${prefix}-${sha}.zip`);
+              core.setOutput('player_management_zip', `PlayerManagement-${prefix}-${sha}.zip`);
               core.setOutput('draft', 'true');
               core.setOutput('tags', [repoTag('beta'), repoTag(`beta-${sha}`)].join('\n'));
               return;
@@ -111,6 +112,9 @@ jobs:
             core.setOutput('release_tag', `${prefix}-v${version}`);
             core.setOutput('release_name', `${prefix}-v${version}`);
             core.setOutput('zip', `FiveStack-${prefix}-v${version}.zip`);
+            // the web links servers outside a node straight to this asset by
+            // tag, so its name must stay derivable from the release tag
+            core.setOutput('player_management_zip', `PlayerManagement-${prefix}-v${version}.zip`);
             core.setOutput('draft', 'false');
             // the package name already namespaces the image, so its version tag stays bare
             core.setOutput('tags', [repoTag('latest'), repoTag(sha), repoTag(`v${version}`)].join('\n'));
@@ -140,6 +144,7 @@ jobs:
         run: |
           docker create --name temp mod-builder:latest
           docker cp temp:/mod-release.zip ./${{ steps.resolve.outputs.zip }}
+          docker cp temp:/player-management-release.zip ./${{ steps.resolve.outputs.player_management_zip }}
           docker rm temp
 
       - name: Build and Push server Docker image
@@ -165,6 +170,7 @@ jobs:
           prerelease: ${{ steps.resolve.outputs.draft }}
           files: |
             ./${{ steps.resolve.outputs.zip }}
+            ./${{ steps.resolve.outputs.player_management_zip }}
 
       # never prune the latest channel: game_server_nodes.pin_plugin_version resolves
       # against its v0.0.N image tags

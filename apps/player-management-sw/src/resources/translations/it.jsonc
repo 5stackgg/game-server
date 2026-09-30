@@ -1,0 +1,9 @@
+{
+  "sanction.muted": " [red]Sei mutato: la tua chat vocale è disattivata",
+  "sanction.unmuted": " [green]Non sei più mutato",
+  "sanction.gagged": " [red]Sei silenziato: la tua chat testuale è disattivata",
+  "sanction.ungagged": " [green]Non sei più silenziato",
+  "sanction.reason": " [grey]Motivo: {0}",
+  "sanction.until": " [grey]Fino al {0}",
+  "sanction.permanent": " [grey]Permanente"
+}
