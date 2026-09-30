@@ -29,33 +29,28 @@ public class PlayerManagementPlugin : BasePlugin
 {
     private const string Runtime = "swiftlys2";
 
-    // Doubles as the heartbeat the panel reads to show the plugin as active,
-    // which is why an empty server still syncs.
-    private const int SyncSeconds = 30;
+    private const long EnforceEveryMs = 1000;
 
     private ILogger<PlayerManagementPlugin> _logger = null!;
     private IConfiguration _configuration = null!;
     private ServiceProvider? _serviceProvider;
+    private SanctionSyncLoop? _loop;
 
-    private readonly SanctionsClient _client = new();
     private readonly SanctionBook _book = new();
 
-    // What this plugin last applied per player, so it only ever lifts a mute it
-    // set itself and never one an admin plugin on the same server set.
+    // What was last applied to each player present, so changes are announced
+    // once, and whose mute bit this plugin set, so it only ever lifts its own
+    // and never one an admin plugin on the same server set.
     private readonly Dictionary<ulong, SanctionState> _applied = new();
+    private readonly HashSet<ulong> _mutedByUs = new();
     private readonly HashSet<ulong> _kicked = new();
 
-    private CancellationTokenSource? _secondTimer;
+    private EventDelegates.OnTick? _tickHandler;
     private EventDelegates.OnClientPutInServer? _putInServerHandler;
     private EventDelegates.OnClientSteamAuthorize? _authorizeHandler;
     private EventDelegates.OnClientDisconnected? _disconnectHandler;
     private Guid _chatHookId;
-
-    private int _secondsSinceSync = SyncSeconds;
-    private bool _syncing;
-    private bool _syncRequested;
-    private DateTimeOffset? _lastSyncAt;
-    private string? _lastError;
+    private long _lastEnforceMs;
 
     public PlayerManagementPlugin(ISwiftlyCore core)
         : base(core) { }
@@ -97,6 +92,9 @@ public class PlayerManagementPlugin : BasePlugin
             );
         }
 
+        _tickHandler = OnTick;
+        Core.Event.OnTick += _tickHandler;
+
         _putInServerHandler = @event => OnJoined(@event.PlayerId);
         Core.Event.OnClientPutInServer += _putInServerHandler;
 
@@ -114,20 +112,38 @@ public class PlayerManagementPlugin : BasePlugin
                 return;
             }
 
-            _applied.Remove(SteamIdOf(player));
-            _kicked.Remove(SteamIdOf(player));
+            ulong steamId = SteamIdOf(player);
+
+            _book.Left(steamId.ToString());
+            _applied.Remove(steamId);
+            _mutedByUs.Remove(steamId);
+            _kicked.Remove(steamId);
         };
         Core.Event.OnClientDisconnected += _disconnectHandler;
 
         _chatHookId = Core.Command.HookClientChat((playerId, text, teamonly) => OnChat(playerId));
 
-        _secondTimer = Core.Scheduler.RepeatBySeconds(1, OnSecond);
+        _loop = new SanctionSyncLoop(
+            _book,
+            new SanctionsClient(),
+            Settings,
+            ModuleVersion,
+            Runtime,
+            message => _logger.LogWarning("{message}", message),
+            message => _logger.LogInformation("{message}", message)
+        );
+        _loop.Start();
     }
 
     public override void Unload()
     {
-        _secondTimer?.Cancel();
-        _secondTimer = null;
+        _loop?.Dispose();
+        _loop = null;
+
+        if (_tickHandler != null)
+        {
+            Core.Event.OnTick -= _tickHandler;
+        }
 
         if (_putInServerHandler != null)
         {
@@ -166,7 +182,7 @@ public class PlayerManagementPlugin : BasePlugin
             return;
         }
 
-        RequestSync();
+        _loop?.Request();
 
         context.Reply(PlayerManagementReport.Syncing(Humans().Count));
     }
@@ -180,14 +196,15 @@ public class PlayerManagementPlugin : BasePlugin
         }
 
         DateTimeOffset now = DateTimeOffset.UtcNow;
+        (DateTimeOffset? lastSyncAt, string? lastError) = _loop?.Status() ?? (null, null);
 
         context.Reply(
             PlayerManagementReport.Status(
                 ModuleVersion,
                 Runtime,
                 Settings(),
-                _lastSyncAt,
-                _lastError,
+                lastSyncAt,
+                lastError,
                 Humans()
                     .Select(player => new PlayerManagementPlayer(
                         player.Name,
@@ -200,114 +217,71 @@ public class PlayerManagementPlugin : BasePlugin
         );
     }
 
+    // A player may not be valid yet at either join event, so only the id is
+    // required here; the sync asks about them either way.
     private void OnJoined(int playerId)
     {
         IPlayer? player = Core.PlayerManager.GetPlayer(playerId);
 
-        if (player == null || !IsHuman(player))
+        if (player == null || player.IsFakeClient || SteamIdOf(player) == 0)
         {
             return;
         }
 
-        // The cached answer covers a panel that is unreachable right now; the
-        // sync that follows replaces it with the current one.
-        Enforce();
-        RequestSync();
+        _book.Joined(SteamIdOf(player).ToString());
+        _loop?.Request();
     }
 
-    private void OnSecond()
+    // Throttled off the tick rather than a repeating timer: SwiftlyS2 replays
+    // every missed run of a timer after hibernation, and a timer whose
+    // callback throws is never scheduled again.
+    private void OnTick()
     {
-        if (++_secondsSinceSync >= SyncSeconds)
-        {
-            RequestSync();
-        }
+        long nowMs = Environment.TickCount64;
 
-        // Every second rather than every sync, so a timed mute lifts when it
-        // runs out instead of up to a sync later.
-        Enforce();
-    }
-
-    private void RequestSync()
-    {
-        if (_syncing)
-        {
-            // The sync in flight predates whatever asked for this one.
-            _syncRequested = true;
-            return;
-        }
-
-        PlayerManagementSettings settings = Settings();
-
-        _secondsSinceSync = 0;
-
-        if (!settings.IsConnected())
+        if (nowMs - _lastEnforceMs < EnforceEveryMs)
         {
             return;
         }
 
-        List<string> steamIds = Humans()
-            .Select(player => SteamIdOf(player).ToString())
-            .Distinct()
-            .ToList();
+        _lastEnforceMs = nowMs;
 
-        PlayerSanctionsRequest body = new()
+        try
         {
-            steam_ids = steamIds,
-            plugin_version = ModuleVersion,
-            plugin_runtime = Runtime,
-        };
+            List<IPlayer> humans = Humans();
 
-        _syncing = true;
-        _syncRequested = false;
+            _loop?.Observe(humans.Select(player => SteamIdOf(player).ToString()));
 
-        _ = Task.Run(async () =>
-        {
-            SanctionSync result = await _client.Sync(settings, body);
-
-            Core.Scheduler.NextTick(() => Synced(steamIds, result));
-        });
-    }
-
-    private void Synced(List<string> steamIds, SanctionSync result)
-    {
-        _syncing = false;
-
-        if (result.Sanctions == null)
-        {
-            if (result.Error != _lastError)
-            {
-                _logger.LogWarning("unable to sync sanctions: {error}", result.Error);
-            }
-
-            _lastError = result.Error;
+            Enforce(humans);
         }
-        else
+        catch (Exception error)
         {
-            if (_lastError != null)
-            {
-                _logger.LogInformation("sanction sync recovered");
-            }
-
-            _lastError = null;
-            _lastSyncAt = DateTimeOffset.UtcNow;
-            _book.Record(steamIds, result.Sanctions);
-
-            Enforce();
-        }
-
-        if (_syncRequested)
-        {
-            RequestSync();
+            _logger.LogError(error, "unable to enforce sanctions");
         }
     }
 
-    private void Enforce()
+    private void Enforce(List<IPlayer> humans)
     {
         DateTimeOffset now = DateTimeOffset.UtcNow;
+        HashSet<ulong> present = humans.Select(SteamIdOf).ToHashSet();
 
-        foreach (IPlayer player in Humans())
+        foreach (ulong gone in _applied.Keys.Where(steamId => !present.Contains(steamId)).ToList())
+        {
+            _applied.Remove(gone);
+        }
+
+        _mutedByUs.RemoveWhere(steamId => !present.Contains(steamId));
+        _kicked.RemoveWhere(steamId => !present.Contains(steamId));
+
+        foreach (IPlayer player in humans)
         {
             ulong steamId = SteamIdOf(player);
+
+            if (_book.IsAwaiting(steamId.ToString()))
+            {
+                continue;
+            }
+
             SanctionState state = _book.StateFor(steamId.ToString(), now);
             SanctionState previous = _applied.GetValueOrDefault(steamId, SanctionState.None);
             eSanctionChange changes = SanctionState.Changes(previous, state);
@@ -335,13 +309,14 @@ public class PlayerManagementPlugin : BasePlugin
 
             // Re-asserted rather than set once: the engine resets voice flags
             // across a reconnect and a map change.
-            if (state.IsMuted && player.VoiceFlags != VoiceFlagValue.Muted)
+            if (state.IsMuted && !player.VoiceFlags.HasFlag(VoiceFlagValue.Muted))
             {
-                player.VoiceFlags = VoiceFlagValue.Muted;
+                player.VoiceFlags |= VoiceFlagValue.Muted;
+                _mutedByUs.Add(steamId);
             }
-            else if (changes.HasFlag(eSanctionChange.Unmuted))
+            else if (!state.IsMuted && _mutedByUs.Remove(steamId))
             {
-                player.VoiceFlags = VoiceFlagValue.Normal;
+                player.VoiceFlags &= ~VoiceFlagValue.Muted;
             }
 
             if (changes == eSanctionChange.None)

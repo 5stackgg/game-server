@@ -108,14 +108,52 @@ public class SanctionBookTests
     }
 
     [Fact]
-    public void ForgetDropsAPlayer()
+    public void AJoiningPlayerAwaitsUntilThePanelAnswersForThem()
+    {
+        SanctionBook book = new();
+        book.Joined("1");
+
+        Assert.True(book.IsAwaiting("1"));
+        Assert.Equal(["1"], book.Awaiting());
+
+        book.Record(["1"], []);
+
+        Assert.False(book.IsAwaiting("1"));
+    }
+
+    [Fact]
+    public void AnAnswerAboutOtherPlayersLeavesAJoiningPlayerAwaiting()
+    {
+        SanctionBook book = new();
+        book.Joined("1");
+
+        book.Record(["2"], []);
+
+        Assert.True(book.IsAwaiting("1"));
+    }
+
+    [Fact]
+    public void AnUnansweredSyncFallsBackToWhatWasKnown()
     {
         SanctionBook book = new();
         book.Record(["1"], [Sanction("1", "ban")]);
+        book.Joined("1");
 
-        book.Forget("1");
+        book.Unanswered(["1"]);
 
-        Assert.False(book.StateFor("1", Now).IsBanned);
+        Assert.False(book.IsAwaiting("1"));
+        Assert.True(book.StateFor("1", Now).IsBanned);
+    }
+
+    [Fact]
+    public void LeavingStopsAwaiting()
+    {
+        SanctionBook book = new();
+        book.Joined("1");
+
+        book.Left("1");
+
+        Assert.Empty(book.Awaiting());
     }
 
     [Fact]

@@ -11,33 +11,13 @@
   <!-- Everything the two runtimes share is framework-free, so it is compiled in
        directly and this suite runs without SwiftlyS2 or CounterStrikeSharp. -->
   <ItemGroup>
-    <Compile
-      Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Entities/PlayerManagement/**/*.cs"
-      LinkBase="Shared"
-    />
-    <Compile
-      Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Enums/eSanctionChange.cs"
-      LinkBase="Shared"
-    />
-    <Compile
-      Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/SanctionBook.cs"
-      LinkBase="Shared"
-    />
-    <Compile
-      Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/SanctionsClient.cs"
-      LinkBase="Shared"
-    />
-    <Compile
-      Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/PlayerManagementReport.cs"
-      LinkBase="Shared"
-    />
-    <Compile
-      Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/ChatUtility.cs"
-      LinkBase="Shared"
-    />
-    <Compile
-      Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/HttpClientProvider.cs"
-      LinkBase="Shared"
-    />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Entities/PlayerManagement/**/*.cs" LinkBase="Shared" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Enums/eSanctionChange.cs" LinkBase="Shared" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/SanctionBook.cs" LinkBase="Shared" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/SanctionsClient.cs" LinkBase="Shared" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/SanctionSyncLoop.cs" LinkBase="Shared" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/PlayerManagementReport.cs" LinkBase="Shared" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/ChatUtility.cs" LinkBase="Shared" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/HttpClientProvider.cs" LinkBase="Shared" />
   </ItemGroup>
 </Project>

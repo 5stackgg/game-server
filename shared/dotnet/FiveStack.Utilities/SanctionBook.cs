@@ -43,10 +43,16 @@ public sealed record SanctionState(PlayerSanction? Ban, PlayerSanction? Mute, Pl
     }
 }
 
+// What the panel last said about each player, kept after they leave so a
+// panel that is down cannot let a banned player straight back in. The price is
+// that the cache goes stale while a player is away -- their ban can be lifted
+// -- so a player who has just joined is awaiting until the panel answers for
+// them, and nothing is enforced on them from the cache before then.
 public class SanctionBook
 {
     private readonly object _lock = new();
     private readonly Dictionary<string, List<PlayerSanction>> _bySteamId = new();
+    private readonly HashSet<string> _awaiting = new();
 
     // The panel answers for exactly the players it was asked about, so a
     // player it was asked about and says nothing of has been cleared.
@@ -57,6 +63,7 @@ public class SanctionBook
             foreach (string steamId in queried)
             {
                 _bySteamId.Remove(steamId);
+                _awaiting.Remove(steamId);
             }
 
             foreach (PlayerSanction sanction in sanctions)
@@ -77,11 +84,47 @@ public class SanctionBook
         }
     }
 
-    public void Forget(string steamId)
+    public void Joined(string steamId)
     {
         lock (_lock)
         {
-            _bySteamId.Remove(steamId);
+            _awaiting.Add(steamId);
+        }
+    }
+
+    public void Left(string steamId)
+    {
+        lock (_lock)
+        {
+            _awaiting.Remove(steamId);
+        }
+    }
+
+    // The panel could not be asked, so the cache is the best answer there is.
+    public void Unanswered(IEnumerable<string> queried)
+    {
+        lock (_lock)
+        {
+            foreach (string steamId in queried)
+            {
+                _awaiting.Remove(steamId);
+            }
+        }
+    }
+
+    public bool IsAwaiting(string steamId)
+    {
+        lock (_lock)
+        {
+            return _awaiting.Contains(steamId);
+        }
+    }
+
+    public List<string> Awaiting()
+    {
+        lock (_lock)
+        {
+            return _awaiting.ToList();
         }
     }
 
