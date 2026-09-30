@@ -1,0 +1,9 @@
+{
+  "sanction.muted": " [red]Вы заглушены: голосовой чат отключён",
+  "sanction.unmuted": " [green]Вы больше не заглушены",
+  "sanction.gagged": " [red]Вам запрещён чат: текстовый чат отключён",
+  "sanction.ungagged": " [green]Запрет чата снят",
+  "sanction.reason": " [grey]Причина: {0}",
+  "sanction.until": " [grey]До {0}",
+  "sanction.permanent": " [grey]Навсегда"
+}

@@ -1,0 +1,9 @@
+{
+  "sanction.muted": " [red]Susturuldunuz: sesli sohbetiniz devre dışı",
+  "sanction.unmuted": " [green]Artık susturulmuş değilsiniz",
+  "sanction.gagged": " [red]Sohbet yasağınız var: yazılı sohbetiniz devre dışı",
+  "sanction.ungagged": " [green]Sohbet yasağınız kaldırıldı",
+  "sanction.reason": " [grey]Sebep: {0}",
+  "sanction.until": " [grey]Bitiş: {0}",
+  "sanction.permanent": " [grey]Kalıcı"
+}

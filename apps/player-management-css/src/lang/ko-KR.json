@@ -1,0 +1,9 @@
+{
+  "sanction.muted": " {red}음성 채팅이 차단되었습니다",
+  "sanction.unmuted": " {green}음성 채팅 차단이 해제되었습니다",
+  "sanction.gagged": " {red}텍스트 채팅이 차단되었습니다",
+  "sanction.ungagged": " {green}텍스트 채팅 차단이 해제되었습니다",
+  "sanction.reason": " {grey}사유: {0}",
+  "sanction.until": " {grey}만료: {0}",
+  "sanction.permanent": " {grey}영구"
+}

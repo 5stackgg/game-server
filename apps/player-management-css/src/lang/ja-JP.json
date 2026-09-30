@@ -1,0 +1,9 @@
+{
+  "sanction.muted": " {red}ミュートされています：ボイスチャットは無効です",
+  "sanction.unmuted": " {green}ミュートが解除されました",
+  "sanction.gagged": " {red}チャット禁止中です：テキストチャットは無効です",
+  "sanction.ungagged": " {green}チャット禁止が解除されました",
+  "sanction.reason": " {grey}理由: {0}",
+  "sanction.until": " {grey}期限: {0}",
+  "sanction.permanent": " {grey}無期限"
+}

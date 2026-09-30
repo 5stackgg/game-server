@@ -68,17 +68,47 @@ RUN dotnet build -c Release apps/utility-css/src/UtilityPractice.csproj -o relea
 
 RUN rm -f /mod/release/CounterStrikeSharp.API.dll
 
+# Community servers load this in place of the match plugin; its zip is also
+# published beside the match plugin's for servers run outside a 5stack node.
+FROM dotnet-sdk AS player-management-build
+
+WORKDIR /mod
+
+COPY Directory.Build.props ./
+COPY apps/player-management-css/src/PlayerManagement.csproj apps/player-management-css/src/
+
+RUN dotnet restore apps/player-management-css/src/PlayerManagement.csproj
+
+COPY shared shared
+COPY apps/player-management-css apps/player-management-css
+
+ARG RELEASE_VERSION
+ENV RELEASE_VERSION=${RELEASE_VERSION}
+
+RUN sed -i "s/__RELEASE_VERSION__/${RELEASE_VERSION}/" apps/player-management-css/src/PlayerManagementPlugin.cs
+
+RUN dotnet build -c Release apps/player-management-css/src/PlayerManagement.csproj -o release
+
+RUN rm -f /mod/release/CounterStrikeSharp.API.dll
+
 # New stage for creating the zip file
 FROM debian:bookworm-slim AS zip-creator
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends zip && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /zip-content
 
 COPY --from=build /mod/release ./addons/counterstrikesharp/plugins/FiveStack/./
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends zip && \
-    zip -r /mod-release.zip . && \
-    rm -rf /var/lib/apt/lists/*
+RUN zip -r /mod-release.zip .
+
+WORKDIR /player-management-zip-content
+
+COPY --from=player-management-build /mod/release ./addons/counterstrikesharp/plugins/PlayerManagement/./
+
+RUN zip -r /player-management-release.zip .
 
 FROM sniper
 
@@ -94,6 +124,7 @@ ENV PLUGINS_DIR="/opt/custom-plugins"
 
 ENV INSTALL_5STACK_PLUGIN=true
 ENV INSTALL_UTILITY_PRACTICE_PLUGIN=false
+ENV INSTALL_PLAYER_MANAGEMENT_PLUGIN=false
 
 ENV GAME_ID="730"
 ENV GAME_PARAMS=""
@@ -161,6 +192,7 @@ COPY shared/scripts /opt/scripts
 COPY apps/counterstrikesharp/scripts /opt/scripts
 COPY --from=build /mod/release /opt/mod
 COPY --from=utility-build /mod/release /opt/utility-practice
+COPY --from=player-management-build /mod/release /opt/player-management
 
 RUN mv /opt/metamod/addons /opt/addons && \
 	cp -R /opt/counterstrikesharp/addons/metamod /opt/addons && \

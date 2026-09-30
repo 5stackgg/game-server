@@ -1,0 +1,9 @@
+{
+  "sanction.muted": " [red]You are muted: your voice chat is disabled",
+  "sanction.unmuted": " [green]You are no longer muted",
+  "sanction.gagged": " [red]You are gagged: your text chat is disabled",
+  "sanction.ungagged": " [green]You are no longer gagged",
+  "sanction.reason": " [grey]Reason: {0}",
+  "sanction.until": " [grey]Until {0}",
+  "sanction.permanent": " [grey]Permanent"
+}

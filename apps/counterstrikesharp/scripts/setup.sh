@@ -145,6 +145,18 @@ if $INSTALL_UTILITY_PRACTICE_PLUGIN = true ; then
   fi
 fi
 
+# A community server's sanctions: it runs no match plugin, so without this a
+# mute or gag set in the panel never reaches it.
+if $INSTALL_PLAYER_MANAGEMENT_PLUGIN = true ; then
+  echo "---Install Player Management---"
+  PLAYER_MANAGEMENT_PLUGIN_DIR="${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/PlayerManagement"
+  if [ ! -e "$PLAYER_MANAGEMENT_PLUGIN_DIR" ]; then
+    ln -s "/opt/player-management" "$PLAYER_MANAGEMENT_PLUGIN_DIR"
+  else
+    echo "---Player Management: plugin dir already present, skipping /opt/player-management symlink---"
+  fi
+fi
+
 if [ ! -e "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs/core.json" ]; then
     cp "/opt/server-cfg/core.json" "$INSTANCE_SERVER_DIR/game/csgo/addons/counterstrikesharp/configs"
 fi

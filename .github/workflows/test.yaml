@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        plugin: [counterstrikesharp, swiftly]
+        plugin: [counterstrikesharp, swiftly, player-management-sw]
     steps:
       - uses: actions/checkout@v7
 

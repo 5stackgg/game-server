@@ -61,16 +61,44 @@ RUN sed -i "s/__RELEASE_VERSION__/${RELEASE_VERSION}/" apps/utility-sw/src/Utili
 
 RUN dotnet publish -c Release apps/utility-sw/src/UtilityPractice.csproj -o /mod/release
 
+# Community servers load this in place of the match plugin; its zip is also
+# published beside the match plugin's for servers run outside a 5stack node.
+FROM dotnet-sdk AS player-management-build
+
+WORKDIR /mod
+
+COPY Directory.Build.props ./
+COPY apps/player-management-sw/src/PlayerManagement.csproj apps/player-management-sw/src/
+
+RUN dotnet restore apps/player-management-sw/src/PlayerManagement.csproj
+
+COPY shared shared
+COPY apps/player-management-sw apps/player-management-sw
+
+ARG RELEASE_VERSION
+ENV RELEASE_VERSION=${RELEASE_VERSION}
+
+RUN sed -i "s/__RELEASE_VERSION__/${RELEASE_VERSION}/" apps/player-management-sw/src/PlayerManagementPlugin.cs
+
+RUN dotnet publish -c Release apps/player-management-sw/src/PlayerManagement.csproj -o /mod/release
+
 FROM debian:bookworm-slim AS zip-creator
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends zip && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /zip-content
 
 COPY --from=build /mod/release ./addons/swiftlys2/plugins/FiveStack/./
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends zip && \
-    zip -r /mod-release.zip . && \
-    rm -rf /var/lib/apt/lists/*
+RUN zip -r /mod-release.zip .
+
+WORKDIR /player-management-zip-content
+
+COPY --from=player-management-build /mod/release ./addons/swiftlys2/plugins/PlayerManagement/./
+
+RUN zip -r /player-management-release.zip .
 
 FROM sniper
 
@@ -86,6 +114,7 @@ ENV PLUGINS_DIR="/opt/custom-plugins"
 
 ENV INSTALL_5STACK_PLUGIN=true
 ENV INSTALL_UTILITY_PRACTICE_PLUGIN=false
+ENV INSTALL_PLAYER_MANAGEMENT_PLUGIN=false
 
 ENV GAME_ID="730"
 ENV GAME_PARAMS=""
@@ -181,6 +210,7 @@ COPY shared/scripts /opt/scripts
 COPY apps/swiftly/scripts /opt/scripts
 COPY --from=build /mod/release /opt/mod
 COPY --from=utility-build /mod/release /opt/utility-practice
+COPY --from=player-management-build /mod/release /opt/player-management
 
 RUN cp -R /opt/swiftlys2/swiftlys2-linux-${SWIFTLYS2_VERSION}-with-runtimes/addons /opt/addons && \
     rm -rf /opt/swiftlys2

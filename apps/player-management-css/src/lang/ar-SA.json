@@ -1,0 +1,9 @@
+{
+  "sanction.muted": " {red}تم كتم صوتك: الدردشة الصوتية معطلة",
+  "sanction.unmuted": " {green}تم إلغاء كتم صوتك",
+  "sanction.gagged": " {red}تم منعك من الكتابة: الدردشة النصية معطلة",
+  "sanction.ungagged": " {green}تم إلغاء منعك من الكتابة",
+  "sanction.reason": " {grey}السبب: {0}",
+  "sanction.until": " {grey}حتى {0}",
+  "sanction.permanent": " {grey}دائم"
+}

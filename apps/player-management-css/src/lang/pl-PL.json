@@ -1,0 +1,9 @@
+{
+  "sanction.muted": " {red}Zostałeś wyciszony: twój czat głosowy jest wyłączony",
+  "sanction.unmuted": " {green}Nie jesteś już wyciszony",
+  "sanction.gagged": " {red}Zostałeś zakneblowany: twój czat tekstowy jest wyłączony",
+  "sanction.ungagged": " {green}Nie jesteś już zakneblowany",
+  "sanction.reason": " {grey}Powód: {0}",
+  "sanction.until": " {grey}Do {0}",
+  "sanction.permanent": " {grey}Na stałe"
+}

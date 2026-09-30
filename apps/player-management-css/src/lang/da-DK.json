@@ -1,0 +1,9 @@
+{
+  "sanction.muted": " {red}Du er muted: din stemmechat er slået fra",
+  "sanction.unmuted": " {green}Du er ikke længere muted",
+  "sanction.gagged": " {red}Du er gagged: din tekstchat er slået fra",
+  "sanction.ungagged": " {green}Du er ikke længere gagged",
+  "sanction.reason": " {grey}Årsag: {0}",
+  "sanction.until": " {grey}Indtil {0}",
+  "sanction.permanent": " {grey}Permanent"
+}

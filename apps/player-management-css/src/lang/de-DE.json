@@ -1,0 +1,9 @@
+{
+  "sanction.muted": " {red}Du bist stummgeschaltet: dein Sprachchat ist deaktiviert",
+  "sanction.unmuted": " {green}Du bist nicht mehr stummgeschaltet",
+  "sanction.gagged": " {red}Du bist geknebelt: dein Textchat ist deaktiviert",
+  "sanction.ungagged": " {green}Du bist nicht mehr geknebelt",
+  "sanction.reason": " {grey}Grund: {0}",
+  "sanction.until": " {grey}Bis {0}",
+  "sanction.permanent": " {grey}Dauerhaft"
+}
