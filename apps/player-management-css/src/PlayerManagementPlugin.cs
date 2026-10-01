@@ -4,6 +4,7 @@ using CounterStrikeSharp.API.Core.Attributes;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.ValveConstants.Protobuf;
 using FiveStack.Entities.PlayerManagement;
 using FiveStack.Enums;
@@ -31,6 +32,7 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
 
     private readonly SanctionBook _book = new();
     private readonly ServerAccessBook _access = new();
+    private readonly PlayerRoster _roster = new();
     private SanctionSyncLoop? _loop;
 
     // What was last applied to each player present, so changes are announced
@@ -91,6 +93,17 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             _kicked.Remove(steamId);
         });
 
+        RegisterListener<Listeners.OnMapEnd>(() => _roster.MapEnded(DateTimeOffset.UtcNow));
+        RegisterListener<Listeners.OnMapStart>(_ => _roster.MapStarted(DateTimeOffset.UtcNow));
+
+        RegisterListener<Listeners.OnServerHibernationUpdate>(hibernating =>
+        {
+            if (hibernating)
+            {
+                _roster.Hibernating(DateTimeOffset.UtcNow);
+            }
+        });
+
         AddCommandListener("say", OnChat, HookMode.Pre);
         AddCommandListener("say_team", OnChat, HookMode.Pre);
 
@@ -99,6 +112,7 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         _loop = new SanctionSyncLoop(
             _book,
             _access,
+            _roster,
             new SanctionsClient(),
             Config.Settings,
             ModuleVersion,
@@ -106,6 +120,19 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             message => Logger.LogWarning("{message}", message),
             message => Logger.LogInformation("{message}", message)
         );
+
+        // So a hot reload reports the players already here, not an unknown
+        // roster. Before a map has loaded there may be no list to read, and the
+        // roster is then left unknown until the first tick.
+        try
+        {
+            _loop.Observe(Observed(Humans()), DateTimeOffset.UtcNow);
+        }
+        catch (Exception error)
+        {
+            Logger.LogDebug(error, "unable to read the players present on load");
+        }
+
         _loop.Start();
     }
 
@@ -192,8 +219,7 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         {
             List<CCSPlayerController> humans = Humans();
 
-            _loop?.Observe(humans.Select(player => SteamIdOf(player).ToString()));
-
+            ObserveRoster(humans);
             Enforce(humans);
         }
         catch (Exception error)
@@ -299,6 +325,68 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         }
     }
 
+    [GameEventHandler]
+    public HookResult OnPlayerDeath(EventPlayerDeath @event, GameEventInfo info)
+    {
+        try
+        {
+            CCSPlayerController? victim = @event.Userid;
+
+            if (victim == null || !IsHuman(victim))
+            {
+                return HookResult.Continue;
+            }
+
+            CCSPlayerController? attacker = @event.Attacker;
+
+            bool kill =
+                attacker != null
+                && IsHuman(attacker)
+                && PlayerRoster.CountsAsKill(
+                    attacker.Slot,
+                    victim.Slot,
+                    attacker.TeamNum,
+                    victim.TeamNum,
+                    TeammatesAreEnemies()
+                );
+
+            _roster.Died(VerifiedSteamIdOf(victim), kill ? VerifiedSteamIdOf(attacker!) : null);
+        }
+        catch (Exception error)
+        {
+            Logger.LogError(error, "unable to count a death");
+        }
+
+        return HookResult.Continue;
+    }
+
+    // Kept apart from the enforcement that follows it on the tick, which must
+    // run whatever happens to the roster.
+    private void ObserveRoster(List<CCSPlayerController> humans)
+    {
+        try
+        {
+            _loop?.Observe(Observed(humans), DateTimeOffset.UtcNow);
+        }
+        catch (Exception error)
+        {
+            Logger.LogError(error, "unable to observe the players present");
+        }
+    }
+
+    // Unreadable is taken as teams as usual, where a team kill earns nothing.
+    private static bool TeammatesAreEnemies()
+    {
+        try
+        {
+            return ConVar.Find("mp_teammates_are_enemies")?.GetPrimitiveValue<bool>() ?? false;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
     private HookResult OnChat(CCSPlayerController? player, CommandInfo info)
     {
         if (player == null || !IsHuman(player))
@@ -341,6 +429,27 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         return Utilities.GetPlayers().Where(IsHuman).ToList();
     }
 
+    // A controller lingers through its disconnect, so only a connected one is
+    // on the roster.
+    private static List<ObservedPlayer> Observed(List<CCSPlayerController> humans)
+    {
+        return humans
+            .Select(player =>
+            {
+                bool verified =
+                    player.AuthorizedSteamID != null
+                    && player.Connected == PlayerConnectedState.Connected;
+
+                return new ObservedPlayer(
+                    SteamIdOf(player).ToString(),
+                    player.PlayerName,
+                    verified ? player.IpAddress : null,
+                    verified
+                );
+            })
+            .ToList();
+    }
+
     private static bool IsHuman(CCSPlayerController player)
     {
         return player.IsValid && !player.IsBot && !player.IsHLTV && SteamIdOf(player) != 0;
@@ -352,5 +461,11 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
     private static ulong SteamIdOf(CCSPlayerController player)
     {
         return player.AuthorizedSteamID?.SteamId64 ?? player.SteamID;
+    }
+
+    // Unlike a sanction, a kill credited to a claimed id is something gained.
+    private static string? VerifiedSteamIdOf(CCSPlayerController player)
+    {
+        return player.AuthorizedSteamID?.SteamId64.ToString();
     }
 }

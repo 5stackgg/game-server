@@ -59,6 +59,22 @@ public class SanctionsClientTests
         };
     }
 
+    [Theory]
+    [InlineData("{\"sanctions\":[],\"roster_recorded\":true}", true)]
+    [InlineData("{\"sanctions\":[],\"roster_recorded\":false}", false)]
+    [InlineData("{\"sanctions\":[]}", null)]
+    public async Task ItReadsWhetherThePanelRecordedTheRoster(string answer, bool? recorded)
+    {
+        StubHandler handler = new(_ => Json(HttpStatusCode.OK, answer));
+
+        SanctionSync result = await new SanctionsClient(new HttpClient(handler)).Sync(
+            Settings,
+            Request()
+        );
+
+        Assert.Equal(recorded, result.RosterRecorded);
+    }
+
     [Fact]
     public async Task ItPostsThePlayersToTheServersRouteWithTheApiPassword()
     {

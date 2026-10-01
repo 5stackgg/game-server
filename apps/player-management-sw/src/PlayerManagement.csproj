@@ -24,6 +24,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/ServerAccessBook.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/SanctionsClient.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/SanctionSyncLoop.cs" LinkBase="Shared" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/PlayerRoster.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/PlayerManagementReport.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/ChatUtility.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/HttpClientProvider.cs" LinkBase="Shared" />

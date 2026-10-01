@@ -8,6 +8,8 @@ using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Commands;
 using SwiftlyS2.Shared.Events;
+using SwiftlyS2.Shared.GameEventDefinitions;
+using SwiftlyS2.Shared.GameEvents;
 using SwiftlyS2.Shared.Misc;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Plugins;
@@ -38,6 +40,7 @@ public partial class PlayerManagementPlugin : BasePlugin
 
     private readonly SanctionBook _book = new();
     private readonly ServerAccessBook _access = new();
+    private readonly PlayerRoster _roster = new();
 
     // What was last applied to each player present, so changes are announced
     // once, and whose mute bit this plugin set, so it only ever lifts its own
@@ -50,8 +53,12 @@ public partial class PlayerManagementPlugin : BasePlugin
     private EventDelegates.OnClientPutInServer? _putInServerHandler;
     private EventDelegates.OnClientSteamAuthorize? _authorizeHandler;
     private EventDelegates.OnClientDisconnected? _disconnectHandler;
+    private EventDelegates.OnMapUnload? _mapUnloadHandler;
+    private EventDelegates.OnMapLoad? _mapLoadHandler;
+    private EventDelegates.OnWorldUpdate? _worldUpdateHandler;
     private Guid _chatHookId;
     private long _lastEnforceMs;
+    private long _lastWorldUpdateMs;
 
     public PlayerManagementPlugin(ISwiftlyCore core)
         : base(core) { }
@@ -123,6 +130,15 @@ public partial class PlayerManagementPlugin : BasePlugin
         };
         Core.Event.OnClientDisconnected += _disconnectHandler;
 
+        _mapUnloadHandler = _ => _roster.MapEnded(DateTimeOffset.UtcNow);
+        Core.Event.OnMapUnload += _mapUnloadHandler;
+
+        _mapLoadHandler = _ => _roster.MapStarted(DateTimeOffset.UtcNow);
+        Core.Event.OnMapLoad += _mapLoadHandler;
+
+        _worldUpdateHandler = OnWorldUpdate;
+        Core.Event.OnWorldUpdate += _worldUpdateHandler;
+
         _chatHookId = Core.Command.HookClientChat((playerId, text, teamonly) => OnChat(playerId));
 
         InstallConnectGate();
@@ -130,6 +146,7 @@ public partial class PlayerManagementPlugin : BasePlugin
         _loop = new SanctionSyncLoop(
             _book,
             _access,
+            _roster,
             new SanctionsClient(),
             Settings,
             ModuleVersion,
@@ -137,6 +154,19 @@ public partial class PlayerManagementPlugin : BasePlugin
             message => _logger.LogWarning("{message}", message),
             message => _logger.LogInformation("{message}", message)
         );
+
+        // So a hot reload reports the players already here, not an unknown
+        // roster. Before a map has loaded there may be no list to read, and the
+        // roster is then left unknown until the first tick.
+        try
+        {
+            _loop.Observe(Observed(Humans()), DateTimeOffset.UtcNow);
+        }
+        catch (Exception error)
+        {
+            _logger.LogDebug(error, "unable to read the players present on load");
+        }
+
         _loop.Start();
     }
 
@@ -165,6 +195,21 @@ public partial class PlayerManagementPlugin : BasePlugin
         if (_disconnectHandler != null)
         {
             Core.Event.OnClientDisconnected -= _disconnectHandler;
+        }
+
+        if (_mapUnloadHandler != null)
+        {
+            Core.Event.OnMapUnload -= _mapUnloadHandler;
+        }
+
+        if (_mapLoadHandler != null)
+        {
+            Core.Event.OnMapLoad -= _mapLoadHandler;
+        }
+
+        if (_worldUpdateHandler != null)
+        {
+            Core.Event.OnWorldUpdate -= _worldUpdateHandler;
         }
 
         if (_chatHookId != Guid.Empty)
@@ -258,8 +303,7 @@ public partial class PlayerManagementPlugin : BasePlugin
         {
             List<IPlayer> humans = Humans();
 
-            _loop?.Observe(humans.Select(player => SteamIdOf(player).ToString()));
-
+            ObserveRoster(humans);
             Enforce(humans);
         }
         catch (Exception error)
@@ -375,6 +419,83 @@ public partial class PlayerManagementPlugin : BasePlugin
         }
     }
 
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnPlayerDeath(EventPlayerDeath @event)
+    {
+        try
+        {
+            IPlayer? victim = @event.UserIdPlayer;
+
+            if (victim == null || !IsHuman(victim))
+            {
+                return HookResult.Continue;
+            }
+
+            IPlayer? attacker = @event.AttackerPlayer;
+
+            bool kill =
+                attacker != null
+                && IsHuman(attacker)
+                && PlayerRoster.CountsAsKill(
+                    attacker.PlayerID,
+                    victim.PlayerID,
+                    attacker.Controller.TeamNum,
+                    victim.Controller.TeamNum,
+                    TeammatesAreEnemies()
+                );
+
+            _roster.Died(VerifiedSteamIdOf(victim), kill ? VerifiedSteamIdOf(attacker!) : null);
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to count a death");
+        }
+
+        return HookResult.Continue;
+    }
+
+    // Kept apart from the enforcement that follows it on the tick, which must
+    // run whatever happens to the roster.
+    private void ObserveRoster(List<IPlayer> humans)
+    {
+        try
+        {
+            _loop?.Observe(Observed(humans), DateTimeOffset.UtcNow);
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to observe the players present");
+        }
+    }
+
+    // Unreadable is taken as teams as usual, where a team kill earns nothing.
+    private bool TeammatesAreEnemies()
+    {
+        try
+        {
+            return Core.ConVar.Find<bool>("mp_teammates_are_enemies")?.Value ?? false;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    // Still called while the server hibernates, when OnTick is not, which is
+    // how the roster tells an empty server from one loading a map.
+    private void OnWorldUpdate()
+    {
+        long nowMs = Environment.TickCount64;
+
+        if (nowMs - _lastWorldUpdateMs < EnforceEveryMs)
+        {
+            return;
+        }
+
+        _lastWorldUpdateMs = nowMs;
+        _roster.WorldUpdated(DateTimeOffset.UtcNow);
+    }
+
     private HookResult OnChat(int playerId)
     {
         IPlayer? player = Core.PlayerManager.GetPlayer(playerId);
@@ -422,6 +543,18 @@ public partial class PlayerManagementPlugin : BasePlugin
         return Core.PlayerManager.GetAllPlayers().Where(IsHuman).ToList();
     }
 
+    private static List<ObservedPlayer> Observed(List<IPlayer> humans)
+    {
+        return humans
+            .Select(player => new ObservedPlayer(
+                SteamIdOf(player).ToString(),
+                player.Name,
+                player.IsAuthorized ? player.IPAddress : null,
+                player.IsAuthorized
+            ))
+            .ToList();
+    }
+
     private static bool IsHuman(IPlayer player)
     {
         return player.IsValid && !player.IsFakeClient && SteamIdOf(player) != 0;
@@ -433,6 +566,12 @@ public partial class PlayerManagementPlugin : BasePlugin
     private static ulong SteamIdOf(IPlayer player)
     {
         return player.IsAuthorized ? player.SteamID : player.UnauthorizedSteamID;
+    }
+
+    // Unlike a sanction, a kill credited to a claimed id is something gained.
+    private static string? VerifiedSteamIdOf(IPlayer player)
+    {
+        return player.IsAuthorized ? player.SteamID.ToString() : null;
     }
 
     private PlayerManagementSettings Settings()

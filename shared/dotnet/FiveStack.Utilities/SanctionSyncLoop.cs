@@ -14,6 +14,7 @@ public sealed class SanctionSyncLoop : IDisposable
 
     private readonly SanctionBook _book;
     private readonly ServerAccessBook _access;
+    private readonly PlayerRoster _roster;
     private readonly SanctionsClient _client;
     private readonly Func<PlayerManagementSettings> _settings;
     private readonly string _version;
@@ -33,6 +34,7 @@ public sealed class SanctionSyncLoop : IDisposable
     public SanctionSyncLoop(
         SanctionBook book,
         ServerAccessBook access,
+        PlayerRoster roster,
         SanctionsClient client,
         Func<PlayerManagementSettings> settings,
         string version,
@@ -43,6 +45,7 @@ public sealed class SanctionSyncLoop : IDisposable
     {
         _book = book;
         _access = access;
+        _roster = roster;
         _client = client;
         _settings = settings;
         _version = version;
@@ -64,13 +67,33 @@ public sealed class SanctionSyncLoop : IDisposable
     }
 
     // Only the game thread can read the player list, so it hands it over here.
-    public void Observe(IEnumerable<string> present)
+    // Every human is asked about, verified or not, and before the roster sees
+    // them, so a roster that fails never costs a ban check.
+    public void Observe(IEnumerable<ObservedPlayer> players, DateTimeOffset now)
     {
-        List<string> snapshot = present.Distinct().ToList();
+        List<ObservedPlayer> observed = players.ToList();
+        List<string> snapshot = observed.Select(player => player.SteamId).Distinct().ToList();
 
         lock (_lock)
         {
             _present = snapshot;
+        }
+
+        DateTimeOffset? due = _roster.Observe(observed, now);
+
+        if (due == null)
+        {
+            return;
+        }
+
+        lock (_lock)
+        {
+            // Never pushed back past a sync already asked for: that one is what
+            // gets a joining player's ban enforced.
+            if (!_requested)
+            {
+                Wake(due.Value - now);
+            }
         }
     }
 
@@ -81,15 +104,7 @@ public sealed class SanctionSyncLoop : IDisposable
         lock (_lock)
         {
             _requested = true;
-        }
-
-        try
-        {
-            _timer?.Change(TimeSpan.Zero, Poll);
-        }
-        catch (ObjectDisposedException)
-        {
-            // Unloading.
+            Wake(TimeSpan.Zero);
         }
     }
 
@@ -107,7 +122,12 @@ public sealed class SanctionSyncLoop : IDisposable
 
         lock (_lock)
         {
-            bool due = _requested || _startedAt == null || now - _startedAt >= Interval;
+            DateTimeOffset? rosterDue = _roster.DueAt(now);
+            bool due =
+                _requested
+                || _startedAt == null
+                || now - _startedAt >= Interval
+                || (rosterDue != null && now >= rosterDue);
 
             if (_syncing || !due)
             {
@@ -122,6 +142,7 @@ public sealed class SanctionSyncLoop : IDisposable
 
         try
         {
+            RosterReport roster = _roster.Report(now);
             PlayerManagementSettings settings = _settings();
 
             if (!settings.IsConnected())
@@ -137,6 +158,8 @@ public sealed class SanctionSyncLoop : IDisposable
                     steam_ids = queried,
                     plugin_version = _version,
                     plugin_runtime = _runtime,
+                    players = roster.Players,
+                    departed = roster.Departed,
                 }
             );
 
@@ -145,6 +168,8 @@ public sealed class SanctionSyncLoop : IDisposable
                 Failed(queried, result.Error ?? "unknown error");
                 return;
             }
+
+            _roster.Delivered(roster, result.RosterRecorded);
 
             // Ahead of the sanctions: recording those ends the joining players'
             // wait, and their access has to be known by then.
@@ -229,6 +254,18 @@ public sealed class SanctionSyncLoop : IDisposable
                     ? $"access list {fetched.List.version} loaded: {_access.Snapshot().Allowed} steam id(s) allowed"
                     : "server access is open to everyone"
             );
+        }
+    }
+
+    private void Wake(TimeSpan after)
+    {
+        try
+        {
+            _timer?.Change(after < TimeSpan.Zero ? TimeSpan.Zero : after, Poll);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Unloading.
         }
     }
 
