@@ -90,6 +90,11 @@ public class SanctionSyncLoopTests
         }
     }
 
+    private static ObservedPlayer Human(string steamId, bool verified = true)
+    {
+        return new ObservedPlayer(steamId, $"player {steamId}", null, verified);
+    }
+
     private static PlayerManagementSettings Connected()
     {
         return new PlayerManagementSettings
@@ -128,6 +133,7 @@ public class SanctionSyncLoopTests
         SanctionSyncLoop loop = new(
             book,
             access,
+            new PlayerRoster(),
             new SanctionsClient(new HttpClient(panel)),
             settings ?? Connected,
             "0.0.9",
@@ -181,12 +187,25 @@ public class SanctionSyncLoopTests
     public async Task ItAsksAboutThePlayersPresentAndThoseJoining()
     {
         var (loop, book, panel, _) = Loop();
-        loop.Observe(["1", "2", "1"]);
+        loop.Observe([Human("1"), Human("2"), Human("1")], Start);
         book.Joined("3");
 
         await loop.Tick(Start);
 
         Assert.Equal(["1", "2", "3"], panel.Asked[0]);
+    }
+
+    // A ban has to reach a player before Steam has verified them, so the
+    // roster's verified-only rule must not narrow who is asked about.
+    [Fact]
+    public async Task AnUnverifiedPlayerIsStillAskedAbout()
+    {
+        var (loop, _, panel, _) = Loop();
+        loop.Observe([Human("1"), Human("2", verified: false)], Start);
+
+        await loop.Tick(Start);
+
+        Assert.Equal(["1", "2"], panel.Asked[0]);
     }
 
     // The bug this guards: a player banned and kicked here keeps that ban in
@@ -308,7 +327,7 @@ public class SanctionSyncLoopTests
     public async Task TheDeniedPlayersSurfaceToThePlugin()
     {
         var (loop, _, access, panel, _) = WithAccess();
-        loop.Observe(["1", "2"]);
+        loop.Observe([Human("1"), Human("2")], Start);
         panel.Answer = _ => Task.FromResult(Panel.Sanctions(access: Panel.Access("v1", "2")));
 
         await loop.Tick(Start);

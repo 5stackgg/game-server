@@ -10,7 +10,8 @@ namespace FiveStack.Utilities;
 public sealed record SanctionSync(
     List<PlayerSanction>? Sanctions,
     string? Error,
-    ServerAccessSync? Access = null
+    ServerAccessSync? Access = null,
+    bool? RosterRecorded = null
 );
 
 public sealed record ServerAccessFetch(ServerAccessList? List, string? Error);
@@ -67,7 +68,8 @@ public class SanctionsClient
             return new SanctionSync(
                 parsed?.sanctions ?? new List<PlayerSanction>(),
                 null,
-                parsed?.access
+                parsed?.access,
+                parsed?.roster_recorded
             );
         }
         catch (Exception error)
