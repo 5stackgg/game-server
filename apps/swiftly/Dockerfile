@@ -152,8 +152,8 @@ ENV HUD_WORKSHOP_ID="3791548068"
 # ARG, not ENV: the download below happens once at build time, so these are set
 # with --build-arg. As ENV they read as runtime knobs beside HUD_WORKSHOP_ID and
 # would silently do nothing when overridden at docker run.
-ARG ADDONS_MANAGER_VERSION="v2.0.3"
-ARG ADDONS_MANAGER_URL=https://github.com/SwiftlyS2-Plugins/AddonsManager/releases/download/${ADDONS_MANAGER_VERSION}/AddonsManager.zip
+ARG ADDONS_MANAGER_VERSION="v2.0.6"
+ARG ADDONS_MANAGER_URL=https://github.com/SwiftlyS2-Plugins/AddonsManager/releases/download/${ADDONS_MANAGER_VERSION}/AddonsManager-${ADDONS_MANAGER_VERSION}.zip
 
 # steamcmd's 32-bit deps and .NET's libicu67 already ship in the sniper image
 # as i386 multiarch packages, so no lib32* / libicu-dev here.

@@ -28,8 +28,8 @@ The `upstream-swiftly` gamedata is not pinned at image build. When the `swiftlys
 is in scope, the validator reads the `SwiftlyS2.CS2` `<PackageReference>` version from
 `apps/swiftly/src/FiveStack.csproj` on GitHub — the release we actually ship — and fetches
 that version's gamedata from SwiftlyS2 at run time, so it tracks the source of truth rather
-than a value that could drift. `swiftly-update.yaml` bumps that pin on a schedule and its
-`GITHUB_TOKEN` push does not rebuild this image, so baking the version in would go stale.
+than a value that could drift. `dependency-update.yaml` bumps that pin on a schedule and
+rebuilds only the swiftly image, never this one, so baking the version in would go stale.
 Fetching the gamedata needs network access during the run either way.
 
 Resolution order: `--swiftly-ref <tag>` (validate a specific SwiftlyS2 release) beats
