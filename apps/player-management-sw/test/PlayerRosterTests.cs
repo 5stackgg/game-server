@@ -837,4 +837,14 @@ public class PlayerRosterTests
             )
         );
     }
+
+    [Fact]
+    public void CountsEveryConnectedHumanAndNothingElse()
+    {
+        Assert.True(PlayerRoster.IsConnectedHuman(false, true, false, 76561198000000001));
+        Assert.False(PlayerRoster.IsConnectedHuman(false, false, false, 76561198000000001));
+        Assert.False(PlayerRoster.IsConnectedHuman(true, true, false, 76561198000000001));
+        Assert.False(PlayerRoster.IsConnectedHuman(false, true, true, 76561198000000001));
+        Assert.False(PlayerRoster.IsConnectedHuman(false, true, false, 0));
+    }
 }
