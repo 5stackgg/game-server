@@ -5,5 +5,6 @@
   "sanction.ungagged": " {green}Ditt chattförbud har hävts",
   "sanction.reason": " {grey}Anledning: {0}",
   "sanction.until": " {grey}Till {0}",
-  "sanction.permanent": " {grey}Permanent"
+  "sanction.permanent": " {grey}Permanent",
+  "access.denied": "Den här servern är privat: du finns inte på dess åtkomstlista"
 }

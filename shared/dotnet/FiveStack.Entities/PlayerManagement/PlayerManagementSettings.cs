@@ -39,6 +39,11 @@ public class PlayerManagementSettings
         return $"{API_DOMAIN}/sanctions/server/{SERVER_ID}";
     }
 
+    public string AccessUrl()
+    {
+        return $"{SyncUrl()}/access";
+    }
+
     private static string Pick(string? preferred, string fallback)
     {
         return string.IsNullOrWhiteSpace(preferred) ? fallback ?? "" : preferred;

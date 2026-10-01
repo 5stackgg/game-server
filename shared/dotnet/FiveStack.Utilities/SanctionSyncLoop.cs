@@ -13,6 +13,7 @@ public sealed class SanctionSyncLoop : IDisposable
     private static readonly TimeSpan Poll = TimeSpan.FromSeconds(1);
 
     private readonly SanctionBook _book;
+    private readonly ServerAccessBook _access;
     private readonly SanctionsClient _client;
     private readonly Func<PlayerManagementSettings> _settings;
     private readonly string _version;
@@ -31,6 +32,7 @@ public sealed class SanctionSyncLoop : IDisposable
 
     public SanctionSyncLoop(
         SanctionBook book,
+        ServerAccessBook access,
         SanctionsClient client,
         Func<PlayerManagementSettings> settings,
         string version,
@@ -40,6 +42,7 @@ public sealed class SanctionSyncLoop : IDisposable
     )
     {
         _book = book;
+        _access = access;
         _client = client;
         _settings = settings;
         _version = version;
@@ -143,6 +146,13 @@ public sealed class SanctionSyncLoop : IDisposable
                 return;
             }
 
+            // Ahead of the sanctions: recording those ends the joining players'
+            // wait, and their access has to be known by then.
+            if (result.Access != null)
+            {
+                _access.Answered(queried, result.Access.denied ?? [], result.Access.message);
+            }
+
             _book.Record(queried, result.Sanctions);
 
             bool recovered;
@@ -158,6 +168,11 @@ public sealed class SanctionSyncLoop : IDisposable
             {
                 _info("sanction sync recovered");
             }
+
+            if (result.Access != null)
+            {
+                await RefreshAccess(settings, result.Access);
+            }
         }
         catch (Exception error)
         {
@@ -169,6 +184,51 @@ public sealed class SanctionSyncLoop : IDisposable
             {
                 _syncing = false;
             }
+        }
+    }
+
+    // Every sync names the access list's version, so the list itself is only
+    // fetched when that changes. An open server has no list to fetch.
+    private async Task RefreshAccess(PlayerManagementSettings settings, ServerAccessSync access)
+    {
+        string version = access.version ?? "";
+
+        if (!access.restricted)
+        {
+            if (_access.Load(false, version, []))
+            {
+                _info("server access is open to everyone");
+            }
+
+            return;
+        }
+
+        if (_access.IsCurrent(version))
+        {
+            return;
+        }
+
+        ServerAccessFetch fetched = await _client.Access(settings);
+
+        if (fetched.List == null)
+        {
+            string error = fetched.Error ?? "unknown error";
+
+            if (_access.FetchFailed(error))
+            {
+                _warn($"unable to fetch the access list: {error}");
+            }
+
+            return;
+        }
+
+        if (_access.Load(fetched.List.restricted, fetched.List.version, fetched.List.steam_ids))
+        {
+            _info(
+                fetched.List.restricted
+                    ? $"access list {fetched.List.version} loaded: {_access.Snapshot().Allowed} steam id(s) allowed"
+                    : "server access is open to everyone"
+            );
         }
     }
 

@@ -15,7 +15,7 @@ namespace PlayerManagement;
 // Community servers only: a matchmaking server gets its sanctions on the match
 // payload from the match plugin, and never loads this one.
 [MinimumApiVersion(80)]
-public class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerManagementConfig>
+public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerManagementConfig>
 {
     private const string Runtime = "counterstrikesharp";
 
@@ -25,11 +25,12 @@ public class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerManagement
     public override string ModuleVersion => "__RELEASE_VERSION__";
     public override string ModuleAuthor => "5Stack.gg";
     public override string ModuleDescription =>
-        "Enforces 5Stack bans, mutes and gags on community servers";
+        "Enforces 5Stack bans, mutes, gags and access lists on community servers";
 
     public PlayerManagementConfig Config { get; set; } = new();
 
     private readonly SanctionBook _book = new();
+    private readonly ServerAccessBook _access = new();
     private SanctionSyncLoop? _loop;
 
     // What was last applied to each player present, so changes are announced
@@ -60,7 +61,7 @@ public class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerManagement
         if (!settings.IsConnected())
         {
             Logger.LogWarning(
-                "player management is not configured; bans, mutes and gags are not enforced until API_DOMAIN, SERVER_ID and SERVER_API_PASSWORD are set"
+                "player management is not configured; bans, mutes, gags and access lists are not enforced until API_DOMAIN, SERVER_ID and SERVER_API_PASSWORD are set"
             );
         }
 
@@ -84,6 +85,7 @@ public class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerManagement
             ulong steamId = SteamIdOf(player);
 
             _book.Left(steamId.ToString());
+            _access.Left(steamId.ToString());
             _applied.Remove(steamId);
             _mutedByUs.Remove(steamId);
             _kicked.Remove(steamId);
@@ -92,8 +94,11 @@ public class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerManagement
         AddCommandListener("say", OnChat, HookMode.Pre);
         AddCommandListener("say_team", OnChat, HookMode.Pre);
 
+        InstallConnectGate();
+
         _loop = new SanctionSyncLoop(
             _book,
+            _access,
             new SanctionsClient(),
             Config.Settings,
             ModuleVersion,
@@ -108,6 +113,8 @@ public class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerManagement
     {
         _loop?.Dispose();
         _loop = null;
+
+        UninstallConnectGate();
     }
 
     [ConsoleCommand(
@@ -142,6 +149,7 @@ public class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerManagement
                 Config.Settings(),
                 lastSyncAt,
                 lastError,
+                _access.Snapshot(),
                 Humans()
                     .Select(player => new PlayerManagementPlayer(
                         player.PlayerName,
@@ -233,6 +241,27 @@ public class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerManagement
                     );
 
                     player.Disconnect(NetworkDisconnectionReason.NETWORK_DISCONNECT_BANADDED);
+                }
+
+                continue;
+            }
+
+            // CounterStrikeSharp disconnects with a reason code only, so the
+            // text goes to chat on the way out.
+            if (_access.IsDenied(steamId.ToString()))
+            {
+                if (_kicked.Add(steamId))
+                {
+                    Logger.LogInformation(
+                        "kicking {name} ({steamId}): not on the server's access list",
+                        player.PlayerName,
+                        steamId
+                    );
+
+                    player.PrintToChat(
+                        _access.KickReason(Localizer.ForPlayer(player, "access.denied"))
+                    );
+                    player.Disconnect(NetworkDisconnectionReason.NETWORK_DISCONNECT_KICKED);
                 }
 
                 continue;

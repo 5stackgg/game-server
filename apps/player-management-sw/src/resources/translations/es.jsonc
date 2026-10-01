@@ -5,5 +5,6 @@
   "sanction.ungagged": " [green]Ya no estás silenciado",
   "sanction.reason": " [grey]Motivo: {0}",
   "sanction.until": " [grey]Hasta {0}",
-  "sanction.permanent": " [grey]Permanente"
+  "sanction.permanent": " [grey]Permanente",
+  "access.denied": "Este servidor es privado: no estás en su lista de acceso"
 }

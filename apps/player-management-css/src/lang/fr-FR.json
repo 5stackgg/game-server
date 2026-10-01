@@ -5,5 +5,6 @@
   "sanction.ungagged": " {green}Vous n'êtes plus bâillonné",
   "sanction.reason": " {grey}Raison : {0}",
   "sanction.until": " {grey}Jusqu'au {0}",
-  "sanction.permanent": " {grey}Permanent"
+  "sanction.permanent": " {grey}Permanent",
+  "access.denied": "Ce serveur est privé : vous n'êtes pas sur sa liste d'accès"
 }

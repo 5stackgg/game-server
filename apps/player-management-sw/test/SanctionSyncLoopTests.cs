@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using FiveStack.Entities.PlayerManagement;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Xunit;
 
@@ -13,14 +14,23 @@ public class SanctionSyncLoopTests
     private sealed class Panel : HttpMessageHandler
     {
         public readonly List<List<string>> Asked = new();
+        public int AccessFetches;
         public Func<List<string>, Task<HttpResponseMessage>> Answer = _ =>
             Task.FromResult(Sanctions());
+        public Func<HttpResponseMessage> AccessAnswer = () => AccessList("v1");
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken
         )
         {
+            if (request.Method == HttpMethod.Get)
+            {
+                AccessFetches++;
+
+                return AccessAnswer();
+            }
+
             using JsonDocument body = JsonDocument.Parse(
                 await request.Content!.ReadAsStringAsync(cancellationToken)
             );
@@ -35,15 +45,47 @@ public class SanctionSyncLoopTests
             return await Answer(steamIds);
         }
 
-        public static HttpResponseMessage Sanctions(string json = "[]")
+        public static HttpResponseMessage Sanctions(string json = "[]", string? access = null)
+        {
+            return Ok(
+                access == null
+                    ? $"{{\"sanctions\":{json}}}"
+                    : $"{{\"sanctions\":{json},\"access\":{access}}}"
+            );
+        }
+
+        public static string Access(string version, params string[] denied)
+        {
+            return JsonSerializer.Serialize(
+                new
+                {
+                    restricted = version != "open",
+                    version,
+                    denied,
+                    message = (string?)null,
+                }
+            );
+        }
+
+        public static HttpResponseMessage AccessList(string version, params string[] steamIds)
+        {
+            return Ok(
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        restricted = true,
+                        version,
+                        steam_ids = steamIds,
+                    }
+                )
+            );
+        }
+
+        private static HttpResponseMessage Ok(string json)
         {
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(
-                    $"{{\"sanctions\":{json}}}",
-                    Encoding.UTF8,
-                    "application/json"
-                ),
+                Content = new StringContent(json, Encoding.UTF8, "application/json"),
             };
         }
     }
@@ -65,12 +107,27 @@ public class SanctionSyncLoopTests
         List<string> Warnings
     ) Loop(Func<PlayerManagementSettings>? settings = null)
     {
+        var (loop, book, _, panel, warnings) = WithAccess(settings);
+
+        return (loop, book, panel, warnings);
+    }
+
+    private static (
+        SanctionSyncLoop Loop,
+        SanctionBook Book,
+        ServerAccessBook Access,
+        Panel Panel,
+        List<string> Warnings
+    ) WithAccess(Func<PlayerManagementSettings>? settings = null)
+    {
         Panel panel = new();
         SanctionBook book = new();
+        ServerAccessBook access = new();
         List<string> warnings = new();
 
         SanctionSyncLoop loop = new(
             book,
+            access,
             new SanctionsClient(new HttpClient(panel)),
             settings ?? Connected,
             "0.0.9",
@@ -79,7 +136,7 @@ public class SanctionSyncLoopTests
             _ => { }
         );
 
-        return (loop, book, panel, warnings);
+        return (loop, book, access, panel, warnings);
     }
 
     // An empty server is exactly when nothing else would call the panel, and
@@ -207,5 +264,122 @@ public class SanctionSyncLoopTests
         await loop.Tick(Start);
 
         Assert.Equal((Start, (string?)null), loop.Status());
+    }
+
+    [Fact]
+    public async Task ANewAccessVersionFetchesTheListExactlyOnce()
+    {
+        var (loop, _, access, panel, _) = WithAccess();
+        panel.Answer = _ => Task.FromResult(Panel.Sanctions(access: Panel.Access("v1")));
+        panel.AccessAnswer = () => Panel.AccessList("v1", "1");
+
+        await loop.Tick(Start);
+
+        Assert.Equal(1, panel.AccessFetches);
+        Assert.Equal(eServerAccess.Allowed, access.Decide("1"));
+        Assert.Equal(eServerAccess.Denied, access.Decide("2"));
+
+        panel.Answer = _ => Task.FromResult(Panel.Sanctions(access: Panel.Access("v2")));
+        panel.AccessAnswer = () => Panel.AccessList("v2", "2");
+
+        await loop.Tick(Start + SanctionSyncLoop.Interval);
+
+        Assert.Equal(2, panel.AccessFetches);
+        Assert.Equal(eServerAccess.Denied, access.Decide("1"));
+        Assert.Equal(eServerAccess.Allowed, access.Decide("2"));
+    }
+
+    [Fact]
+    public async Task TheSameAccessVersionIsNotFetchedAgain()
+    {
+        var (loop, _, _, panel, _) = WithAccess();
+        panel.Answer = _ => Task.FromResult(Panel.Sanctions(access: Panel.Access("v1")));
+
+        await loop.Tick(Start);
+        await loop.Tick(Start + SanctionSyncLoop.Interval);
+        loop.Request();
+        await loop.Tick(Start + SanctionSyncLoop.Interval + TimeSpan.FromSeconds(1));
+
+        Assert.Equal(3, panel.Asked.Count);
+        Assert.Equal(1, panel.AccessFetches);
+    }
+
+    [Fact]
+    public async Task TheDeniedPlayersSurfaceToThePlugin()
+    {
+        var (loop, _, access, panel, _) = WithAccess();
+        loop.Observe(["1", "2"]);
+        panel.Answer = _ => Task.FromResult(Panel.Sanctions(access: Panel.Access("v1", "2")));
+
+        await loop.Tick(Start);
+
+        Assert.True(access.IsDenied("2"));
+        Assert.False(access.IsDenied("1"));
+
+        panel.Answer = _ => Task.FromResult(Panel.Sanctions(access: Panel.Access("v1")));
+        await loop.Tick(Start + SanctionSyncLoop.Interval);
+
+        Assert.False(access.IsDenied("2"));
+    }
+
+    // Bans are enforced from the moment the answer clears a joining player's
+    // wait, and a denial has to be known by then too.
+    [Fact]
+    public async Task AJoiningPlayersDenialIsKnownWhenTheirWaitEnds()
+    {
+        var (loop, book, access, panel, _) = WithAccess();
+        book.Joined("1");
+        panel.Answer = _ => Task.FromResult(Panel.Sanctions(access: Panel.Access("v1", "1")));
+
+        await loop.Tick(Start);
+
+        Assert.False(book.IsAwaiting("1"));
+        Assert.True(access.IsDenied("1"));
+    }
+
+    [Fact]
+    public async Task AFailedFetchKeepsTheLastListAndRetriesOnTheNextSync()
+    {
+        var (loop, _, access, panel, warnings) = WithAccess();
+        panel.Answer = _ => Task.FromResult(Panel.Sanctions(access: Panel.Access("v1")));
+        panel.AccessAnswer = () => Panel.AccessList("v1", "1");
+        await loop.Tick(Start);
+
+        panel.Answer = _ => Task.FromResult(Panel.Sanctions(access: Panel.Access("v2")));
+        panel.AccessAnswer = () => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+        await loop.Tick(Start + SanctionSyncLoop.Interval);
+        await loop.Tick(Start + SanctionSyncLoop.Interval * 2);
+
+        Assert.Equal(3, panel.AccessFetches);
+        Assert.Equal(eServerAccess.Allowed, access.Decide("1"));
+        Assert.Equal("v1", access.Snapshot().Version);
+        Assert.Equal("503", access.Snapshot().Error);
+        Assert.Single(warnings);
+        Assert.Null(loop.Status().LastError);
+    }
+
+    [Fact]
+    public async Task AnOpenServerNeedsNoFetch()
+    {
+        var (loop, _, access, panel, _) = WithAccess();
+        panel.Answer = _ => Task.FromResult(Panel.Sanctions(access: Panel.Access("open")));
+
+        await loop.Tick(Start);
+
+        Assert.Equal(0, panel.AccessFetches);
+        Assert.Equal(eServerAccess.Open, access.Decide("1"));
+    }
+
+    [Fact]
+    public async Task APanelWithoutAccessListsChangesNothing()
+    {
+        var (loop, _, access, panel, _) = WithAccess();
+        access.Load(true, "v1", ["1"]);
+
+        await loop.Tick(Start);
+
+        Assert.Equal(0, panel.AccessFetches);
+        Assert.Equal(eServerAccess.Allowed, access.Decide("1"));
+        Assert.Equal(eServerAccess.Denied, access.Decide("2"));
     }
 }

@@ -134,6 +134,128 @@ public class SanctionsClientTests
     }
 
     [Fact]
+    public async Task ItReadsTheAccessOnTheSync()
+    {
+        StubHandler handler = new(_ =>
+            Json(
+                HttpStatusCode.OK,
+                "{\"sanctions\":[],\"access\":{\"restricted\":true,\"version\":\"abc123\",\"denied\":[\"76561198000000002\"],\"message\":\"Members only\"}}"
+            )
+        );
+
+        SanctionSync result = await new SanctionsClient(new HttpClient(handler)).Sync(
+            Settings,
+            Request()
+        );
+
+        Assert.Null(result.Error);
+        Assert.NotNull(result.Access);
+        Assert.True(result.Access!.restricted);
+        Assert.Equal("abc123", result.Access.version);
+        Assert.Equal(["76561198000000002"], result.Access.denied);
+        Assert.Equal("Members only", result.Access.message);
+    }
+
+    // A panel that predates access lists says nothing about them, which must
+    // not read as a failed sync nor as an access list.
+    [Fact]
+    public async Task APanelWithoutAccessListsIsNotAnError()
+    {
+        StubHandler handler = new(_ => Json(HttpStatusCode.OK, "{\"sanctions\":[]}"));
+
+        SanctionSync result = await new SanctionsClient(new HttpClient(handler)).Sync(
+            Settings,
+            Request()
+        );
+
+        Assert.Null(result.Error);
+        Assert.Empty(result.Sanctions!);
+        Assert.Null(result.Access);
+    }
+
+    [Fact]
+    public async Task ItGetsTheAccessListWithTheApiPassword()
+    {
+        StubHandler handler = new(_ =>
+            Json(
+                HttpStatusCode.OK,
+                "{\"restricted\":true,\"version\":\"abc123\",\"steam_ids\":[\"76561198000000001\",\"76561198000000002\"]}"
+            )
+        );
+
+        ServerAccessFetch result = await new SanctionsClient(new HttpClient(handler)).Access(
+            Settings
+        );
+
+        Assert.Equal(HttpMethod.Get, handler.Request!.Method);
+        Assert.Equal(
+            $"https://api.example.com/sanctions/server/{ServerId}/access",
+            handler.Request.RequestUri!.ToString()
+        );
+        Assert.Equal("Bearer secret", handler.Request.Headers.Authorization!.ToString());
+
+        Assert.Null(result.Error);
+        Assert.True(result.List!.restricted);
+        Assert.Equal("abc123", result.List.version);
+        Assert.Equal(["76561198000000001", "76561198000000002"], result.List.steam_ids);
+    }
+
+    [Fact]
+    public async Task AnUnauthorizedAccessListNamesTheSettingsToCheck()
+    {
+        StubHandler handler = new(_ => Json(HttpStatusCode.Unauthorized, ""));
+
+        ServerAccessFetch result = await new SanctionsClient(new HttpClient(handler)).Access(
+            Settings
+        );
+
+        Assert.Null(result.List);
+        Assert.Contains("SERVER_API_PASSWORD", result.Error);
+    }
+
+    [Theory]
+    [InlineData("<html>bad gateway</html>")]
+    [InlineData("null")]
+    [InlineData("{\"restricted\":true,\"steam_ids\":[]}")]
+    public async Task AnUnreadableAccessListIsAnErrorNotAList(string body)
+    {
+        StubHandler handler = new(_ => Json(HttpStatusCode.OK, body));
+
+        ServerAccessFetch result = await new SanctionsClient(new HttpClient(handler)).Access(
+            Settings
+        );
+
+        Assert.Null(result.List);
+        Assert.False(string.IsNullOrEmpty(result.Error));
+    }
+
+    [Fact]
+    public async Task AnUnreachablePanelIsAnAccessErrorNotAThrow()
+    {
+        StubHandler handler = new(_ => throw new HttpRequestException("connection refused"));
+
+        ServerAccessFetch result = await new SanctionsClient(new HttpClient(handler)).Access(
+            Settings
+        );
+
+        Assert.Null(result.List);
+        Assert.Equal("connection refused", result.Error);
+    }
+
+    [Fact]
+    public async Task AnUnconfiguredServerNeverAsksForTheAccessList()
+    {
+        StubHandler handler = new(_ => Json(HttpStatusCode.OK, "{}"));
+
+        ServerAccessFetch result = await new SanctionsClient(new HttpClient(handler)).Access(
+            new PlayerManagementSettings()
+        );
+
+        Assert.Null(handler.Request);
+        Assert.Null(result.List);
+    }
+
+    [Fact]
     public async Task AnUnconfiguredServerNeverCallsThePanel()
     {
         StubHandler handler = new(_ => Json(HttpStatusCode.OK, "{\"sanctions\":[]}"));

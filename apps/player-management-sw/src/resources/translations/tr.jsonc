@@ -5,5 +5,6 @@
   "sanction.ungagged": " [green]Sohbet yasağınız kaldırıldı",
   "sanction.reason": " [grey]Sebep: {0}",
   "sanction.until": " [grey]Bitiş: {0}",
-  "sanction.permanent": " [grey]Kalıcı"
+  "sanction.permanent": " [grey]Kalıcı",
+  "access.denied": "Bu sunucu özeldir: erişim listesinde değilsiniz"
 }
