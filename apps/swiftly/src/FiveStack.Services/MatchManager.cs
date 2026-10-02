@@ -1454,14 +1454,15 @@ public class MatchManager
             return;
         }
 
-        bool changed = false;
-
         // player.Name is the engine's client name, which never reflects our rename
         if (player.Controller.PlayerName != name)
         {
             player.Controller.PlayerName = name;
             player.Controller.PlayerNameUpdated();
-            changed = true;
+
+            // force the client to update the player name; firing this unconditionally
+            // rebuilds every scoreboard on each call, which strobes under repeating timers
+            _core.GameEvent.FireToPlayer<EventNextlevelChanged>(player.Slot);
         }
 
         if (tag != null)
@@ -1477,30 +1478,7 @@ public class MatchManager
             }
         }
 
-        if (player.Controller.Clan != tag)
-        {
-            player.Controller.Clan = tag ?? "";
-            player.Controller.ClanUpdated();
-            changed = true;
-
-            var gameRules = _core
-                .EntitySystem.GetAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
-                .FirstOrDefault();
-
-            if (gameRules?.GameRules != null)
-            {
-                gameRules.GameRules.NextUpdateTeamClanNamesTime =
-                    _core.Engine.GlobalVars.CurrentTime - 0.01f;
-                gameRules.GameRulesUpdated();
-            }
-        }
-
-        // force the client to update the player name; firing this unconditionally
-        // rebuilds every scoreboard on each call, which strobes under repeating timers
-        if (changed)
-        {
-            _core.GameEvent.FireToPlayer<EventNextlevelChanged>(player.Slot);
-        }
+        ClanTagUtility.Set(player.Controller, tag ?? "");
     }
 
     public void RestorePlayerName(IPlayer player)
