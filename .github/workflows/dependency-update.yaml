@@ -24,6 +24,10 @@ jobs:
       # the next check starts by discarding whatever is left unstaged. A check
       # that fails halfway therefore ships nothing, while the others still go
       # out -- a runtime bumped without its nugets breaks the ABI.
+      #
+      # Upstream tags and URLs are spliced into sed scripts, where a `|` lets one
+      # end the s command and GNU sed's `e` run a shell command with this job's
+      # write token, so each has to match its expected shape before it is used.
       - name: SwiftlyS2
         run: |
           set -euo pipefail
@@ -41,6 +45,10 @@ jobs:
           fi
           if [ -z "$LATEST" ] || [ "$LATEST" = "null" ] || [ "$CURRENT" = "$LATEST" ]; then
             exit 0
+          fi
+          if [[ ! "$LATEST" =~ ^v[0-9]+(\.[0-9]+)+$ ]]; then
+            echo "::error::unexpected SwiftlyS2 tag: $LATEST"
+            exit 1
           fi
           NUGET_VERSION="${LATEST#v}"
 
@@ -84,6 +92,10 @@ jobs:
           if [ "$CURRENT_URL" = "$LATEST_URL" ]; then
             exit 0
           fi
+          if [[ ! "$LATEST_URL" =~ ^https://github\.com/roflmuffin/CounterStrikeSharp/releases/download/v[0-9.]+/[A-Za-z0-9._-]+$ ]]; then
+            echo "::error::unexpected CounterStrikeSharp asset URL: $LATEST_URL"
+            exit 1
+          fi
           VERSION_NUMBER=$(echo "$LATEST_URL" | grep -oP 'v\K\d+\.\d+\.\d+' | head -1)
 
           sed -i "s|ENV COUNTER_STRIKE_SHARP_URL=.*|ENV COUNTER_STRIKE_SHARP_URL=${LATEST_URL}|" apps/counterstrikesharp/Dockerfile
@@ -124,6 +136,10 @@ jobs:
           if [ "$CURRENT_URL" = "$LATEST_URL" ]; then
             exit 0
           fi
+          if [[ ! "$LATEST_URL" =~ ^https://github\.com/alliedmodders/metamod-source/releases/download/[0-9.]+/mmsource-[A-Za-z0-9.-]+-linux\.tar\.gz$ ]]; then
+            echo "::error::unexpected metamod asset URL: $LATEST_URL"
+            exit 1
+          fi
           BUILD_ID=$(echo "$LATEST_URL" | grep -oP '(?<=mmsource-)[^/]+(?=-linux)')
 
           sed -i "s|ENV METAMOD_URL=.*|ENV METAMOD_URL=${LATEST_URL}|" apps/counterstrikesharp/Dockerfile
@@ -146,6 +162,10 @@ jobs:
 
           if [ -z "$LATEST" ] || [ "$LATEST" = "null" ] || [ "$CURRENT" = "$LATEST" ]; then
             exit 0
+          fi
+          if [[ ! "$LATEST" =~ ^v[0-9]+(\.[0-9]+)+$ ]]; then
+            echo "::error::unexpected AddonsManager tag: $LATEST"
+            exit 1
           fi
 
           # The download URL is built from the version, and the asset has been
