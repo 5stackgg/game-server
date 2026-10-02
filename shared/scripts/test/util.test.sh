@@ -177,6 +177,66 @@ assert_equals "$(cat "$workdir/plugins/addons/swiftlys2/configs/plugins/Existing
   "SHARED-ORIGINAL" "per-match config leaked onto the shared node volume"
 teardown
 
+# On a dedicated server $workdir/plugins is the server's own directory and the
+# node-wide volume sits at /opt/node-plugins, so the file belongs on the
+# server's disk, where its Files tab shows it.
+echo "write_plugin_configs writes into a dedicated server's own directory"
+setup
+mkdir -p "$workdir/node-plugins"
+NODE_PLUGINS_DIR="$workdir/node-plugins" CUSTOM_PLUGINS_DIR="$workdir/plugins" \
+  PLUGIN_CONFIGS="$(printf '%s' '{"addons/swiftlys2/configs/plugins/Deathmatch/modes.json":"[]"}' | base64)" \
+  write_plugin_configs "$workdir/instance/game/csgo" > /dev/null 2>&1
+assert_equals "$(cat "$workdir/plugins/addons/swiftlys2/configs/plugins/Deathmatch/modes.json" 2>/dev/null)" \
+  "[]" "the file did not reach the dedicated server's own directory"
+echo "WRITTEN-AT-RUNTIME" \
+  > "$workdir/instance/game/csgo/addons/swiftlys2/configs/plugins/Existing/generated.jsonc"
+assert_equals "$(cat "$workdir/plugins/addons/swiftlys2/configs/plugins/Existing/generated.jsonc" 2>/dev/null)" \
+  "WRITTEN-AT-RUNTIME" "a plugin's runtime config stopped reaching the server's directory"
+teardown
+
+# Only a dedicated server has the node's volume at /opt/node-plugins. Without
+# it, /opt/custom-plugins is the node-wide volume and has to stay untouched.
+echo "write_plugin_configs keeps a match server's file off the node volume"
+setup
+NODE_PLUGINS_DIR="$workdir/no-node-plugins" CUSTOM_PLUGINS_DIR="$workdir/plugins" \
+  PLUGIN_CONFIGS="$(printf '%s' '{"addons/swiftlys2/configs/plugins/Existing/config.jsonc":"PER-MATCH"}' | base64)" \
+  write_plugin_configs "$workdir/instance/game/csgo" > /dev/null 2>&1
+assert_equals "$(cat "$workdir/plugins/addons/swiftlys2/configs/plugins/Existing/config.jsonc")" \
+  "SHARED-ORIGINAL" "a match server's config was written onto the node volume"
+teardown
+
+# A plugin can ship a file at the path the panel writes. Linked in from the
+# node's copy, writing through the link would change it for the whole node.
+echo "write_plugin_configs never writes through a file linked from the node"
+setup
+mkdir -p "$workdir/node-plugins/addons/swiftlys2/configs/plugins/Shipped"
+echo "NODE-COPY" > "$workdir/node-plugins/addons/swiftlys2/configs/plugins/Shipped/config.jsonc"
+mkdir -p "$workdir/plugins/addons/swiftlys2/configs/plugins/Shipped"
+ln -s "$workdir/node-plugins/addons/swiftlys2/configs/plugins/Shipped/config.jsonc" \
+  "$workdir/plugins/addons/swiftlys2/configs/plugins/Shipped/config.jsonc"
+NODE_PLUGINS_DIR="$workdir/node-plugins" CUSTOM_PLUGINS_DIR="$workdir/plugins" \
+  PLUGIN_CONFIGS="$(printf '%s' '{"addons/swiftlys2/configs/plugins/Shipped/config.jsonc":"THIS-SERVER"}' | base64)" \
+  write_plugin_configs "$workdir/instance/game/csgo" > /dev/null 2>&1
+assert_equals "$(cat "$workdir/node-plugins/addons/swiftlys2/configs/plugins/Shipped/config.jsonc")" \
+  "NODE-COPY" "the panel's file was written into the node's copy"
+assert_equals "$(cat "$workdir/plugins/addons/swiftlys2/configs/plugins/Shipped/config.jsonc")" \
+  "THIS-SERVER" "the server did not get the panel's file"
+teardown
+
+# Linking plugins is not writing a file: it still splits a gated directory out
+# of the server's own disk instead of planting node links there.
+echo "link_plugins still copies a gated directory on a dedicated server"
+setup
+mkdir -p "$workdir/node-plugins"
+printf 'retakes\t1.2.0\taddons/swiftlys2/configs/plugins/Existing/config.jsonc\n' \
+  >> "$workdir/plugins/.5stack-plugins/index"
+NODE_PLUGINS_DIR="$workdir/node-plugins" CUSTOM_PLUGINS_DIR="$workdir/plugins" \
+  ENABLED_PLUGINS="inventory-simulator@3.1.0" \
+  link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
+assert_equals "$([ -L "$workdir/instance/game/csgo/addons/swiftlys2/configs" ] && echo link || echo dir)" \
+  "dir" "a gated directory was left linked to the server's disk"
+teardown
+
 echo "write_plugin_configs refuses absolute and traversal paths"
 setup
 output="$(PLUGIN_CONFIGS="$(printf '%s' '{"/etc/passwd":"x","../escape":"y"}' | base64)" \
