@@ -13,14 +13,21 @@ CONSOLE_TAIL_LINES=2000
 # Where the engine's crash handler writes minidumps, inside the container.
 MINIDUMP_DIR="/tmp/dumps"
 
+CONSOLE_PIPE_DIR="/tmp"
+
 # Runs the server and, when it crashes, saves a report before the container
-# exits and takes /tmp with it.
+# exits and takes /tmp with it. SIGUSR1 is how the panel stops a server.
 run_server() {
   local started_at
   started_at="$(date -u +%s)"
 
+  # Read up front: steam.inf is in the node's shared install, which a game
+  # update can replace underneath a running server.
+  local game_version
+  game_version="$(game_version)"
+
   local console_pipe
-  console_pipe="$(mktemp -u /tmp/console.XXXXXX)"
+  console_pipe="$(mktemp -u "${CONSOLE_PIPE_DIR}/console.XXXXXX")"
   mkfifo "$console_pipe"
 
   local console_file="${console_pipe}.log"
@@ -29,24 +36,39 @@ run_server() {
   console_tail "$console_file" "$map_file" < "$console_pipe" &
   local console_pid=$!
 
-  # The engine's stdout is block buffered into a pipe, so without this a crash
-  # loses the last few KB of console, which is where the cause is. CS:GO's
-  # srcds_linux is 32-bit and cannot preload the 64-bit libstdbuf.
+  trap 'echo "Received signal to stop the match"; exit 0' SIGUSR1
+
+  # setsid puts the server in its own process group, so anything it leaves
+  # behind holding the console can be stopped once it exits. The engine's
+  # stdout is block buffered into a pipe, so without stdbuf a crash loses the
+  # last few KB of console, which is where the cause is. CS:GO's srcds_linux
+  # is 32-bit and cannot preload the 64-bit libstdbuf.
   if [ "${GAME_ID}" = "740" ]; then
-    "$@" > "$console_pipe" 2>&1 &
+    setsid "$@" > "$console_pipe" 2>&1 &
   else
-    stdbuf -oL "$@" > "$console_pipe" 2>&1 &
+    setsid stdbuf -oL "$@" > "$console_pipe" 2>&1 &
   fi
   local server_pid=$!
 
   wait "$server_pid"
   local status=$?
 
+  # A stop that lands while the report is being written still gets its clean
+  # exit, but not before the report is saved.
+  local stop_requested=""
+  trap 'stop_requested=1' SIGUSR1
+
+  kill -TERM -- "-${server_pid}" 2> /dev/null
   await_console_tail "$console_pid"
   rm -f "$console_pipe"
 
   if server_crashed "$status"; then
-    write_crash_report "$status" "$started_at" "$console_file" "$map_file"
+    write_crash_report "$status" "$started_at" "$game_version" "$console_file" "$map_file"
+  fi
+
+  if [ -n "$stop_requested" ]; then
+    echo "Received signal to stop the match"
+    return 0
   fi
 
   return "$status"
@@ -54,12 +76,13 @@ run_server() {
 
 # Passes the console through to the container log a line at a time, keeping
 # the last lines and the map, which are written once the console closes. mawk
-# holds lines back until its read buffer fills without -W interactive.
+# holds lines back until its read buffer fills without -W interactive. exec,
+# so the pid run_server waits on and kills is mawk's own.
 console_tail() {
   local console_file="$1"
   local map_file="$2"
 
-  mawk -W interactive -v keep="$CONSOLE_TAIL_LINES" -v console_file="$console_file" -v map_file="$map_file" '
+  exec mawk -W interactive -v keep="$CONSOLE_TAIL_LINES" -v console_file="$console_file" -v map_file="$map_file" '
     { print; ring[NR % keep] = $0 }
     /^Host activate: (Loading|Changelevel) \(/ {
       map = $0
@@ -78,8 +101,9 @@ console_tail() {
   '
 }
 
-# Bounded: a child the server left behind can hold the console open past its
-# exit, and the container must still stop.
+# Bounded: a child that left the server's process group can hold the console
+# open past its exit, and the container must still stop. The console is then
+# lost, which the report records.
 await_console_tail() {
   local console_pid="$1"
   local waited=0
@@ -109,8 +133,9 @@ server_crashed() {
 write_crash_report() {
   local status="$1"
   local started_at="$2"
-  local console_file="$3"
-  local map_file="$4"
+  local game_version="$3"
+  local console_file="$4"
+  local map_file="$5"
 
   local crashed_at
   crashed_at="$(date -u +%s)"
@@ -124,8 +149,10 @@ write_crash_report() {
     return 1
   fi
 
+  local console_saved=false
   if [ -f "$console_file" ]; then
     mv "$console_file" "${report_dir}/console.log"
+    console_saved=true
   fi
 
   local map=""
@@ -152,12 +179,14 @@ write_crash_report() {
     echo "started_at=$(date -u -d "@${started_at}" +%Y-%m-%dT%H:%M:%SZ)"
     echo "crashed_at=$(date -u -d "@${crashed_at}" +%Y-%m-%dT%H:%M:%SZ)"
     echo "map=${map}"
+    echo "image=${GAME_SERVER_IMAGE:-}"
     echo "image_version=${RELEASE_VERSION:-}"
     echo "game_id=${GAME_ID:-}"
-    echo "game_version=$(game_version)"
+    echo "game_version=${game_version}"
     echo "enabled_plugins=${ENABLED_PLUGINS:-}"
     echo "launch_params=$(redact_passwords "${EXTRA_GAME_PARAMS:-}")"
     echo "minidumps=${minidumps}"
+    echo "console_saved=${console_saved}"
   } > "${report_dir}/crash.txt"
 
   prune_crash_reports "$server_dir"

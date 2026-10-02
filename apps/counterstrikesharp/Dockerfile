@@ -203,5 +203,6 @@ RUN mv /opt/metamod/addons /opt/addons && \
 # Recorded in crash reports, since servers run the moving :latest tag.
 ARG RELEASE_VERSION
 ENV RELEASE_VERSION=${RELEASE_VERSION}
+ENV GAME_SERVER_IMAGE="game-server-css"
 
 ENTRYPOINT ["/bin/bash", "-c", "/opt/scripts/setup.sh && /opt/scripts/server.sh"]

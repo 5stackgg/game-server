@@ -26,6 +26,4 @@ else
     GAME_ARGS=""
 fi
 
-trap 'echo "Received signal to stop the match"; exit 0' SIGUSR1
-
 run_server "${SERVER_BINARY}" ${GAME_ARGS} -ip 0.0.0.0 -port ${SERVER_PORT} +tv_port ${TV_PORT} -dedicated -dev -usercon +rcon_password ${RCON_PASSWORD} ${EXTRA_GAME_PARAMS}

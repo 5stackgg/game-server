@@ -218,5 +218,6 @@ RUN cp -R /opt/swiftlys2/swiftlys2-linux-${SWIFTLYS2_VERSION}-with-runtimes/addo
 # Recorded in crash reports, since servers run the moving :latest tag.
 ARG RELEASE_VERSION
 ENV RELEASE_VERSION=${RELEASE_VERSION}
+ENV GAME_SERVER_IMAGE="game-server-sw"
 
 ENTRYPOINT ["/bin/bash", "-c", "/opt/scripts/setup.sh && /opt/scripts/server.sh"]
