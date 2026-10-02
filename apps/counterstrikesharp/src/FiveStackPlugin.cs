@@ -85,12 +85,6 @@ public partial class FiveStackPlugin : BasePlugin
             CounterStrikeSharp.API.Modules.Timers.TimerFlags.REPEAT
         );
 
-        TimerUtility.AddTimer(
-            CommunicationAbuseMute.RecheckInterval,
-            RecheckCommunicationAbuseMutes,
-            CounterStrikeSharp.API.Modules.Timers.TimerFlags.REPEAT
-        );
-
         if (hotReload)
         {
             _steamAPI.OnSteamAPIActivated();

@@ -126,8 +126,6 @@ public partial class FiveStackPlugin : BasePlugin
 
         _rankSystem.Start();
 
-        TimerUtility.Repeat(CommunicationAbuseMute.RecheckInterval, RecheckCommunicationAbuseMutes);
-
         Core.Event.OnMapLoad += OnMapLoad;
 
         _precacheHandler = (@event) =>

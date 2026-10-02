@@ -11,32 +11,13 @@ public partial class FiveStackPlugin
     private const string CommunicationAbuseMuteClass = "CCSPlayerController";
     private const string CommunicationAbuseMuteField = "m_bHasCommunicationAbuseMute";
 
-    private readonly CommunicationAbuseMute _communicationAbuseMute = new();
     private bool? _communicationAbuseMuteSupported;
 
-    private void RecheckCommunicationAbuseMutes()
-    {
-        List<ulong> due = _communicationAbuseMute.Due();
-
-        if (due.Count == 0)
-        {
-            return;
-        }
-
-        foreach (CCSPlayerController player in MatchUtility.Players())
-        {
-            if (due.Contains(player.SteamID) && ClearCommunicationAbuseMute(player))
-            {
-                _communicationAbuseMute.Reasserted(player.SteamID);
-            }
-        }
-    }
-
-    private bool ClearCommunicationAbuseMute(CCSPlayerController player)
+    private void ClearCommunicationAbuseMute(CCSPlayerController player, LogLevel logLevel)
     {
         if (!CommunicationAbuseMuteSupported())
         {
-            return false;
+            return;
         }
 
         try
@@ -51,7 +32,7 @@ public partial class FiveStackPlugin
                 )
             )
             {
-                return false;
+                return;
             }
 
             player.HasCommunicationAbuseMute = false;
@@ -67,22 +48,13 @@ public partial class FiveStackPlugin
                 ex,
                 $"Could not clear Valve's communication abuse mute on {player.SteamID}"
             );
-            return false;
+            return;
         }
 
-        string message =
-            $"Cleared Valve's communication abuse mute on {player.PlayerName} ({player.SteamID})";
-
-        if (_communicationAbuseMute.FirstClear(player.SteamID))
-        {
-            _logger.LogInformation(message);
-        }
-        else
-        {
-            _logger.LogDebug(message);
-        }
-
-        return true;
+        _logger.Log(
+            logLevel,
+            $"Cleared Valve's communication abuse mute on {player.PlayerName} ({player.SteamID})"
+        );
     }
 
     // CounterStrikeSharp resolves a missing schema field to offset 0 instead of
