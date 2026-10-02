@@ -20,7 +20,8 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        WatchCommunicationAbuseMute(@event.Userid);
+        _communicationAbuseMute.Watch(@event.Userid.SteamID);
+        ClearCommunicationAbuseMute(@event.Userid);
 
         MatchManager? match = _matchService.GetCurrentMatch();
 

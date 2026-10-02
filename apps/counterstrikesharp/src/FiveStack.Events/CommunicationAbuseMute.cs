@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Memory;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
@@ -7,14 +8,11 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    private readonly CommunicationAbuseMute _communicationAbuseMute = new();
-    private bool _communicationAbuseMuteFailed;
+    private const string CommunicationAbuseMuteClass = "CCSPlayerController";
+    private const string CommunicationAbuseMuteField = "m_bHasCommunicationAbuseMute";
 
-    private void WatchCommunicationAbuseMute(CCSPlayerController player)
-    {
-        ClearCommunicationAbuseMute(player);
-        _communicationAbuseMute.Watch(player.SteamID);
-    }
+    private readonly CommunicationAbuseMute _communicationAbuseMute = new();
+    private bool? _communicationAbuseMuteSupported;
 
     private void RecheckCommunicationAbuseMutes()
     {
@@ -29,14 +27,14 @@ public partial class FiveStackPlugin
         {
             if (due.Contains(player.SteamID) && ClearCommunicationAbuseMute(player))
             {
-                _communicationAbuseMute.Watch(player.SteamID);
+                _communicationAbuseMute.Reasserted(player.SteamID);
             }
         }
     }
 
     private bool ClearCommunicationAbuseMute(CCSPlayerController player)
     {
-        if (_communicationAbuseMuteFailed)
+        if (!CommunicationAbuseMuteSupported())
         {
             return false;
         }
@@ -46,7 +44,10 @@ public partial class FiveStackPlugin
             if (
                 !CommunicationAbuseMute.ShouldClear(
                     player.HasCommunicationAbuseMute,
-                    player.VoiceFlags.HasFlag(VoiceFlags.Muted)
+                    player.VoiceFlags.HasFlag(VoiceFlags.Muted),
+                    _matchService.GetCurrentMatch()?.GetMatchData(),
+                    player.SteamID.ToString(),
+                    player.PlayerName
                 )
             )
             {
@@ -56,24 +57,57 @@ public partial class FiveStackPlugin
             player.HasCommunicationAbuseMute = false;
             CounterStrikeSharp.API.Utilities.SetStateChanged(
                 player,
-                "CCSPlayerController",
-                "m_bHasCommunicationAbuseMute"
+                CommunicationAbuseMuteClass,
+                CommunicationAbuseMuteField
             );
-
-            _logger.LogInformation(
-                $"Cleared Valve's communication abuse mute on {player.PlayerName} ({player.SteamID})"
-            );
-
-            return true;
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _communicationAbuseMuteFailed = true;
-            _logger.LogError(
+            _logger.LogDebug(
                 ex,
-                "Could not clear Valve's communication abuse mute; leaving it alone until the plugin reloads"
+                $"Could not clear Valve's communication abuse mute on {player.SteamID}"
             );
             return false;
         }
+
+        string message =
+            $"Cleared Valve's communication abuse mute on {player.PlayerName} ({player.SteamID})";
+
+        if (_communicationAbuseMute.FirstClear(player.SteamID))
+        {
+            _logger.LogInformation(message);
+        }
+        else
+        {
+            _logger.LogDebug(message);
+        }
+
+        return true;
+    }
+
+    // CounterStrikeSharp resolves a missing schema field to offset 0 instead of
+    // throwing, so touching the field without this check would write into the
+    // controller's vtable.
+    private bool CommunicationAbuseMuteSupported()
+    {
+        if (_communicationAbuseMuteSupported == null)
+        {
+            _communicationAbuseMuteSupported =
+                Schema.IsSchemaFieldNetworked(
+                    CommunicationAbuseMuteClass,
+                    CommunicationAbuseMuteField
+                )
+                && Schema.GetSchemaOffset(CommunicationAbuseMuteClass, CommunicationAbuseMuteField)
+                    > 0;
+
+            if (_communicationAbuseMuteSupported == false)
+            {
+                _logger.LogWarning(
+                    "CCSPlayerController.m_bHasCommunicationAbuseMute is not available; leaving Valve's report mute to sv_mute_players_with_social_penalties"
+                );
+            }
+        }
+
+        return _communicationAbuseMuteSupported.Value;
     }
 }

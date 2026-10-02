@@ -8,13 +8,7 @@ namespace FiveStack;
 public partial class FiveStackPlugin
 {
     private readonly CommunicationAbuseMute _communicationAbuseMute = new();
-    private bool _communicationAbuseMuteFailed;
-
-    private void WatchCommunicationAbuseMute(IPlayer player)
-    {
-        ClearCommunicationAbuseMute(player);
-        _communicationAbuseMute.Watch(player.SteamID);
-    }
+    private bool? _communicationAbuseMuteSupported;
 
     private void RecheckCommunicationAbuseMutes()
     {
@@ -29,26 +23,29 @@ public partial class FiveStackPlugin
         {
             if (due.Contains(player.SteamID) && ClearCommunicationAbuseMute(player))
             {
-                _communicationAbuseMute.Watch(player.SteamID);
+                _communicationAbuseMute.Reasserted(player.SteamID);
             }
         }
     }
 
     private bool ClearCommunicationAbuseMute(IPlayer player)
     {
-        if (_communicationAbuseMuteFailed)
+        CCSPlayerController controller = player.Controller;
+
+        if (!CommunicationAbuseMuteSupported(controller))
         {
             return false;
         }
 
         try
         {
-            CCSPlayerController controller = player.Controller;
-
             if (
                 !CommunicationAbuseMute.ShouldClear(
                     controller.HasCommunicationAbuseMute,
-                    player.VoiceFlags.HasFlag(VoiceFlagValue.Muted)
+                    player.VoiceFlags.HasFlag(VoiceFlagValue.Muted),
+                    _matchService.GetCurrentMatch()?.GetMatchData(),
+                    player.SteamID.ToString(),
+                    player.Name
                 )
             )
             {
@@ -57,21 +54,50 @@ public partial class FiveStackPlugin
 
             controller.HasCommunicationAbuseMute = false;
             controller.HasCommunicationAbuseMuteUpdated();
-
-            _logger.LogInformation(
-                $"Cleared Valve's communication abuse mute on {player.Name} ({player.SteamID})"
-            );
-
-            return true;
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _communicationAbuseMuteFailed = true;
-            _logger.LogError(
+            _logger.LogDebug(
                 ex,
-                "Could not clear Valve's communication abuse mute; leaving it alone until the plugin reloads"
+                $"Could not clear Valve's communication abuse mute on {player.SteamID}"
             );
             return false;
         }
+
+        string message =
+            $"Cleared Valve's communication abuse mute on {player.Name} ({player.SteamID})";
+
+        if (_communicationAbuseMute.FirstClear(player.SteamID))
+        {
+            _logger.LogInformation(message);
+        }
+        else
+        {
+            _logger.LogDebug(message);
+        }
+
+        return true;
+    }
+
+    private bool CommunicationAbuseMuteSupported(CCSPlayerController controller)
+    {
+        if (_communicationAbuseMuteSupported == null)
+        {
+            try
+            {
+                _ = controller.HasCommunicationAbuseMute;
+                _communicationAbuseMuteSupported = true;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _communicationAbuseMuteSupported = false;
+                _logger.LogWarning(
+                    ex,
+                    "CCSPlayerController.m_bHasCommunicationAbuseMute is not available; leaving Valve's report mute to sv_mute_players_with_social_penalties"
+                );
+            }
+        }
+
+        return _communicationAbuseMuteSupported.Value;
     }
 }
