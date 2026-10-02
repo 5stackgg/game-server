@@ -36,9 +36,19 @@ jobs:
       # sidesteps the question of whether the compiler is deterministic.
       - name: Has the addon actually changed?
         id: changed
+        env:
+          ITEM_ID: ${{ inputs.item_id }}
+          FORCE: ${{ inputs.force }}
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
           set -euo pipefail
           HUD=apps/utility-sw/hud
+
+          # the id names the vpk and is handed to steamcmd, so only a bare Workshop id
+          if [[ -n "$ITEM_ID" && ! "$ITEM_ID" =~ ^[0-9]+$ ]]; then
+            echo "::error::item_id must be a numeric Workshop id"
+            exit 1
+          fi
 
           PREVIEW=""
           for c in "$HUD/preview.jpg" "$HUD/preview.png"; do
@@ -48,7 +58,7 @@ jobs:
           KEY=$( { git rev-parse "HEAD:$HUD/panorama"
                    git hash-object "$HUD/build.sh" "$HUD/addoninfo.txt" ${PREVIEW:+"$PREVIEW"}
                    echo "${PANORAMA_COMPILER_REF:-main}"
-                   echo "${{ inputs.item_id }}"
+                   echo "$ITEM_ID"
                  } | sha256sum | cut -c1-16 )
           TAG="hud-published/$KEY"
           echo "key=$KEY" >> "$GITHUB_OUTPUT"
@@ -63,7 +73,7 @@ jobs:
 
           # A dry run still builds -- verifying an unchanged addon is the point of
           # one. Only the upload is suppressed by an unchanged key.
-          if [ "$PUBLISHED" = no ] || [ "${{ inputs.force }}" = true ] || [ "${{ inputs.dry_run }}" = true ]; then
+          if [ "$PUBLISHED" = no ] || [ "$FORCE" = true ] || [ "$DRY_RUN" = true ]; then
             echo "proceed=yes" >> "$GITHUB_OUTPUT"
           else
             echo "proceed=no" >> "$GITHUB_OUTPUT"
@@ -103,9 +113,10 @@ jobs:
       # them plus the stylesheet.
       - name: Verify what was packed
         if: steps.changed.outputs.proceed == 'yes'
+        env:
+          ITEM_ID: ${{ inputs.item_id }}
         run: |
           set -euo pipefail
-          ITEM_ID="${{ inputs.item_id }}"
           VPK=$(ls apps/utility-sw/hud/build/upload/*.vpk 2>/dev/null | head -1)
           [ -n "$VPK" ] && [ -f "$VPK" ] || { echo "::error::no vpk was produced"; exit 1; }
 
