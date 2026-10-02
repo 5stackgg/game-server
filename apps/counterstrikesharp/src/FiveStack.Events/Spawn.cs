@@ -15,9 +15,16 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnEventPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
     {
+        if (@event.Userid == null || !@event.Userid.IsValid || @event.Userid.IsBot)
+        {
+            return HookResult.Continue;
+        }
+
+        ClearCommunicationAbuseMute(@event.Userid, LogLevel.Debug);
+
         MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (@event.Userid == null || !@event.Userid.IsValid || @event.Userid.IsBot || match == null)
+        if (match == null)
         {
             return HookResult.Continue;
         }
