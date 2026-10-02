@@ -206,15 +206,9 @@ if $INSTALL_UTILITY_PRACTICE_PLUGIN = true ; then
     echo "---Utility Practice: plugin dir already present, skipping /opt/utility-practice symlink---"
   fi
 
-  # The HUD's Panorama layouts live in a workshop addon, and CS2 has no
-  # server-to-client file transfer -- AddonsManager names the id to connecting
-  # clients and Steam delivers it. Without this the plugin still works, falling
-  # back to centre text, so a failure here must not stop the server.
-  #
-  # AddonsManager reads its config with optional:false and validates it on
-  # start, so anything that is not a bare numeric id writes JSON that takes the
-  # plugin down at load instead of degrading -- a pasted quote, a trailing
-  # comma, a second id. That is a typo, not a reason to lose the server.
+  # The HUD's Panorama layouts live in a workshop addon, served with the
+  # plugins' below. Without it the plugin still works, falling back to centre
+  # text, so a bad id here must not stop the server.
   case "${HUD_WORKSHOP_ID}" in
     "")
       echo "---Utility Practice: HUD_WORKSHOP_ID unset, HUD falls back to centre text---"
@@ -223,38 +217,21 @@ if $INSTALL_UTILITY_PRACTICE_PLUGIN = true ; then
       echo "---Utility Practice: HUD_WORKSHOP_ID '${HUD_WORKSHOP_ID}' is not a workshop id, HUD falls back to centre text---"
       ;;
     *)
-      ADDONS_MANAGER_PLUGIN_DIR="${INSTANCE_SERVER_DIR}/game/csgo/addons/swiftlys2/plugins/AddonsManager"
-      if [ ! -e "$ADDONS_MANAGER_PLUGIN_DIR" ]; then
-        ln -s "/opt/addons-manager/AddonsManager" "$ADDONS_MANAGER_PLUGIN_DIR"
-      fi
-
-      # Rewritten every boot: the id is ours, and a stale copy from an older
-      # image would silently serve the wrong addon.
-      #
-      # RedownloadAddonOnMount matters because this addon changes -- unlike a
-      # map, which is published once. AddonsManager only checks that an item is
-      # installed, not that it is current, so without this a server that cached
-      # an older HUD keeps serving those layouts forever and never picks up a
-      # republish.
-      #
-      # Through materialize_for_write because configs is a symlink onto the
-      # node-wide volume: written straight through it, one practice server's
-      # addon id lands in front of every other server on the node -- and
-      # AddonsManager watches the file, so a running server swaps to it live.
-      ADDONS_MANAGER_CONFIG="$(materialize_for_write "${INSTANCE_SERVER_DIR}/game/csgo" "addons/swiftlys2/configs/plugins/AddonsManager/config.jsonc")"
-      cat > "$ADDONS_MANAGER_CONFIG" <<EOF
-{
-  "Main": {
-    "Addons": [
-      "${HUD_WORKSHOP_ID}"
-    ],
-    "RedownloadAddonOnMount": true
-  }
-}
-EOF
-      echo "---Utility Practice: HUD addon ${HUD_WORKSHOP_ID} via AddonsManager---"
+      PRACTICE_HUD_ADDON="${HUD_WORKSHOP_ID}"
+      echo "---Utility Practice: HUD addon ${HUD_WORKSHOP_ID}---"
       ;;
   esac
+fi
+
+# The practice HUD's addon, and every addon the plugins this server loads list
+# in the catalog -- the panel sends those as WORKSHOP_ADDONS. AddonsManager only
+# runs when there is something to serve, so a server whose plugins ship no
+# addons never makes a player download anything.
+WORKSHOP_ADDON_IDS="$(workshop_addon_ids "${PRACTICE_HUD_ADDON:-}" "${WORKSHOP_ADDONS:-}")"
+if [ -n "$WORKSHOP_ADDON_IDS" ]; then
+  # Bare numeric ids, one per line, so splitting them is safe.
+  # shellcheck disable=SC2086
+  enable_addons_manager "${INSTANCE_SERVER_DIR}/game/csgo" $WORKSHOP_ADDON_IDS
 fi
 
 # A community server's sanctions: it runs no match plugin, so without this a

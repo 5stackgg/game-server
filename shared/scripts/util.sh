@@ -238,6 +238,99 @@ write_plugin_configs() {
   done <<< "$paths"
 }
 
+# CS2 has no server-to-client file transfer, so anything a plugin shows or plays
+# that the game does not ship -- models, sounds, Panorama layouts -- reaches
+# players as a workshop addon, which AddonsManager names to each connecting
+# client for Steam to deliver.
+#
+# Prints each workshop id in its arguments once, in order, one per line. An
+# argument may be a comma-separated list. AddonsManager reads its config with
+# optional:false and validates it on start, so one entry that is not a bare
+# numeric id -- a pasted quote, a URL, a trailing comma -- takes it down along
+# with every addon it serves. Those are dropped with a warning instead.
+workshop_addon_ids() {
+  local seen="," list id
+  local -a ids
+
+  for list in "$@"; do
+    if [ -z "$list" ]; then
+      continue
+    fi
+
+    IFS="," read -r -a ids <<< "$list"
+
+    for id in "${ids[@]}"; do
+      case "$id" in
+        "")
+          continue
+          ;;
+        *[!0-9]*)
+          echo "---Workshop Addons: '${id}' is not a workshop id, skipping it---" >&2
+          continue
+          ;;
+      esac
+
+      case "$seen" in
+        *",$id,"*) continue ;;
+      esac
+
+      seen="${seen}${id},"
+      printf '%s\n' "$id"
+    done
+  done
+}
+
+# Links the AddonsManager the SwiftlyS2 image ships into this server and has it
+# serve exactly these workshop ids, which must already be bare numbers.
+#
+# The config is rewritten every boot: the ids belong to this server, and a
+# stale copy from an older boot would silently serve the wrong addons.
+#
+# RedownloadAddonOnMount because addons change -- unlike a map, which is
+# published once. AddonsManager only checks that an item is installed, not that
+# it is current, so without it a server that cached an older copy serves it
+# forever and never picks up a republish.
+#
+# Through materialize_for_write because configs is a symlink onto the node-wide
+# volume: written straight through it, one server's addons land in front of
+# every other server on the node -- and AddonsManager watches the file, so a
+# running server swaps to them live.
+enable_addons_manager() {
+  local root="$1"
+  shift
+
+  local source="${ADDONS_MANAGER_DIR:-/opt/addons-manager/AddonsManager}"
+
+  if [ ! -d "$source" ]; then
+    echo "---Workshop Addons: this image has no AddonsManager, players will not get $*---" >&2
+    return 0
+  fi
+
+  local plugin_dir="$root/addons/swiftlys2/plugins/AddonsManager"
+
+  if [ ! -e "$plugin_dir" ]; then
+    mkdir -p "$(dirname "$plugin_dir")"
+    ln -s "$source" "$plugin_dir"
+  fi
+
+  local config
+  config="$(materialize_for_write "$root" "addons/swiftlys2/configs/plugins/AddonsManager/config.jsonc")"
+
+  # A link here is a copy shared with other servers; replace it, never write
+  # through it.
+  if [ -L "$config" ]; then
+    rm -f "$config"
+  fi
+
+  if ! jq -n '{Main: {Addons: $ARGS.positional, RedownloadAddonOnMount: true}}' \
+    --args "$@" > "$config"; then
+    echo "---Workshop Addons: could not write ${config}---" >&2
+    return 0
+  fi
+
+  echo "---Workshop Addons: serving $* via AddonsManager---"
+}
+
 # Valve keeps the server's SteamAppId 730 in this file, so the relay settings are
 # added to it rather than replacing it. The instance copy is a symlink onto the
 # node's game files, so the result is moved over the link, never written through.

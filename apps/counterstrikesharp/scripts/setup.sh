@@ -170,6 +170,12 @@ if [ "$SHOW_ELO_RANKS" = "true" ] || [ "$DISABLE_SERVER_GUIDELINES" = "true" ]; 
     sed -i --follow-symlinks 's/"FollowCS2ServerGuidelines"[[:space:]]*:[[:space:]]*true/"FollowCS2ServerGuidelines": false/' "$core_json"
 fi
 
+# Workshop addons are served by AddonsManager, which is a SwiftlyS2 plugin and
+# only ships in that image. Said out loud so a missing model is not a mystery.
+if [ -n "${WORKSHOP_ADDONS:-}" ]; then
+    echo "---Workshop Addons: ${WORKSHOP_ADDONS} need AddonsManager, which only the SwiftlyS2 image ships; players will not get them---"
+fi
+
 echo "---Check Metamod Install---"
 gameinfo_path="${INSTANCE_SERVER_DIR}/game/csgo/gameinfo.gi"
 new_line="                        Game    csgo/addons/metamod"

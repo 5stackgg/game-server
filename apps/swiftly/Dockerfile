@@ -145,8 +145,9 @@ ENV SOURCEMOD_CSGO_URL=https://sm.alliedmods.net/smdrop/1.13/sourcemod-1.13.0-gi
 ENV NO_LOBBY_RESERVATION_URL=https://github.com/nuxencs/NoLobbyReservation/releases/download/v0.0.1/NoLobbyReservation.zip
 
 # The engine natively mounts exactly one addon -- the map -- so the HUD workshop
-# item needs this to reach clients at all. Practice servers only; see setup.sh.
-# Blank disables the mount: the plugin degrades to centre text without it.
+# item needs AddonsManager to reach clients at all, as do the addons registry
+# plugins list in workshop_addons; see setup.sh. Blank disables the HUD's mount:
+# the practice plugin degrades to centre text without it.
 ENV HUD_WORKSHOP_ID="3791548068"
 
 # ARG, not ENV: the download below happens once at build time, so these are set
