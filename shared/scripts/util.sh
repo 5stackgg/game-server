@@ -135,6 +135,32 @@ materialize_dir() {
   fi
 }
 
+# A dedicated server mounts the node-wide volume at /opt/node-plugins and its
+# own directory at /opt/custom-plugins, so a link into the latter is that one
+# server's disk. Writing through it keeps the file on the server's Files tab,
+# and keeps whatever plugins write at runtime there too; copying it out left
+# both inside the container, gone on the next restart.
+server_owned_link() {
+  local dir="$1"
+
+  if [ ! -L "$dir" ] || [ ! -d "${NODE_PLUGINS_DIR:-/opt/node-plugins}" ]; then
+    return 1
+  fi
+
+  local own
+  own="$(readlink -f "${CUSTOM_PLUGINS_DIR:-/opt/custom-plugins}")"
+
+  if [ -z "$own" ]; then
+    return 1
+  fi
+
+  case "$(readlink -f "$dir")/" in
+    "$own/"*) return 0 ;;
+  esac
+
+  return 1
+}
+
 materialize_for_write() {
   local root="$1"
   local relative="$2"
@@ -149,7 +175,10 @@ materialize_for_write() {
       local segment="${remaining%%/*}"
 
       current="$current/$segment"
-      materialize_dir "$current"
+
+      if ! server_owned_link "$current"; then
+        materialize_dir "$current"
+      fi
 
       if [ "$remaining" = "$segment" ]; then
         remaining=""
@@ -197,6 +226,12 @@ write_plugin_configs() {
 
     local destination
     destination="$(materialize_for_write "$root" "$relative")"
+
+    # A file linked in from a plugin's own release is the node's copy; writing
+    # through the link would hand this server's file to every server there.
+    if [ -L "$destination" ]; then
+      rm -f "$destination"
+    fi
 
     printf '%s' "$decoded" | jq -r --arg key "$relative" '.[$key]' > "$destination"
     echo "---Plugin Configs: wrote ${relative}---"
