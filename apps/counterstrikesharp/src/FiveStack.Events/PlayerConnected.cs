@@ -16,16 +16,17 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnPlayerConnect(EventPlayerConnectFull @event, GameEventInfo info)
     {
+        if (@event.Userid == null || !@event.Userid.IsValid || @event.Userid.IsBot)
+        {
+            return HookResult.Continue;
+        }
+
+        WatchCommunicationAbuseMute(@event.Userid);
+
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchData? matchData = match?.GetMatchData();
 
-        if (
-            @event.Userid == null
-            || !@event.Userid.IsValid
-            || @event.Userid.IsBot
-            || match == null
-            || matchData?.current_match_map_id == null
-        )
+        if (match == null || matchData?.current_match_map_id == null)
         {
             return HookResult.Continue;
         }
