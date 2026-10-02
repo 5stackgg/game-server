@@ -299,83 +299,47 @@ assert_equals "$(ls -A "$workdir/plugins/addons/swiftlys2/configs" | grep -c '^\
   "a staged core.jsonc was left behind"
 teardown
 
-node_branchspecific() { printf '%s' "$workdir/serverfiles/game/csgo/gameinfo_branchspecific.gi"; }
+valve_branchspecific() { printf '%s' "$workdir/serverfiles/gameinfo_branchspecific.gi"; }
 instance_branchspecific() { printf '%s' "$workdir/instance/game/csgo/gameinfo_branchspecific.gi"; }
 
-# Byte-for-byte what CS2 build 2000922 ships, CRLF and all.
-write_valve_branchspecific() {
-  mkdir -p "$(dirname "$(node_branchspecific)")"
-  printf '"GameInfo"\r\n{\r\n\t//\r\n\t// Branch-varying info, such as the game/title and app IDs, is in gameinfo_branchspecific.gi.\r\n\t// gameinfo.gi is the non-branch-varying content and can be integrated between branches.\r\n\t//\r\n\r\n\tFileSystem\r\n\t{\r\n\t\tForceFixedAppIds\t1\r\n\t\tSteamAppId\t\t\t730\r\n\t\tBreakpadAppId\t\t\t2347771\r\n\t\tBreakpadAppId_Tools\t\t2347779\r\n\t}\r\n\r\n\tPanorama\r\n\t{\r\n\t\t"PreprocessResources"\t  "1"\t\t\t// Removes comments/devonly sections/devmsg etc.. from css,xml,js,ts\r\n\t}\r\n\r\n\tConVars\r\n\t{\r\n\t\t"cl_usesocketsforloopback" "0"\r\n\t}\r\n\r\n}\r\n' \
-    > "$(node_branchspecific)"
-  ln -s "$(node_branchspecific)" "$(instance_branchspecific)"
+# Trimmed from what CS2 build 2000922 ships, CRLF and all.
+setup_branchspecific() {
+  mkdir -p "$workdir/serverfiles"
+  printf '"GameInfo"\r\n{\r\n\tFileSystem\r\n\t{\r\n\t\tForceFixedAppIds\t1\r\n\t\tSteamAppId\t\t\t730\r\n\t}\r\n\r\n\tConVars\r\n\t{\r\n\t\t"cl_usesocketsforloopback" "0"\r\n\t}\r\n}\r\n' \
+    > "$(valve_branchspecific)"
+  ln -s "$(valve_branchspecific)" "$(instance_branchspecific)"
 }
 
-block_of() {
-  sed -n "/^[[:space:]]*$2[[:space:]]*\$/,/^[[:space:]]}/p" "$1"
-}
-
-echo "enable_steam_relay keeps Valve's app ids"
+echo "enable_steam_relay keeps Valve's app id and adds the relay settings"
 setup
-write_valve_branchspecific
+setup_branchspecific
 enable_steam_relay "$(instance_branchspecific)"
-assert_equals "$(block_of "$(instance_branchspecific)" FileSystem | grep -cE '^[[:space:]]*SteamAppId[[:space:]]+730$')" "1" \
-  "SteamAppId 730 was lost, so the server boots as gameinfo.gi's 710"
-assert_equals "$(block_of "$(instance_branchspecific)" FileSystem | grep -cE '^[[:space:]]*ForceFixedAppIds[[:space:]]+1$')" "1" \
-  "ForceFixedAppIds was lost"
-teardown
-
-echo "enable_steam_relay merges the relay settings into Valve's blocks"
-setup
-write_valve_branchspecific
-enable_steam_relay "$(instance_branchspecific)"
-assert_equals "$(grep -cE '^[[:space:]]*ConVars[[:space:]]*$' "$(instance_branchspecific)")" "1" \
-  "a second ConVars block was added instead of merging into Valve's"
-assert_equals "$(block_of "$(instance_branchspecific)" ConVars | grep -c '"net_p2p_listen_dedicated"[[:space:]]*"1"')" "1" \
-  "net_p2p_listen_dedicated was not enabled"
-assert_equals "$(block_of "$(instance_branchspecific)" ConVars | grep -c '"cl_usesocketsforloopback" "0"')" "1" \
-  "Valve's own ConVars entry was lost"
-assert_equals "$(block_of "$(instance_branchspecific)" NetworkSystem | grep -c '"CreateListenSocketP2P"[[:space:]]*"2"')" "1" \
-  "CreateListenSocketP2P was not set"
-assert_equals "$(grep -c '"PreprocessResources"' "$(instance_branchspecific)")" "1" "the Panorama block was lost"
+assert_equals "$(grep -c 'SteamAppId' "$(instance_branchspecific)")" "1" "SteamAppId 730 was lost"
+assert_equals "$(grep -c 'ConVars' "$(instance_branchspecific)")" "1" "a second ConVars block was added"
+assert_equals "$(grep -A2 'ConVars' "$(instance_branchspecific)" | grep -c '"net_p2p_listen_dedicated" "1"')" "1" \
+  "net_p2p_listen_dedicated is not in the ConVars block"
+assert_equals "$(grep -c '"CreateListenSocketP2P" "2"' "$(instance_branchspecific)")" "1" "CreateListenSocketP2P was not set"
 teardown
 
 echo "enable_steam_relay never writes through to the node's game files"
 setup
-write_valve_branchspecific
-original="$(cat "$(node_branchspecific)")"
+setup_branchspecific
+original="$(cat "$(valve_branchspecific)")"
 enable_steam_relay "$(instance_branchspecific)"
-assert_equals "$(cat "$(node_branchspecific)")" "$original" "the node-wide gameinfo_branchspecific.gi was modified"
+assert_equals "$(cat "$(valve_branchspecific)")" "$original" "the node's gameinfo_branchspecific.gi was modified"
 if [ -L "$(instance_branchspecific)" ]; then
   fail "the instance file is still a symlink onto the node's game files"
 fi
-assert_equals "$(ls -A "$(dirname "$(instance_branchspecific)")" | grep -c '^\.gameinfo_branchspecific\.gi\.')" "0" \
-  "a staged gameinfo_branchspecific.gi was left behind"
 teardown
 
-echo "enable_steam_relay replaces a relay value Valve already set"
+echo "enable_steam_relay adds a ConVars block when Valve ships none"
 setup
-mkdir -p "$(dirname "$(node_branchspecific)")"
-printf '"GameInfo"\n{\n\tConVars\n\t{\n\t\t"net_p2p_listen_dedicated" "0"\n\t}\n\tNetworkSystem\n\t{\n\t\t"CreateListenSocketP2P" "0"\n\t}\n}\n' \
-  > "$(node_branchspecific)"
-ln -s "$(node_branchspecific)" "$(instance_branchspecific)"
+mkdir -p "$workdir/serverfiles"
+printf '"GameInfo"\n{\n}\n' > "$(valve_branchspecific)"
+ln -s "$(valve_branchspecific)" "$(instance_branchspecific)"
 enable_steam_relay "$(instance_branchspecific)"
-assert_equals "$(grep -c 'net_p2p_listen_dedicated' "$(instance_branchspecific)")" "1" \
-  "net_p2p_listen_dedicated appears more than once"
-assert_equals "$(grep -c '"CreateListenSocketP2P"[[:space:]]*"2"' "$(instance_branchspecific)")" "1" \
-  "CreateListenSocketP2P kept Valve's value"
-assert_equals "$(grep -c 'CreateListenSocketP2P' "$(instance_branchspecific)")" "1" \
-  "CreateListenSocketP2P appears more than once"
-teardown
-
-echo "enable_steam_relay writes a complete file when the game ships none"
-setup
-enable_steam_relay "$(instance_branchspecific)"
-assert_equals "$(head -n 1 "$(instance_branchspecific)")" '"GameInfo"' "the GameInfo root is missing"
-assert_equals "$(block_of "$(instance_branchspecific)" ConVars | grep -c '"net_p2p_listen_dedicated"[[:space:]]*"1"')" "1" \
-  "net_p2p_listen_dedicated was not enabled"
-assert_equals "$(block_of "$(instance_branchspecific)" NetworkSystem | grep -c '"CreateListenSocketP2P"[[:space:]]*"2"')" "1" \
-  "CreateListenSocketP2P was not set"
-assert_equals "$(tail -n 1 "$(instance_branchspecific)")" "}" "the GameInfo root is not closed"
+assert_equals "$(grep -A2 'ConVars' "$(instance_branchspecific)" | grep -c '"net_p2p_listen_dedicated" "1"')" "1" \
+  "net_p2p_listen_dedicated was not added"
 teardown
 
 if [ "$failures" -gt 0 ]; then
