@@ -299,6 +299,49 @@ assert_equals "$(ls -A "$workdir/plugins/addons/swiftlys2/configs" | grep -c '^\
   "a staged core.jsonc was left behind"
 teardown
 
+valve_branchspecific() { printf '%s' "$workdir/serverfiles/gameinfo_branchspecific.gi"; }
+instance_branchspecific() { printf '%s' "$workdir/instance/game/csgo/gameinfo_branchspecific.gi"; }
+
+# Trimmed from what CS2 build 2000922 ships, CRLF and all.
+setup_branchspecific() {
+  mkdir -p "$workdir/serverfiles"
+  printf '"GameInfo"\r\n{\r\n\tFileSystem\r\n\t{\r\n\t\tForceFixedAppIds\t1\r\n\t\tSteamAppId\t\t\t730\r\n\t}\r\n\r\n\tConVars\r\n\t{\r\n\t\t"cl_usesocketsforloopback" "0"\r\n\t}\r\n}\r\n' \
+    > "$(valve_branchspecific)"
+  ln -s "$(valve_branchspecific)" "$(instance_branchspecific)"
+}
+
+echo "enable_steam_relay keeps Valve's app id and adds the relay settings"
+setup
+setup_branchspecific
+enable_steam_relay "$(instance_branchspecific)"
+assert_equals "$(grep -c 'SteamAppId' "$(instance_branchspecific)")" "1" "SteamAppId 730 was lost"
+assert_equals "$(grep -c 'ConVars' "$(instance_branchspecific)")" "1" "a second ConVars block was added"
+assert_equals "$(grep -A2 'ConVars' "$(instance_branchspecific)" | grep -c '"net_p2p_listen_dedicated" "1"')" "1" \
+  "net_p2p_listen_dedicated is not in the ConVars block"
+assert_equals "$(grep -c '"CreateListenSocketP2P" "2"' "$(instance_branchspecific)")" "1" "CreateListenSocketP2P was not set"
+teardown
+
+echo "enable_steam_relay never writes through to the node's game files"
+setup
+setup_branchspecific
+original="$(cat "$(valve_branchspecific)")"
+enable_steam_relay "$(instance_branchspecific)"
+assert_equals "$(cat "$(valve_branchspecific)")" "$original" "the node's gameinfo_branchspecific.gi was modified"
+if [ -L "$(instance_branchspecific)" ]; then
+  fail "the instance file is still a symlink onto the node's game files"
+fi
+teardown
+
+echo "enable_steam_relay adds a ConVars block when Valve ships none"
+setup
+mkdir -p "$workdir/serverfiles"
+printf '"GameInfo"\n{\n}\n' > "$(valve_branchspecific)"
+ln -s "$(valve_branchspecific)" "$(instance_branchspecific)"
+enable_steam_relay "$(instance_branchspecific)"
+assert_equals "$(grep -A2 'ConVars' "$(instance_branchspecific)" | grep -c '"net_p2p_listen_dedicated" "1"')" "1" \
+  "net_p2p_listen_dedicated was not added"
+teardown
+
 if [ "$failures" -gt 0 ]; then
   echo "$failures assertion(s) failed" >&2
   exit 1

@@ -203,6 +203,25 @@ write_plugin_configs() {
   done <<< "$paths"
 }
 
+# Valve keeps the server's SteamAppId 730 in this file, so the relay settings are
+# added to it rather than replacing it. The instance copy is a symlink onto the
+# node's game files, so the result is moved over the link, never written through.
+enable_steam_relay() {
+  local file="$1"
+
+  awk '
+    convars && /{/ { print; print "\t\t\"net_p2p_listen_dedicated\" \"1\""; convars = 0; next }
+    /^[[:space:]]*ConVars[[:space:]]*$/ { convars = 1; seen = 1 }
+    /^}/ {
+      if (!seen) { print "\tConVars\n\t{\n\t\t\"net_p2p_listen_dedicated\" \"1\"\n\t}" }
+      print "\tNetworkSystem\n\t{\n\t\t\"CreateListenSocketP2P\" \"2\"\n\t}"
+    }
+    { print }
+  ' "$file" > "$file.relay"
+
+  mv -f "$file.relay" "$file"
+}
+
 # Only whole-line // comments are stripped; a trailing // may be inside a URL.
 ensure_command_prefix() {
   local file="$1"
