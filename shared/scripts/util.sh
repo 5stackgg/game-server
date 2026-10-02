@@ -203,6 +203,147 @@ write_plugin_configs() {
   done <<< "$paths"
 }
 
+# Sets key to value inside a top-level block of a GameInfo KeyValues file read on
+# stdin, creating the block when it is missing. An existing entry for the key is
+# dropped rather than left beside the new one.
+kv_ensure_entry() {
+  awk -v block="$1" -v key="$2" -v value="$3" '
+    BEGIN {
+      depth = 0
+      pending = 0
+      inside = 0
+      found = 0
+    }
+    {
+      line = $0
+      n = 0
+      token = ""
+      quoted = 0
+      split("", tokens)
+      split("", braces)
+
+      for (i = 1; i <= length(line); i++) {
+        c = substr(line, i, 1)
+
+        if (quoted) {
+          if (c == "\"") {
+            tokens[++n] = token
+            token = ""
+            quoted = 0
+          } else {
+            token = token c
+          }
+          continue
+        }
+
+        if (c == "\"") {
+          quoted = 1
+          token = ""
+          continue
+        }
+
+        if (c == "/" && substr(line, i + 1, 1) == "/") {
+          break
+        }
+
+        if (c == "{" || c == "}") {
+          if (token != "") {
+            tokens[++n] = token
+            token = ""
+          }
+          tokens[++n] = c
+          braces[n] = 1
+          continue
+        }
+
+        if (c == " " || c == "\t") {
+          if (token != "") {
+            tokens[++n] = token
+            token = ""
+          }
+          continue
+        }
+
+        token = token c
+      }
+
+      if (token != "") {
+        tokens[++n] = token
+      }
+
+      if (inside && depth == 2 && n > 0 && !braces[1] && tolower(tokens[1]) == tolower(key)) {
+        next
+      }
+
+      open_here = 0
+      close_root = 0
+      for (t = 1; t <= n; t++) {
+        if (braces[t] && tokens[t] == "{") {
+          if (pending && depth == 1) {
+            inside = 1
+            found = 1
+            open_here = 1
+          }
+          pending = 0
+          depth++
+        } else if (braces[t]) {
+          depth--
+          if (depth == 1) {
+            inside = 0
+          }
+          if (depth == 0 && !found) {
+            close_root = 1
+          }
+        } else if (depth == 1) {
+          pending = (tolower(tokens[t]) == tolower(block))
+        }
+      }
+
+      if (close_root) {
+        printf "\t%s\n\t{\n\t\t\"%s\"\t\"%s\"\n\t}\n", block, key, value
+        found = 1
+      }
+
+      print line
+
+      if (open_here) {
+        printf "\t\t\"%s\"\t\"%s\"\n", key, value
+      }
+    }
+  '
+}
+
+# The instance file is a symlink onto the node's shared game files, and Valve
+# keeps the real app ids in it (SteamAppId 730 over gameinfo.gi's 710), so the
+# relay settings are merged into Valve's copy rather than replacing it.
+enable_steam_relay() {
+  local file="$1"
+
+  local current='"GameInfo"
+{
+}'
+  if [ -f "$file" ]; then
+    current="$(tr -d '\r' < "$file")"
+  fi
+
+  local staged
+  if ! staged="$(mktemp "$(dirname "$file")/.$(basename "$file").XXXXXX")"; then
+    echo "---Steam Relay: could not stage ${file}---" >&2
+    return 0
+  fi
+
+  if ! printf '%s\n' "$current" \
+    | kv_ensure_entry "ConVars" "net_p2p_listen_dedicated" "1" \
+    | kv_ensure_entry "NetworkSystem" "CreateListenSocketP2P" "2" > "$staged"; then
+    rm -f "$staged"
+    echo "---Steam Relay: could not write ${file}---" >&2
+    return 0
+  fi
+
+  chmod 644 "$staged"
+  mv -f "$staged" "$file"
+}
+
 # Only whole-line // comments are stripped; a trailing // may be inside a URL.
 ensure_command_prefix() {
   local file="$1"

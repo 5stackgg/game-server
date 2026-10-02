@@ -180,30 +180,9 @@ if ! grep -qFx "$new_line" "$gameinfo_path"; then
     sed -i "${line_number}a\\$new_line" "$gameinfo_path"
 fi
 
-gameinfo_branchspecific_path="${INSTANCE_SERVER_DIR}/game/csgo/gameinfo_branchspecific.gi"
-
 if [ "$STEAM_RELAY" = "true" ]; then
-  rm "$gameinfo_branchspecific_path"
-
   echo "---Enable Steam Relay---"
-echo '"GameInfo"
-{
-    // this file is intentionally empty for generating depot signatures
-    FileSystem
-    {
-      EmptyFileSystemValue 1
-    }
-
-    ConVars
-    {
-      "net_p2p_listen_dedicated" "1"
-    }
-
-    NetworkSystem
-    {
-      "CreateListenSocketP2P" "2"
-    }
-}' > "$gameinfo_branchspecific_path"  
+  enable_steam_relay "${INSTANCE_SERVER_DIR}/game/csgo/gameinfo_branchspecific.gi"
 fi
 
 write_plugin_configs "${INSTANCE_SERVER_DIR}/game/csgo"
