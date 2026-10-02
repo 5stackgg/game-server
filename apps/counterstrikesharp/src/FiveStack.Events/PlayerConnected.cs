@@ -102,7 +102,7 @@ public partial class FiveStackPlugin
             if (PendingPlayers.ContainsKey(player.SteamID))
             {
                 role = PendingPlayers[player.SteamID];
-                player.Clan = role;
+                ClanTagUtility.Set(player, role);
                 PendingPlayers.Remove(player.SteamID);
             }
 

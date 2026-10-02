@@ -1456,8 +1456,6 @@ public class MatchManager
             return;
         }
 
-        bool changed = false;
-
         if (player.PlayerName != name)
         {
             player.PlayerName = name;
@@ -1466,7 +1464,10 @@ public class MatchManager
                 "CBasePlayerController",
                 "m_iszPlayerName"
             );
-            changed = true;
+
+            // force the client to update the player name; firing this unconditionally
+            // rebuilds every scoreboard on each call, which strobes under repeating timers
+            new EventNextlevelChanged(false).FireEventToClient(player);
         }
 
         if (tag != null)
@@ -1482,43 +1483,7 @@ public class MatchManager
             }
         }
 
-        if (player.Clan != tag)
-        {
-            player.Clan = tag ?? "";
-            changed = true;
-
-            CounterStrikeSharp.API.Utilities.SetStateChanged(
-                player,
-                "CCSPlayerController",
-                "m_szClan"
-            );
-            CounterStrikeSharp.API.Utilities.SetStateChanged(
-                player,
-                "CCSPlayerController",
-                "m_szClanName"
-            );
-
-            var gameRules = CounterStrikeSharp
-                .API.Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
-                .FirstOrDefault();
-
-            if (gameRules is not null)
-            {
-                gameRules.GameRules!.NextUpdateTeamClanNamesTime = Server.CurrentTime - 0.01f;
-                CounterStrikeSharp.API.Utilities.SetStateChanged(
-                    gameRules,
-                    "CCSGameRules",
-                    "m_fNextUpdateTeamClanNamesTime"
-                );
-            }
-        }
-
-        // force the client to update the player name; firing this unconditionally
-        // rebuilds every scoreboard on each call, which strobes under repeating timers
-        if (changed)
-        {
-            new EventNextlevelChanged(false).FireEventToClient(player);
-        }
+        ClanTagUtility.Set(player, tag ?? "");
     }
 
     public void RestorePlayerName(CCSPlayerController player)

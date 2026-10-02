@@ -124,6 +124,15 @@ public partial class FiveStackPlugin : BasePlugin
 
         InitializeConnectClientHook();
 
+        try
+        {
+            ClanTagUtility.Hook(Core);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to hook SetClan, clan tags will flicker");
+        }
+
         _rankSystem.Start();
 
         Core.Event.OnMapLoad += OnMapLoad;
@@ -215,6 +224,7 @@ public partial class FiveStackPlugin : BasePlugin
         }
 
         UninstallConnectClientHook();
+        ClanTagUtility.Unhook();
 
         TimerUtility.Kill(_pingTimer);
 
