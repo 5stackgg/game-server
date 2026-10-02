@@ -17,7 +17,7 @@ RUN python -c "import urllib.request; urllib.request.urlretrieve('https://raw.gi
 
 # SwiftlyS2 signatures are NOT baked in. main.py reads the SwiftlyS2.CS2 version pinned in
 # apps/swiftly/src/FiveStack.csproj and fetches that version's gamedata at runtime. Baking it
-# would go stale: swiftly-update.yaml bumps the pin on a schedule and its GITHUB_TOKEN push
-# does not trigger a rebuild of this image.
+# would go stale: dependency-update.yaml bumps the pin on a schedule and rebuilds only the
+# swiftly image, never this one.
 
 ENTRYPOINT ["python", "main.py"]

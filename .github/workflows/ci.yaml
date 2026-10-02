@@ -6,16 +6,23 @@ on:
       - "main"
       - "beta"
   workflow_dispatch:
+    inputs:
+      only:
+        description: "Comma-separated images to build (css, sw, validator); blank builds all"
+        type: string
+        default: ""
 
 jobs:
   changes:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    # every build cuts a release that nodes auto-update to, so a dispatch that
+    # names its images must not ship the others as no-op versions
     outputs:
-      css: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.css == 'true' }}
-      sw: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.sw == 'true' }}
-      validator: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.validator == 'true' }}
+      css: ${{ (github.event_name == 'workflow_dispatch' && (inputs.only == '' || contains(inputs.only, 'css'))) || steps.filter.outputs.css == 'true' }}
+      sw: ${{ (github.event_name == 'workflow_dispatch' && (inputs.only == '' || contains(inputs.only, 'sw'))) || steps.filter.outputs.sw == 'true' }}
+      validator: ${{ (github.event_name == 'workflow_dispatch' && (inputs.only == '' || contains(inputs.only, 'validator'))) || steps.filter.outputs.validator == 'true' }}
       channel: ${{ steps.channel.outputs.channel }}
     steps:
       - uses: actions/checkout@v7

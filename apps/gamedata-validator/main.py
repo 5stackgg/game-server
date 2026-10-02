@@ -39,7 +39,7 @@ SWIFTLY_GAMEDATA = [
 
 # SwiftlyS2's signatures live in the framework release we ship, which is pinned by the
 # SwiftlyS2.CS2 <PackageReference> in apps/swiftly/src/FiveStack.csproj. Read at runtime,
-# never baked: swiftly-update.yaml bumps that pin without rebuilding this image.
+# never baked: dependency-update.yaml bumps that pin without rebuilding this image.
 FIVESTACK_CSPROJ = (
     "https://raw.githubusercontent.com/5stackgg/game-server/"
     "{ref}/apps/swiftly/src/FiveStack.csproj"

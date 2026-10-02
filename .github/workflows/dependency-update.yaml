@@ -1,0 +1,190 @@
+name: Check Dependency Releases
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 * * * *"
+
+concurrency:
+  group: dependency-update
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      # Each check stages its files only once every one of them is pinned, and
+      # the next check starts by discarding whatever is left unstaged. A check
+      # that fails halfway therefore ships nothing, while the others still go
+      # out -- a runtime bumped without its nugets breaks the ABI.
+      - name: SwiftlyS2
+        run: |
+          set -euo pipefail
+          CURRENT=$(grep -oP 'SWIFTLYS2_VERSION="\K[^"]+' apps/swiftly/Dockerfile)
+          LATEST=$(gh api "repos/swiftly-solution/swiftlys2/releases?per_page=40" \
+            --jq '[.[] | select(.prerelease == false) | select(.tag_name | test("-beta") | not)] | .[0].tag_name')
+          echo "current=$CURRENT latest=$LATEST"
+
+          # A deliberate beta pin outranks "latest stable": this only ever picks
+          # a non-prerelease, so left alone it walks a beta back to the release
+          # before it and takes whatever the beta was pinned for with it.
+          if [[ "$CURRENT" == *-beta* ]]; then
+            echo "::notice::SwiftlyS2 pinned to $CURRENT (prerelease); leaving it alone. Latest stable is $LATEST."
+            exit 0
+          fi
+          if [ -z "$LATEST" ] || [ "$LATEST" = "null" ] || [ "$CURRENT" = "$LATEST" ]; then
+            exit 0
+          fi
+          NUGET_VERSION="${LATEST#v}"
+
+          sed -i "s|SWIFTLYS2_VERSION=\"[^\"]*\"|SWIFTLYS2_VERSION=\"${LATEST}\"|" apps/swiftly/Dockerfile
+          grep -q "SWIFTLYS2_VERSION=\"${LATEST}\"" apps/swiftly/Dockerfile \
+            || { echo "::error::could not set SWIFTLYS2_VERSION in apps/swiftly/Dockerfile"; exit 1; }
+
+          # The runtime zip and EVERY plugin's nuget must move together. The
+          # csproj list is discovered rather than written down: when the
+          # practice plugin arrived with its own pin, a hand-written list left
+          # it a version behind the runtime it gets loaded into.
+          mapfile -t CSPROJS < <(grep -rl 'Include="SwiftlyS2.CS2"' --include='*.csproj' apps || true)
+          if [ ${#CSPROJS[@]} -eq 0 ]; then
+            echo "::error::no csproj references SwiftlyS2.CS2 -- the pin pattern must have changed"
+            exit 1
+          fi
+          for csproj in "${CSPROJS[@]}"; do
+            sed -i "s|<PackageReference Include=\"SwiftlyS2.CS2\" Version=\"[^\"]*\"|<PackageReference Include=\"SwiftlyS2.CS2\" Version=\"${NUGET_VERSION}\"|" "$csproj"
+            grep -q "Include=\"SwiftlyS2.CS2\" Version=\"${NUGET_VERSION}\"" "$csproj" \
+              || { echo "::error::could not pin SwiftlyS2.CS2 to ${NUGET_VERSION} in ${csproj}"; exit 1; }
+          done
+
+          git add apps/swiftly/Dockerfile "${CSPROJS[@]}"
+          echo sw >> "$RUNNER_TEMP/images"
+          echo "SwiftlyS2 to ${LATEST}" >> "$RUNNER_TEMP/bumps"
+
+      - name: CounterStrikeSharp
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          git checkout -- .
+          CURRENT_URL=$(grep -oP 'ENV COUNTER_STRIKE_SHARP_URL=\K\S+' apps/counterstrikesharp/Dockerfile)
+          LATEST_URL=$(gh api repos/roflmuffin/CounterStrikeSharp/releases/latest \
+            --jq '[.assets[] | select(.name | contains("linux") and contains("runtime")) | .browser_download_url] | first // ""')
+          echo "current=$CURRENT_URL latest=$LATEST_URL"
+
+          if [ -z "$LATEST_URL" ]; then
+            echo "::error::no linux runtime asset in the latest CounterStrikeSharp release"
+            exit 1
+          fi
+          if [ "$CURRENT_URL" = "$LATEST_URL" ]; then
+            exit 0
+          fi
+          VERSION_NUMBER=$(echo "$LATEST_URL" | grep -oP 'v\K\d+\.\d+\.\d+' | head -1)
+
+          sed -i "s|ENV COUNTER_STRIKE_SHARP_URL=.*|ENV COUNTER_STRIKE_SHARP_URL=${LATEST_URL}|" apps/counterstrikesharp/Dockerfile
+          grep -qF "ENV COUNTER_STRIKE_SHARP_URL=${LATEST_URL}" apps/counterstrikesharp/Dockerfile \
+            || { echo "::error::could not set COUNTER_STRIKE_SHARP_URL in apps/counterstrikesharp/Dockerfile"; exit 1; }
+
+          mapfile -t CSPROJS < <(grep -rl 'Include="CounterStrikeSharp.API"' --include='*.csproj' apps || true)
+          if [ ${#CSPROJS[@]} -eq 0 ]; then
+            echo "::error::no csproj references CounterStrikeSharp.API -- the pin pattern must have changed"
+            exit 1
+          fi
+          for csproj in "${CSPROJS[@]}"; do
+            sed -i "s|<PackageReference Include=\"CounterStrikeSharp.API\" Version=\"[^\"]*\"|<PackageReference Include=\"CounterStrikeSharp.API\" Version=\"${VERSION_NUMBER}\"|" "$csproj"
+            grep -q "Include=\"CounterStrikeSharp.API\" Version=\"${VERSION_NUMBER}\"" "$csproj" \
+              || { echo "::error::could not pin CounterStrikeSharp.API to ${VERSION_NUMBER} in ${csproj}"; exit 1; }
+          done
+
+          git add apps/counterstrikesharp/Dockerfile "${CSPROJS[@]}"
+          # the validator bakes CCS_GAMEDATA_REF from this Dockerfile's URL
+          printf 'css\nvalidator\n' >> "$RUNNER_TEMP/images"
+          echo "CounterStrikeSharp to v${VERSION_NUMBER}" >> "$RUNNER_TEMP/bumps"
+
+      - name: Metamod
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          git checkout -- .
+          CURRENT_URL=$(grep -oP 'ENV METAMOD_URL=\K\S+' apps/counterstrikesharp/Dockerfile)
+          # not every release ships a linux tarball, so take the newest one that does
+          LATEST_URL=$(gh api "repos/alliedmodders/metamod-source/releases?per_page=20" \
+            --jq '[.[] | select(.tag_name | startswith("2.")) | .assets[] | select(.name | test("^mmsource-.*-linux\\.tar\\.gz$")) | .browser_download_url] | first // ""')
+          echo "current=$CURRENT_URL latest=$LATEST_URL"
+
+          if [ -z "$LATEST_URL" ]; then
+            echo "::error::no linux release asset found for metamod-source 2.x"
+            exit 1
+          fi
+          if [ "$CURRENT_URL" = "$LATEST_URL" ]; then
+            exit 0
+          fi
+          BUILD_ID=$(echo "$LATEST_URL" | grep -oP '(?<=mmsource-)[^/]+(?=-linux)')
+
+          sed -i "s|ENV METAMOD_URL=.*|ENV METAMOD_URL=${LATEST_URL}|" apps/counterstrikesharp/Dockerfile
+          grep -qF "ENV METAMOD_URL=${LATEST_URL}" apps/counterstrikesharp/Dockerfile \
+            || { echo "::error::could not set METAMOD_URL in apps/counterstrikesharp/Dockerfile"; exit 1; }
+
+          git add apps/counterstrikesharp/Dockerfile
+          printf 'css\nvalidator\n' >> "$RUNNER_TEMP/images"
+          echo "Metamod to ${BUILD_ID}" >> "$RUNNER_TEMP/bumps"
+
+      - name: AddonsManager
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          git checkout -- .
+          CURRENT=$(grep -oP 'ADDONS_MANAGER_VERSION="\K[^"]+' apps/swiftly/Dockerfile)
+          RELEASE=$(gh api repos/SwiftlyS2-Plugins/AddonsManager/releases/latest)
+          LATEST=$(jq -r .tag_name <<<"$RELEASE")
+          echo "current=$CURRENT latest=$LATEST"
+
+          if [ -z "$LATEST" ] || [ "$LATEST" = "null" ] || [ "$CURRENT" = "$LATEST" ]; then
+            exit 0
+          fi
+
+          # The download URL is built from the version, and the asset has been
+          # renamed before (AddonsManager.zip became AddonsManager-v2.0.4.zip),
+          # so a version-only bump would bake an image whose download 404s.
+          ASSET="AddonsManager-${LATEST}.zip"
+          if ! jq -e --arg name "$ASSET" 'any(.assets[]; .name == $name)' <<<"$RELEASE" > /dev/null; then
+            echo "::error::AddonsManager ${LATEST} ships no ${ASSET} ($(jq -r '[.assets[].name] | join(", ")' <<<"$RELEASE")); update ADDONS_MANAGER_URL in apps/swiftly/Dockerfile by hand"
+            exit 1
+          fi
+
+          sed -i "s|ADDONS_MANAGER_VERSION=\"[^\"]*\"|ADDONS_MANAGER_VERSION=\"${LATEST}\"|" apps/swiftly/Dockerfile
+          grep -q "ADDONS_MANAGER_VERSION=\"${LATEST}\"" apps/swiftly/Dockerfile \
+            || { echo "::error::could not set ADDONS_MANAGER_VERSION in apps/swiftly/Dockerfile"; exit 1; }
+
+          git add apps/swiftly/Dockerfile
+          echo sw >> "$RUNNER_TEMP/images"
+          echo "AddonsManager to ${LATEST}" >> "$RUNNER_TEMP/bumps"
+
+      - name: Commit and rebuild
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          git checkout -- .
+          if [ ! -s "$RUNNER_TEMP/bumps" ]; then
+            echo "everything is current"
+            exit 0
+          fi
+
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git commit -m "chore: update $(paste -sd ';' "$RUNNER_TEMP/bumps" | sed 's/;/, /g')"
+          git pull --rebase --quiet
+          git push
+
+          # A push made with GITHUB_TOKEN starts no workflows, so CI never sees
+          # this commit on its own and the image keeps the old version until
+          # something unrelated lands. workflow_dispatch is the one event that
+          # token is allowed to start.
+          IMAGES=$(sort -u "$RUNNER_TEMP/images" | paste -sd, -)
+          gh workflow run ci.yaml --ref "$GITHUB_REF_NAME" -f only="$IMAGES"
+          echo "dispatched CI for $IMAGES"
