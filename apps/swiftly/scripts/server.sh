@@ -1,5 +1,8 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/crash-report.sh"
+
 echo "---Prepare Server---"
 mkdir -p /root/.steam/sdk64
 cp -R "${STEAMCMD_DIR}/linux64/"* "/root/.steam/sdk64/"
@@ -22,10 +25,6 @@ else
     GAME_ARGS=""
 fi
 
-"${SERVER_BINARY}" ${GAME_ARGS} -ip 0.0.0.0 -port ${SERVER_PORT} +tv_port ${TV_PORT} -dedicated -dev -usercon +rcon_password ${RCON_PASSWORD} ${EXTRA_GAME_PARAMS} &
-
-CS_PID=$!
-
 trap 'echo "Received signal to stop the match"; exit 0' SIGUSR1
 
-wait $CS_PID
+run_server "${SERVER_BINARY}" ${GAME_ARGS} -ip 0.0.0.0 -port ${SERVER_PORT} +tv_port ${TV_PORT} -dedicated -dev -usercon +rcon_password ${RCON_PASSWORD} ${EXTRA_GAME_PARAMS}

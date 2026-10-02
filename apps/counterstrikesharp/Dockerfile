@@ -200,4 +200,8 @@ RUN mv /opt/metamod/addons /opt/addons && \
 	mkdir -p /opt/addons/counterstrikesharp/plugins && \
 	rm -rf /opt/metamod /opt/counterstrikesharp
 
+# Recorded in crash reports, since servers run the moving :latest tag.
+ARG RELEASE_VERSION
+ENV RELEASE_VERSION=${RELEASE_VERSION}
+
 ENTRYPOINT ["/bin/bash", "-c", "/opt/scripts/setup.sh && /opt/scripts/server.sh"]

@@ -16,6 +16,9 @@ jobs:
       - name: Test setup scripts
         run: bash shared/scripts/test/util.test.sh
 
+      - name: Test crash reports
+        run: bash shared/scripts/test/crash-report.test.sh
+
   test:
     runs-on: ubuntu-latest
     strategy:
