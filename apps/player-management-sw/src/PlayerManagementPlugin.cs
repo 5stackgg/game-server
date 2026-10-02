@@ -13,6 +13,7 @@ using SwiftlyS2.Shared.GameEvents;
 using SwiftlyS2.Shared.Misc;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Plugins;
+using SwiftlyS2.Shared.SchemaDefinitions;
 using SwiftlyS2.Shared.ProtobufDefinitions;
 using SwiftlyS2.Shared.Translation;
 
@@ -555,9 +556,24 @@ public partial class PlayerManagementPlugin : BasePlugin
             .ToList();
     }
 
+    // Not IPlayer.IsValid: that also wants a pawn, and a player without one
+    // is still on the server, so the roster ended their session and a gag
+    // stopped applying until they had one again.
     private static bool IsHuman(IPlayer player)
     {
-        return player.IsValid && !player.IsFakeClient && SteamIdOf(player) != 0;
+        CCSPlayerController controller = player.Controller;
+
+        if (!controller.IsValid)
+        {
+            return false;
+        }
+
+        return PlayerRoster.IsConnectedHuman(
+            controller.IsHLTV,
+            controller.Connected == PlayerConnectedState.Connected,
+            player.IsFakeClient,
+            SteamIdOf(player)
+        );
     }
 
     // Before Steam verifies a player only the id they claim is known. Enforcing

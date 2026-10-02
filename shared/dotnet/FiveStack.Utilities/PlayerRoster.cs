@@ -274,6 +274,12 @@ public class PlayerRoster
         return address.ToString();
     }
 
+    // A connected controller is on the server whether or not it has a pawn.
+    public static bool IsConnectedHuman(bool isHltv, bool connected, bool isBot, ulong steamId)
+    {
+        return !isHltv && connected && !isBot && steamId != 0;
+    }
+
     // Identified by slot, not Steam id: an unverified victim can claim the
     // attacker's id.
     public static bool CountsAsKill(
