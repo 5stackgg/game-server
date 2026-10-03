@@ -57,6 +57,13 @@ public class PracticeState
     // has not asked for it should not be paying for it.
     public bool Bloom { get; set; }
 
+    // Set by .clear and held until the player asks for something again. The
+    // spot watcher redraws whatever is under their feet four times a second
+    // and re-adopts the lineup they are looking at, so without a flag saying
+    // "they asked for nothing" it put the markers back inside a quarter of a
+    // second -- which is .clear appearing to do nothing at all.
+    public bool Cleared { get; set; }
+
 
     // Lineups this player has already been told are not exact. Said once per
     // lineup: a warning repeated on every .rethrow is a warning nobody reads.

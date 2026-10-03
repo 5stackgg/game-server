@@ -854,12 +854,16 @@ public class PracticeReplay
     // Tier 2: a real grenade, launched from the physics seed the engine gave
     // us at record time rather than from the player's eye angles, so it lands
     // where the recorded one did instead of near it.
-    public void ThrowGhostProjectile(IPlayer player, LineupRecord lineup)
+    // force is .rethrow asking by name. The switch below is what a render pod
+    // sets to have every load throw itself; a player typing the command has
+    // already said which throw they want, so it is not the switch's to refuse.
+    public void ThrowGhostProjectile(IPlayer player, LineupRecord lineup, bool force = false)
     {
         _logger.LogInformation(
-            "[nade-render] ThrowGhostProjectile: emitGrenades={emit} ghostProjectile={ghost} exactlyReplayable={exact} hasSeed={seed} confidence={conf}",
+            "[nade-render] ThrowGhostProjectile: emitGrenades={emit} ghostProjectile={ghost} forced={force} exactlyReplayable={exact} hasSeed={seed} confidence={conf}",
             EmitGrenades,
             _config.GhostProjectile,
+            force,
             lineup.IsExactlyReplayable(),
             lineup.HasPhysicsSeed(),
             lineup.confidence
@@ -871,7 +875,7 @@ public class PracticeReplay
             return;
         }
 
-        if (!_config.GhostProjectile)
+        if (!_config.GhostProjectile && !force)
         {
             _logger.LogInformation("[nade-render] skip: GhostProjectile off");
             return;
@@ -2166,6 +2170,62 @@ public class PracticeReplay
         keys.SetString("targetname", MarkerTag);
 
         return keys;
+    }
+
+    // Live utility, as opposed to the preview drawn over it. Smokes and fires
+    // are what stands between two attempts at the same lineup, and anything
+    // still in the air goes with them: a rethrow answered by the grenade you
+    // are trying to replace is not an answer.
+    private static readonly string[] ThrownUtilityClasses =
+    {
+        "smokegrenade_projectile",
+        "flashbang_projectile",
+        "hegrenade_projectile",
+        "molotov_projectile",
+        "decoy_projectile",
+        "inferno",
+    };
+
+    public int ClearThrownUtility()
+    {
+        int cleared = 0;
+
+        foreach (string designer in ThrownUtilityClasses)
+        {
+            try
+            {
+                foreach (
+                    CBaseEntity entity in _core.EntitySystem.GetAllEntitiesByDesignerName<CBaseEntity>(
+                        designer
+                    )
+                )
+                {
+                    if (!entity.IsValid)
+                    {
+                        continue;
+                    }
+
+                    // Taken out of the world by hand, so nothing will ever
+                    // report its detonation: the bookkeeping goes with it or it
+                    // sits in the table until the reaper times it out.
+                    _ghostThrows.Remove(entity.Index);
+
+                    entity.Despawn();
+                    cleared += 1;
+                }
+            }
+            catch (Exception error)
+            {
+                _logger.LogWarning(error, "unable to clear {designer}", designer);
+            }
+        }
+
+        // The bloom preview is a real smoke, so it went with the rest. Its
+        // handles have to go too: a dead one can be recycled into a new entity,
+        // and despawning THAT is worse than leaving the entry behind.
+        _bloomSmoke.Clear();
+
+        return cleared;
     }
 
     // Despawns every marker in the world, ours or a previous instance's, then
