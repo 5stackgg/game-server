@@ -267,8 +267,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         // One repeating job for the whole plugin, not one per player. These
         // deliberately do not get StopOnMapChange: the plugin is not reloaded
         // on a map change, so a timer that stopped there would never come back.
-        _secondTimer = Core.Scheduler.RepeatBySeconds(1, OnSecond);
-        _refillTimer = Core.Scheduler.RepeatBySeconds(0.1f, OnFastTick);
+        _secondTimer = Core.Scheduler.RepeatBySeconds(1, Surviving(OnSecond));
+        _refillTimer = Core.Scheduler.RepeatBySeconds(0.1f, Surviving(OnFastTick));
 
         // Only on a hot reload. A cold boot has no engine globals yet -- asking
         // for the map here is what stopped the plugin loading at all -- and the
@@ -300,6 +300,30 @@ public partial class UtilityPracticePlugin : BasePlugin
         );
     }
 
+    private bool _tornDown;
+
+    // SwiftlyS2 never reschedules a repeating timer whose callback throws, and
+    // still runs a timer's first pass if it was cancelled before then.
+    private Action Surviving(Action callback)
+    {
+        return () =>
+        {
+            if (_tornDown)
+            {
+                return;
+            }
+
+            try
+            {
+                callback();
+            }
+            catch (Exception error)
+            {
+                _logger.LogError(error, "repeating timer callback failed");
+            }
+        };
+    }
+
     // SwiftlyS2 hot reloads a plugin from a thread pool thread -- its file
     // watcher schedules the reload through Task.Run -- and the game thread is
     // never one of those. Every native call throws off the game thread, so the
@@ -309,7 +333,17 @@ public partial class UtilityPracticePlugin : BasePlugin
     {
         if (!Thread.CurrentThread.IsThreadPoolThread)
         {
-            TearDown();
+            // An exception out of Unload stops SwiftlyS2 tearing this instance
+            // down, which leaves its timers and handlers running.
+            try
+            {
+                TearDown();
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(exception, "teardown failed");
+            }
+
             return;
         }
 
@@ -338,6 +372,8 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void TearDown()
     {
+        _tornDown = true;
+
         // Drawn entities are not the plugin's to leave behind: without this a
         // hot reload orphans every beam, label and model in the world, with no
         // instance left holding a reference to any of them.
