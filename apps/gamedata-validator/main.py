@@ -20,13 +20,7 @@ SETS = [
         "name": "fivestack",
         "path": path.join(BASE_DIR, "gamedata/fivestack.gamedata.json"),
         "format": "ccs",
-        "runtimes": [RUNTIME_CCS],
-    },
-    {
-        "name": "fivestack",
-        "path": path.join(BASE_DIR, "gamedata/swiftly/signatures.jsonc"),
-        "format": "swiftly-signatures",
-        "runtimes": [RUNTIME_SWIFTLY],
+        "runtimes": [RUNTIME_CCS, RUNTIME_SWIFTLY],
     },
     {
         "name": "upstream-ccs",

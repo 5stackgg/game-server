@@ -1,6 +1,6 @@
 {
   "FiveStack_ConnectClient": {
-    "runtimes": ["counterstrikesharp"],
+    "runtimes": ["counterstrikesharp", "swiftlys2"],
     "signatures": {
       "library": "engine2",
       "linux": "55 48 89 E5 41 57 49 89 D7 41 56 49 89 FE 41 55 41 54 53 89 CB 48 81 EC ? ? ? ?",
@@ -8,7 +8,7 @@
     }
   },
   "FiveStack_CCSPlayerController_SetClan": {
-    "runtimes": ["counterstrikesharp"],
+    "runtimes": ["counterstrikesharp", "swiftlys2"],
     "signatures": {
       "library": "server",
       "linux": "55 48 89 E5 41 57 41 56 41 55 49 89 D5 41 54 53 48 89 FB 48 81 EC ? ? ? ? 39 B7 ? ? ? ?",

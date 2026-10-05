@@ -24,12 +24,19 @@ public static class ClanTagUtility
 
     public static void Hook(ISwiftlyCore core)
     {
-        if (!core.GameData.TryGetSignature(SetClanSignature, out nint address))
+        GamedataSignature? signature = GamedataUtility.Load(core.PluginPath, SetClanSignature);
+
+        nint? address =
+            signature == null
+                ? null
+                : core.Memory.GetAddressBySignature(signature.Library, signature.Pattern);
+
+        if (address == null || address == nint.Zero)
         {
             throw new InvalidOperationException("SetClan signature not found");
         }
 
-        _setClan = core.Memory.GetUnmanagedFunctionByAddress<SetClanDelegate>(address);
+        _setClan = core.Memory.GetUnmanagedFunctionByAddress<SetClanDelegate>(address.Value);
         _hookId = _setClan.AddHook(next => (controller, clanId, tag) => { });
     }
 

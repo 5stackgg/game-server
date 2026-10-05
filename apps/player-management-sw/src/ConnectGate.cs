@@ -25,8 +25,9 @@ public delegate nint ConnectClientDelegate(
 public partial class PlayerManagementPlugin
 {
     /**
-     * Resolved from shared/gamedata/swiftly/signatures.jsonc, which ships with
-     * the plugin and which the gamedata validator checks after every game update.
+     * FiveStack_ConnectClient in shared/gamedata/fivestack.gamedata.json, which
+     * ships with the plugin and which the gamedata validator checks after every
+     * game update.
      *
      * Function signature:
      * <pre>
@@ -54,7 +55,17 @@ public partial class PlayerManagementPlugin
     {
         try
         {
-            if (!Core.GameData.TryGetSignature(ConnectClientSignature, out nint found))
+            GamedataSignature? signature = GamedataUtility.Load(
+                Core.PluginPath,
+                ConnectClientSignature
+            );
+
+            nint? found =
+                signature == null
+                    ? null
+                    : Core.Memory.GetAddressBySignature(signature.Library, signature.Pattern);
+
+            if (found == null || found == nint.Zero)
             {
                 _logger.LogError(
                     "ConnectClient signature not found; access lists are only enforced by kicking after join"
@@ -63,7 +74,7 @@ public partial class PlayerManagementPlugin
             }
 
             _connectClientFunc = Core.Memory.GetUnmanagedFunctionByAddress<ConnectClientDelegate>(
-                found
+                found.Value
             );
 
             _connectClientHookId = _connectClientFunc.AddHook(next =>

@@ -58,14 +58,24 @@ public partial class UtilityPracticePlugin
                 return;
             }
 
-            if (!Core.GameData.TryGetSignature(ConnectClientSignature, out nint address))
+            GamedataSignature? signature = GamedataUtility.Load(
+                Core.PluginPath,
+                ConnectClientSignature
+            );
+
+            nint? address =
+                signature == null
+                    ? null
+                    : Core.Memory.GetAddressBySignature(signature.Library, signature.Pattern);
+
+            if (address == null || address == nint.Zero)
             {
                 _logger.LogWarning("Failed to find ConnectClient signature");
                 return;
             }
 
             _connectClientFunc = Core.Memory.GetUnmanagedFunctionByAddress<ConnectClientDelegate>(
-                address
+                address.Value
             );
 
             if (_connectClientFunc == null)
