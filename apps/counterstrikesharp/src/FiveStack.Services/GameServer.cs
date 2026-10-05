@@ -88,7 +88,7 @@ public class GameServer
         string? serverId = _environmentService.GetServerId();
         string? apiPassword = _environmentService.GetServerApiPassword();
 
-        Server.NextFrame(async () =>
+        Server.NextWorldUpdate(async () =>
         {
             if (serverId == null || apiPassword == null)
             {
