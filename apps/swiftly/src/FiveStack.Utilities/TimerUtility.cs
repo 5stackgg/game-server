@@ -25,11 +25,19 @@ namespace FiveStack.Utilities
 
         public static CancellationTokenSource Repeat(float interval, Action callback)
         {
-            // SwiftlyS2 never reschedules a repeating timer whose callback throws
-            CancellationTokenSource timer = _core.Scheduler.RepeatBySeconds(
+            CancellationTokenSource? timer = null;
+
+            // SwiftlyS2 never reschedules a repeating timer whose callback throws,
+            // and still runs a timer's first pass if it was cancelled before then
+            timer = _core.Scheduler.RepeatBySeconds(
                 interval,
                 () =>
                 {
+                    if (timer?.IsCancellationRequested == true)
+                    {
+                        return;
+                    }
+
                     try
                     {
                         callback();

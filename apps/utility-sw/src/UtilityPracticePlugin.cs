@@ -300,11 +300,19 @@ public partial class UtilityPracticePlugin : BasePlugin
         );
     }
 
-    // SwiftlyS2 never reschedules a repeating timer whose callback throws.
+    private bool _tornDown;
+
+    // SwiftlyS2 never reschedules a repeating timer whose callback throws, and
+    // still runs a timer's first pass if it was cancelled before then.
     private Action Surviving(Action callback)
     {
         return () =>
         {
+            if (_tornDown)
+            {
+                return;
+            }
+
             try
             {
                 callback();
@@ -325,7 +333,17 @@ public partial class UtilityPracticePlugin : BasePlugin
     {
         if (!Thread.CurrentThread.IsThreadPoolThread)
         {
-            TearDown();
+            // An exception out of Unload stops SwiftlyS2 tearing this instance
+            // down, which leaves its timers and handlers running.
+            try
+            {
+                TearDown();
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(exception, "teardown failed");
+            }
+
             return;
         }
 
@@ -354,6 +372,8 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void TearDown()
     {
+        _tornDown = true;
+
         // Drawn entities are not the plugin's to leave behind: without this a
         // hot reload orphans every beam, label and model in the world, with no
         // instance left holding a reference to any of them.
