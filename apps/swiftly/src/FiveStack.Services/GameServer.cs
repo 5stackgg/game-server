@@ -44,7 +44,7 @@ public class GameServer
             );
         }
 
-        _core.Scheduler.NextTick(() => _core.Engine.ExecuteCommand(string.Join(";", commands)));
+        HibernationUtility.NextTick(() => _core.Engine.ExecuteCommand(string.Join(";", commands)));
     }
 
     public void Message(

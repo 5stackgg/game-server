@@ -33,7 +33,7 @@ public class GameServer
 
     public void SendCommands(string[] commands)
     {
-        Server.NextFrame(() => Server.ExecuteCommand(string.Join(";", commands)));
+        HibernationUtility.NextFrame(() => Server.ExecuteCommand(string.Join(";", commands)));
     }
 
     public void Message(

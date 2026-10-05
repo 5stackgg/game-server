@@ -78,6 +78,7 @@ public partial class FiveStackPlugin : BasePlugin
         );
 
         RegisterListener<Listeners.OnTick>(_rankSystem.OnTick);
+        RegisterListener<Listeners.OnServerHibernationUpdate>(HibernationUtility.SetHibernating);
 
         TimerUtility.AddTimer(
             RankSystem.RosterRefreshInterval,

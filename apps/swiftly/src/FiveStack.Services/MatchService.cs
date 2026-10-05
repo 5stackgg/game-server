@@ -89,7 +89,7 @@ public class MatchService
         if (serverId == null || apiPassword == null)
         {
             await Task.Delay(1000 * 5);
-            _core.Scheduler.NextTick(() =>
+            HibernationUtility.NextTick(() =>
             {
                 GetMatchFromApi();
             });
@@ -113,7 +113,7 @@ public class MatchService
                 httpResponse.EnsureSuccessStatusCode();
                 string? response = await httpResponse.Content.ReadAsStringAsync();
 
-                _core.Scheduler.NextTick(() =>
+                HibernationUtility.NextTick(() =>
                 {
                     Guid? previousMatchId = _currentMatch?.GetMatchData()?.id;
 

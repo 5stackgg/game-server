@@ -12,7 +12,7 @@ public partial class FiveStackPlugin
         _logger.LogInformation("map changed: precaching models");
 
         await Task.Delay(1000 * 5);
-        _core.Scheduler.NextTick(() =>
+        FiveStack.Utilities.HibernationUtility.NextTick(() =>
         {
             MatchManager? match = _matchService.GetCurrentMatch();
             match?.SyncActiveMapAfterMapStart();

@@ -613,7 +613,7 @@ public class MatchManager
             ApplyWorkshopBlockedCvars();
         }
 
-        Server.NextFrame(() =>
+        HibernationUtility.NextFrame(() =>
         {
             if (!wasAlreadySetup)
             {
@@ -866,7 +866,7 @@ public class MatchManager
             return;
         }
 
-        Server.NextFrame(() =>
+        HibernationUtility.NextFrame(() =>
         {
             bool isInWarmup = MatchUtility.Rules()?.WarmupPeriod ?? false;
 
@@ -1581,7 +1581,7 @@ public class MatchManager
                 .Find("tv_broadcast_origin_auth")
                 ?.SetValue($"{_matchData.id}:{_matchData.password}");
 
-            Server.NextFrame(() =>
+            HibernationUtility.NextFrame(() =>
             {
                 _gameServer.SendCommands(["tv_broadcast 1"]);
                 _logger.LogInformation("Sending TV Broadcast command");

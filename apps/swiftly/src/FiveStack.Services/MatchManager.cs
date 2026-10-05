@@ -599,7 +599,7 @@ public class MatchManager
             ApplyWorkshopBlockedCvars();
         }
 
-        _core.Scheduler.NextTick(() =>
+        HibernationUtility.NextTick(() =>
         {
             if (!wasAlreadySetup)
             {
@@ -859,7 +859,7 @@ public class MatchManager
             return;
         }
 
-        _core.Scheduler.NextTick(() =>
+        HibernationUtility.NextTick(() =>
         {
             bool isInWarmup = MatchUtility.Rules()?.WarmupPeriod ?? false;
 
@@ -1572,7 +1572,7 @@ public class MatchManager
             SetConVar("tv_broadcast_url", $"{_environmentService.GetRelayUrl()}/{_matchData.id}");
             SetConVar("tv_broadcast_origin_auth", $"{_matchData.id}:{_matchData.password}");
 
-            _core.Scheduler.NextTick(() =>
+            HibernationUtility.NextTick(() =>
             {
                 _gameServer.SendCommands(["tv_broadcast 1"]);
                 _logger.LogInformation("Sending TV Broadcast command");

@@ -101,6 +101,7 @@ public partial class FiveStackPlugin : BasePlugin
 
         MatchUtility.Initialize(Core);
         TimerUtility.Initialize(Core);
+        HibernationUtility.Initialize(Core);
 
         _environmentService = _serviceProvider.GetRequiredService<EnvironmentService>();
         _steamService = _serviceProvider.GetRequiredService<SteamService>();
@@ -255,5 +256,6 @@ public partial class FiveStackPlugin : BasePlugin
         _ = _matchEvents.Disconnect();
 
         TimerUtility.ClearAll();
+        HibernationUtility.Shutdown();
     }
 }
