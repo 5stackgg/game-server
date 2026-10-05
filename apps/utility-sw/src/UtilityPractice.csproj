@@ -70,6 +70,9 @@
     <None Include="$(MSBuildThisFileDirectory)../hud/radars/metadata.json"
           Link="radars/metadata.json"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(MSBuildThisFileDirectory)../../../shared/gamedata/swiftly/signatures.jsonc"
+          Link="resources/gamedata/signatures.jsonc"
+          CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/HudSteady.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/LineupNaming.cs" LinkBase="Shared" />
   </ItemGroup>

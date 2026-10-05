@@ -12,13 +12,13 @@ runtimes, since 5Stack runs Swiftly and CounterStrikeSharp side by side:
 
 | Set | Runtime | Source |
 | --- | --- | --- |
-| `fivestack` | both | `shared/gamedata/fivestack.gamedata.json` |
+| `fivestack` | CounterStrikeSharp | `shared/gamedata/fivestack.gamedata.json` |
+| `fivestack` | Swiftly | `shared/gamedata/swiftly/signatures.jsonc`, the file the Swiftly plugins ship and load |
 | `upstream-ccs` | CounterStrikeSharp | fetched at image build from CounterStrikeSharp |
 | `upstream-swiftly` | Swiftly | fetched at run time for the version `apps/swiftly` pins |
 
 Entries in `fivestack.gamedata.json` may carry a `runtimes` key naming the runtimes that
-actually use them — the Swiftly port hooks `ConnectClient` but not the two vtable offsets.
-Everything else defaults to its set's runtime.
+actually use them. Everything else defaults to its set's runtime.
 
 `--runtime swiftlys2` or `--runtime counterstrikesharp` narrows a run to one runtime.
 
