@@ -108,7 +108,7 @@ public class GameServer
         string? serverId = _environmentService.GetServerId();
         string? apiPassword = _environmentService.GetServerApiPassword();
 
-        _core.Scheduler.NextTick(() =>
+        _core.Scheduler.NextWorldUpdate(() =>
         {
             if (serverId == null || apiPassword == null)
             {

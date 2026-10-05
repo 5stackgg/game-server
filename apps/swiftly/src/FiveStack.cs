@@ -40,7 +40,9 @@ public partial class FiveStackPlugin : BasePlugin
     private GameBackUpRounds _gameBackupRounds = null!;
     private EnvironmentService _environmentService = null!;
 
-    private CancellationTokenSource? _pingTimer;
+    private const long PingEveryMs = 15_000;
+    private EventDelegates.OnWorldUpdate? _pingHandler;
+    private long _lastPingMs;
     private Guid _chatHookId;
     private Guid _commandHookId;
     private EventDelegates.OnPrecacheResource? _precacheHandler;
@@ -192,8 +194,25 @@ public partial class FiveStackPlugin : BasePlugin
         else
         {
             _gameServer.Ping(ModuleVersion);
-            _pingTimer = TimerUtility.Repeat(15, () => _gameServer.Ping(ModuleVersion));
+            _lastPingMs = Environment.TickCount64;
+
+            // OnWorldUpdate keeps firing while the server hibernates; ticks and timers stop
+            _pingHandler = PingOnWorldUpdate;
+            Core.Event.OnWorldUpdate += _pingHandler;
         }
+    }
+
+    private void PingOnWorldUpdate()
+    {
+        long nowMs = Environment.TickCount64;
+
+        if (nowMs - _lastPingMs < PingEveryMs)
+        {
+            return;
+        }
+
+        _lastPingMs = nowMs;
+        _gameServer.Ping(ModuleVersion);
     }
 
     public override void Unload()
@@ -226,7 +245,10 @@ public partial class FiveStackPlugin : BasePlugin
         UninstallConnectClientHook();
         ClanTagUtility.Unhook();
 
-        TimerUtility.Kill(_pingTimer);
+        if (_pingHandler != null)
+        {
+            Core.Event.OnWorldUpdate -= _pingHandler;
+        }
 
         _matchService.GetCurrentMatch()?.Reset();
 
