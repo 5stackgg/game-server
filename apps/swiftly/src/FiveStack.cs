@@ -244,18 +244,31 @@ public partial class FiveStackPlugin : BasePlugin
         }
 
         UninstallConnectClientHook();
-        ClanTagUtility.Unhook();
 
         if (_pingHandler != null)
         {
             Core.Event.OnWorldUpdate -= _pingHandler;
         }
 
-        _matchService.GetCurrentMatch()?.Reset();
+        // SwiftlyS2 only tears a plugin down once Unload returns, and a hot
+        // reload loads the new build either way: an exception here would leave
+        // this instance's timers and handlers running beside the new one.
+        try
+        {
+            ClanTagUtility.Unhook();
 
-        _ = _matchEvents.Disconnect();
+            _matchService.GetCurrentMatch()?.Reset();
 
-        TimerUtility.ClearAll();
-        HibernationUtility.Shutdown();
+            _ = _matchEvents.Disconnect();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to reset match state during unload");
+        }
+        finally
+        {
+            TimerUtility.ClearAll();
+            HibernationUtility.Shutdown();
+        }
     }
 }
