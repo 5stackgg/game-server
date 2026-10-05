@@ -28,10 +28,14 @@
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/PlayerManagementReport.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/ChatUtility.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/HttpClientProvider.cs" LinkBase="Shared" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/GamedataUtility.cs" LinkBase="Shared" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="resources/translations/**/*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="$(MSBuildThisFileDirectory)../../../shared/gamedata/fivestack.gamedata.json" Link="resources/gamedata/fivestack.gamedata.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

@@ -56,6 +56,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/PracticeLibraryLoadUtility.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/HttpClientProvider.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/SteamIdUtility.cs" LinkBase="Shared" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/GamedataUtility.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/HudSlots.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/HudLayoutContract.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/HudAimGrid.cs" LinkBase="Shared" />
@@ -69,6 +70,9 @@
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)../hud/radars/metadata.json"
           Link="radars/metadata.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(MSBuildThisFileDirectory)../../../shared/gamedata/fivestack.gamedata.json"
+          Link="resources/gamedata/fivestack.gamedata.json"
           CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/HudSteady.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/LineupNaming.cs" LinkBase="Shared" />

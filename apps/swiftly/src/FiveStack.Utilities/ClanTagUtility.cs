@@ -17,18 +17,20 @@ public static class ClanTagUtility
     // any nonzero id; the client only shows the tag when one is set
     private const uint CustomClanId = 1;
 
-    private static readonly string SetClanSignature = RuntimeInformation.IsOSPlatform(
-        OSPlatform.Linux
-    )
-        ? "55 48 89 E5 41 57 41 56 41 55 49 89 D5 41 54 53 48 89 FB 48 81 EC ? ? ? ? 39 B7 ? ? ? ?"
-        : "48 89 5C 24 10 48 89 6C 24 18 48 89 74 24 20 57 48 83 EC 20 49 8B E8 8B FA 48 8B F1 39 91 ? ? ? ? 74 ? BA FF FF FF FF";
+    private const string SetClanSignature = "FiveStack_CCSPlayerController_SetClan";
 
     private static IUnmanagedFunction<SetClanDelegate>? _setClan;
     private static Guid _hookId;
 
     public static void Hook(ISwiftlyCore core)
     {
-        nint? address = core.Memory.GetAddressBySignature(Library.Server, SetClanSignature);
+        GamedataSignature? signature = GamedataUtility.Load(core.PluginPath, SetClanSignature);
+
+        nint? address =
+            signature == null
+                ? null
+                : core.Memory.GetAddressBySignature(signature.Library, signature.Pattern);
+
         if (address == null || address == nint.Zero)
         {
             throw new InvalidOperationException("SetClan signature not found");

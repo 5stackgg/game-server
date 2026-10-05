@@ -27,5 +27,8 @@
     <Content Include="resources/translations/**/*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="$(MSBuildThisFileDirectory)../../../shared/gamedata/fivestack.gamedata.json" Link="resources/gamedata/fivestack.gamedata.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 </Project>
