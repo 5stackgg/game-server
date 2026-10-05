@@ -267,8 +267,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         // One repeating job for the whole plugin, not one per player. These
         // deliberately do not get StopOnMapChange: the plugin is not reloaded
         // on a map change, so a timer that stopped there would never come back.
-        _secondTimer = Core.Scheduler.RepeatBySeconds(1, OnSecond);
-        _refillTimer = Core.Scheduler.RepeatBySeconds(0.1f, OnFastTick);
+        _secondTimer = Core.Scheduler.RepeatBySeconds(1, Surviving(OnSecond));
+        _refillTimer = Core.Scheduler.RepeatBySeconds(0.1f, Surviving(OnFastTick));
 
         // Only on a hot reload. A cold boot has no engine globals yet -- asking
         // for the map here is what stopped the plugin loading at all -- and the
@@ -298,6 +298,22 @@ public partial class UtilityPracticePlugin : BasePlugin
             _config.IsConnected(),
             PracticeReplay.SwitchState()
         );
+    }
+
+    // SwiftlyS2 never reschedules a repeating timer whose callback throws.
+    private Action Surviving(Action callback)
+    {
+        return () =>
+        {
+            try
+            {
+                callback();
+            }
+            catch (Exception error)
+            {
+                _logger.LogError(error, "repeating timer callback failed");
+            }
+        };
     }
 
     // SwiftlyS2 hot reloads a plugin from a thread pool thread -- its file

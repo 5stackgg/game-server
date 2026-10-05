@@ -1,4 +1,5 @@
 using System.Threading;
+using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
 
 namespace FiveStack.Utilities
@@ -24,7 +25,21 @@ namespace FiveStack.Utilities
 
         public static CancellationTokenSource Repeat(float interval, Action callback)
         {
-            CancellationTokenSource timer = _core.Scheduler.RepeatBySeconds(interval, callback);
+            // SwiftlyS2 never reschedules a repeating timer whose callback throws
+            CancellationTokenSource timer = _core.Scheduler.RepeatBySeconds(
+                interval,
+                () =>
+                {
+                    try
+                    {
+                        callback();
+                    }
+                    catch (Exception ex)
+                    {
+                        _core.Logger.LogError(ex, "repeating timer callback failed");
+                    }
+                }
+            );
             Timers.Add(timer);
             return timer;
         }
