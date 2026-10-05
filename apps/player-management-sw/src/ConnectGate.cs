@@ -26,8 +26,8 @@ public partial class PlayerManagementPlugin
 {
     /**
      * FiveStack_ConnectClient in shared/gamedata/fivestack.gamedata.json, which
-     * the gamedata validator checks after every game update. Signature near:
-     *     "CNetworkGameServerBase::ConnectClient( name='%s', remote='%s' )\n"
+     * ships with the plugin and which the gamedata validator checks after every
+     * game update.
      *
      * Function signature:
      * <pre>
@@ -43,11 +43,7 @@ public partial class PlayerManagementPlugin
      * );
      * </pre>
      */
-    private static readonly string ConnectClientSignature = RuntimeInformation.IsOSPlatform(
-        OSPlatform.Linux
-    )
-        ? "55 48 89 E5 41 57 49 89 D7 41 56 49 89 FE 41 55 41 54 53 89 CB 48 81 EC ? ? ? ?"
-        : "48 89 5C 24 18 44 89 4C 24 20 55 41 54 41 55 41 56 41 57 48 8D 6C 24 F1 48 81 EC ? ? ? ? 81 64 24 4C FF FF 0F FF";
+    private const string ConnectClientSignature = "FiveStack_ConnectClient";
 
     private IUnmanagedFunction<ConnectClientDelegate>? _connectClientFunc;
     private Guid _connectClientHookId;
@@ -59,7 +55,15 @@ public partial class PlayerManagementPlugin
     {
         try
         {
-            nint? found = Core.Memory.GetAddressBySignature(Library.Engine, ConnectClientSignature);
+            GamedataSignature? signature = GamedataUtility.Load(
+                Core.PluginPath,
+                ConnectClientSignature
+            );
+
+            nint? found =
+                signature == null
+                    ? null
+                    : Core.Memory.GetAddressBySignature(signature.Library, signature.Pattern);
 
             if (found == null || found == nint.Zero)
             {
