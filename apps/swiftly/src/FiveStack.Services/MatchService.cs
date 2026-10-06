@@ -126,6 +126,8 @@ public class MatchService
 
                         _currentMatch = null;
 
+                        StayAwake(false);
+
                         _logger.LogWarning(
                             $"No match assigned — clearing match {previousMatchId?.ToString() ?? "none"}"
                         );
@@ -138,6 +140,8 @@ public class MatchService
                     {
                         return;
                     }
+
+                    StayAwake(true);
 
                     if (previousMatchId == matchData.id)
                     {
@@ -175,6 +179,48 @@ public class MatchService
         catch (Exception ex)
         {
             _logger.LogError($"An unexpected error occurred: {ex.Message}");
+        }
+    }
+
+    private bool _heldAwake;
+
+    // A hibernating server runs no ticks and cannot be reached over RCON, so it
+    // only hibernates while it has nothing to do: it is held awake from the
+    // moment it is given a match until that match is gone.
+    public void StayAwake(bool awake)
+    {
+        try
+        {
+            var hibernate = _core.ConVar.Find<bool>("sv_hibernate_when_empty");
+
+            if (hibernate == null)
+            {
+                return;
+            }
+
+            if (awake)
+            {
+                if (hibernate.Value)
+                {
+                    // SetInternal applies now; a queued set waits for a tick
+                    hibernate.SetInternal(false);
+                    _heldAwake = true;
+                    _logger.LogInformation("holding the server awake for its match");
+                }
+
+                return;
+            }
+
+            if (_heldAwake)
+            {
+                hibernate.SetInternal(true);
+                _heldAwake = false;
+                _logger.LogInformation("no match left, the server may hibernate again");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "unable to change sv_hibernate_when_empty");
         }
     }
 

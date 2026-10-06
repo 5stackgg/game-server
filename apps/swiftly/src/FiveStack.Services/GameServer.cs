@@ -122,8 +122,11 @@ public class GameServer
                 ? _core.Engine.GlobalVars.MapName.ToString()
                 : workshopID;
 
+            string? matchId = _matchService.GetCurrentMatch()?.GetMatchData()?.id.ToString();
+            bool hibernating = !HibernationUtility.IsTicking;
+
             string endpoint =
-                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={mapName}&pluginVersion={pluginVersion}&pluginRuntime=swiftlys2";
+                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={mapName}&pluginVersion={pluginVersion}&pluginRuntime=swiftlys2&matchId={matchId}&hibernating={(hibernating ? "true" : "false")}";
 
             if (_steamRelay)
             {
@@ -154,6 +157,19 @@ public class GameServer
                         cts.Token
                     );
                     response.EnsureSuccessStatusCode();
+
+                    // Only with nothing loaded: a server that has a match is awake,
+                    // and the panel reaches an awake server over RCON as before.
+                    if (
+                        matchId == null
+                        && PingReplyUtility.WantsMatch(
+                            await response.Content.ReadAsStringAsync(cts.Token)
+                        )
+                    )
+                    {
+                        _logger.LogInformation("the panel has a match for this server");
+                        _matchService.GetMatchFromApi();
+                    }
                 }
                 catch (OperationCanceledException)
                 {

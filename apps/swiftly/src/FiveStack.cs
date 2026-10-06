@@ -258,6 +258,7 @@ public partial class FiveStackPlugin : BasePlugin
             ClanTagUtility.Unhook();
 
             _matchService.GetCurrentMatch()?.Reset();
+            _matchService.StayAwake(false);
 
             _ = _matchEvents.Disconnect();
         }
