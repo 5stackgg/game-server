@@ -99,7 +99,7 @@ public class GameServer
             string? workshopID = _matchService.GetWorkshopID();
 
             string endpoint =
-                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={(string.IsNullOrEmpty(workshopID) ? Server.MapName : workshopID)}&pluginVersion={pluginVersion}&pluginRuntime=counterstrikesharp";
+                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={(string.IsNullOrEmpty(workshopID) ? Server.MapName : workshopID)}&pluginVersion={pluginVersion}&pluginRuntime=counterstrikesharp&hibernating={(HibernationUtility.IsHibernating ? "true" : "false")}";
 
             if (_steamRelay)
             {

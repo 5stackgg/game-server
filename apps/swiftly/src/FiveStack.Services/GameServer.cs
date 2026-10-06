@@ -123,7 +123,7 @@ public class GameServer
                 : workshopID;
 
             string endpoint =
-                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={mapName}&pluginVersion={pluginVersion}&pluginRuntime=swiftlys2";
+                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={mapName}&pluginVersion={pluginVersion}&pluginRuntime=swiftlys2&hibernating={(HibernationUtility.IsHibernating ? "true" : "false")}";
 
             if (_steamRelay)
             {
