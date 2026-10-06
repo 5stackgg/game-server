@@ -141,6 +141,7 @@ public partial class FiveStackPlugin : BasePlugin
         );
 
         _matchService.GetCurrentMatch()?.Reset();
+        _matchService.StayAwake(false);
 
         _ = _matchEvents.Disconnect();
     }
