@@ -461,16 +461,11 @@ public class PracticeReplay
         Vec3 stance = lineup.release.feet_position;
         Vec3 landing = lineup.detonation_position;
 
-        Ring(stance, 18f, color, 1.5f);
-        Label(
-            new Vec3(stance.x, stance.y, stance.z + 12f),
-            $"STAND\n{lineup.name}",
-            color
-        );
-
-        // No text over the landing or the aim point: the rings and their
+        // No text on the stance or over the landing: the rings and their
         // colour already say it, and words hung in the air above the smoke
-        // only got in the way of seeing it.
+        // only got in the way of seeing it. The name lives at the aim point,
+        // where it tells several throws off one spot apart.
+        Ring(stance, 18f, color, 1.5f);
         Ring(landing, 26f, color, 2f);
 
         // Where to look, placed along the recorded aim at the distance the
@@ -501,6 +496,16 @@ public class PracticeReplay
             float width = Math.Clamp(away * 0.0045f, 0.02f, 1f);
 
             Ring(aim, radius, color, width);
+
+            // Shrinks with the ring up close so the name never covers the
+            // point it is naming. Unchanged from ~220 units out.
+            float labelScale = Math.Min(1f, radius / 10f);
+            Label(
+                new Vec3(aim.x, aim.y, aim.z + radius + 6f * labelScale),
+                lineup.name,
+                color,
+                0.15f * labelScale
+            );
 
             // The exact point, so there is something precise to cover.
             float dot = Math.Max(radius * 0.08f, 0.05f);
@@ -561,7 +566,7 @@ public class PracticeReplay
         }
     }
 
-    private void Label(Vec3 at, string text, Color color)
+    private void Label(Vec3 at, string text, Color color, float unitsPerPx)
     {
         try
         {
@@ -579,7 +584,7 @@ public class PracticeReplay
             label.FontSize = 60;
             label.FontName = "Arial Black";
             label.Fullbright = true;
-            label.WorldUnitsPerPx = 0.15f;
+            label.WorldUnitsPerPx = unitsPerPx;
             label.Enabled = true;
             label.JustifyHorizontal = PointWorldTextJustifyHorizontal_t
                 .POINT_WORLD_TEXT_JUSTIFY_HORIZONTAL_CENTER;
