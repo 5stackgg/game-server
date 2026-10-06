@@ -13,6 +13,12 @@ CONSOLE_TAIL_LINES=2000
 # Where the engine's crash handler writes minidumps, inside the container.
 MINIDUMP_DIR="/tmp/dumps"
 
+# SwiftlyS2 takes the crash signals over from the engine's handler and writes
+# its own dump here instead, under the instance, in a folder per start and
+# beside what it could read out of it. This is the container's own disk and
+# goes when the container does.
+SWIFTLY_CRASH_DIR="game/csgo/addons/swiftlys2/dumps/crashreport"
+
 CONSOLE_PIPE_DIR="/tmp"
 
 # Runs the server and, when it crashes, saves a report before the container
@@ -167,6 +173,17 @@ write_crash_report() {
     if [ -f "$dump" ]; then
       mv "$dump" "${report_dir}/"
       minidumps=$((minidumps + 1))
+    fi
+  done
+
+  local swiftly_file
+  for swiftly_file in "${INSTANCE_SERVER_DIR}/${SWIFTLY_CRASH_DIR}"/*/*; do
+    if [ -f "$swiftly_file" ]; then
+      mv "$swiftly_file" "${report_dir}/"
+
+      case "$swiftly_file" in
+        *.dmp) minidumps=$((minidumps + 1)) ;;
+      esac
     fi
   done
 
