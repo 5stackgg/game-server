@@ -32,12 +32,9 @@ public static class HibernationUtility
         }
     }
 
-    public static bool IsTicking =>
-        Environment.TickCount64 - Volatile.Read(ref _lastTickMs) < TickingWindowMs;
-
     public static void NextTick(Action callback)
     {
-        if (IsTicking)
+        if (Environment.TickCount64 - Volatile.Read(ref _lastTickMs) < TickingWindowMs)
         {
             _core.Scheduler.NextTick(callback);
             return;

@@ -184,9 +184,10 @@ public class MatchService
 
     private bool _heldAwake;
 
-    // A hibernating server runs no ticks and cannot be reached over RCON, so it
-    // only hibernates while it has nothing to do: it is held awake from the
-    // moment it is given a match until that match is gone.
+    // A hibernating server runs no ticks, so timers and the end-of-map work
+    // would stall once everyone left. It only hibernates while it has nothing
+    // to do: it is held awake from the moment it is given a match until that
+    // match is gone.
     public void StayAwake(bool awake)
     {
         try
