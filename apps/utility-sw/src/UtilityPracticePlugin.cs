@@ -267,8 +267,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         // One repeating job for the whole plugin, not one per player. These
         // deliberately do not get StopOnMapChange: the plugin is not reloaded
         // on a map change, so a timer that stopped there would never come back.
-        _secondTimer = Core.Scheduler.RepeatBySeconds(1, Surviving(OnSecond));
-        _refillTimer = Core.Scheduler.RepeatBySeconds(0.1f, Surviving(OnFastTick));
+        _secondTimer = Core.Scheduler.RepeatBySeconds(1, Surviving(1, OnSecond));
+        _refillTimer = Core.Scheduler.RepeatBySeconds(0.1f, Surviving(0.1f, OnFastTick));
 
         // Only on a hot reload. A cold boot has no engine globals yet -- asking
         // for the map here is what stopped the plugin loading at all -- and the
@@ -302,16 +302,30 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private bool _tornDown;
 
-    // SwiftlyS2 never reschedules a repeating timer whose callback throws, and
-    // still runs a timer's first pass if it was cancelled before then.
-    private Action Surviving(Action callback)
+    // SwiftlyS2 never reschedules a repeating timer whose callback throws,
+    // still runs a timer's first pass if it was cancelled before then, and
+    // after a spell without ticks replays every run it missed, one a tick. The
+    // gap check turns that replay into at most twice the usual rate.
+    private Action Surviving(float interval, Action callback)
     {
+        long lastRunMs = 0;
+        long minimumGapMs = (long)(interval * 500);
+
         return () =>
         {
             if (_tornDown)
             {
                 return;
             }
+
+            long nowMs = Environment.TickCount64;
+
+            if (nowMs - lastRunMs < minimumGapMs)
+            {
+                return;
+            }
+
+            lastRunMs = nowMs;
 
             try
             {

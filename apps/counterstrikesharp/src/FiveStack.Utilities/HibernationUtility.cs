@@ -11,6 +11,8 @@ public static class HibernationUtility
 {
     private static volatile bool _hibernating;
 
+    public static bool IsHibernating => _hibernating;
+
     public static void SetHibernating(bool hibernating)
     {
         _hibernating = hibernating;
