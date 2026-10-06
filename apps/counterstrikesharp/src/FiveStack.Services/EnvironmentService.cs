@@ -54,6 +54,12 @@ public class EnvironmentService
         return Environment.GetEnvironmentVariable("GAME_NODE_SERVER") == "true";
     }
 
+    // Started by the panel for one match and stopped once it is over
+    public bool IsMatchServer()
+    {
+        return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MATCH_ID"));
+    }
+
     public bool IsOfflineMode()
     {
         return Environment.GetEnvironmentVariable("OFFLINE_MODE") == "true";
