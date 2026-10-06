@@ -468,12 +468,10 @@ public class PracticeReplay
             color
         );
 
+        // No text over the landing or the aim point: the rings and their
+        // colour already say it, and words hung in the air above the smoke
+        // only got in the way of seeing it.
         Ring(landing, 26f, color, 2f);
-        Label(
-            new Vec3(landing.x, landing.y, landing.z + 16f),
-            lineup.utility_type.ToUpperInvariant(),
-            color
-        );
 
         // Where to look, placed along the recorded aim at the distance the
         // throw actually travelled, so it sits on the thing being aimed at
@@ -494,8 +492,31 @@ public class PracticeReplay
                 eye.z + (float)(-Math.Sin(pitch)) * reach
             );
 
-            Label(aim, "AIM", color);
-            Ring(aim, 10f, color, 1f);
+            // Sized by distance from the eye so it covers the same slice of
+            // the view at any range. A fixed 10-unit ring was fine far off but
+            // swallowed the screen on a short throw, with nothing in it to
+            // pinpoint; past ~220 units it is the same ring as before.
+            float away = new Vec3(aim.x - eye.x, aim.y - eye.y, aim.z - eye.z).Length();
+            float radius = Math.Clamp(away * 0.045f, 0.25f, 10f);
+            float width = Math.Clamp(away * 0.0045f, 0.02f, 1f);
+
+            Ring(aim, radius, color, width);
+
+            // The exact point, so there is something precise to cover.
+            float dot = Math.Max(radius * 0.08f, 0.05f);
+
+            AddMarkerBeam(
+                new Vec3(aim.x - dot, aim.y, aim.z + 2f),
+                new Vec3(aim.x + dot, aim.y, aim.z + 2f),
+                color,
+                width * 1.6f
+            );
+            AddMarkerBeam(
+                new Vec3(aim.x, aim.y - dot, aim.z + 2f),
+                new Vec3(aim.x, aim.y + dot, aim.z + 2f),
+                color,
+                width * 1.6f
+            );
         }
     }
 
@@ -527,6 +548,16 @@ public class PracticeReplay
             {
                 _markerBeams.Add(beam);
             }
+        }
+    }
+
+    private void AddMarkerBeam(Vec3 start, Vec3 end, Color color, float width)
+    {
+        CEnvBeam? beam = CreateBeam(start, end, color, width);
+
+        if (beam != null)
+        {
+            _markerBeams.Add(beam);
         }
     }
 

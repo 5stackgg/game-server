@@ -152,6 +152,13 @@ public class PracticeReplay
     // anything heavier.
     private const float MarkerWidth = 0.6f;
 
+    // The aim reticle's half-size per unit of distance from the stance eye:
+    // roughly 2.5 degrees, so it covers the same slice of the view at any
+    // range. The minimums only stop a zero distance drawing nothing.
+    private const float AimSizePerUnit = 0.045f;
+    private const float AimMinSize = 0.25f;
+    private const float AimMinWidth = 0.02f;
+
     // How far away the model's outline stays visible. Bounded: across the whole
     // map every spot glowing through every wall is noise, not guidance.
     private const int UtilityGlowRange = 1500;
@@ -179,17 +186,15 @@ public class PracticeReplay
     // for must not blink out because somebody ran .next.
     private readonly List<CEnvBeam> _spawnBeams = new();
     private List<CEnvBeam>? _spawnInto;
-    private readonly List<CPointWorldText> _markerTexts = new();
     private readonly List<CPhysicsProp> _markerProps = new();
 
-    // The selection layer: the crosshair and labels for whichever lineup ONE
+    // The selection layer: the crosshairs for whichever lineup ONE
     // player has focused. Kept per player and transmit-blocked from everybody
     // else, because two people practising at once were otherwise wiping each
     // other's aim marker every time either of them moved.
     private class Selection
     {
         public readonly List<CEnvBeam> Beams = new();
-        public readonly List<CPointWorldText> Texts = new();
 
         // The crosshairs, kept per throw so they can be recoloured as the
         // player moves the mouse instead of being torn down and redrawn.
@@ -1618,14 +1623,6 @@ public class PracticeReplay
             }
         }
 
-        foreach (CPointWorldText text in selection.Texts)
-        {
-            if (text.IsValid)
-            {
-                text.Despawn();
-            }
-        }
-
         _selections.Remove(steamId);
     }
 
@@ -1729,21 +1726,19 @@ public class PracticeReplay
         Color color = ColorFor(lineup.utility_type);
         Vec3 landing = lineup.detonation_position;
 
+        // No text over the landing: the diamond and its colour already say
+        // where it goes and what it is, and a word hung in the air above the
+        // smoke only got in the way of seeing it.
         Diamond(landing, 30f, color, MarkerWidth);
-        Label(
-            new Vec3(landing.x, landing.y, landing.z + 16f),
-            PracticeLineupUtility.Tracked(lineup.utility_type),
-            color
-        );
 
-        AimReticle(lineup, lineup.name);
+        AimReticle(lineup);
     }
 
     // Where to point. The aim ray is traced until it hits something, so the
     // reticle lands ON the surface being aimed at rather than hanging in the
     // air short of it -- for an arcing smoke the crosshair sits well above the
     // landing spot, so distance-to-landing was never the right answer.
-    private void AimReticle(LineupRecord lineup, string label)
+    private void AimReticle(LineupRecord lineup)
     {
         // From the eye of somebody standing on THIS LINEUP'S spot -- never from
         // wherever the player happens to be. The caller's stance is the live
@@ -1827,7 +1822,13 @@ public class PracticeReplay
         // wall is ten units away or two thousand.
         // Tighter than a "look over there" marker: this is a point to cover
         // with the crosshair, so it subtends a few degrees and no more.
-        float size = Math.Clamp(away * 0.045f, 9f, 110f);
+        //
+        // The floor used to be 9 units, which held for anything past ~200
+        // units but blew up up close: facing a wall 10 units off, a 9-unit
+        // reticle filled most of the screen and the aim point inside it could
+        // not be found. Proportional all the way down keeps the same ~2.5
+        // degrees at any range; the floor only guards a degenerate distance.
+        float size = Math.Clamp(away * AimSizePerUnit, AimMinSize, 110f);
 
         // Deliberately not the utility's colour: this is the only marker that
         // is not a place the utility goes, and it has to separate from the
@@ -1835,7 +1836,14 @@ public class PracticeReplay
         // Thin lines vanish at range, so the reticle's weight grows with
         // distance the same way its size does. The ground rings never need
         // this: you are always standing on them.
-        float weight = Math.Clamp(away * 0.0018f, MarkerWidth, 2.2f);
+        // The floor scales too, for the same reason as the size: a fixed
+        // 0.6-unit beam is a hair at range but a bar across the view from a
+        // wall a few units away. Unchanged from ~100 units out.
+        float weight = Math.Clamp(
+            away * 0.0018f,
+            Math.Max(Math.Min(MarkerWidth, away * 0.006f), AimMinWidth),
+            2.2f
+        );
 
         // Every throw off the spot is drawn at the same size and weight. Which
         // one you are on is said in COLOUR, not in scale: a smaller crosshair
@@ -1894,13 +1902,6 @@ public class PracticeReplay
         {
             _aimInto = null;
         }
-
-        // Named at the crosshair itself: several throws off one spot are only
-        // useful if you can tell which crosshair belongs to which.
-        // Amber, and never repainted: the label names the throw, the beams
-        // carry the miss signal, and splitting the jobs means the label's own
-        // colour networking never becomes a question.
-        Label(new Vec3(center.x, center.y, center.z + size + 8f), label, Amber);
 
         _drawingInto?.Aims.Add(aim);
     }
@@ -2007,7 +2008,9 @@ public class PracticeReplay
 
         // The point itself: a dot small enough that covering it with the
         // crosshair means covering the exact spot the throw was aimed at.
-        float dot = Math.Max(size * 0.03f, 0.6f);
+        // Its floor shrinks with the reticle: a fixed 0.6 swamped a reticle
+        // drawn on a wall a few units away, hiding the point it marks.
+        float dot = Math.Max(size * 0.03f, Math.Min(size * 0.067f, 0.6f));
 
         AddMarkerBeam(Corner(-dot, 0), Corner(dot, 0), color, width * 1.6f);
         AddMarkerBeam(Corner(0, -dot), Corner(0, dot), color, width * 1.6f);
@@ -2114,7 +2117,6 @@ public class PracticeReplay
     // face, where to point. The utility's own colour is reserved for the half
     // that is about the grenade: where it lands and what it is. Everything
     // being type-coloured is what made a busy map unreadable.
-    private static readonly Color Amber = new Color(249, 158, 47, 255);
     private static readonly Color AmberDim = new Color(203, 117, 11, 255);
 
     private const float StanceWidth = 1.6f;
@@ -2132,17 +2134,8 @@ public class PracticeReplay
     // being on the ground from a player's eye line.
     private const float StanceRingHeight = 26f;
 
-    // Which face of the text plane is the front. Zero put the back of it toward
-    // the reader and every label came out mirrored.
-    private const float LabelYaw = 180f;
-
     // Enough to clear an uneven floor without being a noticeable drop.
     private const float TeleportClearance = 4f;
-
-    // Legible without being architecture. These labels sit on the spot they
-    // name, at arm's length, not across the map.
-    private const int LabelFontSize = 34;
-    private const float LabelUnitsPerPx = 0.06f;
 
     // Stamped on every entity this plugin spawns. Entities outlive the plugin
     // instance that made them: a hot reload drops all our references while the
@@ -2152,6 +2145,8 @@ public class PracticeReplay
 
     // The classes we spawn. Maps author their own env_beams and props, which is
     // exactly why the sweep matches on the tag as well as the class.
+    // point_worldtext is no longer spawned, but stays so a hot reload over an
+    // older build still clears the labels that build left behind.
     private static readonly string[] MarkerClasses =
     {
         "env_beam",
@@ -2410,92 +2405,6 @@ public class PracticeReplay
         return length < 0.0001f ? v : new Vec3(v.x / length, v.y / length, v.z / length);
     }
 
-    private CPointWorldText? Label(Vec3 at, string text, Color color)
-    {
-        if (!Sane(at))
-        {
-            return null;
-        }
-
-        try
-        {
-            CPointWorldText label =
-                _core.EntitySystem.CreateEntityByDesignerName<CPointWorldText>(
-                    "point_worldtext"
-                );
-
-            if (!label.IsValid)
-            {
-                return null;
-            }
-
-            label.MessageText = text;
-            label.Color = color;
-            label.FontName = "Arial Black";
-            label.Fullbright = true;
-            label.Enabled = true;
-            label.JustifyHorizontal = PointWorldTextJustifyHorizontal_t
-                .POINT_WORLD_TEXT_JUSTIFY_HORIZONTAL_CENTER;
-            label.JustifyVertical = PointWorldTextJustifyVertical_t
-                .POINT_WORLD_TEXT_JUSTIFY_VERTICAL_CENTER;
-
-            // Every label spins to face whoever is reading it, so nothing here
-            // computes where the reader is. What it does have to get right is
-            // which FACE the text is written on: reorient turns the entity to
-            // the viewer, and with a zero yaw that presented the back of the
-            // plane, so every name came out mirrored. The flip is a property of
-            // the entity, not of anybody looking at it.
-            //
-            // Reading it from directly underneath still foreshortens it to the
-            // point of illegibility -- reorient only turns around the up axis,
-            // so there is no yaw that fixes a label being read from below.
-            label.ReorientMode = PointWorldTextReorientMode_t
-                .POINT_WORLD_TEXT_REORIENT_AROUND_UP;
-
-            // Small, because these sit ON the thing they name rather than
-            // across the map from it. 60px at 0.15 units/px was roughly two
-            // metres of lettering standing in a doorway.
-            label.FontSize = LabelFontSize;
-            label.WorldUnitsPerPx = LabelUnitsPerPx;
-
-            var angle = new QAngle(0, LabelYaw, 0);
-
-            label.Teleport(
-                new Vector(at.x, at.y, at.z),
-                angle,
-                new Vector(0, 0, 0)
-            );
-
-            label.DispatchSpawn(Tagged());
-
-            // Again after the spawn: DispatchSpawn re-derives the transform
-            // from the entity's own keyvalues, so an angle set only before it
-            // is the angle that gets thrown away.
-            label.Teleport(
-                new Vector(at.x, at.y, at.z),
-                angle,
-                new Vector(0, 0, 0)
-            );
-
-            if (_drawingInto != null)
-            {
-                _drawingInto.Texts.Add(label);
-            }
-            else
-            {
-                _markerTexts.Add(label);
-            }
-
-            return label;
-        }
-        catch (Exception error)
-        {
-            _logger.LogError(error, "unable to place a lineup marker");
-
-            return null;
-        }
-    }
-
     // For a map change only. The entities died with the map, so their handles
     // are stale -- and a stale handle can be recycled into a NEW entity, which
     // makes despawning it actively harmful. Drop the references instead.
@@ -2505,7 +2414,6 @@ public class PracticeReplay
         _spawnBeams.Clear();
         _aimHits.Clear();
         _markerBeams.Clear();
-        _markerTexts.Clear();
         _markerProps.Clear();
         _selections.Clear();
         _drawingInto = null;
@@ -2523,14 +2431,6 @@ public class PracticeReplay
             }
         }
 
-        foreach (CPointWorldText label in _markerTexts)
-        {
-            if (label.IsValid)
-            {
-                label.Despawn();
-            }
-        }
-
         foreach (CPhysicsProp prop in _markerProps)
         {
             if (prop.IsValid)
@@ -2540,7 +2440,6 @@ public class PracticeReplay
         }
 
         _markerBeams.Clear();
-        _markerTexts.Clear();
         _markerProps.Clear();
     }
 
@@ -2561,14 +2460,6 @@ public class PracticeReplay
             }
         }
 
-        foreach (CPointWorldText label in _markerTexts)
-        {
-            if (label.IsValid)
-            {
-                label.Despawn();
-            }
-        }
-
         foreach (CPhysicsProp prop in _markerProps)
         {
             if (prop.IsValid)
@@ -2578,7 +2469,6 @@ public class PracticeReplay
         }
 
         _markerBeams.Clear();
-        _markerTexts.Clear();
         _markerProps.Clear();
     }
 
