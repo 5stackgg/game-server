@@ -55,7 +55,7 @@ setup() {
   export RELEASE_VERSION="0.0.87"
   export ENABLED_PLUGINS="deathmatch@1.1.2,map-chooser@1.3.2"
   export EXTRA_GAME_PARAMS="-maxplayers 16 +map de_cache +game_type 0 +sv_password hunter2 +game_mode 1"
-  export MINIDUMP_DIR INSTANCE_SERVER_DIR
+  export MINIDUMP_DIR INSTANCE_SERVER_DIR SWIFTLY_CRASH_DIR
 }
 
 teardown() {
@@ -77,6 +77,12 @@ echo "Host activate: Changelevel (de_ancient_night)"
 echo "console after changelevel"
 if [ -n "${WRITE_DUMP:-}" ]; then
   echo "minidump" > "$MINIDUMP_DIR/d5e1c3a2-0000-0000-0000-000000000000.dmp"
+fi
+if [ -n "${WRITE_SWIFTLY_DUMP:-}" ]; then
+  swiftly_dumps="$INSTANCE_SERVER_DIR/$SWIFTLY_CRASH_DIR/2de1586d-0000-0000-0000-000000000000"
+  mkdir -p "$swiftly_dumps"
+  echo "swiftly minidump" > "$swiftly_dumps/3e37c382-0000-0000-0000-000000000000.dmp"
+  echo '{"crash_reason":"SIGSEGV"}' > "$swiftly_dumps/crashinfo.json"
 fi
 if [ -n "${UPDATE_GAME:-}" ]; then
   printf 'PatchVersion=1.41.9.0\r\n' > "$INSTANCE_SERVER_DIR/game/csgo/steam.inf"
@@ -154,6 +160,19 @@ server="$(fake_server)"
 LINES_BEFORE_CHANGE=1 EXIT_STATUS=0 WRITE_DUMP=1 run_server "$server" > /dev/null
 assert_contains "$(cat "$(only_report)/crash.txt" 2> /dev/null)" "minidumps=1" \
   "a minidump without an exit status was not reported"
+teardown
+
+echo "run_server saves the dump SwiftlyS2 writes in place of the engine's"
+setup
+server="$(fake_server)"
+LINES_BEFORE_CHANGE=1 EXIT_STATUS=1 WRITE_SWIFTLY_DUMP=1 run_server "$server" > /dev/null
+report="$(only_report)"
+assert_equals "$(cat "$report/3e37c382-0000-0000-0000-000000000000.dmp" 2> /dev/null)" "swiftly minidump" \
+  "SwiftlyS2's minidump was not moved into the report"
+assert_equals "$(cat "$report/crashinfo.json" 2> /dev/null)" '{"crash_reason":"SIGSEGV"}' \
+  "what SwiftlyS2 read out of its minidump was not moved into the report"
+assert_contains "$(cat "$report/crash.txt" 2> /dev/null)" "minidumps=1" \
+  "SwiftlyS2's minidump was not counted, or what sits beside it was"
 teardown
 
 echo "run_server files a report without a server id under unknown"

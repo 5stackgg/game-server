@@ -203,7 +203,11 @@ public class MatchService
             if (hibernate.GetPrimitiveValue<bool>())
             {
                 hibernate.SetValue(false);
-                _heldAwake = true;
+
+                // A match server never hibernates. Its match can arrive
+                // before server.cfg has turned the engine's default off,
+                // and that default is not something to hand it back to.
+                _heldAwake = !_environmentService.IsMatchServer();
                 _logger.LogInformation("holding the server awake for its match");
             }
 
