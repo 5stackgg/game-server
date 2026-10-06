@@ -143,6 +143,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         _replay.IsSolo = _system.IsSolo;
         _replay.AnnouncesLoad = steamId => !UseHud(steamId);
+        _replay.LibraryHidden = _system.IsPractising;
         _replay.All = steamId => _library.For(steamId);
         // A solve rains live HE and molotovs on a map people are standing in.
         _system.SolveRunning = () => _solver.IsBusy;
@@ -691,7 +692,12 @@ public partial class UtilityPracticePlugin : BasePlugin
         Vector origin = pawn.AbsOrigin ?? new Vector(0, 0, 0);
         var at = new Vec3(origin.X, origin.Y, origin.Z);
 
-        IReadOnlyList<LineupRecord> library = _library.For(player.SteamID);
+        // Practising one lineup, the rest of the map is hidden from them, and
+        // use must not stand them on a ring they cannot see.
+        LineupRecord? practising = _system.StateFor(player.SteamID).Practising;
+
+        IReadOnlyList<LineupRecord> library =
+            practising != null ? new[] { practising } : _library.For(player.SteamID);
 
         if (library.Count == 0)
         {
@@ -797,10 +803,14 @@ public partial class UtilityPracticePlugin : BasePlugin
             // chosen for them.
             LineupRecord? drilling = _drill.Current(player.SteamID);
 
-            if (drilling != null)
+            // Practising one lineup is the same ask: that throw and nothing
+            // else, wherever they walk.
+            LineupRecord? only = drilling ?? _system.StateFor(player.SteamID).Practising;
+
+            if (only != null)
             {
-                show = new List<LineupRecord> { drilling };
-                aimedAt = drilling;
+                show = new List<LineupRecord> { only };
+                aimedAt = only;
             }
 
             string key = string.Join(

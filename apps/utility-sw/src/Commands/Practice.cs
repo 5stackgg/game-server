@@ -145,9 +145,11 @@ public partial class UtilityPracticePlugin
         PracticeState saved = _system.StateFor(steamId);
 
         saved.Loaded = thrown;
+        saved.Practising = null;
         saved.Results.Clear();
         saved.Results.Add(thrown);
         saved.Index = 0;
+        _replay.ApplyLibraryVisibility(player);
 
         // Deliberately not the full .load: the player is already standing on
         // the spot they just threw from, and teleporting them onto it would
@@ -398,6 +400,37 @@ public partial class UtilityPracticePlugin
         }
     }
 
+    // Back to the whole map after loading one lineup. The loaded lineup stays
+    // loaded -- .rethrow still goes back to it -- it just stops being the only
+    // thing drawn.
+    [Command("all", registerRaw: false, permission: "")]
+    public void OnAll(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        PracticeState state = _system.StateFor(player.SteamID);
+
+        if (state.Practising == null)
+        {
+            Reply(context, $" {ChatColors.Grey}already showing every lineup");
+            return;
+        }
+
+        state.Practising = null;
+        _replay.ApplyLibraryVisibility(player);
+
+        // The selection was narrowed to the one throw; drawn again on the next
+        // spot check with everything off the spot the player is standing on.
+        _standingIn.Remove(player.SteamID);
+
+        Reply(context, $" {ChatColors.Green}showing every lineup");
+    }
+
     [Command("clear", registerRaw: false, permission: "")]
     public void OnClear(ICommandContext context)
     {
@@ -410,6 +443,7 @@ public partial class UtilityPracticePlugin
 
         PracticeState state = _system.StateFor(player.SteamID);
         state.Loaded = null;
+        state.Practising = null;
         state.Results.Clear();
         state.Index = -1;
         state.Bloom = false;
@@ -1024,6 +1058,13 @@ public partial class UtilityPracticePlugin
         _library.Remove(player.SteamID, loaded);
         state.Results.RemoveAll(match => match.client_id == loaded.client_id);
         state.Loaded = null;
+
+        if (state.Practising?.client_id == loaded.client_id)
+        {
+            state.Practising = null;
+            _replay.ApplyLibraryVisibility(player);
+        }
+
         _replay.ClearGhosts(player.SteamID);
 
         Reply(context, $" {ChatColors.Green}deleted {ChatColors.Default}{loaded.name}");
@@ -1069,6 +1110,7 @@ public partial class UtilityPracticePlugin
         PracticeState reloading = _system.StateFor(steamId);
 
         reloading.Loaded = null;
+        reloading.Practising = null;
         reloading.Results.Clear();
         reloading.Index = -1;
 
@@ -1383,6 +1425,7 @@ public partial class UtilityPracticePlugin
         $" {ChatColors.Default}.next / .prev {ChatColors.Grey}walk the last search",
         $" {ChatColors.Default}.jump {ChatColors.Grey}stand where the loaded lineup lands",
         $" {ChatColors.Default}.rethrow {ChatColors.Grey}back to the loaded lineup",
+        $" {ChatColors.Default}.all {ChatColors.Grey}show every lineup again after loading one",
         $" {ChatColors.Default}.last / .back <n> {ChatColors.Grey}back to a throw you made",
         $" {ChatColors.Default}.map / .here {ChatColors.Grey}pick off the minimap, or only what you can throw from here",
         $" {ChatColors.Default}.edit {ChatColors.Grey}rename the loaded lineup or change who sees it",
@@ -1553,7 +1596,29 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        _system.StateFor(player.SteamID).Loaded = lineup;
+        PracticeState state = _system.StateFor(player.SteamID);
+        LineupRecord? was = state.Practising;
+
+        state.Loaded = lineup;
+
+        // Loading one lineup is asking to practise THAT one, so the rest of
+        // the map is hidden from this player until .all. A drill and an
+        // execute pick their own throws and already draw only those, and
+        // leave the map whole when they end.
+        state.Practising =
+            _drill.Current(player.SteamID) == null && !_playbook.Running ? lineup : null;
+
+        // Now as well as on the redraw Load makes: a library that has not
+        // changed is not rebuilt, so nothing else would apply this.
+        _replay.ApplyLibraryVisibility(player);
+
+        if (state.Practising != null && was?.client_id != lineup.client_id)
+        {
+            player.SendChat(
+                $" {ChatColors.Green}practising {ChatColors.Default}{DrillUtility.Name(lineup)} {ChatColors.Grey}-- other lineups hidden, {ChatColors.Default}.all{ChatColors.Grey} to show them"
+                    .Colored()
+            );
+        }
 
         // Standing the player on the lineup needs nothing but the flat fields,
         // so it happens now; the line itself may still be a round trip away.

@@ -178,7 +178,8 @@ public class PracticeReplay
 
     // The library layer: every lineup's stance ring, landing ring, name and
     // grenade model. Shared on purpose -- everyone on the server should see
-    // where the lineups are.
+    // where the lineups are -- and only transmit-blocked from a player who is
+    // practising one lineup (see ApplyLibraryVisibility).
     private readonly List<CEnvBeam> _markerBeams = new();
 
     // Spawn rings live outside the library layer on purpose: ShowLibrary
@@ -336,8 +337,12 @@ public class PracticeReplay
     // channel that fades.
     public Func<ulong, bool> AnnouncesLoad { get; set; } = _ => true;
 
+    // Whether this player is practising one lineup they loaded, and so should
+    // see only that one. Wired by the plugin, which owns the state.
+    public Func<ulong, bool> LibraryHidden { get; set; } = _ => false;
+
     // The whole library for a player, so loading one lineup still draws the
-    // rest. Supplied by the plugin, which owns the library.
+    // rest for everybody else. Supplied by the plugin, which owns the library.
     /// <summary>
     /// Narrows the library layer to a named set of lineups, IN ORDER.
     ///
@@ -567,8 +572,13 @@ public class PracticeReplay
             IReadOnlyList<LineupRecord> library =
                 everything.Count > 0 ? everything : new[] { lineup };
 
-            // Whatever else is throwable from this spot comes up with it.
-            List<LineupRecord> here = SpotAt(library, standing);
+            // Whatever else is throwable from this spot comes up with it --
+            // unless the player is practising this one, where a sibling
+            // crosshair is exactly the "which one am I on" they loaded it to
+            // avoid.
+            List<LineupRecord> here = LibraryHidden(player.SteamID)
+                ? new List<LineupRecord>()
+                : SpotAt(library, standing);
 
             if (!here.Any(entry => entry.client_id == lineup.client_id))
             {
@@ -581,7 +591,11 @@ public class PracticeReplay
 
         if (AnnouncesLoad(player.SteamID))
         {
-            player.SendCenter(Describe(lineup));
+            player.SendCenter(
+                LibraryHidden(player.SteamID)
+                    ? $"{Describe(lineup)}\n.all shows every lineup"
+                    : Describe(lineup)
+            );
         }
     }
 
@@ -1411,6 +1425,66 @@ public class PracticeReplay
         }
 
         ShowSpotUtility(drawn);
+
+        // New entities start out sent to everybody, so whoever was practising
+        // one lineup would get the whole map back on every rebuild.
+        ApplyLibraryVisibility();
+    }
+
+    /// <summary>
+    /// Hides the library layer from whoever is practising one lineup, and
+    /// shows it to everyone else. Per viewer, so one player narrowing their
+    /// view leaves the rest of the server seeing the whole map. Their own
+    /// selection is a separate set of entities and is never touched here.
+    ///
+    /// Not while an execute is running: that already narrows the library to
+    /// its own throws, and hiding those would hide the execute.
+    /// </summary>
+    public void ApplyLibraryVisibility(IPlayer? only = null)
+    {
+        var indexes = new List<int>();
+
+        foreach (CEnvBeam beam in _markerBeams)
+        {
+            if (beam.IsValid)
+            {
+                indexes.Add((int)beam.Index);
+            }
+        }
+
+        foreach (CPointWorldText label in _markerTexts)
+        {
+            if (label.IsValid)
+            {
+                indexes.Add((int)label.Index);
+            }
+        }
+
+        foreach (CPhysicsProp prop in _markerProps)
+        {
+            if (prop.IsValid)
+            {
+                indexes.Add((int)prop.Index);
+            }
+        }
+
+        IEnumerable<IPlayer> players =
+            only != null ? new[] { only } : _core.PlayerManager.GetAllPlayers();
+
+        foreach (IPlayer player in players)
+        {
+            if (player == null || !player.IsValid || player.IsFakeClient)
+            {
+                continue;
+            }
+
+            bool hide = LibraryRestriction == null && LibraryHidden(player.SteamID);
+
+            foreach (int index in indexes)
+            {
+                player.ShouldBlockTransmitEntity(index, hide);
+            }
+        }
     }
 
     // What to bring, not which throw to make. A model belongs to the SPOT: two

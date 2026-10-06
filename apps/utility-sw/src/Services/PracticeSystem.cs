@@ -13,6 +13,13 @@ public class PracticeState
 {
     public LineupRecord? Loaded { get; set; }
 
+    // The lineup this player explicitly loaded to practise -- .load, .next, a
+    // pick off the panel or the website. While set, every other lineup is
+    // hidden from them alone. Separate from Loaded because that one follows
+    // whichever ring they look at, and glancing at a spot must not be what
+    // empties the map. .all puts it back to null.
+    public LineupRecord? Practising { get; set; }
+
     // The last query's matches, so .next and .prev walk them in place.
     public List<LineupRecord> Results { get; } = new List<LineupRecord>();
     public int Index { get; set; } = -1;
@@ -118,6 +125,12 @@ public class PracticeSystem
     public bool IsSolo(ulong steamId)
     {
         return !_states.TryGetValue(steamId, out PracticeState? state) || state.Solo;
+    }
+
+    // Same shape as IsSolo: no state means nothing loaded, so nothing hidden.
+    public bool IsPractising(ulong steamId)
+    {
+        return _states.TryGetValue(steamId, out PracticeState? state) && state.Practising != null;
     }
 
     public void Forget(ulong steamId)
