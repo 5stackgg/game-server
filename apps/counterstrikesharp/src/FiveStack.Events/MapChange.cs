@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using FiveStack.Enums;
+using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -19,7 +20,7 @@ public partial class FiveStackPlugin
 
                 // code smell: we have to wait till server exec's default cfgs
                 await Task.Delay(1000 * 5);
-                Server.NextFrame(() =>
+                HibernationUtility.NextFrame(() =>
                 {
                     MatchManager? match = _matchService.GetCurrentMatch();
                     match?.SyncActiveMapAfterMapStart();

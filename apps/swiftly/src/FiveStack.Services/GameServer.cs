@@ -44,7 +44,7 @@ public class GameServer
             );
         }
 
-        _core.Scheduler.NextTick(() => _core.Engine.ExecuteCommand(string.Join(";", commands)));
+        HibernationUtility.NextTick(() => _core.Engine.ExecuteCommand(string.Join(";", commands)));
     }
 
     public void Message(
@@ -108,7 +108,7 @@ public class GameServer
         string? serverId = _environmentService.GetServerId();
         string? apiPassword = _environmentService.GetServerApiPassword();
 
-        _core.Scheduler.NextTick(() =>
+        _core.Scheduler.NextWorldUpdate(() =>
         {
             if (serverId == null || apiPassword == null)
             {

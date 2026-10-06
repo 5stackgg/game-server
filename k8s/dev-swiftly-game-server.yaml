@@ -57,6 +57,8 @@ spec:
               value: '-maxplayers 13 +map de_overpass -insecure'
             - name: ALLOW_BOTS
               value: 'true'
+            - name: HIBERNATE_WHEN_EMPTY
+              value: 'true'
             - name: STEAM_RELAY
               value: 'true'
           volumeMounts:

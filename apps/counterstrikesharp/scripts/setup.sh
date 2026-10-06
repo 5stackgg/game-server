@@ -45,6 +45,9 @@ echo "---Create Symbolic Links---"
 
 if [ "$SERVER_TYPE" = "Ranked" ]; then
   cp "/opt/server-cfg/ranked.server.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg/server.cfg"
+  if [ "$HIBERNATE_WHEN_EMPTY" = "true" ]; then
+    sed -i 's/^sv_hibernate_when_empty.*/sv_hibernate_when_empty 1/' "$INSTANCE_SERVER_DIR/game/csgo/cfg/server.cfg"
+  fi
   cp "/opt/server-cfg/5stack.competitive.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
   cp "/opt/server-cfg/5stack.duel.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
   cp "/opt/server-cfg/5stack.knife.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"

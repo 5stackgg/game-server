@@ -33,7 +33,7 @@ public class GameServer
 
     public void SendCommands(string[] commands)
     {
-        Server.NextFrame(() => Server.ExecuteCommand(string.Join(";", commands)));
+        HibernationUtility.NextFrame(() => Server.ExecuteCommand(string.Join(";", commands)));
     }
 
     public void Message(
@@ -88,7 +88,7 @@ public class GameServer
         string? serverId = _environmentService.GetServerId();
         string? apiPassword = _environmentService.GetServerApiPassword();
 
-        Server.NextFrame(async () =>
+        Server.NextWorldUpdate(async () =>
         {
             if (serverId == null || apiPassword == null)
             {

@@ -78,6 +78,7 @@ public partial class FiveStackPlugin : BasePlugin
         );
 
         RegisterListener<Listeners.OnTick>(_rankSystem.OnTick);
+        RegisterListener<Listeners.OnServerHibernationUpdate>(HibernationUtility.SetHibernating);
 
         TimerUtility.AddTimer(
             RankSystem.RosterRefreshInterval,
@@ -140,6 +141,7 @@ public partial class FiveStackPlugin : BasePlugin
         );
 
         _matchService.GetCurrentMatch()?.Reset();
+        _matchService.StayAwake(false);
 
         _ = _matchEvents.Disconnect();
     }
