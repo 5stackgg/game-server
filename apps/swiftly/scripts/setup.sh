@@ -66,6 +66,15 @@ if [ "$SERVER_TYPE" = "Ranked" ]; then
   cp "/opt/server-cfg/valve-rulebook.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
 fi
 
+# A practice server runs no match plugin to hold it awake, so the base
+# server.cfg it would otherwise be linked to is copied in with hibernation off.
+if [ "$SERVER_TYPE" = "Practice" ]; then
+  if [ -f "$BASE_SERVER_DIR/game/csgo/cfg/server.cfg" ]; then
+    cp "$BASE_SERVER_DIR/game/csgo/cfg/server.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg/server.cfg"
+  fi
+  printf '\nsv_hibernate_when_empty 0\n' >> "$INSTANCE_SERVER_DIR/game/csgo/cfg/server.cfg"
+fi
+
 if [ ! -d "/opt/custom-plugins/addons/swiftlys2/configs" ]; then
   mkdir -p "/opt/custom-plugins/addons/swiftlys2/configs"
 fi
