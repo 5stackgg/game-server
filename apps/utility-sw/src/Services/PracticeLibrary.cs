@@ -81,8 +81,10 @@ public class PracticeLibrary
     // Raised on the game thread whenever a fetch replaces a player's library,
     // before anyone waiting on that fetch is answered. Every refresh lands
     // here -- the drain's, .reload's, a load pushed from the website -- so the
-    // markers follow the library whichever of them asked.
-    public event Action<ulong>? Replaced;
+    // markers follow the library whichever of them asked. Carries the client
+    // ids the refresh took away: archived or deleted on the website since the
+    // last answer.
+    public event Action<ulong, IReadOnlyCollection<string>>? Replaced;
 
     public void SetMap(string map)
     {
@@ -346,12 +348,20 @@ public class PracticeLibrary
         {
             lineups = MergeLocal(steamId, fetch.StartedAt, lineups);
 
+            var dropped = new HashSet<string>();
+
+            if (_lineups.TryGetValue(steamId, out List<LineupRecord>? was))
+            {
+                dropped.UnionWith(was.Select(lineup => lineup.client_id));
+                dropped.ExceptWith(lineups.Select(lineup => lineup.client_id));
+            }
+
             _lineups[steamId] = lineups;
             count = lineups.Count;
 
             try
             {
-                Replaced?.Invoke(steamId);
+                Replaced?.Invoke(steamId, dropped);
             }
             catch (Exception error)
             {

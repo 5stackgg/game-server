@@ -2200,9 +2200,68 @@ public partial class UtilityPracticePlugin : BasePlugin
     // full server with markers that never followed a save or an edit. So the
     // layer draws everybody's at once and each player is sent only the
     // lineups that are theirs to see -- see ApplyLibraryVisibility.
-    private void OnLibraryReplaced(ulong steamId)
+    private void OnLibraryReplaced(ulong steamId, IReadOnlyCollection<string> dropped)
     {
+        if (dropped.Count > 0)
+        {
+            ForgetDropped(steamId, dropped);
+        }
+
         RedrawLibrary();
+    }
+
+    // A lineup archived on the website while somebody here had it loaded. Left
+    // alone it stayed their Loaded lineup -- scored against, rethrown, and as
+    // the one being practised, the reason the rest of the map was hidden from
+    // them -- with no marker of its own left to explain any of it.
+    private void ForgetDropped(ulong steamId, IReadOnlyCollection<string> dropped)
+    {
+        PracticeState state = _system.StateFor(steamId);
+
+        bool loadedGone = state.Loaded != null && dropped.Contains(state.Loaded.client_id);
+        bool practisingGone =
+            state.Practising != null && dropped.Contains(state.Practising.client_id);
+
+        if (!loadedGone && !practisingGone)
+        {
+            return;
+        }
+
+        LineupRecord gone = (practisingGone ? state.Practising : state.Loaded)!;
+
+        if (loadedGone)
+        {
+            state.Loaded = null;
+        }
+
+        if (practisingGone)
+        {
+            state.Practising = null;
+        }
+
+        string? at =
+            state.Index >= 0 && state.Index < state.Results.Count
+                ? state.Results[state.Index].client_id
+                : null;
+
+        state.Results.RemoveAll(match => dropped.Contains(match.client_id));
+        state.Index = at == null ? -1 : state.Results.FindIndex(match => match.client_id == at);
+
+        _replay.ClearGhosts(steamId);
+        _replay.ClearSelectionFor(steamId);
+        ForgetSpot(steamId);
+
+        IPlayer? player = _system.Find(steamId);
+
+        if (player != null)
+        {
+            _replay.ApplyLibraryVisibility(player);
+        }
+
+        Tell(
+            steamId,
+            $" {ChatColors.Yellow}{DrillUtility.Name(gone)} {ChatColors.Grey}was removed from your library"
+        );
     }
 
     // Rebuilds only when what it would draw has changed, so this is cheap to
