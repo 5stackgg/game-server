@@ -2021,6 +2021,16 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         _library.SetMap(mapName);
         _session.Map = mapName;
+
+        // Loaded-for is compared by map name, so a changelevel onto the map
+        // the server was already on left every player marked as done: the
+        // drain never asked again, and anyone not caught by the refresh below
+        // -- still reconnecting when it ran -- kept whatever they had before.
+        foreach (LibraryLoad load in _libraryLoads.Values)
+        {
+            load.LoadedFor = null;
+        }
+
         _callouts.Reset();
         _callouts.Report(mapName);
 
