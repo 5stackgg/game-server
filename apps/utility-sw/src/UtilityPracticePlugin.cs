@@ -85,6 +85,11 @@ public partial class UtilityPracticePlugin : BasePlugin
     private EventDelegates.OnClientSteamAuthorize? _authorizeHandler;
     private EventDelegates.OnCustomHudClicked? _hudClickHandler;
 
+    // Hooked by hand, so unhooked by hand: SwiftlyS2 only drops it once the
+    // core is disposed, a step after Unload, and a round that starts in
+    // between still reaches this instance's handler.
+    private Guid _roundStartHook;
+
     public UtilityPracticePlugin(ISwiftlyCore core)
         : base(core) { }
 
@@ -143,7 +148,15 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         _replay.IsSolo = _system.IsSolo;
         _replay.AnnouncesLoad = steamId => !UseHud(steamId);
+        // .clear hides the library the same way practising one lineup does:
+        // from the player who asked, and nobody else. Hidden rather than
+        // swept, so no redraw -- a save, a refresh, a round restart -- can hand
+        // it back to them, and nobody else loses theirs.
+        _replay.LibraryHidden = steamId =>
+            _system.IsPractising(steamId) || _system.IsCleared(steamId);
         _replay.All = steamId => _library.For(steamId);
+        _replay.Shared = SharedLibrary;
+        _library.Replaced += OnLibraryReplaced;
         // A solve rains live HE and molotovs on a map people are standing in.
         _system.SolveRunning = () => _solver.IsBusy;
         _session.Refreshed += OnSessionRefreshed;
@@ -197,7 +210,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             CEntityInstance entity = @event.Entity;
             Core.Scheduler.NextTick(() =>
             {
-                if (entity.IsValid)
+                if (!_tornDown && entity.IsValid)
                 {
                     _recorder.OnProjectileCreated(entity);
                     TintSmoke(entity);
@@ -209,9 +222,19 @@ public partial class UtilityPracticePlugin : BasePlugin
         _mapLoadHandler = @event => OnMapLoad(@event.MapName);
         Core.Event.OnMapLoad += _mapLoadHandler;
 
-        Core.GameEvent.HookPre<EventRoundStart>(_ =>
+        _roundStartHook = Core.GameEvent.HookPre<EventRoundStart>(_ =>
         {
+            if (_tornDown)
+            {
+                return HookResult.Continue;
+            }
+
             KeepRoundsMoving();
+
+            // A new round is a map cleanup, and the cleanup takes every beam,
+            // label and grenade model with it. Nothing else redraws them: the
+            // library is only rebuilt when it changes, and it has not.
+            Core.Scheduler.NextTick(() => OnRoundRestarted());
 
             return HookResult.Continue;
         });
@@ -235,6 +258,11 @@ public partial class UtilityPracticePlugin : BasePlugin
             // cannot resolve is exactly when the roster most needs re-reading.
             _occupancyDirty = true;
             _prompt?.Cancel(@event.PlayerId);
+
+            // Their lineups leave the shared layer with them. A tick late, for
+            // the same reason the occupancy is: the leaving player is still on
+            // the roster while this runs.
+            Core.Scheduler.NextTick(() => RedrawLibrary());
 
             ForPlayer(
                 @event.PlayerId,
@@ -289,6 +317,12 @@ public partial class UtilityPracticePlugin : BasePlugin
             _library.SetMap(current);
             _session.Map = current;
             ApplyPracticeCfg();
+
+            // Nobody reconnects for a hot reload, so no connect hook fires for
+            // the players already here. RefreshEverything fetches each of their
+            // libraries -- the drain picks up anyone it misses -- and the
+            // occupancy goes out on the next second rather than in a minute.
+            _occupancyDirty = true;
             RefreshEverything();
         }
 
@@ -300,7 +334,9 @@ public partial class UtilityPracticePlugin : BasePlugin
         );
     }
 
-    private bool _tornDown;
+    // Volatile: Unload runs on a thread pool thread during a hot reload, and
+    // continuations of the panel calls land on whichever thread they like.
+    private volatile bool _tornDown;
 
     // SwiftlyS2 never reschedules a repeating timer whose callback throws,
     // still runs a timer's first pass if it was cancelled before then, and
@@ -358,6 +394,8 @@ public partial class UtilityPracticePlugin : BasePlugin
                 _logger.LogWarning(exception, "teardown failed");
             }
 
+            FlushQueued();
+
             return;
         }
 
@@ -378,6 +416,44 @@ public partial class UtilityPracticePlugin : BasePlugin
         {
             _logger.LogWarning(exception, "teardown failed");
         }
+
+        FlushQueued();
+    }
+
+    // Saves and scored attempts the panel has not taken yet live only in this
+    // instance's memory, and a reload or a shutdown throws them away. One
+    // last try on the way out: waited for briefly, and only off the game
+    // thread -- a server shutting down is not held up for a panel that is
+    // down, it just loses what it could not send.
+    private static readonly TimeSpan FlushWait = TimeSpan.FromSeconds(3);
+
+    private void FlushQueued()
+    {
+        try
+        {
+            int queued = _api?.QueuedCount ?? 0;
+
+            if (queued == 0)
+            {
+                return;
+            }
+
+            Task drain = Task.Run(() => _api!.Drain());
+
+            if (!Thread.CurrentThread.IsThreadPoolThread || drain.Wait(FlushWait))
+            {
+                return;
+            }
+
+            _logger.LogWarning(
+                "{queued} queued upload(s) still unsent at unload; they go with this instance",
+                _api!.QueuedCount
+            );
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "flushing the upload queue failed");
+        }
     }
 
     // A tick is milliseconds away. Only a server that has stopped running them
@@ -388,12 +464,18 @@ public partial class UtilityPracticePlugin : BasePlugin
     {
         _tornDown = true;
 
+        // Before the sweep, so nothing that lands after it -- a library answer,
+        // a trajectory, a queued redraw -- can put anything back.
+        _library.Close();
+        _replay.Close();
+
         // Drawn entities are not the plugin's to leave behind: without this a
         // hot reload orphans every beam, label and model in the world, with no
         // instance left holding a reference to any of them.
         _replay.SweepMarkers();
 
         _session.Refreshed -= OnSessionRefreshed;
+        _library.Replaced -= OnLibraryReplaced;
         _recorder.Thrown -= _system.OnThrown;
         _recorder.Finalized -= _score.OnFinalized;
         _recorder.Ended -= _replay.TrailEnded;
@@ -431,11 +513,17 @@ public partial class UtilityPracticePlugin : BasePlugin
         if (_disconnectHandler != null)
         {
             Core.Event.OnClientDisconnected -= _disconnectHandler;
+        }
 
-            if (_precacheHandler != null)
-            {
-                Core.Event.OnPrecacheResource -= _precacheHandler;
-            }
+        if (_precacheHandler != null)
+        {
+            Core.Event.OnPrecacheResource -= _precacheHandler;
+        }
+
+        if (_roundStartHook != Guid.Empty)
+        {
+            Core.GameEvent.Unhook(_roundStartHook);
+            _roundStartHook = Guid.Empty;
         }
 
         if (_authorizeHandler != null)
@@ -526,6 +614,14 @@ public partial class UtilityPracticePlugin : BasePlugin
     // light up everything throwable from it without redrawing every tick.
     private readonly Dictionary<ulong, string> _standingIn = new();
 
+    // What the watcher believes is drawn for a player. Anything that wipes the
+    // world without moving them has to say so here: left stale, the key matches
+    // on the next pass and suppresses the redraw that was supposed to follow.
+    private void ForgetSpot(ulong steamId)
+    {
+        _standingIn.Remove(steamId);
+    }
+
     // IN_USE. Read every tick rather than on the 4Hz spot sweep because a tap
     // is shorter than a quarter of a second and a walk-up that does nothing is
     // worse than not offering it.
@@ -606,6 +702,82 @@ public partial class UtilityPracticePlugin : BasePlugin
             return;
         }
 
+        // A bot added to a live round never gets a spawn of its own: nothing
+        // here ends a round (mp_ignore_round_win_conditions), so the second
+        // .bot only ever added a dead name to the scoreboard. The same call
+        // brings back one a practice HE killed outright.
+        //
+        // Placed a beat later when anything was revived: a respawn has no pawn
+        // until the engine has run a tick, and the spots are handed out in
+        // order -- standing up only the bots that are already alive would give
+        // one of them the spot belonging to the bot still on its way back.
+        if (ReviveBots())
+        {
+            Core.Scheduler.DelayBySeconds(BotPlaceDelaySeconds, StandBotsOnSpots);
+
+            return;
+        }
+
+        StandBotsOnSpots();
+    }
+
+    // A bot on no team cannot be spawned, and asking would put the engine in
+    // the position of choosing one -- which is how a bot ends up playing the
+    // round it was placed to stand still through.
+    private bool ReviveBots()
+    {
+        bool revived = false;
+
+        foreach (IPlayer player in Core.PlayerManager.GetAllPlayers())
+        {
+            if (player == null || !player.IsValid || !player.IsFakeClient || player.IsAlive)
+            {
+                continue;
+            }
+
+            if (player.Controller.Team is not (Team.CT or Team.T))
+            {
+                continue;
+            }
+
+            player.Respawn();
+            revived = true;
+        }
+
+        return revived;
+    }
+
+    // Nothing here brings a bot back on its own -- see PlaceBots -- so a dead
+    // one is a target that has quietly stopped being one. Checked rather than
+    // run blind: with every bot up this is one loop and no teleports.
+    private void KeepBotsStanding()
+    {
+        if (_bots.Count == 0)
+        {
+            return;
+        }
+
+        foreach (IPlayer player in Core.PlayerManager.GetAllPlayers())
+        {
+            // Only one that ReviveBots can bring back: a dead bot on no team
+            // would otherwise re-teleport every live bot on every tick.
+            if (
+                player != null
+                && player.IsValid
+                && player.IsFakeClient
+                && !player.IsAlive
+                && player.Controller.Team is Team.CT or Team.T
+            )
+            {
+                PlaceBots();
+
+                return;
+            }
+        }
+    }
+
+    private void StandBotsOnSpots()
+    {
         int index = 0;
 
         foreach (IPlayer player in Core.PlayerManager.GetAllPlayers())
@@ -691,7 +863,12 @@ public partial class UtilityPracticePlugin : BasePlugin
         Vector origin = pawn.AbsOrigin ?? new Vector(0, 0, 0);
         var at = new Vec3(origin.X, origin.Y, origin.Z);
 
-        IReadOnlyList<LineupRecord> library = _library.For(player.SteamID);
+        // Practising one lineup, the rest of the map is hidden from them, and
+        // use must not stand them on a ring they cannot see.
+        LineupRecord? practising = _system.StateFor(player.SteamID).Practising;
+
+        IReadOnlyList<LineupRecord> library =
+            practising != null ? new[] { practising } : _library.For(player.SteamID);
 
         if (library.Count == 0)
         {
@@ -726,7 +903,12 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         if (_replay.StandOn(player, target))
         {
-            _system.StateFor(player.SteamID).Loaded = target;
+            PracticeState state = _system.StateFor(player.SteamID);
+
+            // Walking onto a spot on purpose is asking to see it again.
+            state.Cleared = false;
+            state.Loaded = target;
+            _replay.ApplyLibraryVisibility(player);
         }
     }
 
@@ -768,6 +950,14 @@ public partial class UtilityPracticePlugin : BasePlugin
                 continue;
             }
 
+            // .clear asked for an empty world, and this is the loop that would
+            // otherwise hand it straight back: both the markers and the
+            // Loaded assignment below.
+            if (_system.StateFor(player.SteamID).Cleared)
+            {
+                continue;
+            }
+
             Vector origin = pawn.AbsOrigin ?? new Vector(0, 0, 0);
             var at = new Vec3(origin.X, origin.Y, origin.Z);
 
@@ -797,10 +987,14 @@ public partial class UtilityPracticePlugin : BasePlugin
             // chosen for them.
             LineupRecord? drilling = _drill.Current(player.SteamID);
 
-            if (drilling != null)
+            // Practising one lineup is the same ask: that throw and nothing
+            // else, wherever they walk.
+            LineupRecord? only = drilling ?? _system.StateFor(player.SteamID).Practising;
+
+            if (only != null)
             {
-                show = new List<LineupRecord> { drilling };
-                aimedAt = drilling;
+                show = new List<LineupRecord> { only };
+                aimedAt = only;
             }
 
             string key = string.Join(
@@ -1495,6 +1689,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _session.RetryIfMissing(TimeSpan.FromSeconds(15));
         EndWarmup();
         RespawnTheDead();
+        KeepBotsStanding();
         KeepEveryoneStocked();
         ReportOccupancy();
         _system.Tick();
@@ -1505,6 +1700,33 @@ public partial class UtilityPracticePlugin : BasePlugin
         _callouts.Report(_session.Map);
         DrainLibraryLoads();
         DrainPendingMapLoad();
+        DrainQueued();
+    }
+
+    // The retry queue only used to move when something else got through -- a
+    // later save, a scored throw, a map change -- so a panel that came back
+    // while nobody was saving left everything queued until the next one.
+    private const int DrainEverySeconds = 30;
+
+    private int _drainTicks;
+
+    private void DrainQueued()
+    {
+        if (++_drainTicks < DrainEverySeconds)
+        {
+            return;
+        }
+
+        _drainTicks = 0;
+
+        if (_api.QueuedCount == 0)
+        {
+            return;
+        }
+
+        // Off the game thread like every other call to the panel; Drain lets
+        // only one pass run at a time, so a slow one is never stacked on.
+        _ = Task.Run(() => _api.Drain());
     }
 
     // Nobody stays dead on a practice server. Rejoining while dead, falling off
@@ -1777,6 +1999,10 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void OnMapLoad(string mapName)
     {
+        // First: the resets below despawn whatever they still hold a handle
+        // to, and every one of those handles died with the old map.
+        _replay.ForgetEverything();
+
         _hud?.Reset();
         _menus.Clear();
         _recorder.Reset();
@@ -1795,6 +2021,16 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         _library.SetMap(mapName);
         _session.Map = mapName;
+
+        // Loaded-for is compared by map name, so a changelevel onto the map
+        // the server was already on left every player marked as done: the
+        // drain never asked again, and anyone not caught by the refresh below
+        // -- still reconnecting when it ran -- kept whatever they had before.
+        foreach (LibraryLoad load in _libraryLoads.Values)
+        {
+            load.LoadedFor = null;
+        }
+
         _callouts.Reset();
         _callouts.Report(mapName);
 
@@ -1802,6 +2038,29 @@ public partial class UtilityPracticePlugin : BasePlugin
 
 
         RefreshEverything();
+    }
+
+    // Warmup ending, mp_restartgame and a round running out all come through
+    // here, a tick after round_start so the cleanup is certainly behind us.
+    // Swept by tag first, in case anything of ours did survive it, then every
+    // handle is dropped -- what is left of them may point at recycled
+    // entities -- and the shared layer and each player's selection are drawn
+    // again from scratch.
+    private void OnRoundRestarted()
+    {
+        if (_tornDown)
+        {
+            return;
+        }
+
+        _replay.SweepMarkers();
+        _replay.ForgetEverything();
+
+        // The spot watcher only redraws a selection when the player moves to a
+        // different spot. Forgotten, it redraws each one on its next pass.
+        _standingIn.Clear();
+
+        RedrawLibrary();
     }
 
     // The panel is the only source of both the roster and the library, so a
@@ -1837,6 +2096,17 @@ public partial class UtilityPracticePlugin : BasePlugin
         }
 
         load.FetchingSince = now;
+
+        // A player who has only just arrived is sent every marker on the map
+        // until somebody says otherwise, and their library is still a round
+        // trip away. With nothing of their own yet they see only what nobody
+        // owns, rather than everybody's private lineups for a second or two.
+        IPlayer? player = _system.Find(steamId);
+
+        if (player != null)
+        {
+            _replay.ApplyLibraryVisibility(player);
+        }
 
         _library.Refresh(steamId, count => LibraryLanded(steamId, map, count, pushed));
     }
@@ -1879,8 +2149,6 @@ public partial class UtilityPracticePlugin : BasePlugin
         {
             IReadOnlyList<LineupRecord> library = _library.For(steamId);
 
-            ShowLibraryFor(steamId, library);
-
             // .next and .prev walk state.Results, and a refresh never filled it
             // -- so every lineup on the map was drawn and none of them could be
             // stepped through until the player ran a search. If they can SEE
@@ -1894,9 +2162,18 @@ public partial class UtilityPracticePlugin : BasePlugin
 
             if (pushed || state.Results.Count == 0)
             {
+                // Where they were in the walk, by lineup rather than position:
+                // the panel pushing an edit is not the player asking to start
+                // again from the top, and the new rows are new objects anyway.
+                string? at =
+                    state.Index >= 0 && state.Index < state.Results.Count
+                        ? state.Results[state.Index].client_id
+                        : null;
+
                 state.Results.Clear();
                 state.Results.AddRange(library);
-                state.Index = -1;
+                state.Index =
+                    at == null ? -1 : state.Results.FindIndex(match => match.client_id == at);
 
                 if (!pushed)
                 {
@@ -1918,20 +2195,116 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     // Markers are one shared set of entities for the whole server (see
     // PracticeReplay.ShowLibrary) while a library is filtered per player by the
-    // panel, so drawing one on somebody's behalf only holds while there is
-    // nobody else it could be shown to. With company it drew whoever's fetch
-    // landed last, which put one player's private lineups in front of everyone.
-    // Their own .load, .next and .menu still draw, because those were asked for.
-    private void ShowLibraryFor(ulong steamId, IReadOnlyList<LineupRecord> library)
+    // panel. Drawing whoever's fetch landed last put one player's private
+    // lineups in front of everyone, and refusing to draw with company left a
+    // full server with markers that never followed a save or an edit. So the
+    // layer draws everybody's at once and each player is sent only the
+    // lineups that are theirs to see -- see ApplyLibraryVisibility.
+    private void OnLibraryReplaced(ulong steamId, IReadOnlyCollection<string> dropped)
     {
-        List<ulong> connected = _system.ConnectedSteamIds();
+        if (dropped.Count > 0)
+        {
+            ForgetDropped(steamId, dropped);
+        }
 
-        if (connected.Count != 1 || connected[0] != steamId)
+        RedrawLibrary();
+    }
+
+    // A lineup archived on the website while somebody here had it loaded. Left
+    // alone it stayed their Loaded lineup -- scored against, rethrown, and as
+    // the one being practised, the reason the rest of the map was hidden from
+    // them -- with no marker of its own left to explain any of it.
+    private void ForgetDropped(ulong steamId, IReadOnlyCollection<string> dropped)
+    {
+        PracticeState state = _system.StateFor(steamId);
+
+        bool loadedGone = state.Loaded != null && dropped.Contains(state.Loaded.client_id);
+        bool practisingGone =
+            state.Practising != null && dropped.Contains(state.Practising.client_id);
+
+        if (!loadedGone && !practisingGone)
         {
             return;
         }
 
-        _replay.ShowLibrary(library);
+        LineupRecord gone = (practisingGone ? state.Practising : state.Loaded)!;
+
+        if (loadedGone)
+        {
+            state.Loaded = null;
+        }
+
+        if (practisingGone)
+        {
+            state.Practising = null;
+        }
+
+        string? at =
+            state.Index >= 0 && state.Index < state.Results.Count
+                ? state.Results[state.Index].client_id
+                : null;
+
+        state.Results.RemoveAll(match => dropped.Contains(match.client_id));
+        state.Index = at == null ? -1 : state.Results.FindIndex(match => match.client_id == at);
+
+        _replay.ClearGhosts(steamId);
+        _replay.ClearSelectionFor(steamId);
+        ForgetSpot(steamId);
+
+        IPlayer? player = _system.Find(steamId);
+
+        if (player != null)
+        {
+            _replay.ApplyLibraryVisibility(player);
+        }
+
+        Tell(
+            steamId,
+            $" {ChatColors.Yellow}{DrillUtility.Name(gone)} {ChatColors.Grey}was removed from your library"
+        );
+    }
+
+    // Rebuilds only when what it would draw has changed, so this is cheap to
+    // call from anything that might have moved the library. .clear is not
+    // undone by it: that hides the layer from the player who asked, rather
+    // than taking it away from the room.
+    private void RedrawLibrary()
+    {
+        if (_tornDown)
+        {
+            return;
+        }
+
+        _replay.ShowLibrary(SharedLibrary());
+    }
+
+    // Every connected player's library, one lineup per client id. Taken in
+    // turns rather than one library after another: the draw is capped, and a
+    // cap that ran out halfway through the first player's library would show
+    // the second player none of theirs.
+    private IReadOnlyList<LineupRecord> SharedLibrary()
+    {
+        List<IReadOnlyList<LineupRecord>> libraries = _system
+            .ConnectedSteamIds()
+            .Select(steamId => _library.For(steamId))
+            .ToList();
+
+        var seen = new HashSet<string>();
+        var shared = new List<LineupRecord>();
+        int longest = libraries.Count == 0 ? 0 : libraries.Max(library => library.Count);
+
+        for (int index = 0; index < longest; index++)
+        {
+            foreach (IReadOnlyList<LineupRecord> library in libraries)
+            {
+                if (index < library.Count && seen.Add(library[index].client_id))
+                {
+                    shared.Add(library[index]);
+                }
+            }
+        }
+
+        return shared;
     }
 
     private LibraryLoad LibraryLoadFor(ulong steamId)

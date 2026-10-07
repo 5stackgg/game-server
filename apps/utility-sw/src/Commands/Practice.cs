@@ -144,10 +144,13 @@ public partial class UtilityPracticePlugin
         // becomes the loaded one and gets its markers straight away.
         PracticeState saved = _system.StateFor(steamId);
 
+        saved.Cleared = false;
         saved.Loaded = thrown;
+        saved.Practising = null;
         saved.Results.Clear();
         saved.Results.Add(thrown);
         saved.Index = 0;
+        _replay.ApplyLibraryVisibility(player);
 
         // Deliberately not the full .load: the player is already standing on
         // the spot they just threw from, and teleporting them onto it would
@@ -316,6 +319,11 @@ public partial class UtilityPracticePlugin
         Step(context, -1);
     }
 
+    // sv_rethrow_last_grenade, which is what the word means everywhere else:
+    // the grenade goes again from where it was thrown and the player stays put,
+    // so they can stand off to the side and watch the line they cannot see
+    // while making it. .load, .last and .back are the commands that move you --
+    // this one moving you as well is what left it with nothing of its own to do.
     [Command("rethrow", registerRaw: false, permission: "")]
     public void OnRethrow(ICommandContext context)
     {
@@ -325,17 +333,66 @@ public partial class UtilityPracticePlugin
         {
             return;
         }
-        _logger.LogInformation("[nade-render] OnRethrow for {steam}", player.SteamID);
 
-        LineupRecord? loaded = _system.StateFor(player.SteamID).Loaded;
-
-        if (loaded == null)
+        if (!_config.ReplayEnabled)
         {
-            Reply(context, $" {ChatColors.Red}nothing loaded");
+            Reply(context, $" {ChatColors.Red}replay is disabled on this server");
             return;
         }
 
-        Apply(player, loaded);
+        ulong steamId = player.SteamID;
+
+        // The loaded lineup first, the player's own last throw second: after a
+        // .load the reference throw is the one worth seeing again, and with
+        // nothing loaded "rethrow" can only mean the grenade they just threw.
+        // Answering that one with "nothing loaded" is most of why this read as
+        // a command that did not work.
+        LineupRecord? lineup = _system.StateFor(steamId).Loaded ?? _recorder.LastThrow(steamId);
+
+        if (lineup == null)
+        {
+            Reply(
+                context,
+                $" {ChatColors.Red}throw something first, or {ChatColors.Default}.load"
+                    + $" {ChatColors.Red}a lineup"
+            );
+
+            return;
+        }
+
+        CCSPlayerPawn? pawn = player.PlayerPawn;
+
+        if (pawn == null || !pawn.IsValid)
+        {
+            Reply(context, $" {ChatColors.Red}you have to be alive to rethrow");
+            return;
+        }
+
+        // A lineup fitted to a demo has a path but no seed, so there is nothing
+        // to hand the engine. Said out loud rather than logged: a command that
+        // silently does nothing is the bug being fixed here.
+        if (!lineup.IsExactlyReplayable())
+        {
+            Reply(
+                context,
+                $" {ChatColors.Yellow}{DrillUtility.Name(lineup)} {ChatColors.Grey}has no recorded"
+                    + $" throw to replay -- {ChatColors.Default}.load{ChatColors.Grey} it and"
+                    + $" throw it yourself"
+            );
+
+            return;
+        }
+
+        _logger.LogInformation("[nade-render] OnRethrow for {steam}", steamId);
+
+        // Forced: np_ghost_projectile decides whether .load and .next throw as
+        // they go, but a player who typed the word has already asked.
+        _replay.ThrowGhostProjectile(player, lineup, force: true);
+
+        Reply(
+            context,
+            $" {ChatColors.Green}rethrown {ChatColors.Default}{DrillUtility.Name(lineup)}"
+        );
     }
 
     [Command("last", registerRaw: false, permission: "")]
@@ -398,6 +455,37 @@ public partial class UtilityPracticePlugin
         }
     }
 
+    // Back to the whole map after loading one lineup. The loaded lineup stays
+    // loaded -- .rethrow still goes back to it -- it just stops being the only
+    // thing drawn.
+    [Command("all", registerRaw: false, permission: "")]
+    public void OnAll(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        PracticeState state = _system.StateFor(player.SteamID);
+
+        if (state.Practising == null)
+        {
+            Reply(context, $" {ChatColors.Grey}already showing every lineup");
+            return;
+        }
+
+        state.Practising = null;
+        _replay.ApplyLibraryVisibility(player);
+
+        // The selection was narrowed to the one throw; drawn again on the next
+        // spot check with everything off the spot the player is standing on.
+        _standingIn.Remove(player.SteamID);
+
+        Reply(context, $" {ChatColors.Green}showing every lineup");
+    }
+
     [Command("clear", registerRaw: false, permission: "")]
     public void OnClear(ICommandContext context)
     {
@@ -410,21 +498,44 @@ public partial class UtilityPracticePlugin
 
         PracticeState state = _system.StateFor(player.SteamID);
         state.Loaded = null;
+        state.Practising = null;
         state.Results.Clear();
         state.Index = -1;
         state.Bloom = false;
 
+        // Held until the next .load, .next, walk-on or save. Sweeping alone
+        // left the spot watcher free to redraw the spot under their feet on
+        // its next pass -- a quarter of a second, or the first time they
+        // glanced at another ring -- which is why .clear read as broken.
+        state.Cleared = true;
+        _replay.ApplyLibraryVisibility(player);
+
         _replay.ClearGhosts(player.SteamID);
 
-        // Swept rather than cleared: ClearMarkers can only despawn what this
-        // instance still has a handle to, and anything a previous load left
-        // behind is exactly what makes .clear look like it did nothing.
-        // _standingIn is deliberately NOT reset -- the spot the player is
-        // stood on stays cleared until they step off it and back on, instead
-        // of redrawing itself a second later.
-        _replay.SweepMarkers();
+        // What everybody else's .clear means, and what a player standing in
+        // their own smoke is asking for. The ping key does this on its own --
+        // this is the same call, for anybody who types it.
+        int thrown = _replay.ClearThrownUtility();
 
-        Reply(context, $" {ChatColors.Green}cleared");
+        // Their own selection only. The library layer is everyone's, and the
+        // sweep that used to be here took it -- and every other player's
+        // crosshair -- off the map for the whole server; the hold above hides
+        // it from this player alone. A previous load's litter is already
+        // swept when this instance loads.
+        _replay.ClearSelectionFor(player.SteamID);
+
+        // Safe to drop now the watcher is held off: nothing can match against
+        // it, so the first redraw after they ask again is decided by where
+        // they are then rather than by where they were when they cleared.
+        ForgetSpot(player.SteamID);
+
+        Reply(
+            context,
+            thrown > 0
+                ? $" {ChatColors.Green}cleared {ChatColors.Grey}the preview and the utility"
+                    + $" in the world"
+                : $" {ChatColors.Green}cleared"
+        );
     }
 
     [Command("bloom", registerRaw: false, permission: "")]
@@ -891,8 +1002,11 @@ public partial class UtilityPracticePlugin
         state.Crosshair = !state.Crosshair;
 
         // Redrawn rather than left until the player steps off the spot and back
-        // on: a toggle that appears to do nothing gets pressed again.
-        _replay.ClearMarkers();
+        // on: a toggle that appears to do nothing gets pressed again. Only
+        // their selection -- the crosshair is theirs, and clearing every marker
+        // to redraw it blanked the map for everybody else.
+        _replay.ClearSelectionFor(player.SteamID);
+        ForgetSpot(player.SteamID);
 
         Reply(
             context,
@@ -1024,7 +1138,18 @@ public partial class UtilityPracticePlugin
         _library.Remove(player.SteamID, loaded);
         state.Results.RemoveAll(match => match.client_id == loaded.client_id);
         state.Loaded = null;
+
+        if (state.Practising?.client_id == loaded.client_id)
+        {
+            state.Practising = null;
+            _replay.ApplyLibraryVisibility(player);
+        }
+
         _replay.ClearGhosts(player.SteamID);
+
+        // Gone from their library, so gone from the map -- not left standing
+        // until somebody else's refresh happens to rebuild the layer.
+        RedrawLibrary();
 
         Reply(context, $" {ChatColors.Green}deleted {ChatColors.Default}{loaded.name}");
 
@@ -1069,11 +1194,18 @@ public partial class UtilityPracticePlugin
         PracticeState reloading = _system.StateFor(steamId);
 
         reloading.Loaded = null;
+        reloading.Practising = null;
         reloading.Results.Clear();
         reloading.Index = -1;
 
         _replay.ClearGhosts(steamId);
-        _replay.ClearMarkers();
+
+        // Their selection, not the shared layer: other players' markers have
+        // nothing to do with this library, and the layer is redrawn from the
+        // new one the moment it lands (OnLibraryReplaced).
+        _replay.ClearSelectionFor(steamId);
+        _replay.ApplyLibraryVisibility(player);
+        ForgetSpot(steamId);
 
         _library.Refresh(
             steamId,
@@ -1371,7 +1503,8 @@ public partial class UtilityPracticePlugin
         $" {ChatColors.Green}utility practice {ChatColors.Grey}-- infinite utility, buy anywhere",
         $" {ChatColors.Default}.save <name> {ChatColors.Grey}saves the throw you just made",
         $" {ChatColors.Default}.load <query> {ChatColors.Grey}stands you on a saved lineup",
-        $" {ChatColors.Default}.rethrow {ChatColors.Grey}back to the loaded lineup",
+        $" {ChatColors.Default}.rethrow {ChatColors.Grey}throws it again from where it was thrown",
+        $" {ChatColors.Grey}your {ChatColors.Default}ping key {ChatColors.Grey}clears smokes and fires",
         $" {ChatColors.Default}.help {ChatColors.Grey}everything else",
     };
 
@@ -1382,7 +1515,8 @@ public partial class UtilityPracticePlugin
         $" {ChatColors.Default}.load <query> {ChatColors.Grey}teleports you to a lineup",
         $" {ChatColors.Default}.next / .prev {ChatColors.Grey}walk the last search",
         $" {ChatColors.Default}.jump {ChatColors.Grey}stand where the loaded lineup lands",
-        $" {ChatColors.Default}.rethrow {ChatColors.Grey}back to the loaded lineup",
+        $" {ChatColors.Default}.rethrow {ChatColors.Grey}throws the loaded lineup again, without moving you",
+        $" {ChatColors.Default}.all {ChatColors.Grey}show every lineup again after loading one",
         $" {ChatColors.Default}.last / .back <n> {ChatColors.Grey}back to a throw you made",
         $" {ChatColors.Default}.map / .here {ChatColors.Grey}pick off the minimap, or only what you can throw from here",
         $" {ChatColors.Default}.edit {ChatColors.Grey}rename the loaded lineup or change who sees it",
@@ -1400,7 +1534,9 @@ public partial class UtilityPracticePlugin
         $" {ChatColors.Default}.colors {ChatColors.Grey}a colour per throw, smoke and trail",
         $" {ChatColors.Default}.crosshair {ChatColors.Grey}hide the aim marker and throw it blind",
         $" {ChatColors.Default}.spawns / .spawn next {ChatColors.Grey}where rounds start from",
-        $" {ChatColors.Default}.noclip / .god / .timer / .solo / .clear",
+        $" {ChatColors.Default}.clear {ChatColors.Grey}or your {ChatColors.Default}ping key"
+            + $" {ChatColors.Grey}-- smokes, fires and the preview",
+        $" {ChatColors.Default}.noclip / .god / .timer / .solo",
     };
 
     private void StartPlaybook(IPlayer player, ICommandContext context)
@@ -1553,7 +1689,32 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        _system.StateFor(player.SteamID).Loaded = lineup;
+        PracticeState state = _system.StateFor(player.SteamID);
+        LineupRecord? was = state.Practising;
+
+        // Asking for a lineup is asking to see it: whatever .clear held off
+        // starts drawing again from here.
+        state.Cleared = false;
+        state.Loaded = lineup;
+
+        // Loading one lineup is asking to practise THAT one, so the rest of
+        // the map is hidden from this player until .all. A drill and an
+        // execute pick their own throws and already draw only those, and
+        // leave the map whole when they end.
+        state.Practising =
+            _drill.Current(player.SteamID) == null && !_playbook.Running ? lineup : null;
+
+        // Now as well as on the redraw Load makes: a library that has not
+        // changed is not rebuilt, so nothing else would apply this.
+        _replay.ApplyLibraryVisibility(player);
+
+        if (state.Practising != null && was?.client_id != lineup.client_id)
+        {
+            player.SendChat(
+                $" {ChatColors.Green}practising {ChatColors.Default}{DrillUtility.Name(lineup)} {ChatColors.Grey}-- other lineups hidden, {ChatColors.Default}.all{ChatColors.Grey} to show them"
+                    .Colored()
+            );
+        }
 
         // Standing the player on the lineup needs nothing but the flat fields,
         // so it happens now; the line itself may still be a round trip away.
@@ -1574,12 +1735,6 @@ public partial class UtilityPracticePlugin
                 if (_system.StateFor(steamId).Loaded != fetched)
                 {
                     return;
-                }
-
-                IPlayer? still = _system.Find(steamId);
-
-                if (still != null && still.IsValid)
-                {
                 }
 
                 DrawBloom(steamId, fetched);

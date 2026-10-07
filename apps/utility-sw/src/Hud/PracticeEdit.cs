@@ -215,6 +215,13 @@ public partial class UtilityPracticePlugin
 
             Core.Scheduler.NextTick(() =>
             {
+                // Answered after a reload tore this instance down: the panel it
+                // would redraw belongs to an instance that is gone.
+                if (_tornDown)
+                {
+                    return;
+                }
+
                 IPlayer? still = _system.Find(steamId);
 
                 if (still == null || !still.IsValid)

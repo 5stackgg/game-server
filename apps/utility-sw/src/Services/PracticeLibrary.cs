@@ -36,6 +36,24 @@ public class PracticeLibrary
 
     private readonly Dictionary<ulong, PendingFetch> _fetching = new();
 
+    // What this server changed in a player's library itself -- a .save, a
+    // solve, a .delete -- and when, by client id. A fetch that went out before
+    // the change, or before the panel had it, answers with the library as it
+    // was; applied as-is it dropped the lineup somebody had just saved, or
+    // brought back the one they had just deleted. Kept is null for a removal.
+    private sealed class LocalChange
+    {
+        public DateTime At;
+        public LineupRecord? Kept;
+    }
+
+    private readonly Dictionary<ulong, Dictionary<string, LocalChange>> _local = new();
+
+    // How long a local change outranks the panel's answer once a fetch has
+    // started after it. A save is one round trip away from being on the panel;
+    // past this, a lineup missing from the answer is one the website removed.
+    private static readonly TimeSpan LocalHold = TimeSpan.FromMinutes(2);
+
     public PracticeLibrary(
         ISwiftlyCore core,
         UtilityApiClient api,
@@ -49,6 +67,25 @@ public class PracticeLibrary
 
     public string Map => _map;
 
+    // Set once this instance has been torn down. A fetch still in flight
+    // across a hot reload lands on a tick after the teardown, and everything
+    // waiting on it -- a pushed load, a redraw -- would teleport players and
+    // draw markers on behalf of an instance that no longer owns any of them.
+    private volatile bool _closed;
+
+    public void Close()
+    {
+        _closed = true;
+    }
+
+    // Raised on the game thread whenever a fetch replaces a player's library,
+    // before anyone waiting on that fetch is answered. Every refresh lands
+    // here -- the drain's, .reload's, a load pushed from the website -- so the
+    // markers follow the library whichever of them asked. Carries the client
+    // ids the refresh took away: archived or deleted on the website since the
+    // last answer.
+    public event Action<ulong, IReadOnlyCollection<string>>? Replaced;
+
     public void SetMap(string map)
     {
         if (_map == map)
@@ -58,6 +95,7 @@ public class PracticeLibrary
 
         _map = map;
         _lineups.Clear();
+        _local.Clear();
     }
 
     public IReadOnlyList<LineupRecord> For(ulong steamId)
@@ -82,6 +120,7 @@ public class PracticeLibrary
 
         lineups.RemoveAll(existing => existing.client_id == lineup.client_id);
         lineups.Add(lineup);
+        Touch(steamId, lineup.client_id, lineup);
     }
 
     public void Remove(ulong steamId, LineupRecord lineup)
@@ -90,6 +129,92 @@ public class PracticeLibrary
         {
             lineups.RemoveAll(existing => existing.client_id == lineup.client_id);
         }
+
+        Touch(steamId, lineup.client_id, null);
+    }
+
+    private void Touch(ulong steamId, string clientId, LineupRecord? kept)
+    {
+        if (!_local.TryGetValue(steamId, out Dictionary<string, LocalChange>? changes))
+        {
+            changes = new Dictionary<string, LocalChange>();
+            _local[steamId] = changes;
+        }
+
+        changes[clientId] = new LocalChange { At = DateTime.UtcNow, Kept = kept };
+    }
+
+    // The panel's answer, with this server's own changes laid back over it
+    // while the answer cannot have seen them yet. A change is forgotten once
+    // an answer agrees with it, or once it is old enough that disagreeing
+    // means somebody else changed it since.
+    private List<LineupRecord> MergeLocal(ulong steamId, DateTime startedAt, List<LineupRecord> answer)
+    {
+        if (!_local.TryGetValue(steamId, out Dictionary<string, LocalChange>? changes))
+        {
+            return answer;
+        }
+
+        DateTime now = DateTime.UtcNow;
+        var merged = new List<LineupRecord>(answer);
+
+        foreach ((string clientId, LocalChange change) in changes.ToList())
+        {
+            int index = merged.FindIndex(row => row.client_id == clientId);
+
+            // Made after the request left: the answer cannot know about it.
+            bool newer = change.At >= startedAt;
+            bool holding = newer || now - change.At < LocalHold;
+
+            if (change.Kept == null)
+            {
+                if (index < 0)
+                {
+                    if (!newer)
+                    {
+                        changes.Remove(clientId);
+                    }
+                }
+                else if (holding)
+                {
+                    merged.RemoveAt(index);
+                }
+                else
+                {
+                    changes.Remove(clientId);
+                }
+
+                continue;
+            }
+
+            if (index >= 0)
+            {
+                if (newer)
+                {
+                    merged[index] = change.Kept;
+                }
+                else
+                {
+                    changes.Remove(clientId);
+                }
+
+                continue;
+            }
+
+            // Not on the panel yet. One with no id never reached it at all --
+            // it is waiting in the retry queue -- so it stays for as long as it
+            // stays in this server's hands.
+            if (holding || string.IsNullOrEmpty(change.Kept.id))
+            {
+                merged.Add(change.Kept);
+            }
+            else
+            {
+                changes.Remove(clientId);
+            }
+        }
+
+        return merged;
     }
 
     // A library row carries no flight path and no measured bloom, so neither
@@ -112,6 +237,11 @@ public class PracticeLibrary
 
             _core.Scheduler.NextTick(() =>
             {
+                if (_closed)
+                {
+                    return;
+                }
+
                 if (artifact != null)
                 {
                     lineup.trajectory = artifact.path;
@@ -195,6 +325,11 @@ public class PracticeLibrary
         List<LineupRecord>? lineups
     )
     {
+        if (_closed)
+        {
+            return;
+        }
+
         // An answer to a request that was already given up on. The callers it
         // was carrying moved to the one that replaced it, and its rows are the
         // older of the two.
@@ -211,8 +346,29 @@ public class PracticeLibrary
         // answer beats showing inferno lineups on mirage.
         if (lineups != null && map == _map)
         {
+            lineups = MergeLocal(steamId, fetch.StartedAt, lineups);
+
+            var dropped = new HashSet<string>();
+
+            if (_lineups.TryGetValue(steamId, out List<LineupRecord>? was))
+            {
+                dropped.UnionWith(was.Select(lineup => lineup.client_id));
+                dropped.ExceptWith(lineups.Select(lineup => lineup.client_id));
+            }
+
             _lineups[steamId] = lineups;
             count = lineups.Count;
+
+            try
+            {
+                Replaced?.Invoke(steamId, dropped);
+            }
+            catch (Exception error)
+            {
+                // Same reason as the callbacks below: nothing thrown here may
+                // reach native code, or keep the waiting callers unanswered.
+                _logger.LogError(error, "a library replaced handler threw");
+            }
         }
 
         foreach (Action<int> waiting in fetch.Waiting)

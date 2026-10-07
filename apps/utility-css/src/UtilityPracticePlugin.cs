@@ -144,6 +144,13 @@ public partial class UtilityPracticePlugin : BasePlugin
         _playbook.Reset();
         _drill.Reset();
         _system.Reset();
+
+        // One last try at what the panel has not taken yet: it lives only in
+        // this instance's memory. Not waited for -- this is the game thread.
+        if (_api.QueuedCount > 0)
+        {
+            _ = Task.Run(() => _api.Drain());
+        }
     }
 
     private void OnSecond()
@@ -158,6 +165,33 @@ public partial class UtilityPracticePlugin : BasePlugin
         // A no-op once the map has answered; see MapCalloutsReporter.Report.
         _callouts.Report(_session.Map);
         DrainPendingMapLoad();
+        DrainQueued();
+    }
+
+    // The retry queue only used to move when something else got through -- a
+    // later save, a scored throw, a map change -- so a panel that came back
+    // while nobody was saving left everything queued until the next one.
+    private const int DrainEverySeconds = 30;
+
+    private int _drainTicks;
+
+    private void DrainQueued()
+    {
+        if (++_drainTicks < DrainEverySeconds)
+        {
+            return;
+        }
+
+        _drainTicks = 0;
+
+        if (_api.QueuedCount == 0)
+        {
+            return;
+        }
+
+        // Off the game thread like every other call to the panel; Drain lets
+        // only one pass run at a time, so a slow one is never stacked on.
+        _ = Task.Run(() => _api.Drain());
     }
 
     // Nobody stays dead on a practice server. Rejoining while dead, falling off

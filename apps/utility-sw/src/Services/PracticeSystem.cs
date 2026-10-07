@@ -13,6 +13,13 @@ public class PracticeState
 {
     public LineupRecord? Loaded { get; set; }
 
+    // The lineup this player explicitly loaded to practise -- .load, .next, a
+    // pick off the panel or the website. While set, every other lineup is
+    // hidden from them alone. Separate from Loaded because that one follows
+    // whichever ring they look at, and glancing at a spot must not be what
+    // empties the map. .all puts it back to null.
+    public LineupRecord? Practising { get; set; }
+
     // The last query's matches, so .next and .prev walk them in place.
     public List<LineupRecord> Results { get; } = new List<LineupRecord>();
     public int Index { get; set; } = -1;
@@ -56,6 +63,13 @@ public class PracticeState
     // Off by default: the bloom outline is dozens of entities, and a player who
     // has not asked for it should not be paying for it.
     public bool Bloom { get; set; }
+
+    // Set by .clear and held until the player asks for something again. The
+    // spot watcher redraws whatever is under their feet four times a second
+    // and re-adopts the lineup they are looking at, so without a flag saying
+    // "they asked for nothing" it put the markers back inside a quarter of a
+    // second -- which is .clear appearing to do nothing at all.
+    public bool Cleared { get; set; }
 
 
     // Lineups this player has already been told are not exact. Said once per
@@ -118,6 +132,18 @@ public class PracticeSystem
     public bool IsSolo(ulong steamId)
     {
         return !_states.TryGetValue(steamId, out PracticeState? state) || state.Solo;
+    }
+
+    // Same shape as IsSolo: no state means nothing loaded, so nothing hidden.
+    public bool IsPractising(ulong steamId)
+    {
+        return _states.TryGetValue(steamId, out PracticeState? state) && state.Practising != null;
+    }
+
+    // Same shape again: .clear holds until the player asks for something.
+    public bool IsCleared(ulong steamId)
+    {
+        return _states.TryGetValue(steamId, out PracticeState? state) && state.Cleared;
     }
 
     public void Forget(ulong steamId)
