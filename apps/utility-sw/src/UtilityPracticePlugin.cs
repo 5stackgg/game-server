@@ -221,6 +221,11 @@ public partial class UtilityPracticePlugin : BasePlugin
         {
             KeepRoundsMoving();
 
+            // A new round is a map cleanup, and the cleanup takes every beam,
+            // label and grenade model with it. Nothing else redraws them: the
+            // library is only rebuilt when it changes, and it has not.
+            Core.Scheduler.NextTick(() => OnRoundRestarted());
+
             return HookResult.Continue;
         });
 
@@ -1898,6 +1903,10 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void OnMapLoad(string mapName)
     {
+        // First: the resets below despawn whatever they still hold a handle
+        // to, and every one of those handles died with the old map.
+        _replay.ForgetEverything();
+
         _hud?.Reset();
         _menus.Clear();
         _recorder.Reset();
@@ -1923,6 +1932,29 @@ public partial class UtilityPracticePlugin : BasePlugin
 
 
         RefreshEverything();
+    }
+
+    // Warmup ending, mp_restartgame and a round running out all come through
+    // here, a tick after round_start so the cleanup is certainly behind us.
+    // Swept by tag first, in case anything of ours did survive it, then every
+    // handle is dropped -- what is left of them may point at recycled
+    // entities -- and the shared layer and each player's selection are drawn
+    // again from scratch.
+    private void OnRoundRestarted()
+    {
+        if (_tornDown)
+        {
+            return;
+        }
+
+        _replay.SweepMarkers();
+        _replay.ForgetEverything();
+
+        // The spot watcher only redraws a selection when the player moves to a
+        // different spot. Forgotten, it redraws each one on its next pass.
+        _standingIn.Clear();
+
+        RedrawLibrary();
     }
 
     // The panel is the only source of both the roster and the library, so a

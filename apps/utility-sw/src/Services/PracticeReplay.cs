@@ -2798,6 +2798,20 @@ public class PracticeReplay
         _drawingInto = null;
     }
 
+    // Every handle this instance holds, markers and ghosts and previews alike,
+    // dropped without touching the world. For the moments the world was
+    // emptied under us -- a round restart's map cleanup, a map change -- when
+    // each handle may already be recycled into an entity that is somebody
+    // else's, and despawning it would take THAT out instead.
+    public void ForgetEverything()
+    {
+        _ghosts.Clear();
+        _trails.Clear();
+        _ghostThrows.Clear();
+        _bloomSmoke.Clear();
+        ForgetMarkers();
+    }
+
     // The library layer only. The selection layer belongs to individual players
     // and outlives a library redraw.
     private void ClearSharedMarkers()
