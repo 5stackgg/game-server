@@ -508,6 +508,7 @@ public partial class UtilityPracticePlugin
         // its next pass -- a quarter of a second, or the first time they
         // glanced at another ring -- which is why .clear read as broken.
         state.Cleared = true;
+        _replay.ApplyLibraryVisibility(player);
 
         _replay.ClearGhosts(player.SteamID);
 
@@ -1141,6 +1142,10 @@ public partial class UtilityPracticePlugin
         }
 
         _replay.ClearGhosts(player.SteamID);
+
+        // Gone from their library, so gone from the map -- not left standing
+        // until somebody else's refresh happens to rebuild the layer.
+        RedrawLibrary();
 
         Reply(context, $" {ChatColors.Green}deleted {ChatColors.Default}{loaded.name}");
 

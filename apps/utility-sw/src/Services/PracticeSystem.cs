@@ -140,6 +140,12 @@ public class PracticeSystem
         return _states.TryGetValue(steamId, out PracticeState? state) && state.Practising != null;
     }
 
+    // Same shape again: .clear holds until the player asks for something.
+    public bool IsCleared(ulong steamId)
+    {
+        return _states.TryGetValue(steamId, out PracticeState? state) && state.Cleared;
+    }
+
     public void Forget(ulong steamId)
     {
         _states.Remove(steamId);

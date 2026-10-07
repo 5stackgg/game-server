@@ -190,6 +190,12 @@ public class PracticeReplay
     private readonly List<CPointWorldText> _markerTexts = new();
     private readonly List<CPhysicsProp> _markerProps = new();
 
+    // Which lineups each library entity stands for, by entity index. A needle
+    // and a diamond belong to one lineup; a floating grenade belongs to every
+    // lineup of its type thrown from that spot. This is what lets one shared
+    // set of entities show each player only the lineups the panel gave THEM.
+    private readonly Dictionary<uint, string[]> _markerLineups = new();
+
     // The selection layer: the crosshair and labels for whichever lineup ONE
     // player has focused. Kept per player and transmit-blocked from everybody
     // else, because two people practising at once were otherwise wiping each
@@ -413,6 +419,15 @@ public class PracticeReplay
     public Func<ulong, IReadOnlyList<LineupRecord>> All { get; set; } =
         _ => Array.Empty<LineupRecord>();
 
+    // What the library layer draws: every connected player's library merged
+    // into one set, because the layer is one set of entities for the whole
+    // server. Drawing the CALLER's library there replaced everybody else's
+    // markers with theirs on every .load, and put their private lineups in
+    // front of the room. Who may actually see each lineup is decided per
+    // viewer afterwards, in ApplyLibraryVisibility.
+    public Func<IReadOnlyList<LineupRecord>> Shared { get; set; } =
+        () => Array.Empty<LineupRecord>();
+
     // A capture client watching a lineup wants the throw and not the plugin's
     // drawing of it: beams in frame are our overlay filmed instead of the map.
 
@@ -572,6 +587,10 @@ public class PracticeReplay
             IReadOnlyList<LineupRecord> library =
                 everything.Count > 0 ? everything : new[] { lineup };
 
+            // The layer everyone shares, not this player's slice of it: their
+            // library decides only what their own selection offers below.
+            IReadOnlyList<LineupRecord> shared = Shared();
+
             // Whatever else is throwable from this spot comes up with it --
             // unless the player is practising this one, where a sibling
             // crosshair is exactly the "which one am I on" they loaded it to
@@ -585,7 +604,7 @@ public class PracticeReplay
                 here.Add(lineup);
             }
 
-            ShowLibrary(library);
+            ShowLibrary(shared.Count > 0 ? shared : library);
             ShowSelection(player, here, standing);
         });
 
@@ -1290,7 +1309,9 @@ public class PracticeReplay
             here.Add(lineup);
         }
 
-        ShowLibrary(library);
+        IReadOnlyList<LineupRecord> shared = Shared();
+
+        ShowLibrary(shared.Count > 0 ? shared : library);
         ShowSelection(player, here, standing);
     }
 
@@ -1384,6 +1405,11 @@ public class PracticeReplay
 
         if (signature == _librarySignature && _markerBeams.Count > 0)
         {
+            // Nothing to rebuild, but who may see what can still have moved:
+            // a lineup made public arrives in somebody else's library without
+            // changing a single marker.
+            ApplyLibraryVisibility();
+
             return;
         }
 
@@ -1424,8 +1450,12 @@ public class PracticeReplay
             // No name on the ground and no post: the chevron says which way,
             // the glowing model says what and where, and the name arrives in
             // centre text when the player points at the grenade.
+            int before = _markerBeams.Count;
+
             Needle(feet, lineup.release.yaw, 13f, needle, MarkerWidth);
             Diamond(lineup.detonation_position, 22f, type, MarkerWidth);
+
+            TagLineups(_markerBeams.Skip(before), new[] { lineup.client_id });
         }
 
         ShowSpotUtility(drawn);
@@ -1441,18 +1471,24 @@ public class PracticeReplay
     /// view leaves the rest of the server seeing the whole map. Their own
     /// selection is a separate set of entities and is never touched here.
     ///
+    /// The layer is everybody's libraries at once, so each lineup is also
+    /// hidden from anyone the panel did not give it to: a private lineup is
+    /// seen by its owner and nobody else. A lineup in nobody's library -- one
+    /// loaded straight off the website, say -- has no owner to protect and
+    /// stays visible, as it always was.
+    ///
     /// Not while an execute is running: that already narrows the library to
     /// its own throws, and hiding those would hide the execute.
     /// </summary>
     public void ApplyLibraryVisibility(IPlayer? only = null)
     {
-        var indexes = new List<int>();
+        var entities = new List<(int index, string[]? lineups)>();
 
         foreach (CEnvBeam beam in _markerBeams)
         {
             if (beam.IsValid)
             {
-                indexes.Add((int)beam.Index);
+                entities.Add(Tracked(beam.Index));
             }
         }
 
@@ -1460,7 +1496,7 @@ public class PracticeReplay
         {
             if (label.IsValid)
             {
-                indexes.Add((int)label.Index);
+                entities.Add(Tracked(label.Index));
             }
         }
 
@@ -1468,27 +1504,64 @@ public class PracticeReplay
         {
             if (prop.IsValid)
             {
-                indexes.Add((int)prop.Index);
+                entities.Add(Tracked(prop.Index));
             }
         }
 
-        IEnumerable<IPlayer> players =
-            only != null ? new[] { only } : _core.PlayerManager.GetAllPlayers();
+        var humans = new List<IPlayer>();
 
-        foreach (IPlayer player in players)
+        foreach (IPlayer player in _core.PlayerManager.GetAllPlayers())
         {
-            if (player == null || !player.IsValid || player.IsFakeClient)
+            if (player != null && player.IsValid && !player.IsFakeClient)
+            {
+                humans.Add(player);
+            }
+        }
+
+        // Read once per pass rather than once per entity: a busy map is over a
+        // thousand entities, and the library behind each player does not move
+        // while this runs.
+        var libraries = new Dictionary<ulong, HashSet<string>>();
+        var owned = new HashSet<string>();
+
+        foreach (IPlayer human in humans)
+        {
+            var mine = new HashSet<string>(All(human.SteamID).Select(lineup => lineup.client_id));
+
+            libraries[human.SteamID] = mine;
+            owned.UnionWith(mine);
+        }
+
+        bool restricted = LibraryRestriction != null;
+
+        foreach (IPlayer player in humans)
+        {
+            if (only != null && player.SteamID != only.SteamID)
             {
                 continue;
             }
 
-            bool hide = LibraryRestriction == null && LibraryHidden(player.SteamID);
+            bool hideAll = !restricted && LibraryHidden(player.SteamID);
+            HashSet<string> mine = libraries[player.SteamID];
 
-            foreach (int index in indexes)
+            foreach ((int index, string[]? lineups) in entities)
             {
+                bool hide =
+                    hideAll
+                    || (
+                        !restricted
+                        && lineups != null
+                        && !lineups.Any(id => mine.Contains(id) || !owned.Contains(id))
+                    );
+
                 player.ShouldBlockTransmitEntity(index, hide);
             }
         }
+    }
+
+    private (int index, string[]? lineups) Tracked(uint index)
+    {
+        return ((int)index, _markerLineups.TryGetValue(index, out string[]? lineups) ? lineups : null);
     }
 
     // What to bring, not which throw to make. A model belongs to the SPOT: two
@@ -1524,11 +1597,56 @@ public class PracticeReplay
                 // is the one that does not say which throw it is.
                 Color? glow = StepGlowAt(lineups, spot.types[index], spot.x, spot.y, spot.z);
 
+                int before = _markerProps.Count;
+
                 UtilityModel(
                     spot.types[index],
                     new Vec3(spot.x + offset, spot.y, spot.z),
                     glow
                 );
+
+                TagLineups(
+                    _markerProps.Skip(before),
+                    LineupsAt(lineups, spot.types[index], spot.x, spot.y, spot.z)
+                );
+            }
+        }
+    }
+
+    // The same "is this lineup part of that spot" test StepGlowAt makes, so a
+    // grenade is shown to whoever can see any one of the throws it stands for.
+    private string[] LineupsAt(
+        IReadOnlyList<LineupRecord> lineups,
+        string utilityType,
+        float x,
+        float y,
+        float z
+    )
+    {
+        return lineups
+            .Where(lineup =>
+            {
+                if (lineup.utility_type != utilityType)
+                {
+                    return false;
+                }
+
+                Vec3 feet = Grounded(lineup.release.feet_position);
+
+                return new Vec3(feet.x - x, feet.y - y, 0f).LengthXY() <= SpotRadius
+                    && Math.Abs(feet.z - z) <= SpotHeight;
+            })
+            .Select(lineup => lineup.client_id)
+            .ToArray();
+    }
+
+    private void TagLineups(IEnumerable<CEntityInstance> entities, string[] lineups)
+    {
+        foreach (CEntityInstance entity in entities)
+        {
+            if (entity.IsValid)
+            {
+                _markerLineups[entity.Index] = lineups;
             }
         }
     }
@@ -2675,6 +2793,7 @@ public class PracticeReplay
         _markerBeams.Clear();
         _markerTexts.Clear();
         _markerProps.Clear();
+        _markerLineups.Clear();
         _selections.Clear();
         _drawingInto = null;
     }
@@ -2710,6 +2829,7 @@ public class PracticeReplay
         _markerBeams.Clear();
         _markerTexts.Clear();
         _markerProps.Clear();
+        _markerLineups.Clear();
     }
 
     public void ClearMarkers()
@@ -2748,6 +2868,7 @@ public class PracticeReplay
         _markerBeams.Clear();
         _markerTexts.Clear();
         _markerProps.Clear();
+        _markerLineups.Clear();
     }
 
     // A NaN or an infinity reaching Teleport takes the whole server down inside

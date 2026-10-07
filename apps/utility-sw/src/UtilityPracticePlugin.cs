@@ -143,8 +143,15 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         _replay.IsSolo = _system.IsSolo;
         _replay.AnnouncesLoad = steamId => !UseHud(steamId);
-        _replay.LibraryHidden = _system.IsPractising;
+        // .clear hides the library the same way practising one lineup does:
+        // from the player who asked, and nobody else. Hidden rather than
+        // swept, so no redraw -- a save, a refresh, a round restart -- can hand
+        // it back to them, and nobody else loses theirs.
+        _replay.LibraryHidden = steamId =>
+            _system.IsPractising(steamId) || _system.IsCleared(steamId);
         _replay.All = steamId => _library.For(steamId);
+        _replay.Shared = SharedLibrary;
+        _library.Replaced += OnLibraryReplaced;
         // A solve rains live HE and molotovs on a map people are standing in.
         _system.SolveRunning = () => _solver.IsBusy;
         _session.Refreshed += OnSessionRefreshed;
@@ -236,6 +243,11 @@ public partial class UtilityPracticePlugin : BasePlugin
             // cannot resolve is exactly when the roster most needs re-reading.
             _occupancyDirty = true;
             _prompt?.Cancel(@event.PlayerId);
+
+            // Their lineups leave the shared layer with them. A tick late, for
+            // the same reason the occupancy is: the leaving player is still on
+            // the roster while this runs.
+            Core.Scheduler.NextTick(() => RedrawLibrary());
 
             ForPlayer(
                 @event.PlayerId,
@@ -395,6 +407,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _replay.SweepMarkers();
 
         _session.Refreshed -= OnSessionRefreshed;
+        _library.Replaced -= OnLibraryReplaced;
         _recorder.Thrown -= _system.OnThrown;
         _recorder.Finalized -= _score.OnFinalized;
         _recorder.Ended -= _replay.TrailEnded;
@@ -821,6 +834,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             // Walking onto a spot on purpose is asking to see it again.
             state.Cleared = false;
             state.Loaded = target;
+            _replay.ApplyLibraryVisibility(player);
         }
     }
 
@@ -1945,6 +1959,17 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         load.FetchingSince = now;
 
+        // A player who has only just arrived is sent every marker on the map
+        // until somebody says otherwise, and their library is still a round
+        // trip away. With nothing of their own yet they see only what nobody
+        // owns, rather than everybody's private lineups for a second or two.
+        IPlayer? player = _system.Find(steamId);
+
+        if (player != null)
+        {
+            _replay.ApplyLibraryVisibility(player);
+        }
+
         _library.Refresh(steamId, count => LibraryLanded(steamId, map, count, pushed));
     }
 
@@ -1986,8 +2011,6 @@ public partial class UtilityPracticePlugin : BasePlugin
         {
             IReadOnlyList<LineupRecord> library = _library.For(steamId);
 
-            ShowLibraryFor(steamId, library);
-
             // .next and .prev walk state.Results, and a refresh never filled it
             // -- so every lineup on the map was drawn and none of them could be
             // stepped through until the player ran a search. If they can SEE
@@ -2025,28 +2048,57 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     // Markers are one shared set of entities for the whole server (see
     // PracticeReplay.ShowLibrary) while a library is filtered per player by the
-    // panel, so drawing one on somebody's behalf only holds while there is
-    // nobody else it could be shown to. With company it drew whoever's fetch
-    // landed last, which put one player's private lineups in front of everyone.
-    // Their own .load, .next and .menu still draw, because those were asked for.
-    private void ShowLibraryFor(ulong steamId, IReadOnlyList<LineupRecord> library)
+    // panel. Drawing whoever's fetch landed last put one player's private
+    // lineups in front of everyone, and refusing to draw with company left a
+    // full server with markers that never followed a save or an edit. So the
+    // layer draws everybody's at once and each player is sent only the
+    // lineups that are theirs to see -- see ApplyLibraryVisibility.
+    private void OnLibraryReplaced(ulong steamId)
     {
-        List<ulong> connected = _system.ConnectedSteamIds();
+        RedrawLibrary();
+    }
 
-        if (connected.Count != 1 || connected[0] != steamId)
+    // Rebuilds only when what it would draw has changed, so this is cheap to
+    // call from anything that might have moved the library. .clear is not
+    // undone by it: that hides the layer from the player who asked, rather
+    // than taking it away from the room.
+    private void RedrawLibrary()
+    {
+        if (_tornDown)
         {
             return;
         }
 
-        // A refresh nobody asked for does not get to undo .clear: the drain
-        // runs on its own schedule, and the panel pushing an edit is not the
-        // player asking for their markers back.
-        if (_system.StateFor(steamId).Cleared)
+        _replay.ShowLibrary(SharedLibrary());
+    }
+
+    // Every connected player's library, one lineup per client id. Taken in
+    // turns rather than one library after another: the draw is capped, and a
+    // cap that ran out halfway through the first player's library would show
+    // the second player none of theirs.
+    private IReadOnlyList<LineupRecord> SharedLibrary()
+    {
+        List<IReadOnlyList<LineupRecord>> libraries = _system
+            .ConnectedSteamIds()
+            .Select(steamId => _library.For(steamId))
+            .ToList();
+
+        var seen = new HashSet<string>();
+        var shared = new List<LineupRecord>();
+        int longest = libraries.Count == 0 ? 0 : libraries.Max(library => library.Count);
+
+        for (int index = 0; index < longest; index++)
         {
-            return;
+            foreach (IReadOnlyList<LineupRecord> library in libraries)
+            {
+                if (index < library.Count && seen.Add(library[index].client_id))
+                {
+                    shared.Add(library[index]);
+                }
+            }
         }
 
-        _replay.ShowLibrary(library);
+        return shared;
     }
 
     private LibraryLoad LibraryLoadFor(ulong steamId)

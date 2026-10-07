@@ -49,6 +49,12 @@ public class PracticeLibrary
 
     public string Map => _map;
 
+    // Raised on the game thread whenever a fetch replaces a player's library,
+    // before anyone waiting on that fetch is answered. Every refresh lands
+    // here -- the drain's, .reload's, a load pushed from the website -- so the
+    // markers follow the library whichever of them asked.
+    public event Action<ulong>? Replaced;
+
     public void SetMap(string map)
     {
         if (_map == map)
@@ -213,6 +219,17 @@ public class PracticeLibrary
         {
             _lineups[steamId] = lineups;
             count = lineups.Count;
+
+            try
+            {
+                Replaced?.Invoke(steamId);
+            }
+            catch (Exception error)
+            {
+                // Same reason as the callbacks below: nothing thrown here may
+                // reach native code, or keep the waiting callers unanswered.
+                _logger.LogError(error, "a library replaced handler threw");
+            }
         }
 
         foreach (Action<int> waiting in fetch.Waiting)
