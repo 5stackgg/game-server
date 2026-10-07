@@ -517,10 +517,12 @@ public partial class UtilityPracticePlugin
         // this is the same call, for anybody who types it.
         int thrown = _replay.ClearThrownUtility();
 
-        // Swept rather than cleared: ClearMarkers can only despawn what this
-        // instance still has a handle to, and anything a previous load left
-        // behind is exactly what makes .clear look like it did nothing.
-        _replay.SweepMarkers();
+        // Their own selection only. The library layer is everyone's, and the
+        // sweep that used to be here took it -- and every other player's
+        // crosshair -- off the map for the whole server; the hold above hides
+        // it from this player alone. A previous load's litter is already
+        // swept when this instance loads.
+        _replay.ClearSelectionFor(player.SteamID);
 
         // Safe to drop now the watcher is held off: nothing can match against
         // it, so the first redraw after they ask again is decided by where
@@ -1000,8 +1002,10 @@ public partial class UtilityPracticePlugin
         state.Crosshair = !state.Crosshair;
 
         // Redrawn rather than left until the player steps off the spot and back
-        // on: a toggle that appears to do nothing gets pressed again.
-        _replay.ClearMarkers();
+        // on: a toggle that appears to do nothing gets pressed again. Only
+        // their selection -- the crosshair is theirs, and clearing every marker
+        // to redraw it blanked the map for everybody else.
+        _replay.ClearSelectionFor(player.SteamID);
         ForgetSpot(player.SteamID);
 
         Reply(
@@ -1195,7 +1199,12 @@ public partial class UtilityPracticePlugin
         reloading.Index = -1;
 
         _replay.ClearGhosts(steamId);
-        _replay.ClearMarkers();
+
+        // Their selection, not the shared layer: other players' markers have
+        // nothing to do with this library, and the layer is redrawn from the
+        // new one the moment it lands (OnLibraryReplaced).
+        _replay.ClearSelectionFor(steamId);
+        _replay.ApplyLibraryVisibility(player);
         ForgetSpot(steamId);
 
         _library.Refresh(
