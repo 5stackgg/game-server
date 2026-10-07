@@ -376,6 +376,8 @@ public partial class UtilityPracticePlugin : BasePlugin
                 _logger.LogWarning(exception, "teardown failed");
             }
 
+            FlushQueued();
+
             return;
         }
 
@@ -395,6 +397,44 @@ public partial class UtilityPracticePlugin : BasePlugin
         catch (Exception exception)
         {
             _logger.LogWarning(exception, "teardown failed");
+        }
+
+        FlushQueued();
+    }
+
+    // Saves and scored attempts the panel has not taken yet live only in this
+    // instance's memory, and a reload or a shutdown throws them away. One
+    // last try on the way out: waited for briefly, and only off the game
+    // thread -- a server shutting down is not held up for a panel that is
+    // down, it just loses what it could not send.
+    private static readonly TimeSpan FlushWait = TimeSpan.FromSeconds(3);
+
+    private void FlushQueued()
+    {
+        try
+        {
+            int queued = _api?.QueuedCount ?? 0;
+
+            if (queued == 0)
+            {
+                return;
+            }
+
+            Task drain = Task.Run(() => _api!.Drain());
+
+            if (!Thread.CurrentThread.IsThreadPoolThread || drain.Wait(FlushWait))
+            {
+                return;
+            }
+
+            _logger.LogWarning(
+                "{queued} queued upload(s) still unsent at unload; they go with this instance",
+                _api!.QueuedCount
+            );
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "flushing the upload queue failed");
         }
     }
 
@@ -1631,6 +1671,33 @@ public partial class UtilityPracticePlugin : BasePlugin
         _callouts.Report(_session.Map);
         DrainLibraryLoads();
         DrainPendingMapLoad();
+        DrainQueued();
+    }
+
+    // The retry queue only used to move when something else got through -- a
+    // later save, a scored throw, a map change -- so a panel that came back
+    // while nobody was saving left everything queued until the next one.
+    private const int DrainEverySeconds = 30;
+
+    private int _drainTicks;
+
+    private void DrainQueued()
+    {
+        if (++_drainTicks < DrainEverySeconds)
+        {
+            return;
+        }
+
+        _drainTicks = 0;
+
+        if (_api.QueuedCount == 0)
+        {
+            return;
+        }
+
+        // Off the game thread like every other call to the panel; Drain lets
+        // only one pass run at a time, so a slow one is never stacked on.
+        _ = Task.Run(() => _api.Drain());
     }
 
     // Nobody stays dead on a practice server. Rejoining while dead, falling off
