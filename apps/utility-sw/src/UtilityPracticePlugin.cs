@@ -85,6 +85,11 @@ public partial class UtilityPracticePlugin : BasePlugin
     private EventDelegates.OnClientSteamAuthorize? _authorizeHandler;
     private EventDelegates.OnCustomHudClicked? _hudClickHandler;
 
+    // Hooked by hand, so unhooked by hand: SwiftlyS2 only drops it once the
+    // core is disposed, a step after Unload, and a round that starts in
+    // between still reaches this instance's handler.
+    private Guid _roundStartHook;
+
     public UtilityPracticePlugin(ISwiftlyCore core)
         : base(core) { }
 
@@ -205,7 +210,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             CEntityInstance entity = @event.Entity;
             Core.Scheduler.NextTick(() =>
             {
-                if (entity.IsValid)
+                if (!_tornDown && entity.IsValid)
                 {
                     _recorder.OnProjectileCreated(entity);
                     TintSmoke(entity);
@@ -217,8 +222,13 @@ public partial class UtilityPracticePlugin : BasePlugin
         _mapLoadHandler = @event => OnMapLoad(@event.MapName);
         Core.Event.OnMapLoad += _mapLoadHandler;
 
-        Core.GameEvent.HookPre<EventRoundStart>(_ =>
+        _roundStartHook = Core.GameEvent.HookPre<EventRoundStart>(_ =>
         {
+            if (_tornDown)
+            {
+                return HookResult.Continue;
+            }
+
             KeepRoundsMoving();
 
             // A new round is a map cleanup, and the cleanup takes every beam,
@@ -307,6 +317,12 @@ public partial class UtilityPracticePlugin : BasePlugin
             _library.SetMap(current);
             _session.Map = current;
             ApplyPracticeCfg();
+
+            // Nobody reconnects for a hot reload, so no connect hook fires for
+            // the players already here. RefreshEverything fetches each of their
+            // libraries -- the drain picks up anyone it misses -- and the
+            // occupancy goes out on the next second rather than in a minute.
+            _occupancyDirty = true;
             RefreshEverything();
         }
 
@@ -318,7 +334,9 @@ public partial class UtilityPracticePlugin : BasePlugin
         );
     }
 
-    private bool _tornDown;
+    // Volatile: Unload runs on a thread pool thread during a hot reload, and
+    // continuations of the panel calls land on whichever thread they like.
+    private volatile bool _tornDown;
 
     // SwiftlyS2 never reschedules a repeating timer whose callback throws,
     // still runs a timer's first pass if it was cancelled before then, and
@@ -446,6 +464,11 @@ public partial class UtilityPracticePlugin : BasePlugin
     {
         _tornDown = true;
 
+        // Before the sweep, so nothing that lands after it -- a library answer,
+        // a trajectory, a queued redraw -- can put anything back.
+        _library.Close();
+        _replay.Close();
+
         // Drawn entities are not the plugin's to leave behind: without this a
         // hot reload orphans every beam, label and model in the world, with no
         // instance left holding a reference to any of them.
@@ -490,11 +513,17 @@ public partial class UtilityPracticePlugin : BasePlugin
         if (_disconnectHandler != null)
         {
             Core.Event.OnClientDisconnected -= _disconnectHandler;
+        }
 
-            if (_precacheHandler != null)
-            {
-                Core.Event.OnPrecacheResource -= _precacheHandler;
-            }
+        if (_precacheHandler != null)
+        {
+            Core.Event.OnPrecacheResource -= _precacheHandler;
+        }
+
+        if (_roundStartHook != Guid.Empty)
+        {
+            Core.GameEvent.Unhook(_roundStartHook);
+            _roundStartHook = Guid.Empty;
         }
 
         if (_authorizeHandler != null)

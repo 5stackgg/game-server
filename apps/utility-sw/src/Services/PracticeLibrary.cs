@@ -67,6 +67,17 @@ public class PracticeLibrary
 
     public string Map => _map;
 
+    // Set once this instance has been torn down. A fetch still in flight
+    // across a hot reload lands on a tick after the teardown, and everything
+    // waiting on it -- a pushed load, a redraw -- would teleport players and
+    // draw markers on behalf of an instance that no longer owns any of them.
+    private volatile bool _closed;
+
+    public void Close()
+    {
+        _closed = true;
+    }
+
     // Raised on the game thread whenever a fetch replaces a player's library,
     // before anyone waiting on that fetch is answered. Every refresh lands
     // here -- the drain's, .reload's, a load pushed from the website -- so the
@@ -224,6 +235,11 @@ public class PracticeLibrary
 
             _core.Scheduler.NextTick(() =>
             {
+                if (_closed)
+                {
+                    return;
+                }
+
                 if (artifact != null)
                 {
                     lineup.trajectory = artifact.path;
@@ -307,6 +323,11 @@ public class PracticeLibrary
         List<LineupRecord>? lineups
     )
     {
+        if (_closed)
+        {
+            return;
+        }
+
         // An answer to a request that was already given up on. The callers it
         // was carrying moved to the one that replaced it, and its rows are the
         // older of the two.

@@ -320,6 +320,17 @@ public class PracticeReplay
 
     private readonly Dictionary<uint, GhostThrow> _ghostThrows = new();
 
+    // Set by the plugin's teardown. Nothing is spawned past it: a callback
+    // that outlives a hot reload -- a library answer, a trajectory fetch, a
+    // delayed redraw -- would otherwise put entities in the world after the
+    // sweep, where no instance holds a handle to them.
+    private volatile bool _closed;
+
+    public void Close()
+    {
+        _closed = true;
+    }
+
     public PracticeReplay(
         ISwiftlyCore core,
         UtilityConfig config,
@@ -821,7 +832,7 @@ public class PracticeReplay
     // subject. Only Swiftly can emit one, so only Swiftly offers it.
     public bool ShowBloomSmoke(IPlayer player, LineupRecord lineup)
     {
-        if (!EmitGrenades)
+        if (!EmitGrenades || _closed)
         {
             return false;
         }
@@ -899,6 +910,11 @@ public class PracticeReplay
     // already said which throw they want, so it is not the switch's to refuse.
     public void ThrowGhostProjectile(IPlayer player, LineupRecord lineup, bool force = false)
     {
+        if (_closed)
+        {
+            return;
+        }
+
         _logger.LogInformation(
             "[nade-render] ThrowGhostProjectile: emitGrenades={emit} ghostProjectile={ghost} forced={force} exactlyReplayable={exact} hasSeed={seed} confidence={conf}",
             EmitGrenades,
@@ -2549,7 +2565,7 @@ public class PracticeReplay
 
     private void UtilityModel(string utilityType, Vec3 at, Color? glow = null)
     {
-        if (!DrawModels)
+        if (!DrawModels || _closed)
         {
             return;
         }
@@ -2698,7 +2714,7 @@ public class PracticeReplay
         float unitsPerPx = LabelUnitsPerPx
     )
     {
-        if (!Sane(at))
+        if (_closed || !Sane(at))
         {
             return null;
         }
@@ -2895,6 +2911,11 @@ public class PracticeReplay
 
     private CEnvBeam? CreateBeam(Vec3 start, Vec3 end, Color color, float width)
     {
+        if (_closed)
+        {
+            return null;
+        }
+
         if (!Sane(start) || !Sane(end))
         {
             _logger.LogWarning(
