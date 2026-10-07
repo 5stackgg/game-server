@@ -2162,9 +2162,18 @@ public partial class UtilityPracticePlugin : BasePlugin
 
             if (pushed || state.Results.Count == 0)
             {
+                // Where they were in the walk, by lineup rather than position:
+                // the panel pushing an edit is not the player asking to start
+                // again from the top, and the new rows are new objects anyway.
+                string? at =
+                    state.Index >= 0 && state.Index < state.Results.Count
+                        ? state.Results[state.Index].client_id
+                        : null;
+
                 state.Results.Clear();
                 state.Results.AddRange(library);
-                state.Index = -1;
+                state.Index =
+                    at == null ? -1 : state.Results.FindIndex(match => match.client_id == at);
 
                 if (!pushed)
                 {
