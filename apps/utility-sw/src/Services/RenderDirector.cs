@@ -167,6 +167,14 @@ public class RenderDirector
             return;
         }
 
+        // Spawned on the spot first, then placed exactly: the spawn is what
+        // squares the body up, the teleport is what puts the eyes on the line.
+        _system.RespawnAt(
+            player,
+            RenderDirectorUtility.StageAt(lineup.release.feet_position, lineup.approach),
+            lineup.release.yaw
+        );
+
         Vec3? feet = _replay.Stage(player, lineup);
 
         if (feet == null)
@@ -311,6 +319,11 @@ public class RenderDirector
             // Where the pawn came to rest, not where staging aimed for: every
             // camera placed off the feet has to match the eyes it cuts to.
             take.Feet = at;
+
+            // Level while the body is on screen: a teleport that carries the
+            // aim's pitch leans the whole model back with it. The aim goes
+            // back on at the tilt, when the camera is in the eyes.
+            _replay.Repoint(player, 0f, take.Lineup.release.yaw);
 
             if (take.Camera == null || !take.Camera.IsValid)
             {
@@ -508,6 +521,26 @@ public class RenderDirector
         }
 
         take.StillSent = true;
+
+        // An aim still is only worth having if the eyes were on the lineup's
+        // line when it was taken, so it says how far off they were.
+        CCSPlayerPawn? pawn = player.PlayerPawn;
+
+        if (kind.StartsWith("aim", StringComparison.Ordinal) && pawn != null && pawn.IsValid)
+        {
+            QAngle eyes = pawn.EyeAngles;
+
+            Tell(
+                take,
+                player,
+                "still",
+                ("kind", kind),
+                ("dpitch", RenderDirectorUtility.AngleDelta(eyes.X, take.Lineup.release.pitch)),
+                ("dyaw", RenderDirectorUtility.AngleDelta(eyes.Y, take.Lineup.release.yaw))
+            );
+            return;
+        }
+
         Tell(take, player, "still", ("kind", kind));
     }
 
