@@ -52,6 +52,10 @@ public class LineupRecord
 
     public List<TrajectoryPoint> trajectory { get; set; } = new List<TrajectoryPoint>();
 
+    // The run-up from the last standstill to the release, oldest first. Empty
+    // for a throw made standing still.
+    public List<ApproachSample> approach { get; set; } = new List<ApproachSample>();
+
     // The measured bloom, when the panel has one. Arrives with the trajectory
     // artifact rather than with the library row, and is absent for everything
     // that is not a smoke.

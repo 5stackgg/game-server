@@ -45,6 +45,31 @@ public class UtilityWireTests
                 new TrajectoryPoint { p = new Vec3(1f, 2f, 3f), t = 10 },
                 new TrajectoryPoint { p = new Vec3(4f, 5f, 6f), t = 12, bounce = true },
             },
+            approach = new List<ApproachSample>
+            {
+                new ApproachSample
+                {
+                    t = -16,
+                    pos = new Vec3(10f, 20f, 30f),
+                    vel = new Vec3(250f, -12.5f, 0f),
+                    pitch = -3.5f,
+                    yaw = 90f,
+                    buttons = 1024,
+                    on_ground = true,
+                    ducked = false,
+                },
+                new ApproachSample
+                {
+                    t = 0,
+                    pos = new Vec3(14f, 20f, 31.5f),
+                    vel = new Vec3(240f, 0f, 301f),
+                    pitch = -4f,
+                    yaw = 91.5f,
+                    buttons = 1026,
+                    on_ground = false,
+                    ducked = true,
+                },
+            },
         };
     }
 
@@ -148,6 +173,8 @@ public class UtilityWireTests
     [InlineData("\"trajectory\"")]
     [InlineData("\"flight_time\":")]
     [InlineData("\"confidence\"")]
+    [InlineData("\"pos\"")]
+    [InlineData("\"vel\"")]
     public void FieldsTheApiDoesNotAcceptAreNotSent(string absent)
     {
         string json = JsonSerializer.Serialize(
@@ -156,6 +183,94 @@ public class UtilityWireTests
         );
 
         Assert.DoesNotContain(absent, json);
+    }
+
+    [Fact]
+    public void TheApproachIsSentAsFlatObjectsInTheApisSpelling()
+    {
+        string json = JsonSerializer.Serialize(
+            UtilityIngestPayload.From(Lineup()),
+            PracticeJson.Options
+        );
+
+        Assert.Contains(
+            "\"approach\":["
+                + "{\"t\":-16,\"x\":10,\"y\":20,\"z\":30,\"vx\":250,\"vy\":-12.5,\"vz\":0,"
+                + "\"pitch\":-3.5,\"yaw\":90,\"buttons\":1024,\"on_ground\":true,\"ducked\":false},"
+                + "{\"t\":0,\"x\":14,\"y\":20,\"z\":31.5,\"vx\":240,\"vy\":0,\"vz\":301,"
+                + "\"pitch\":-4,\"yaw\":91.5,\"buttons\":1026,\"on_ground\":false,\"ducked\":true}]",
+            json
+        );
+    }
+
+    [Fact]
+    public void AThrowWithNoRunUpSendsNoApproach()
+    {
+        LineupRecord lineup = Lineup();
+        lineup.approach = new List<ApproachSample>();
+
+        string json = JsonSerializer.Serialize(
+            UtilityIngestPayload.From(lineup),
+            PracticeJson.Options
+        );
+
+        Assert.DoesNotContain("\"approach\"", json);
+    }
+
+    // The panel stores the run-up as it arrived and the library hands the same
+    // array back, so the round trip is the payload's own JSON read as a row.
+    [Fact]
+    public void TheApproachSurvivesIngestAndComesBackOutOfTheLibrary()
+    {
+        LineupRecord original = Lineup();
+
+        using JsonDocument sent = JsonDocument.Parse(
+            JsonSerializer.Serialize(UtilityIngestPayload.From(original), PracticeJson.Options)
+        );
+
+        UtilityLibraryRow? row = JsonSerializer.Deserialize<UtilityLibraryRow>(
+            $"{{\"id\":\"panel-id\",\"approach\":{sent.RootElement.GetProperty("approach").GetRawText()}}}",
+            PracticeJson.Options
+        );
+
+        List<ApproachSample> back = row!.ToLineup().approach;
+
+        Assert.Equal(original.approach.Count, back.Count);
+
+        for (int index = 0; index < back.Count; index++)
+        {
+            Assert.Equal(original.approach[index].t, back[index].t);
+            Assert.Equal(original.approach[index].pos.x, back[index].pos.x);
+            Assert.Equal(original.approach[index].pos.y, back[index].pos.y);
+            Assert.Equal(original.approach[index].pos.z, back[index].pos.z);
+            Assert.Equal(original.approach[index].vel.x, back[index].vel.x);
+            Assert.Equal(original.approach[index].vel.y, back[index].vel.y);
+            Assert.Equal(original.approach[index].vel.z, back[index].vel.z);
+            Assert.Equal(original.approach[index].pitch, back[index].pitch);
+            Assert.Equal(original.approach[index].yaw, back[index].yaw);
+            Assert.Equal(original.approach[index].buttons, back[index].buttons);
+            Assert.Equal(original.approach[index].on_ground, back[index].on_ground);
+            Assert.Equal(original.approach[index].ducked, back[index].ducked);
+        }
+    }
+
+    [Fact]
+    public void AnApproachWithAnIncompleteSampleIsNoApproach()
+    {
+        UtilityLibraryRow? row = JsonSerializer.Deserialize<UtilityLibraryRow>(
+            "{\"id\":\"panel-id\",\"approach\":["
+                + "{\"t\":-16,\"x\":1,\"y\":2,\"z\":3,\"vx\":0,\"vy\":0,\"vz\":0,\"pitch\":0,\"yaw\":0,\"buttons\":0,\"on_ground\":true,\"ducked\":false},"
+                + "{\"t\":0,\"x\":1,\"y\":2,\"vx\":0,\"vy\":0,\"vz\":0,\"pitch\":0,\"yaw\":0,\"buttons\":0,\"on_ground\":true,\"ducked\":false}]}",
+            PracticeJson.Options
+        );
+
+        Assert.Empty(row!.ToLineup().approach);
+    }
+
+    [Fact]
+    public void ALibraryRowWithNoApproachHasNone()
+    {
+        Assert.Empty(Row().ToLineup().approach);
     }
 
     private static UtilityLibraryRow Row()

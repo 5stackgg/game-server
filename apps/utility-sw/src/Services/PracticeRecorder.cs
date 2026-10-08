@@ -80,6 +80,13 @@ public class PracticeRecorder
         public Vec3 InitialVelocity;
         public int LastBounces;
         public List<TrajectoryPoint> Raw = new List<TrajectoryPoint>();
+        public List<ApproachSample> Approach = new List<ApproachSample>();
+    }
+
+    private class PendingThrow
+    {
+        public required ThrowSnapshot Release;
+        public required List<ApproachSample> Approach;
     }
 
     /// <summary>
@@ -95,7 +102,8 @@ public class PracticeRecorder
     private readonly Dictionary<ulong, ArmedState> _armed = new();
     private readonly Dictionary<ulong, StationaryAnchor> _stationary = new();
     private readonly Dictionary<ulong, int> _settling = new();
-    private readonly Dictionary<ulong, ThrowSnapshot> _pending = new();
+    private readonly Dictionary<ulong, PendingThrow> _pending = new();
+    private readonly Dictionary<ulong, Queue<ApproachFrame>> _approach = new();
     private readonly Dictionary<uint, TrackedProjectile> _tracked = new();
     private readonly Dictionary<ulong, List<LineupRecord>> _history = new();
 
@@ -146,6 +154,7 @@ public class PracticeRecorder
         _stationary.Clear();
         _settling.Clear();
         _pending.Clear();
+        _approach.Clear();
         _tracked.Clear();
     }
 
@@ -173,10 +182,12 @@ public class PracticeRecorder
             if (pawn == null || !pawn.IsValid)
             {
                 _armed.Remove(player.SteamID);
+                _approach.Remove(player.SteamID);
                 continue;
             }
 
             TrackStationary(player.SteamID, pawn);
+            RecordApproach(player.SteamID, pawn);
 
             CBasePlayerWeapon? active = pawn.WeaponServices?.ActiveWeapon.Value;
 
@@ -223,11 +234,12 @@ public class PracticeRecorder
 
                 Vec3? anchor = StanceFor(player.SteamID, state);
                 Vector releasedAt = pawn.AbsOrigin ?? new Vector(0, 0, 0);
+                List<ApproachSample> approach = ApproachFor(player.SteamID);
 
                 // Every argument about where a lineup "should" be has come down
                 // to which of these three the recorder picked, so it says so.
                 _logger.LogInformation(
-                    "throw by {steam}: standstill {anchor} (age {age} ticks), takeoff {takeoff}, released at {released} -> stored {chosen}",
+                    "throw by {steam}: standstill {anchor} (age {age} ticks), takeoff {takeoff}, released at {released} -> stored {chosen}, run-up {samples} samples",
                     player.SteamID,
                     _stationary.TryGetValue(player.SteamID, out StationaryAnchor found)
                         ? $"{found.Position.x:0.##},{found.Position.y:0.##},{found.Position.z:0.##}"
@@ -241,11 +253,16 @@ public class PracticeRecorder
                     $"{releasedAt.X:0.##},{releasedAt.Y:0.##},{releasedAt.Z:0.##}",
                     anchor == null
                         ? "release origin"
-                        : $"{anchor.Value.x:0.##},{anchor.Value.y:0.##},{anchor.Value.z:0.##}"
+                        : $"{anchor.Value.x:0.##},{anchor.Value.y:0.##},{anchor.Value.z:0.##}",
+                    approach.Count
                 );
 
                 state.Frozen = Snapshot(pawn, grenade, anchor);
-                _pending[player.SteamID] = state.Frozen;
+                _pending[player.SteamID] = new PendingThrow
+                {
+                    Release = state.Frozen,
+                    Approach = approach,
+                };
             }
         }
     }
@@ -300,6 +317,59 @@ public class PracticeRecorder
             Position = new Vec3(here.X, here.Y, here.Z),
             Tick = _tick,
         };
+    }
+
+    // Every live pawn, every tick, for the same reason TrackStationary is: the
+    // run-up starts before the pin is pulled.
+    private void RecordApproach(ulong steamId, CCSPlayerPawn pawn)
+    {
+        Vector? origin = pawn.AbsOrigin;
+
+        if (origin == null)
+        {
+            return;
+        }
+
+        if (!_approach.TryGetValue(steamId, out Queue<ApproachFrame>? buffer))
+        {
+            buffer = new Queue<ApproachFrame>(ApproachUtility.MaxSamples + 1);
+            _approach[steamId] = buffer;
+        }
+
+        Vector velocity = pawn.AbsVelocity;
+        QAngle angles = pawn.EyeAngles;
+        CCSPlayer_MovementServices? movement = pawn.MovementServices;
+
+        ApproachUtility.Push(
+            buffer,
+            _tick,
+            new ApproachSample
+            {
+                pos = new Vec3(origin.Value.X, origin.Value.Y, origin.Value.Z),
+                vel = new Vec3(velocity.X, velocity.Y, velocity.Z),
+                pitch = angles.X,
+                yaw = angles.Y,
+                buttons = movement == null ? 0u : (uint)movement.Buttons.ButtonStates[0],
+                on_ground = (pawn.Flags & FlOnGround) != 0,
+                ducked = movement?.Ducked ?? false,
+            }
+        );
+    }
+
+    // Cut from the last standstill rather than from the stance the lineup
+    // stores: the stance is the takeoff, and the run-up is what came before it.
+    private List<ApproachSample> ApproachFor(ulong steamId)
+    {
+        if (!_approach.TryGetValue(steamId, out Queue<ApproachFrame>? buffer))
+        {
+            return new List<ApproachSample>();
+        }
+
+        int? anchorTick = _stationary.TryGetValue(steamId, out StationaryAnchor anchor)
+            ? anchor.Tick
+            : null;
+
+        return ApproachUtility.Cut(buffer, anchorTick, _tick);
     }
 
     // Past the window there is no standstill worth returning to, so the last
@@ -433,12 +503,21 @@ public class PracticeRecorder
             return;
         }
 
-        if (!_pending.Remove(player.SteamID, out ThrowSnapshot? release))
+        ThrowSnapshot release;
+        List<ApproachSample> approach;
+
+        if (_pending.Remove(player.SteamID, out PendingThrow? pending))
+        {
+            release = pending.Release;
+            approach = pending.Approach;
+        }
+        else
         {
             // No frozen snapshot: the pin/throw edge was missed (hot reload
             // mid-throw, or a scripted give). Record what is still true rather
             // than dropping the throw entirely.
             release = new ThrowSnapshot { tick = _tick };
+            approach = new List<ApproachSample>();
         }
 
         Vector initialPosition = projectile.InitialPosition;
@@ -449,6 +528,7 @@ public class PracticeRecorder
             ThrowerSteamId = player.SteamID,
             UtilityType = utilityType,
             Release = release,
+            Approach = approach,
             StartTick = _tick,
             InitialPosition = new Vec3(
                 initialPosition.X,
@@ -611,6 +691,7 @@ public class PracticeRecorder
                 .ClassifyStrength(tracked.Release.throw_strength_raw)
                 .ToString(),
             trajectory = TrajectoryUtility.Simplify(tracked.Raw),
+            approach = tracked.Approach,
             recorded_tickrate = 64,
             plugin_runtime = "swiftlys2",
         };
