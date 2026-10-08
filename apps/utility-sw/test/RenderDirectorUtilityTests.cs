@@ -198,12 +198,59 @@ public class RenderDirectorUtilityTests
     {
         Assert.Equal(
             RenderDirectorUtility.StanceSeconds
+                + RenderDirectorUtility.GlideSeconds
                 + RenderDirectorUtility.AimSeconds
                 + RenderDirectorUtility.AimCloseSeconds,
             RenderDirectorUtility.ActAtSeconds,
             3
         );
+        Assert.True(
+            RenderDirectorUtility.ActAtSeconds <= 4.6f,
+            "the pod throws on its own clock at 5s if act is late"
+        );
         Assert.True(RenderDirectorUtility.ThrowTimeoutSeconds > 2f);
+    }
+
+    [Fact]
+    public void TheGlideStartsOnTheStanceCameraAndEndsOnTheAim()
+    {
+        var stanceEye = new Vec3(0f, 0f, 200f);
+        var stanceLook = new Vec3(100f, 0f, 40f);
+        var head = new Vec3(300f, 300f, 64f);
+
+        (Vec3 startEye, Vec3 startLook) = RenderDirectorUtility.GlideShot(
+            stanceEye, stanceLook, head, -30f, 45f, 0f);
+        (Vec3 endEye, Vec3 endLook) = RenderDirectorUtility.GlideShot(
+            stanceEye, stanceLook, head, -30f, 45f, 1f);
+
+        Assert.Equal(stanceEye.z, startEye.z, 3);
+        Assert.Equal(stanceLook.x, startLook.x, 3);
+
+        (float pitch, float yaw) = RenderDirectorUtility.LookAt(endEye, endLook);
+        Assert.Equal(-30f, pitch, 1);
+        Assert.Equal(45f, yaw, 1);
+        Assert.True((endEye - head).Length() <= RenderDirectorUtility.GlideEndAhead + 0.01f);
+    }
+
+    [Fact]
+    public void EaseHoldsTheEndsStill()
+    {
+        Assert.Equal(0f, RenderDirectorUtility.Ease(-1f));
+        Assert.Equal(1f, RenderDirectorUtility.Ease(2f));
+        Assert.Equal(0.5f, RenderDirectorUtility.Ease(0.5f), 3);
+    }
+
+    [Fact]
+    public void TheChaseTurnsTowardTheFlightWithoutSnapping()
+    {
+        var current = new Vec3(1f, 0f, 0f);
+        var target = new Vec3(0f, 1f, 0f);
+
+        Vec3 turned = RenderDirectorUtility.Turn(current, target, 1f / 64f);
+
+        Assert.Equal(1f, turned.Length(), 3);
+        Assert.True(turned.x > 0.5f, "one tick only starts the turn");
+        Assert.True(turned.y > 0f);
     }
 
     [Fact]

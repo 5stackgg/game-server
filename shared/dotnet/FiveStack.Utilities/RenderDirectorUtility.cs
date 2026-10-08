@@ -10,6 +10,7 @@ public enum eRenderBeat
     Staging,
     Staged,
     Stance,
+    Glide,
     Aim,
     AimClose,
     Throw,
@@ -28,12 +29,16 @@ public static class RenderDirectorUtility
 
     public const int TickRate = 64;
 
-    public const float StanceSeconds = 1.6f;
-    public const float StanceStillAt = 1.1f;
-    public const float AimSeconds = 1.5f;
-    public const float AimStillAt = 1.0f;
-    public const float AimCloseSeconds = 1.5f;
-    public const float AimCloseStillAt = 1.1f;
+    public const float StanceSeconds = 1.4f;
+    public const float StanceStillAt = 0.9f;
+
+    // The stance camera flies down into the thrower's eyes and arrives on the
+    // exact aim, so the cut to first person is invisible.
+    public const float GlideSeconds = 0.7f;
+    public const float AimSeconds = 1.2f;
+    public const float AimStillAt = 0.8f;
+    public const float AimCloseSeconds = 1.3f;
+    public const float AimCloseStillAt = 0.9f;
     public const float ZoomSeconds = 0.3f;
     public const int AimCloseFov = 30;
 
@@ -70,7 +75,8 @@ public static class RenderDirectorUtility
     }
 
     // When, after go, the pod should throw if `act` has not reached it.
-    public static float ActAtSeconds => StanceSeconds + AimSeconds + AimCloseSeconds;
+    public static float ActAtSeconds =>
+        StanceSeconds + GlideSeconds + AimSeconds + AimCloseSeconds;
 
     // A grenade only stands in for the lineup if it is the same kind of grenade.
     public static bool SameUtility(string? projectileType, string? lineupType)
@@ -192,22 +198,64 @@ public static class RenderDirectorUtility
             && MathF.Abs(AngleDelta(yaw, wantYaw)) <= StagedAngleTolerance;
     }
 
-    // Above and behind the thrower's shoulder, looking down at the spot: where
-    // to stand reads from here, and the throw direction is still in frame.
+    // Behind the thrower's shoulder, a little above head height: the whole
+    // player stands in frame on the spot, facing the way they throw.
     public static (Vec3 eye, Vec3 lookAt) StanceShot(Vec3 feet, float yaw)
     {
         Vec3 forward = Forward(0f, yaw);
         var right = new Vec3(forward.y, -forward.x, 0f);
         var up = new Vec3(0f, 0f, 1f);
 
-        Vec3 eye = feet - (forward * 120f) + (right * 36f) + (up * 112f);
-        Vec3 lookAt = feet + (forward * 48f) + (up * 24f);
+        Vec3 eye = feet - (forward * 160f) + (right * 48f) + (up * 96f);
+        Vec3 lookAt = feet + (forward * 60f) + (up * 40f);
 
         return (eye, lookAt);
     }
 
-    public const float ChaseDistance = 110f;
-    public const float ChaseHeight = 26f;
+    // Stops just in front of the eyes, so the last frames of the glide never
+    // look out through the back of the thrower's own head.
+    public const float GlideEndAhead = 6f;
+
+    public static float Ease(float s)
+    {
+        float x = Math.Clamp(s, 0f, 1f);
+
+        return x * x * (3f - (2f * x));
+    }
+
+    public static Vec3 Lerp(Vec3 a, Vec3 b, float s)
+    {
+        return a + ((b - a) * s);
+    }
+
+    // s in 0..1 along the glide from the stance camera to the aim.
+    public static (Vec3 eye, Vec3 lookAt) GlideShot(
+        Vec3 stanceEye,
+        Vec3 stanceLook,
+        Vec3 headEye,
+        float pitch,
+        float yaw,
+        float s
+    )
+    {
+        Vec3 forward = Forward(pitch, yaw);
+        Vec3 endEye = headEye + (forward * GlideEndAhead);
+        Vec3 endLook = headEye + (forward * 400f);
+        float eased = Ease(s);
+
+        return (Lerp(stanceEye, endEye, eased), Lerp(stanceLook, endLook, eased));
+    }
+
+    public const float ChaseDistance = 96f;
+    public const float ChaseHeight = 22f;
+
+    // The chase rides the grenade rigidly; only its bearing is smoothed, so a
+    // bounce swings the camera round instead of snapping it, and the grenade
+    // stays the same size in frame however fast it flies.
+    public const float ChaseTurnHalfLife = 0.15f;
+
+    // How long the view takes to pull back from the eyes onto the chase.
+    public const float DetachBlendSeconds = 0.35f;
 
     // Below this the projectile is rolling or settling and its velocity says
     // nothing about which way it is going; the camera keeps its last bearing.
@@ -231,6 +279,13 @@ public static class RenderDirectorUtility
     public static Vec3 ChaseEye(Vec3 projectile, Vec3 direction)
     {
         return projectile - (direction * ChaseDistance) + new Vec3(0f, 0f, ChaseHeight);
+    }
+
+    public static Vec3 Turn(Vec3 current, Vec3 target, float dt)
+    {
+        Vec3 turned = Approach(current, target, dt, ChaseTurnHalfLife).Normalized();
+
+        return turned.Length() <= float.Epsilon ? target : turned;
     }
 
     public const float BloomDistance = 380f;

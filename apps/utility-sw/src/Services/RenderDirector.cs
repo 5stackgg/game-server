@@ -34,8 +34,6 @@ public class RenderDirector
     private const uint HideCrosshair = 1 << 8;
     private const uint HideRadar = 1 << 12;
 
-    private const float ChaseEyeHalfLife = 0.12f;
-    private const float ChaseLookHalfLife = 0.05f;
     private const float BloomEyeHalfLife = 0.45f;
     private const float BloomLookHalfLife = 0.3f;
 
@@ -58,12 +56,17 @@ public class RenderDirector
         public CDynamicProp? Camera;
         public Vec3 Eye;
         public Vec3 Look;
+        public Vec3 StanceEye;
+        public Vec3 StanceLook;
+        public Vec3 DetachEye;
+        public Vec3 DetachLook;
 
         public uint ProjectileIndex;
         public CBaseCSGrenadeProjectile? Projectile;
         public Vec3 ProjectileAt;
         public Vec3 Direction = new Vec3(1f, 0f, 0f);
         public bool Detached;
+        public int DetachTick;
         public Vec3? Landing;
     }
 
@@ -222,7 +225,11 @@ public class RenderDirector
                 break;
             case eRenderBeat.Stance:
                 Still(take, player, RenderDirectorUtility.StanceStillAt, "stance");
-                Next(take, RenderDirectorUtility.StanceSeconds, eRenderBeat.Aim);
+                Next(take, RenderDirectorUtility.StanceSeconds, eRenderBeat.Glide);
+                break;
+            case eRenderBeat.Glide:
+                Glide(take);
+                Next(take, RenderDirectorUtility.GlideSeconds, eRenderBeat.Aim);
                 break;
             case eRenderBeat.Aim:
                 Still(take, player, RenderDirectorUtility.AimStillAt, "aim");
@@ -340,6 +347,8 @@ public class RenderDirector
 
                 take.Eye = _replay.CameraClear(head, eye);
                 take.Look = look;
+                take.StanceEye = take.Eye;
+                take.StanceLook = take.Look;
 
                 if (!ViewThroughCamera(take, pawn))
                 {
@@ -350,6 +359,9 @@ public class RenderDirector
                 Shot(take, player, "stance", "camera");
                 break;
             }
+            case eRenderBeat.Glide:
+                Shot(take, player, "glide", "camera");
+                break;
             case eRenderBeat.Aim:
                 ViewThroughEyes(take, pawn);
                 _replay.Repoint(player, take.Lineup.release.pitch, take.Lineup.release.yaw);
@@ -379,6 +391,21 @@ public class RenderDirector
                 Shot(take, player, "bloom", "camera");
                 break;
         }
+    }
+
+    private void Glide(Take take)
+    {
+        float s = take.Tick / (float)RenderDirectorUtility.Ticks(RenderDirectorUtility.GlideSeconds);
+
+        (take.Eye, take.Look) = RenderDirectorUtility.GlideShot(
+            take.StanceEye,
+            take.StanceLook,
+            take.Feet + new Vec3(0f, 0f, RenderDirectorUtility.StandingEyeHeight),
+            take.Lineup.release.pitch,
+            take.Lineup.release.yaw,
+            s
+        );
+        MoveCamera(take);
     }
 
     private void Next(Take take, float seconds, eRenderBeat next)
@@ -497,7 +524,11 @@ public class RenderDirector
 
         Vec3 velocity = (at - take.ProjectileAt) * RenderDirectorUtility.TickRate;
         take.ProjectileAt = at;
-        take.Direction = RenderDirectorUtility.ChaseDirection(velocity, take.Direction);
+        take.Direction = RenderDirectorUtility.Turn(
+            take.Direction,
+            RenderDirectorUtility.ChaseDirection(velocity, take.Direction),
+            Dt
+        );
 
         if (!take.Detached)
         {
@@ -511,6 +542,9 @@ public class RenderDirector
             Vector eyeOrigin = pawn.AbsOrigin ?? new Vector(take.Feet.x, take.Feet.y, take.Feet.z);
             take.Eye = new Vec3(eyeOrigin.X, eyeOrigin.Y, eyeOrigin.Z + RenderDirectorUtility.StandingEyeHeight);
             take.Look = take.Eye + RenderDirectorUtility.Forward(take.Lineup.release.pitch, take.Lineup.release.yaw) * 200f;
+            take.DetachEye = take.Eye;
+            take.DetachLook = take.Look;
+            take.DetachTick = take.Tick;
 
             if (!ViewThroughCamera(take, pawn))
             {
@@ -523,9 +557,13 @@ public class RenderDirector
         }
 
         Vec3 target = _replay.CameraClear(at, RenderDirectorUtility.ChaseEye(at, take.Direction));
+        float blend = RenderDirectorUtility.Ease(
+            (take.Tick - take.DetachTick)
+                / (float)RenderDirectorUtility.Ticks(RenderDirectorUtility.DetachBlendSeconds)
+        );
 
-        take.Eye = RenderDirectorUtility.Approach(take.Eye, target, Dt, ChaseEyeHalfLife);
-        take.Look = RenderDirectorUtility.Approach(take.Look, at, Dt, ChaseLookHalfLife);
+        take.Eye = RenderDirectorUtility.Lerp(take.DetachEye, target, blend);
+        take.Look = RenderDirectorUtility.Lerp(take.DetachLook, at, blend);
         MoveCamera(take);
 
         if (take.Tick > RenderDirectorUtility.Ticks(RenderDirectorUtility.FollowMaxSeconds))
@@ -689,6 +727,11 @@ public class RenderDirector
             }
 
             camera.DispatchSpawn(PracticeReplay.MarkerKeys());
+
+            // A prop with no model is drawn as the giant ERROR model, centred
+            // on the camera and big enough to hang across the thrower's view.
+            camera.RenderMode = RenderMode_t.kRenderNone;
+            camera.RenderModeUpdated();
             camera.Render = new Color(255, 255, 255, 0);
             camera.RenderUpdated();
 
