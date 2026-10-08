@@ -219,6 +219,13 @@ if $INSTALL_UTILITY_PRACTICE_PLUGIN = true ; then
     echo "---Utility Practice: plugin dir already present, skipping /opt/utility-practice symlink---"
   fi
 
+  # A render pod is the only client and has no HUD to show; the addon's
+  # download prompt would stall its cs2 on connect.
+  if [ "${UTILITY_RENDER_MODE:-}" = "true" ]; then
+    HUD_WORKSHOP_ID=""
+    WORKSHOP_ADDONS=""
+  fi
+
   # The HUD's Panorama layouts live in a workshop addon, served with the
   # plugins' below. Without it the plugin still works, falling back to centre
   # text, so a bad id here must not stop the server.
