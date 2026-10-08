@@ -15,6 +15,7 @@ public enum eRenderBeat
     Throw,
     Follow,
     Bloom,
+    Wrap,
 }
 
 // The render pod films a lineup the plugin directs. Everything here is a
@@ -36,8 +37,9 @@ public static class RenderDirectorUtility
     public const float ZoomSeconds = 0.3f;
     public const int AimCloseFov = 30;
 
-    // The pod presses the throw on `act`; this is how long it gets to do it.
-    public const float ThrowTimeoutSeconds = 6f;
+    // The pod presses the throw on `act`, or on its own clock when the line is
+    // slow to reach it; this is how long it gets either way.
+    public const float ThrowTimeoutSeconds = 10f;
 
     // Long enough to see the grenade leave the hand before the view lets go.
     public const float DetachSeconds = 0.2f;
@@ -45,6 +47,10 @@ public static class RenderDirectorUtility
     // A grenade that never detonates (stuck in a wall, out of the map) still
     // has to end the clip.
     public const float FollowMaxSeconds = 20f;
+
+    // After `done` the camera stays where it is: the pod reads the line some
+    // time after it was printed, and stops recording only then.
+    public const float WrapSeconds = 3f;
 
     public const float StandingEyeHeight = 64f;
 
@@ -56,6 +62,21 @@ public static class RenderDirectorUtility
     public static int Ticks(float seconds)
     {
         return (int)MathF.Round(seconds * TickRate);
+    }
+
+    public static int Milliseconds(int ticks)
+    {
+        return (int)MathF.Round(ticks * 1000f / TickRate);
+    }
+
+    // When, after go, the pod should throw if `act` has not reached it.
+    public static float ActAtSeconds => StanceSeconds + AimSeconds + AimCloseSeconds;
+
+    // A grenade only stands in for the lineup if it is the same kind of grenade.
+    public static bool SameUtility(string? projectileType, string? lineupType)
+    {
+        return !string.IsNullOrEmpty(projectileType)
+            && string.Equals(projectileType, lineupType, StringComparison.OrdinalIgnoreCase);
     }
 
     public static float BloomHoldSeconds(string? utilityType)

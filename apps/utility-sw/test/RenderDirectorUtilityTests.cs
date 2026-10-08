@@ -179,6 +179,34 @@ public class RenderDirectorUtilityTests
     }
 
     [Fact]
+    public void OnlyTheSameKindOfGrenadeStandsInForTheLineup()
+    {
+        Assert.True(RenderDirectorUtility.SameUtility("Smoke", "smoke"));
+        Assert.False(RenderDirectorUtility.SameUtility("Flash", "Smoke"));
+        Assert.False(RenderDirectorUtility.SameUtility(null, "Smoke"));
+    }
+
+    [Fact]
+    public void TheClockTheLinesCarryIsMillisecondsOfGameTicks()
+    {
+        Assert.Equal(1000, RenderDirectorUtility.Milliseconds(RenderDirectorUtility.TickRate));
+        Assert.Equal(16, RenderDirectorUtility.Milliseconds(1));
+    }
+
+    [Fact]
+    public void ThePodsOwnThrowClockLandsAtTheThrowBeat()
+    {
+        Assert.Equal(
+            RenderDirectorUtility.StanceSeconds
+                + RenderDirectorUtility.AimSeconds
+                + RenderDirectorUtility.AimCloseSeconds,
+            RenderDirectorUtility.ActAtSeconds,
+            3
+        );
+        Assert.True(RenderDirectorUtility.ThrowTimeoutSeconds > 2f);
+    }
+
+    [Fact]
     public void ASmokeIsHeldLongerThanAFlash()
     {
         Assert.True(

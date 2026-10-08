@@ -49,6 +49,12 @@ public class RenderDirector
         public Vec3 Feet;
         public bool StillSent;
 
+        // Ticks since go, -1 before it. Every line after go carries it, so the
+        // pod can place a still by when the beat happened rather than by when
+        // the line reached its console log.
+        public int GoTicks = -1;
+        public string? StagedLine;
+
         public CDynamicProp? Camera;
         public Vec3 Eye;
         public Vec3 Look;
@@ -78,8 +84,6 @@ public class RenderDirector
         _system = system;
     }
 
-    public bool Busy => _take != null && _take.Beat != eRenderBeat.Staged;
-
     public void Stage(IPlayer player, string lineupId, bool refreshed = false)
     {
         ulong steamId = player.SteamID;
@@ -104,7 +108,34 @@ public class RenderDirector
             return;
         }
 
-        Reset(null);
+        // The pod re-sends a stage it has not heard back about, and the library
+        // fetch behind the first one can land after the retry was sent. The
+        // second answer must not throw away a take already under way.
+        Take? current = _take;
+
+        if (
+            current != null
+            && current.Beat != eRenderBeat.Wrap
+            && current.SteamId == steamId
+            && string.Equals(current.Lineup.id, lineupId, StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            if (current.Beat == eRenderBeat.Staged && current.StagedLine != null)
+            {
+                Say(player, current.StagedLine);
+            }
+
+            return;
+        }
+
+        if (current != null && current.Beat != eRenderBeat.Wrap)
+        {
+            Fail(current, player, "superseded");
+        }
+        else
+        {
+            Reset(null);
+        }
 
         LineupRecord? lineup = PracticeLineupUtility.ById(_library.For(steamId), lineupId);
 
@@ -148,6 +179,7 @@ public class RenderDirector
             return;
         }
 
+        take.GoTicks = 0;
         Enter(take, eRenderBeat.Stance);
     }
 
@@ -171,6 +203,11 @@ public class RenderDirector
         }
 
         take.Tick++;
+
+        if (take.GoTicks >= 0)
+        {
+            take.GoTicks++;
+        }
 
         switch (take.Beat)
         {
@@ -201,6 +238,14 @@ public class RenderDirector
             case eRenderBeat.Bloom:
                 Bloom(take, player);
                 break;
+            case eRenderBeat.Wrap:
+                FrameBloom(take);
+
+                if (take.Tick >= RenderDirectorUtility.Ticks(RenderDirectorUtility.WrapSeconds))
+                {
+                    Reset(null);
+                }
+                break;
         }
     }
 
@@ -227,18 +272,16 @@ public class RenderDirector
             take.Beat = eRenderBeat.Staged;
             take.Tick = 0;
 
-            Say(
+            take.StagedLine = Tell(
+                take,
                 player,
-                RenderDirectorUtility.Line(
-                    "staged",
-                    ("lineup", take.Lineup.id),
-                    ("utility", take.Lineup.utility_type),
-                    ("x", at.x),
-                    ("y", at.y),
-                    ("z", at.z),
-                    ("pitch", eyes.X),
-                    ("yaw", eyes.Y)
-                )
+                "staged",
+                ("utility", take.Lineup.utility_type),
+                ("x", at.x),
+                ("y", at.y),
+                ("z", at.z),
+                ("pitch", eyes.X),
+                ("yaw", eyes.Y)
             );
             return;
         }
@@ -298,38 +341,36 @@ public class RenderDirector
                     return;
                 }
 
-                Shot(player, "stance", "camera");
+                Shot(take, player, "stance", "camera");
                 break;
             }
             case eRenderBeat.Aim:
                 ViewThroughEyes(take, pawn);
                 _replay.Repoint(player, take.Lineup.release.pitch, take.Lineup.release.yaw);
-                Shot(player, "aim", "eyes");
+                Shot(take, player, "aim", "eyes");
                 break;
             case eRenderBeat.AimClose:
                 Zoom(pawn, RenderDirectorUtility.AimCloseFov);
-                Shot(player, "aim_close", "eyes");
+                Shot(take, player, "aim_close", "eyes");
                 break;
             case eRenderBeat.Throw:
                 Zoom(pawn, 0);
-                Shot(player, "throw", "eyes");
-                Say(
+                Shot(take, player, "throw", "eyes");
+                Tell(
+                    take,
                     player,
-                    RenderDirectorUtility.Line(
-                        "act",
-                        ("lineup", take.Lineup.id),
-                        ("utility", take.Lineup.utility_type),
-                        ("technique", take.Lineup.technique),
-                        ("strength", take.Lineup.strength),
-                        ("jump_bind", take.Lineup.release.jump_throw)
-                    )
+                    "act",
+                    ("utility", take.Lineup.utility_type),
+                    ("technique", take.Lineup.technique),
+                    ("strength", take.Lineup.strength),
+                    ("jump_bind", take.Lineup.release.jump_throw)
                 );
                 break;
             case eRenderBeat.Follow:
-                Shot(player, "follow", "eyes");
+                Shot(take, player, "follow", "eyes");
                 break;
             case eRenderBeat.Bloom:
-                Shot(player, "bloom", "camera");
+                Shot(take, player, "bloom", "camera");
                 break;
         }
     }
@@ -350,7 +391,7 @@ public class RenderDirector
         }
 
         take.StillSent = true;
-        Say(player, RenderDirectorUtility.Line("still", ("kind", kind), ("lineup", take.Lineup.id)));
+        Tell(take, player, "still", ("kind", kind));
     }
 
     /// <summary>
@@ -362,12 +403,20 @@ public class RenderDirector
     {
         Take? take = _take;
 
-        if (take == null || take.Beat != eRenderBeat.Throw)
+        // The close-up as well as the throw beat: when the act line is slow to
+        // reach the pod it throws on its own clock, which can land a moment
+        // before the throw beat begins.
+        if (take == null || (take.Beat != eRenderBeat.Throw && take.Beat != eRenderBeat.AimClose))
         {
             return false;
         }
 
-        if (PracticeLineupUtility.UtilityTypeForProjectile(entity.DesignerName ?? "") == null)
+        if (
+            !RenderDirectorUtility.SameUtility(
+                PracticeLineupUtility.UtilityTypeForProjectile(entity.DesignerName ?? ""),
+                take.Lineup.utility_type
+            )
+        )
         {
             return false;
         }
@@ -410,14 +459,19 @@ public class RenderDirector
         take.Direction = RenderDirectorUtility.ChaseDirection(seedVelocity, take.Direction);
         take.Detached = false;
 
-        Say(
+        CCSPlayerPawn? throwerPawn = player.PlayerPawn;
+
+        if (throwerPawn != null && throwerPawn.IsValid)
+        {
+            Zoom(throwerPawn, 0);
+        }
+
+        Tell(
+            take,
             player,
-            RenderDirectorUtility.Line(
-                "thrown",
-                ("lineup", take.Lineup.id),
-                ("utility", take.Lineup.utility_type),
-                ("release_drift", drift)
-            )
+            "thrown",
+            ("utility", take.Lineup.utility_type),
+            ("release_drift", drift)
         );
 
         Enter(take, eRenderBeat.Follow);
@@ -459,7 +513,7 @@ public class RenderDirector
             }
 
             take.Detached = true;
-            Shot(player, "follow", "camera");
+            Shot(take, player, "follow", "camera");
         }
 
         Vec3 target = _replay.CameraClear(at, RenderDirectorUtility.ChaseEye(at, take.Direction));
@@ -516,16 +570,14 @@ public class RenderDirector
     {
         take.Landing = at;
 
-        Say(
+        Tell(
+            take,
             player,
-            RenderDirectorUtility.Line(
-                "detonated",
-                ("lineup", take.Lineup.id),
-                ("utility", take.Lineup.utility_type),
-                ("x", at.x),
-                ("y", at.y),
-                ("z", at.z)
-            )
+            "detonated",
+            ("utility", take.Lineup.utility_type),
+            ("x", at.x),
+            ("y", at.y),
+            ("z", at.z)
         );
 
         CCSPlayerPawn? pawn = player.PlayerPawn;
@@ -542,6 +594,20 @@ public class RenderDirector
 
     private void Bloom(Take take, IPlayer player)
     {
+        FrameBloom(take);
+
+        Still(take, player, RenderDirectorUtility.LandingStillSeconds(take.Lineup.utility_type), "landing");
+
+        if (take.Tick >= RenderDirectorUtility.Ticks(RenderDirectorUtility.BloomHoldSeconds(take.Lineup.utility_type)))
+        {
+            Tell(take, player, "done");
+            take.Beat = eRenderBeat.Wrap;
+            take.Tick = 0;
+        }
+    }
+
+    private void FrameBloom(Take take)
+    {
         Vec3 landing = take.Landing ?? take.ProjectileAt;
         (Vec3 eye, Vec3 look) = RenderDirectorUtility.BloomShot(landing, take.Feet, take.Direction);
 
@@ -550,16 +616,6 @@ public class RenderDirector
         take.Eye = RenderDirectorUtility.Approach(take.Eye, target, Dt, BloomEyeHalfLife);
         take.Look = RenderDirectorUtility.Approach(take.Look, look, Dt, BloomLookHalfLife);
         MoveCamera(take);
-
-        Still(take, player, RenderDirectorUtility.LandingStillSeconds(take.Lineup.utility_type), "landing");
-
-        if (take.Tick >= RenderDirectorUtility.Ticks(RenderDirectorUtility.BloomHoldSeconds(take.Lineup.utility_type)))
-        {
-            string? lineupId = take.Lineup.id;
-
-            Reset(null);
-            Say(player, RenderDirectorUtility.Line("done", ("lineup", lineupId)));
-        }
     }
 
     private bool ViewThroughCamera(Take take, CCSPlayerPawn pawn)
@@ -659,14 +715,15 @@ public class RenderDirector
 
     private void Fail(Take take, IPlayer player, string reason, params (string key, object? value)[] detail)
     {
-        string? lineupId = take.Lineup.id;
+        if (_take == take)
+        {
+            Reset(null);
+        }
 
-        Reset(null);
-
-        var fields = new List<(string key, object? value)> { ("reason", reason), ("lineup", lineupId) };
+        var fields = new List<(string key, object? value)> { ("reason", reason) };
         fields.AddRange(detail);
 
-        Say(player, RenderDirectorUtility.Line("error", fields.ToArray()));
+        Tell(take, player, "error", fields.ToArray());
     }
 
     /// <summary>
@@ -704,9 +761,28 @@ public class RenderDirector
         }
     }
 
-    private void Shot(IPlayer player, string name, string view)
+    private void Shot(Take take, IPlayer player, string name, string view)
     {
-        Say(player, RenderDirectorUtility.Line("shot", ("name", name), ("view", view)));
+        Tell(take, player, "shot", ("name", name), ("view", view));
+    }
+
+    // Every line about a take names its lineup, so a pod never acts on a line
+    // meant for the lineup before, and carries t (ms since go) once filming.
+    private string Tell(Take take, IPlayer player, string eventName, params (string key, object? value)[] fields)
+    {
+        var all = new List<(string key, object? value)> { ("lineup", take.Lineup.id) };
+
+        if (take.GoTicks >= 0)
+        {
+            all.Add(("t", RenderDirectorUtility.Milliseconds(take.GoTicks)));
+        }
+
+        all.AddRange(fields);
+
+        string line = RenderDirectorUtility.Line(eventName, all.ToArray());
+        Say(player, line);
+
+        return line;
     }
 
     private void Say(IPlayer player, string line)
