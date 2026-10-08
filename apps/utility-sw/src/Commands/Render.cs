@@ -24,7 +24,11 @@ public partial class UtilityPracticePlugin
         {
             player.SendMessage(
                 MessageType.Console,
-                FiveStack.Utilities.RenderDirectorUtility.Line("error", ("reason", "bad_lineup_id")) + "\n"
+                FiveStack.Utilities.RenderDirectorUtility.Line(
+                    "error",
+                    ("lineup", lineupId),
+                    ("reason", "bad_lineup_id")
+                ) + "\n"
             );
             return;
         }
@@ -42,7 +46,7 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        _director.Go(player);
+        _director.Go(player, string.Join(" ", context.Args).Trim().Trim('"'));
     }
 
     [Command("render_reset", registerRaw: false, permission: "")]

@@ -169,13 +169,19 @@ public class RenderDirector
         };
     }
 
-    public void Go(IPlayer player)
+    // Named, so a go meant for one lineup can never start another's take.
+    public void Go(IPlayer player, string lineupId)
     {
         Take? take = _take;
 
-        if (take == null || take.SteamId != player.SteamID || take.Beat != eRenderBeat.Staged)
+        if (
+            take == null
+            || take.SteamId != player.SteamID
+            || take.Beat != eRenderBeat.Staged
+            || !string.Equals(take.Lineup.id, lineupId, StringComparison.OrdinalIgnoreCase)
+        )
         {
-            Say(player, RenderDirectorUtility.Line("error", ("reason", "not_staged")));
+            Say(player, RenderDirectorUtility.Line("error", ("lineup", lineupId), ("reason", "not_staged")));
             return;
         }
 
