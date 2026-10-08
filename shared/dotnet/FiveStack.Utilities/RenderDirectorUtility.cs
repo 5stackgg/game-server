@@ -296,6 +296,10 @@ public static class RenderDirectorUtility
     // How long the cut from the eyes takes to settle onto the path.
     public const float DetachHandOffSeconds = 0.25f;
 
+    // Further than this in one tick is a cut, not a camera move: the fastest
+    // chase (the run up the path) covers ~40u a tick.
+    public const float CameraCutDistance = 96f;
+
     // The lift above the path is traced for clearance every tick, and a thin
     // wire it clips for one tick used to drop the camera by the whole lift.
     public const float ChaseRiseHalfLife = 0.08f;

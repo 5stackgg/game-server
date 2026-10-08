@@ -59,6 +59,7 @@ public class RenderDirector
         public string? StagedLine;
 
         public CDynamicProp? Camera;
+        public Vec3? CameraAt;
         public Vec3 Eye;
         public Vec3 Look;
         public Vec3 DetachEye;
@@ -948,7 +949,12 @@ public class RenderDirector
 
         // A teleport bumps the interpolation frame, which tells the client not
         // to blend from the last position; the camera moves every tick, so that
-        // would make it step. Handing the old frame back keeps it blending.
+        // would make it step. Handing the old frame back keeps it blending --
+        // but only for a move, never a cut: blended, the first placement slid
+        // in from wherever the camera was spawned.
+        bool cut =
+            take.CameraAt == null
+            || (take.Eye - take.CameraAt.Value).Length() > RenderDirectorUtility.CameraCutDistance;
         byte frame = camera.InterpolationFrame;
 
         camera.Teleport(
@@ -957,7 +963,9 @@ public class RenderDirector
             new Vector(0, 0, 0)
         );
 
-        if (camera.InterpolationFrame != frame)
+        take.CameraAt = take.Eye;
+
+        if (!cut && camera.InterpolationFrame != frame)
         {
             camera.InterpolationFrame = frame;
             camera.InterpolationFrameUpdated();

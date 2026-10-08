@@ -102,6 +102,29 @@ public class RenderDirectorUtilityTests
     }
 
     [Fact]
+    public void TheFastestChaseMoveIsNeverMistakenForACut()
+    {
+        float dt = 1f / RenderDirectorUtility.TickRate;
+        float flownAtDetach = RenderDirectorUtility.DetachSeconds * 1400f;
+        float previous = 0f;
+        float widest = 0f;
+
+        for (int tick = 1; tick <= RenderDirectorUtility.TickRate * 2; tick++)
+        {
+            float since = tick * dt;
+            float arc = RenderDirectorUtility.ChaseArc(flownAtDetach + (since * 1400f), since);
+
+            widest = MathF.Max(widest, arc - previous);
+            previous = arc;
+        }
+
+        Assert.True(
+            widest < RenderDirectorUtility.CameraCutDistance,
+            $"a {widest}u tick would be filmed as a cut"
+        );
+    }
+
+    [Fact]
     public void PointAlongWalksThePathByDistance()
     {
         var path = new List<Vec3> { new(0f, 0f, 0f), new(100f, 0f, 0f), new(100f, 100f, 0f) };
