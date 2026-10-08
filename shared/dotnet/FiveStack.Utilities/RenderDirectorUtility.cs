@@ -32,26 +32,27 @@ public static class RenderDirectorUtility
 
     public const int TickRate = 64;
 
-    public const float StanceSeconds = 1.4f;
-    public const float StanceStillAt = 0.9f;
+    public const float StanceSeconds = 1.2f;
+    public const float StanceStillAt = 0.8f;
 
     // The stance camera flies down into the thrower's eyes, looks at the
     // ground around their feet (where to stand, from where they stand), then
     // tilts up onto the exact aim -- so the cut to first person is invisible.
     public const float GlideSeconds = 1.0f;
-    public const float StanceEyesSeconds = 1.0f;
-    public const float StanceEyesStillAt = 0.6f;
+    public const float StanceEyesSeconds = 0.8f;
+    public const float StanceEyesStillAt = 0.5f;
     public const float StanceEyesPitch = 45f;
     public const float TiltSeconds = 1.0f;
     public const float AimSeconds = 1.0f;
     public const float AimStillAt = 0.6f;
 
-    // The pin comes out here and stays out through the close-up: holding a
-    // pulled grenade is what swaps in cs2's throw crosshair.
+    // The pin comes out as the aim shot starts and stays out through the
+    // close-up. cs2's grenade lineup reticle only pops up ~2s after the pin is
+    // pulled, so the pulled-pin still waits for it: aim (1.0) + 1.2 = 2.2s.
     public const float PinSeconds = 1.4f;
-    public const float PinStillAt = 1.0f;
-    public const float AimCloseSeconds = 1.2f;
-    public const float AimCloseStillAt = 0.8f;
+    public const float PinStillAt = 1.2f;
+    public const float AimCloseSeconds = 1.0f;
+    public const float AimCloseStillAt = 0.6f;
     public const float ZoomSeconds = 0.3f;
     public const int AimCloseFov = 30;
 
@@ -230,7 +231,7 @@ public static class RenderDirectorUtility
     // player's body, and cs2's third-person camera ignores cam_idealdist and
     // films from wherever it likes. The thrower looks slightly down meanwhile,
     // which reads as standing naturally from behind.
-    public const float StanceViewPitch = 10f;
+    public const float StanceViewPitch = 0f;
 
     // How far through the glide third person is dropped: before the camera
     // gets close enough to fly through the back of the thrower's head.
@@ -300,12 +301,12 @@ public static class RenderDirectorUtility
         return (Lerp(stanceEye, endEye, eased), Lerp(stanceLook, endLook, eased));
     }
 
-    public const float ChaseDistance = 96f;
+    public const float ChaseDistance = 110f;
     public const float ChaseHeight = 22f;
 
     // Never nearer than this to the grenade: a wall behind it used to pull the
     // camera right into the grenade's own model.
-    public const float ChaseMinDistance = 48f;
+    public const float ChaseMinDistance = 72f;
 
     // Where the camera goes instead when the space behind the grenade is too
     // tight: up and only a little back.

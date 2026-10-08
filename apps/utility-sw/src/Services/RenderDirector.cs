@@ -405,9 +405,6 @@ public class RenderDirector
                 ViewThroughEyes(take, pawn);
                 _replay.Repoint(player, take.Lineup.release.pitch, take.Lineup.release.yaw);
                 Shot(take, player, "aim", "eyes");
-                break;
-            case eRenderBeat.Pin:
-                Shot(take, player, "pin", "eyes");
                 Tell(
                     take,
                     player,
@@ -415,6 +412,9 @@ public class RenderDirector
                     ("utility", take.Lineup.utility_type),
                     ("strength", take.Lineup.strength)
                 );
+                break;
+            case eRenderBeat.Pin:
+                Shot(take, player, "pin", "eyes");
                 break;
             case eRenderBeat.AimClose:
                 Zoom(pawn, RenderDirectorUtility.AimCloseFov);
