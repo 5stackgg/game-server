@@ -308,6 +308,10 @@ public class RenderDirector
             take.Beat = eRenderBeat.Staged;
             take.Tick = 0;
 
+            // Where the pawn came to rest, not where staging aimed for: every
+            // camera placed off the feet has to match the eyes it cuts to.
+            take.Feet = at;
+
             if (take.Camera == null || !take.Camera.IsValid)
             {
                 take.Camera = SpawnCamera(pawn);
@@ -325,6 +329,7 @@ public class RenderDirector
                 ("x", at.x),
                 ("y", at.y),
                 ("z", at.z),
+                ("dz", at.z - take.Lineup.release.feet_position.z),
                 ("pitch", eyes.X),
                 ("yaw", eyes.Y)
             );
