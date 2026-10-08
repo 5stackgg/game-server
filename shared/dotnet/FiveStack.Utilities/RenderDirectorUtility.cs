@@ -223,40 +223,31 @@ public static class RenderDirectorUtility
     }
 
     // Where the spot shot's clearance trace starts: above the thrower's hull
-    // (72u). Started at the head, the trace stopped on something there and
-    // filmed the shot from inside the thrower.
+    // (72u), so it never begins inside the thrower.
     public const float AboveHead = 90f;
 
-    // Behind and well above the spot, looking down on it: where to stand, and
-    // which way to face, before the cut into the eyes.
-    public static (Vec3 eye, Vec3 lookAt) SpotShot(Vec3 feet, float yaw)
+    private static readonly float[] SpotBearings = { 0f, 35f, -35f, 70f, -70f, 110f, -110f, 150f, -150f, 180f };
+    private static readonly (float distance, float height)[] SpotRigs = { (175f, 150f), (130f, 110f) };
+
+    // Where the spot may be filmed from, best first: behind the thrower, where
+    // the way they face reads at a glance, then round either side to the front.
+    // Plenty of lineups are thrown from a corner with a wall at their back, so
+    // the director films the first one a trace says has a clear view.
+    public static IEnumerable<(Vec3 eye, Vec3 lookAt)> SpotCandidates(Vec3 feet, float yaw)
     {
-        Vec3 forward = Forward(0f, yaw);
-        var right = new Vec3(forward.y, -forward.x, 0f);
-        var up = new Vec3(0f, 0f, 1f);
+        Vec3 behind = Forward(0f, yaw) * -1f;
+        Vec3 lookAt = feet + new Vec3(0f, 0f, 36f);
 
-        Vec3 eye = feet - (forward * 150f) + (right * 30f) + (up * 170f);
-        Vec3 lookAt = feet + (forward * 30f) + (up * 20f);
+        foreach ((float distance, float height) in SpotRigs)
+        {
+            foreach (float bearing in SpotBearings)
+            {
+                Vec3 around = RotateZ(behind, bearing);
 
-        return (eye, lookAt);
+                yield return (feet + (around * distance) + new Vec3(0f, 0f, height), lookAt);
+            }
+        }
     }
-
-    // The same shot from lower and further back, for a spot with something
-    // overhead (an archway, a ceiling) that the high angle cannot clear.
-    public static (Vec3 eye, Vec3 lookAt) SpotLowShot(Vec3 feet, float yaw)
-    {
-        Vec3 forward = Forward(0f, yaw);
-        var right = new Vec3(forward.y, -forward.x, 0f);
-        var up = new Vec3(0f, 0f, 1f);
-
-        Vec3 eye = feet - (forward * 190f) + (right * 50f) + (up * 100f);
-        Vec3 lookAt = feet + (up * 40f);
-
-        return (eye, lookAt);
-    }
-
-    // Nearer than this and the spot shot no longer shows where the thrower is.
-    public const float SpotMinReach = 110f;
 
     // Just in front of the eyes, so the camera never sees the inside of the
     // thrower's own head.

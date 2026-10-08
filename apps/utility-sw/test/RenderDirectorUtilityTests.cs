@@ -257,33 +257,23 @@ public class RenderDirectorUtilityTests
     }
 
     [Fact]
-    public void TheSpotShotLooksDownOnTheReticleFromBehind()
+    public void TheSpotIsFilmedFromBehindFirstThenRoundToTheFront()
     {
         var feet = new Vec3(0f, 0f, 0f);
 
-        (Vec3 eye, Vec3 look) = RenderDirectorUtility.SpotShot(feet, 0f);
-        (float pitch, float yaw) = RenderDirectorUtility.LookAt(eye, look);
+        var candidates = RenderDirectorUtility.SpotCandidates(feet, 0f).ToList();
+        (Vec3 first, Vec3 look) = candidates[0];
 
-        Assert.True(eye.x < feet.x, "behind a thrower facing +x");
-        Assert.True(eye.z > RenderDirectorUtility.StandingEyeHeight * 2f, "well above head height");
-        Assert.InRange(pitch, 30f, 60f);
-        Assert.InRange(RenderDirectorUtility.AngleDelta(yaw, 0f), -20f, 20f);
-    }
-
-    [Fact]
-    public void TheLowSpotShotIsFlatterAndFurtherBack()
-    {
-        var feet = new Vec3(0f, 0f, 0f);
-
-        (Vec3 high, Vec3 highLook) = RenderDirectorUtility.SpotShot(feet, 0f);
-        (Vec3 low, Vec3 lowLook) = RenderDirectorUtility.SpotLowShot(feet, 0f);
-
-        Assert.True(low.z < high.z, "under whatever blocked the high angle");
-        Assert.True(low.x < high.x, "further behind");
+        Assert.True(first.x < -100f, "behind a thrower facing +x");
+        Assert.True(first.z > RenderDirectorUtility.AboveHead, "looking down on them");
+        Assert.InRange(RenderDirectorUtility.LookAt(first, look).pitch, 20f, 55f);
+        Assert.Contains(candidates, candidate => candidate.eye.x > 100f);
         Assert.True(
-            RenderDirectorUtility.LookAt(low, lowLook).pitch < RenderDirectorUtility.LookAt(high, highLook).pitch
+            candidates.FindIndex(candidate => candidate.eye.x > 100f) > 4,
+            "the front is only tried once behind and the sides are blocked"
         );
-        Assert.True(low.z > RenderDirectorUtility.StandingEyeHeight, "still looking down on the thrower");
+        Assert.All(candidates, candidate => Assert.Equal(look.z, candidate.lookAt.z, 3));
+        Assert.Equal(20, candidates.Count);
     }
 
     [Fact]

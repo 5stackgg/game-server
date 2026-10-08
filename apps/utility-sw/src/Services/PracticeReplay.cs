@@ -799,18 +799,6 @@ public class PracticeReplay
                 ? new Vec3(trace.EndPos.X, trace.EndPos.Y, trace.EndPos.Z)
                 : null;
 
-            // A camera stopped this close to its subject is filming from inside
-            // it; what stopped it is the only clue to why.
-            if (hit != null && (hit.Value - subject).Length() < CameraStuckDistance)
-            {
-                _logger.LogWarning(
-                    "render camera trace stopped {distance}u from its subject on {entity} (start in solid: {solid})",
-                    (hit.Value - subject).Length(),
-                    trace.Entity?.DesignerName ?? "world",
-                    trace.StartInSolid
-                );
-            }
-
             return RenderDirectorUtility.Unobstructed(subject, eye, hit, CameraWallMargin);
         }
         catch (Exception error)
@@ -821,7 +809,6 @@ public class PracticeReplay
     }
 
     private const float CameraWallMargin = 12f;
-    private const float CameraStuckDistance = 24f;
 
     public static CEntityKeyValues MarkerKeys()
     {

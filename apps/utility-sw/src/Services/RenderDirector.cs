@@ -440,24 +440,29 @@ public class RenderDirector
 
     private bool FrameSpot(Take take, CCSPlayerPawn pawn)
     {
-        (Vec3 eye, Vec3 look) = RenderDirectorUtility.SpotShot(take.Feet, take.Lineup.release.yaw);
         Vec3 above = take.Feet + new Vec3(0f, 0f, RenderDirectorUtility.AboveHead);
+        float bestReach = -1f;
 
-        take.Eye = _replay.CameraClear(above, eye);
-        take.Look = look;
-
-        if ((take.Eye - above).Length() < RenderDirectorUtility.SpotMinReach)
-        {
-            (Vec3 lowEye, Vec3 lowLook) = RenderDirectorUtility.SpotLowShot(
+        foreach (
+            (Vec3 eye, Vec3 look) in RenderDirectorUtility.SpotCandidates(
                 take.Feet,
                 take.Lineup.release.yaw
-            );
-            Vec3 low = _replay.CameraClear(above, lowEye);
+            )
+        )
+        {
+            Vec3 clear = _replay.CameraClear(above, eye);
+            float reach = (clear - above).Length();
 
-            if ((low - above).Length() > (take.Eye - above).Length())
+            if (reach > bestReach)
             {
-                take.Eye = low;
-                take.Look = lowLook;
+                bestReach = reach;
+                take.Eye = clear;
+                take.Look = look;
+            }
+
+            if (reach >= (eye - above).Length() * 0.97f)
+            {
+                break;
             }
         }
 
