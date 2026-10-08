@@ -288,15 +288,16 @@ public class RenderDirectorUtilityTests
     }
 
     [Fact]
-    public void TheThirdPersonCameraSitsBehindAndAboveTheThrower()
+    public void TheStanceShotLooksDownAtTheFeet()
     {
         var feet = new Vec3(0f, 0f, 0f);
 
-        (Vec3 eye, Vec3 look) = RenderDirectorUtility.ThirdPersonShot(feet, 0f);
+        (Vec3 eye, Vec3 look) = RenderDirectorUtility.StanceShot(feet, 0f);
 
-        Assert.True(eye.x < 0f, "behind a thrower facing +x");
         Assert.True(eye.z > RenderDirectorUtility.StandingEyeHeight, "above their head");
-        Assert.True(look.x > eye.x);
+        Assert.True(RenderDirectorUtility.LookAt(eye, look).pitch > 20f, "looking well down");
+        Assert.True(look.z < 24f, "aimed at the ground they stand on");
+        Assert.InRange(RenderDirectorUtility.GlideBodyLeaves, 0.3f, 0.9f);
     }
 
     [Fact]

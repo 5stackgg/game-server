@@ -225,33 +225,27 @@ public static class RenderDirectorUtility
             && MathF.Abs(AngleDelta(yaw, wantYaw)) <= StagedAngleTolerance;
     }
 
-    // The stance is filmed in cs2's own third person: a view entity shows the
-    // world from a camera, but cs2 never draws the local player's body there.
-    // The pod sets cam_idealdist / cam_idealyaw to these; the thrower looks a
-    // little down meanwhile, so the camera sits above and behind them.
-    public const float StanceViewPitch = 35f;
-    public const float ThirdPersonDistance = 150f;
-    public const float ThirdPersonYaw = 25f;
+    // The stance is filmed through the director's own camera while the pod
+    // holds cs2 in third person: a view entity alone never draws the local
+    // player's body, and cs2's third-person camera ignores cam_idealdist and
+    // films from wherever it likes. The thrower looks slightly down meanwhile,
+    // which reads as standing naturally from behind.
+    public const float StanceViewPitch = 10f;
 
-    // Where cs2's third-person camera ends up, so the glide can start from it.
-    public static (Vec3 eye, Vec3 lookAt) ThirdPersonShot(Vec3 feet, float yaw)
-    {
-        Vec3 head = feet + new Vec3(0f, 0f, StandingEyeHeight);
-        Vec3 forward = Forward(StanceViewPitch, yaw + ThirdPersonYaw);
+    // How far through the glide third person is dropped: before the camera
+    // gets close enough to fly through the back of the thrower's head.
+    public const float GlideBodyLeaves = 0.6f;
 
-        return (head - (forward * ThirdPersonDistance), head + (forward * 400f));
-    }
-
-    // Behind the thrower's shoulder, a little above head height: the whole
-    // player stands in frame on the spot, facing the way they throw.
+    // Behind and above the thrower, looking down at their feet: where they
+    // stand, and the way they face, in one frame.
     public static (Vec3 eye, Vec3 lookAt) StanceShot(Vec3 feet, float yaw)
     {
         Vec3 forward = Forward(0f, yaw);
         var right = new Vec3(forward.y, -forward.x, 0f);
         var up = new Vec3(0f, 0f, 1f);
 
-        Vec3 eye = feet - (forward * 160f) + (right * 48f) + (up * 96f);
-        Vec3 lookAt = feet + (forward * 60f) + (up * 40f);
+        Vec3 eye = feet - (forward * 130f) + (right * 40f) + (up * 120f);
+        Vec3 lookAt = feet + (forward * 40f) + (up * 12f);
 
         return (eye, lookAt);
     }

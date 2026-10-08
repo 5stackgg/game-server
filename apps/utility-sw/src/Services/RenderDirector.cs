@@ -62,6 +62,7 @@ public class RenderDirector
         public Vec3 Look;
         public Vec3 StanceEye;
         public Vec3 StanceLook;
+        public bool BodyLeft;
         public Vec3 DetachEye;
         public Vec3 DetachLook;
         public Vec3 BloomEye;
@@ -235,7 +236,7 @@ public class RenderDirector
                 Next(take, RenderDirectorUtility.StanceSeconds, eRenderBeat.Glide);
                 break;
             case eRenderBeat.Glide:
-                Glide(take);
+                Glide(take, player);
                 Next(take, RenderDirectorUtility.GlideSeconds, eRenderBeat.StanceEyes);
                 break;
             case eRenderBeat.StanceEyes:
@@ -363,21 +364,14 @@ public class RenderDirector
         {
             case eRenderBeat.Stance:
             {
-                (Vec3 eye, Vec3 look) = RenderDirectorUtility.ThirdPersonShot(take.Feet, take.Lineup.release.yaw);
+                (Vec3 eye, Vec3 look) = RenderDirectorUtility.StanceShot(take.Feet, take.Lineup.release.yaw);
 
-                take.StanceEye = _replay.CameraClear(Head(take), eye);
-                take.StanceLook = look;
+                take.Eye = _replay.CameraClear(Head(take), eye);
+                take.Look = look;
+                take.StanceEye = take.Eye;
+                take.StanceLook = take.Look;
 
                 _replay.Repoint(player, RenderDirectorUtility.StanceViewPitch, take.Lineup.release.yaw);
-                pawn.HideHUD = HideCrosshair | HideRadar;
-                pawn.HideHUDUpdated();
-
-                Shot(take, player, "stance", "thirdperson");
-                break;
-            }
-            case eRenderBeat.Glide:
-                take.Eye = take.StanceEye;
-                take.Look = take.StanceLook;
 
                 if (!ViewThroughCamera(take, pawn))
                 {
@@ -385,7 +379,12 @@ public class RenderDirector
                     return;
                 }
 
-                Shot(take, player, "glide", "camera");
+                Shot(take, player, "stance", "thirdperson");
+                break;
+            }
+            case eRenderBeat.Glide:
+                take.BodyLeft = false;
+                Shot(take, player, "glide", "thirdperson");
                 break;
             case eRenderBeat.StanceEyes:
                 (take.Eye, take.Look) = RenderDirectorUtility.EyesShot(
@@ -443,9 +442,15 @@ public class RenderDirector
         }
     }
 
-    private void Glide(Take take)
+    private void Glide(Take take, IPlayer player)
     {
         float s = take.Tick / (float)RenderDirectorUtility.Ticks(RenderDirectorUtility.GlideSeconds);
+
+        if (!take.BodyLeft && s >= RenderDirectorUtility.GlideBodyLeaves)
+        {
+            take.BodyLeft = true;
+            Shot(take, player, "glide_in", "camera");
+        }
 
         (take.Eye, take.Look) = RenderDirectorUtility.GlideShot(
             take.StanceEye,
