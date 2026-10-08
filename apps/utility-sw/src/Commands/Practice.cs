@@ -1599,6 +1599,11 @@ public partial class UtilityPracticePlugin
 
     private void Tell(ulong steamId, string message)
     {
+        if (_config.RenderMode)
+        {
+            return;
+        }
+
         IPlayer? player = _system.Find(steamId);
 
         if (player == null || !player.IsValid)

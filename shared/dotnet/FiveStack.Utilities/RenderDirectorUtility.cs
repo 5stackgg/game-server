@@ -1,0 +1,278 @@
+using System.Globalization;
+using System.Text;
+using FiveStack.Entities.Practice;
+
+namespace FiveStack.Utilities;
+
+public enum eRenderBeat
+{
+    Idle,
+    Staging,
+    Staged,
+    Stance,
+    Aim,
+    AimClose,
+    Throw,
+    Follow,
+    Bloom,
+}
+
+// The render pod films a lineup the plugin directs. Everything here is a
+// contract with game-streamer's nade-clip.sh, which greps the client's
+// console.log for these lines: the prefix, the event names and the key names
+// are what it matches on.
+public static class RenderDirectorUtility
+{
+    public const string Prefix = "[5stack-render]";
+
+    public const int TickRate = 64;
+
+    public const float StanceSeconds = 1.6f;
+    public const float StanceStillAt = 1.1f;
+    public const float AimSeconds = 1.5f;
+    public const float AimStillAt = 1.0f;
+    public const float AimCloseSeconds = 1.5f;
+    public const float AimCloseStillAt = 1.1f;
+    public const float ZoomSeconds = 0.3f;
+    public const int AimCloseFov = 30;
+
+    // The pod presses the throw on `act`; this is how long it gets to do it.
+    public const float ThrowTimeoutSeconds = 6f;
+
+    // Long enough to see the grenade leave the hand before the view lets go.
+    public const float DetachSeconds = 0.2f;
+
+    // A grenade that never detonates (stuck in a wall, out of the map) still
+    // has to end the clip.
+    public const float FollowMaxSeconds = 20f;
+
+    public const float StandingEyeHeight = 64f;
+
+    // How far the measured stance may sit from the lineup's before staging is
+    // refused rather than filmed.
+    public const float StagedPositionTolerance = 16f;
+    public const float StagedAngleTolerance = 0.25f;
+
+    public static int Ticks(float seconds)
+    {
+        return (int)MathF.Round(seconds * TickRate);
+    }
+
+    public static float BloomHoldSeconds(string? utilityType)
+    {
+        return utilityType switch
+        {
+            "Smoke" => 5f,
+            "Molotov" => 4f,
+            _ => 2f,
+        };
+    }
+
+    // A smoke is still growing for a couple of seconds after it pops; the
+    // still is taken once it has filled out.
+    public static float LandingStillSeconds(string? utilityType)
+    {
+        return utilityType switch
+        {
+            "Smoke" => 3f,
+            "Molotov" => 2f,
+            _ => 0.4f,
+        };
+    }
+
+    // <prefix> <event> key=value ...
+    //
+    // Values never contain a space: one line is split on spaces by the reader.
+    // Floats are invariant with two decimals so a locale cannot turn 1.5 into
+    // 1,5.
+    public static string Line(string eventName, params (string key, object? value)[] fields)
+    {
+        var line = new StringBuilder(Prefix).Append(' ').Append(eventName);
+
+        foreach ((string key, object? value) in fields)
+        {
+            line.Append(' ').Append(key).Append('=').Append(Format(value));
+        }
+
+        return line.ToString();
+    }
+
+    private static string Format(object? value)
+    {
+        string text = value switch
+        {
+            null => "-",
+            float number => number.ToString("0.00", CultureInfo.InvariantCulture),
+            double number => number.ToString("0.00", CultureInfo.InvariantCulture),
+            bool flag => flag ? "1" : "0",
+            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
+            _ => value.ToString() ?? "-",
+        };
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return "-";
+        }
+
+        var clean = new StringBuilder(text.Length);
+
+        foreach (char character in text.Trim())
+        {
+            clean.Append(char.IsWhiteSpace(character) || char.IsControl(character) ? '_' : character);
+        }
+
+        return clean.ToString();
+    }
+
+    public static Vec3 Forward(float pitch, float yaw)
+    {
+        float p = pitch * MathF.PI / 180f;
+        float y = yaw * MathF.PI / 180f;
+
+        return new Vec3(MathF.Cos(p) * MathF.Cos(y), MathF.Cos(p) * MathF.Sin(y), -MathF.Sin(p));
+    }
+
+    public static (float pitch, float yaw) LookAt(Vec3 from, Vec3 to)
+    {
+        Vec3 delta = to - from;
+        float yaw = MathF.Atan2(delta.y, delta.x) * 180f / MathF.PI;
+        float flat = delta.LengthXY();
+
+        if (flat <= float.Epsilon && MathF.Abs(delta.z) <= float.Epsilon)
+        {
+            return (0f, yaw);
+        }
+
+        float pitch = -MathF.Atan2(delta.z, flat) * 180f / MathF.PI;
+
+        return (pitch, yaw);
+    }
+
+    // Smallest signed difference between two angles, in degrees.
+    public static float AngleDelta(float a, float b)
+    {
+        float delta = (a - b) % 360f;
+
+        if (delta > 180f)
+        {
+            delta -= 360f;
+        }
+        else if (delta < -180f)
+        {
+            delta += 360f;
+        }
+
+        return delta;
+    }
+
+    public static bool AimMatches(float pitch, float yaw, float wantPitch, float wantYaw)
+    {
+        return MathF.Abs(AngleDelta(pitch, wantPitch)) <= StagedAngleTolerance
+            && MathF.Abs(AngleDelta(yaw, wantYaw)) <= StagedAngleTolerance;
+    }
+
+    // Above and behind the thrower's shoulder, looking down at the spot: where
+    // to stand reads from here, and the throw direction is still in frame.
+    public static (Vec3 eye, Vec3 lookAt) StanceShot(Vec3 feet, float yaw)
+    {
+        Vec3 forward = Forward(0f, yaw);
+        var right = new Vec3(forward.y, -forward.x, 0f);
+        var up = new Vec3(0f, 0f, 1f);
+
+        Vec3 eye = feet - (forward * 120f) + (right * 36f) + (up * 112f);
+        Vec3 lookAt = feet + (forward * 48f) + (up * 24f);
+
+        return (eye, lookAt);
+    }
+
+    public const float ChaseDistance = 110f;
+    public const float ChaseHeight = 26f;
+
+    // Below this the projectile is rolling or settling and its velocity says
+    // nothing about which way it is going; the camera keeps its last bearing.
+    public const float ChaseMinSpeed = 60f;
+
+    public static Vec3 ChaseDirection(Vec3 velocity, Vec3 previous)
+    {
+        if (velocity.Length() < ChaseMinSpeed)
+        {
+            return previous;
+        }
+
+        // Mostly the horizontal travel: a camera that pitches with the arc
+        // ends up under the grenade on the way down.
+        var flattened = new Vec3(velocity.x, velocity.y, velocity.z * 0.35f);
+        Vec3 direction = flattened.Normalized();
+
+        return direction.Length() <= float.Epsilon ? previous : direction;
+    }
+
+    public static Vec3 ChaseEye(Vec3 projectile, Vec3 direction)
+    {
+        return projectile - (direction * ChaseDistance) + new Vec3(0f, 0f, ChaseHeight);
+    }
+
+    public const float BloomDistance = 380f;
+    public const float BloomHeight = 150f;
+    public const float BloomLookHeight = 48f;
+
+    // Back toward the thrower, so the cloud is framed against the side it was
+    // thrown to cover.
+    public static (Vec3 eye, Vec3 lookAt) BloomShot(Vec3 landing, Vec3 stance, Vec3 fallbackDirection)
+    {
+        var toward = new Vec3(stance.x - landing.x, stance.y - landing.y, 0f);
+        Vec3 direction = toward.Normalized();
+
+        if (direction.Length() <= float.Epsilon)
+        {
+            direction = new Vec3(-fallbackDirection.x, -fallbackDirection.y, 0f).Normalized();
+        }
+
+        if (direction.Length() <= float.Epsilon)
+        {
+            direction = new Vec3(1f, 0f, 0f);
+        }
+
+        Vec3 lookAt = landing + new Vec3(0f, 0f, BloomLookHeight);
+        Vec3 eye = landing + (direction * BloomDistance) + new Vec3(0f, 0f, BloomHeight);
+
+        return (eye, lookAt);
+    }
+
+    // Exponential approach with a half-life, so the result does not depend on
+    // how often it is called: at dt == halfLife the camera covers half the gap.
+    public static Vec3 Approach(Vec3 current, Vec3 target, float dt, float halfLife)
+    {
+        if (halfLife <= 0f)
+        {
+            return target;
+        }
+
+        float keep = MathF.Pow(0.5f, dt / halfLife);
+
+        return target + ((current - target) * keep);
+    }
+
+    // Pulls a camera in along the line from its subject so it never ends up
+    // inside a wall. `hit` is where a trace from the subject toward the camera
+    // stopped, or null when it reached the camera unobstructed.
+    public static Vec3 Unobstructed(Vec3 subject, Vec3 eye, Vec3? hit, float margin)
+    {
+        if (hit == null)
+        {
+            return eye;
+        }
+
+        Vec3 toward = eye - subject;
+        float length = toward.Length();
+        Vec3 blocked = hit.Value - subject;
+        float reach = blocked.Length() - margin;
+
+        if (length <= float.Epsilon || reach >= length)
+        {
+            return eye;
+        }
+
+        return subject + (toward.Normalized() * MathF.Max(reach, 0f));
+    }
+}

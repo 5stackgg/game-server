@@ -26,6 +26,10 @@ public class UtilityConfig
     // fails to spawn and every panel falls back to centre text.
     public bool HudEnabled { get; private set; } = true;
 
+    // A server booked to film lineup previews. The plugin directs the shot and
+    // draws, prints and tints nothing a camera would pick up.
+    public bool RenderMode { get; private set; }
+
     private readonly ILogger<UtilityConfig> _logger;
 
     public UtilityConfig(ILogger<UtilityConfig> logger)
@@ -117,6 +121,16 @@ public class UtilityConfig
         if (!string.IsNullOrEmpty(ghostPreview))
         {
             GhostPreview = ghostPreview == "1" || ghostPreview == "true";
+        }
+
+        string? renderMode = Environment.GetEnvironmentVariable("UTILITY_RENDER_MODE");
+        RenderMode = renderMode == "1" || renderMode == "true";
+
+        if (RenderMode)
+        {
+            GhostProjectile = false;
+            GhostPreview = false;
+            HudEnabled = false;
         }
 
         UtilityUrl = UtilityUrl.TrimEnd('/');

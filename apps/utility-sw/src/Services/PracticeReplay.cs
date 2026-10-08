@@ -710,6 +710,88 @@ public class PracticeReplay
         return true;
     }
 
+    /// <summary>
+    /// Stand a render's thrower on the lineup with its exact aim, and draw
+    /// nothing. Unlike StandOn the teleport carries the pitch: the camera is
+    /// filming through these eyes, so the view itself has to be on the line,
+    /// not just the server's idea of where the pawn looks.
+    /// </summary>
+    public Vec3? Stage(IPlayer player, LineupRecord lineup)
+    {
+        CCSPlayerPawn? pawn = player.PlayerPawn;
+
+        if (pawn == null || !pawn.IsValid)
+        {
+            return null;
+        }
+
+        Vec3 feet = Standable(Grounded(lineup.release.feet_position));
+
+        if (!Sane(feet))
+        {
+            return null;
+        }
+
+        var aim = new QAngle(lineup.release.pitch, lineup.release.yaw, 0);
+
+        player.Teleport(new Vector(feet.x, feet.y, feet.z), aim, new Vector(0, 0, 0));
+        pawn.EyeAngles = aim;
+        ReapplyAngles(player, aim, aim, 2);
+
+        GiveUtility(player, lineup.utility_type);
+
+        return feet;
+    }
+
+    // Re-points a staged thrower without moving them; the aim drifts if
+    // anything nudged the view between staging and the shot.
+    public void Repoint(IPlayer player, float pitch, float yaw)
+    {
+        CCSPlayerPawn? pawn = player.PlayerPawn;
+
+        if (pawn == null || !pawn.IsValid)
+        {
+            return;
+        }
+
+        var aim = new QAngle(pitch, yaw, 0);
+
+        player.Teleport(null, aim, new Vector(0, 0, 0));
+        pawn.EyeAngles = aim;
+    }
+
+    // Where a camera can sit on the line from its subject without being inside
+    // a wall.
+    public Vec3 CameraClear(Vec3 subject, Vec3 eye)
+    {
+        try
+        {
+            var trace = _core.Trace.TraceShapeLine(
+                new Vector(subject.x, subject.y, subject.z),
+                new Vector(eye.x, eye.y, eye.z),
+                SkipMarkers()
+            );
+
+            Vec3? hit = trace.DidHit
+                ? new Vec3(trace.EndPos.X, trace.EndPos.Y, trace.EndPos.Z)
+                : null;
+
+            return RenderDirectorUtility.Unobstructed(subject, eye, hit, CameraWallMargin);
+        }
+        catch (Exception error)
+        {
+            _logger.LogWarning(error, "unable to trace a render camera");
+            return eye;
+        }
+    }
+
+    private const float CameraWallMargin = 12f;
+
+    public static CEntityKeyValues MarkerKeys()
+    {
+        return Tagged();
+    }
+
     // The measured bloom, outlined where it would actually sit. Answers how
     // many beams it took: zero when the panel has no measurement for this
     // lineup, which is a normal answer and not a failure.
@@ -2157,6 +2239,7 @@ public class PracticeReplay
         "env_beam",
         "point_worldtext",
         "prop_physics_override",
+        "prop_dynamic",
     };
 
     private static CEntityKeyValues Tagged()
