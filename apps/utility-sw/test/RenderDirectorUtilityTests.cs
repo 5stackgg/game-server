@@ -235,6 +235,16 @@ public class RenderDirectorUtilityTests
     }
 
     [Fact]
+    public void StagingTurnsFarEnoughToSquareTheLegsUp()
+    {
+        Assert.InRange(RenderDirectorUtility.StageTurnDegrees, 90f, 180f);
+        Assert.True(
+            RenderDirectorUtility.StageTurnSeconds < 2f,
+            "the pod waits 15s for staged; the turn is a small part of it"
+        );
+    }
+
+    [Fact]
     public void TheCutLandsLevelAndThenLooksDownAtTheFeet()
     {
         var head = new Vec3(0f, 0f, RenderDirectorUtility.StandingEyeHeight);

@@ -724,7 +724,7 @@ public class PracticeReplay
     /// filming through these eyes, so the view itself has to be on the line,
     /// not just the server's idea of where the pawn looks.
     /// </summary>
-    public Vec3? Stage(IPlayer player, LineupRecord lineup)
+    public Vec3? Stage(IPlayer player, LineupRecord lineup, float yawOffset = 0f)
     {
         CCSPlayerPawn? pawn = player.PlayerPawn;
 
@@ -742,7 +742,7 @@ public class PracticeReplay
             return null;
         }
 
-        var aim = new QAngle(lineup.release.pitch, lineup.release.yaw, 0);
+        var aim = new QAngle(lineup.release.pitch, lineup.release.yaw + yawOffset, 0);
 
         player.Teleport(new Vector(feet.x, feet.y, feet.z), aim, new Vector(0, 0, 0));
         pawn.EyeAngles = aim;

@@ -75,6 +75,14 @@ public static class RenderDirectorUtility
 
     public const float StandingEyeHeight = 64f;
 
+    // A teleported aim turns the thrower's upper body but leaves the legs where
+    // they were, and an idle player only brings them round with cs2's
+    // turn-in-place, which a small turn never triggers -- the stance was filmed
+    // twisted. Staging first faces this far off the aim, then onto it, so the
+    // last turn is always big enough to square the legs up.
+    public const float StageTurnDegrees = 120f;
+    public const float StageTurnSeconds = 0.6f;
+
     // How far the measured stance may sit from the lineup's before staging is
     // refused rather than filmed.
     public const float StagedPositionTolerance = 16f;
@@ -287,6 +295,10 @@ public static class RenderDirectorUtility
 
     // How long the cut from the eyes takes to settle onto the path.
     public const float DetachHandOffSeconds = 0.25f;
+
+    // The lift above the path is traced for clearance every tick, and a thin
+    // wire it clips for one tick used to drop the camera by the whole lift.
+    public const float ChaseRiseHalfLife = 0.08f;
 
     // How far along the flown path (in units from the release) the camera is,
     // `sinceDetach` seconds after it let go of the eyes.

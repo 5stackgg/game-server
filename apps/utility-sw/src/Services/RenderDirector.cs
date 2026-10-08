@@ -50,6 +50,7 @@ public class RenderDirector
         public int Attempts;
         public Vec3 Feet;
         public bool StillSent;
+        public bool Turned;
 
         // Ticks since go, -1 before it. Every line after go carries it, so the
         // pod can place a still by when the beat happened rather than by when
@@ -62,6 +63,7 @@ public class RenderDirector
         public Vec3 Look;
         public Vec3 DetachEye;
         public Vec3 DetachLook;
+        public float Rise;
         public Vec3 BloomEye;
         public Vec3 BloomLook;
 
@@ -161,7 +163,7 @@ public class RenderDirector
             return;
         }
 
-        Vec3? feet = _replay.Stage(player, lineup);
+        Vec3? feet = _replay.Stage(player, lineup, RenderDirectorUtility.StageTurnDegrees);
 
         if (feet == null)
         {
@@ -283,6 +285,26 @@ public class RenderDirector
 
     private void Staging(Take take, IPlayer player, CCSPlayerPawn pawn)
     {
+        if (!take.Turned)
+        {
+            if (take.Tick < RenderDirectorUtility.Ticks(RenderDirectorUtility.StageTurnSeconds))
+            {
+                return;
+            }
+
+            take.Turned = true;
+            take.Tick = 0;
+
+            Vec3? squared = _replay.Stage(player, take.Lineup);
+
+            if (squared != null)
+            {
+                take.Feet = squared.Value;
+            }
+
+            return;
+        }
+
         if (take.Tick < SettleTicks)
         {
             return;
@@ -607,9 +629,14 @@ public class RenderDirector
 
             // The camera starts exactly where the eyes are and pulls away from
             // there, so the cut into the chase reads as the view letting go.
+            // The real view, not the lineup's: a jump throw has just landed.
             Vector eyeOrigin = pawn.AbsOrigin ?? new Vector(take.Feet.x, take.Feet.y, take.Feet.z);
-            take.Eye = new Vec3(eyeOrigin.X, eyeOrigin.Y, eyeOrigin.Z + RenderDirectorUtility.StandingEyeHeight);
-            take.Look = take.Eye + RenderDirectorUtility.Forward(take.Lineup.release.pitch, take.Lineup.release.yaw) * 200f;
+            float viewZ = pawn.ViewOffset.Z.Value;
+            float eyeHeight = viewZ > 1f ? viewZ : RenderDirectorUtility.StandingEyeHeight;
+            QAngle eyes = pawn.EyeAngles;
+            take.Eye = new Vec3(eyeOrigin.X, eyeOrigin.Y, eyeOrigin.Z + eyeHeight);
+            take.Look = take.Eye + RenderDirectorUtility.Forward(eyes.X, eyes.Y) * 200f;
+            take.Rise = 0f;
             take.DetachEye = take.Eye;
             take.DetachLook = take.Look;
             take.DetachTick = take.Tick;
@@ -653,7 +680,16 @@ public class RenderDirector
         float rise =
             RenderDirectorUtility.ChaseHeight
             * RenderDirectorUtility.Ease(since / RenderDirectorUtility.ChaseCatchUpSeconds);
-        Vec3 chase = _replay.CameraClear(onPath, onPath + new Vec3(0f, 0f, rise));
+        Vec3 cleared = _replay.CameraClear(onPath, onPath + new Vec3(0f, 0f, rise));
+        take.Rise = RenderDirectorUtility
+            .Approach(
+                new Vec3(0f, 0f, take.Rise),
+                new Vec3(0f, 0f, MathF.Max(0f, cleared.z - onPath.z)),
+                Dt,
+                RenderDirectorUtility.ChaseRiseHalfLife
+            )
+            .z;
+        Vec3 chase = onPath + new Vec3(0f, 0f, take.Rise);
         float handOff = RenderDirectorUtility.Ease(since / RenderDirectorUtility.DetachHandOffSeconds);
 
         take.Eye = RenderDirectorUtility.Lerp(take.DetachEye, chase, handOff);
