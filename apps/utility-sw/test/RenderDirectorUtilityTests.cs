@@ -70,18 +70,6 @@ public class RenderDirectorUtilityTests
     }
 
     [Fact]
-    public void TheStanceShotLooksAtTheSpotFromBehindAndAbove()
-    {
-        var feet = new Vec3(100f, 200f, 0f);
-
-        (Vec3 eye, Vec3 lookAt) = RenderDirectorUtility.StanceShot(feet, 90f);
-
-        Assert.True(eye.z > feet.z + RenderDirectorUtility.StandingEyeHeight);
-        Assert.True(eye.y < feet.y, "behind a player facing +y is at lower y");
-        Assert.True(lookAt.y > feet.y, "the view leans into the throw direction");
-    }
-
-    [Fact]
     public void TheChaseRunsUpTheFlownPathFromTheReleasePoint()
     {
         Assert.Equal(0f, RenderDirectorUtility.ChaseArc(1000f, 0f));
@@ -230,7 +218,7 @@ public class RenderDirectorUtilityTests
     {
         Assert.Equal(
             RenderDirectorUtility.StanceSeconds
-                + RenderDirectorUtility.GlideSeconds
+                + RenderDirectorUtility.CutSeconds
                 + RenderDirectorUtility.StanceEyesSeconds
                 + RenderDirectorUtility.TiltSeconds
                 + RenderDirectorUtility.AimSeconds
@@ -247,24 +235,24 @@ public class RenderDirectorUtilityTests
     }
 
     [Fact]
-    public void TheGlideStartsOnTheStanceCameraAndEndsOnTheAim()
+    public void TheCutLandsLevelAndThenLooksDownAtTheFeet()
     {
-        var stanceEye = new Vec3(0f, 0f, 200f);
-        var stanceLook = new Vec3(100f, 0f, 40f);
-        var head = new Vec3(300f, 300f, 64f);
+        var head = new Vec3(0f, 0f, RenderDirectorUtility.StandingEyeHeight);
 
-        (Vec3 startEye, Vec3 startLook) = RenderDirectorUtility.GlideShot(
-            stanceEye, stanceLook, head, -30f, 45f, 0f);
-        (Vec3 endEye, Vec3 endLook) = RenderDirectorUtility.GlideShot(
-            stanceEye, stanceLook, head, -30f, 45f, 1f);
+        (Vec3 landEye, Vec3 landLook) = RenderDirectorUtility.LookDownShot(head, 90f, 0f);
+        (Vec3 downEye, Vec3 downLook) = RenderDirectorUtility.LookDownShot(
+            head,
+            90f,
+            RenderDirectorUtility.StanceEyesStillAt
+        );
 
-        Assert.Equal(stanceEye.z, startEye.z, 3);
-        Assert.Equal(stanceLook.x, startLook.x, 3);
-
-        (float pitch, float yaw) = RenderDirectorUtility.LookAt(endEye, endLook);
-        Assert.Equal(-30f, pitch, 1);
-        Assert.Equal(45f, yaw, 1);
-        Assert.True((endEye - head).Length() <= RenderDirectorUtility.GlideEndAhead + 0.01f);
+        Assert.Equal(RenderDirectorUtility.StanceViewPitch, RenderDirectorUtility.LookAt(landEye, landLook).pitch, 1);
+        Assert.Equal(RenderDirectorUtility.StanceEyesPitch, RenderDirectorUtility.LookAt(downEye, downLook).pitch, 1);
+        Assert.Equal(90f, RenderDirectorUtility.LookAt(downEye, downLook).yaw, 1);
+        Assert.True(
+            RenderDirectorUtility.StanceEyesStillAt >= RenderDirectorUtility.StanceEyesTiltSeconds,
+            "the still waits for the look down to finish"
+        );
     }
 
     [Fact]
@@ -317,70 +305,6 @@ public class RenderDirectorUtilityTests
             "closer vantages are only tried after every far one"
         );
         Assert.Equal(24, candidates.Count);
-    }
-
-    [Fact]
-    public void TheStanceShotLooksDownAtTheFeet()
-    {
-        var feet = new Vec3(0f, 0f, 0f);
-
-        (Vec3 eye, Vec3 look) = RenderDirectorUtility.StanceShot(feet, 0f);
-
-        Assert.True(eye.z > RenderDirectorUtility.StandingEyeHeight, "above their head");
-        Assert.True(RenderDirectorUtility.LookAt(eye, look).pitch > 20f, "looking well down");
-        Assert.True(look.z < 24f, "aimed at the ground they stand on");
-        Assert.InRange(RenderDirectorUtility.GlideBodyLeaves, 0.3f, 0.9f);
-    }
-
-    [Fact]
-    public void TheStanceOpensWideAndCranesDownOntoTheThrower()
-    {
-        var feet = new Vec3(0f, 0f, 0f);
-
-        (Vec3 wide, Vec3 wideLook) = RenderDirectorUtility.StanceWideShot(feet, 0f);
-        (Vec3 close, _) = RenderDirectorUtility.StanceShot(feet, 0f);
-
-        Assert.True(wide.z > close.z, "higher");
-        Assert.True(wide.x < close.x, "further back");
-        Assert.True(wideLook.x > 100f, "looking out past the spot at the map ahead");
-        Assert.True(RenderDirectorUtility.LookAt(wide, wideLook).pitch > 15f, "the thrower is still in frame");
-    }
-
-    [Fact]
-    public void TheGlidePassesBesideTheHeadNotThroughIt()
-    {
-        var feet = new Vec3(0f, 0f, 0f);
-        var head = new Vec3(0f, 0f, RenderDirectorUtility.StandingEyeHeight);
-        var skull = new Vec3(-4f, 0f, RenderDirectorUtility.StandingEyeHeight);
-        (Vec3 stance, Vec3 stanceLook) = RenderDirectorUtility.StanceShot(feet, 0f);
-        float nearest = float.MaxValue;
-
-        for (int step = 0; step <= 200; step++)
-        {
-            (Vec3 eye, _) = RenderDirectorUtility.GlideShot(
-                stance,
-                stanceLook,
-                head,
-                RenderDirectorUtility.StanceEyesPitch,
-                0f,
-                step / 200f
-            );
-
-            nearest = MathF.Min(nearest, (eye - skull).Length());
-        }
-
-        Assert.True(nearest >= 7f, $"came within {nearest}u of the head");
-
-        (Vec3 leaving, _) = RenderDirectorUtility.GlideShot(
-            stance,
-            stanceLook,
-            head,
-            RenderDirectorUtility.StanceEyesPitch,
-            0f,
-            RenderDirectorUtility.GlideBodyLeaves
-        );
-
-        Assert.True(leaving.x > skull.x, "level with the face or past it when the body is dropped");
     }
 
     [Fact]

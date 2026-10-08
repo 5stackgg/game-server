@@ -10,7 +10,7 @@ public enum eRenderBeat
     Staging,
     Staged,
     Stance,
-    Glide,
+    Cut,
     StanceEyes,
     Tilt,
     Aim,
@@ -35,12 +35,13 @@ public static class RenderDirectorUtility
     public const float StanceSeconds = 1.6f;
     public const float StanceStillAt = 0.7f;
 
-    // The stance camera flies down into the thrower's eyes, looks at the
-    // ground around their feet (where to stand, from where they stand), then
-    // tilts up onto the exact aim -- so the cut to first person is invisible.
-    public const float GlideSeconds = 1.0f;
-    public const float StanceEyesSeconds = 0.8f;
-    public const float StanceEyesStillAt = 0.5f;
+    // After the stance the view cuts into the eyes, level, the way the
+    // thrower faces; then looks down at the ground around their feet (where to
+    // stand, from where they stand) and tilts up onto the exact aim.
+    public const float CutSeconds = 0.35f;
+    public const float StanceEyesSeconds = 1.0f;
+    public const float StanceEyesTiltSeconds = 0.5f;
+    public const float StanceEyesStillAt = 0.8f;
     public const float StanceEyesPitch = 45f;
     public const float TiltSeconds = 1.0f;
     public const float AimSeconds = 1.0f;
@@ -99,7 +100,7 @@ public static class RenderDirectorUtility
     // When, after go, the pod should throw if `act` has not reached it.
     public static float ActAtSeconds =>
         StanceSeconds
-        + GlideSeconds
+        + CutSeconds
         + StanceEyesSeconds
         + TiltSeconds
         + AimSeconds
@@ -226,49 +227,16 @@ public static class RenderDirectorUtility
             && MathF.Abs(AngleDelta(yaw, wantYaw)) <= StagedAngleTolerance;
     }
 
-    // The stance is filmed through the director's own camera while the pod
-    // holds cs2 in third person: a view entity alone never draws the local
-    // player's body, and cs2's third-person camera ignores cam_idealdist and
-    // films from wherever it likes. The thrower looks slightly down meanwhile,
-    // which reads as standing naturally from behind.
+    // The stance is cs2's own third-person camera, which the pod holds and
+    // places with cam_idealdist/pitch/yaw. The client ignores a view entity
+    // while it is in third person, so the director's camera only takes over
+    // once the pod is back in first person. The thrower looks level: a pitched
+    // teleport leans the whole model.
     public const float StanceViewPitch = 0f;
 
-    // How far through the glide third person is dropped. The camera has come
-    // round the shoulder and is level with the face by then, so the body is
-    // behind the lens when it goes; the pod's exec lag covers the rest.
-    public const float GlideBodyLeaves = 0.85f;
-
-    // Behind and above the thrower, looking down at their feet: where they
-    // stand, and the way they face, in one frame.
-    public static (Vec3 eye, Vec3 lookAt) StanceShot(Vec3 feet, float yaw)
-    {
-        Vec3 forward = Forward(0f, yaw);
-        var right = new Vec3(forward.y, -forward.x, 0f);
-        var up = new Vec3(0f, 0f, 1f);
-
-        Vec3 eye = feet - (forward * 130f) + (right * 40f) + (up * 120f);
-        Vec3 lookAt = feet + (forward * 40f) + (up * 12f);
-
-        return (eye, lookAt);
-    }
-
-    // Where the stance opens: high and well back, so the spot reads against
-    // the map around it before the camera cranes down onto the thrower.
-    public static (Vec3 eye, Vec3 lookAt) StanceWideShot(Vec3 feet, float yaw)
-    {
-        Vec3 forward = Forward(0f, yaw);
-        var right = new Vec3(forward.y, -forward.x, 0f);
-        var up = new Vec3(0f, 0f, 1f);
-
-        Vec3 eye = feet - (forward * 250f) + (right * 70f) + (up * 210f);
-        Vec3 lookAt = feet + (forward * 150f) + (up * 20f);
-
-        return (eye, lookAt);
-    }
-
-    // Stops just in front of the eyes, so the last frames of the glide never
-    // look out through the back of the thrower's own head.
-    public const float GlideEndAhead = 6f;
+    // Just in front of the eyes, so the camera never sees the inside of the
+    // thrower's own head.
+    public const float EyesAhead = 6f;
 
     public static float Ease(float s)
     {
@@ -287,7 +255,15 @@ public static class RenderDirectorUtility
     {
         Vec3 forward = Forward(pitch, yaw);
 
-        return (headEye + (forward * GlideEndAhead), headEye + (forward * 400f));
+        return (headEye + (forward * EyesAhead), headEye + (forward * 400f));
+    }
+
+    // From level (where the cut into the eyes lands) down onto the feet, then held.
+    public static (Vec3 eye, Vec3 lookAt) LookDownShot(Vec3 headEye, float yaw, float seconds)
+    {
+        float pitch = StanceEyesPitch * Ease(seconds / StanceEyesTiltSeconds);
+
+        return EyesShot(headEye, pitch, yaw);
     }
 
     // s in 0..1 along the tilt from the ground at the thrower's feet up onto the aim.
@@ -296,39 +272,6 @@ public static class RenderDirectorUtility
         float pitch = StanceEyesPitch + ((aimPitch - StanceEyesPitch) * Ease(s));
 
         return EyesShot(headEye, pitch, yaw);
-    }
-
-    // The glide bends round the right shoulder rather than flying through the
-    // back of the head.
-    public const float GlideShoulderOut = 56f;
-    public const float GlideShoulderBack = 24f;
-
-    // s in 0..1 along the glide from the stance camera to the eyes at (pitch, yaw).
-    public static (Vec3 eye, Vec3 lookAt) GlideShot(
-        Vec3 stanceEye,
-        Vec3 stanceLook,
-        Vec3 headEye,
-        float pitch,
-        float yaw,
-        float s
-    )
-    {
-        Vec3 forward = Forward(pitch, yaw);
-        Vec3 flat = Forward(0f, yaw);
-        var right = new Vec3(flat.y, -flat.x, 0f);
-        Vec3 endEye = headEye + (forward * GlideEndAhead);
-        Vec3 endLook = headEye + (forward * 400f);
-        Vec3 shoulder = headEye - (flat * GlideShoulderBack) + (right * GlideShoulderOut);
-        float eased = Ease(s);
-
-        return (Bezier(stanceEye, shoulder, endEye, eased), Lerp(stanceLook, endLook, eased));
-    }
-
-    public static Vec3 Bezier(Vec3 from, Vec3 control, Vec3 to, float s)
-    {
-        float rest = 1f - s;
-
-        return (from * (rest * rest)) + (control * (2f * rest * s)) + (to * (s * s));
     }
 
     // The chase rides the grenade's own flight path, this far back along it:

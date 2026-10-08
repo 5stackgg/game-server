@@ -60,11 +60,6 @@ public class RenderDirector
         public CDynamicProp? Camera;
         public Vec3 Eye;
         public Vec3 Look;
-        public Vec3 WideEye;
-        public Vec3 WideLook;
-        public Vec3 StanceEye;
-        public Vec3 StanceLook;
-        public bool BodyLeft;
         public Vec3 DetachEye;
         public Vec3 DetachLook;
         public Vec3 BloomEye;
@@ -236,15 +231,14 @@ public class RenderDirector
                 Staging(take, player, pawn);
                 break;
             case eRenderBeat.Stance:
-                Crane(take);
                 Still(take, player, RenderDirectorUtility.StanceStillAt, "stance");
-                Next(take, RenderDirectorUtility.StanceSeconds, eRenderBeat.Glide);
+                Next(take, RenderDirectorUtility.StanceSeconds, eRenderBeat.Cut);
                 break;
-            case eRenderBeat.Glide:
-                Glide(take, player);
-                Next(take, RenderDirectorUtility.GlideSeconds, eRenderBeat.StanceEyes);
+            case eRenderBeat.Cut:
+                Next(take, RenderDirectorUtility.CutSeconds, eRenderBeat.StanceEyes);
                 break;
             case eRenderBeat.StanceEyes:
+                LookDown(take);
                 Still(take, player, RenderDirectorUtility.StanceEyesStillAt, "stance_eyes");
                 Next(take, RenderDirectorUtility.StanceEyesSeconds, eRenderBeat.Tilt);
                 break;
@@ -312,7 +306,7 @@ public class RenderDirector
 
             if (take.Camera == null || !take.Camera.IsValid)
             {
-                take.Camera = SpawnCamera();
+                take.Camera = SpawnCamera(pawn);
             }
 
             _replay.Repoint(player, RenderDirectorUtility.StanceViewPitch, take.Lineup.release.yaw);
@@ -373,21 +367,21 @@ public class RenderDirector
         switch (beat)
         {
             case eRenderBeat.Stance:
-            {
-                (Vec3 wide, Vec3 wideLook) = RenderDirectorUtility.StanceWideShot(
-                    take.Feet,
-                    take.Lineup.release.yaw
-                );
-                (Vec3 eye, Vec3 look) = RenderDirectorUtility.StanceShot(take.Feet, take.Lineup.release.yaw);
-
-                take.WideEye = _replay.CameraClear(Head(take), wide);
-                take.WideLook = wideLook;
-                take.StanceEye = _replay.CameraClear(Head(take), eye);
-                take.StanceLook = look;
-                take.Eye = take.WideEye;
-                take.Look = take.WideLook;
-
                 _replay.Repoint(player, RenderDirectorUtility.StanceViewPitch, take.Lineup.release.yaw);
+                ViewThroughEyes(take, pawn);
+                pawn.HideHUD = HideCrosshair | HideRadar;
+                pawn.HideHUDUpdated();
+                Shot(take, player, "stance", "thirdperson");
+                break;
+            case eRenderBeat.Cut:
+                Shot(take, player, "cut", "eyes");
+                break;
+            case eRenderBeat.StanceEyes:
+                (take.Eye, take.Look) = RenderDirectorUtility.LookDownShot(
+                    Head(take),
+                    take.Lineup.release.yaw,
+                    0f
+                );
 
                 if (!ViewThroughCamera(take, pawn))
                 {
@@ -395,20 +389,6 @@ public class RenderDirector
                     return;
                 }
 
-                Shot(take, player, "stance", "thirdperson");
-                break;
-            }
-            case eRenderBeat.Glide:
-                take.BodyLeft = false;
-                Shot(take, player, "glide", "thirdperson");
-                break;
-            case eRenderBeat.StanceEyes:
-                (take.Eye, take.Look) = RenderDirectorUtility.EyesShot(
-                    Head(take),
-                    RenderDirectorUtility.StanceEyesPitch,
-                    take.Lineup.release.yaw
-                );
-                MoveCamera(take);
                 Shot(take, player, "stance_eyes", "camera");
                 break;
             case eRenderBeat.Tilt:
@@ -458,34 +438,12 @@ public class RenderDirector
         }
     }
 
-    private static void Crane(Take take)
+    private static void LookDown(Take take)
     {
-        float s = RenderDirectorUtility.Ease(
-            take.Tick / (float)RenderDirectorUtility.Ticks(RenderDirectorUtility.StanceSeconds)
-        );
-
-        take.Eye = RenderDirectorUtility.Lerp(take.WideEye, take.StanceEye, s);
-        take.Look = RenderDirectorUtility.Lerp(take.WideLook, take.StanceLook, s);
-        MoveCamera(take);
-    }
-
-    private void Glide(Take take, IPlayer player)
-    {
-        float s = take.Tick / (float)RenderDirectorUtility.Ticks(RenderDirectorUtility.GlideSeconds);
-
-        if (!take.BodyLeft && s >= RenderDirectorUtility.GlideBodyLeaves)
-        {
-            take.BodyLeft = true;
-            Shot(take, player, "glide_in", "camera");
-        }
-
-        (take.Eye, take.Look) = RenderDirectorUtility.GlideShot(
-            take.StanceEye,
-            take.StanceLook,
+        (take.Eye, take.Look) = RenderDirectorUtility.LookDownShot(
             Head(take),
-            RenderDirectorUtility.StanceEyesPitch,
             take.Lineup.release.yaw,
-            s
+            take.Tick * Dt
         );
         MoveCamera(take);
     }
@@ -828,7 +786,7 @@ public class RenderDirector
     {
         if (take.Camera == null || !take.Camera.IsValid)
         {
-            take.Camera = SpawnCamera();
+            take.Camera = SpawnCamera(pawn);
         }
 
         CDynamicProp? camera = take.Camera;
@@ -877,7 +835,7 @@ public class RenderDirector
         services.FOVUpdated();
     }
 
-    private CDynamicProp? SpawnCamera()
+    private CDynamicProp? SpawnCamera(CCSPlayerPawn pawn)
     {
         try
         {
@@ -890,6 +848,18 @@ public class RenderDirector
 
             CEntityKeyValues keys = PracticeReplay.MarkerKeys();
             keys.SetString("solid", "0");
+
+            // The client never interpolates an entity with no model, so a
+            // model-less camera steps once per tick and beats against the
+            // 60fps capture. The thrower's own model is always precached; it
+            // is never drawn (kRenderNone below).
+            string? model = ModelOf(pawn);
+
+            if (!string.IsNullOrEmpty(model))
+            {
+                keys.SetString("model", model);
+            }
+
             camera.DispatchSpawn(keys);
 
             // A prop with no model is the giant ERROR model, centred on the
@@ -917,6 +887,18 @@ public class RenderDirector
         }
     }
 
+    private static string? ModelOf(CCSPlayerPawn pawn)
+    {
+        try
+        {
+            return pawn.CBodyComponent?.SceneNode?.GetSkeletonInstance().ModelState.ModelName;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static void MoveCamera(Take take)
     {
         CDynamicProp? camera = take.Camera;
@@ -928,11 +910,22 @@ public class RenderDirector
 
         (float pitch, float yaw) = RenderDirectorUtility.LookAt(take.Eye, take.Look);
 
+        // A teleport bumps the interpolation frame, which tells the client not
+        // to blend from the last position; the camera moves every tick, so that
+        // would make it step. Handing the old frame back keeps it blending.
+        byte frame = camera.InterpolationFrame;
+
         camera.Teleport(
             new Vector(take.Eye.x, take.Eye.y, take.Eye.z),
             new QAngle(pitch, yaw, 0),
             new Vector(0, 0, 0)
         );
+
+        if (camera.InterpolationFrame != frame)
+        {
+            camera.InterpolationFrame = frame;
+            camera.InterpolationFrameUpdated();
+        }
     }
 
     private void Fail(Take take, IPlayer player, string reason, params (string key, object? value)[] detail)
