@@ -222,6 +222,11 @@ public static class RenderDirectorUtility
             && MathF.Abs(AngleDelta(yaw, wantYaw)) <= StagedAngleTolerance;
     }
 
+    // Where the spot shot's clearance trace starts: above the thrower's hull
+    // (72u). Started at the head, the trace stopped on something there and
+    // filmed the shot from inside the thrower.
+    public const float AboveHead = 90f;
+
     // Behind and well above the spot, looking down on it: where to stand, and
     // which way to face, before the cut into the eyes.
     public static (Vec3 eye, Vec3 lookAt) SpotShot(Vec3 feet, float yaw)
@@ -235,6 +240,23 @@ public static class RenderDirectorUtility
 
         return (eye, lookAt);
     }
+
+    // The same shot from lower and further back, for a spot with something
+    // overhead (an archway, a ceiling) that the high angle cannot clear.
+    public static (Vec3 eye, Vec3 lookAt) SpotLowShot(Vec3 feet, float yaw)
+    {
+        Vec3 forward = Forward(0f, yaw);
+        var right = new Vec3(forward.y, -forward.x, 0f);
+        var up = new Vec3(0f, 0f, 1f);
+
+        Vec3 eye = feet - (forward * 190f) + (right * 50f) + (up * 100f);
+        Vec3 lookAt = feet + (up * 40f);
+
+        return (eye, lookAt);
+    }
+
+    // Nearer than this and the spot shot no longer shows where the thrower is.
+    public const float SpotMinReach = 110f;
 
     // Just in front of the eyes, so the camera never sees the inside of the
     // thrower's own head.

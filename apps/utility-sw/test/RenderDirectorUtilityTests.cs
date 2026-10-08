@@ -271,6 +271,22 @@ public class RenderDirectorUtilityTests
     }
 
     [Fact]
+    public void TheLowSpotShotIsFlatterAndFurtherBack()
+    {
+        var feet = new Vec3(0f, 0f, 0f);
+
+        (Vec3 high, Vec3 highLook) = RenderDirectorUtility.SpotShot(feet, 0f);
+        (Vec3 low, Vec3 lowLook) = RenderDirectorUtility.SpotLowShot(feet, 0f);
+
+        Assert.True(low.z < high.z, "under whatever blocked the high angle");
+        Assert.True(low.x < high.x, "further behind");
+        Assert.True(
+            RenderDirectorUtility.LookAt(low, lowLook).pitch < RenderDirectorUtility.LookAt(high, highLook).pitch
+        );
+        Assert.True(low.z > RenderDirectorUtility.StandingEyeHeight, "still looking down on the thrower");
+    }
+
+    [Fact]
     public void ThePinIsOutLongEnoughForTheLineupReticle()
     {
         float sincePull =

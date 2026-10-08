@@ -313,6 +313,10 @@ public class RenderDirector
                 take.Camera = SpawnCamera(pawn);
             }
 
+            // Already on the opening shot: the pod records a moment before it
+            // says go, and that moment used to be the aim from the eyes.
+            FrameSpot(take, pawn);
+
             take.StagedLine = Tell(
                 take,
                 player,
@@ -369,13 +373,7 @@ public class RenderDirector
         switch (beat)
         {
             case eRenderBeat.Stance:
-            {
-                (Vec3 eye, Vec3 look) = RenderDirectorUtility.SpotShot(take.Feet, take.Lineup.release.yaw);
-
-                take.Eye = _replay.CameraClear(Head(take), eye);
-                take.Look = look;
-
-                if (!ViewThroughCamera(take, pawn))
+                if (!FrameSpot(take, pawn))
                 {
                     Fail(take, player, "no_camera");
                     return;
@@ -383,7 +381,6 @@ public class RenderDirector
 
                 Shot(take, player, "stance", "camera");
                 break;
-            }
             case eRenderBeat.StanceEyes:
                 (take.Eye, take.Look) = RenderDirectorUtility.EyesShot(
                     Head(take),
@@ -439,6 +436,32 @@ public class RenderDirector
                 Shot(take, player, "bloom", "camera");
                 break;
         }
+    }
+
+    private bool FrameSpot(Take take, CCSPlayerPawn pawn)
+    {
+        (Vec3 eye, Vec3 look) = RenderDirectorUtility.SpotShot(take.Feet, take.Lineup.release.yaw);
+        Vec3 above = take.Feet + new Vec3(0f, 0f, RenderDirectorUtility.AboveHead);
+
+        take.Eye = _replay.CameraClear(above, eye);
+        take.Look = look;
+
+        if ((take.Eye - above).Length() < RenderDirectorUtility.SpotMinReach)
+        {
+            (Vec3 lowEye, Vec3 lowLook) = RenderDirectorUtility.SpotLowShot(
+                take.Feet,
+                take.Lineup.release.yaw
+            );
+            Vec3 low = _replay.CameraClear(above, lowEye);
+
+            if ((low - above).Length() > (take.Eye - above).Length())
+            {
+                take.Eye = low;
+                take.Look = lowLook;
+            }
+        }
+
+        return ViewThroughCamera(take, pawn);
     }
 
     private void Tilt(Take take)
