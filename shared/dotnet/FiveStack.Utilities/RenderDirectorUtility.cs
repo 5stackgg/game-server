@@ -11,6 +11,8 @@ public enum eRenderBeat
     Staged,
     Stance,
     Glide,
+    StanceEyes,
+    Tilt,
     Aim,
     AimClose,
     Throw,
@@ -32,13 +34,18 @@ public static class RenderDirectorUtility
     public const float StanceSeconds = 1.4f;
     public const float StanceStillAt = 0.9f;
 
-    // The stance camera flies down into the thrower's eyes and arrives on the
-    // exact aim, so the cut to first person is invisible.
+    // The stance camera flies down into the thrower's eyes, looks at the
+    // ground around their feet (where to stand, from where they stand), then
+    // tilts up onto the exact aim -- so the cut to first person is invisible.
     public const float GlideSeconds = 0.7f;
-    public const float AimSeconds = 1.2f;
-    public const float AimStillAt = 0.8f;
-    public const float AimCloseSeconds = 1.3f;
-    public const float AimCloseStillAt = 0.9f;
+    public const float StanceEyesSeconds = 1.0f;
+    public const float StanceEyesStillAt = 0.6f;
+    public const float StanceEyesPitch = 45f;
+    public const float TiltSeconds = 0.6f;
+    public const float AimSeconds = 1.0f;
+    public const float AimStillAt = 0.6f;
+    public const float AimCloseSeconds = 1.2f;
+    public const float AimCloseStillAt = 0.8f;
     public const float ZoomSeconds = 0.3f;
     public const int AimCloseFov = 30;
 
@@ -76,7 +83,12 @@ public static class RenderDirectorUtility
 
     // When, after go, the pod should throw if `act` has not reached it.
     public static float ActAtSeconds =>
-        StanceSeconds + GlideSeconds + AimSeconds + AimCloseSeconds;
+        StanceSeconds
+        + GlideSeconds
+        + StanceEyesSeconds
+        + TiltSeconds
+        + AimSeconds
+        + AimCloseSeconds;
 
     // A grenade only stands in for the lineup if it is the same kind of grenade.
     public static bool SameUtility(string? projectileType, string? lineupType)
@@ -228,7 +240,23 @@ public static class RenderDirectorUtility
         return a + ((b - a) * s);
     }
 
-    // s in 0..1 along the glide from the stance camera to the aim.
+    // The eyes, looking along (pitch, yaw), from just in front of the face.
+    public static (Vec3 eye, Vec3 lookAt) EyesShot(Vec3 headEye, float pitch, float yaw)
+    {
+        Vec3 forward = Forward(pitch, yaw);
+
+        return (headEye + (forward * GlideEndAhead), headEye + (forward * 400f));
+    }
+
+    // s in 0..1 along the tilt from the ground at the thrower's feet up onto the aim.
+    public static (Vec3 eye, Vec3 lookAt) TiltShot(Vec3 headEye, float aimPitch, float yaw, float s)
+    {
+        float pitch = StanceEyesPitch + ((aimPitch - StanceEyesPitch) * Ease(s));
+
+        return EyesShot(headEye, pitch, yaw);
+    }
+
+    // s in 0..1 along the glide from the stance camera to the eyes at (pitch, yaw).
     public static (Vec3 eye, Vec3 lookAt) GlideShot(
         Vec3 stanceEye,
         Vec3 stanceLook,

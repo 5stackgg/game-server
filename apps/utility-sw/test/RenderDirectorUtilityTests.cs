@@ -199,14 +199,16 @@ public class RenderDirectorUtilityTests
         Assert.Equal(
             RenderDirectorUtility.StanceSeconds
                 + RenderDirectorUtility.GlideSeconds
+                + RenderDirectorUtility.StanceEyesSeconds
+                + RenderDirectorUtility.TiltSeconds
                 + RenderDirectorUtility.AimSeconds
                 + RenderDirectorUtility.AimCloseSeconds,
             RenderDirectorUtility.ActAtSeconds,
             3
         );
         Assert.True(
-            RenderDirectorUtility.ActAtSeconds <= 4.6f,
-            "the pod throws on its own clock at 5s if act is late"
+            RenderDirectorUtility.ActAtSeconds <= 6.0f,
+            "the pod throws on its own clock at 6.3s if act is late"
         );
         Assert.True(RenderDirectorUtility.ThrowTimeoutSeconds > 2f);
     }
@@ -230,6 +232,23 @@ public class RenderDirectorUtilityTests
         Assert.Equal(-30f, pitch, 1);
         Assert.Equal(45f, yaw, 1);
         Assert.True((endEye - head).Length() <= RenderDirectorUtility.GlideEndAhead + 0.01f);
+    }
+
+    [Fact]
+    public void TheTiltRisesFromTheFeetOntoTheAim()
+    {
+        var head = new Vec3(0f, 0f, 64f);
+
+        (Vec3 startEye, Vec3 startLook) = RenderDirectorUtility.TiltShot(head, -30f, 90f, 0f);
+        (Vec3 endEye, Vec3 endLook) = RenderDirectorUtility.TiltShot(head, -30f, 90f, 1f);
+
+        Assert.Equal(
+            RenderDirectorUtility.StanceEyesPitch,
+            RenderDirectorUtility.LookAt(startEye, startLook).pitch,
+            1
+        );
+        Assert.Equal(-30f, RenderDirectorUtility.LookAt(endEye, endLook).pitch, 1);
+        Assert.Equal(90f, RenderDirectorUtility.LookAt(endEye, endLook).yaw, 1);
     }
 
     [Fact]

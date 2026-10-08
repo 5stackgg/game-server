@@ -2,6 +2,7 @@ using FiveStack.Entities.Practice;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
+using SwiftlyS2.Shared.EntitySystem;
 using SwiftlyS2.Shared.Natives;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.SchemaDefinitions;
@@ -30,6 +31,9 @@ public class RenderDirector
     // many times the teleport is re-sent before the pod is told it failed.
     private static readonly int SettleTicks = RenderDirectorUtility.Ticks(0.25f);
     private const int StageAttempts = 4;
+
+    // FSOLID_NOT_SOLID.
+    private const byte NotSolid = 4;
 
     private const uint HideCrosshair = 1 << 8;
     private const uint HideRadar = 1 << 12;
@@ -229,7 +233,15 @@ public class RenderDirector
                 break;
             case eRenderBeat.Glide:
                 Glide(take);
-                Next(take, RenderDirectorUtility.GlideSeconds, eRenderBeat.Aim);
+                Next(take, RenderDirectorUtility.GlideSeconds, eRenderBeat.StanceEyes);
+                break;
+            case eRenderBeat.StanceEyes:
+                Still(take, player, RenderDirectorUtility.StanceEyesStillAt, "stance_eyes");
+                Next(take, RenderDirectorUtility.StanceEyesSeconds, eRenderBeat.Tilt);
+                break;
+            case eRenderBeat.Tilt:
+                Tilt(take);
+                Next(take, RenderDirectorUtility.TiltSeconds, eRenderBeat.Aim);
                 break;
             case eRenderBeat.Aim:
                 Still(take, player, RenderDirectorUtility.AimStillAt, "aim");
@@ -362,6 +374,18 @@ public class RenderDirector
             case eRenderBeat.Glide:
                 Shot(take, player, "glide", "camera");
                 break;
+            case eRenderBeat.StanceEyes:
+                (take.Eye, take.Look) = RenderDirectorUtility.EyesShot(
+                    Head(take),
+                    RenderDirectorUtility.StanceEyesPitch,
+                    take.Lineup.release.yaw
+                );
+                MoveCamera(take);
+                Shot(take, player, "stance_eyes", "camera");
+                break;
+            case eRenderBeat.Tilt:
+                Shot(take, player, "tilt", "camera");
+                break;
             case eRenderBeat.Aim:
                 ViewThroughEyes(take, pawn);
                 _replay.Repoint(player, take.Lineup.release.pitch, take.Lineup.release.yaw);
@@ -400,12 +424,30 @@ public class RenderDirector
         (take.Eye, take.Look) = RenderDirectorUtility.GlideShot(
             take.StanceEye,
             take.StanceLook,
-            take.Feet + new Vec3(0f, 0f, RenderDirectorUtility.StandingEyeHeight),
+            Head(take),
+            RenderDirectorUtility.StanceEyesPitch,
+            take.Lineup.release.yaw,
+            s
+        );
+        MoveCamera(take);
+    }
+
+    private void Tilt(Take take)
+    {
+        float s = take.Tick / (float)RenderDirectorUtility.Ticks(RenderDirectorUtility.TiltSeconds);
+
+        (take.Eye, take.Look) = RenderDirectorUtility.TiltShot(
+            Head(take),
             take.Lineup.release.pitch,
             take.Lineup.release.yaw,
             s
         );
         MoveCamera(take);
+    }
+
+    private static Vec3 Head(Take take)
+    {
+        return take.Feet + new Vec3(0f, 0f, RenderDirectorUtility.StandingEyeHeight);
     }
 
     private void Next(Take take, float seconds, eRenderBeat next)
@@ -726,10 +768,21 @@ public class RenderDirector
                 return null;
             }
 
-            camera.DispatchSpawn(PracticeReplay.MarkerKeys());
+            CEntityKeyValues keys = PracticeReplay.MarkerKeys();
+            keys.SetString("solid", "0");
+            camera.DispatchSpawn(keys);
 
-            // A prop with no model is drawn as the giant ERROR model, centred
-            // on the camera and big enough to hang across the thrower's view.
+            // A prop with no model is the giant ERROR model, centred on the
+            // camera: drawn, it hung across the aim shot; solid, the chase
+            // grenade landed on it and popped in mid-air.
+            camera.Collision.SolidType = SolidType_t.SOLID_NONE;
+            camera.Collision.SolidFlags = NotSolid;
+            camera.Collision.CollisionGroup = (byte)CollisionGroup.Nonphysical;
+            camera.Collision.CollisionAttribute.CollisionGroup = (byte)CollisionGroup.Nonphysical;
+            camera.Collision.CollisionAttribute.InteractsAs = 0;
+            camera.Collision.CollisionAttribute.InteractsWith = 0;
+            camera.CollisionRulesChanged();
+
             camera.RenderMode = RenderMode_t.kRenderNone;
             camera.RenderModeUpdated();
             camera.Render = new Color(255, 255, 255, 0);
