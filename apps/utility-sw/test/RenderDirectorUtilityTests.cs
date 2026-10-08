@@ -202,13 +202,14 @@ public class RenderDirectorUtilityTests
                 + RenderDirectorUtility.StanceEyesSeconds
                 + RenderDirectorUtility.TiltSeconds
                 + RenderDirectorUtility.AimSeconds
+                + RenderDirectorUtility.PinSeconds
                 + RenderDirectorUtility.AimCloseSeconds,
             RenderDirectorUtility.ActAtSeconds,
             3
         );
         Assert.True(
-            RenderDirectorUtility.ActAtSeconds <= 6.0f,
-            "the pod throws on its own clock at 6.3s if act is late"
+            RenderDirectorUtility.ActAtSeconds <= 8.1f,
+            "the pod throws on its own clock at 8.5s if act is late"
         );
         Assert.True(RenderDirectorUtility.ThrowTimeoutSeconds > 2f);
     }
@@ -296,6 +297,17 @@ public class RenderDirectorUtilityTests
         Assert.True(eye.x < 0f, "behind a thrower facing +x");
         Assert.True(eye.z > RenderDirectorUtility.StandingEyeHeight, "above their head");
         Assert.True(look.x > eye.x);
+    }
+
+    [Fact]
+    public void TheRaisedChaseCameraIsAboveAndClearOfTheGrenade()
+    {
+        var at = new Vec3(0f, 0f, 0f);
+
+        Vec3 raised = RenderDirectorUtility.ChaseRaisedEye(at, new Vec3(1f, 0f, 0f));
+
+        Assert.True(raised.z > RenderDirectorUtility.ChaseHeight);
+        Assert.True((raised - at).Length() > RenderDirectorUtility.ChaseMinDistance);
     }
 
     [Fact]

@@ -121,6 +121,14 @@ public class PracticeReplay
         {
             string designer = entity.DesignerName ?? "";
 
+            // Our own entities are never a surface: the render camera's prop
+            // carries a huge collision box, and a trace that stopped on it pulled
+            // the chase camera into the grenade.
+            if (entity.Entity?.Name == MarkerTag)
+            {
+                return false;
+            }
+
             // Held weapons follow players through rays, and projectiles are
             // wherever somebody last threw one.
             return !TraceInvisible.Contains(designer)

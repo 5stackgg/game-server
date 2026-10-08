@@ -14,6 +14,7 @@ public enum eRenderBeat
     StanceEyes,
     Tilt,
     Aim,
+    Pin,
     AimClose,
     Throw,
     Follow,
@@ -37,13 +38,18 @@ public static class RenderDirectorUtility
     // The stance camera flies down into the thrower's eyes, looks at the
     // ground around their feet (where to stand, from where they stand), then
     // tilts up onto the exact aim -- so the cut to first person is invisible.
-    public const float GlideSeconds = 0.7f;
+    public const float GlideSeconds = 1.0f;
     public const float StanceEyesSeconds = 1.0f;
     public const float StanceEyesStillAt = 0.6f;
     public const float StanceEyesPitch = 45f;
-    public const float TiltSeconds = 0.6f;
+    public const float TiltSeconds = 1.0f;
     public const float AimSeconds = 1.0f;
     public const float AimStillAt = 0.6f;
+
+    // The pin comes out here and stays out through the close-up: holding a
+    // pulled grenade is what swaps in cs2's throw crosshair.
+    public const float PinSeconds = 1.4f;
+    public const float PinStillAt = 1.0f;
     public const float AimCloseSeconds = 1.2f;
     public const float AimCloseStillAt = 0.8f;
     public const float ZoomSeconds = 0.3f;
@@ -96,6 +102,7 @@ public static class RenderDirectorUtility
         + StanceEyesSeconds
         + TiltSeconds
         + AimSeconds
+        + PinSeconds
         + AimCloseSeconds;
 
     // A grenade only stands in for the lineup if it is the same kind of grenade.
@@ -222,8 +229,8 @@ public static class RenderDirectorUtility
     // world from a camera, but cs2 never draws the local player's body there.
     // The pod sets cam_idealdist / cam_idealyaw to these; the thrower looks a
     // little down meanwhile, so the camera sits above and behind them.
-    public const float StanceViewPitch = 12f;
-    public const float ThirdPersonDistance = 130f;
+    public const float StanceViewPitch = 35f;
+    public const float ThirdPersonDistance = 150f;
     public const float ThirdPersonYaw = 25f;
 
     // Where cs2's third-person camera ends up, so the glide can start from it.
@@ -301,6 +308,17 @@ public static class RenderDirectorUtility
 
     public const float ChaseDistance = 96f;
     public const float ChaseHeight = 22f;
+
+    // Never nearer than this to the grenade: a wall behind it used to pull the
+    // camera right into the grenade's own model.
+    public const float ChaseMinDistance = 48f;
+
+    // Where the camera goes instead when the space behind the grenade is too
+    // tight: up and only a little back.
+    public static Vec3 ChaseRaisedEye(Vec3 projectile, Vec3 direction)
+    {
+        return projectile - (direction * 40f) + new Vec3(0f, 0f, 90f);
+    }
 
     // The chase rides the grenade rigidly; only its bearing is smoothed, so a
     // bounce swings the camera round instead of snapping it, and the grenade

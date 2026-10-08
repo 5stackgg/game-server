@@ -73,6 +73,7 @@ public class RenderDirector
         public Vec3 Direction = new Vec3(1f, 0f, 0f);
         public bool Detached;
         public int DetachTick;
+        public bool Settled;
         public Vec3? Landing;
     }
 
@@ -247,7 +248,11 @@ public class RenderDirector
                 break;
             case eRenderBeat.Aim:
                 Still(take, player, RenderDirectorUtility.AimStillAt, "aim");
-                Next(take, RenderDirectorUtility.AimSeconds, eRenderBeat.AimClose);
+                Next(take, RenderDirectorUtility.AimSeconds, eRenderBeat.Pin);
+                break;
+            case eRenderBeat.Pin:
+                Still(take, player, RenderDirectorUtility.PinStillAt, "aim_pin");
+                Next(take, RenderDirectorUtility.PinSeconds, eRenderBeat.AimClose);
                 break;
             case eRenderBeat.AimClose:
                 Still(take, player, RenderDirectorUtility.AimCloseStillAt, "aim_close");
@@ -401,6 +406,16 @@ public class RenderDirector
                 ViewThroughEyes(take, pawn);
                 _replay.Repoint(player, take.Lineup.release.pitch, take.Lineup.release.yaw);
                 Shot(take, player, "aim", "eyes");
+                break;
+            case eRenderBeat.Pin:
+                Shot(take, player, "pin", "eyes");
+                Tell(
+                    take,
+                    player,
+                    "pin",
+                    ("utility", take.Lineup.utility_type),
+                    ("strength", take.Lineup.strength)
+                );
                 break;
             case eRenderBeat.AimClose:
                 Zoom(pawn, RenderDirectorUtility.AimCloseFov);
@@ -609,7 +624,27 @@ public class RenderDirector
             Shot(take, player, "follow", "camera");
         }
 
-        Vec3 target = _replay.CameraClear(at, RenderDirectorUtility.ChaseEye(at, take.Direction));
+        // From the first bounce the grenade is rolling or settling, and a camera
+        // that keeps chasing its bearing scrapes along floors and walls. It stops
+        // where it is and only turns to keep the grenade in frame.
+        if (!take.Settled && projectile != null && projectile.IsValid && projectile.Bounces > 0)
+        {
+            take.Settled = true;
+        }
+
+        if (take.Settled)
+        {
+            take.Look = RenderDirectorUtility.Approach(take.Look, at, Dt, SettledLookHalfLife);
+            MoveCamera(take);
+
+            if (take.Tick > RenderDirectorUtility.Ticks(RenderDirectorUtility.FollowMaxSeconds))
+            {
+                Landed(take, player, at);
+            }
+            return;
+        }
+
+        Vec3 target = ChaseTarget(at, take.Direction);
         float blend = RenderDirectorUtility.Ease(
             (take.Tick - take.DetachTick)
                 / (float)RenderDirectorUtility.Ticks(RenderDirectorUtility.DetachBlendSeconds)
@@ -623,6 +658,22 @@ public class RenderDirector
         {
             Landed(take, player, at);
         }
+    }
+
+    private const float SettledLookHalfLife = 0.12f;
+
+    private Vec3 ChaseTarget(Vec3 at, Vec3 direction)
+    {
+        Vec3 behind = _replay.CameraClear(at, RenderDirectorUtility.ChaseEye(at, direction));
+
+        if ((behind - at).Length() >= RenderDirectorUtility.ChaseMinDistance)
+        {
+            return behind;
+        }
+
+        Vec3 raised = _replay.CameraClear(at, RenderDirectorUtility.ChaseRaisedEye(at, direction));
+
+        return (raised - at).Length() > (behind - at).Length() ? raised : behind;
     }
 
     public void OnDetonated(uint entityIndex, Vec3 at)
