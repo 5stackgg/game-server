@@ -10,7 +10,6 @@ public enum eRenderBeat
     Staging,
     Staged,
     Stance,
-    Cut,
     StanceEyes,
     Tilt,
     Aim,
@@ -32,28 +31,24 @@ public static class RenderDirectorUtility
 
     public const int TickRate = 64;
 
-    public const float StanceSeconds = 1.6f;
-    public const float StanceStillAt = 0.7f;
-
-    // After the stance the view cuts into the eyes, level, the way the
-    // thrower faces; then looks down at the ground around their feet (where to
-    // stand, from where they stand) and tilts up onto the exact aim.
-    public const float CutSeconds = 0.35f;
-    public const float StanceEyesSeconds = 1.0f;
-    public const float StanceEyesTiltSeconds = 0.5f;
-    public const float StanceEyesStillAt = 0.8f;
+    // Where to stand, from above, with the reticle a player stands in drawn on
+    // the spot; then the same spot from the eyes, looking down at it.
+    public const float StanceSeconds = 1.0f;
+    public const float StanceStillAt = 0.6f;
+    public const float StanceEyesSeconds = 0.8f;
+    public const float StanceEyesStillAt = 0.5f;
     public const float StanceEyesPitch = 45f;
-    public const float TiltSeconds = 1.0f;
-    public const float AimSeconds = 1.0f;
-    public const float AimStillAt = 0.6f;
+    public const float TiltSeconds = 0.8f;
+    public const float AimSeconds = 0.8f;
+    public const float AimStillAt = 0.5f;
 
-    // The pin comes out as the aim shot starts and stays out through the
-    // close-up. cs2's grenade lineup reticle only pops up ~2s after the pin is
-    // pulled, so the pulled-pin still waits for it: aim (1.0) + 1.2 = 2.2s.
-    public const float PinSeconds = 1.4f;
-    public const float PinStillAt = 1.2f;
-    public const float AimCloseSeconds = 1.0f;
-    public const float AimCloseStillAt = 0.6f;
+    // The pin comes out as the tilt starts and stays out through the close-up.
+    // cs2's grenade lineup reticle only pops up ~2s after the pin is pulled, so
+    // the pulled-pin still waits for it: tilt (0.8) + aim (0.8) + 0.5 = 2.1s.
+    public const float PinSeconds = 0.7f;
+    public const float PinStillAt = 0.5f;
+    public const float AimCloseSeconds = 0.8f;
+    public const float AimCloseStillAt = 0.5f;
     public const float ZoomSeconds = 0.3f;
     public const int AimCloseFov = 30;
 
@@ -74,14 +69,6 @@ public static class RenderDirectorUtility
     public const float WrapSeconds = 3f;
 
     public const float StandingEyeHeight = 64f;
-
-    // A teleported aim turns the thrower's upper body but leaves the legs where
-    // they were, and an idle player only brings them round with cs2's
-    // turn-in-place, which a small turn never triggers -- the stance was filmed
-    // twisted. Staging first faces this far off the aim, then onto it, so the
-    // last turn is always big enough to square the legs up.
-    public const float StageTurnDegrees = 120f;
-    public const float StageTurnSeconds = 0.6f;
 
     // How far the measured stance may sit from the lineup's before staging is
     // refused rather than filmed.
@@ -108,7 +95,6 @@ public static class RenderDirectorUtility
     // When, after go, the pod should throw if `act` has not reached it.
     public static float ActAtSeconds =>
         StanceSeconds
-        + CutSeconds
         + StanceEyesSeconds
         + TiltSeconds
         + AimSeconds
@@ -235,12 +221,19 @@ public static class RenderDirectorUtility
             && MathF.Abs(AngleDelta(yaw, wantYaw)) <= StagedAngleTolerance;
     }
 
-    // The stance is cs2's own third-person camera, which the pod holds and
-    // places with cam_idealdist/pitch/yaw. The client ignores a view entity
-    // while it is in third person, so the director's camera only takes over
-    // once the pod is back in first person. The thrower looks level: a pitched
-    // teleport leans the whole model.
-    public const float StanceViewPitch = 0f;
+    // Behind and well above the spot, looking down on the reticle drawn on it:
+    // where to stand, and which way to face, before the cut into the eyes.
+    public static (Vec3 eye, Vec3 lookAt) SpotShot(Vec3 feet, float yaw)
+    {
+        Vec3 forward = Forward(0f, yaw);
+        var right = new Vec3(forward.y, -forward.x, 0f);
+        var up = new Vec3(0f, 0f, 1f);
+
+        Vec3 eye = feet - (forward * 150f) + (right * 30f) + (up * 170f);
+        Vec3 lookAt = feet + (forward * 30f) + (up * 20f);
+
+        return (eye, lookAt);
+    }
 
     // Just in front of the eyes, so the camera never sees the inside of the
     // thrower's own head.
@@ -264,14 +257,6 @@ public static class RenderDirectorUtility
         Vec3 forward = Forward(pitch, yaw);
 
         return (headEye + (forward * EyesAhead), headEye + (forward * 400f));
-    }
-
-    // From level (where the cut into the eyes lands) down onto the feet, then held.
-    public static (Vec3 eye, Vec3 lookAt) LookDownShot(Vec3 headEye, float yaw, float seconds)
-    {
-        float pitch = StanceEyesPitch * Ease(seconds / StanceEyesTiltSeconds);
-
-        return EyesShot(headEye, pitch, yaw);
     }
 
     // s in 0..1 along the tilt from the ground at the thrower's feet up onto the aim.

@@ -241,7 +241,6 @@ public class RenderDirectorUtilityTests
     {
         Assert.Equal(
             RenderDirectorUtility.StanceSeconds
-                + RenderDirectorUtility.CutSeconds
                 + RenderDirectorUtility.StanceEyesSeconds
                 + RenderDirectorUtility.TiltSeconds
                 + RenderDirectorUtility.AimSeconds
@@ -258,34 +257,28 @@ public class RenderDirectorUtilityTests
     }
 
     [Fact]
-    public void StagingTurnsFarEnoughToSquareTheLegsUp()
+    public void TheSpotShotLooksDownOnTheReticleFromBehind()
     {
-        Assert.InRange(RenderDirectorUtility.StageTurnDegrees, 90f, 180f);
-        Assert.True(
-            RenderDirectorUtility.StageTurnSeconds < 2f,
-            "the pod waits 15s for staged; the turn is a small part of it"
-        );
+        var feet = new Vec3(0f, 0f, 0f);
+
+        (Vec3 eye, Vec3 look) = RenderDirectorUtility.SpotShot(feet, 0f);
+        (float pitch, float yaw) = RenderDirectorUtility.LookAt(eye, look);
+
+        Assert.True(eye.x < feet.x, "behind a thrower facing +x");
+        Assert.True(eye.z > RenderDirectorUtility.StandingEyeHeight * 2f, "well above head height");
+        Assert.InRange(pitch, 30f, 60f);
+        Assert.InRange(RenderDirectorUtility.AngleDelta(yaw, 0f), -20f, 20f);
     }
 
     [Fact]
-    public void TheCutLandsLevelAndThenLooksDownAtTheFeet()
+    public void ThePinIsOutLongEnoughForTheLineupReticle()
     {
-        var head = new Vec3(0f, 0f, RenderDirectorUtility.StandingEyeHeight);
+        float sincePull =
+            RenderDirectorUtility.TiltSeconds
+            + RenderDirectorUtility.AimSeconds
+            + RenderDirectorUtility.PinStillAt;
 
-        (Vec3 landEye, Vec3 landLook) = RenderDirectorUtility.LookDownShot(head, 90f, 0f);
-        (Vec3 downEye, Vec3 downLook) = RenderDirectorUtility.LookDownShot(
-            head,
-            90f,
-            RenderDirectorUtility.StanceEyesStillAt
-        );
-
-        Assert.Equal(RenderDirectorUtility.StanceViewPitch, RenderDirectorUtility.LookAt(landEye, landLook).pitch, 1);
-        Assert.Equal(RenderDirectorUtility.StanceEyesPitch, RenderDirectorUtility.LookAt(downEye, downLook).pitch, 1);
-        Assert.Equal(90f, RenderDirectorUtility.LookAt(downEye, downLook).yaw, 1);
-        Assert.True(
-            RenderDirectorUtility.StanceEyesStillAt >= RenderDirectorUtility.StanceEyesTiltSeconds,
-            "the still waits for the look down to finish"
-        );
+        Assert.True(sincePull >= 2.0f, $"the reticle needs ~2s after the pin; the still is at {sincePull}s");
     }
 
     [Fact]

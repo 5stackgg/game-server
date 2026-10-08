@@ -50,7 +50,6 @@ public class RenderDirector
         public int Attempts;
         public Vec3 Feet;
         public bool StillSent;
-        public bool Turned;
 
         // Ticks since go, -1 before it. Every line after go carries it, so the
         // pod can place a still by when the beat happened rather than by when
@@ -164,7 +163,7 @@ public class RenderDirector
             return;
         }
 
-        Vec3? feet = _replay.Stage(player, lineup, RenderDirectorUtility.StageTurnDegrees);
+        Vec3? feet = _replay.Stage(player, lineup);
 
         if (feet == null)
         {
@@ -235,13 +234,9 @@ public class RenderDirector
                 break;
             case eRenderBeat.Stance:
                 Still(take, player, RenderDirectorUtility.StanceStillAt, "stance");
-                Next(take, RenderDirectorUtility.StanceSeconds, eRenderBeat.Cut);
-                break;
-            case eRenderBeat.Cut:
-                Next(take, RenderDirectorUtility.CutSeconds, eRenderBeat.StanceEyes);
+                Next(take, RenderDirectorUtility.StanceSeconds, eRenderBeat.StanceEyes);
                 break;
             case eRenderBeat.StanceEyes:
-                LookDown(take);
                 Still(take, player, RenderDirectorUtility.StanceEyesStillAt, "stance_eyes");
                 Next(take, RenderDirectorUtility.StanceEyesSeconds, eRenderBeat.Tilt);
                 break;
@@ -286,26 +281,6 @@ public class RenderDirector
 
     private void Staging(Take take, IPlayer player, CCSPlayerPawn pawn)
     {
-        if (!take.Turned)
-        {
-            if (take.Tick < RenderDirectorUtility.Ticks(RenderDirectorUtility.StageTurnSeconds))
-            {
-                return;
-            }
-
-            take.Turned = true;
-            take.Tick = 0;
-
-            Vec3? squared = _replay.Stage(player, take.Lineup);
-
-            if (squared != null)
-            {
-                take.Feet = squared.Value;
-            }
-
-            return;
-        }
-
         if (take.Tick < SettleTicks)
         {
             return;
@@ -331,8 +306,6 @@ public class RenderDirector
             {
                 take.Camera = SpawnCamera(pawn);
             }
-
-            _replay.Repoint(player, RenderDirectorUtility.StanceViewPitch, take.Lineup.release.yaw);
 
             take.StagedLine = Tell(
                 take,
@@ -390,21 +363,12 @@ public class RenderDirector
         switch (beat)
         {
             case eRenderBeat.Stance:
-                _replay.Repoint(player, RenderDirectorUtility.StanceViewPitch, take.Lineup.release.yaw);
-                ViewThroughEyes(take, pawn);
-                pawn.HideHUD = HideCrosshair | HideRadar;
-                pawn.HideHUDUpdated();
-                Shot(take, player, "stance", "thirdperson");
-                break;
-            case eRenderBeat.Cut:
-                Shot(take, player, "cut", "eyes");
-                break;
-            case eRenderBeat.StanceEyes:
-                (take.Eye, take.Look) = RenderDirectorUtility.LookDownShot(
-                    Head(take),
-                    take.Lineup.release.yaw,
-                    0f
-                );
+            {
+                (Vec3 eye, Vec3 look) = RenderDirectorUtility.SpotShot(take.Feet, take.Lineup.release.yaw);
+
+                take.Eye = _replay.CameraClear(Head(take), eye);
+                take.Look = look;
+                _replay.ShowRenderSpot(take.Feet);
 
                 if (!ViewThroughCamera(take, pawn))
                 {
@@ -412,18 +376,25 @@ public class RenderDirector
                     return;
                 }
 
+                Shot(take, player, "stance", "camera");
+                break;
+            }
+            case eRenderBeat.StanceEyes:
+                (take.Eye, take.Look) = RenderDirectorUtility.EyesShot(
+                    Head(take),
+                    RenderDirectorUtility.StanceEyesPitch,
+                    take.Lineup.release.yaw
+                );
+                MoveCamera(take);
                 Shot(take, player, "stance_eyes", "camera");
                 break;
             case eRenderBeat.Tilt:
                 // Behind the camera, so the cut back into the eyes lands on a
-                // view that is already there.
+                // view that is already there. The pin comes out now so cs2's
+                // lineup reticle is up by the pulled-pin still.
+                _replay.ClearRenderSpot();
                 _replay.Repoint(player, take.Lineup.release.pitch, take.Lineup.release.yaw);
                 Shot(take, player, "tilt", "camera");
-                break;
-            case eRenderBeat.Aim:
-                ViewThroughEyes(take, pawn);
-                _replay.Repoint(player, take.Lineup.release.pitch, take.Lineup.release.yaw);
-                Shot(take, player, "aim", "eyes");
                 Tell(
                     take,
                     player,
@@ -431,6 +402,11 @@ public class RenderDirector
                     ("utility", take.Lineup.utility_type),
                     ("strength", take.Lineup.strength)
                 );
+                break;
+            case eRenderBeat.Aim:
+                ViewThroughEyes(take, pawn);
+                _replay.Repoint(player, take.Lineup.release.pitch, take.Lineup.release.yaw);
+                Shot(take, player, "aim", "eyes");
                 break;
             case eRenderBeat.Pin:
                 Shot(take, player, "pin", "eyes");
@@ -459,16 +435,6 @@ public class RenderDirector
                 Shot(take, player, "bloom", "camera");
                 break;
         }
-    }
-
-    private static void LookDown(Take take)
-    {
-        (take.Eye, take.Look) = RenderDirectorUtility.LookDownShot(
-            Head(take),
-            take.Lineup.release.yaw,
-            take.Tick * Dt
-        );
-        MoveCamera(take);
     }
 
     private void Tilt(Take take)
@@ -997,6 +963,8 @@ public class RenderDirector
         {
             return;
         }
+
+        _replay.ClearRenderSpot();
 
         IPlayer? player = _system.Find(take.SteamId);
         CCSPlayerPawn? pawn = player?.PlayerPawn;

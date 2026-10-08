@@ -186,6 +186,7 @@ public class PracticeReplay
     // despawns and rebuilds everything it owns, and a toggle the player asked
     // for must not blink out because somebody ran .next.
     private readonly List<CEnvBeam> _spawnBeams = new();
+    private readonly List<CEnvBeam> _renderSpotBeams = new();
     private List<CEnvBeam>? _spawnInto;
     private readonly List<CPointWorldText> _markerTexts = new();
     private readonly List<CPhysicsProp> _markerProps = new();
@@ -724,7 +725,7 @@ public class PracticeReplay
     /// filming through these eyes, so the view itself has to be on the line,
     /// not just the server's idea of where the pawn looks.
     /// </summary>
-    public Vec3? Stage(IPlayer player, LineupRecord lineup, float yawOffset = 0f)
+    public Vec3? Stage(IPlayer player, LineupRecord lineup)
     {
         CCSPlayerPawn? pawn = player.PlayerPawn;
 
@@ -742,7 +743,7 @@ public class PracticeReplay
             return null;
         }
 
-        var aim = new QAngle(lineup.release.pitch, lineup.release.yaw + yawOffset, 0);
+        var aim = new QAngle(lineup.release.pitch, lineup.release.yaw, 0);
 
         player.Teleport(new Vector(feet.x, feet.y, feet.z), aim, new Vector(0, 0, 0));
         pawn.EyeAngles = aim;
@@ -1806,6 +1807,36 @@ public class PracticeReplay
             color,
             StanceCrossWidth * 1.6f
         );
+    }
+
+    // A render's where-to-stand shot: the reticle a player stands in, drawn for
+    // the director's camera and taken down before the aim.
+    public void ShowRenderSpot(Vec3 feet)
+    {
+        ClearRenderSpot();
+        _spawnInto = _renderSpotBeams;
+
+        try
+        {
+            GroundReticle(feet, Amber);
+        }
+        finally
+        {
+            _spawnInto = null;
+        }
+    }
+
+    public void ClearRenderSpot()
+    {
+        foreach (CEnvBeam beam in _renderSpotBeams)
+        {
+            if (beam.IsValid)
+            {
+                beam.Despawn();
+            }
+        }
+
+        _renderSpotBeams.Clear();
     }
 
     private void ShowStance(Vec3 stance)
