@@ -71,6 +71,13 @@ public static class RenderDirectorUtility
     public const float StagedPositionTolerance = 16f;
     public const float StagedAngleTolerance = 0.25f;
 
+    // A lineup with a run-up is thrown from where the run-up starts, which the
+    // pod then walks; the pod treats fewer than two samples as no run-up.
+    public static Vec3 StageAt(Vec3 stance, IReadOnlyList<ApproachSample>? approach)
+    {
+        return approach != null && approach.Count >= 2 ? approach[0].pos : stance;
+    }
+
     public static int Ticks(float seconds)
     {
         return (int)MathF.Round(seconds * TickRate);

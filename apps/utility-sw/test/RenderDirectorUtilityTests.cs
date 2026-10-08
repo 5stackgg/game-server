@@ -252,6 +252,21 @@ public class RenderDirectorUtilityTests
     }
 
     [Fact]
+    public void ALineupWithARunUpIsStagedWhereTheRunUpStarts()
+    {
+        var stance = new Vec3(10f, 20f, 0f);
+        var runUp = new List<ApproachSample>
+        {
+            new ApproachSample { t = -400, pos = new Vec3(-70f, 20f, 0f) },
+            new ApproachSample { t = 0, pos = new Vec3(10f, 20f, 0f) },
+        };
+
+        Assert.Equal(-70f, RenderDirectorUtility.StageAt(stance, runUp).x);
+        Assert.Equal(10f, RenderDirectorUtility.StageAt(stance, null).x);
+        Assert.Equal(10f, RenderDirectorUtility.StageAt(stance, runUp.Take(1).ToList()).x);
+    }
+
+    [Fact]
     public void EaseHoldsTheEndsStill()
     {
         Assert.Equal(0f, RenderDirectorUtility.Ease(-1f));

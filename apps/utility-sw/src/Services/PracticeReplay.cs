@@ -725,7 +725,9 @@ public class PracticeReplay
             return null;
         }
 
-        Vec3 feet = Standable(Grounded(lineup.release.feet_position));
+        Vec3 feet = Standable(
+            Grounded(RenderDirectorUtility.StageAt(lineup.release.feet_position, lineup.approach))
+        );
 
         if (!Sane(feet))
         {
