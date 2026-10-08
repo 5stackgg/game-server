@@ -112,6 +112,19 @@ public class PracticeReplay
         "trigger_proximity",
     };
 
+    // A camera is never stopped by a body: the director traces from the
+    // thrower's own head, and a trace that hit that head pinned the camera there.
+    private static TraceParams SkipMarkersAndPlayers()
+    {
+        TraceParams parameters = SkipMarkers();
+        Func<CEntityInstance, bool>? markers = parameters.ShouldHitEntity;
+
+        parameters.ShouldHitEntity = entity =>
+            entity.DesignerName != "player" && (markers == null || markers(entity));
+
+        return parameters;
+    }
+
     private static TraceParams SkipMarkers()
     {
         var parameters = new TraceParams();
@@ -186,7 +199,6 @@ public class PracticeReplay
     // despawns and rebuilds everything it owns, and a toggle the player asked
     // for must not blink out because somebody ran .next.
     private readonly List<CEnvBeam> _spawnBeams = new();
-    private readonly List<CEnvBeam> _renderSpotBeams = new();
     private List<CEnvBeam>? _spawnInto;
     private readonly List<CPointWorldText> _markerTexts = new();
     private readonly List<CPhysicsProp> _markerProps = new();
@@ -780,7 +792,7 @@ public class PracticeReplay
             var trace = _core.Trace.TraceShapeLine(
                 new Vector(subject.x, subject.y, subject.z),
                 new Vector(eye.x, eye.y, eye.z),
-                SkipMarkers()
+                SkipMarkersAndPlayers()
             );
 
             Vec3? hit = trace.DidHit
@@ -1807,36 +1819,6 @@ public class PracticeReplay
             color,
             StanceCrossWidth * 1.6f
         );
-    }
-
-    // A render's where-to-stand shot: the reticle a player stands in, drawn for
-    // the director's camera and taken down before the aim.
-    public void ShowRenderSpot(Vec3 feet)
-    {
-        ClearRenderSpot();
-        _spawnInto = _renderSpotBeams;
-
-        try
-        {
-            GroundReticle(feet, Amber);
-        }
-        finally
-        {
-            _spawnInto = null;
-        }
-    }
-
-    public void ClearRenderSpot()
-    {
-        foreach (CEnvBeam beam in _renderSpotBeams)
-        {
-            if (beam.IsValid)
-            {
-                beam.Despawn();
-            }
-        }
-
-        _renderSpotBeams.Clear();
     }
 
     private void ShowStance(Vec3 stance)

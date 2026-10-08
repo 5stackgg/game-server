@@ -31,8 +31,8 @@ public static class RenderDirectorUtility
 
     public const int TickRate = 64;
 
-    // Where to stand, from above, with the reticle a player stands in drawn on
-    // the spot; then the same spot from the eyes, looking down at it.
+    // Where to stand, from above; then the same spot from the eyes, looking
+    // down at it. Nothing of the plugin's is drawn in a render.
     public const float StanceSeconds = 1.0f;
     public const float StanceStillAt = 0.6f;
     public const float StanceEyesSeconds = 0.8f;
@@ -50,6 +50,7 @@ public static class RenderDirectorUtility
     public const float AimCloseSeconds = 0.8f;
     public const float AimCloseStillAt = 0.5f;
     public const float ZoomSeconds = 0.3f;
+    public const float DefaultFov = 90f;
     public const int AimCloseFov = 30;
 
     // The pod presses the throw on `act`, or on its own clock when the line is
@@ -221,8 +222,8 @@ public static class RenderDirectorUtility
             && MathF.Abs(AngleDelta(yaw, wantYaw)) <= StagedAngleTolerance;
     }
 
-    // Behind and well above the spot, looking down on the reticle drawn on it:
-    // where to stand, and which way to face, before the cut into the eyes.
+    // Behind and well above the spot, looking down on it: where to stand, and
+    // which way to face, before the cut into the eyes.
     public static (Vec3 eye, Vec3 lookAt) SpotShot(Vec3 feet, float yaw)
     {
         Vec3 forward = Forward(0f, yaw);

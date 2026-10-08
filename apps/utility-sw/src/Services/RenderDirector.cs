@@ -59,6 +59,10 @@ public class RenderDirector
 
         public CDynamicProp? Camera;
         public Vec3? CameraAt;
+        public float Fov = RenderDirectorUtility.DefaultFov;
+        public float ZoomFrom = RenderDirectorUtility.DefaultFov;
+        public float ZoomTo = RenderDirectorUtility.DefaultFov;
+        public int ZoomTick = -1;
         public Vec3 Eye;
         public Vec3 Look;
         public Vec3 DetachEye;
@@ -227,6 +231,8 @@ public class RenderDirector
             take.GoTicks++;
         }
 
+        StepZoom(take, pawn);
+
         switch (take.Beat)
         {
             case eRenderBeat.Staging:
@@ -368,7 +374,6 @@ public class RenderDirector
 
                 take.Eye = _replay.CameraClear(Head(take), eye);
                 take.Look = look;
-                _replay.ShowRenderSpot(take.Feet);
 
                 if (!ViewThroughCamera(take, pawn))
                 {
@@ -392,7 +397,6 @@ public class RenderDirector
                 // Behind the camera, so the cut back into the eyes lands on a
                 // view that is already there. The pin comes out now so cs2's
                 // lineup reticle is up by the pulled-pin still.
-                _replay.ClearRenderSpot();
                 _replay.Repoint(player, take.Lineup.release.pitch, take.Lineup.release.yaw);
                 Shot(take, player, "tilt", "camera");
                 Tell(
@@ -412,11 +416,11 @@ public class RenderDirector
                 Shot(take, player, "pin", "eyes");
                 break;
             case eRenderBeat.AimClose:
-                Zoom(pawn, RenderDirectorUtility.AimCloseFov);
+                ZoomTo(take, RenderDirectorUtility.AimCloseFov);
                 Shot(take, player, "aim_close", "eyes");
                 break;
             case eRenderBeat.Throw:
-                Zoom(pawn, 0);
+                ZoomTo(take, RenderDirectorUtility.DefaultFov);
                 Shot(take, player, "throw", "eyes");
                 Tell(
                     take,
@@ -543,11 +547,10 @@ public class RenderDirector
         take.Direction = RenderDirectorUtility.ChaseDirection(seedVelocity, take.Direction);
         take.Detached = false;
 
-        CCSPlayerPawn? throwerPawn = player.PlayerPawn;
-
-        if (throwerPawn != null && throwerPawn.IsValid)
+        // The close-up also accepts the throw, so the zoom may still be in.
+        if (take.ZoomTo != RenderDirectorUtility.DefaultFov)
         {
-            Zoom(throwerPawn, 0);
+            ZoomTo(take, RenderDirectorUtility.DefaultFov);
         }
 
         Tell(
@@ -825,6 +828,38 @@ public class RenderDirector
         pawn.HideHUDUpdated();
     }
 
+    private static void ZoomTo(Take take, float fov)
+    {
+        take.ZoomFrom = take.Fov;
+        take.ZoomTo = fov;
+        take.ZoomTick = 0;
+    }
+
+    // Eased a tick at a time: a snap from the close-up's narrow field of view
+    // back to the default read as a jump cut right as the throw began.
+    private static void StepZoom(Take take, CCSPlayerPawn pawn)
+    {
+        if (take.ZoomTick < 0)
+        {
+            return;
+        }
+
+        take.ZoomTick++;
+        float s = RenderDirectorUtility.Ease(
+            take.ZoomTick / (float)RenderDirectorUtility.Ticks(RenderDirectorUtility.ZoomSeconds)
+        );
+
+        take.Fov = take.ZoomFrom + ((take.ZoomTo - take.ZoomFrom) * s);
+
+        if (s >= 1f)
+        {
+            take.ZoomTick = -1;
+        }
+
+        bool home = s >= 1f && take.ZoomTo >= RenderDirectorUtility.DefaultFov;
+        Zoom(pawn, home ? 0 : (int)MathF.Round(take.Fov));
+    }
+
     private static void Zoom(CCSPlayerPawn pawn, int fov)
     {
         CCSPlayer_CameraServices? services = pawn.CameraServices;
@@ -964,7 +999,6 @@ public class RenderDirector
             return;
         }
 
-        _replay.ClearRenderSpot();
 
         IPlayer? player = _system.Find(take.SteamId);
         CCSPlayerPawn? pawn = player?.PlayerPawn;
