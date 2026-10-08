@@ -267,6 +267,38 @@ public class RenderDirectorUtilityTests
     }
 
     [Fact]
+    public void TheBloomIsFramedFromFarBackOnTheThrowersSideFirst()
+    {
+        var landing = new Vec3(0f, 0f, 0f);
+        var stance = new Vec3(-2000f, 0f, 0f);
+
+        var candidates = RenderDirectorUtility
+            .BloomCandidates(landing, stance, new Vec3(1f, 0f, 0f))
+            .ToList();
+
+        (Vec3 firstEye, Vec3 lookAt) = candidates[0];
+        Assert.True(firstEye.x < -600f, "first try is far back toward the thrower");
+        Assert.Equal(RenderDirectorUtility.BloomLookHeight, lookAt.z, 3);
+        Assert.True(
+            (candidates[^1].eye - landing).LengthXY() < (firstEye - landing).LengthXY(),
+            "closer vantages are only tried after every far one"
+        );
+        Assert.Equal(24, candidates.Count);
+    }
+
+    [Fact]
+    public void TheThirdPersonCameraSitsBehindAndAboveTheThrower()
+    {
+        var feet = new Vec3(0f, 0f, 0f);
+
+        (Vec3 eye, Vec3 look) = RenderDirectorUtility.ThirdPersonShot(feet, 0f);
+
+        Assert.True(eye.x < 0f, "behind a thrower facing +x");
+        Assert.True(eye.z > RenderDirectorUtility.StandingEyeHeight, "above their head");
+        Assert.True(look.x > eye.x);
+    }
+
+    [Fact]
     public void EaseHoldsTheEndsStill()
     {
         Assert.Equal(0f, RenderDirectorUtility.Ease(-1f));

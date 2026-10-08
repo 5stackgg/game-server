@@ -64,6 +64,8 @@ public class RenderDirector
         public Vec3 StanceLook;
         public Vec3 DetachEye;
         public Vec3 DetachLook;
+        public Vec3 BloomEye;
+        public Vec3 BloomLook;
 
         public uint ProjectileIndex;
         public CBaseCSGrenadeProjectile? Projectile;
@@ -297,6 +299,8 @@ public class RenderDirector
             take.Beat = eRenderBeat.Staged;
             take.Tick = 0;
 
+            _replay.Repoint(player, RenderDirectorUtility.StanceViewPitch, take.Lineup.release.yaw);
+
             take.StagedLine = Tell(
                 take,
                 player,
@@ -354,13 +358,21 @@ public class RenderDirector
         {
             case eRenderBeat.Stance:
             {
-                (Vec3 eye, Vec3 look) = RenderDirectorUtility.StanceShot(take.Feet, take.Lineup.release.yaw);
-                Vec3 head = take.Feet + new Vec3(0f, 0f, RenderDirectorUtility.StandingEyeHeight);
+                (Vec3 eye, Vec3 look) = RenderDirectorUtility.ThirdPersonShot(take.Feet, take.Lineup.release.yaw);
 
-                take.Eye = _replay.CameraClear(head, eye);
-                take.Look = look;
-                take.StanceEye = take.Eye;
-                take.StanceLook = take.Look;
+                take.StanceEye = _replay.CameraClear(Head(take), eye);
+                take.StanceLook = look;
+
+                _replay.Repoint(player, RenderDirectorUtility.StanceViewPitch, take.Lineup.release.yaw);
+                pawn.HideHUD = HideCrosshair | HideRadar;
+                pawn.HideHUDUpdated();
+
+                Shot(take, player, "stance", "thirdperson");
+                break;
+            }
+            case eRenderBeat.Glide:
+                take.Eye = take.StanceEye;
+                take.Look = take.StanceLook;
 
                 if (!ViewThroughCamera(take, pawn))
                 {
@@ -368,10 +380,6 @@ public class RenderDirector
                     return;
                 }
 
-                Shot(take, player, "stance", "camera");
-                break;
-            }
-            case eRenderBeat.Glide:
                 Shot(take, player, "glide", "camera");
                 break;
             case eRenderBeat.StanceEyes:
@@ -384,6 +392,9 @@ public class RenderDirector
                 Shot(take, player, "stance_eyes", "camera");
                 break;
             case eRenderBeat.Tilt:
+                // Behind the camera, so the cut back into the eyes lands on a
+                // view that is already there.
+                _replay.Repoint(player, take.Lineup.release.pitch, take.Lineup.release.yaw);
                 Shot(take, player, "tilt", "camera");
                 break;
             case eRenderBeat.Aim:
@@ -655,6 +666,7 @@ public class RenderDirector
     private void Landed(Take take, IPlayer player, Vec3 at)
     {
         take.Landing = at;
+        (take.BloomEye, take.BloomLook) = BloomVantage(at, take);
 
         Tell(
             take,
@@ -694,14 +706,37 @@ public class RenderDirector
 
     private void FrameBloom(Take take)
     {
-        Vec3 landing = take.Landing ?? take.ProjectileAt;
-        (Vec3 eye, Vec3 look) = RenderDirectorUtility.BloomShot(landing, take.Feet, take.Direction);
-
-        Vec3 target = _replay.CameraClear(look, eye);
-
-        take.Eye = RenderDirectorUtility.Approach(take.Eye, target, Dt, BloomEyeHalfLife);
-        take.Look = RenderDirectorUtility.Approach(take.Look, look, Dt, BloomLookHalfLife);
+        take.Eye = RenderDirectorUtility.Approach(take.Eye, take.BloomEye, Dt, BloomEyeHalfLife);
+        take.Look = RenderDirectorUtility.Approach(take.Look, take.BloomLook, Dt, BloomLookHalfLife);
         MoveCamera(take);
+    }
+
+    // The first vantage a trace says sees the cloud unobstructed; failing
+    // that, whichever got furthest before something was in the way.
+    private (Vec3 eye, Vec3 look) BloomVantage(Vec3 landing, Take take)
+    {
+        (Vec3 eye, Vec3 look) best = default;
+        float bestReach = -1f;
+
+        foreach ((Vec3 eye, Vec3 look) in RenderDirectorUtility.BloomCandidates(landing, take.Feet, take.Direction))
+        {
+            Vec3 clear = _replay.CameraClear(look, eye);
+            float reach = (clear - look).Length();
+            float want = (eye - look).Length();
+
+            if (reach >= want * 0.97f)
+            {
+                return (clear, look);
+            }
+
+            if (reach > bestReach)
+            {
+                bestReach = reach;
+                best = (clear, look);
+            }
+        }
+
+        return best;
     }
 
     private bool ViewThroughCamera(Take take, CCSPlayerPawn pawn)

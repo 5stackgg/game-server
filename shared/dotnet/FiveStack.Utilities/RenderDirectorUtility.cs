@@ -53,8 +53,9 @@ public static class RenderDirectorUtility
     // slow to reach it; this is how long it gets either way.
     public const float ThrowTimeoutSeconds = 10f;
 
-    // Long enough to see the grenade leave the hand before the view lets go.
-    public const float DetachSeconds = 0.2f;
+    // Long enough to watch the throw itself -- the arm, the jump -- before the
+    // view lets go of the eyes.
+    public const float DetachSeconds = 0.9f;
 
     // A grenade that never detonates (stuck in a wall, out of the map) still
     // has to end the clip.
@@ -217,6 +218,23 @@ public static class RenderDirectorUtility
             && MathF.Abs(AngleDelta(yaw, wantYaw)) <= StagedAngleTolerance;
     }
 
+    // The stance is filmed in cs2's own third person: a view entity shows the
+    // world from a camera, but cs2 never draws the local player's body there.
+    // The pod sets cam_idealdist / cam_idealyaw to these; the thrower looks a
+    // little down meanwhile, so the camera sits above and behind them.
+    public const float StanceViewPitch = 12f;
+    public const float ThirdPersonDistance = 130f;
+    public const float ThirdPersonYaw = 25f;
+
+    // Where cs2's third-person camera ends up, so the glide can start from it.
+    public static (Vec3 eye, Vec3 lookAt) ThirdPersonShot(Vec3 feet, float yaw)
+    {
+        Vec3 head = feet + new Vec3(0f, 0f, StandingEyeHeight);
+        Vec3 forward = Forward(StanceViewPitch, yaw + ThirdPersonYaw);
+
+        return (head - (forward * ThirdPersonDistance), head + (forward * 400f));
+    }
+
     // Behind the thrower's shoulder, a little above head height: the whole
     // player stands in frame on the spot, facing the way they throw.
     public static (Vec3 eye, Vec3 lookAt) StanceShot(Vec3 feet, float yaw)
@@ -290,7 +308,7 @@ public static class RenderDirectorUtility
     public const float ChaseTurnHalfLife = 0.15f;
 
     // How long the view takes to pull back from the eyes onto the chase.
-    public const float DetachBlendSeconds = 0.35f;
+    public const float DetachBlendSeconds = 0.6f;
 
     // Below this the projectile is rolling or settling and its velocity says
     // nothing about which way it is going; the camera keeps its last bearing.
@@ -326,6 +344,55 @@ public static class RenderDirectorUtility
     public const float BloomDistance = 380f;
     public const float BloomHeight = 150f;
     public const float BloomLookHeight = 48f;
+
+    public static Vec3 RotateZ(Vec3 v, float degrees)
+    {
+        float r = degrees * MathF.PI / 180f;
+        float c = MathF.Cos(r);
+        float s = MathF.Sin(r);
+
+        return new Vec3((v.x * c) - (v.y * s), (v.x * s) + (v.y * c), v.z);
+    }
+
+    private static readonly float[] BloomDistances = { 650f, 520f, 400f };
+    private static readonly float[] BloomBearings = { 0f, 35f, -35f, 70f, -70f, 110f, -110f, 180f };
+
+    // Where the bloom may be filmed from, best first: far enough back that the
+    // cloud sits in its surroundings rather than filling the frame, from the
+    // thrower's side first, then working round it. The director keeps the
+    // first one a trace says has a clear view of the cloud.
+    public static IEnumerable<(Vec3 eye, Vec3 lookAt)> BloomCandidates(
+        Vec3 landing,
+        Vec3 stance,
+        Vec3 fallbackDirection
+    )
+    {
+        var toward = new Vec3(stance.x - landing.x, stance.y - landing.y, 0f);
+        Vec3 direction = toward.Normalized();
+
+        if (direction.Length() <= float.Epsilon)
+        {
+            direction = new Vec3(-fallbackDirection.x, -fallbackDirection.y, 0f).Normalized();
+        }
+
+        if (direction.Length() <= float.Epsilon)
+        {
+            direction = new Vec3(1f, 0f, 0f);
+        }
+
+        Vec3 lookAt = landing + new Vec3(0f, 0f, BloomLookHeight);
+
+        foreach (float distance in BloomDistances)
+        {
+            foreach (float bearing in BloomBearings)
+            {
+                Vec3 around = RotateZ(direction, bearing);
+                Vec3 eye = landing + (around * distance) + new Vec3(0f, 0f, distance * 0.33f);
+
+                yield return (eye, lookAt);
+            }
+        }
+    }
 
     // Back toward the thrower, so the cloud is framed against the side it was
     // thrown to cover.
