@@ -82,18 +82,50 @@ public class RenderDirectorUtilityTests
     }
 
     [Fact]
-    public void TheChaseCameraTrailsTheGrenade()
+    public void TheChaseRunsUpTheFlownPathFromTheReleasePoint()
     {
-        var projectile = new Vec3(0f, 0f, 100f);
-        Vec3 direction = RenderDirectorUtility.ChaseDirection(
-            new Vec3(800f, 0f, 400f),
-            new Vec3(0f, 1f, 0f)
+        Assert.Equal(0f, RenderDirectorUtility.ChaseArc(1000f, 0f));
+        Assert.Equal(
+            1000f - RenderDirectorUtility.ChaseDistance,
+            RenderDirectorUtility.ChaseArc(1000f, RenderDirectorUtility.ChaseCatchUpSeconds),
+            3
         );
+        Assert.Equal(0f, RenderDirectorUtility.ChaseArc(RenderDirectorUtility.ChaseDistance * 0.5f, 5f));
 
-        Vec3 eye = RenderDirectorUtility.ChaseEye(projectile, direction);
+        float previous = -1f;
 
-        Assert.True(eye.x < projectile.x, "behind the travel direction");
-        Assert.True(eye.z > projectile.z, "a little above it");
+        for (int tick = 0; tick <= 64; tick++)
+        {
+            float since = tick / 64f;
+            float arc = RenderDirectorUtility.ChaseArc(400f + (since * 700f), since);
+
+            Assert.True(arc >= previous, "the camera never runs back down the path");
+            previous = arc;
+        }
+    }
+
+    [Fact]
+    public void TheChaseCameraLeavesTheReleasePointFromRest()
+    {
+        float dt = 1f / 64f;
+        float first = RenderDirectorUtility.ChaseArc(630f + (dt * 700f), dt);
+
+        Assert.True(first / dt < 100f, "the first tick barely moves, however far the grenade is");
+    }
+
+    [Fact]
+    public void PointAlongWalksThePathByDistance()
+    {
+        var path = new List<Vec3> { new(0f, 0f, 0f), new(100f, 0f, 0f), new(100f, 100f, 0f) };
+        var arc = new List<float> { 0f, 100f, 200f };
+
+        Vec3 middle = RenderDirectorUtility.PointAlong(path, arc, 150f);
+
+        Assert.Equal(100f, middle.x, 3);
+        Assert.Equal(50f, middle.y, 3);
+        Assert.Equal(0f, RenderDirectorUtility.PointAlong(path, arc, -5f).x, 3);
+        Assert.Equal(100f, RenderDirectorUtility.PointAlong(path, arc, 999f).y, 3);
+        Assert.Equal(7f, RenderDirectorUtility.PointAlong(new List<Vec3> { new(7f, 0f, 0f) }, new List<float> { 0f }, 50f).x);
     }
 
     [Fact]
@@ -301,14 +333,54 @@ public class RenderDirectorUtilityTests
     }
 
     [Fact]
-    public void TheRaisedChaseCameraIsAboveAndClearOfTheGrenade()
+    public void TheStanceOpensWideAndCranesDownOntoTheThrower()
     {
-        var at = new Vec3(0f, 0f, 0f);
+        var feet = new Vec3(0f, 0f, 0f);
 
-        Vec3 raised = RenderDirectorUtility.ChaseRaisedEye(at, new Vec3(1f, 0f, 0f));
+        (Vec3 wide, Vec3 wideLook) = RenderDirectorUtility.StanceWideShot(feet, 0f);
+        (Vec3 close, _) = RenderDirectorUtility.StanceShot(feet, 0f);
 
-        Assert.True(raised.z > RenderDirectorUtility.ChaseHeight);
-        Assert.True((raised - at).Length() > RenderDirectorUtility.ChaseMinDistance);
+        Assert.True(wide.z > close.z, "higher");
+        Assert.True(wide.x < close.x, "further back");
+        Assert.True(wideLook.x > 100f, "looking out past the spot at the map ahead");
+        Assert.True(RenderDirectorUtility.LookAt(wide, wideLook).pitch > 15f, "the thrower is still in frame");
+    }
+
+    [Fact]
+    public void TheGlidePassesBesideTheHeadNotThroughIt()
+    {
+        var feet = new Vec3(0f, 0f, 0f);
+        var head = new Vec3(0f, 0f, RenderDirectorUtility.StandingEyeHeight);
+        var skull = new Vec3(-4f, 0f, RenderDirectorUtility.StandingEyeHeight);
+        (Vec3 stance, Vec3 stanceLook) = RenderDirectorUtility.StanceShot(feet, 0f);
+        float nearest = float.MaxValue;
+
+        for (int step = 0; step <= 200; step++)
+        {
+            (Vec3 eye, _) = RenderDirectorUtility.GlideShot(
+                stance,
+                stanceLook,
+                head,
+                RenderDirectorUtility.StanceEyesPitch,
+                0f,
+                step / 200f
+            );
+
+            nearest = MathF.Min(nearest, (eye - skull).Length());
+        }
+
+        Assert.True(nearest >= 7f, $"came within {nearest}u of the head");
+
+        (Vec3 leaving, _) = RenderDirectorUtility.GlideShot(
+            stance,
+            stanceLook,
+            head,
+            RenderDirectorUtility.StanceEyesPitch,
+            0f,
+            RenderDirectorUtility.GlideBodyLeaves
+        );
+
+        Assert.True(leaving.x > skull.x, "level with the face or past it when the body is dropped");
     }
 
     [Fact]

@@ -60,6 +60,8 @@ public class RenderDirector
         public CDynamicProp? Camera;
         public Vec3 Eye;
         public Vec3 Look;
+        public Vec3 WideEye;
+        public Vec3 WideLook;
         public Vec3 StanceEye;
         public Vec3 StanceLook;
         public bool BodyLeft;
@@ -71,6 +73,8 @@ public class RenderDirector
         public uint ProjectileIndex;
         public CBaseCSGrenadeProjectile? Projectile;
         public Vec3 ProjectileAt;
+        public readonly List<Vec3> Path = new();
+        public readonly List<float> PathArc = new();
         public Vec3 Direction = new Vec3(1f, 0f, 0f);
         public bool Detached;
         public int DetachTick;
@@ -232,6 +236,7 @@ public class RenderDirector
                 Staging(take, player, pawn);
                 break;
             case eRenderBeat.Stance:
+                Crane(take);
                 Still(take, player, RenderDirectorUtility.StanceStillAt, "stance");
                 Next(take, RenderDirectorUtility.StanceSeconds, eRenderBeat.Glide);
                 break;
@@ -305,6 +310,11 @@ public class RenderDirector
             take.Beat = eRenderBeat.Staged;
             take.Tick = 0;
 
+            if (take.Camera == null || !take.Camera.IsValid)
+            {
+                take.Camera = SpawnCamera();
+            }
+
             _replay.Repoint(player, RenderDirectorUtility.StanceViewPitch, take.Lineup.release.yaw);
 
             take.StagedLine = Tell(
@@ -364,12 +374,18 @@ public class RenderDirector
         {
             case eRenderBeat.Stance:
             {
+                (Vec3 wide, Vec3 wideLook) = RenderDirectorUtility.StanceWideShot(
+                    take.Feet,
+                    take.Lineup.release.yaw
+                );
                 (Vec3 eye, Vec3 look) = RenderDirectorUtility.StanceShot(take.Feet, take.Lineup.release.yaw);
 
-                take.Eye = _replay.CameraClear(Head(take), eye);
-                take.Look = look;
-                take.StanceEye = take.Eye;
-                take.StanceLook = take.Look;
+                take.WideEye = _replay.CameraClear(Head(take), wide);
+                take.WideLook = wideLook;
+                take.StanceEye = _replay.CameraClear(Head(take), eye);
+                take.StanceLook = look;
+                take.Eye = take.WideEye;
+                take.Look = take.WideLook;
 
                 _replay.Repoint(player, RenderDirectorUtility.StanceViewPitch, take.Lineup.release.yaw);
 
@@ -440,6 +456,17 @@ public class RenderDirector
                 Shot(take, player, "bloom", "camera");
                 break;
         }
+    }
+
+    private static void Crane(Take take)
+    {
+        float s = RenderDirectorUtility.Ease(
+            take.Tick / (float)RenderDirectorUtility.Ticks(RenderDirectorUtility.StanceSeconds)
+        );
+
+        take.Eye = RenderDirectorUtility.Lerp(take.WideEye, take.StanceEye, s);
+        take.Look = RenderDirectorUtility.Lerp(take.WideLook, take.StanceLook, s);
+        MoveCamera(take);
     }
 
     private void Glide(Take take, IPlayer player)
@@ -562,6 +589,10 @@ public class RenderDirector
         take.Projectile = projectile;
         take.ProjectileIndex = projectile.Index;
         take.ProjectileAt = seedAt;
+        take.Path.Clear();
+        take.PathArc.Clear();
+        take.Path.Add(seedAt);
+        take.PathArc.Add(0f);
         take.Direction = RenderDirectorUtility.ChaseDirection(seedVelocity, take.Direction);
         take.Detached = false;
 
@@ -597,6 +628,12 @@ public class RenderDirector
 
         Vec3 velocity = (at - take.ProjectileAt) * RenderDirectorUtility.TickRate;
         take.ProjectileAt = at;
+
+        if (!take.Settled)
+        {
+            take.PathArc.Add(take.PathArc[^1] + (at - take.Path[^1]).Length());
+            take.Path.Add(at);
+        }
         take.Direction = RenderDirectorUtility.Turn(
             take.Direction,
             RenderDirectorUtility.ChaseDirection(velocity, take.Direction),
@@ -649,14 +686,20 @@ public class RenderDirector
             return;
         }
 
-        Vec3 target = ChaseTarget(at, take.Direction);
-        float blend = RenderDirectorUtility.Ease(
-            (take.Tick - take.DetachTick)
-                / (float)RenderDirectorUtility.Ticks(RenderDirectorUtility.DetachBlendSeconds)
+        float since = (take.Tick - take.DetachTick) * Dt;
+        Vec3 onPath = RenderDirectorUtility.PointAlong(
+            take.Path,
+            take.PathArc,
+            RenderDirectorUtility.ChaseArc(take.PathArc[^1], since)
         );
+        float rise =
+            RenderDirectorUtility.ChaseHeight
+            * RenderDirectorUtility.Ease(since / RenderDirectorUtility.ChaseCatchUpSeconds);
+        Vec3 chase = _replay.CameraClear(onPath, onPath + new Vec3(0f, 0f, rise));
+        float handOff = RenderDirectorUtility.Ease(since / RenderDirectorUtility.DetachHandOffSeconds);
 
-        take.Eye = RenderDirectorUtility.Lerp(take.DetachEye, target, blend);
-        take.Look = RenderDirectorUtility.Lerp(take.DetachLook, at, blend);
+        take.Eye = RenderDirectorUtility.Lerp(take.DetachEye, chase, handOff);
+        take.Look = RenderDirectorUtility.Lerp(take.DetachLook, at, handOff);
         MoveCamera(take);
 
         if (take.Tick > RenderDirectorUtility.Ticks(RenderDirectorUtility.FollowMaxSeconds))
@@ -666,20 +709,6 @@ public class RenderDirector
     }
 
     private const float SettledLookHalfLife = 0.12f;
-
-    private Vec3 ChaseTarget(Vec3 at, Vec3 direction)
-    {
-        Vec3 behind = _replay.CameraClear(at, RenderDirectorUtility.ChaseEye(at, direction));
-
-        if ((behind - at).Length() >= RenderDirectorUtility.ChaseMinDistance)
-        {
-            return behind;
-        }
-
-        Vec3 raised = _replay.CameraClear(at, RenderDirectorUtility.ChaseRaisedEye(at, direction));
-
-        return (raised - at).Length() > (behind - at).Length() ? raised : behind;
-    }
 
     public void OnDetonated(uint entityIndex, Vec3 at)
     {

@@ -32,8 +32,8 @@ public static class RenderDirectorUtility
 
     public const int TickRate = 64;
 
-    public const float StanceSeconds = 1.2f;
-    public const float StanceStillAt = 0.8f;
+    public const float StanceSeconds = 1.6f;
+    public const float StanceStillAt = 0.7f;
 
     // The stance camera flies down into the thrower's eyes, looks at the
     // ground around their feet (where to stand, from where they stand), then
@@ -62,7 +62,7 @@ public static class RenderDirectorUtility
 
     // Long enough to watch the throw itself -- the arm, the jump -- before the
     // view lets go of the eyes.
-    public const float DetachSeconds = 0.9f;
+    public const float DetachSeconds = 0.7f;
 
     // A grenade that never detonates (stuck in a wall, out of the map) still
     // has to end the clip.
@@ -233,9 +233,10 @@ public static class RenderDirectorUtility
     // which reads as standing naturally from behind.
     public const float StanceViewPitch = 0f;
 
-    // How far through the glide third person is dropped: before the camera
-    // gets close enough to fly through the back of the thrower's head.
-    public const float GlideBodyLeaves = 0.6f;
+    // How far through the glide third person is dropped. The camera has come
+    // round the shoulder and is level with the face by then, so the body is
+    // behind the lens when it goes; the pod's exec lag covers the rest.
+    public const float GlideBodyLeaves = 0.85f;
 
     // Behind and above the thrower, looking down at their feet: where they
     // stand, and the way they face, in one frame.
@@ -247,6 +248,20 @@ public static class RenderDirectorUtility
 
         Vec3 eye = feet - (forward * 130f) + (right * 40f) + (up * 120f);
         Vec3 lookAt = feet + (forward * 40f) + (up * 12f);
+
+        return (eye, lookAt);
+    }
+
+    // Where the stance opens: high and well back, so the spot reads against
+    // the map around it before the camera cranes down onto the thrower.
+    public static (Vec3 eye, Vec3 lookAt) StanceWideShot(Vec3 feet, float yaw)
+    {
+        Vec3 forward = Forward(0f, yaw);
+        var right = new Vec3(forward.y, -forward.x, 0f);
+        var up = new Vec3(0f, 0f, 1f);
+
+        Vec3 eye = feet - (forward * 250f) + (right * 70f) + (up * 210f);
+        Vec3 lookAt = feet + (forward * 150f) + (up * 20f);
 
         return (eye, lookAt);
     }
@@ -283,6 +298,11 @@ public static class RenderDirectorUtility
         return EyesShot(headEye, pitch, yaw);
     }
 
+    // The glide bends round the right shoulder rather than flying through the
+    // back of the head.
+    public const float GlideShoulderOut = 56f;
+    public const float GlideShoulderBack = 24f;
+
     // s in 0..1 along the glide from the stance camera to the eyes at (pitch, yaw).
     public static (Vec3 eye, Vec3 lookAt) GlideShot(
         Vec3 stanceEye,
@@ -294,34 +314,88 @@ public static class RenderDirectorUtility
     )
     {
         Vec3 forward = Forward(pitch, yaw);
+        Vec3 flat = Forward(0f, yaw);
+        var right = new Vec3(flat.y, -flat.x, 0f);
         Vec3 endEye = headEye + (forward * GlideEndAhead);
         Vec3 endLook = headEye + (forward * 400f);
+        Vec3 shoulder = headEye - (flat * GlideShoulderBack) + (right * GlideShoulderOut);
         float eased = Ease(s);
 
-        return (Lerp(stanceEye, endEye, eased), Lerp(stanceLook, endLook, eased));
+        return (Bezier(stanceEye, shoulder, endEye, eased), Lerp(stanceLook, endLook, eased));
     }
 
+    public static Vec3 Bezier(Vec3 from, Vec3 control, Vec3 to, float s)
+    {
+        float rest = 1f - s;
+
+        return (from * (rest * rest)) + (control * (2f * rest * s)) + (to * (s * s));
+    }
+
+    // The chase rides the grenade's own flight path, this far back along it:
+    // the grenade has already been everywhere the camera goes, so the camera
+    // never meets a wall the grenade did not, and stays behind it round the arc.
     public const float ChaseDistance = 110f;
     public const float ChaseHeight = 22f;
 
-    // Never nearer than this to the grenade: a wall behind it used to pull the
-    // camera right into the grenade's own model.
-    public const float ChaseMinDistance = 72f;
+    // After letting go of the eyes the camera runs up the path from the release
+    // point to its place behind the grenade, starting from rest and arriving at
+    // the grenade's own pace.
+    public const float ChaseCatchUpSeconds = 0.9f;
 
-    // Where the camera goes instead when the space behind the grenade is too
-    // tight: up and only a little back.
-    public static Vec3 ChaseRaisedEye(Vec3 projectile, Vec3 direction)
+    // How long the cut from the eyes takes to settle onto the path.
+    public const float DetachHandOffSeconds = 0.25f;
+
+    // How far along the flown path (in units from the release) the camera is,
+    // `sinceDetach` seconds after it let go of the eyes.
+    public static float ChaseArc(float flown, float sinceDetach)
     {
-        return projectile - (direction * 40f) + new Vec3(0f, 0f, 90f);
+        return MathF.Max(0f, flown - ChaseDistance) * Ease(sinceDetach / ChaseCatchUpSeconds);
     }
 
-    // The chase rides the grenade rigidly; only its bearing is smoothed, so a
-    // bounce swings the camera round instead of snapping it, and the grenade
-    // stays the same size in frame however fast it flies.
-    public const float ChaseTurnHalfLife = 0.15f;
+    // The point `distance` units along a path whose running lengths are `arc`.
+    public static Vec3 PointAlong(IReadOnlyList<Vec3> path, IReadOnlyList<float> arc, float distance)
+    {
+        if (path.Count == 0)
+        {
+            return default;
+        }
 
-    // How long the view takes to pull back from the eyes onto the chase.
-    public const float DetachBlendSeconds = 0.6f;
+        if (path.Count == 1 || distance <= 0f)
+        {
+            return path[0];
+        }
+
+        if (distance >= arc[^1])
+        {
+            return path[^1];
+        }
+
+        int low = 0;
+        int high = arc.Count - 1;
+
+        while (high - low > 1)
+        {
+            int middle = (low + high) / 2;
+
+            if (arc[middle] <= distance)
+            {
+                low = middle;
+            }
+            else
+            {
+                high = middle;
+            }
+        }
+
+        float span = arc[high] - arc[low];
+        float along = span <= float.Epsilon ? 0f : (distance - arc[low]) / span;
+
+        return Lerp(path[low], path[high], along);
+    }
+
+    // The bloom's fallback bearing follows the flight, smoothed so a bounce
+    // swings it round rather than snapping it.
+    public const float ChaseTurnHalfLife = 0.15f;
 
     // Below this the projectile is rolling or settling and its velocity says
     // nothing about which way it is going; the camera keeps its last bearing.
@@ -340,11 +414,6 @@ public static class RenderDirectorUtility
         Vec3 direction = flattened.Normalized();
 
         return direction.Length() <= float.Epsilon ? previous : direction;
-    }
-
-    public static Vec3 ChaseEye(Vec3 projectile, Vec3 direction)
-    {
-        return projectile - (direction * ChaseDistance) + new Vec3(0f, 0f, ChaseHeight);
     }
 
     public static Vec3 Turn(Vec3 current, Vec3 target, float dt)
