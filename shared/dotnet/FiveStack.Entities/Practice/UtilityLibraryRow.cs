@@ -50,6 +50,8 @@ public class UtilityLibraryRow
     public string? confidence { get; set; }
     public string? author_steam_id { get; set; }
 
+    public List<UtilityApproachPoint>? approach { get; set; }
+
     public LineupRecord ToLineup()
     {
         float originX = origin_x ?? 0f;
@@ -85,6 +87,7 @@ public class UtilityLibraryRow
 
             detonation_position = new Vec3(land_x ?? 0f, land_y ?? 0f, land_z ?? 0f),
             flight_time = (flight_time_ms ?? 0) / 1000f,
+            approach = UtilityApproachPoint.ToSamples(approach),
         };
 
         // A seed is one thing, not six numbers, so it is taken whole or not at

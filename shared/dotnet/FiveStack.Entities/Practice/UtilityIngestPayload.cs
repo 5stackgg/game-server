@@ -50,6 +50,8 @@ public class UtilityIngestPayload
 
     public List<UtilityPathPoint>? path { get; set; }
 
+    public List<UtilityApproachPoint>? approach { get; set; }
+
     public static UtilityIngestPayload From(LineupRecord lineup)
     {
         // Vec3 is a struct, so an unrecorded seed is (0,0,0) rather than null.
@@ -99,6 +101,11 @@ public class UtilityIngestPayload
                     z = point.p.z,
                 })
                 .ToList(),
+
+            approach =
+                lineup.approach.Count == 0
+                    ? null
+                    : lineup.approach.Select(UtilityApproachPoint.From).ToList(),
         };
     }
 

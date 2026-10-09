@@ -44,6 +44,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     private PracticeDrill _drill = null!;
     private MapCalloutsReporter _callouts = null!;
     private PracticeSolver _solver = null!;
+    private RenderDirector _director = null!;
 
     private CancellationTokenSource? _secondTimer;
     private CancellationTokenSource? _refillTimer;
@@ -108,6 +109,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             .AddSingleton<PracticePlaybook>()
             .AddSingleton<PracticeDrill>()
             .AddSingleton<PracticeSolver>()
+            .AddSingleton<RenderDirector>()
             .AddSingleton<HudKit>()
             .AddSingleton<HudPrompt>()
             .AddSingleton<MapCalloutsReporter>();
@@ -127,6 +129,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _drill = _serviceProvider.GetRequiredService<PracticeDrill>();
         _callouts = _serviceProvider.GetRequiredService<MapCalloutsReporter>();
         _solver = _serviceProvider.GetRequiredService<PracticeSolver>();
+        _director = _serviceProvider.GetRequiredService<RenderDirector>();
         _hud = ResolveHud();
         _prompt = _serviceProvider.GetRequiredService<HudPrompt>();
         _prompt.Start();
@@ -197,11 +200,18 @@ public partial class UtilityPracticePlugin : BasePlugin
             CEntityInstance entity = @event.Entity;
             Core.Scheduler.NextTick(() =>
             {
-                if (entity.IsValid)
+                if (!entity.IsValid)
                 {
-                    _recorder.OnProjectileCreated(entity);
-                    TintSmoke(entity);
+                    return;
                 }
+
+                if (_config.RenderMode && _director.ClaimProjectile(entity))
+                {
+                    return;
+                }
+
+                _recorder.OnProjectileCreated(entity);
+                TintSmoke(entity);
             });
         };
         Core.Event.OnEntityCreated += _entityCreatedHandler;
@@ -388,6 +398,8 @@ public partial class UtilityPracticePlugin : BasePlugin
     {
         _tornDown = true;
 
+        _director.Reset(null);
+
         // Drawn entities are not the plugin's to leave behind: without this a
         // hot reload orphans every beam, label and model in the world, with no
         // instance left holding a reference to any of them.
@@ -473,6 +485,12 @@ public partial class UtilityPracticePlugin : BasePlugin
     // takes its landing point with it.
     private void OnGameTick()
     {
+        if (_config.RenderMode)
+        {
+            _director.OnTick();
+            return;
+        }
+
         _recorder.OnTick();
         _solver.OnTick();
         AimFeedback();
@@ -1159,7 +1177,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     // the colour the NEXT grenade will be.
     private void TintSmoke(CEntityInstance entity)
     {
-        if ((entity.DesignerName ?? "") != "smokegrenade_projectile")
+        if (_config.RenderMode || (entity.DesignerName ?? "") != "smokegrenade_projectile")
         {
             return;
         }
@@ -1924,6 +1942,11 @@ public partial class UtilityPracticePlugin : BasePlugin
     // Their own .load, .next and .menu still draw, because those were asked for.
     private void ShowLibraryFor(ulong steamId, IReadOnlyList<LineupRecord> library)
     {
+        if (_config.RenderMode)
+        {
+            return;
+        }
+
         List<ulong> connected = _system.ConnectedSteamIds();
 
         if (connected.Count != 1 || connected[0] != steamId)
@@ -2113,6 +2136,14 @@ public partial class UtilityPracticePlugin : BasePlugin
         "tv_enable 0",
     };
 
+    // After PracticeCfg on a render server: the engine's practice camera and
+    // trail would be filmed over the shot.
+    private static readonly string[] RenderCfg = new[]
+    {
+        "sv_grenade_trajectory_prac_pipreview 0",
+        "sv_grenade_trajectory_prac_trailtime 0",
+    };
+
     private void ApplyPracticeCfg()
     {
         // Twice, and the second one is the one that usually takes. On a map
@@ -2159,6 +2190,11 @@ public partial class UtilityPracticePlugin : BasePlugin
     private void RunPracticeCfg()
     {
         Core.Engine.ExecuteCommand(string.Join(";", PracticeCfg));
+
+        if (_config.RenderMode)
+        {
+            Core.Engine.ExecuteCommand(string.Join(";", RenderCfg));
+        }
 
         if (_bots.Count == 0)
         {

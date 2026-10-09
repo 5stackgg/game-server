@@ -403,6 +403,75 @@ public class PracticeSystem
         return spawns;
     }
 
+    /// <summary>
+    /// Spawns a player on a spot, facing `yaw`, the way the game spawns anyone:
+    /// their side's spawn points are moved onto it for the respawn and put back
+    /// a moment later. A teleport alone turns the upper body and leaves the
+    /// legs facing wherever they were, which films as a twisted stance; a
+    /// spawn starts the whole body square. Answers whether it respawned.
+    /// </summary>
+    public bool RespawnAt(IPlayer player, Vec3 at, float yaw)
+    {
+        try
+        {
+            CCSGameRules? rules = _core
+                .EntitySystem.GetAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+                .FirstOrDefault()
+                ?.GameRules;
+
+            if (rules == null || player.Controller.Team is not (Team.CT or Team.T))
+            {
+                return false;
+            }
+
+            CUtlVector<CHandle<SpawnPoint>> team =
+                player.Controller.Team == Team.CT ? rules.CTSpawnPoints : rules.TerroristSpawnPoints;
+            var moved = new List<(SpawnPoint point, Vector origin, QAngle angles)>();
+            var onSpot = new Vector(at.x, at.y, at.z + SpawnLift);
+            var facing = new QAngle(0, yaw, 0);
+
+            for (int index = 0; index < team.Count; index++)
+            {
+                SpawnPoint? point = team[index].Value;
+
+                if (point == null || !point.IsValid || point.AbsOrigin is not Vector origin)
+                {
+                    continue;
+                }
+
+                moved.Add((point, origin, point.AbsRotation ?? new QAngle(0, 0, 0)));
+                point.Teleport(onSpot, facing, null);
+            }
+
+            if (moved.Count == 0)
+            {
+                return false;
+            }
+
+            player.Respawn();
+
+            _core.Scheduler.NextTick(() =>
+            {
+                foreach ((SpawnPoint point, Vector origin, QAngle angles) in moved)
+                {
+                    if (point.IsValid)
+                    {
+                        point.Teleport(origin, angles, null);
+                    }
+                }
+            });
+
+            return true;
+        }
+        catch (Exception error)
+        {
+            _logger.LogWarning(error, "unable to respawn {steam} on a spot", player.SteamID);
+            return false;
+        }
+    }
+
+    private const float SpawnLift = 2f;
+
     // A competitive side starts five players. The team lists hold every spawn
     // the map registers for that side -- Mirage has thirty-three across both --
     // because casual and deathmatch draw from the same pool.

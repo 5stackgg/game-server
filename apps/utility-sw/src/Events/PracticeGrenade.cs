@@ -57,6 +57,11 @@ public partial class UtilityPracticePlugin
 
         var position = new Vec3(@event.X, @event.Y, @event.Z);
 
+        if (_director.OnMolotovDetonated(thrower.SteamID, position))
+        {
+            return HookResult.Continue;
+        }
+
         // The replay is asked first on purpose. While one of this player's
         // ghosts is in the air the two molotovs cannot be told apart, and
         // handing the ghost's landing point to the recorder finalizes the throw
@@ -83,6 +88,7 @@ public partial class UtilityPracticePlugin
     {
         _recorder.OnDetonated(entityIndex, position);
         _solver.OnDetonated(entityIndex, position);
+        _director.OnDetonated(entityIndex, position);
         Signal(_replay.GhostDetonated(entityIndex, position));
     }
 

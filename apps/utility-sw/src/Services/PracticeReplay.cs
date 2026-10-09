@@ -112,6 +112,19 @@ public class PracticeReplay
         "trigger_proximity",
     };
 
+    // A camera is never stopped by a body: the director traces from the
+    // thrower's own head, and a trace that hit that head pinned the camera there.
+    private static TraceParams SkipMarkersAndPlayers()
+    {
+        TraceParams parameters = SkipMarkers();
+        Func<CEntityInstance, bool>? markers = parameters.ShouldHitEntity;
+
+        parameters.ShouldHitEntity = entity =>
+            entity.DesignerName != "player" && (markers == null || markers(entity));
+
+        return parameters;
+    }
+
     private static TraceParams SkipMarkers()
     {
         var parameters = new TraceParams();
@@ -120,6 +133,14 @@ public class PracticeReplay
         parameters.ShouldHitEntity = entity =>
         {
             string designer = entity.DesignerName ?? "";
+
+            // Our own entities are never a surface: the render camera's prop
+            // carries a huge collision box, and a trace that stopped on it pulled
+            // the chase camera into the grenade.
+            if (entity.Entity?.Name == MarkerTag)
+            {
+                return false;
+            }
 
             // Held weapons follow players through rays, and projectiles are
             // wherever somebody last threw one.
@@ -708,6 +729,109 @@ public class PracticeReplay
         ReapplyAngles(player, facing, aim, 2);
 
         return true;
+    }
+
+    /// <summary>
+    /// Stand a render's thrower on the lineup with its exact aim, and draw
+    /// nothing. Unlike StandOn the client's view is turned as well: the camera
+    /// is filming through these eyes, so the view itself has to be on the
+    /// line, not just the server's idea of where the pawn looks.
+    /// </summary>
+    public Vec3? Stage(IPlayer player, LineupRecord lineup)
+    {
+        CCSPlayerPawn? pawn = player.PlayerPawn;
+
+        if (pawn == null || !pawn.IsValid)
+        {
+            return null;
+        }
+
+        Vec3 feet = Standable(
+            Grounded(RenderDirectorUtility.StageAt(lineup.release.feet_position, lineup.approach))
+        );
+
+        if (!Sane(feet))
+        {
+            return null;
+        }
+
+        var facing = new QAngle(0, lineup.release.yaw, 0);
+
+        player.Teleport(new Vector(feet.x, feet.y, feet.z), facing, new Vector(0, 0, 0));
+        Repoint(player, lineup.release.pitch, lineup.release.yaw);
+        ReapplyEyes(player, lineup.release.pitch, lineup.release.yaw, 2);
+
+        GiveUtility(player, lineup.utility_type);
+
+        return feet;
+    }
+
+    // Re-points a staged thrower without moving them; the aim drifts if
+    // anything nudged the view between staging and the shot.
+    public void Repoint(IPlayer player, float pitch, float yaw)
+    {
+        CCSPlayerPawn? pawn = player.PlayerPawn;
+
+        if (pawn == null || !pawn.IsValid)
+        {
+            return;
+        }
+
+        player.ExecuteCommand(RenderDirectorUtility.EyesCommand(pitch, yaw));
+        pawn.EyeAngles = new QAngle(pitch, yaw, 0);
+    }
+
+    // The client re-predicts from the command it had in flight and snaps the
+    // view back, so once is not enough.
+    private void ReapplyEyes(IPlayer player, float pitch, float yaw, int frames)
+    {
+        if (frames <= 0)
+        {
+            return;
+        }
+
+        _core.Scheduler.NextTick(() =>
+        {
+            if (!player.IsValid)
+            {
+                return;
+            }
+
+            Repoint(player, pitch, yaw);
+            ReapplyEyes(player, pitch, yaw, frames - 1);
+        });
+    }
+
+    // Where a camera can sit on the line from its subject without being inside
+    // a wall.
+    public Vec3 CameraClear(Vec3 subject, Vec3 eye)
+    {
+        try
+        {
+            var trace = _core.Trace.TraceShapeLine(
+                new Vector(subject.x, subject.y, subject.z),
+                new Vector(eye.x, eye.y, eye.z),
+                SkipMarkersAndPlayers()
+            );
+
+            Vec3? hit = trace.DidHit
+                ? new Vec3(trace.EndPos.X, trace.EndPos.Y, trace.EndPos.Z)
+                : null;
+
+            return RenderDirectorUtility.Unobstructed(subject, eye, hit, CameraWallMargin);
+        }
+        catch (Exception error)
+        {
+            _logger.LogWarning(error, "unable to trace a render camera");
+            return eye;
+        }
+    }
+
+    private const float CameraWallMargin = 12f;
+
+    public static CEntityKeyValues MarkerKeys()
+    {
+        return Tagged();
     }
 
     // The measured bloom, outlined where it would actually sit. Answers how
@@ -2059,6 +2183,11 @@ public class PracticeReplay
         return new Vec3(grounded.x, grounded.y, grounded.z + TeleportClearance);
     }
 
+    // Where a player standing at this point actually rests. Swept with the
+    // player's own hull, not a line down the middle: on a stair edge or a kerb
+    // the hull sits on the higher step while the centre of it hangs over the
+    // lower one, and a line trace stood the thrower ~5u too low -- low enough
+    // to put the crosshair on the wrong thing in a lineup aimed past a wall.
     private Vec3 Grounded(Vec3 position)
     {
         try
@@ -2066,6 +2195,57 @@ public class PracticeReplay
             // Started above the point on purpose: a trace that begins flush
             // against a surface can report no hit at all, which is exactly the
             // case for a lineup already standing on the floor.
+            var from = new Vector(position.x, position.y, position.z + HullLift);
+            var to = new Vector(
+                position.x,
+                position.y,
+                position.z - GroundSnapRange
+            );
+            var hull = new BBox_t
+            {
+                Mins = new Vector(-PlayerHalfWidth, -PlayerHalfWidth, 0f),
+                Maxs = new Vector(PlayerHalfWidth, PlayerHalfWidth, PlayerHeight),
+            };
+
+            var trace = _core.Trace.TracePlayerBBox(from, to, hull, SkipMarkersAndPlayers());
+
+            if (trace.StartInSolid || !trace.DidHit)
+            {
+                return GroundedOnCentre(position);
+            }
+
+            float drop = position.z - trace.EndPos.Z;
+
+            // A stance recorded standing is already where the hull rests; only
+            // one recorded in the air (or under a floor) is moved.
+            if (MathF.Abs(drop) <= HullRestTolerance)
+            {
+                return position;
+            }
+
+            _logger.LogInformation(
+                "lineup stance moved {drop} units onto where a player rests",
+                drop
+            );
+
+            return new Vec3(position.x, position.y, trace.EndPos.Z);
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to find the floor under a lineup");
+            return GroundedOnCentre(position);
+        }
+    }
+
+    private const float HullLift = 8f;
+    private const float HullRestTolerance = 1f;
+    private const float PlayerHalfWidth = 16f;
+    private const float PlayerHeight = 72f;
+
+    private Vec3 GroundedOnCentre(Vec3 position)
+    {
+        try
+        {
             var from = new Vector(position.x, position.y, position.z + 8f);
             var to = new Vector(
                 position.x,
@@ -2085,16 +2265,6 @@ public class PracticeReplay
                     GroundSnapRange
                 );
                 return position;
-            }
-
-            float drop = position.z - trace.EndPos.Z;
-
-            if (drop > 1f)
-            {
-                _logger.LogInformation(
-                    "lineup stance lowered {drop} units onto the floor (recorded airborne)",
-                    drop
-                );
             }
 
             return new Vec3(position.x, position.y, trace.EndPos.Z);
@@ -2157,6 +2327,7 @@ public class PracticeReplay
         "env_beam",
         "point_worldtext",
         "prop_physics_override",
+        "prop_dynamic",
     };
 
     private static CEntityKeyValues Tagged()
