@@ -70,6 +70,33 @@ public class RenderDirectorUtilityTests
         Assert.False(RenderDirectorUtility.AimMatches(-30f, 90f, -31f, 90f));
     }
 
+    // The pod uploads a clip with the version off the staged line, and the api
+    // only accepts a whole number: anything else is recorded as unreported,
+    // which reads as a pod older than the api expects.
+    [Fact]
+    public void TheStagedLineCarriesTheRenderVersionAsAWholeNumber()
+    {
+        string line = RenderDirectorUtility.Line(
+            "staged",
+            RenderDirectorUtility.StagedFields("Smoke", new Vec3(1f, 2f, 3.5f), 3f, -55.3f, -161f, 0f)
+        );
+
+        Assert.Matches(new Regex(@" v=[1-9][0-9]*$"), line);
+        Assert.Contains($" v={RenderDirectorUtility.Version}", line);
+    }
+
+    // Each of these is read by name in the pod's nade-clip.sh.
+    [Fact]
+    public void TheStagedLineSaysWhereTheThrowerEndedUpAndHowHeStands()
+    {
+        string line = RenderDirectorUtility.Line(
+            "staged",
+            RenderDirectorUtility.StagedFields("Smoke", new Vec3(1f, 2f, 3.5f), 3f, -55.3f, -161f, 0f)
+        );
+
+        Assert.Contains(" utility=Smoke x=1.00 y=2.00 z=3.50 dz=0.50 pitch=-55.30 yaw=-161.00 lean=0.00 ", line);
+    }
+
     [Fact]
     public void TheEyesAreTurnedByACommandThatLeavesTheBodyAlone()
     {

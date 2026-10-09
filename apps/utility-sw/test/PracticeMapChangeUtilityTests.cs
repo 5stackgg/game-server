@@ -72,6 +72,18 @@ public class PracticeMapChangeUtilityTests
         Assert.False(request.HasLoad);
     }
 
+    // The countdown is the only warning the people on a practice server get.
+    // A render server has a pod on it and nobody else.
+    [Fact]
+    public void ARenderServerChangesLevelWithoutACountdown()
+    {
+        Assert.Equal(0, PracticeMapChangeUtility.CountdownFor(renderMode: true));
+        Assert.Equal(
+            PracticeMapChangeUtility.CountdownSeconds,
+            PracticeMapChangeUtility.CountdownFor(renderMode: false)
+        );
+    }
+
     [Fact]
     public void OfficialMapsChangeLevel()
     {

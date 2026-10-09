@@ -29,6 +29,39 @@ public static class RenderDirectorUtility
 {
     public const string Prefix = "[5stack-render]";
 
+    // What this director films, as a number the api can compare: it goes out
+    // on the staged line, the pod uploads the clip with it, and a preview
+    // filmed at a lower one is offered for a re-render. Bumped whenever a
+    // change here or in the pod makes the previews already filmed wrong or
+    // visibly worse, together with the api's UTILITY_RENDER_VERSION.
+    //   2 -- the thrower's eyes are turned without tipping his body.
+    public const int Version = 2;
+
+    // What the staged line says, in the order it says it. The pod reads every
+    // one of these by name, and uploads the clip under `v`.
+    public static (string key, object? value)[] StagedFields(
+        string utility,
+        Vec3 at,
+        float recordedZ,
+        float pitch,
+        float yaw,
+        float lean
+    )
+    {
+        return new (string key, object? value)[]
+        {
+            ("utility", utility),
+            ("x", at.x),
+            ("y", at.y),
+            ("z", at.z),
+            ("dz", at.z - recordedZ),
+            ("pitch", pitch),
+            ("yaw", yaw),
+            ("lean", lean),
+            ("v", Version),
+        };
+    }
+
     public const int TickRate = 64;
 
     // Where to stand, from above; then the same spot from the eyes, looking
