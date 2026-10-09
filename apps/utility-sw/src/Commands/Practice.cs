@@ -1275,10 +1275,20 @@ public partial class UtilityPracticePlugin
         // they pressed on the website.
         _pendingMapLoad = PracticeMapChangeUtility.PendingFor(request, DateTime.UtcNow);
 
+        int countdown = PracticeMapChangeUtility.CountdownFor(_config.RenderMode);
+
+        if (countdown <= 0)
+        {
+            Core.Scheduler.NextTick(
+                () => Core.Engine.ExecuteCommand(PracticeMapChangeUtility.Command(request.map))
+            );
+            return;
+        }
+
         AnnounceMapChange(request.map);
 
         Core.Scheduler.DelayBySeconds(
-            PracticeMapChangeUtility.CountdownSeconds,
+            countdown,
             () => Core.Engine.ExecuteCommand(PracticeMapChangeUtility.Command(request.map))
         );
     }

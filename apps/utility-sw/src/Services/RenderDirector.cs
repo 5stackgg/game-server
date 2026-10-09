@@ -339,14 +339,14 @@ public class RenderDirector
                 take,
                 player,
                 "staged",
-                ("utility", take.Lineup.utility_type),
-                ("x", at.x),
-                ("y", at.y),
-                ("z", at.z),
-                ("dz", at.z - take.Lineup.release.feet_position.z),
-                ("pitch", eyes.X),
-                ("yaw", eyes.Y),
-                ("lean", body.X)
+                RenderDirectorUtility.StagedFields(
+                    take.Lineup.utility_type,
+                    at,
+                    take.Lineup.release.feet_position.z,
+                    eyes.X,
+                    eyes.Y,
+                    body.X
+                )
             );
             return;
         }

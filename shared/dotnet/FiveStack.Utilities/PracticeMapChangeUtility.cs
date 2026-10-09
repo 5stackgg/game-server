@@ -43,6 +43,13 @@ public static class PracticeMapChangeUtility
     // this countdown is the only warning anybody else on the server gets.
     public const int CountdownSeconds = 5;
 
+    // A render server has nobody on it to warn, and the pod filming on it is
+    // holding a GPU for every second of the wait.
+    public static int CountdownFor(bool renderMode)
+    {
+        return renderMode ? 0 : CountdownSeconds;
+    }
+
     /// usage: utility_practice_map &lt;map|workshop id&gt; [&lt;steamid64&gt; &lt;id[,id,...]&gt;]
     public static bool TryParse(string[] args, out PracticeMapChangeRequest request)
     {

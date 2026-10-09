@@ -1795,6 +1795,9 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void OnMapLoad(string mapName)
     {
+        // A take does not survive the level it was staged on: its camera and
+        // its thrower's pawn went with the map.
+        _director.Reset(null);
         _hud?.Reset();
         _menus.Clear();
         _recorder.Reset();
