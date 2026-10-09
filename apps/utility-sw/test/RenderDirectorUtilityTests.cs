@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using FiveStack.Entities.Practice;
 using FiveStack.Utilities;
@@ -67,6 +68,56 @@ public class RenderDirectorUtilityTests
     {
         Assert.True(RenderDirectorUtility.AimMatches(-30f, 179.9f, -30f, -179.95f));
         Assert.False(RenderDirectorUtility.AimMatches(-30f, 90f, -31f, 90f));
+    }
+
+    [Fact]
+    public void TheEyesAreTurnedByACommandThatLeavesTheBodyAlone()
+    {
+        Assert.Equal("setang -55.5 -161.25 0", RenderDirectorUtility.EyesCommand(-55.5f, -161.25f));
+        Assert.Equal("setang 0 90 0", RenderDirectorUtility.EyesCommand(0f, 90f));
+
+        CultureInfo before = CultureInfo.CurrentCulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+
+            string[] parts = RenderDirectorUtility.EyesCommand(-55.324947f, -161.02596f).Split(' ');
+
+            Assert.Equal(4, parts.Length);
+            Assert.Equal(-55.324947f, float.Parse(parts[1], CultureInfo.InvariantCulture));
+            Assert.Equal(-161.02596f, float.Parse(parts[2], CultureInfo.InvariantCulture));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = before;
+        }
+    }
+
+    [Fact]
+    public void AThrowerTippedBackIsNotStaged()
+    {
+        Assert.True(RenderDirectorUtility.StandsUpright(0f, 0f));
+        Assert.True(RenderDirectorUtility.StandsUpright(0.2f, -0.2f));
+        Assert.True(RenderDirectorUtility.StandsUpright(359.9f, 0f));
+        Assert.False(RenderDirectorUtility.StandsUpright(-55.32f, 0f));
+        Assert.False(RenderDirectorUtility.StandsUpright(0f, 4f));
+    }
+
+    [Fact]
+    public void ATippedThrowerLooksFromSomewhereElse()
+    {
+        Assert.Equal(0f, RenderDirectorUtility.LeanEyeDrift(0f));
+
+        // Jungle from Palace Alley, filmed with the body carrying the aim: the
+        // eye sat a full stride off the stance, four degrees of error on a
+        // wall 400 units away.
+        Assert.Equal(59.4f, RenderDirectorUtility.LeanEyeDrift(-55.32f), 1);
+        Assert.Equal(
+            RenderDirectorUtility.LeanEyeDrift(-28.8f),
+            RenderDirectorUtility.LeanEyeDrift(28.8f),
+            3
+        );
     }
 
     [Fact]

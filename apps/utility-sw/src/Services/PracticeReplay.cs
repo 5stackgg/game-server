@@ -733,9 +733,9 @@ public class PracticeReplay
 
     /// <summary>
     /// Stand a render's thrower on the lineup with its exact aim, and draw
-    /// nothing. Unlike StandOn the teleport carries the pitch: the camera is
-    /// filming through these eyes, so the view itself has to be on the line,
-    /// not just the server's idea of where the pawn looks.
+    /// nothing. Unlike StandOn the client's view is turned as well: the camera
+    /// is filming through these eyes, so the view itself has to be on the
+    /// line, not just the server's idea of where the pawn looks.
     /// </summary>
     public Vec3? Stage(IPlayer player, LineupRecord lineup)
     {
@@ -755,11 +755,11 @@ public class PracticeReplay
             return null;
         }
 
-        var aim = new QAngle(lineup.release.pitch, lineup.release.yaw, 0);
+        var facing = new QAngle(0, lineup.release.yaw, 0);
 
-        player.Teleport(new Vector(feet.x, feet.y, feet.z), aim, new Vector(0, 0, 0));
-        pawn.EyeAngles = aim;
-        ReapplyAngles(player, aim, aim, 2);
+        player.Teleport(new Vector(feet.x, feet.y, feet.z), facing, new Vector(0, 0, 0));
+        Repoint(player, lineup.release.pitch, lineup.release.yaw);
+        ReapplyEyes(player, lineup.release.pitch, lineup.release.yaw, 2);
 
         GiveUtility(player, lineup.utility_type);
 
@@ -777,10 +777,29 @@ public class PracticeReplay
             return;
         }
 
-        var aim = new QAngle(pitch, yaw, 0);
+        player.ExecuteCommand(RenderDirectorUtility.EyesCommand(pitch, yaw));
+        pawn.EyeAngles = new QAngle(pitch, yaw, 0);
+    }
 
-        player.Teleport(null, aim, new Vector(0, 0, 0));
-        pawn.EyeAngles = aim;
+    // The client re-predicts from the command it had in flight and snaps the
+    // view back, so once is not enough.
+    private void ReapplyEyes(IPlayer player, float pitch, float yaw, int frames)
+    {
+        if (frames <= 0)
+        {
+            return;
+        }
+
+        _core.Scheduler.NextTick(() =>
+        {
+            if (!player.IsValid)
+            {
+                return;
+            }
+
+            Repoint(player, pitch, yaw);
+            ReapplyEyes(player, pitch, yaw, frames - 1);
+        });
     }
 
     // Where a camera can sit on the line from its subject without being inside

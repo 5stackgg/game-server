@@ -222,6 +222,34 @@ public static class RenderDirectorUtility
             && MathF.Abs(AngleDelta(yaw, wantYaw)) <= StagedAngleTolerance;
     }
 
+    // Turns the eyes and nothing else. A teleport that carries a pitch tips the
+    // whole pawn back by it, and the first-person camera rides the pawn: at -55
+    // the eye sits 50 units behind the stance, so the crosshair covers a
+    // different spot on a near wall than it did for whoever recorded the lineup.
+    public static string EyesCommand(float pitch, float yaw)
+    {
+        // Widened first: a float's custom format keeps seven significant
+        // digits, which rounds a recorded angle in its fifth decimal.
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"setang {(double)pitch:0.######} {(double)yaw:0.######} 0"
+        );
+    }
+
+    public const float BodyLeanTolerance = 0.5f;
+
+    public static bool StandsUpright(float bodyPitch, float bodyRoll)
+    {
+        return MathF.Abs(AngleDelta(bodyPitch, 0f)) <= BodyLeanTolerance
+            && MathF.Abs(AngleDelta(bodyRoll, 0f)) <= BodyLeanTolerance;
+    }
+
+    // How far a pawn tipped by this much carries its eye off the stance.
+    public static float LeanEyeDrift(float bodyPitch)
+    {
+        return 2f * StandingEyeHeight * MathF.Abs(MathF.Sin(AngleDelta(bodyPitch, 0f) * MathF.PI / 360f));
+    }
+
     // Where the spot shot's clearance trace starts: above the thrower's hull
     // (72u), so it never begins inside the thrower.
     public const float AboveHead = 90f;

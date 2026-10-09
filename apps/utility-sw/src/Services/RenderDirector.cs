@@ -168,7 +168,7 @@ public class RenderDirector
         }
 
         // Spawned on the spot first, then placed exactly: the spawn is what
-        // squares the body up, the teleport is what puts the eyes on the line.
+        // squares the body up, staging is what puts the eyes on the line.
         _system.RespawnAt(
             player,
             RenderDirectorUtility.StageAt(lineup.release.feet_position, lineup.approach),
@@ -302,6 +302,7 @@ public class RenderDirector
 
         Vector origin = pawn.AbsOrigin ?? new Vector(0, 0, 0);
         QAngle eyes = pawn.EyeAngles;
+        QAngle body = pawn.AbsRotation ?? new QAngle(0, 0, 0);
         var at = new Vec3(origin.X, origin.Y, origin.Z);
         float drift = (at - take.Feet).LengthXY();
         bool aimed = RenderDirectorUtility.AimMatches(
@@ -310,8 +311,9 @@ public class RenderDirector
             take.Lineup.release.pitch,
             take.Lineup.release.yaw
         );
+        bool upright = RenderDirectorUtility.StandsUpright(body.X, body.Z);
 
-        if (drift <= RenderDirectorUtility.StagedPositionTolerance && aimed)
+        if (drift <= RenderDirectorUtility.StagedPositionTolerance && aimed && upright)
         {
             take.Beat = eRenderBeat.Staged;
             take.Tick = 0;
@@ -320,9 +322,8 @@ public class RenderDirector
             // camera placed off the feet has to match the eyes it cuts to.
             take.Feet = at;
 
-            // Level while the body is on screen: a teleport that carries the
-            // aim's pitch leans the whole model back with it. The aim goes
-            // back on at the tilt, when the camera is in the eyes.
+            // Looking level while the body is on screen. The aim goes back
+            // on at the tilt, when the camera is in the eyes.
             _replay.Repoint(player, 0f, take.Lineup.release.yaw);
 
             if (take.Camera == null || !take.Camera.IsValid)
@@ -344,7 +345,8 @@ public class RenderDirector
                 ("z", at.z),
                 ("dz", at.z - take.Lineup.release.feet_position.z),
                 ("pitch", eyes.X),
-                ("yaw", eyes.Y)
+                ("yaw", eyes.Y),
+                ("lean", body.X)
             );
             return;
         }
@@ -354,10 +356,11 @@ public class RenderDirector
             Fail(
                 take,
                 player,
-                aimed ? "position_drift" : "aim_drift",
+                !aimed ? "aim_drift" : (upright ? "position_drift" : "body_lean"),
                 ("drift", drift),
                 ("pitch", eyes.X),
-                ("yaw", eyes.Y)
+                ("yaw", eyes.Y),
+                ("lean", body.X)
             );
             return;
         }
@@ -523,12 +526,15 @@ public class RenderDirector
         take.StillSent = true;
 
         // An aim still is only worth having if the eyes were on the lineup's
-        // line when it was taken, so it says how far off they were.
+        // line when it was taken, so it says how far off they were. The angles
+        // alone are not enough: a pawn tipped back looks along the right line
+        // from the wrong place, which is what eye_off measures.
         CCSPlayerPawn? pawn = player.PlayerPawn;
 
         if (kind.StartsWith("aim", StringComparison.Ordinal) && pawn != null && pawn.IsValid)
         {
             QAngle eyes = pawn.EyeAngles;
+            QAngle body = pawn.AbsRotation ?? new QAngle(0, 0, 0);
 
             Tell(
                 take,
@@ -536,7 +542,8 @@ public class RenderDirector
                 "still",
                 ("kind", kind),
                 ("dpitch", RenderDirectorUtility.AngleDelta(eyes.X, take.Lineup.release.pitch)),
-                ("dyaw", RenderDirectorUtility.AngleDelta(eyes.Y, take.Lineup.release.yaw))
+                ("dyaw", RenderDirectorUtility.AngleDelta(eyes.Y, take.Lineup.release.yaw)),
+                ("eye_off", RenderDirectorUtility.LeanEyeDrift(body.X))
             );
             return;
         }
