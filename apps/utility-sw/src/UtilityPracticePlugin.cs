@@ -44,6 +44,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     private PracticeDrill _drill = null!;
     private MapCalloutsReporter _callouts = null!;
     private PracticeSolver _solver = null!;
+    private PracticeDiscovery _discovery = null!;
     private RenderDirector _director = null!;
     private SmokeVoxelRecorder _voxels = null!;
 
@@ -109,7 +110,9 @@ public partial class UtilityPracticePlugin : BasePlugin
             .AddSingleton<PracticeRelay>()
             .AddSingleton<PracticePlaybook>()
             .AddSingleton<PracticeDrill>()
+            .AddSingleton<GrenadeEmitter>()
             .AddSingleton<PracticeSolver>()
+            .AddSingleton<PracticeDiscovery>()
             .AddSingleton<RenderDirector>()
             .AddSingleton<SmokeVoxelRecorder>()
             .AddSingleton<HudKit>()
@@ -131,6 +134,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _drill = _serviceProvider.GetRequiredService<PracticeDrill>();
         _callouts = _serviceProvider.GetRequiredService<MapCalloutsReporter>();
         _solver = _serviceProvider.GetRequiredService<PracticeSolver>();
+        _discovery = _serviceProvider.GetRequiredService<PracticeDiscovery>();
         _director = _serviceProvider.GetRequiredService<RenderDirector>();
         _voxels = _serviceProvider.GetRequiredService<SmokeVoxelRecorder>();
         _hud = ResolveHud();
@@ -151,7 +155,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _replay.AnnouncesLoad = steamId => !UseHud(steamId);
         _replay.All = steamId => _library.For(steamId);
         // A solve rains live HE and molotovs on a map people are standing in.
-        _system.SolveRunning = () => _solver.IsBusy;
+        _system.SolveRunning = () => _solver.IsBusy || _discovery.IsBusy;
         _session.Refreshed += OnSessionRefreshed;
         _recorder.Thrown += _system.OnThrown;
         _recorder.Finalized += _score.OnFinalized;
@@ -473,6 +477,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _drill.Reset();
         _system.Reset();
         _solver.Reset();
+        _discovery.Reset();
     }
 
     // The plugin's one line to a machine. Written straight to the server
@@ -499,6 +504,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         if (_config.RenderMode)
         {
             _director.OnTick();
+            _discovery.OnTick();
             return;
         }
 
@@ -1733,6 +1739,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _system.RefillUtility();
         _playbook.Tick();
         _solver.Pump();
+        _discovery.Pump();
     }
 
     // A step stands a player on its lineup by the same path .load does, so the
@@ -1909,8 +1916,9 @@ public partial class UtilityPracticePlugin : BasePlugin
         _score.Reset();
         _system.Reset();
         // A calibration is a statement about one map's collision mesh, so it
-        // does not survive the mesh being replaced.
+        // does not survive the mesh being replaced. Nor does a discovery.
         _solver.Reset();
+        _discovery.Reset();
 
         // Anything that did survive the map change is despawned outright, and
         // the handles are dropped either way -- a stale handle can be recycled

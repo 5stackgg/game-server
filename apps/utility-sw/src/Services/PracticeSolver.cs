@@ -35,7 +35,7 @@ public class PracticeSolver
     private const int EmitEveryTicks = 2;
 
     private readonly ISwiftlyCore _core;
-    private readonly PracticeRecorder _recorder;
+    private readonly GrenadeEmitter _emitter;
     private readonly ILogger<PracticeSolver> _logger;
 
     private enum FlightKind
@@ -76,14 +76,10 @@ public class PracticeSolver
     private int _tick;
     private int _lastRelease;
 
-    public PracticeSolver(
-        ISwiftlyCore core,
-        PracticeRecorder recorder,
-        ILogger<PracticeSolver> logger
-    )
+    public PracticeSolver(ISwiftlyCore core, GrenadeEmitter emitter, ILogger<PracticeSolver> logger)
     {
         _core = core;
-        _recorder = recorder;
+        _emitter = emitter;
         _logger = logger;
     }
 
@@ -626,104 +622,19 @@ public class PracticeSolver
 
     private IPlayer? Owner()
     {
-        IPlayer? preferred = null;
-
-        foreach (IPlayer player in _core.PlayerManager.GetAllPlayers())
-        {
-            if (player == null || !player.IsValid || player.IsFakeClient || !player.IsAlive)
-            {
-                continue;
-            }
-
-            CBasePlayerPawn? pawn = player.Pawn;
-
-            if (pawn == null || !pawn.IsValid)
-            {
-                continue;
-            }
-
-            if (player.SteamID == _owner)
-            {
-                return player;
-            }
-
-            preferred ??= player;
-        }
-
-        return preferred;
+        return _emitter.Owner(_owner, allowBots: false);
     }
 
     private uint? Emit(string utilityType, LaunchSeed seed, IPlayer owner)
     {
-        CBasePlayerPawn? pawn = owner.Pawn;
+        uint? index = _emitter.Emit(utilityType, seed, owner);
 
-        if (pawn == null || !pawn.IsValid)
+        if (index != null)
         {
-            return null;
+            Hide(index.Value);
         }
 
-        var position = new Vector(seed.position.x, seed.position.y, seed.position.z);
-        var velocity = new Vector(seed.velocity.x, seed.velocity.y, seed.velocity.z);
-
-        (float pitch, float yaw) = TrajectoryUtility.AnglesFromVelocity(seed.velocity);
-        var angles = new QAngle(pitch, yaw, 0);
-
-        Team team = owner.Controller.Team;
-
-        // The recorder's own guard against counting a grenade the plugin threw
-        // as a lineup somebody made or an attempt somebody took. A solve emits
-        // hundreds, so this is the difference between a solve and a library
-        // full of rubbish.
-        _recorder.Emitting = true;
-
-        try
-        {
-            CBaseCSGrenadeProjectile projectile;
-
-            switch (utilityType)
-            {
-                case "Smoke":
-                    projectile = _core.Game.EmitSmokeGrenade(
-                        position,
-                        angles,
-                        velocity,
-                        team,
-                        pawn
-                    );
-                    break;
-                case "Flash":
-                    projectile = _core.Game.EmitFlashbang(position, angles, velocity, pawn);
-                    break;
-                case "HighExplosive":
-                    projectile = _core.Game.EmitHEGrenade(position, angles, velocity, pawn);
-                    break;
-                case "Molotov":
-                    projectile = _core.Game.EmitMolotov(position, angles, velocity, team, pawn);
-                    break;
-                default:
-                    projectile = _core.Game.EmitDecoy(position, angles, velocity, pawn);
-                    break;
-            }
-
-            if (!projectile.IsValid)
-            {
-                return null;
-            }
-
-            _recorder.Forget(projectile.Index);
-            Hide(projectile.Index);
-
-            return projectile.Index;
-        }
-        catch (Exception error)
-        {
-            _logger.LogError(error, "unable to emit a solver {utility}", utilityType);
-            return null;
-        }
-        finally
-        {
-            _recorder.Emitting = false;
-        }
+        return index;
     }
 
     // Deferred a tick for two reasons: this is usually called from inside the
@@ -731,17 +642,7 @@ public class PracticeSolver
     // the entity or it shows for the frame between the two.
     private void Retire(uint index)
     {
-        _core.Scheduler.NextTick(() =>
-        {
-            CBaseCSGrenadeProjectile? projectile = TryProjectileAt(index);
-
-            if (projectile != null && projectile.IsValid)
-            {
-                projectile.Despawn();
-            }
-
-            Unhide(index);
-        });
+        _emitter.Retire(index, () => Unhide(index));
     }
 
     private void Hide(uint index)
@@ -754,13 +655,6 @@ public class PracticeSolver
 
     private CBaseCSGrenadeProjectile? TryProjectileAt(uint index)
     {
-        try
-        {
-            return _core.EntitySystem.GetEntityByIndex<CBaseCSGrenadeProjectile>(index);
-        }
-        catch
-        {
-            return null;
-        }
+        return _emitter.ProjectileAt(index);
     }
 }

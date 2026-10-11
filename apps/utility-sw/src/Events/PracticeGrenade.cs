@@ -102,6 +102,7 @@ public partial class UtilityPracticePlugin
     {
         LineupRecord? thrown = _recorder.OnDetonated(entityIndex, position);
         _solver.OnDetonated(entityIndex, position);
+        _discovery.OnDetonated(entityIndex, position);
         _director.OnDetonated(entityIndex, position);
         Signal(_replay.GhostDetonated(entityIndex, position));
 
