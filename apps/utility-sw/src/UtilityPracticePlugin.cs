@@ -477,7 +477,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _drill.Reset();
         _system.Reset();
         _solver.Reset();
-        _discovery.Reset();
+        _discovery.Abort("the server shut down");
     }
 
     // The plugin's one line to a machine. Written straight to the server
@@ -1918,7 +1918,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         // A calibration is a statement about one map's collision mesh, so it
         // does not survive the mesh being replaced. Nor does a discovery.
         _solver.Reset();
-        _discovery.Reset();
+        _discovery.Abort("the server changed map");
 
         // Anything that did survive the map change is despawned outright, and
         // the handles are dropped either way -- a stale handle can be recycled
@@ -2318,7 +2318,9 @@ public partial class UtilityPracticePlugin : BasePlugin
             Core.Engine.ExecuteCommand(string.Join(";", RenderCfg));
         }
 
-        if (_bots.Count == 0)
+        // The cfg runs twice on a load; the second can land after a discovery
+        // has brought in the bot that owns its grenades.
+        if (_bots.Count == 0 && !_discovery.IsBusy)
         {
             Core.Engine.ExecuteCommand(string.Join(";", NoBotsCfg));
         }

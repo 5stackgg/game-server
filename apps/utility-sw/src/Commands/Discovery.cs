@@ -8,6 +8,10 @@ namespace UtilityPractice;
 // grenades on the map, and nobody plays on a render server.
 public partial class UtilityPracticePlugin
 {
+    // Accepted and still being fetched: Start has not run yet, so the
+    // discovery itself does not know the id, and a cancel or a second run in
+    // that window has to be answered from here.
+    private string? _discoveryFetching;
     [Command("utility_discovery_run", registerRaw: true, permission: "")]
     public void OnDiscoveryRun(ICommandContext context)
     {
@@ -30,30 +34,45 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        if (_discovery.IsBusy)
+        string? busyWith = _discoveryFetching ?? _discovery.JobId;
+
+        if (busyWith != null)
         {
-            Reply(context, $"busy with discovery {_discovery.JobId}");
+            Reply(context, $"busy with discovery {busyWith}");
             return;
         }
 
+        _discoveryFetching = id;
         Reply(context, $"discovery {id} accepted");
 
         _ = Task.Run(async () =>
         {
             DiscoveryJob? job = await _api.DiscoveryJob(id);
 
-            if (job == null || job.id != id)
-            {
-                await _api.DiscoveryDone(id, "the server could not fetch the discovery");
-                return;
-            }
-
             Core.Scheduler.NextTick(() =>
             {
+                if (_discoveryFetching != id)
+                {
+                    _ = _api.DiscoveryDone(id, "cancelled");
+                    return;
+                }
+
+                _discoveryFetching = null;
+
+                if (job == null || job.id != id)
+                {
+                    _ = _api.DiscoveryDone(id, "the server could not fetch the discovery");
+                    return;
+                }
+
+                // One after another: the panel only takes a report while the
+                // discovery is open, so the last outcomes must land before done.
+                Task posted = Task.CompletedTask;
+
                 bool started = _discovery.Start(
                     job,
-                    outcomes => _ = _api.DiscoveryResults(id, outcomes),
-                    error => _ = _api.DiscoveryDone(id, error)
+                    outcomes => posted = posted.ContinueWith(_ => _api.DiscoveryResults(id, outcomes)).Unwrap(),
+                    error => posted = posted.ContinueWith(_ => _api.DiscoveryDone(id, error)).Unwrap()
                 );
 
                 if (!started)
@@ -73,6 +92,13 @@ public partial class UtilityPracticePlugin
         }
 
         string id = DiscoveryId(context);
+
+        if (_discoveryFetching != null && _discoveryFetching == id)
+        {
+            _discoveryFetching = null;
+            Reply(context, $"discovery {id} cancelled");
+            return;
+        }
 
         if (_discovery.JobId != id || !_discovery.Cancel())
         {

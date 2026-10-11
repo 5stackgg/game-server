@@ -206,6 +206,35 @@ public class DiscoveryPlanTests
         Assert.True(plan.Done);
     }
 
+    // A hit whose probes were never all thrown has not been measured, and
+    // must not read as perfectly forgiving.
+    [Fact]
+    public void AHitClosedBeforeItsProbesLandHasNoForgiveness()
+    {
+        var plan = new DiscoveryPlan(Job(Candidate("hit", -40f, 0f)));
+        DiscoveryThrow first = plan.Next(1).Single();
+        plan.Observe(first, Fly(first, -40f, 20f));
+        DiscoveryThrow probe = plan.Next(1).Single();
+        plan.Observe(probe, Fly(probe, -40f, 20f));
+
+        plan.Close();
+        DiscoveryOutcome outcome = plan.TakeFinished().Single();
+
+        Assert.Equal("verified", outcome.status);
+        Assert.Equal(-1f, outcome.forgiveness);
+    }
+
+    [Fact]
+    public void AFullyProbedHitMeasuresItsForgiveness()
+    {
+        var plan = new DiscoveryPlan(Job(Candidate("hit", -40f, 0f)));
+        List<DiscoveryOutcome> outcomes = Run(plan, thrown => Fly(thrown, -40f, 20f));
+
+        DiscoveryOutcome outcome = outcomes.Single();
+        Assert.Equal("verified", outcome.status);
+        Assert.InRange(outcome.forgiveness, 4.9f, 10.1f);
+    }
+
     [Theory]
     [InlineData("", "", false, "Stationary")]
     [InlineData("", "", true, "Jump")]

@@ -29,6 +29,11 @@ public class PracticeDiscovery
     private const int RestTicks = 12;
     private const float RestSpeed = 1f;
 
+    // A bot is asked for at most this often, and given up on after this many
+    // asks: a server that will not take one will not throw anything.
+    private const int OwnerAskEveryTicks = 64 * 10;
+    private const int OwnerAsks = 3;
+
     // Every fourth tick of a flight is kept for its path.
     private const int PathEveryTicks = 4;
     private const int MaxPathPoints = 256;
@@ -59,7 +64,8 @@ public class PracticeDiscovery
     private bool _closing;
     private int _tick;
     private int _lastRelease;
-    private bool _addedBot;
+    private int _ownerAsks;
+    private int _ownerAskedTick;
 
     public PracticeDiscovery(ISwiftlyCore core, GrenadeEmitter emitter, ILogger<PracticeDiscovery> logger)
     {
@@ -108,6 +114,19 @@ public class PracticeDiscovery
         return true;
     }
 
+    // A map change or an unload under a running discovery says so, rather
+    // than leaving the panel to notice minutes later.
+    public void Abort(string reason)
+    {
+        if (_plan != null)
+        {
+            Finish(reason);
+            return;
+        }
+
+        Reset();
+    }
+
     public void Reset()
     {
         foreach (uint index in _inFlight.Keys.ToList())
@@ -121,6 +140,7 @@ public class PracticeDiscovery
         _job = null;
         _report = null;
         _done = null;
+        _ownerAsks = 0;
     }
 
     public void OnTick()
@@ -269,15 +289,23 @@ public class PracticeDiscovery
     }
 
     // Nobody plays on a discovery server, and an emitted grenade needs a live
-    // pawn to own it. One frozen bot does, asked for once.
+    // pawn to own it. One frozen bot does. Asked for again if it never came or
+    // has gone: a map load's practice cfg kicks every bot.
     private void AddOwner()
     {
-        if (_addedBot)
+        if (_ownerAsks > 0 && _tick - _ownerAskedTick < OwnerAskEveryTicks)
         {
             return;
         }
 
-        _addedBot = true;
+        if (_ownerAsks >= OwnerAsks)
+        {
+            Finish("no bot could join to throw the grenades");
+            return;
+        }
+
+        _ownerAsks++;
+        _ownerAskedTick = _tick;
         _core.Engine.ExecuteCommand(
             "bot_quota_mode normal;bot_join_after_player 0;bot_stop 1;bot_freeze 1;bot_chatter off;bot_quota 1;bot_add_ct"
         );

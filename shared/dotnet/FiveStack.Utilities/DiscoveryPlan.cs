@@ -323,6 +323,9 @@ public class DiscoveryPlan
 
     private void Finish(Track track, bool verified)
     {
+        // A probe still to land when the budget ran out leaves forgiveness
+        // unmeasured, which is not the same as perfectly forgiving.
+        bool probed = track.state == eState.Probing && track.outstanding == 0;
         track.state = eState.Done;
         bool hit = verified && track.best.distance <= _job.radius;
 
@@ -338,7 +341,7 @@ public class DiscoveryPlan
             distance = track.best.distance == float.MaxValue ? -1f : track.best.distance,
             bounces = track.best.landing.bounces,
             flight_time_ms = track.best.landing.ticks * 1000 / 64,
-            forgiveness = hit && track.forgiveness != float.MaxValue ? track.forgiveness : -1f,
+            forgiveness = hit && probed && track.forgiveness != float.MaxValue ? track.forgiveness : -1f,
             grenades = track.grenades,
             path = hit ? track.best.landing.path : new List<Vec3>(),
         };
