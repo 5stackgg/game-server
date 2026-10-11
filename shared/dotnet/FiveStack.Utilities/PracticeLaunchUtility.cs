@@ -13,35 +13,41 @@ namespace FiveStack.Utilities;
 //   * a solved lineup is worthless to a human unless the aim reported back is
 //     the aim that produces it.
 //
-// Every constant here is a claim about a CS2 build that nobody in this repo can
-// check by reading it. So none of them are trusted: PracticeCalibrationUtility
-// replays them against throws the engine itself recorded, and a solve does not
-// start until they reproduce those throws.
+// Every constant here was fitted to seeds the engine itself recorded, and the
+// tests hold the function to those seeds. PracticeCalibrationUtility still
+// replays them against throws on the live server before a solve starts: a CS2
+// update can move any of them.
 public static class PracticeLaunchUtility
 {
-    // CS2 does not throw along the crosshair. It bends the aim down by ten
-    // degrees at the horizon and stretches the rest of the range to fit, which
-    // is why a grenade always leaves slightly above where you are looking.
+    // CS2 does not throw along the crosshair. It tips the throw ten degrees up
+    // at the horizon and squeezes the rest of the range to fit, with a
+    // different squeeze above and below the horizon: looking up, the throw
+    // pitch is -10 + p * 80/90; looking down, -10 + p * 100/90. Every seed the
+    // engine has recorded fits that to a hundredth of a degree. A single slope
+    // put an aim at -55 twelve degrees under its own grenade.
     public const float PitchRemapOffset = -10f;
-    public const float PitchRemapSlope = (90f + 10f) / 90f;
+    public const float PitchRemapSlopeUp = (90f + PitchRemapOffset) / 90f;
+    public const float PitchRemapSlopeDown = (90f - PitchRemapOffset) / 90f;
 
-    // Release speed falls off linearly with the remapped pitch and saturates,
-    // so everything from roughly 22 degrees up throws at the same speed.
-    public const float SpeedPerDegree = 6f;
-    public const float MaxSpeed = 750f;
+    // A full throw leaves at 675 u/s whatever the pitch: recorded throws from
+    // -67 to +15 degrees of throw pitch all fit it exactly, with none of
+    // CS:GO's fall-off towards the floor.
+    public const float FullSpeed = 675f;
 
     // The projectile spawns ahead of the eye, not at it.
     public const float ForwardOffset = 16f;
 
-    // A moving player's own velocity is added to the release. The solver only
-    // ever throws from a standstill, so this term is exercised by calibration
-    // and not by a solve.
+    // ...and lower for a weaker throw: twelve units for a right click, six for
+    // both buttons. Recorded half throws spawn exactly six under full ones.
+    public const float WeakDrop = 12f;
+
+    // A moving player's own velocity is added to the release, scaled. Every
+    // recorded jump throw comes out at the same 218.8 u/s of lift through this
+    // factor, and every running throw straight along the player's facing.
     public const float PlayerVelocityScale = 1.25f;
 
-    // A right click still throws, it just throws weakly. This is the shape of
-    // the curve between a right click and a left one; calibration measures the
-    // real value per strength bucket and the solver uses the measurement.
-    public const float MinStrengthScale = 0.2f;
+    // A right click still throws, at 30% of a full one; both buttons at 65%.
+    public const float MinStrengthScale = 0.3f;
 
     private const float DegreesToRadians = MathF.PI / 180f;
     private const float RadiansToDegrees = 180f / MathF.PI;
@@ -71,13 +77,19 @@ public static class PracticeLaunchUtility
 
     public static float RemapPitch(float pitch)
     {
-        return PitchRemapOffset + (NormalizePitch(pitch) * PitchRemapSlope);
+        float normalized = NormalizePitch(pitch);
+        float slope = normalized < 0f ? PitchRemapSlopeUp : PitchRemapSlopeDown;
+
+        return PitchRemapOffset + (normalized * slope);
     }
 
     // The inverse, for reading an aim back out of a seed the engine recorded.
+    // The horizon maps to the offset, so that is where the two slopes meet.
     public static float UnremapPitch(float remapped)
     {
-        return (remapped - PitchRemapOffset) / PitchRemapSlope;
+        float slope = remapped < PitchRemapOffset ? PitchRemapSlopeUp : PitchRemapSlopeDown;
+
+        return (remapped - PitchRemapOffset) / slope;
     }
 
     // Source's convention: yaw counter-clockwise from +X, pitch positive when
@@ -103,7 +115,7 @@ public static class PracticeLaunchUtility
 
     public static float BaseSpeed(float pitch)
     {
-        return MathF.Min((90f - RemapPitch(pitch)) * SpeedPerDegree, MaxSpeed);
+        return FullSpeed;
     }
 
     public static float StrengthScale(float strength)
@@ -140,10 +152,11 @@ public static class PracticeLaunchUtility
     {
         Vec3 direction = ThrowDirection(pitch, yaw);
         float speed = BaseSpeed(pitch) * StrengthScale(strength) * speedCorrection;
+        float drop = WeakDrop * (1f - Math.Clamp(strength, 0f, 1f));
 
         return new LaunchSeed
         {
-            position = eye + (direction * ForwardOffset),
+            position = eye + (direction * ForwardOffset) - new Vec3(0f, 0f, drop),
             velocity =
                 (direction * speed) + (playerVelocity * PlayerVelocityScale),
             direction = direction,

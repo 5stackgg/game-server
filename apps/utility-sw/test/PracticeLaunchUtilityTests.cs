@@ -3,10 +3,9 @@ using FiveStack.Enums;
 using FiveStack.Utilities;
 using Xunit;
 
-// The launch model is the only physics the solver contains, and none of it can
-// be verified from here -- these tests pin the shape of the function so a
-// change to it is deliberate. Whether the constants match CS2 is a question
-// only a live server answers, which is what calibration is for.
+// The launch model is the only physics the solver contains. The recorded-throw
+// tests at the bottom hold it to seeds the engine wrote on de_mirage; the rest
+// pin its shape so a change to it is deliberate.
 public class PracticeLaunchUtilityTests
 {
     private static readonly Vec3 Eye = new Vec3(100f, 200f, 64f);
@@ -66,16 +65,39 @@ public class PracticeLaunchUtilityTests
         Assert.True(thrown.z > 0f);
     }
 
+    // Recorded throws from -67 to +15 degrees of throw pitch all leave at the
+    // same speed: CS2 has none of CS:GO's fall-off towards the floor.
     [Fact]
-    public void SpeedSaturates()
+    public void AFullThrowLeavesAtTheSameSpeedAtEveryPitch()
     {
-        Assert.Equal(
-            PracticeLaunchUtility.MaxSpeed,
-            PracticeLaunchUtility.BaseSpeed(-60f),
-            3
-        );
-        Assert.True(PracticeLaunchUtility.BaseSpeed(0f) < PracticeLaunchUtility.MaxSpeed);
-        Assert.True(PracticeLaunchUtility.BaseSpeed(45f) < PracticeLaunchUtility.BaseSpeed(0f));
+        foreach (float pitch in new[] { -80f, -45f, 0f, 22f, 60f })
+        {
+            Assert.Equal(PracticeLaunchUtility.FullSpeed, PracticeLaunchUtility.BaseSpeed(pitch), 3);
+        }
+    }
+
+    // The two halves of the range are squeezed differently, and the horizon is
+    // where they meet.
+    [Fact]
+    public void RemapsLookingUpAndLookingDownDifferently()
+    {
+        Assert.Equal(-10f + (-45f * 80f / 90f), PracticeLaunchUtility.RemapPitch(-45f), 3);
+        Assert.Equal(-10f + (45f * 100f / 90f), PracticeLaunchUtility.RemapPitch(45f), 3);
+        Assert.Equal(-10f, PracticeLaunchUtility.RemapPitch(-0.0001f), 2);
+    }
+
+    [Fact]
+    public void AWeakThrowSpawnsLower()
+    {
+        Vec3 none = new Vec3(0f, 0f, 0f);
+        LaunchSeed full = PracticeLaunchUtility.Seed(Eye, -30f, 0f, 1f, none);
+        LaunchSeed half = PracticeLaunchUtility.Seed(Eye, -30f, 0f, 0.5f, none);
+        LaunchSeed drop = PracticeLaunchUtility.Seed(Eye, -30f, 0f, 0f, none);
+
+        Assert.Equal(6f, full.position.z - half.position.z, 3);
+        Assert.Equal(12f, full.position.z - drop.position.z, 3);
+        Assert.Equal(0.65f * full.speed, half.speed, 2);
+        Assert.Equal(0.3f * full.speed, drop.speed, 2);
     }
 
     [Fact]
@@ -115,10 +137,11 @@ public class PracticeLaunchUtilityTests
             (seed.position - Eye).Length(),
             2
         );
-        Assert.Equal(
-            0f,
+        // Acos of a float dot product near 1 is only good to a few hundredths.
+        Assert.InRange(
             PracticeLaunchUtility.AngleBetween(seed.position - Eye, seed.velocity),
-            2
+            0f,
+            0.05f
         );
         Assert.Equal(seed.speed, seed.velocity.Length(), 2);
     }
@@ -166,6 +189,107 @@ public class PracticeLaunchUtilityTests
             0f,
             PracticeLaunchUtility.BearingTo(new Vec3(0f, 0f, 0f), new Vec3(500f, 0f, 200f)),
             3
+        );
+    }
+
+    // Seeds the engine wrote for real throws on de_mirage, with what the
+    // plugin knew at the release: the stance, the eye and the aim. The aim and
+    // the strength alone have to give the velocity the engine wrote.
+    private static void AssertSeed(
+        LaunchSeed predicted,
+        Vec3 position,
+        Vec3 velocity,
+        float positionTolerance = 0.1f
+    )
+    {
+        Assert.InRange((predicted.velocity - velocity).Length(), 0f, 0.5f);
+        Assert.InRange((predicted.position - position).Length(), 0f, positionTolerance);
+    }
+
+    [Fact]
+    public void ReproducesStandingThrowsTheEngineRecorded()
+    {
+        // Top of Mid Smoke from T Spawn, a left click looking up.
+        AssertSeed(
+            PracticeLaunchUtility.Seed(
+                new Vec3(1422.9536f, 36.457386f, -104f),
+                -42.33331f,
+                -160.5022f,
+                1f,
+                new Vec3(0f, 0f, 0f)
+            ),
+            new Vec3(1412.7892f, 32.858425f, -92.17914f),
+            new Vec3(-428.81012f, -151.83116f, 498.69247f)
+        );
+
+        // B Site Cat Smoke from Back Alley.
+        AssertSeed(
+            PracticeLaunchUtility.Seed(
+                new Vec3(-160.04878f, 887.93933f, -71.67128f),
+                -45.843662f,
+                -134.48611f,
+                1f,
+                new Vec3(0f, 0f, 0f)
+            ),
+            new Vec3(-167.14255f, 880.71716f, -59.28101f),
+            new Vec3(-299.26822f, -304.68524f, 522.7145f)
+        );
+    }
+
+    // A jump throw bind releases with the player rising and the eye raised, the
+    // same on every throw (TechniqueProfile.JumpThrow).
+    [Fact]
+    public void ReproducesJumpThrowsTheEngineRecorded()
+    {
+        Vec3 lift = new Vec3(0f, 0f, TechniqueProfile.JumpThrowLift);
+
+        // Jungle Smoke from Palace Alley, the throw the render aim fix was
+        // checked against.
+        AssertSeed(
+            PracticeLaunchUtility.Seed(
+                new Vec3(908.68005f, -1036.0312f, -251.96875f + TechniqueProfile.JumpThrowEye),
+                -55.324947f,
+                -161.02596f,
+                1f,
+                lift
+            ),
+            new Vec3(900.9274f, -1038.6968f, -148.32233f),
+            new Vec3(-327.06262f, -112.45098f, 853.15137f)
+        );
+
+        // Middle Smoke from Top of Mid: both buttons, so 65% of the speed and
+        // six units lower.
+        AssertSeed(
+            PracticeLaunchUtility.Seed(
+                new Vec3(343.30295f, -621.6206f, -162.3318f + TechniqueProfile.JumpThrowEye),
+                -8.508511f,
+                -168.26045f,
+                0.5f,
+                lift
+            ),
+            new Vec3(328.36786f, -624.72424f, -73.59377f),
+            new Vec3(-409.54797f, -85.108154f, 405.88336f)
+        );
+    }
+
+    // Clear Smoke in Snipers Nest: a right click looking down, the other half
+    // of the pitch remap and the weakest throw.
+    [Fact]
+    public void ReproducesADroppedThrowLookingDown()
+    {
+        LaunchSeed predicted = PracticeLaunchUtility.Seed(
+            new Vec3(-1247.6334f, -924.0628f, -111.046875f),
+            22.598167f,
+            57.574562f,
+            0f,
+            new Vec3(0f, 0f, 221.9f)
+        );
+
+        Assert.InRange(
+            (new Vec3(predicted.velocity.x, predicted.velocity.y, 0f)
+                - new Vec3(104.82733f, 165.01947f, 0f)).Length(),
+            0f,
+            0.5f
         );
     }
 
