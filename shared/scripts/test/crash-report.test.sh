@@ -309,6 +309,55 @@ assert_equals "$(ls "$CRASH_REPORTS_DIR/other-server" | wc -l | tr -d ' ')" "3" 
 CRASH_REPORTS_KEPT=10
 teardown
 
+# Every game pod on a node shares /opt/demos, so whatever else sits beside the
+# reports, or a link pointing out of them, is not the pruner's to delete.
+echo "prune_crash_reports never deletes through a symlink named like a report"
+setup
+CRASH_REPORTS_KEPT=1
+server_dir="$CRASH_REPORTS_DIR/$SERVER_ID"
+mkdir -p "$server_dir/20261001T100000Z" "$server_dir/20261002T132251Z" "$workdir/demos"
+echo "demo" > "$workdir/demos/match.dem"
+ln -s "$workdir/demos" "$server_dir/20260901T000000Z"
+prune_crash_reports "$server_dir" 2> /dev/null
+assert_equals "$(cat "$workdir/demos/match.dem" 2> /dev/null)" "demo" \
+  "pruning deleted what a symlink points at"
+if [ ! -L "$server_dir/20260901T000000Z" ]; then
+  fail "a symlink named like a report was pruned"
+fi
+assert_missing "$server_dir/20261001T100000Z" "the old report was kept"
+if [ ! -d "$server_dir/20261002T132251Z" ]; then
+  fail "the newest report was pruned"
+fi
+CRASH_REPORTS_KEPT=10
+teardown
+
+echo "prune_crash_reports neither deletes nor counts what is not a report"
+setup
+CRASH_REPORTS_KEPT=1
+server_dir="$CRASH_REPORTS_DIR/$SERVER_ID"
+for stamp in 20261001T100000Z 20261002T090000Z 20261002T132251Z; do
+  mkdir -p "$server_dir/$stamp"
+done
+for other in 0-pinned 20261001T100000Z.bak notes; do
+  mkdir -p "$server_dir/$other"
+  echo "$other" > "$server_dir/$other/keep.txt"
+done
+echo "file" > "$server_dir/20261002T000000Z"
+prune_crash_reports "$server_dir" 2> /dev/null
+for other in 0-pinned 20261001T100000Z.bak notes; do
+  assert_equals "$(cat "$server_dir/$other/keep.txt" 2> /dev/null)" "$other" \
+    "the directory $other is not a report but was pruned"
+done
+assert_equals "$(cat "$server_dir/20261002T000000Z" 2> /dev/null)" "file" \
+  "a file named like a report was pruned"
+assert_missing "$server_dir/20261001T100000Z" "an old report was kept"
+assert_missing "$server_dir/20261002T090000Z" "an old report was kept"
+if [ ! -d "$server_dir/20261002T132251Z" ]; then
+  fail "the newest report was pruned"
+fi
+CRASH_REPORTS_KEPT=10
+teardown
+
 if [ "$failures" -gt 0 ]; then
   echo "$failures failure(s)"
   exit 1
