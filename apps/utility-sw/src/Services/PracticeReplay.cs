@@ -1086,6 +1086,19 @@ public class PracticeReplay
         }
     }
 
+    // The saved lineup a ghost in the air is replaying and who it was replayed
+    // for, or null for anything else -- including a replay of a throw that was
+    // never saved. Asked before GhostDetonated, which forgets the ghost.
+    public (string lineupId, ulong steamId)? GhostLineup(uint entityIndex)
+    {
+        if (!_ghostThrows.TryGetValue(entityIndex, out GhostThrow? ghost) || ghost.LineupId == null)
+        {
+            return null;
+        }
+
+        return (ghost.LineupId, ghost.OwnerSteamId);
+    }
+
     // Answers the console line for a ghost the plugin emitted, or null when the
     // detonation belongs to somebody's real throw.
     public string? GhostDetonated(uint entityIndex, Vec3 position)

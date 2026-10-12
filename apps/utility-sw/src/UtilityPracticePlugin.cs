@@ -45,6 +45,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     private MapCalloutsReporter _callouts = null!;
     private PracticeSolver _solver = null!;
     private RenderDirector _director = null!;
+    private SmokeVoxelRecorder _voxels = null!;
 
     private CancellationTokenSource? _secondTimer;
     private CancellationTokenSource? _refillTimer;
@@ -110,6 +111,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             .AddSingleton<PracticeDrill>()
             .AddSingleton<PracticeSolver>()
             .AddSingleton<RenderDirector>()
+            .AddSingleton<SmokeVoxelRecorder>()
             .AddSingleton<HudKit>()
             .AddSingleton<HudPrompt>()
             .AddSingleton<MapCalloutsReporter>();
@@ -130,6 +132,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _callouts = _serviceProvider.GetRequiredService<MapCalloutsReporter>();
         _solver = _serviceProvider.GetRequiredService<PracticeSolver>();
         _director = _serviceProvider.GetRequiredService<RenderDirector>();
+        _voxels = _serviceProvider.GetRequiredService<SmokeVoxelRecorder>();
         _hud = ResolveHud();
         _prompt = _serviceProvider.GetRequiredService<HudPrompt>();
         _prompt.Start();
@@ -399,6 +402,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _tornDown = true;
 
         _director.Reset(null);
+        _voxels.Reset();
 
         // Drawn entities are not the plugin's to leave behind: without this a
         // hot reload orphans every beam, label and model in the world, with no
@@ -485,6 +489,9 @@ public partial class UtilityPracticePlugin : BasePlugin
     // takes its landing point with it.
     private void OnGameTick()
     {
+        // Both modes: a render take's smoke is read the same way a throw's is.
+        _voxels.OnTick();
+
         if (_config.RenderMode)
         {
             _director.OnTick();

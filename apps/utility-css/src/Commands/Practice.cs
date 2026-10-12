@@ -62,6 +62,11 @@ public partial class UtilityPracticePlugin
 
         ulong steamId = player.SteamID;
 
+        // A smoke saved straight after it went off is still growing. Its log
+        // lands on the record when the cloud is done, and whether it was there
+        // for the ingest decides whether it has to follow on its own.
+        bool carried = thrown.smoke_voxels != null;
+
         _ = Task.Run(async () =>
         {
             string? id = await _api.Ingest(thrown);
@@ -71,6 +76,12 @@ public partial class UtilityPracticePlugin
                 if (id != null)
                 {
                     thrown.id = id;
+
+                    if (!carried && thrown.smoke_voxels != null)
+                    {
+                        UploadSmokeVoxels(id, thrown.author_steam_id, thrown.smoke_voxels);
+                    }
+
                     return;
                 }
 

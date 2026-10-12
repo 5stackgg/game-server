@@ -1,4 +1,5 @@
 using FiveStack.Entities.Practice;
+using FiveStack.Enums;
 using SwiftlyS2.Shared.GameEventDefinitions;
 using SwiftlyS2.Shared.GameEvents;
 using SwiftlyS2.Shared.Misc;
@@ -17,7 +18,17 @@ public partial class UtilityPracticePlugin
     [GameEventHandler(HookMode.Post)]
     public HookResult OnSmokeDetonate(EventSmokegrenadeDetonate @event)
     {
-        Detonated(EntityIndex(@event.EntityID), new Vec3(@event.X, @event.Y, @event.Z));
+        uint index = EntityIndex(@event.EntityID);
+        var position = new Vec3(@event.X, @event.Y, @event.Z);
+
+        // Both asked first: Detonated is where the replay forgets its ghost.
+        (LineupRecord lineup, ulong steamId)? rendered = _director.TakeLineup(index);
+        (string lineupId, ulong steamId)? replayed = _replay.GhostLineup(index);
+
+        LineupRecord? thrown = Detonated(index, position);
+
+        WatchSmoke(index, position, thrown, rendered, replayed);
+
         return HookResult.Continue;
     }
 
@@ -83,13 +94,86 @@ public partial class UtilityPracticePlugin
 
     // The three readers of a detonation. The recorder ignores an index it never
     // tracked and the solver ignores one it never emitted, so a projectile only
-    // ever lands in one of them.
-    private void Detonated(uint entityIndex, Vec3 position)
+    // ever lands in one of them. Answers the recorder's throw, if it was one.
+    private LineupRecord? Detonated(uint entityIndex, Vec3 position)
     {
-        _recorder.OnDetonated(entityIndex, position);
+        LineupRecord? thrown = _recorder.OnDetonated(entityIndex, position);
         _solver.OnDetonated(entityIndex, position);
         _director.OnDetonated(entityIndex, position);
         Signal(_replay.GhostDetonated(entityIndex, position));
+
+        return thrown;
+    }
+
+    // The game's own voxel log for a smoke somebody can use: a render take,
+    // a replay of a saved lineup, or a player's own throw, which .save may yet
+    // turn into one. Anything else -- the bloom preview above all, which is
+    // emitted at the landing point and is no throw at all -- is left alone.
+    private void WatchSmoke(
+        uint index,
+        Vec3 position,
+        LineupRecord? thrown,
+        (LineupRecord lineup, ulong steamId)? rendered,
+        (string lineupId, ulong steamId)? replayed
+    )
+    {
+        if (rendered?.lineup.id is string renderedId)
+        {
+            string pod = rendered.Value.steamId.ToString();
+
+            _voxels.Watch(
+                index,
+                position,
+                $"[nade-render] render of {renderedId} by {pod}",
+                payload => UploadSmokeVoxels(renderedId, pod, payload, render: true)
+            );
+        }
+
+        if (replayed is (string replayedId, ulong replayer))
+        {
+            string by = replayer.ToString();
+
+            _voxels.Watch(
+                index,
+                position,
+                $"[nade-render] replay of {replayedId} for {by}",
+                payload => UploadSmokeVoxels(replayedId, by, payload, render: false)
+            );
+        }
+
+        if (thrown != null && thrown.utility_type == nameof(eUtilityType.Smoke))
+        {
+            _voxels.Watch(
+                index,
+                position,
+                $"throw by {thrown.author_steam_id}",
+                payload => ThrowSmokeVoxels(thrown, payload)
+            );
+        }
+    }
+
+    // Kept on the throw, so a .save that has not happened yet -- or an ingest
+    // still waiting to be retried -- carries it. A save that already reached
+    // the panel without it is sent it on its own; see SaveThrow for the save
+    // that is still on its way.
+    private void ThrowSmokeVoxels(LineupRecord thrown, SmokeVoxelPayload payload)
+    {
+        thrown.smoke_voxels = payload;
+
+        if (thrown.id != null)
+        {
+            UploadSmokeVoxels(thrown.id, thrown.author_steam_id, payload, render: false);
+        }
+    }
+
+    private void UploadSmokeVoxels(
+        string lineupId,
+        string steamId,
+        SmokeVoxelPayload payload,
+        bool render
+    )
+    {
+        _ = Task.Run(() => _api.SmokeVoxels(lineupId, steamId, payload, render));
     }
 
     // Swiftly types the field as a signed short; the unsigned round trip keeps
