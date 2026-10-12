@@ -156,11 +156,26 @@ public partial class UtilityPracticePlugin
 
         Tell(steamId, $" {ChatColors.Green}saved {ChatColors.Default}{name}");
 
-        // A smoke saved straight after it went off is still growing. Its log
-        // lands on the record when the cloud is done, and whether it was there
-        // for the ingest decides whether it has to follow on its own.
-        bool carried = thrown.smoke_voxels != null;
+        // A smoke saved straight after it went off is still spreading, and the
+        // panel keeps the first cloud a lineup gets. The save waits the few
+        // seconds for it rather than going without -- see SmokeSettled.
+        if (_smokeGrowing.Contains(thrown))
+        {
+            _heldSaves[thrown] = steamId;
+            Tell(steamId, $" {ChatColors.Grey}sending it once the smoke settles");
+            return;
+        }
 
+        IngestSave(steamId, thrown);
+    }
+
+    // Throws whose smoke is still being read, and the saves held until it is.
+    // Keyed by the record itself: a save and its throw are the same object.
+    private readonly HashSet<LineupRecord> _smokeGrowing = new();
+    private readonly Dictionary<LineupRecord, ulong> _heldSaves = new();
+
+    private void IngestSave(ulong steamId, LineupRecord thrown)
+    {
         _ = Task.Run(async () =>
         {
             string? id = await _api.Ingest(thrown);
@@ -170,23 +185,31 @@ public partial class UtilityPracticePlugin
                 if (id != null)
                 {
                     thrown.id = id;
-
-                    if (!carried && thrown.smoke_voxels != null)
-                    {
-                        UploadSmokeVoxels(
-                            id,
-                            thrown.author_steam_id,
-                            thrown.smoke_voxels,
-                            render: false
-                        );
-                    }
-
                     return;
                 }
 
-                Tell(steamId, $" {ChatColors.Red}{name} could not reach the panel; it will retry");
+                Tell(
+                    steamId,
+                    $" {ChatColors.Red}{thrown.name} could not reach the panel; it will retry"
+                );
             });
         });
+    }
+
+    // Leaving does not take a save with it. What was saved goes now, without
+    // a cloud that may not finish before an empty server stops ticking.
+    private void SendHeldSaves(ulong steamId)
+    {
+        List<LineupRecord> held = _heldSaves
+            .Where(entry => entry.Value == steamId)
+            .Select(entry => entry.Key)
+            .ToList();
+
+        foreach (LineupRecord thrown in held)
+        {
+            _heldSaves.Remove(thrown);
+            IngestSave(steamId, thrown);
+        }
     }
 
     [Command("load", registerRaw: false, permission: "")]

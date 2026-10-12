@@ -52,8 +52,7 @@ public class UtilityIngestPayload
 
     public List<UtilityApproachPoint>? approach { get; set; }
 
-    // Absent while the cloud is still growing; it follows on its own once the
-    // panel has given the lineup an id.
+    // Only on a smoke whose cloud finished growing; a save waits for it.
     public SmokeVoxelPayload? smoke_voxels { get; set; }
 
     public static UtilityIngestPayload From(LineupRecord lineup)

@@ -148,6 +148,9 @@ public partial class UtilityPracticePlugin : BasePlugin
         _playbook.Reset();
         _drill.Reset();
         _system.Reset();
+
+        // Any save still waiting on its smoke goes without it, rather than
+        // with the instance that was holding it.
         _voxels.Reset();
     }
 
@@ -336,6 +339,8 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void OnMapStart(string mapName)
     {
+        // A save held for a smoke on the old map goes now, without it.
+        _voxels.Reset();
         _recorder.Reset();
         _playbook.Reset();
         _drill.Reset();

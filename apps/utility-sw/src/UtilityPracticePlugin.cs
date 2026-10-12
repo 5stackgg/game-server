@@ -402,6 +402,9 @@ public partial class UtilityPracticePlugin : BasePlugin
         _tornDown = true;
 
         _director.Reset(null);
+
+        // Any save still waiting on its smoke goes without it, rather than
+        // with the instance that was holding it.
         _voxels.Reset();
 
         // Drawn entities are not the plugin's to leave behind: without this a
@@ -489,7 +492,8 @@ public partial class UtilityPracticePlugin : BasePlugin
     // takes its landing point with it.
     private void OnGameTick()
     {
-        // Both modes: a render take's smoke is read the same way a throw's is.
+        // Ahead of the render branch, so a smoke once being read always finishes
+        // and nothing held on it is left waiting.
         _voxels.OnTick();
 
         if (_config.RenderMode)
@@ -1726,6 +1730,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     // nobody is left to be teleported or told anything.
     private void OnPlayerGone(ulong steamId)
     {
+        SendHeldSaves(steamId);
         _drill.Forget(steamId);
         _system.Forget(steamId);
 
@@ -1807,6 +1812,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         _director.Reset(null);
         _hud?.Reset();
         _menus.Clear();
+        // A save held for a smoke on the old map goes now, without it.
+        _voxels.Reset();
         _recorder.Reset();
         _playbook.Reset();
         _drill.Reset();

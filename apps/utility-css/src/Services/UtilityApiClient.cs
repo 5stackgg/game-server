@@ -155,27 +155,6 @@ public class UtilityApiClient
         await SendText(HttpMethod.Post, "/utility/callouts", body);
     }
 
-    // Fire and forget, and not queued: the panel keeps the first log a lineup
-    // gets, so a lost one is made up by the next one sent for it.
-    public async Task SmokeVoxels(
-        string lineupId,
-        string steamId,
-        SmokeVoxelPayload payload,
-        bool render
-    )
-    {
-        string body = JsonSerializer.Serialize(
-            SmokeVoxelUpload.From(payload, steamId, render),
-            PracticeJson.Options
-        );
-
-        await SendText(
-            HttpMethod.Post,
-            $"/utility/{Uri.EscapeDataString(lineupId)}/smoke-voxels",
-            body
-        );
-    }
-
     public async Task<PracticeSessionData?> Session(string? map = null)
     {
         // Send answers null without a word when it is not configured, which

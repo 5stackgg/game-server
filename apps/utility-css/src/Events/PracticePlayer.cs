@@ -84,6 +84,7 @@ public partial class UtilityPracticePlugin
         }
 
         _welcomed.Remove(player.SteamID);
+        SendHeldSaves(player.SteamID);
 
         // A run ends with the player who was in it: the map is still standing,
         // but nobody is left to be teleported or told anything.

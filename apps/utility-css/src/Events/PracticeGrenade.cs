@@ -1,7 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using FiveStack.Entities.Practice;
-using FiveStack.Enums;
 
 namespace UtilityPractice;
 
@@ -21,34 +20,40 @@ public partial class UtilityPracticePlugin
 
         LineupRecord? thrown = _recorder.OnDetonated(index, position);
 
-        // The game's own voxel log, for a throw .save may yet turn into a
-        // lineup. Kept on the record, so a save that has not happened yet -- or
-        // an ingest still waiting to be retried -- carries it; a save that
-        // already reached the panel without it is sent it on its own.
-        if (thrown != null && thrown.utility_type == nameof(eUtilityType.Smoke))
-        {
-            _voxels.Watch(
+        // The game's own voxel log, read for a player's own smoke: that is the
+        // throw .save turns into a lineup.
+        if (
+            thrown != null
+            && _voxels.Watch(
                 index,
                 position,
                 $"throw by {thrown.author_steam_id}",
-                payload =>
-                {
-                    thrown.smoke_voxels = payload;
-
-                    if (thrown.id != null)
-                    {
-                        UploadSmokeVoxels(thrown.id, thrown.author_steam_id, payload);
-                    }
-                }
-            );
+                payload => SmokeSettled(thrown, payload)
+            )
+        )
+        {
+            _smokeGrowing.Add(thrown);
         }
 
         return HookResult.Continue;
     }
 
-    private void UploadSmokeVoxels(string lineupId, string steamId, SmokeVoxelPayload payload)
+    // Kept on the throw, so a save made later carries it; a save made while
+    // the cloud was still spreading has been held for exactly this, and goes
+    // now with whatever there is.
+    private void SmokeSettled(LineupRecord thrown, SmokeVoxelPayload? payload)
     {
-        _ = Task.Run(() => _api.SmokeVoxels(lineupId, steamId, payload, render: false));
+        _smokeGrowing.Remove(thrown);
+
+        if (payload != null)
+        {
+            thrown.smoke_voxels = payload;
+        }
+
+        if (_heldSaves.Remove(thrown, out ulong steamId))
+        {
+            IngestSave(steamId, thrown);
+        }
     }
 
     [GameEventHandler]

@@ -63,7 +63,7 @@ public class LineupRecord
 
     // The game's own voxel log for this throw's smoke, read off the projectile
     // as the cloud grew. Only a throw the plugin watched has one, and only once
-    // the cloud has finished -- which can be after the lineup was saved.
+    // the cloud has finished.
     public SmokeVoxelPayload? smoke_voxels { get; set; }
 
     // A trajectory only replays under the physics it was recorded with.

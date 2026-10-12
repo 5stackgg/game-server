@@ -11,10 +11,9 @@ namespace UtilityPractice;
 // Reads a smoke's real voxel log off its projectile while the cloud grows, so
 // the panel can show the cloud the game made instead of an estimate of it.
 //
-// Only smokes somebody can use are watched -- a player's own throw, which
-// .save may turn into a lineup, and a replay of a saved one -- and only a few
-// at once. When the log is finished is SmokeVoxelCapture's call; this only
-// reads the fields.
+// Only a player's own smoke is watched -- the one .save may turn into a lineup
+// -- and only a few at once. When the log is finished is SmokeVoxelCapture's
+// call; this only reads the fields.
 public class SmokeVoxelRecorder
 {
     // A practice server is a handful of people. More clouds than this growing
@@ -28,11 +27,10 @@ public class SmokeVoxelRecorder
     {
         public required CSmokeGrenadeProjectile Smoke;
         public required uint Handle;
-        public required uint Index;
         public required int DetonationTick;
         public required string Label;
         public required Vec3 Landing;
-        public required Action<SmokeVoxelPayload> Finished;
+        public required Action<SmokeVoxelPayload?> Finished;
         public readonly SmokeVoxelCapture Capture = new SmokeVoxelCapture();
         public bool Short;
     }
@@ -47,25 +45,17 @@ public class SmokeVoxelRecorder
         _logger = logger;
     }
 
-    // Called from the detonate event. A smoke can be two things at once -- a
-    // replay the recorder also took for a throw -- so a second caller joins
-    // the first rather than reading the same log twice.
-    public void Watch(
+    // Called from the detonate event. finished is always called once the
+    // reading ends -- with null for a cloud cut short or that wrote nothing --
+    // so whoever is waiting on it is never left waiting. False, and finished
+    // is never called, when the smoke is not read at all.
+    public bool Watch(
         uint entityIndex,
         Vec3 landing,
         string label,
-        Action<SmokeVoxelPayload> finished
+        Action<SmokeVoxelPayload?> finished
     )
     {
-        foreach (Reading open in _reading)
-        {
-            if (open.Index == entityIndex)
-            {
-                open.Finished += finished;
-                return;
-            }
-        }
-
         if (_reading.Count >= MaxWatched)
         {
             _logger.LogWarning(
@@ -73,7 +63,7 @@ public class SmokeVoxelRecorder
                 label,
                 _reading.Count
             );
-            return;
+            return false;
         }
 
         CSmokeGrenadeProjectile? smoke = SmokeAt(entityIndex);
@@ -81,14 +71,13 @@ public class SmokeVoxelRecorder
 
         if (smoke == null || handle == null)
         {
-            return;
+            return false;
         }
 
         var reading = new Reading
         {
             Smoke = smoke,
             Handle = handle.Value,
-            Index = entityIndex,
             // The event fires inside the detonation tick and OnTick at its end,
             // so that first read is tick 0, as it is in a demo.
             DetonationTick = _tick + 1,
@@ -101,6 +90,8 @@ public class SmokeVoxelRecorder
 
         // The detonation frame can already be in the log.
         Read(reading);
+
+        return true;
     }
 
     public void OnTick()
@@ -110,23 +101,33 @@ public class SmokeVoxelRecorder
         for (int index = _reading.Count - 1; index >= 0; index--)
         {
             Reading reading = _reading[index];
-            bool alive = Read(reading);
-            eSmokeVoxelEnd end = reading.Capture.Check(Since(reading));
 
-            if (alive && end == eSmokeVoxelEnd.Growing)
+            if (!Read(reading))
+            {
+                reading.Capture.CutShort();
+            }
+            else if (reading.Capture.Check(Since(reading)) == eSmokeVoxelEnd.Growing)
             {
                 continue;
             }
 
             _reading.RemoveAt(index);
-            Finish(reading, alive ? end.ToString() : "projectile gone");
+            Finish(reading);
         }
     }
 
-    // Dropped, not finished: nothing is left to send them by.
+    // A map change or an unload: every cloud still growing is cut short, and
+    // its owner hears so now rather than waiting on a projectile that is gone.
     public void Reset()
     {
+        List<Reading> cut = new List<Reading>(_reading);
         _reading.Clear();
+
+        foreach (Reading reading in cut)
+        {
+            reading.Capture.CutShort();
+            Finish(reading);
+        }
     }
 
     private int Since(Reading reading)
@@ -184,7 +185,7 @@ public class SmokeVoxelRecorder
         return true;
     }
 
-    private void Finish(Reading reading, string reason)
+    private void Finish(Reading reading)
     {
         SmokeVoxelCapture capture = reading.Capture;
 
@@ -194,24 +195,17 @@ public class SmokeVoxelRecorder
         }
 
         _logger.LogInformation(
-            "{label}: smoke voxels {bytes} bytes, {samples} samples over {seconds:0.00}s ({reason})",
+            "{label}: smoke voxels {bytes} bytes, {samples} samples over {seconds:0.00}s ({end})",
             reading.Label,
             capture.Length,
             capture.Samples,
             Since(reading) / (float)SmokeVoxelCapture.TickRate,
-            reason
+            capture.End
         );
-
-        SmokeVoxelPayload? payload = capture.ToPayload();
-
-        if (payload == null)
-        {
-            return;
-        }
 
         try
         {
-            reading.Finished(payload);
+            reading.Finished(capture.ToPayload());
         }
         catch (Exception error)
         {

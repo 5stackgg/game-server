@@ -35,8 +35,7 @@ public static class RenderDirectorUtility
     // change here or in the pod makes the previews already filmed wrong or
     // visibly worse, together with the api's UTILITY_RENDER_VERSION.
     //   2 -- the thrower's eyes are turned without tipping his body.
-    //   3 -- each take records its smoke's real voxel log for the panel.
-    public const int Version = 3;
+    public const int Version = 2;
 
     // What the staged line says, in the order it says it. The pod reads every
     // one of these by name, and uploads the clip under `v`.

@@ -15,6 +15,11 @@ public enum eSmokeVoxelEnd
     // Still growing at MaxTicks. What arrived is kept; a cloud that slow is
     // not going to finish into anything better.
     TimedOut,
+
+    // The projectile went first -- cleared, a round restart, a map change.
+    // The panel keeps the first cloud a lineup gets, so a half-grown one is
+    // never handed over.
+    CutShort,
 }
 
 // One smoke's voxel log, read off its projectile while the cloud grows.
@@ -48,6 +53,9 @@ public sealed class SmokeVoxelCapture
     public int Length { get; private set; }
 
     public int Samples => _samples.Count;
+
+    // Final once it is anything but Growing.
+    public eSmokeVoxelEnd End { get; private set; }
 
     // Where the game centres the grid, which is not quite the event's landing
     // point. Zero until the projectile says.
@@ -91,24 +99,40 @@ public sealed class SmokeVoxelCapture
 
     public eSmokeVoxelEnd Check(int tick)
     {
+        if (End != eSmokeVoxelEnd.Growing)
+        {
+            return End;
+        }
+
         if (Length >= MaxBytes)
         {
-            return eSmokeVoxelEnd.Full;
+            End = eSmokeVoxelEnd.Full;
         }
-
-        if (tick - _grewAt >= QuietTicks)
+        else if (tick - _grewAt >= QuietTicks)
         {
-            return eSmokeVoxelEnd.Settled;
+            End = eSmokeVoxelEnd.Settled;
+        }
+        else if (tick >= MaxTicks)
+        {
+            End = eSmokeVoxelEnd.TimedOut;
         }
 
-        return tick >= MaxTicks ? eSmokeVoxelEnd.TimedOut : eSmokeVoxelEnd.Growing;
+        return End;
     }
 
-    // Null when the projectile never wrote anything: there is no cloud in that
-    // to rebuild, and sending an empty log would only be refused.
+    public void CutShort()
+    {
+        if (End == eSmokeVoxelEnd.Growing)
+        {
+            End = eSmokeVoxelEnd.CutShort;
+        }
+    }
+
+    // Only a cloud that finished growing, and only one that wrote something:
+    // an empty log has no cloud in it to rebuild.
     public SmokeVoxelPayload? ToPayload()
     {
-        if (Length == 0)
+        if (Length == 0 || End == eSmokeVoxelEnd.Growing || End == eSmokeVoxelEnd.CutShort)
         {
             return null;
         }
