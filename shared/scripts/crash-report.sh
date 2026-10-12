@@ -226,14 +226,24 @@ redact_passwords() {
   printf '%s' "$1" | sed -E 's/(\+[a-z_]*password)( +)[^ ]+/\1\2<redacted>/g'
 }
 
-# Report directories are named by UTC time, so name order is age order.
+# Report directories are named by UTC time, so name order is age order. Only
+# real directories with that name are reports: the volume is shared by every
+# game pod on the node, and rm -rf through a symlink deletes what it points at.
 prune_crash_reports() {
   local server_dir="$1"
-  local reports=("$server_dir"/*/)
+  local reports=()
+  local report
+
+  for report in "$server_dir"/*; do
+    if [[ "${report##*/}" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] && [ -d "$report" ] && [ ! -L "$report" ]; then
+      reports+=("$report")
+    fi
+  done
+
   local excess=$((${#reports[@]} - CRASH_REPORTS_KEPT))
   local index
 
   for ((index = 0; index < excess; index++)); do
-    rm -rf "${reports[$index]}"
+    rm -rf -- "${reports[$index]}"
   done
 }
