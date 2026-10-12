@@ -24,6 +24,11 @@ public class KnifeSystem
 
     private CsTeam? _winningTeam;
 
+    // Ending warmup to start the knife reports whoever is alive as a round
+    // win, so with a whole side dead it handed out the knife before anyone
+    // fought. Only a round whose freeze time has ended is a knife result.
+    private bool _roundLive;
+
     public KnifeSystem(
         ILogger<KnifeSystem> logger,
         GameServer gameServer,
@@ -43,6 +48,8 @@ public class KnifeSystem
 
     public void Start()
     {
+        _roundLive = false;
+
         _gameServer.SendCommands(["exec 5stack.knife.cfg", "mp_warmup_end", "mp_restartgame 1"]);
 
         Server.NextFrame(() =>
@@ -52,6 +59,16 @@ public class KnifeSystem
                 () => _gameServer.Message(HudDestination.Alert, _localizer["knife.start"])
             );
         });
+    }
+
+    public void MarkRoundLive()
+    {
+        _roundLive = true;
+    }
+
+    public bool IsRoundLive()
+    {
+        return _roundLive;
     }
 
     public void SetWinningTeam(CsTeam team)
@@ -74,6 +91,7 @@ public class KnifeSystem
         _logger.LogInformation($"setting winning team: {team}");
 
         _winningTeam = team;
+        _roundLive = false;
 
         _knifeRoundTimer = TimerUtility.AddTimer(3, SetupKnifeMessage, TimerFlags.REPEAT);
 
@@ -321,5 +339,6 @@ public class KnifeSystem
         _knifeRoundTimer?.Kill();
         _knifeRoundTimer = null;
         _winningTeam = null;
+        _roundLive = false;
     }
 }

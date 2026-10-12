@@ -106,7 +106,13 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        if (match.IsKnife())
+        if (match.IsKnife() && !match.knifeSystem.IsRoundLive())
+        {
+            _logger.LogInformation(
+                $"OnRoundEnd ignored for knife: no knife round has been played yet (message={@event.Message})"
+            );
+        }
+        else if (match.IsKnife())
         {
             CsTeam knifeWinner = TeamUtility.TeamNumToCSTeam(@event.Winner);
 

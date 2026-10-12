@@ -59,4 +59,21 @@ public partial class FiveStackPlugin
 
         return HookResult.Continue;
     }
+
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnRoundFreezeEnd(EventRoundFreezeEnd @event)
+    {
+        MatchManager? matchManager = _matchService.GetCurrentMatch();
+
+        if (
+            matchManager != null
+            && matchManager.IsKnife()
+            && MatchUtility.Rules()?.WarmupPeriod != true
+        )
+        {
+            matchManager.knifeSystem.MarkRoundLive();
+        }
+
+        return HookResult.Continue;
+    }
 }

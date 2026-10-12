@@ -1215,7 +1215,9 @@ public class MatchManager
                 player
             );
         }
-        else if (shouldRespawn)
+        // Only a dead player needs a body. Respawning a live one just ahead of a
+        // pending mp_restartgame left them at the world origin, under the map.
+        else if (shouldRespawn && !player.PawnIsAlive)
         {
             _logger.LogInformation(
                 $"[team] Respawning {player.PlayerName} ({player.SteamID}) (already on {placementTeam})"
@@ -1226,10 +1228,12 @@ public class MatchManager
         captainSystem.IsCaptain(player, expectedTeam);
     }
 
+    // A spectator has no spawn point, so respawning one drops a body at the
+    // world origin that falls and dies on a loop.
     private bool ShouldRespawnOnTeamChange(CsTeam team)
     {
-        return IsWarmup()
-            || (MatchUtility.Rules()?.FreezePeriod == true) && team != CsTeam.Spectator;
+        return team != CsTeam.Spectator
+            && (IsWarmup() || MatchUtility.Rules()?.FreezePeriod == true);
     }
 
     public void ReconcileMemberTeams()
