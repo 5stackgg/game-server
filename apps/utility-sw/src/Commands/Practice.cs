@@ -1625,12 +1625,6 @@ public partial class UtilityPracticePlugin
                     return;
                 }
 
-                IPlayer? still = _system.Find(steamId);
-
-                if (still != null && still.IsValid)
-                {
-                }
-
                 DrawBloom(steamId, fetched);
             }
         );

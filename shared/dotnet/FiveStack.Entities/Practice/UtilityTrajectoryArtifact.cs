@@ -7,9 +7,7 @@ namespace FiveStack.Entities.Practice;
 //
 // The artifact is deliberately the same top-level shape as the demo playback
 // blob, so the flight path is nested under grenade_trajectories rather than
-// being the document. Earlier, flatter spellings are still read: the API owns
-// the contract, and a preview that silently draws nothing is the worst way to
-// discover it moved.
+// being the document.
 public class UtilityTrajectoryArtifact
 {
     public List<TrajectoryPoint> path { get; set; } = new List<TrajectoryPoint>();
@@ -27,12 +25,6 @@ public class UtilityTrajectoryArtifact
         using JsonDocument document = JsonDocument.Parse(body);
         JsonElement root = document.RootElement;
 
-        if (root.ValueKind == JsonValueKind.Array)
-        {
-            artifact.path = Points(root);
-            return artifact;
-        }
-
         if (root.ValueKind != JsonValueKind.Object)
         {
             return artifact;
@@ -46,14 +38,6 @@ public class UtilityTrajectoryArtifact
 
     private static List<TrajectoryPoint> PathFrom(JsonElement root)
     {
-        foreach (string property in new[] { "path", "trajectory", "points" })
-        {
-            if (Array(root, property, out JsonElement flat))
-            {
-                return Points(flat);
-            }
-        }
-
         if (!Array(root, "grenade_trajectories", out JsonElement trajectories))
         {
             return new List<TrajectoryPoint>();
@@ -72,14 +56,6 @@ public class UtilityTrajectoryArtifact
 
     private static SmokeVolume? VolumeFrom(JsonElement root)
     {
-        if (
-            root.TryGetProperty("smoke_volume", out JsonElement single)
-            && single.ValueKind == JsonValueKind.Object
-        )
-        {
-            return Volume(single);
-        }
-
         if (!Array(root, "smoke_volumes", out JsonElement volumes))
         {
             return null;

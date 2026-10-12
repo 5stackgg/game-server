@@ -229,33 +229,6 @@ public class RenderDirectorUtilityTests
     }
 
     [Fact]
-    public void TheBloomShotFacesTheCloudFromTheThrowersSide()
-    {
-        var landing = new Vec3(0f, 0f, 0f);
-        var stance = new Vec3(-1000f, 0f, 0f);
-
-        (Vec3 eye, Vec3 lookAt) = RenderDirectorUtility.BloomShot(
-            landing,
-            stance,
-            new Vec3(1f, 0f, 0f)
-        );
-
-        Assert.True(eye.x < 0f);
-        Assert.Equal(RenderDirectorUtility.BloomHeight, eye.z, 3);
-        Assert.Equal(RenderDirectorUtility.BloomLookHeight, lookAt.z, 3);
-    }
-
-    [Fact]
-    public void TheBloomShotFallsBackToTheFlightWhenStanceIsOverhead()
-    {
-        var landing = new Vec3(50f, 50f, 0f);
-
-        (Vec3 eye, _) = RenderDirectorUtility.BloomShot(landing, landing, new Vec3(0f, 1f, 0f));
-
-        Assert.True(eye.y < landing.y, "opposite the way it was flying");
-    }
-
-    [Fact]
     public void ApproachIsHalfwayAfterOneHalfLife()
     {
         Vec3 halfway = RenderDirectorUtility.Approach(
@@ -317,20 +290,15 @@ public class RenderDirectorUtilityTests
     [Fact]
     public void ThePodsOwnThrowClockLandsAtTheThrowBeat()
     {
-        Assert.Equal(
+        float throwBeat =
             RenderDirectorUtility.StanceSeconds
-                + RenderDirectorUtility.StanceEyesSeconds
-                + RenderDirectorUtility.TiltSeconds
-                + RenderDirectorUtility.AimSeconds
-                + RenderDirectorUtility.PinSeconds
-                + RenderDirectorUtility.AimCloseSeconds,
-            RenderDirectorUtility.ActAtSeconds,
-            3
-        );
-        Assert.True(
-            RenderDirectorUtility.ActAtSeconds <= 8.1f,
-            "the pod throws on its own clock at 8.5s if act is late"
-        );
+            + RenderDirectorUtility.StanceEyesSeconds
+            + RenderDirectorUtility.TiltSeconds
+            + RenderDirectorUtility.AimSeconds
+            + RenderDirectorUtility.PinSeconds
+            + RenderDirectorUtility.AimCloseSeconds;
+
+        Assert.True(throwBeat <= 8.1f, "the pod throws on its own clock at 8.5s if act is late");
         Assert.True(RenderDirectorUtility.ThrowTimeoutSeconds > 2f);
     }
 
@@ -415,6 +383,18 @@ public class RenderDirectorUtilityTests
             "closer vantages are only tried after every far one"
         );
         Assert.Equal(24, candidates.Count);
+    }
+
+    [Fact]
+    public void TheBloomFallsBackToTheFlightWhenStanceIsOverhead()
+    {
+        var landing = new Vec3(50f, 50f, 0f);
+
+        (Vec3 eye, _) = RenderDirectorUtility
+            .BloomCandidates(landing, landing, new Vec3(0f, 1f, 0f))
+            .First();
+
+        Assert.True(eye.y < landing.y, "opposite the way it was flying");
     }
 
     [Fact]

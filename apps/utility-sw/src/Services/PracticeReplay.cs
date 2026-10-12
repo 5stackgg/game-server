@@ -1405,20 +1405,6 @@ public class PracticeReplay
     // How far above or below a spot still counts as the same place to stand.
     public const float SpotHeight = 72f;
 
-    // Every lineup on the map, plus the full crosshair treatment for the ones
-    // the player can actually throw from where they are standing. One spot
-    // often has several throws off it, and the whole point of standing there is
-    // to see all of them at once.
-    public void ShowAllMarkers(
-        IEnumerable<LineupRecord> lineups,
-        IReadOnlyCollection<LineupRecord> active,
-        Vec3 stance
-    )
-    {
-        ShowLibrary(lineups);
-        ShowSelection(null, active, stance);
-    }
-
     // The library layer. Every lineup gets the same quiet treatment -- no
     // exclusions, because a lineup one player has focused is still just a ring
     // to everyone else.

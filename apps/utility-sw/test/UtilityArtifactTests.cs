@@ -90,27 +90,6 @@ public class UtilityArtifactTests
         Assert.Equal("{}", PracticeJson.Text(System.Text.Encoding.UTF8.GetBytes("{}")));
     }
 
-    [Fact]
-    public void AFlatPathIsStillRead()
-    {
-        UtilityTrajectoryArtifact artifact = UtilityTrajectoryArtifact.Parse(
-            """{"path":[{"tick":4,"x":1,"y":2,"z":3}]}"""
-        );
-
-        Assert.Single(artifact.path);
-        Assert.Equal(4, artifact.path[0].t);
-    }
-
-    [Fact]
-    public void ABareArrayIsStillRead()
-    {
-        UtilityTrajectoryArtifact artifact = UtilityTrajectoryArtifact.Parse(
-            """[{"tick":4,"x":1,"y":2,"z":3}]"""
-        );
-
-        Assert.Single(artifact.path);
-    }
-
     // Not every lineup is a smoke and not every map has a collision mesh.
     [Fact]
     public void AMissingSmokeVolumeIsNotAnError()
