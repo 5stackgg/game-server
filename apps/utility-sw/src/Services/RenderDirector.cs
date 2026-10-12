@@ -747,6 +747,20 @@ public class RenderDirector
 
     private const float SettledLookHalfLife = 0.12f;
 
+    /// <summary>
+    /// The lineup whose take threw this projectile, or null. Not tied to the
+    /// follow beat: a slow smoke can still be settling when the chase times
+    /// out, and it is the same throw when it goes off.
+    /// </summary>
+    public LineupRecord? TakeLineup(uint entityIndex)
+    {
+        Take? take = _take;
+
+        return take != null && take.Projectile != null && take.ProjectileIndex == entityIndex
+            ? take.Lineup
+            : null;
+    }
+
     public void OnDetonated(uint entityIndex, Vec3 at)
     {
         Take? take = _take;
