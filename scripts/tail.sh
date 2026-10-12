@@ -12,7 +12,6 @@ workload_for() {
   case "$1" in
     counterstrikesharp | css) echo "dev-game-server" ;;
     swiftly | sw) echo "dev-swiftly-game-server" ;;
-    utility-css | ucss) echo "dev-utility-game-server" ;;
     utility-sw | usw) echo "dev-utility-swiftly-game-server" ;;
     *) return 1 ;;
   esac
@@ -22,13 +21,13 @@ plugin="${1:-}"
 
 if [ -z "$plugin" ]; then
   PS3="plugin: "
-  select plugin in counterstrikesharp swiftly utility-css utility-sw; do
+  select plugin in counterstrikesharp swiftly utility-sw; do
     [ -n "$plugin" ] && break
   done
 fi
 
 if ! workload="$(workload_for "$plugin")"; then
-  echo "usage: $0 [counterstrikesharp|swiftly|utility-css|utility-sw]" >&2
+  echo "usage: $0 [counterstrikesharp|swiftly|utility-sw]" >&2
   exit 1
 fi
 

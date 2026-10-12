@@ -10,7 +10,7 @@
   </ItemGroup>
   <!-- The shared maths carries no framework references, so it is compiled in
        directly rather than through the plugin project. That keeps this suite
-       runnable without the CounterStrikeSharp package. -->
+       runnable without the SwiftlyS2 package. -->
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Entities/Practice/**/*.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Enums/eThrowTechnique.cs" LinkBase="Shared" />

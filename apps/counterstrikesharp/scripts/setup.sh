@@ -6,6 +6,15 @@ if [ "${GAME_ID}" = "740" ]; then
   exit $?
 fi
 
+# A practice server runs the practice plugin instead of the match plugin, and
+# that plugin only ships in the SwiftlyS2 image. Booted here it would have no
+# 5stack plugin deciding who may join, so it refuses to start rather than come
+# up open.
+if [ "${INSTALL_UTILITY_PRACTICE_PLUGIN:-false}" = "true" ] || [ "$SERVER_TYPE" = "Practice" ]; then
+  echo "---Utility Practice: practice servers need the SwiftlyS2 image (game-server-sw); refusing to start---" >&2
+  exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/util.sh"
 
@@ -58,15 +67,6 @@ if [ "$SERVER_TYPE" = "Ranked" ]; then
   cp "/opt/server-cfg/5stack.wingman.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg"
 fi
 
-# A practice server runs no match plugin to hold it awake, so the base
-# server.cfg it would otherwise be linked to is copied in with hibernation off.
-if [ "$SERVER_TYPE" = "Practice" ]; then
-  if [ -f "$BASE_SERVER_DIR/game/csgo/cfg/server.cfg" ]; then
-    cp "$BASE_SERVER_DIR/game/csgo/cfg/server.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg/server.cfg"
-  fi
-  printf '\nsv_hibernate_when_empty 0\n' >> "$INSTANCE_SERVER_DIR/game/csgo/cfg/server.cfg"
-fi
-
 if [ ! -d "/opt/custom-plugins/addons/counterstrikesharp/configs" ]; then
   mkdir -p "/opt/custom-plugins/addons/counterstrikesharp/configs"
 fi
@@ -81,9 +81,8 @@ fi
 ln -s "/opt/custom-plugins/addons/counterstrikesharp/configs" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/configs"
 
 # Public-server treatment: every installed custom plugin gets symlinked in,
-# which is what "load on every match" is meant to gate. A practice server is
-# 5stack-managed like a ranked one -- it runs its own plugin and nothing else.
-if [ "$SERVER_TYPE" != "Ranked" ] && [ "$SERVER_TYPE" != "Practice" ]; then
+# which is what "load on every match" is meant to gate.
+if [ "$SERVER_TYPE" != "Ranked" ]; then
   if [ ! -d "/opt/custom-plugins" ]; then
     mkdir -p "/opt/custom-plugins"
   fi
@@ -143,18 +142,6 @@ if $INSTALL_5STACK_PLUGIN = true ; then
     ln -s "/opt/dev/css" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/FiveStack"
   else
     ln -s "/opt/mod" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/FiveStack"
-  fi
-fi
-
-# A practice server runs this instead of the match plugin, never alongside it.
-if $INSTALL_UTILITY_PRACTICE_PLUGIN = true ; then
-  echo "---Install Utility Practice---"
-  if [ "${DEV_SWAPPED}" == "1" ]; then
-    # css and sw dev builds share the dev volume; each uses its own subfolder
-    mkdir -p "/opt/dev/utility-css"
-    ln -s "/opt/dev/utility-css" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/UtilityPractice"
-  else
-    ln -s "/opt/utility-practice" "${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/UtilityPractice"
   fi
 fi
 

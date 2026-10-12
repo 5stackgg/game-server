@@ -6,11 +6,8 @@ namespace FiveStack.Utilities;
 // What the plugin says to a machine.
 //
 // Everything else the practice plugin prints is for a person and can be
-// reworded. These two things cannot: an external clip recorder greps the server
-// console for the detonation line and issues the toggle below to get itself out
-// of frame. Both are contracts. Changing the shape of the line breaks a regex
-// in another repo, and reading "off" as "toggle" turns an idempotent command
-// into a coin flip.
+// reworded. The detonation line cannot: an external clip recorder greps the
+// server console for it, so changing its shape breaks a regex in another repo.
 public static class PracticeSignalUtility
 {
     public const string Prefix = "[utility-practice]";
@@ -41,39 +38,6 @@ public static class PracticeSignalUtility
             CultureInfo.InvariantCulture,
             $"{Prefix} {GhostDetonated} utility={Text(utilityType)} lineup={Text(clientId)} lineup_id={Text(lineupId)} steam={steamId} x={at.x:0.00} y={at.y:0.00} z={at.z:0.00}"
         );
-    }
-
-    // "on" / "off" set; anything empty toggles. An external caller must be able
-    // to say what it wants rather than ask for the opposite of a state it
-    // cannot see.
-    public static bool TryParseToggle(string? argument, bool current, out bool value)
-    {
-        string trimmed = (argument ?? "").Trim().Trim('"');
-
-        if (trimmed.Length == 0)
-        {
-            value = !current;
-            return true;
-        }
-
-        switch (trimmed.ToLowerInvariant())
-        {
-            case "on":
-            case "1":
-            case "true":
-            case "yes":
-                value = true;
-                return true;
-            case "off":
-            case "0":
-            case "false":
-            case "no":
-                value = false;
-                return true;
-            default:
-                value = current;
-                return false;
-        }
     }
 
     // A value with a space in it would break the key=value reading, and every

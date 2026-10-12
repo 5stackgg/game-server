@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace UtilityPractice;
 
-// Configuration arrives as addons/counterstrikesharp/configs/utility-practice.json,
+// Configuration arrives as addons/swiftlys2/configs/utility-practice.json,
 // written by the panel from the registry's wiring block. The url and api key are
 // provisioned per install, exactly as the inventory plugin receives its own.
 public class UtilityConfig
@@ -53,9 +53,8 @@ public class UtilityConfig
     }
 
     // Candidates rather than one path: the registry writes
-    // addons/{runtime}/configs/utility-practice.json, but the two runtimes root
-    // their plugin directories differently and an operator may drop the file
-    // beside the plugin instead.
+    // addons/swiftlys2/configs/utility-practice.json, but an operator may drop
+    // the file beside the plugin instead.
     public void Load(params string[] configDirectories)
     {
         // Env wins over the file so an operator can override a provisioned key
