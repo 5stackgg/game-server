@@ -62,6 +62,26 @@ public partial class UtilityPracticePlugin
 
         ulong steamId = player.SteamID;
 
+        // A smoke saved straight after it went off is still spreading, and the
+        // panel keeps the first cloud a lineup gets. The save waits the few
+        // seconds for it rather than going without -- see SmokeSettled.
+        if (_smokeGrowing.Contains(thrown))
+        {
+            _heldSaves[thrown] = steamId;
+            command.ReplyToCommand($" {ChatColors.Grey}sending it once the smoke settles");
+            return;
+        }
+
+        IngestSave(steamId, thrown);
+    }
+
+    // Throws whose smoke is still being read, and the saves held until it is.
+    // Keyed by the record itself: a save and its throw are the same object.
+    private readonly HashSet<LineupRecord> _smokeGrowing = new();
+    private readonly Dictionary<LineupRecord, ulong> _heldSaves = new();
+
+    private void IngestSave(ulong steamId, LineupRecord thrown)
+    {
         _ = Task.Run(async () =>
         {
             string? id = await _api.Ingest(thrown);
@@ -80,6 +100,22 @@ public partial class UtilityPracticePlugin
                 );
             });
         });
+    }
+
+    // Leaving does not take a save with it. What was saved goes now, without
+    // a cloud that may not finish before an empty server stops ticking.
+    private void SendHeldSaves(ulong steamId)
+    {
+        List<LineupRecord> held = _heldSaves
+            .Where(entry => entry.Value == steamId)
+            .Select(entry => entry.Key)
+            .ToList();
+
+        foreach (LineupRecord thrown in held)
+        {
+            _heldSaves.Remove(thrown);
+            IngestSave(steamId, thrown);
+        }
     }
 
     // A read-only dump of what the level says its areas are called. This is the

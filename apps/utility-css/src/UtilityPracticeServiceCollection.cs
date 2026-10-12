@@ -20,5 +20,6 @@ public class UtilityPracticeServiceCollection : IPluginServiceCollection<Utility
         serviceCollection.AddSingleton<PracticePlaybook>();
         serviceCollection.AddSingleton<PracticeDrill>();
         serviceCollection.AddSingleton<MapCalloutsReporter>();
+        serviceCollection.AddSingleton<SmokeVoxelRecorder>();
     }
 }

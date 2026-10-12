@@ -631,10 +631,11 @@ public class PracticeRecorder
     }
 
     // Called from the detonate handlers, which carry the projectile's entity
-    // index for every utility except molotovs.
-    public void OnDetonated(uint entityIndex, Vec3 position)
+    // index for every utility except molotovs. Answers the throw it finished,
+    // or null for a projectile this never tracked.
+    public LineupRecord? OnDetonated(uint entityIndex, Vec3 position)
     {
-        FinalizeByIndex(entityIndex, position);
+        return FinalizeByIndex(entityIndex, position);
     }
 
     // EventMolotovDetonate carries no entity id, so the thrower is the only
@@ -651,11 +652,11 @@ public class PracticeRecorder
         }
     }
 
-    private void FinalizeByIndex(uint entityIndex, Vec3? detonation)
+    private LineupRecord? FinalizeByIndex(uint entityIndex, Vec3? detonation)
     {
         if (!_tracked.Remove(entityIndex, out TrackedProjectile? tracked))
         {
-            return;
+            return null;
         }
 
         // Said before anything else, so the next grenade from this player
@@ -709,5 +710,7 @@ public class PracticeRecorder
         }
 
         Finalized?.Invoke(record);
+
+        return record;
     }
 }

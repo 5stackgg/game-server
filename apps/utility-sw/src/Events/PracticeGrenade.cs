@@ -17,7 +17,16 @@ public partial class UtilityPracticePlugin
     [GameEventHandler(HookMode.Post)]
     public HookResult OnSmokeDetonate(EventSmokegrenadeDetonate @event)
     {
-        Detonated(EntityIndex(@event.EntityID), new Vec3(@event.X, @event.Y, @event.Z));
+        uint index = EntityIndex(@event.EntityID);
+        var position = new Vec3(@event.X, @event.Y, @event.Z);
+
+        LineupRecord? thrown = Detonated(index, position);
+
+        if (thrown != null)
+        {
+            WatchSmoke(index, position, thrown);
+        }
+
         return HookResult.Continue;
     }
 
@@ -83,13 +92,50 @@ public partial class UtilityPracticePlugin
 
     // The three readers of a detonation. The recorder ignores an index it never
     // tracked and the solver ignores one it never emitted, so a projectile only
-    // ever lands in one of them.
-    private void Detonated(uint entityIndex, Vec3 position)
+    // ever lands in one of them. Answers the recorder's throw, if it was one.
+    private LineupRecord? Detonated(uint entityIndex, Vec3 position)
     {
-        _recorder.OnDetonated(entityIndex, position);
+        LineupRecord? thrown = _recorder.OnDetonated(entityIndex, position);
         _solver.OnDetonated(entityIndex, position);
         _director.OnDetonated(entityIndex, position);
         Signal(_replay.GhostDetonated(entityIndex, position));
+
+        return thrown;
+    }
+
+    // The game's own voxel log, read only for a throw the recorder took: that
+    // is what .save turns into a lineup.
+    private void WatchSmoke(uint index, Vec3 position, LineupRecord thrown)
+    {
+        bool reading = _voxels.Watch(
+            index,
+            position,
+            $"throw by {thrown.author_steam_id}",
+            payload => SmokeSettled(thrown, payload)
+        );
+
+        if (reading)
+        {
+            _smokeGrowing.Add(thrown);
+        }
+    }
+
+    // Kept on the throw, so a save made later carries it; a save made while
+    // the cloud was still spreading has been held for exactly this, and goes
+    // now with whatever there is.
+    private void SmokeSettled(LineupRecord thrown, SmokeVoxelPayload? payload)
+    {
+        _smokeGrowing.Remove(thrown);
+
+        if (payload != null)
+        {
+            thrown.smoke_voxels = payload;
+        }
+
+        if (_heldSaves.Remove(thrown, out ulong steamId))
+        {
+            IngestSave(steamId, thrown);
+        }
     }
 
     // Swiftly types the field as a signed short; the unsigned round trip keeps

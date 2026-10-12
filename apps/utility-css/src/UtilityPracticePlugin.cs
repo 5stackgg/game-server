@@ -30,6 +30,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     private readonly PracticePlaybook _playbook;
     private readonly PracticeDrill _drill;
     private readonly MapCalloutsReporter _callouts;
+    private readonly SmokeVoxelRecorder _voxels;
     private readonly ILogger<UtilityPracticePlugin> _logger;
 
     private Timer? _secondTimer;
@@ -53,6 +54,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         PracticePlaybook playbook,
         PracticeDrill drill,
         MapCalloutsReporter callouts,
+        SmokeVoxelRecorder voxels,
         ILogger<UtilityPracticePlugin> logger
     )
     {
@@ -67,6 +69,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _playbook = playbook;
         _drill = drill;
         _callouts = callouts;
+        _voxels = voxels;
         _logger = logger;
     }
 
@@ -85,6 +88,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         WireDrill();
 
         RegisterListener<Listeners.OnTick>(_recorder.OnTick);
+        RegisterListener<Listeners.OnTick>(_voxels.OnTick);
         // A grenade's thrower and initial velocity are not populated at the
         // moment the entity is created -- read them there and every throw is
         // dropped for having no thrower. One frame later they are set.
@@ -144,6 +148,10 @@ public partial class UtilityPracticePlugin : BasePlugin
         _playbook.Reset();
         _drill.Reset();
         _system.Reset();
+
+        // Any save still waiting on its smoke goes without it, rather than
+        // with the instance that was holding it.
+        _voxels.Reset();
     }
 
     private void OnSecond()
@@ -331,6 +339,8 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void OnMapStart(string mapName)
     {
+        // A save held for a smoke on the old map goes now, without it.
+        _voxels.Reset();
         _recorder.Reset();
         _playbook.Reset();
         _drill.Reset();

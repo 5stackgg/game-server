@@ -45,6 +45,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     private MapCalloutsReporter _callouts = null!;
     private PracticeSolver _solver = null!;
     private RenderDirector _director = null!;
+    private SmokeVoxelRecorder _voxels = null!;
 
     private CancellationTokenSource? _secondTimer;
     private CancellationTokenSource? _refillTimer;
@@ -110,6 +111,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             .AddSingleton<PracticeDrill>()
             .AddSingleton<PracticeSolver>()
             .AddSingleton<RenderDirector>()
+            .AddSingleton<SmokeVoxelRecorder>()
             .AddSingleton<HudKit>()
             .AddSingleton<HudPrompt>()
             .AddSingleton<MapCalloutsReporter>();
@@ -130,6 +132,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _callouts = _serviceProvider.GetRequiredService<MapCalloutsReporter>();
         _solver = _serviceProvider.GetRequiredService<PracticeSolver>();
         _director = _serviceProvider.GetRequiredService<RenderDirector>();
+        _voxels = _serviceProvider.GetRequiredService<SmokeVoxelRecorder>();
         _hud = ResolveHud();
         _prompt = _serviceProvider.GetRequiredService<HudPrompt>();
         _prompt.Start();
@@ -400,6 +403,10 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         _director.Reset(null);
 
+        // Any save still waiting on its smoke goes without it, rather than
+        // with the instance that was holding it.
+        _voxels.Reset();
+
         // Drawn entities are not the plugin's to leave behind: without this a
         // hot reload orphans every beam, label and model in the world, with no
         // instance left holding a reference to any of them.
@@ -485,6 +492,10 @@ public partial class UtilityPracticePlugin : BasePlugin
     // takes its landing point with it.
     private void OnGameTick()
     {
+        // Ahead of the render branch, so a smoke once being read always finishes
+        // and nothing held on it is left waiting.
+        _voxels.OnTick();
+
         if (_config.RenderMode)
         {
             _director.OnTick();
@@ -1719,6 +1730,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     // nobody is left to be teleported or told anything.
     private void OnPlayerGone(ulong steamId)
     {
+        SendHeldSaves(steamId);
         _drill.Forget(steamId);
         _system.Forget(steamId);
 
@@ -1800,6 +1812,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         _director.Reset(null);
         _hud?.Reset();
         _menus.Clear();
+        // A save held for a smoke on the old map goes now, without it.
+        _voxels.Reset();
         _recorder.Reset();
         _playbook.Reset();
         _drill.Reset();

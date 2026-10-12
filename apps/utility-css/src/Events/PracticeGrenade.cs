@@ -15,11 +15,45 @@ public partial class UtilityPracticePlugin
     [GameEventHandler]
     public HookResult OnSmokeDetonate(EventSmokegrenadeDetonate @event, GameEventInfo info)
     {
-        _recorder.OnDetonated(
-            (uint)@event.Entityid,
-            new Vec3(@event.X, @event.Y, @event.Z)
-        );
+        uint index = (uint)@event.Entityid;
+        var position = new Vec3(@event.X, @event.Y, @event.Z);
+
+        LineupRecord? thrown = _recorder.OnDetonated(index, position);
+
+        // The game's own voxel log, read for a player's own smoke: that is the
+        // throw .save turns into a lineup.
+        if (
+            thrown != null
+            && _voxels.Watch(
+                index,
+                position,
+                $"throw by {thrown.author_steam_id}",
+                payload => SmokeSettled(thrown, payload)
+            )
+        )
+        {
+            _smokeGrowing.Add(thrown);
+        }
+
         return HookResult.Continue;
+    }
+
+    // Kept on the throw, so a save made later carries it; a save made while
+    // the cloud was still spreading has been held for exactly this, and goes
+    // now with whatever there is.
+    private void SmokeSettled(LineupRecord thrown, SmokeVoxelPayload? payload)
+    {
+        _smokeGrowing.Remove(thrown);
+
+        if (payload != null)
+        {
+            thrown.smoke_voxels = payload;
+        }
+
+        if (_heldSaves.Remove(thrown, out ulong steamId))
+        {
+            IngestSave(steamId, thrown);
+        }
     }
 
     [GameEventHandler]

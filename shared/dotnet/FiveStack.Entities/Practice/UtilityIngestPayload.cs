@@ -52,6 +52,9 @@ public class UtilityIngestPayload
 
     public List<UtilityApproachPoint>? approach { get; set; }
 
+    // Only on a smoke whose cloud finished growing; a save waits for it.
+    public SmokeVoxelPayload? smoke_voxels { get; set; }
+
     public static UtilityIngestPayload From(LineupRecord lineup)
     {
         // Vec3 is a struct, so an unrecorded seed is (0,0,0) rather than null.
@@ -106,6 +109,8 @@ public class UtilityIngestPayload
                 lineup.approach.Count == 0
                     ? null
                     : lineup.approach.Select(UtilityApproachPoint.From).ToList(),
+
+            smoke_voxels = lineup.smoke_voxels,
         };
     }
 
