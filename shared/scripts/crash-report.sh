@@ -136,7 +136,7 @@ server_crashed() {
 # Keyed by SERVER_ID so a report traces back to the server that crashed. A
 # match server's id is an on-demand slot that is reused, so the match is
 # recorded alongside it.
-write_crash_report() {
+write_crash_report() (
   local status="$1"
   local started_at="$2"
   local game_version="$3"
@@ -146,18 +146,18 @@ write_crash_report() {
   local crashed_at
   crashed_at="$(date -u +%s)"
 
-  local server_dir="${CRASH_REPORTS_DIR}/${SERVER_ID:-unknown}"
-  local report_dir
-  report_dir="${server_dir}/$(date -u -d "@${crashed_at}" +%Y%m%dT%H%M%SZ)"
+  local server="${SERVER_ID:-unknown}"
+  local report
+  report="$(date -u -d "@${crashed_at}" +%Y%m%dT%H%M%SZ)"
+  local report_dir="${CRASH_REPORTS_DIR}/${server}/${report}"
 
-  if ! mkdir -p "$report_dir"; then
+  if ! enter_crash_reports "$server" || ! mkdir -- "$report" || ! enter_report_folder "$report"; then
     echo "---Server exited with status ${status}; unable to save a crash report to ${report_dir}---"
     return 1
   fi
 
   local console_saved=false
-  if [ -f "$console_file" ]; then
-    mv "$console_file" "${report_dir}/console.log"
+  if [ -f "$console_file" ] && mv -T -- "$console_file" console.log; then
     console_saved=true
   fi
 
@@ -170,23 +170,21 @@ write_crash_report() {
   local minidumps=0
   local dump
   for dump in "${MINIDUMP_DIR}"/*; do
-    if [ -f "$dump" ]; then
-      mv "$dump" "${report_dir}/"
+    if [ -f "$dump" ] && mv -T -- "$dump" "${dump##*/}"; then
       minidumps=$((minidumps + 1))
     fi
   done
 
   local swiftly_file
   for swiftly_file in "${INSTANCE_SERVER_DIR}/${SWIFTLY_CRASH_DIR}"/*/*; do
-    if [ -f "$swiftly_file" ]; then
-      mv "$swiftly_file" "${report_dir}/"
-
+    if [ -f "$swiftly_file" ] && mv -T -- "$swiftly_file" "${swiftly_file##*/}"; then
       case "$swiftly_file" in
         *.dmp) minidumps=$((minidumps + 1)) ;;
       esac
     fi
   done
 
+  set -o noclobber
   {
     echo "server_id=${SERVER_ID:-}"
     echo "match_id=${MATCH_ID:-}"
@@ -204,12 +202,12 @@ write_crash_report() {
     echo "launch_params=$(redact_passwords "${EXTRA_GAME_PARAMS:-}")"
     echo "minidumps=${minidumps}"
     echo "console_saved=${console_saved}"
-  } > "${report_dir}/crash.txt"
+  } > crash.txt
 
-  prune_crash_reports "$server_dir"
+  prune_crash_reports "${CRASH_REPORTS_DIR}/${server}"
 
   echo "---Server exited with status ${status}; crash report saved to ${report_dir}---"
-}
+)
 
 game_version() {
   local steam_inf
@@ -226,16 +224,49 @@ redact_passwords() {
   printf '%s' "$1" | sed -E 's/(\+[a-z_]*password)( +)[^ ]+/\1\2<redacted>/g'
 }
 
+# Every game pod on the node shares this volume, so any folder on the way to a
+# report can be a symlink planted to steer a write or a delete somewhere else.
+# Each folder is entered on its own and checked to be the one it was named as;
+# from inside, only relative names are used, and files go in with mv -T and
+# noclobber, which replace or refuse a planted link instead of following it.
+# Changes directory, so only for a subshell.
+enter_crash_reports() {
+  local folder
+
+  cd -P -- "$(dirname -- "$CRASH_REPORTS_DIR")" || return 1
+
+  for folder in "$(basename -- "$CRASH_REPORTS_DIR")" "$1"; do
+    mkdir -- "$folder" 2> /dev/null
+    enter_report_folder "$folder" || return 1
+  done
+}
+
+enter_report_folder() {
+  local folder="$1"
+  local expected
+  expected="$(pwd -P)"
+  expected="${expected%/}/${folder}"
+
+  if ! cd -P -- "$folder" 2> /dev/null || [ "$(pwd -P)" != "$expected" ]; then
+    echo "---${expected} is a symlink or outside ${CRASH_REPORTS_DIR}; leaving its crash reports alone---"
+    return 1
+  fi
+}
+
 # Report directories are named by UTC time, so name order is age order. Only
 # real directories with that name are reports: the volume is shared by every
 # game pod on the node, and rm -rf through a symlink deletes what it points at.
-prune_crash_reports() {
+prune_crash_reports() (
   local server_dir="$1"
   local reports=()
   local report
 
-  for report in "$server_dir"/*; do
-    if [[ "${report##*/}" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] && [ -d "$report" ] && [ ! -L "$report" ]; then
+  if ! enter_crash_reports "${server_dir#"$CRASH_REPORTS_DIR"/}"; then
+    return 1
+  fi
+
+  for report in *; do
+    if [[ "$report" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] && [ -d "$report" ] && [ ! -L "$report" ]; then
       reports+=("$report")
     fi
   done
@@ -246,4 +277,4 @@ prune_crash_reports() {
   for ((index = 0; index < excess; index++)); do
     rm -rf -- "${reports[$index]}"
   done
-}
+)

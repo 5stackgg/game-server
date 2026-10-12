@@ -358,6 +358,101 @@ fi
 CRASH_REPORTS_KEPT=10
 teardown
 
+# Any pod on the node can plant a server's folder, or the folder above it, as
+# a link to somewhere else on the volume.
+decoy_reports() {
+  local decoy="$1"
+  local stamp
+
+  for stamp in 20261001T100000Z 20261002T132251Z; do
+    mkdir -p "$decoy/$stamp"
+  done
+}
+
+echo "prune_crash_reports never follows a server folder that is a symlink"
+setup
+CRASH_REPORTS_KEPT=1
+decoy_reports "$workdir/decoy"
+mkdir -p "$CRASH_REPORTS_DIR"
+ln -s "$workdir/decoy" "$CRASH_REPORTS_DIR/$SERVER_ID"
+prune_crash_reports "$CRASH_REPORTS_DIR/$SERVER_ID" > /dev/null 2>&1
+assert_equals "$(ls "$workdir/decoy" | tr '\n' ' ')" "20261001T100000Z 20261002T132251Z " \
+  "pruning deleted reports through a symlinked server folder"
+CRASH_REPORTS_KEPT=10
+teardown
+
+echo "prune_crash_reports never follows a reports folder that is a symlink"
+setup
+CRASH_REPORTS_KEPT=1
+decoy_reports "$workdir/decoy/$SERVER_ID"
+ln -s "$workdir/decoy" "$CRASH_REPORTS_DIR"
+prune_crash_reports "$CRASH_REPORTS_DIR/$SERVER_ID" > /dev/null 2>&1
+assert_equals "$(ls "$workdir/decoy/$SERVER_ID" | tr '\n' ' ')" "20261001T100000Z 20261002T132251Z " \
+  "pruning deleted reports through a symlinked reports folder"
+CRASH_REPORTS_KEPT=10
+teardown
+
+echo "prune_crash_reports never prunes a folder outside the reports folder"
+setup
+CRASH_REPORTS_KEPT=1
+decoy_reports "$workdir/decoy"
+mkdir -p "$CRASH_REPORTS_DIR"
+prune_crash_reports "$CRASH_REPORTS_DIR/../decoy" > /dev/null 2>&1
+assert_equals "$(ls "$workdir/decoy" | tr '\n' ' ')" "20261001T100000Z 20261002T132251Z " \
+  "pruning deleted reports outside the reports folder"
+CRASH_REPORTS_KEPT=10
+teardown
+
+echo "run_server saves no report through a server folder that is a symlink"
+setup
+CRASH_REPORTS_KEPT=1
+decoy_reports "$workdir/decoy"
+mkdir -p "$CRASH_REPORTS_DIR"
+ln -s "$workdir/decoy" "$CRASH_REPORTS_DIR/$SERVER_ID"
+server="$(fake_server)"
+output="$(LINES_BEFORE_CHANGE=1 EXIT_STATUS=1 run_server "$server" 2>&1)"
+status=$?
+assert_equals "$status" "1" "the server's exit status was not passed through"
+assert_equals "$(ls "$workdir/decoy" | tr '\n' ' ')" "20261001T100000Z 20261002T132251Z " \
+  "a report was written or pruned through a symlinked server folder"
+assert_contains "$output" "unable to save a crash report" \
+  "the container log does not say the report was not saved"
+CRASH_REPORTS_KEPT=10
+teardown
+
+echo "run_server saves no report through a reports folder that is a symlink"
+setup
+CRASH_REPORTS_KEPT=1
+decoy_reports "$workdir/decoy/$SERVER_ID"
+ln -s "$workdir/decoy" "$CRASH_REPORTS_DIR"
+server="$(fake_server)"
+output="$(LINES_BEFORE_CHANGE=1 EXIT_STATUS=1 run_server "$server" 2>&1)"
+assert_equals "$(ls "$workdir/decoy/$SERVER_ID" | tr '\n' ' ')" "20261001T100000Z 20261002T132251Z " \
+  "a report was written or pruned through a symlinked reports folder"
+assert_contains "$output" "unable to save a crash report" \
+  "the container log does not say the report was not saved"
+CRASH_REPORTS_KEPT=10
+teardown
+
+# The report's own folder is named by the second it is written, so a link is
+# planted under every name it could take while the fake server runs.
+echo "run_server saves no report through a symlink named like the new report"
+setup
+decoy_reports "$workdir/decoy"
+server_dir="$CRASH_REPORTS_DIR/$SERVER_ID"
+mkdir -p "$server_dir"
+now="$(date -u +%s)"
+for offset in $(seq 0 60); do
+  ln -s "$workdir/decoy" "$server_dir/$(date -u -d "@$((now + offset))" +%Y%m%dT%H%M%SZ)"
+done
+server="$(fake_server)"
+output="$(LINES_BEFORE_CHANGE=1 EXIT_STATUS=1 WRITE_DUMP=1 run_server "$server" 2>&1)"
+assert_equals "$(ls "$workdir/decoy" | tr '\n' ' ')" "20261001T100000Z 20261002T132251Z " \
+  "a report was written through a symlink named like it"
+assert_contains "$output" "unable to save a crash report" \
+  "the container log does not say the report was not saved"
+teardown
+
 if [ "$failures" -gt 0 ]; then
   echo "$failures failure(s)"
   exit 1
