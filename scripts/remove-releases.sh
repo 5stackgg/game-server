@@ -30,11 +30,13 @@ if [[ -z "$releases" ]]; then
   exit 1
 fi
 
-IFS=$'\t' read -r latest_num latest_tag _ <<<"$(head -n 1 <<<"$releases")"
-
 # the API reads the body as min_game_build_id, and a release without one inherits
-# it from the newest older release that has one
-IFS=$'\t' read -r anchor_num anchor_tag build_id <<<"$(awk -F'\t' '$3 ~ /^[0-9]+$/ { print; exit }' <<<"$releases")"
+# it from the newest older release that has one. CI now writes it on every
+# release, but the older ones still lean on that inheritance.
+# "<counter>\t<tag>\t<build id>", newest first
+resolved=$(sort -n <<<"$releases" | awk -F'\t' -v OFS='\t' '$3 ~ /^[0-9]+$/ { id = $3 } { print $1, $2, id }' | sort -rn)
+
+IFS=$'\t' read -r latest_num latest_tag build_id <<<"$(head -n 1 <<<"$resolved")"
 
 if [[ -z "$build_id" ]]; then
   echo "No $prefix release carries a CS2 build id"
@@ -42,16 +44,17 @@ if [[ -z "$build_id" ]]; then
 fi
 
 echo "Latest $prefix release: $latest_tag"
-echo "Newest CS2 build id: $build_id (on $anchor_tag)"
+echo "CS2 build id: $build_id"
 
-if [[ "$anchor_num" == "$latest_num" ]]; then
+# the latest release supersedes every older one on the same build
+stale_tags=$(awk -F'\t' -v id="$build_id" -v to="$latest_num" '$3 == id && $1 < to { print $2 }' <<<"$resolved")
+
+if [[ -z "$stale_tags" ]]; then
   echo "Nothing to prune"
   exit 0
 fi
 
-stale_tags=$(awk -F'\t' -v from="$anchor_num" -v to="$latest_num" '$1 >= from && $1 < to { print $2 }' <<<"$releases")
-
-echo "Moving build id $build_id to $latest_tag and removing:"
+echo "Keeping $latest_tag on build $build_id and removing:"
 echo "$stale_tags" | sed 's/^/  /'
 read -e -p "Continue? (y/N): " confirm
 
