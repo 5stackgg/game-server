@@ -24,6 +24,22 @@ version independently and share one tag namespace, so pick by prefix:
 - CounterStrikeSharp — `css-v0.0.N`, asset `FiveStack-css-v0.0.N.zip`
 - SwiftlyS2 — `sw-v0.0.N`, asset `FiveStack-sw-v0.0.N.zip`
 
+## CS2 build compatibility
+
+A release's body is the minimum CS2 build id it runs on; the API reads it to choose which release a
+node gets. CI writes it when the release is created, from [`min-game-build.json`](min-game-build.json),
+so it must stay a bare number.
+
+When a CS2 update breaks a plugin (the gamedata validator failing for that runtime), run the
+**Set Min Game Build** workflow from main before shipping the fix. Leave the build id blank to use the
+current public CS2 build. The run shows the build id it resolved and waits for approval before
+committing it; it refuses an id that is not higher than the current one. Every release that plugin cuts
+afterwards requires that build, so nodes still on the old one keep the release that works there. Tick
+*retag latest* when the fix has already shipped.
+
+The approval comes from the `min-game-build` environment (Settings → Environments). Give it required
+reviewers, or the run commits without waiting.
+
 # Player Management
 
 Community (non-Ranked) dedicated servers run no match plugin, so the sanctions a moderator sets in

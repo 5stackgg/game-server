@@ -81,6 +81,17 @@ jobs:
 
             const repoTag = (tag) => `ghcr.io/${owner}/${image}:${tag}`;
 
+            // the API reads a release's body as its min_game_build_id, so it is
+            // written at creation: a release published bare inherits an older
+            // build id and nodes still on that build would take it
+            const builds = JSON.parse(require('fs').readFileSync('min-game-build.json', 'utf8'));
+            const minGameBuild = String(builds[prefix] ?? '');
+            if (!/^\d+$/.test(minGameBuild)) {
+              core.setFailed(`min-game-build.json has no numeric build id for ${prefix}: '${minGameBuild}'`);
+              return;
+            }
+            core.setOutput('body', minGameBuild);
+
             if (channel === 'beta') {
               // one push to beta builds both plugins; a bare <sha> tag collides on the second
               core.setOutput('release_version', sha);
@@ -166,6 +177,7 @@ jobs:
         with:
           tag_name: ${{ steps.resolve.outputs.release_tag }}
           name: ${{ steps.resolve.outputs.release_name }}
+          body: ${{ steps.resolve.outputs.body }}
           draft: ${{ steps.resolve.outputs.draft }}
           prerelease: ${{ steps.resolve.outputs.draft }}
           files: |

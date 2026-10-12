@@ -1,0 +1,185 @@
+name: Set Min Game Build
+
+# Run this when a CS2 update breaks a runtime (the gamedata validator failing
+# for it is the sign): every release that runtime cuts from then on carries the
+# new build id, so nodes still on the old build keep the release that works there.
+on:
+  workflow_dispatch:
+    inputs:
+      runtime:
+        description: "Which plugin needs the new CS2 build"
+        type: choice
+        options:
+          - both
+          - css
+          - sw
+        default: both
+      build_id:
+        description: "CS2 build id; blank uses the current public build from Steam"
+        type: string
+        default: ""
+      retag_latest:
+        description: "Also set it on the newest release (the fix already shipped)"
+        type: boolean
+        default: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      build_id: ${{ steps.resolve.outputs.build_id }}
+    env:
+      RUNTIME: ${{ inputs.runtime }}
+      BUILD_ID: ${{ inputs.build_id }}
+      RETAG_LATEST: ${{ inputs.retag_latest }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Resolve build id
+        id: resolve
+        run: |
+          set -euo pipefail
+
+          # plugin-build reads this file on main; a value committed anywhere
+          # else never reaches a release
+          if [ "$GITHUB_REF_NAME" != "main" ]; then
+            echo "::error::run this workflow from main"
+            exit 1
+          fi
+
+          BUILD_ID="${BUILD_ID//[[:space:]]/}"
+          SOURCE=input
+          if [ -z "$BUILD_ID" ]; then
+            SOURCE="Steam (current public build)"
+            if ! BUILD_ID=$(curl -fsSL --retry 3 https://api.steamcmd.net/v1/info/730 \
+              | jq -r '.data["730"].depots.branches.public.buildid // ""'); then
+              echo "::error::could not fetch the current CS2 build from Steam; enter the build id instead"
+              exit 1
+            fi
+          fi
+          # the API reads the release body as a bare number
+          if [[ ! "$BUILD_ID" =~ ^[0-9]+$ ]]; then
+            echo "::error::build id must be a number, got '${BUILD_ID}' from ${SOURCE}"
+            exit 1
+          fi
+
+          case "$RUNTIME" in
+            both) PREFIXES=(css sw) ;;
+            css|sw) PREFIXES=("$RUNTIME") ;;
+            *) echo "::error::unknown runtime '$RUNTIME'"; exit 1 ;;
+          esac
+
+          {
+            echo "## CS2 build ${BUILD_ID}"
+            echo
+            echo "From ${SOURCE}. Approve the \`apply\` job to commit it."
+            echo
+            echo "| plugin | current | new |"
+            echo "| --- | --- | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          changes=0
+          for prefix in "${PREFIXES[@]}"; do
+            current=$(jq -r --arg p "$prefix" '.[$p] // 0' min-game-build.json)
+            # lowering it would hand releases built for a newer CS2 to nodes on an older one
+            if [ "$BUILD_ID" -lt "$current" ]; then
+              echo "::error::$prefix is already at build $current; refusing to lower it to $BUILD_ID"
+              exit 1
+            fi
+            if [ "$BUILD_ID" -gt "$current" ]; then
+              changes=$((changes + 1))
+              echo "| $prefix | $current | **$BUILD_ID** |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "| $prefix | $current | unchanged |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+          # an equal id is only worth a run when it goes onto the latest release
+          if [ "$changes" -eq 0 ] && [ "$RETAG_LATEST" != "true" ]; then
+            echo "::error::already at build $BUILD_ID; nothing to change"
+            exit 1
+          fi
+          if [ "$RETAG_LATEST" = "true" ]; then
+            echo >> "$GITHUB_STEP_SUMMARY"
+            echo "The newest ${PREFIXES[*]} release will be retagged too." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
+
+  apply:
+    needs: resolve
+    runs-on: ubuntu-latest
+    # the min-game-build environment's required reviewers are the confirmation:
+    # the run waits here with the build id from the resolve summary
+    environment: min-game-build
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RUNTIME: ${{ inputs.runtime }}
+      BUILD_ID: ${{ needs.resolve.outputs.build_id }}
+      RETAG_LATEST: ${{ inputs.retag_latest }}
+    steps:
+      # main as it is after the approval, not as it was when the run started
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Set build id
+        run: |
+          set -euo pipefail
+
+          case "$RUNTIME" in
+            both) PREFIXES=(css sw) ;;
+            *) PREFIXES=("$RUNTIME") ;;
+          esac
+
+          for prefix in "${PREFIXES[@]}"; do
+            current=$(jq -r --arg p "$prefix" '.[$p] // 0' min-game-build.json)
+            # main can move while the run waits for approval
+            if [ "$BUILD_ID" -lt "$current" ]; then
+              echo "::error::$prefix moved to build $current while this run waited; refusing to lower it to $BUILD_ID"
+              exit 1
+            fi
+            if [ "$BUILD_ID" -gt "$current" ]; then
+              jq --arg p "$prefix" --argjson id "$BUILD_ID" '.[$p] = $id' min-game-build.json > "$RUNNER_TEMP/min-game-build.json"
+              mv "$RUNNER_TEMP/min-game-build.json" min-game-build.json
+              echo "$prefix: $current -> $BUILD_ID"
+              echo "$prefix" >> "$RUNNER_TEMP/bumped"
+            fi
+          done
+
+          if [ -s "$RUNNER_TEMP/bumped" ]; then
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+            git add min-game-build.json
+            git commit -m "chore: $(paste -sd/ "$RUNNER_TEMP/bumped") require CS2 build ${BUILD_ID}"
+            # dependency-update pushes to main too; it never touches this file,
+            # so a rebase onto it always applies
+            for attempt in 1 2 3; do
+              git pull --rebase --quiet && git push && break
+              [ "$attempt" -eq 3 ] && exit 1
+              sleep $((attempt * 5))
+            done
+          fi
+
+          if [ "$RETAG_LATEST" != "true" ]; then
+            exit 0
+          fi
+
+          for prefix in "${PREFIXES[@]}"; do
+            latest=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" | jq -rs --arg p "$prefix" '
+              [ .[][]
+                | select(.draft | not)
+                | (.tag_name | capture("^" + $p + "-v0\\.0\\.(?<n>[0-9]+)$")) as $m
+                | { n: ($m.n | tonumber), tag: .tag_name } ]
+              | max_by(.n) | .tag // ""')
+            if [ -z "$latest" ]; then
+              echo "::error::no $prefix release to retag"
+              exit 1
+            fi
+            gh release edit "$latest" --repo "$GITHUB_REPOSITORY" --notes "$BUILD_ID" > /dev/null
+            echo "$latest now requires build $BUILD_ID"
+          done
