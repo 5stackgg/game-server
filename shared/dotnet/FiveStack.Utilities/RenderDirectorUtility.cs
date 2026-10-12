@@ -126,15 +126,6 @@ public static class RenderDirectorUtility
         return (int)MathF.Round(ticks * 1000f / TickRate);
     }
 
-    // When, after go, the pod should throw if `act` has not reached it.
-    public static float ActAtSeconds =>
-        StanceSeconds
-        + StanceEyesSeconds
-        + TiltSeconds
-        + AimSeconds
-        + PinSeconds
-        + AimCloseSeconds;
-
     // A grenade only stands in for the lineup if it is the same kind of grenade.
     public static bool SameUtility(string? projectileType, string? lineupType)
     {
@@ -442,8 +433,6 @@ public static class RenderDirectorUtility
         return turned.Length() <= float.Epsilon ? target : turned;
     }
 
-    public const float BloomDistance = 380f;
-    public const float BloomHeight = 150f;
     public const float BloomLookHeight = 48f;
 
     public static Vec3 RotateZ(Vec3 v, float degrees)
@@ -493,29 +482,6 @@ public static class RenderDirectorUtility
                 yield return (eye, lookAt);
             }
         }
-    }
-
-    // Back toward the thrower, so the cloud is framed against the side it was
-    // thrown to cover.
-    public static (Vec3 eye, Vec3 lookAt) BloomShot(Vec3 landing, Vec3 stance, Vec3 fallbackDirection)
-    {
-        var toward = new Vec3(stance.x - landing.x, stance.y - landing.y, 0f);
-        Vec3 direction = toward.Normalized();
-
-        if (direction.Length() <= float.Epsilon)
-        {
-            direction = new Vec3(-fallbackDirection.x, -fallbackDirection.y, 0f).Normalized();
-        }
-
-        if (direction.Length() <= float.Epsilon)
-        {
-            direction = new Vec3(1f, 0f, 0f);
-        }
-
-        Vec3 lookAt = landing + new Vec3(0f, 0f, BloomLookHeight);
-        Vec3 eye = landing + (direction * BloomDistance) + new Vec3(0f, 0f, BloomHeight);
-
-        return (eye, lookAt);
     }
 
     // Exponential approach with a half-life, so the result does not depend on

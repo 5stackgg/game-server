@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace UtilityPractice;
 
-// Configuration arrives as addons/counterstrikesharp/configs/utility-practice.json,
+// Configuration arrives as addons/swiftlys2/configs/utility-practice.json,
 // written by the panel from the registry's wiring block. The url and api key are
 // provisioned per install, exactly as the inventory plugin receives its own.
 public class UtilityConfig
@@ -14,7 +14,6 @@ public class UtilityConfig
     // server to prove which server it is.
     public string ServerId { get; private set; } = "";
     public string ServerApiPassword { get; private set; } = "";
-    public bool RecordEnabled { get; private set; } = true;
     public bool ReplayEnabled { get; private set; } = true;
     public bool InfiniteUtility { get; private set; } = true;
     public bool NoFlash { get; private set; } = true;
@@ -42,7 +41,6 @@ public class UtilityConfig
         public string? utility_url { get; set; }
         public string? server_id { get; set; }
         public string? server_api_password { get; set; }
-        public bool? np_record_enabled { get; set; }
         public bool? np_replay_enabled { get; set; }
         public bool? np_infinite_utility { get; set; }
         public bool? np_no_flash { get; set; }
@@ -53,9 +51,8 @@ public class UtilityConfig
     }
 
     // Candidates rather than one path: the registry writes
-    // addons/{runtime}/configs/utility-practice.json, but the two runtimes root
-    // their plugin directories differently and an operator may drop the file
-    // beside the plugin instead.
+    // addons/swiftlys2/configs/utility-practice.json, but an operator may drop
+    // the file beside the plugin instead.
     public void Load(params string[] configDirectories)
     {
         // Env wins over the file so an operator can override a provisioned key
@@ -91,7 +88,6 @@ public class UtilityConfig
                     {
                         ServerApiPassword = parsed.server_api_password ?? "";
                     }
-                    RecordEnabled = parsed.np_record_enabled ?? RecordEnabled;
                     ReplayEnabled = parsed.np_replay_enabled ?? ReplayEnabled;
                     InfiniteUtility = parsed.np_infinite_utility ?? InfiniteUtility;
                     NoFlash = parsed.np_no_flash ?? NoFlash;
@@ -107,9 +103,9 @@ public class UtilityConfig
             }
         }
 
-        // A render server has no human to throw, so rethrow MUST emit the real
-        // projectile from the seed (GhostProjectile) -- the api sets this on the
-        // pod. Env wins over the file, same as the url/keys above.
+        // Operator switches: nothing provisions NP_GHOST_PROJECTILE or
+        // NP_GHOST_PREVIEW, and a render server turns both off below. Env wins
+        // over the file, same as the url/keys above.
         string? ghostProjectile =
             Environment.GetEnvironmentVariable("NP_GHOST_PROJECTILE");
         if (!string.IsNullOrEmpty(ghostProjectile))
