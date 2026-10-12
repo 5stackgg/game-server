@@ -42,13 +42,3 @@ jobs:
             type=registry,ref=ghcr.io/${{ github.repository_owner }}/gamedata-validator:buildcache
           cache-to: |
             type=registry,ref=ghcr.io/${{ github.repository_owner }}/gamedata-validator:buildcache,mode=max
-
-      # Still node20 and still warns. v5 is the newest release there is, so
-      # there is nothing to bump to; leave it until upstream ships a node24 major.
-      - name: Delete Package Versions
-        uses: actions/delete-package-versions@v5
-        with:
-          package-name: gamedata-validator
-          package-type: container
-          min-versions-to-keep: 5
-          ignore-versions: '^buildcache-*'
