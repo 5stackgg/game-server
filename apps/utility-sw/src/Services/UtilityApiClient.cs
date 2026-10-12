@@ -222,6 +222,19 @@ public class UtilityApiClient
         return result;
     }
 
+    // A render take's smoke, for the lineup it filmed. Fire and forget, and not
+    // queued: the next render of the lineup records it again.
+    public async Task RenderSmokeVoxels(string lineupId, SmokeVoxelPayload payload)
+    {
+        string body = JsonSerializer.Serialize(payload, PracticeJson.Options);
+
+        await SendText(
+            HttpMethod.Post,
+            $"/utility/{Uri.EscapeDataString(lineupId)}/smoke-voxels",
+            body
+        );
+    }
+
     public async Task<bool> Delete(string id)
     {
         return await SendText(HttpMethod.Delete, $"/utility/{Uri.EscapeDataString(id)}", null)

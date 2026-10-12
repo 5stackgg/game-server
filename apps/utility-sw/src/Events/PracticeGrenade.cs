@@ -20,9 +20,14 @@ public partial class UtilityPracticePlugin
         uint index = EntityIndex(@event.EntityID);
         var position = new Vec3(@event.X, @event.Y, @event.Z);
 
+        LineupRecord? rendered = _director.TakeLineup(index);
         LineupRecord? thrown = Detonated(index, position);
 
-        if (thrown != null)
+        if (rendered != null)
+        {
+            WatchRenderSmoke(index, position, rendered);
+        }
+        else if (thrown != null)
         {
             WatchSmoke(index, position, thrown);
         }
@@ -118,6 +123,29 @@ public partial class UtilityPracticePlugin
         {
             _smokeGrowing.Add(thrown);
         }
+    }
+
+    // A render take's smoke goes to the lineup it filmed, replacing whatever
+    // smoke that lineup had: the render is the throw the preview shows.
+    private void WatchRenderSmoke(uint index, Vec3 position, LineupRecord rendered)
+    {
+        if (rendered.id is not string lineupId)
+        {
+            return;
+        }
+
+        _voxels.Watch(
+            index,
+            position,
+            $"[nade-render] render of {lineupId}",
+            payload =>
+            {
+                if (payload != null)
+                {
+                    _ = Task.Run(() => _api.RenderSmokeVoxels(lineupId, payload));
+                }
+            }
+        );
     }
 
     // Kept on the throw, so a save made later carries it; a save made while

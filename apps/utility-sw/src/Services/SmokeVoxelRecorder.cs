@@ -12,7 +12,7 @@ namespace UtilityPractice;
 // the panel can show the cloud the game made instead of an estimate of it.
 //
 // Only a player's own smoke is watched -- the one .save may turn into a lineup
-// -- and only a few at once. When the log is finished is SmokeVoxelCapture's
+// -- or a render take's, and only a few at once. When the log is finished is SmokeVoxelCapture's
 // call; this only reads the fields.
 public class SmokeVoxelRecorder
 {
