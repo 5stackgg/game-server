@@ -81,13 +81,10 @@ public class PracticeSession
 
     public async Task Refresh()
     {
-        bool onRelay = _relay.OnRelay;
-        string? relay = _relay.AccountId();
+        SteamRelayReport relay = _relay.Report();
 
-        // Asking for the session is what tells the panel this server is up, and
-        // on the relay it is not until it can say where: the panel would hand
-        // out a host and port that nobody can reach.
-        if (onRelay && relay == null)
+        // Asking for the session is what tells the panel this server is up.
+        if (relay.Pending)
         {
             _logger.LogInformation(
                 "still connecting to the steam relay; not asking for the practice session yet"
@@ -95,7 +92,7 @@ public class PracticeSession
             return;
         }
 
-        PracticeSessionData? session = await _api.Session(Map, onRelay, relay);
+        PracticeSessionData? session = await _api.Session(Map, relay);
 
         // A failed fetch must not empty the roster: everyone already connected
         // stays connected, and the door keeps the policy it had.

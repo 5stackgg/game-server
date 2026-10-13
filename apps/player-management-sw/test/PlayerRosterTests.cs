@@ -167,6 +167,7 @@ public class PlayerRosterTests
                 },
             "0.0.9",
             "swiftlys2",
+            () => default,
             _ => { },
             _ => { }
         );

@@ -15,7 +15,8 @@ public class GameServer
     private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
     private readonly ILogger<GameServer> _logger;
-    private readonly bool _steamRelay;
+    private readonly bool _listening;
+    private readonly bool _expected;
 
     public GameServer(
         ILogger<GameServer> logger,
@@ -28,7 +29,14 @@ public class GameServer
         _steamAPI = steamAPI;
         _matchService = matchService;
         _environmentService = environmentService;
-        _steamRelay = ConVar.Find("net_p2p_listen_dedicated")?.GetPrimitiveValue<bool>() ?? false;
+        _listening =
+            ConVar.Find(SteamRelayUtility.ListenConVar)?.GetPrimitiveValue<bool>() ?? false;
+        _expected = SteamRelayUtility.Expected();
+
+        if (_expected && !_listening)
+        {
+            _logger.LogError(SteamRelayUtility.NotListening);
+        }
     }
 
     public void SendCommands(string[] commands)
@@ -101,18 +109,22 @@ public class GameServer
             string endpoint =
                 $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={(string.IsNullOrEmpty(workshopID) ? Server.MapName : workshopID)}&pluginVersion={pluginVersion}&pluginRuntime=counterstrikesharp&hibernating={(HibernationUtility.IsHibernating ? "true" : "false")}";
 
-            if (_steamRelay)
+            SteamRelayReport relay = SteamRelayUtility.Report(
+                _listening,
+                _expected,
+                _steamAPI.GetServerSteamIDFormatted
+            );
+
+            // This ping is what tells the panel the server is up.
+            if (relay.Pending)
             {
-                endpoint += $"&steamRelay={_steamRelay}";
-                string? serverSteamID = _steamAPI.GetServerSteamIDFormatted();
+                _logger.LogInformation("still connecting to the steam relay");
+                return;
+            }
 
-                if (serverSteamID == null)
-                {
-                    _logger.LogInformation("still connecting to the steam relay");
-                    return;
-                }
-
-                endpoint += $"&steamID={serverSteamID}";
+            if (relay.OnRelay)
+            {
+                endpoint += $"&steamRelay=true&steamID={relay.Address}";
             }
 
             try

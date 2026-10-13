@@ -19,6 +19,7 @@ public sealed class SanctionSyncLoop : IDisposable
     private readonly Func<PlayerManagementSettings> _settings;
     private readonly string _version;
     private readonly string _runtime;
+    private readonly Func<SteamRelayReport> _relay;
     private readonly Action<string> _warn;
     private readonly Action<string> _info;
 
@@ -39,6 +40,7 @@ public sealed class SanctionSyncLoop : IDisposable
         Func<PlayerManagementSettings> settings,
         string version,
         string runtime,
+        Func<SteamRelayReport> relay,
         Action<string> warn,
         Action<string> info
     )
@@ -50,6 +52,7 @@ public sealed class SanctionSyncLoop : IDisposable
         _settings = settings;
         _version = version;
         _runtime = runtime;
+        _relay = relay;
         _warn = warn;
         _info = info;
     }
@@ -144,6 +147,7 @@ public sealed class SanctionSyncLoop : IDisposable
         {
             RosterReport roster = _roster.Report(now);
             PlayerManagementSettings settings = _settings();
+            SteamRelayReport relay = _relay();
 
             if (!settings.IsConnected())
             {
@@ -158,6 +162,8 @@ public sealed class SanctionSyncLoop : IDisposable
                     steam_ids = queried,
                     plugin_version = _version,
                     plugin_runtime = _runtime,
+                    on_steam_relay = relay.OnRelay,
+                    steam_relay = relay.Address,
                     players = roster.Players,
                     departed = roster.Departed,
                 }

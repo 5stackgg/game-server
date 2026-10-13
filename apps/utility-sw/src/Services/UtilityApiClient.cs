@@ -129,22 +129,17 @@ public class UtilityApiClient
     // such socket, and without this every session reads as empty and gets
     // reaped out from under whoever is throwing.
     // The relay rides along rather than getting a heartbeat of its own: it is
-    // the same fact about the same server on the same schedule. Whether this
-    // server is on the relay at all is ours to say and the panel's to believe.
-    // The caller never sends this on the relay without an address: the report
-    // says the server is up, and until then it is not.
-    public async Task Occupancy(
-        IReadOnlyCollection<ulong> steamIds,
-        bool onSteamRelay,
-        string? steamRelay
-    )
+    // the same fact about the same server on the same schedule. The caller
+    // never sends this while the relay is pending: the report says the server
+    // is up, and until then it is not.
+    public async Task Occupancy(IReadOnlyCollection<ulong> steamIds, SteamRelayReport relay)
     {
         string body = JsonSerializer.Serialize(
             new
             {
                 steam_ids = steamIds.Select(id => id.ToString()).ToArray(),
-                on_steam_relay = onSteamRelay,
-                steam_relay = steamRelay,
+                on_steam_relay = relay.OnRelay,
+                steam_relay = relay.Address,
             },
             PracticeJson.Options
         );
@@ -172,11 +167,7 @@ public class UtilityApiClient
     // The panel calls this server up the moment it asks for its session, and
     // hands out a connect string straight after. So where it can be reached
     // goes with the question, not on the next occupancy report.
-    public async Task<PracticeSessionData?> Session(
-        string? map,
-        bool onSteamRelay,
-        string? steamRelay
-    )
+    public async Task<PracticeSessionData?> Session(string? map, SteamRelayReport relay)
     {
         // Send answers null without a word when it is not configured, which
         // would read as a failed fetch with no reason given.
@@ -193,11 +184,11 @@ public class UtilityApiClient
             query.Add($"map={Uri.EscapeDataString(map)}");
         }
 
-        query.Add($"on_steam_relay={(onSteamRelay ? "true" : "false")}");
+        query.Add($"on_steam_relay={(relay.OnRelay ? "true" : "false")}");
 
-        if (!string.IsNullOrEmpty(steamRelay))
+        if (!string.IsNullOrEmpty(relay.Address))
         {
-            query.Add($"steam_relay={Uri.EscapeDataString(steamRelay)}");
+            query.Add($"steam_relay={Uri.EscapeDataString(relay.Address)}");
         }
 
         string route = $"/utility/session?{string.Join("&", query)}";

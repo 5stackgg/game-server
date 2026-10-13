@@ -14,7 +14,8 @@ public class GameServer
     private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
     private readonly ILogger<GameServer> _logger;
-    private readonly bool _steamRelay;
+    private readonly bool _listening;
+    private readonly bool _expected;
 
     public GameServer(
         ISwiftlyCore core,
@@ -29,7 +30,13 @@ public class GameServer
         _steamService = steamService;
         _matchService = matchService;
         _environmentService = environmentService;
-        _steamRelay = _core.ConVar.Find<bool>("net_p2p_listen_dedicated")?.Value ?? false;
+        _listening = _core.ConVar.Find<bool>(SteamRelayUtility.ListenConVar)?.Value ?? false;
+        _expected = SteamRelayUtility.Expected();
+
+        if (_expected && !_listening)
+        {
+            _logger.LogError(SteamRelayUtility.NotListening);
+        }
     }
 
     public void SendCommands(string[] commands)
@@ -125,18 +132,22 @@ public class GameServer
             string endpoint =
                 $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={mapName}&pluginVersion={pluginVersion}&pluginRuntime=swiftlys2&hibernating={(HibernationUtility.IsHibernating ? "true" : "false")}";
 
-            if (_steamRelay)
+            SteamRelayReport relay = SteamRelayUtility.Report(
+                _listening,
+                _expected,
+                _steamService.GetServerSteamIDFormatted
+            );
+
+            // This ping is what tells the panel the server is up.
+            if (relay.Pending)
             {
-                endpoint += $"&steamRelay={_steamRelay}";
-                string? serverSteamID = _steamService.GetServerSteamIDFormatted();
+                _logger.LogInformation("still connecting to the steam relay");
+                return;
+            }
 
-                if (serverSteamID == null)
-                {
-                    _logger.LogInformation("still connecting to the steam relay");
-                    return;
-                }
-
-                endpoint += $"&steamID={serverSteamID}";
+            if (relay.OnRelay)
+            {
+                endpoint += $"&steamRelay=true&steamID={relay.Address}";
             }
 
             _ = Task.Run(async () =>

@@ -1585,13 +1585,12 @@ public partial class UtilityPracticePlugin : BasePlugin
             return;
         }
 
-        bool onRelay = _relay.OnRelay;
-        string? relay = _relay.AccountId();
+        SteamRelayReport relay = _relay.Report();
 
-        // This report also tells the panel the server is up, and on the relay
-        // it is not until it can say where. Left dirty rather than dropped, so
-        // it goes out the second the address exists and not a minute later.
-        if (onRelay && relay == null)
+        // This report also tells the panel the server is up. Left dirty rather
+        // than dropped, so it goes out the second the relay address exists and
+        // not a minute later.
+        if (relay.Pending)
         {
             _occupancyDirty = true;
             return;
@@ -1610,7 +1609,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             }
         }
 
-        _ = Task.Run(() => _api.Occupancy(present, onRelay, relay));
+        _ = Task.Run(() => _api.Occupancy(present, relay));
     }
 
     private int _warmupTicks;
