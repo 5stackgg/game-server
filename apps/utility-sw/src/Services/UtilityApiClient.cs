@@ -128,15 +128,21 @@ public class UtilityApiClient
     // reports connects over the match-events socket; a practice server has no
     // such socket, and without this every session reads as empty and gets
     // reaped out from under whoever is throwing.
-    // steamRelay rides along rather than getting a heartbeat of its own: it is
-    // the same fact about the same server on the same schedule, and null means
-    // "nothing to say" rather than "clear it".
-    public async Task Occupancy(IReadOnlyCollection<ulong> steamIds, string? steamRelay)
+    // The relay rides along rather than getting a heartbeat of its own: it is
+    // the same fact about the same server on the same schedule. Whether this
+    // server is on the relay at all is ours to say and the panel's to believe;
+    // a null address on its own is "nothing to say yet", never "clear it".
+    public async Task Occupancy(
+        IReadOnlyCollection<ulong> steamIds,
+        bool onSteamRelay,
+        string? steamRelay
+    )
     {
         string body = JsonSerializer.Serialize(
             new
             {
                 steam_ids = steamIds.Select(id => id.ToString()).ToArray(),
+                on_steam_relay = onSteamRelay,
                 steam_relay = steamRelay,
             },
             PracticeJson.Options

@@ -11,8 +11,9 @@ namespace UtilityPractice;
 // only thing that ever reported one was the match plugin's ping -- and a
 // practice pod does not run the match plugin. So the row kept whatever relay
 // the last tenant of that server registered, and players were handed a connect
-// string pointing at somebody else's server. Clearing the stale value is the
-// panel's job; reporting the real one is this.
+// string pointing at somebody else's server. So this server says both things
+// itself: whether it listens on the relay at all, and where. The panel
+// believes the first rather than guessing it from the region.
 //
 // Deliberately NOT the match plugin's /game-server-node/ping endpoint: that one
 // also writes plugin_version and plugin_runtime, which decide how the panel
@@ -22,13 +23,13 @@ public class PracticeRelay
 {
     private readonly ISwiftlyCore _core;
     private readonly ILogger<PracticeRelay> _logger;
-    private readonly bool _onRelay;
+    public bool OnRelay { get; }
 
     public PracticeRelay(ISwiftlyCore core, ILogger<PracticeRelay> logger)
     {
         _core = core;
         _logger = logger;
-        _onRelay = _core.ConVar.Find<bool>("net_p2p_listen_dedicated")?.Value ?? false;
+        OnRelay = _core.ConVar.Find<bool>("net_p2p_listen_dedicated")?.Value ?? false;
     }
 
     /// <summary>
@@ -39,7 +40,7 @@ public class PracticeRelay
     /// </summary>
     public string? AccountId()
     {
-        if (!_onRelay)
+        if (!OnRelay)
         {
             return null;
         }

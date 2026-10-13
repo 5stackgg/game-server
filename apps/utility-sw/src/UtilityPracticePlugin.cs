@@ -303,6 +303,9 @@ public partial class UtilityPracticePlugin : BasePlugin
             _session.Map = current;
             ApplyPracticeCfg();
             RefreshEverything();
+            // Not left to the timer: an empty server may be hibernating, and
+            // one that is never ticks.
+            ReportOccupancy();
         }
 
         _logger.LogInformation(
@@ -1567,7 +1570,10 @@ public partial class UtilityPracticePlugin : BasePlugin
     // snapshot taken there would report them as present, which is the exact
     // staleness this exists to remove. Waiting for the next tick lets the
     // engine drop them first, and folds a burst of joins into one post.
-    private bool _occupancyDirty;
+    //
+    // Starts set: the first report is also where this server says whether it
+    // is on the relay, and the panel hands out a connect string before then.
+    private bool _occupancyDirty = true;
 
     // On the next tick after somebody comes or goes; otherwise a slow
     // reconciler, because the snapshot is idempotent and the reaper's clocks
@@ -1592,9 +1598,10 @@ public partial class UtilityPracticePlugin : BasePlugin
             }
         }
 
+        bool onRelay = _relay.OnRelay;
         string? relay = _relay.AccountId();
 
-        _ = Task.Run(() => _api.Occupancy(present, relay));
+        _ = Task.Run(() => _api.Occupancy(present, onRelay, relay));
     }
 
     private int _warmupTicks;
