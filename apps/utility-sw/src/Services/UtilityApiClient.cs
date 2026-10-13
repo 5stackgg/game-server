@@ -130,8 +130,9 @@ public class UtilityApiClient
     // reaped out from under whoever is throwing.
     // The relay rides along rather than getting a heartbeat of its own: it is
     // the same fact about the same server on the same schedule. Whether this
-    // server is on the relay at all is ours to say and the panel's to believe;
-    // a null address on its own is "nothing to say yet", never "clear it".
+    // server is on the relay at all is ours to say and the panel's to believe.
+    // The caller never sends this on the relay without an address: the report
+    // says the server is up, and until then it is not.
     public async Task Occupancy(
         IReadOnlyCollection<ulong> steamIds,
         bool onSteamRelay,
@@ -168,7 +169,14 @@ public class UtilityApiClient
         await SendText(HttpMethod.Post, "/utility/callouts", body);
     }
 
-    public async Task<PracticeSessionData?> Session(string? map = null)
+    // The panel calls this server up the moment it asks for its session, and
+    // hands out a connect string straight after. So where it can be reached
+    // goes with the question, not on the next occupancy report.
+    public async Task<PracticeSessionData?> Session(
+        string? map,
+        bool onSteamRelay,
+        string? steamRelay
+    )
     {
         // Send answers null without a word when it is not configured, which
         // would read as a failed fetch with no reason given.
@@ -178,9 +186,21 @@ public class UtilityApiClient
             return null;
         }
 
-        string route = string.IsNullOrEmpty(map)
-            ? "/utility/session"
-            : $"/utility/session?map={Uri.EscapeDataString(map)}";
+        var query = new List<string>();
+
+        if (!string.IsNullOrEmpty(map))
+        {
+            query.Add($"map={Uri.EscapeDataString(map)}");
+        }
+
+        query.Add($"on_steam_relay={(onSteamRelay ? "true" : "false")}");
+
+        if (!string.IsNullOrEmpty(steamRelay))
+        {
+            query.Add($"steam_relay={Uri.EscapeDataString(steamRelay)}");
+        }
+
+        string route = $"/utility/session?{string.Join("&", query)}";
 
         string? body = await SendText(HttpMethod.Get, route, null);
 

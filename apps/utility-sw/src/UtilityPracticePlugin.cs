@@ -1585,6 +1585,18 @@ public partial class UtilityPracticePlugin : BasePlugin
             return;
         }
 
+        bool onRelay = _relay.OnRelay;
+        string? relay = _relay.AccountId();
+
+        // This report also tells the panel the server is up, and on the relay
+        // it is not until it can say where. Left dirty rather than dropped, so
+        // it goes out the second the address exists and not a minute later.
+        if (onRelay && relay == null)
+        {
+            _occupancyDirty = true;
+            return;
+        }
+
         _occupancyDirty = false;
         _occupancyTicks = 0;
 
@@ -1597,9 +1609,6 @@ public partial class UtilityPracticePlugin : BasePlugin
                 present.Add(player.SteamID);
             }
         }
-
-        bool onRelay = _relay.OnRelay;
-        string? relay = _relay.AccountId();
 
         _ = Task.Run(() => _api.Occupancy(present, onRelay, relay));
     }

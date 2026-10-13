@@ -10,13 +10,19 @@ namespace UtilityPractice;
 public class PracticeSession
 {
     private readonly UtilityApiClient _api;
+    private readonly PracticeRelay _relay;
     private readonly ILogger<PracticeSession> _logger;
 
     private PracticeSessionData? _session;
 
-    public PracticeSession(UtilityApiClient api, ILogger<PracticeSession> logger)
+    public PracticeSession(
+        UtilityApiClient api,
+        PracticeRelay relay,
+        ILogger<PracticeSession> logger
+    )
     {
         _api = api;
+        _relay = relay;
         _logger = logger;
     }
 
@@ -75,7 +81,21 @@ public class PracticeSession
 
     public async Task Refresh()
     {
-        PracticeSessionData? session = await _api.Session(Map);
+        bool onRelay = _relay.OnRelay;
+        string? relay = _relay.AccountId();
+
+        // Asking for the session is what tells the panel this server is up, and
+        // on the relay it is not until it can say where: the panel would hand
+        // out a host and port that nobody can reach.
+        if (onRelay && relay == null)
+        {
+            _logger.LogInformation(
+                "still connecting to the steam relay; not asking for the practice session yet"
+            );
+            return;
+        }
+
+        PracticeSessionData? session = await _api.Session(Map, onRelay, relay);
 
         // A failed fetch must not empty the roster: everyone already connected
         // stays connected, and the door keeps the policy it had.

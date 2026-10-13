@@ -23,24 +23,48 @@ public class PracticeRelay
 {
     private readonly ISwiftlyCore _core;
     private readonly ILogger<PracticeRelay> _logger;
+    private readonly bool _listening;
+
+    /// <summary>
+    /// Whether this server is meant to be reached over the relay, settled
+    /// before it starts: the launcher's STEAM_RELAY is what makes the engine
+    /// listen, and a server set up by hand has only the cvar. While this is
+    /// true the relay address is the only one that works, so nothing may tell
+    /// the panel the server is up until <see cref="AccountId"/> has an answer.
+    /// </summary>
     public bool OnRelay { get; }
 
     public PracticeRelay(ISwiftlyCore core, ILogger<PracticeRelay> logger)
     {
         _core = core;
         _logger = logger;
-        OnRelay = _core.ConVar.Find<bool>("net_p2p_listen_dedicated")?.Value ?? false;
+        _listening = _core.ConVar.Find<bool>("net_p2p_listen_dedicated")?.Value ?? false;
+
+        bool expected = string.Equals(
+            Environment.GetEnvironmentVariable("STEAM_RELAY"),
+            "true",
+            StringComparison.OrdinalIgnoreCase
+        );
+
+        OnRelay = _listening || expected;
+
+        if (expected && !_listening)
+        {
+            _logger.LogError(
+                "STEAM_RELAY is set but the engine is not listening on the relay; this server will never report itself up"
+            );
+        }
     }
 
     /// <summary>
     /// The relay account id, or null when this server is not on the relay or
-    /// has not finished registering with it yet. Null means "say nothing" --
-    /// never "clear it": a pod that is still connecting would otherwise flap
-    /// the address out from under anybody mid-join.
+    /// has not finished registering with it yet. On the relay a null means
+    /// "not up yet" -- never "clear it": a pod that is still connecting would
+    /// otherwise flap the address out from under anybody mid-join.
     /// </summary>
     public string? AccountId()
     {
-        if (!OnRelay)
+        if (!_listening)
         {
             return null;
         }
