@@ -384,7 +384,7 @@ public class MatchEvents
                         _sendLock.Release();
                     }
 
-                    _pendingMessages[message.Key] = (message.Value.Event, currentTime);
+                    PendingMessageUtility.MarkResent(_pendingMessages, message, currentTime);
                 }
             }
             catch (Exception ex)
