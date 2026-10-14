@@ -573,21 +573,37 @@
 .nw-q15 .nw-qfill, .nw-q15 .nw-qedge, .nw-q15 .nw-qlit { clip: radial( 50% 50%, 316.2deg, 20.1deg ); }
 
 .nw-q0 .nw-qlabel { margin-left: 236px; margin-top: 47px; }
+.nw-q0 .nw-qlabel { transform: rotateZ( -11.25deg ); }
 .nw-q1 .nw-qlabel { margin-left: 352px; margin-top: 47px; }
+.nw-q1 .nw-qlabel { transform: rotateZ( 11.25deg ); }
 .nw-q2 .nw-qlabel { margin-left: 460px; margin-top: 91px; }
+.nw-q2 .nw-qlabel { transform: rotateZ( 33.75deg ); }
 .nw-q3 .nw-qlabel { margin-left: 543px; margin-top: 174px; }
+.nw-q3 .nw-qlabel { transform: rotateZ( 56.25deg ); }
 .nw-q4 .nw-qlabel { margin-left: 587px; margin-top: 282px; }
+.nw-q4 .nw-qlabel { transform: rotateZ( 78.75deg ); }
 .nw-q5 .nw-qlabel { margin-left: 587px; margin-top: 398px; }
+.nw-q5 .nw-qlabel { transform: rotateZ( 101.25deg ); }
 .nw-q6 .nw-qlabel { margin-left: 543px; margin-top: 506px; }
+.nw-q6 .nw-qlabel { transform: rotateZ( -56.25deg ); }
 .nw-q7 .nw-qlabel { margin-left: 460px; margin-top: 589px; }
+.nw-q7 .nw-qlabel { transform: rotateZ( -33.75deg ); }
 .nw-q8 .nw-qlabel { margin-left: 352px; margin-top: 633px; }
+.nw-q8 .nw-qlabel { transform: rotateZ( -11.25deg ); }
 .nw-q9 .nw-qlabel { margin-left: 236px; margin-top: 633px; }
+.nw-q9 .nw-qlabel { transform: rotateZ( 11.25deg ); }
 .nw-q10 .nw-qlabel { margin-left: 128px; margin-top: 589px; }
+.nw-q10 .nw-qlabel { transform: rotateZ( 33.75deg ); }
 .nw-q11 .nw-qlabel { margin-left: 45px; margin-top: 506px; }
+.nw-q11 .nw-qlabel { transform: rotateZ( 56.25deg ); }
 .nw-q12 .nw-qlabel { margin-left: 1px; margin-top: 398px; }
+.nw-q12 .nw-qlabel { transform: rotateZ( -101.25deg ); }
 .nw-q13 .nw-qlabel { margin-left: 1px; margin-top: 282px; }
+.nw-q13 .nw-qlabel { transform: rotateZ( -78.75deg ); }
 .nw-q14 .nw-qlabel { margin-left: 45px; margin-top: 174px; }
+.nw-q14 .nw-qlabel { transform: rotateZ( -56.25deg ); }
 .nw-q15 .nw-qlabel { margin-left: 128px; margin-top: 91px; }
+.nw-q15 .nw-qlabel { transform: rotateZ( -33.75deg ); }
 
 #o1h1 { margin-left: 249px; margin-top: 71px; width: 13px; height: 13px; }
 #o1h1 .nw-qlit { margin-left: -249px; margin-top: -71px; }
@@ -792,13 +808,21 @@
 .nw-x7 .nw-qfill, .nw-x7 .nw-qedge, .nw-x7 .nw-qlit { clip: radial( 50% 50%, 293.7deg, 42.6deg ); }
 
 .nw-x0 .nw-qlabel { margin-left: 294px; margin-top: 41px; }
+.nw-x0 .nw-qlabel { transform: rotateZ( 0deg ); }
 .nw-x1 .nw-qlabel { margin-left: 505px; margin-top: 129px; }
+.nw-x1 .nw-qlabel { transform: rotateZ( 45deg ); }
 .nw-x2 .nw-qlabel { margin-left: 593px; margin-top: 340px; }
+.nw-x2 .nw-qlabel { transform: rotateZ( 90deg ); }
 .nw-x3 .nw-qlabel { margin-left: 505px; margin-top: 551px; }
+.nw-x3 .nw-qlabel { transform: rotateZ( -45deg ); }
 .nw-x4 .nw-qlabel { margin-left: 294px; margin-top: 639px; }
+.nw-x4 .nw-qlabel { transform: rotateZ( 0deg ); }
 .nw-x5 .nw-qlabel { margin-left: 83px; margin-top: 551px; }
+.nw-x5 .nw-qlabel { transform: rotateZ( 45deg ); }
 .nw-x6 .nw-qlabel { margin-left: -5px; margin-top: 340px; }
+.nw-x6 .nw-qlabel { transform: rotateZ( -90deg ); }
 .nw-x7 .nw-qlabel { margin-left: 83px; margin-top: 129px; }
+.nw-x7 .nw-qlabel { transform: rotateZ( -45deg ); }
 
 #x1h1 { margin-left: 249px; margin-top: 71px; width: 13px; height: 13px; }
 #x1h1 .nw-qlit { margin-left: -249px; margin-top: -71px; }

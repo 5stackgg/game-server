@@ -137,6 +137,18 @@ def wide_clip(slot):
     start = (slot * STEP - STEP / 2 + GAP / 2) % 360
     return f"clip: radial( 50% 50%, {start:g}deg, {STEP - GAP:g}deg );"
 
+# Turned to lie along the ring at its angle, like text set on the circle. The
+# three wedges along the bottom turn it the other way round, so it reads left to
+# right there and not upside down. Decided by wedge, not by label: the two
+# halves of a side wedge have to read the same way.
+def tangent(degrees):
+    degrees %= 360
+    if STEP * 2.5 < degrees < STEP * 5.5:
+        degrees -= 180
+    elif degrees > 180:
+        degrees -= 360
+    return f"transform: rotateZ( {degrees:g}deg );"
+
 def quick_clip(index):
     start = (quick_centre(index) - Q_STEP / 2 + GAP / 2) % 360
     return f"clip: radial( 50% 50%, {start:g}deg, {Q_STEP - GAP:g}deg );"
@@ -680,6 +692,7 @@ for index in range(16):
     cx = C + Q_LABEL_R * math.sin(angle)
     cy = C - Q_LABEL_R * math.cos(angle)
     css.append(f".nw-q{index} .nw-qlabel {{ margin-left: {round(cx - Q_LABEL_W / 2)}px; margin-top: {round(cy - Q_LABEL_H / 2)}px; }}")
+    css.append(f".nw-q{index} .nw-qlabel {{ {tangent(quick_centre(index))} }}")
 css.append("")
 
 for index in range(16):
@@ -700,6 +713,7 @@ for slot in range(SLOTS):
     cx = C + Q_LABEL_R * math.sin(angle)
     cy = C - Q_LABEL_R * math.cos(angle)
     css.append(f".nw-x{slot} .nw-qlabel {{ margin-left: {round(cx - Q_LABEL_W / 2)}px; margin-top: {round(cy - Q_LABEL_H / 2)}px; }}")
+    css.append(f".nw-x{slot} .nw-qlabel {{ {tangent(slot * STEP)} }}")
 css.append("")
 
 for slot in range(SLOTS):
