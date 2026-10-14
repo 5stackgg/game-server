@@ -571,7 +571,8 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        WheelPage page = WheelFor(player, path.Count == 0 ? "root" : path[^1]);
+        string current = path.Count == 0 ? "root" : path[^1];
+        WheelPage page = WheelFor(player, current);
 
         WheelItem? quick = null;
         bool outer = false;
@@ -608,8 +609,7 @@ public partial class UtilityPracticePlugin
                 return;
             }
 
-            CloseWheel(player);
-            Pick(player, quick.Id);
+            PickFrom(player, current, quick.Id);
 
             return;
         }
@@ -637,10 +637,32 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        // Gone before the action runs: picking is the end of the menu, and
-        // some of these open a panel of their own that wants the cursor.
-        CloseWheel(player);
-        Pick(player, item.Id);
+        PickFrom(player, current, item.Id);
+    }
+
+    // Settings are flipped several at a time and a filter is set a few ways
+    // before looking, so those pages stay up until TAB or the middle. Anything
+    // else is gone before the action runs: picking is the end of the menu, and
+    // some of these open a panel of their own that wants the cursor.
+    private void PickFrom(IPlayer player, string page, string id)
+    {
+        bool staysOpen = page switch
+        {
+            "settings" or "type" or "side" or "who" => true,
+            "filters" => id == "reset",
+            _ => false,
+        };
+
+        if (!staysOpen)
+        {
+            CloseWheel(player);
+            Pick(player, id);
+
+            return;
+        }
+
+        Pick(player, id);
+        RenderWheel(player);
     }
 
     private void Pick(IPlayer player, string id)
