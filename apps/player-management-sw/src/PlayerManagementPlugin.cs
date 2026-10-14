@@ -143,6 +143,7 @@ public partial class PlayerManagementPlugin : BasePlugin
         _chatHookId = Core.Command.HookClientChat((playerId, text, teamonly) => OnChat(playerId));
 
         InstallConnectGate();
+        LoadSteamRelay();
 
         _loop = new SanctionSyncLoop(
             _book,
@@ -152,6 +153,7 @@ public partial class PlayerManagementPlugin : BasePlugin
             Settings,
             ModuleVersion,
             Runtime,
+            SteamRelay,
             message => _logger.LogWarning("{message}", message),
             message => _logger.LogInformation("{message}", message)
         );

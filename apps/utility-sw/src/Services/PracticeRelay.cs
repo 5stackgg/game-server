@@ -11,8 +11,9 @@ namespace UtilityPractice;
 // only thing that ever reported one was the match plugin's ping -- and a
 // practice pod does not run the match plugin. So the row kept whatever relay
 // the last tenant of that server registered, and players were handed a connect
-// string pointing at somebody else's server. Clearing the stale value is the
-// panel's job; reporting the real one is this.
+// string pointing at somebody else's server. So this server says both things
+// itself: whether it is on the relay at all, and where. What it says is worked
+// out in SteamRelayUtility, the same as every other plugin's.
 //
 // Deliberately NOT the match plugin's /game-server-node/ping endpoint: that one
 // also writes plugin_version and plugin_runtime, which decide how the panel
@@ -20,40 +21,34 @@ namespace UtilityPractice;
 // there would tell the panel the wrong thing about the box.
 public class PracticeRelay
 {
-    private readonly ISwiftlyCore _core;
     private readonly ILogger<PracticeRelay> _logger;
-    private readonly bool _onRelay;
+    private readonly bool _listening;
+    private readonly bool _expected;
 
     public PracticeRelay(ISwiftlyCore core, ILogger<PracticeRelay> logger)
     {
-        _core = core;
         _logger = logger;
-        _onRelay = _core.ConVar.Find<bool>("net_p2p_listen_dedicated")?.Value ?? false;
+        _listening = core.ConVar.Find<bool>(SteamRelayUtility.ListenConVar)?.Value ?? false;
+        _expected = SteamRelayUtility.Expected();
+
+        if (_expected && !_listening)
+        {
+            _logger.LogError(SteamRelayUtility.NotListening);
+        }
     }
 
-    /// <summary>
-    /// The relay account id, or null when this server is not on the relay or
-    /// has not finished registering with it yet. Null means "say nothing" --
-    /// never "clear it": a pod that is still connecting would otherwise flap
-    /// the address out from under anybody mid-join.
-    /// </summary>
-    public string? AccountId()
+    public SteamRelayReport Report()
     {
-        if (!_onRelay)
-        {
-            return null;
-        }
+        return SteamRelayUtility.Report(_listening, _expected, Address);
+    }
 
+    private string? Address()
+    {
         try
         {
-            ulong steamId = SteamGameServer.GetSteamID().GetSteamID64();
-
-            if (steamId == 0)
-            {
-                return null;
-            }
-
-            return SteamIdUtility.ConvertSteamID64ToSteamID(steamId);
+            return SteamIdUtility.ConvertSteamID64ToSteamID(
+                SteamGameServer.GetSteamID().GetSteamID64()
+            );
         }
         catch (Exception error)
         {

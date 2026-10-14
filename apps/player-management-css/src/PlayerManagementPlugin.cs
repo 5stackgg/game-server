@@ -108,6 +108,7 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         AddCommandListener("say_team", OnChat, HookMode.Pre);
 
         InstallConnectGate();
+        LoadSteamRelay(hotReload);
 
         _loop = new SanctionSyncLoop(
             _book,
@@ -117,6 +118,7 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             Config.Settings,
             ModuleVersion,
             Runtime,
+            SteamRelay,
             message => Logger.LogWarning("{message}", message),
             message => Logger.LogInformation("{message}", message)
         );

@@ -236,16 +236,18 @@ public class UtilityApiClient
     // reports connects over the match-events socket; a practice server has no
     // such socket, and without this every session reads as empty and gets
     // reaped out from under whoever is throwing.
-    // steamRelay rides along rather than getting a heartbeat of its own: it is
-    // the same fact about the same server on the same schedule, and null means
-    // "nothing to say" rather than "clear it".
-    public async Task Occupancy(IReadOnlyCollection<ulong> steamIds, string? steamRelay)
+    // The relay rides along rather than getting a heartbeat of its own: it is
+    // the same fact about the same server on the same schedule. The caller
+    // never sends this while the relay is pending: the report says the server
+    // is up, and until then it is not.
+    public async Task Occupancy(IReadOnlyCollection<ulong> steamIds, SteamRelayReport relay)
     {
         string body = JsonSerializer.Serialize(
             new
             {
                 steam_ids = steamIds.Select(id => id.ToString()).ToArray(),
-                steam_relay = steamRelay,
+                on_steam_relay = relay.OnRelay,
+                steam_relay = relay.Address,
             },
             PracticeJson.Options
         );
@@ -270,7 +272,10 @@ public class UtilityApiClient
         await SendText(HttpMethod.Post, "/utility/callouts", body);
     }
 
-    public async Task<PracticeSessionData?> Session(string? map = null)
+    // The panel calls this server up the moment it asks for its session, and
+    // hands out a connect string straight after. So where it can be reached
+    // goes with the question, not on the next occupancy report.
+    public async Task<PracticeSessionData?> Session(string? map, SteamRelayReport relay)
     {
         // Send answers null without a word when it is not configured, which
         // would read as a failed fetch with no reason given.
@@ -280,9 +285,21 @@ public class UtilityApiClient
             return null;
         }
 
-        string route = string.IsNullOrEmpty(map)
-            ? "/utility/session"
-            : $"/utility/session?map={Uri.EscapeDataString(map)}";
+        var query = new List<string>();
+
+        if (!string.IsNullOrEmpty(map))
+        {
+            query.Add($"map={Uri.EscapeDataString(map)}");
+        }
+
+        query.Add($"on_steam_relay={(relay.OnRelay ? "true" : "false")}");
+
+        if (!string.IsNullOrEmpty(relay.Address))
+        {
+            query.Add($"steam_relay={Uri.EscapeDataString(relay.Address)}");
+        }
+
+        string route = $"/utility/session?{string.Join("&", query)}";
 
         string? body = await SendText(HttpMethod.Get, route, null);
 

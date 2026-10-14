@@ -14,6 +14,11 @@ public class PlayerSanctionsRequest
     public string plugin_version { get; set; } = "";
     public string plugin_runtime { get; set; } = "";
 
+    // What this server says about Steam's relay, as SteamRelayUtility works it
+    // out for every plugin.
+    public bool on_steam_relay { get; set; }
+    public string? steam_relay { get; set; }
+
     // Null, not empty, while the roster is unknown or a map change is under
     // way: the panel leaves its sessions alone for null and closes them for [].
     public List<RosterPlayer>? players { get; set; }

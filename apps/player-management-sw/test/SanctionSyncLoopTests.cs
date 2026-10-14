@@ -14,6 +14,7 @@ public class SanctionSyncLoopTests
     private sealed class Panel : HttpMessageHandler
     {
         public readonly List<List<string>> Asked = new();
+        public readonly List<SteamRelayReport> Relays = new();
         public int AccessFetches;
         public Func<List<string>, Task<HttpResponseMessage>> Answer = _ =>
             Task.FromResult(Sanctions());
@@ -41,6 +42,12 @@ public class SanctionSyncLoopTests
                 .ToList();
 
             Asked.Add(steamIds);
+            Relays.Add(
+                new SteamRelayReport(
+                    body.RootElement.GetProperty("on_steam_relay").GetBoolean(),
+                    body.RootElement.GetProperty("steam_relay").GetString()
+                )
+            );
 
             return await Answer(steamIds);
         }
@@ -110,9 +117,9 @@ public class SanctionSyncLoopTests
         SanctionBook Book,
         Panel Panel,
         List<string> Warnings
-    ) Loop(Func<PlayerManagementSettings>? settings = null)
+    ) Loop(Func<PlayerManagementSettings>? settings = null, SteamRelayReport relay = default)
     {
-        var (loop, book, _, panel, warnings) = WithAccess(settings);
+        var (loop, book, _, panel, warnings) = WithAccess(settings, relay);
 
         return (loop, book, panel, warnings);
     }
@@ -123,7 +130,7 @@ public class SanctionSyncLoopTests
         ServerAccessBook Access,
         Panel Panel,
         List<string> Warnings
-    ) WithAccess(Func<PlayerManagementSettings>? settings = null)
+    ) WithAccess(Func<PlayerManagementSettings>? settings = null, SteamRelayReport relay = default)
     {
         Panel panel = new();
         SanctionBook book = new();
@@ -138,6 +145,7 @@ public class SanctionSyncLoopTests
             settings ?? Connected,
             "0.0.9",
             "swiftlys2",
+            () => relay,
             warnings.Add,
             _ => { }
         );
@@ -156,6 +164,29 @@ public class SanctionSyncLoopTests
 
         List<string> asked = Assert.Single(panel.Asked);
         Assert.Empty(asked);
+    }
+
+    // The sync is the only word a community server sends the panel, so what it
+    // says about Steam's relay rides on it.
+    [Fact]
+    public async Task TheSyncSaysWhereTheServerIsOnTheRelay()
+    {
+        SteamRelayReport relay = new(true, "[A:1:3653557264:51859]");
+        var (loop, _, panel, _) = Loop(relay: relay);
+
+        await loop.Tick(Start);
+
+        Assert.Equal(relay, Assert.Single(panel.Relays));
+    }
+
+    [Fact]
+    public async Task TheSyncSaysWhenTheServerIsOffTheRelay()
+    {
+        var (loop, _, panel, _) = Loop();
+
+        await loop.Tick(Start);
+
+        Assert.Equal(new SteamRelayReport(false, null), Assert.Single(panel.Relays));
     }
 
     [Fact]
