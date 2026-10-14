@@ -172,7 +172,7 @@ public class GameServer
                 }
                 catch (HttpRequestException ex)
                 {
-                    _logger.LogCritical(ex, "Unable to ping");
+                    _logger.LogCritical($"Unable to ping: {ex.Message}");
                 }
                 catch (Exception ex)
                 {

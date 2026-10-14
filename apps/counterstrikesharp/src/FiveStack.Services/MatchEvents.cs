@@ -313,7 +313,7 @@ public class MatchEvents
         }
         catch (WebSocketException ex)
         {
-            _logger.LogWarning(ex, "Failed to connect to WebSocket server");
+            _logger.LogWarning($"Failed to connect to WebSocket server: {ex.Message}");
             newWebSocket?.Dispose();
             return false;
         }
