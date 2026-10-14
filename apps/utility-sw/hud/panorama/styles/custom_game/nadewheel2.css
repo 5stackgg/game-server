@@ -365,12 +365,12 @@
 	vertical-align: top;
 	font-family: Stratum2, 'Arial Unicode MS';
 	font-size: 14px;
-	font-weight: bold;
+	font-weight: normal;
 	letter-spacing: 0.6px;
 	color: #fafafa;
 	text-align: center;
 	text-overflow: shrink;
-	text-shadow: 0px 1px 3px 3 rgba(0, 0, 0, 1);
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.85);
 }
 
 .nw-quick.on .nw-qlabel
