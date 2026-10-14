@@ -200,16 +200,19 @@ error anywhere. Workshop Manager's contents preview must list `[vxml_c]` and
 
 ### Publishing from CI
 
-`.github/workflows/hud-workshop.yaml` publishes by itself: a merge to `main`
-that changes `panorama/`, `build.sh`, `addoninfo.txt` or the preview runs
-**Publish HUD Addon**, which checks the slot contract, builds the addon, refuses
-to upload one that is missing a layout or the `panorama/` prefix, and updates
-the item `apps/swiftly/Dockerfile` mounts (`HUD_WORKSHOP_ID`).
+The addon is published with the plugin that needs it. The practice plugin ships
+in the SwiftlyS2 image, so the CI run that releases that image (a push to `main`
+or `beta` that changes it) also runs **Publish HUD Addon**, which checks the
+slot contract, builds the addon, refuses to upload one that is missing a layout
+or the `panorama/` prefix, and updates the item `apps/swiftly/Dockerfile` mounts
+(`HUD_WORKSHOP_ID`). Unchanged sources are skipped, so most releases publish
+nothing.
 
-That reaches players on servers still running an older plugin, which is the
-reason a published layout or stylesheet is never edited in place: a change
-takes a new name, so a publish only ever adds files the older plugin does not
-ask for. The rule is beside the names in `HudSlots.cs`.
+There is one Workshop item for every server on both channels, so a release
+reaches players on servers still running an older plugin. That is the reason a
+published layout or stylesheet is never edited in place: a change takes a new
+name, so a publish only ever adds files the older plugin does not ask for. The
+rule is beside the names in `HudSlots.cs`.
 
 It can still be run by hand from the Actions tab. `dry_run` does everything
 except the upload. By hand, a blank `item_id` creates a new item and logs its

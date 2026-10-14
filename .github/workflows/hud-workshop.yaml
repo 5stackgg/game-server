@@ -1,21 +1,25 @@
 name: Publish HUD Addon
 
-# On every merge to main that changes what the addon is made of, and by hand.
+# Called by CI in the run that releases the SwiftlyS2 image, and by hand.
 #
-# Publishing pushes files to every player who joins a practice server, and a
-# server may still be on last week's plugin when they arrive. That is safe only
-# because a layout or stylesheet that has been published keeps its name and its
-# contents (the rule is beside the names in HudSlots.cs): what a merge
-# publishes is files an older plugin never asks for. Unchanged sources are not
+# The practice plugin ships in that image and the layouts it draws ship here,
+# so the two go out together: a plugin that asks for a layout the Workshop does
+# not have draws nothing, and says nothing about it. Unchanged sources are not
 # sent twice -- see "Has the addon actually changed?".
+#
+# Publishing reaches every player who joins a practice server, including one
+# still on last week's plugin. That is safe only because a layout or stylesheet
+# that has been published keeps its name and its contents (the rule is beside
+# the names in HudSlots.cs): a release only ever adds files an older plugin
+# never asks for.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/utility-sw/hud/panorama/**"
-      - "apps/utility-sw/hud/build.sh"
-      - "apps/utility-sw/hud/addoninfo.txt"
-      - "apps/utility-sw/hud/preview.*"
+  workflow_call:
+    inputs:
+      with_release:
+        description: "Set by CI: update the item the servers mount, never create one."
+        required: false
+        type: boolean
+        default: true
   workflow_dispatch:
     inputs:
       item_id:
@@ -33,35 +37,35 @@ on:
         type: boolean
         default: false
 
-# Two merges in a row must not race each other to Steam, and the second must
-# not be cancelled by the first: it is the one whose sources are current.
-concurrency:
-  group: hud-workshop
-  cancel-in-progress: false
-
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    # Two releases in a row must not race each other to Steam, and the second
+    # must not be cancelled by the first: it is the one whose sources are
+    # current.
+    concurrency:
+      group: hud-workshop
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      # A merge has nobody to ask which item to update, so it reads the one the
-      # servers are told to mount. Never blank on a merge: a blank id creates a
-      # NEW item, and that is a decision somebody makes by hand.
+      # A release has nobody to ask which item to update, so it reads the one
+      # the servers are told to mount. Never blank on a release: a blank id
+      # creates a NEW item, and that is a decision somebody makes by hand.
       - name: Which Workshop item
         id: item
         env:
           GIVEN: ${{ inputs.item_id }}
-          EVENT: ${{ github.event_name }}
+          WITH_RELEASE: ${{ inputs.with_release }}
         run: |
           set -euo pipefail
-          ID="$GIVEN"
+          ID="${GIVEN:-}"
 
-          if [ -z "$ID" ] && [ "$EVENT" = push ]; then
+          if [ -z "$ID" ] && [ "$WITH_RELEASE" = true ]; then
             ID=$(grep -oE '^ENV HUD_WORKSHOP_ID="[0-9]+"' apps/swiftly/Dockerfile | grep -oE '[0-9]+' || true)
 
             if [ -z "$ID" ]; then
