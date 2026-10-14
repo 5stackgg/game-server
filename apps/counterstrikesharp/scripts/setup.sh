@@ -115,7 +115,7 @@ if [ "$SERVER_TYPE" != "Ranked" ]; then
   link_plugins "/opt/node-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
 fi
 
-if $AUTOLOAD_PLUGINS = true ; then
+if [ "${AUTOLOAD_PLUGINS:-false}" = "true" ]; then
   echo "---Install Custom Plugins---"
   link_plugins "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
 
@@ -134,7 +134,7 @@ fi
 
 create_symlinks "$BASE_SERVER_DIR" "$INSTANCE_SERVER_DIR"
 
-if $INSTALL_5STACK_PLUGIN = true ; then
+if [ "${INSTALL_5STACK_PLUGIN:-false}" = "true" ]; then
   echo "---Install 5Stack---"
   if [ "${DEV_SWAPPED}" == "1" ]; then
     # css and sw dev builds share the dev volume; each uses its own subfolder
@@ -147,7 +147,7 @@ fi
 
 # A community server's sanctions: it runs no match plugin, so without this a
 # mute or gag set in the panel never reaches it.
-if $INSTALL_PLAYER_MANAGEMENT_PLUGIN = true ; then
+if [ "${INSTALL_PLAYER_MANAGEMENT_PLUGIN:-false}" = "true" ]; then
   echo "---Install Player Management---"
   PLAYER_MANAGEMENT_PLUGIN_DIR="${INSTANCE_SERVER_DIR}/game/csgo/addons/counterstrikesharp/plugins/PlayerManagement"
   if [ ! -e "$PLAYER_MANAGEMENT_PLUGIN_DIR" ]; then
