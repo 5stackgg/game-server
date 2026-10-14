@@ -6,7 +6,7 @@ it through `CCSCustomHudLayout`.
 
 | Layout | Captures input | What it is |
 | --- | --- | --- |
-| `nade2_bar` | no | Everything on screen while you play: a compass with a grenade icon per spot, what the world is filtered to, what the keys do right now, and what the last key did. On the right, what utility is out and for how long, and the plan or stack being worked through. In the middle, for a few seconds, what a flash did. |
+| `nade3_bar` | no | Everything on screen while you play: a compass with a grenade icon per spot, coloured by type, what the keys do right now, and what the last key did. On the right, what utility is out and for how long, and the plan or stack being worked through. In the middle, for a few seconds, what a flash did. |
 | `nade2_hud` | no | The throw card, bottom right: where it lands, a drawn mouse and keycaps for how to throw it, the run-up, live aim error, and how far along the run of landed throws that counts as mastered. |
 | `nade2_wheel` | yes | TAB. Eight wedges around a hub, an outer ring of two more over each, and wedges that open a wheel of their own. Beside it, what the keys do. Generated with `nadewheel2.css` by `wheel.py`: edit that and run it, never the two files. |
 | `nade2_pick` | yes | Choosing a lineup: the map with a marker per landing spot beside the list, under one set of filter chips. |
@@ -15,11 +15,13 @@ it through `CCSCustomHudLayout`.
 
 All six include `nadehud2.css`, and the wheel `nadewheel2.css` as well: it
 uses things no other layout does, and a stylesheet the game rejects takes every
-layout that includes it down with it. `nade_hud`, `nade_list`, `nade_map`, `nade_run`,
+layout that includes it down with it. The bar adds `nadebar3.css` after it, for
+what changed on the compass once `nadehud2.css` was published. `nade_hud`, `nade_list`, `nade_map`, `nade_run`,
 `nade_edit` and `nadehud.css` are the first published set, kept untouched for
 servers still on a plugin that asks for them; nothing in this repo drives them
 any more. Neither does it drive `nade2_edit`, superseded by `nade3_edit` because its
-buttons used classes `nadehud2.css` never styled. `HudSlots.cs` has the rule for when a name has to change.
+buttons used classes `nadehud2.css` never styled, nor `nade2_bar`, superseded by
+`nade3_bar` because every compass pip was the same grey. `HudSlots.cs` has the rule for when a name has to change.
 
 Passive layouts must never capture input — a panel that takes the cursor while
 somebody is aiming takes the shot with it.

@@ -9,7 +9,7 @@ using static SwiftlyS2.Shared.Helper;
 namespace UtilityPractice;
 
 // What is on screen while the player plays: where the spots are, what the
-// world is filtered to, what the keys do here, and what the last one did.
+// keys do here, and what the last one did.
 public partial class UtilityPracticePlugin
 {
     // Sixteen times a second, the pace of the aim feedback it rides on. The
@@ -26,15 +26,10 @@ public partial class UtilityPracticePlugin
 
     private const int ToastTicks = 64 * 3;
 
-    // The targets are clustered from the whole library to name one, which is
-    // not worth doing eight times a second for a line that changes on a click.
-    private const int FilterTextEveryTicks = 64;
-
     private readonly HashSet<ulong> _compassOff = new();
     private readonly HashSet<ulong> _legendOff = new();
     private readonly Dictionary<ulong, string?[]> _pipSlots = new();
     private readonly Dictionary<ulong, (string Text, int Until)> _toasts = new();
-    private readonly Dictionary<ulong, (string Text, int Tick)> _filterText = new();
 
     private sealed class CompassEntry
     {
@@ -74,7 +69,6 @@ public partial class UtilityPracticePlugin
         _pipSlots.Remove(steamId);
         _pipSpots.Remove(steamId);
         _toasts.Remove(steamId);
-        _filterText.Remove(steamId);
         _zoomed.Remove(steamId);
         _reloadDown.Remove(steamId);
         _tabDown.Remove(steamId);
@@ -120,7 +114,6 @@ public partial class UtilityPracticePlugin
 
         bool cleared = _replay.IsHidden(steamId);
         int total = _library.For(steamId).Count;
-        bool filtering = Filtering(steamId);
 
         (List<NadeBarTemplate.Pip> pips, string left, string right, string focus) = Compass(
             steamId,
@@ -157,20 +150,6 @@ public partial class UtilityPracticePlugin
                 Left = left,
                 Right = right,
                 Focus = focus,
-                Filter = cleared
-                    ? "Markers cleared"
-                    : total == 0
-                        ? $"No lineups on {_library.Map}"
-                        : FilterText(steamId),
-                Count = cleared
-                    ? "menu · markers"
-                    : total == 0
-                        ? ""
-                        : filtering
-                            ? $"{Shown(steamId).Count} of {total}"
-                            : $"{total}",
-                Filtering = filtering,
-                Cleared = cleared,
                 // The execute's own panel has the left edge while one runs,
                 // and so does the dock while it is open.
                 Legend =
@@ -386,61 +365,6 @@ public partial class UtilityPracticePlugin
         string place = _callouts.Label(spot.At);
 
         return $"{(place.Length > 0 ? place : "Spot")} · {spot.Lineups.Count} throws";
-    }
-
-    private string FilterText(ulong steamId)
-    {
-        if (
-            _filterText.TryGetValue(steamId, out (string Text, int Tick) cached)
-            && _aimTick >= cached.Tick
-            && _aimTick - cached.Tick < FilterTextEveryTicks
-        )
-        {
-            return cached.Text;
-        }
-
-        MenuState menu = MenuFor(steamId);
-        var parts = new List<string>();
-
-        if (menu.Type != "all")
-        {
-            parts.Add(
-                menu.Type switch
-                {
-                    "molly" => "Molotov",
-                    "he" => "HE",
-                    _ => menu.Type,
-                }
-            );
-        }
-
-        if (menu.Side != "all")
-        {
-            parts.Add(menu.Side == "ct" ? "CT side" : "T side");
-        }
-
-        if (menu.Scope != "all")
-        {
-            parts.Add(menu.Scope);
-        }
-
-        if (_target.TryGetValue(steamId, out string? target))
-        {
-            UtilityTarget? chosen = Targets(steamId).FirstOrDefault(entry => entry.Id == target);
-
-            if (chosen != null)
-            {
-                string place = _callouts.Label(chosen.Landing);
-
-                parts.Add($"onto {(place.Length > 0 ? place : chosen.Name)}");
-            }
-        }
-
-        string text = parts.Count == 0 ? "All lineups" : string.Join(" · ", parts);
-
-        _filterText[steamId] = (text, _aimTick);
-
-        return text;
     }
 
     // One entry per row of the legend, in the layout's order: TAB, E, R. Every

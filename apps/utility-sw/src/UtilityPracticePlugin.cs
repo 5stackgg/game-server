@@ -2188,7 +2188,6 @@ public partial class UtilityPracticePlugin : BasePlugin
         _menus.Clear();
         _shown.Clear();
         _standingIn.Clear();
-        _filterText.Clear();
         _pipSlots.Clear();
         _pipSpots.Clear();
         UnzoomEveryone();
