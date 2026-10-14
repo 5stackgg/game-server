@@ -139,7 +139,7 @@ if [ "$SERVER_TYPE" != "Ranked" ] && [ "$SERVER_TYPE" != "Practice" ]; then
   link_plugins "/opt/node-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
 fi
 
-if $AUTOLOAD_PLUGINS = true ; then
+if [ "${AUTOLOAD_PLUGINS:-false}" = "true" ]; then
   echo "---Install Custom Plugins---"
   link_plugins "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/game/csgo"
 
@@ -170,7 +170,7 @@ fi
 
 create_symlinks "$BASE_SERVER_DIR" "$INSTANCE_SERVER_DIR"
 
-if $INSTALL_5STACK_PLUGIN = true ; then
+if [ "${INSTALL_5STACK_PLUGIN:-false}" = "true" ]; then
   echo "---Install 5Stack---"
   FIVESTACK_PLUGIN_DIR="${INSTANCE_SERVER_DIR}/game/csgo/addons/swiftlys2/plugins/FiveStack"
   if [ "${DEV_SWAPPED}" == "1" ]; then
@@ -196,7 +196,7 @@ if $INSTALL_5STACK_PLUGIN = true ; then
 fi
 
 # A practice server runs this instead of the match plugin, never alongside it.
-if $INSTALL_UTILITY_PRACTICE_PLUGIN = true ; then
+if [ "${INSTALL_UTILITY_PRACTICE_PLUGIN:-false}" = "true" ]; then
   echo "---Install Utility Practice---"
   UTILITY_PRACTICE_PLUGIN_DIR="${INSTANCE_SERVER_DIR}/game/csgo/addons/swiftlys2/plugins/UtilityPractice"
   if [ "${DEV_SWAPPED}" == "1" ]; then
@@ -256,7 +256,7 @@ fi
 
 # A community server's sanctions: it runs no match plugin, so without this a
 # mute or gag set in the panel never reaches it.
-if $INSTALL_PLAYER_MANAGEMENT_PLUGIN = true ; then
+if [ "${INSTALL_PLAYER_MANAGEMENT_PLUGIN:-false}" = "true" ]; then
   echo "---Install Player Management---"
   PLAYER_MANAGEMENT_PLUGIN_DIR="${INSTANCE_SERVER_DIR}/game/csgo/addons/swiftlys2/plugins/PlayerManagement"
   if [ ! -e "$PLAYER_MANAGEMENT_PLUGIN_DIR" ]; then
