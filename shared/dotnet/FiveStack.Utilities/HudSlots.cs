@@ -54,18 +54,23 @@ public static class HudSlots
     // file stays in hud/panorama until no supported plugin asks for it.
     //
     // nade_* and nadehud are the first published set. nade2_edit was published
-    // drawing its buttons with classes nadehud2 never styled.
+    // drawing its buttons with classes nadehud2 never styled, and nade2_bar
+    // with every compass pip the same grey.
     public const string Stylesheet = "nadehud2";
 
     // The wheel's own. It draws with things nothing else here uses, and a
     // stylesheet the game rejects takes every layout that includes it with it.
     public const string WheelStylesheet = "nadewheel2";
 
+    // What the bar changed after nadehud2 was published. The bar includes it
+    // after nadehud2, which is still the sheet its classes are checked against.
+    public const string BarStylesheet = "nadebar3";
+
     public const string NadeHud = "nade2_hud";
     public const string NadePick = "nade2_pick";
     public const string NadeRun = "nade2_run";
     public const string NadeEdit = "nade3_edit";
-    public const string NadeBar = "nade2_bar";
+    public const string NadeBar = "nade3_bar";
     public const string NadeWheel = "nade2_wheel";
 
     // Class toggled on a layout's root to show it for one player. The layouts
@@ -277,8 +282,6 @@ public static class HudSlots
         yield return new HudVariable("cleft", "cleft");
         yield return new HudVariable("cfocus", "cfocus");
         yield return new HudVariable("cright", "cright");
-        yield return new HudVariable("ftext", "ftext");
-        yield return new HudVariable("fcount", "fcount");
 
         for (int key = 1; key <= LegendKeys; key++)
         {

@@ -22,7 +22,7 @@ public class NadeCompassTemplate : HudTemplate
 }
 
 // Everything on screen while the player is playing rather than choosing: the
-// compass, what is filtered, what the keys do, and what the last key did.
+// compass, what the keys do, and what the last key did.
 public class NadeBarTemplate : HudTemplate
 {
     // Slot is which of the fixed pips draws this spot. It stays with the spot
@@ -81,12 +81,6 @@ public class NadeBarTemplate : HudTemplate
     public string Right { get; init; } = "";
     public string Focus { get; init; } = "";
 
-    public string Filter { get; init; } = "";
-
-    public string Count { get; init; } = "";
-    public bool Filtering { get; init; }
-    public bool Cleared { get; init; }
-
     public bool Legend { get; init; }
 
     // One per legend row, in the layout's order. Null hides the row: a key
@@ -140,11 +134,6 @@ public class NadeBarTemplate : HudTemplate
         surface.Set("cleft", Left);
         surface.Set("cfocus", Focus);
         surface.Set("cright", Right);
-
-        surface.Set("ftext", Filter);
-        surface.Set("fcount", Count);
-        surface.Class("filter", "on", Filtering && !Cleared);
-        surface.Class("filter", "cleared", Cleared);
 
         surface.Class("legend", "hidden", !Legend);
 

@@ -1,0 +1,34 @@
+/* nadebar3.vcss -- the compass as nade3_bar draws it, over nadehud2.
+
+   nadehud2 is published and frozen, so this is included after it and every
+   rule here is one class more specific than the one it replaces: it wins in
+   whichever order the game reads the two. */
+
+/* Dark almost to the ends. A pip near the edge of nade2_bar's ribbon sat on
+   nothing, and a pale icon was lost against a sunlit wall. */
+.nh-compass .nh-compass-ribbon
+{
+	height: 26px;
+	background-color: gradient(linear, 0% 0%, 100% 0%, from(rgba(9, 15, 21, 0.3)), color-stop(0.1, rgba(9, 15, 21, 0.8)), color-stop(0.9, rgba(9, 15, 21, 0.8)), to(rgba(9, 15, 21, 0.3)));
+}
+
+/* The web panel's UTILITY_TYPE_COLORS, so a lineup is the same colour in
+   game as on the board. */
+.nh-compass-ribbon .nh-pip.smoke { wash-color: rgb(50, 214, 224); }
+.nh-compass-ribbon .nh-pip.flash { wash-color: rgb(255, 210, 26); }
+.nh-compass-ribbon .nh-pip.molly { wash-color: rgb(255, 106, 26); }
+.nh-compass-ribbon .nh-pip.he    { wash-color: rgb(255, 59, 59); }
+
+/* Bigger rather than white, so the pip the line below names keeps its type.
+   Pulled back by half its width over the ten pixel column. */
+.nh-compass-ribbon .nh-pip.focus
+{
+	width: 24px;
+	height: 24px;
+	transform: translateX( -7px );
+}
+
+.nh-compass-foot .nh-compass-more
+{
+	color: #c3d0dc;
+}

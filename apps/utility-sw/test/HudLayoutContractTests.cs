@@ -302,7 +302,6 @@ public class HudLayoutContractTests
         {
             HudSlots.Bar.RootId,
             "compass",
-            "filter",
             "legend",
             "toast",
         };
@@ -357,8 +356,6 @@ public class HudLayoutContractTests
         {
             (HudSlots.Bar.RootId, HudSlots.Shown),
             ("compass", "hidden"),
-            ("filter", "on"),
-            ("filter", "cleared"),
             ("legend", "hidden"),
             ("toast", HudSlots.Shown),
         };
@@ -455,6 +452,38 @@ public class HudLayoutContractTests
         );
 
         Assert.Equal(expected, declared);
+    }
+
+    // The bar's sheet overrides nadehud2, which only works if it comes after.
+    [Fact]
+    public void TheBarIncludesItsOwnSheetAfterTheSharedOne()
+    {
+        string layout = Layout(HudSlots.NadeBar);
+        int shared = layout.IndexOf($"/{HudSlots.Stylesheet}.vcss_c", StringComparison.Ordinal);
+        int own = layout.IndexOf($"/{HudSlots.BarStylesheet}.vcss_c", StringComparison.Ordinal);
+
+        Assert.True(shared >= 0 && own > shared);
+    }
+
+    // A type with no colour of its own draws in the grey every pip used to be.
+    [Fact]
+    public void EveryCompassTypeHasItsOwnColour()
+    {
+        string sheet = Sheet(HudSlots.BarStylesheet);
+        var colours = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (string type in RadarMaps.Types)
+        {
+            var rule = System.Text.RegularExpressions.Regex.Match(
+                sheet,
+                $@"\.nh-pip\.{type}\s*\{{\s*wash-color:\s*([^;]+);"
+            );
+
+            Assert.True(rule.Success, $"nothing colours a {type} pip");
+            colours.Add(rule.Groups[1].Value);
+        }
+
+        Assert.Equal(RadarMaps.Types.Count, colours.Count);
     }
 
     [Fact]
