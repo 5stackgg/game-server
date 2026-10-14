@@ -24,6 +24,7 @@ public class RenderDirector
     private readonly PracticeReplay _replay;
     private readonly PracticeLibrary _library;
     private readonly PracticeSystem _system;
+    private readonly SmokeVoxelRecorder _voxels;
 
     private const float Dt = 1f / RenderDirectorUtility.TickRate;
 
@@ -41,6 +42,17 @@ public class RenderDirector
     private const float BloomEyeHalfLife = 0.45f;
     private const float BloomLookHalfLife = 0.3f;
 
+    // Whatever the take before left in the world or still in the air.
+    private static readonly string[] UtilityClasses =
+    {
+        "smokegrenade_projectile",
+        "flashbang_projectile",
+        "hegrenade_projectile",
+        "molotov_projectile",
+        "decoy_projectile",
+        "inferno",
+    };
+
     private sealed class Take
     {
         public ulong SteamId;
@@ -48,6 +60,7 @@ public class RenderDirector
         public eRenderBeat Beat;
         public int Tick;
         public int Attempts;
+        public bool Cleared;
         public Vec3 Feet;
         public bool StillSent;
 
@@ -90,7 +103,8 @@ public class RenderDirector
         ILogger<RenderDirector> logger,
         PracticeReplay replay,
         PracticeLibrary library,
-        PracticeSystem system
+        PracticeSystem system,
+        SmokeVoxelRecorder voxels
     )
     {
         _core = core;
@@ -98,6 +112,7 @@ public class RenderDirector
         _replay = replay;
         _library = library;
         _system = system;
+        _voxels = voxels;
     }
 
     public void Stage(IPlayer player, string lineupId, bool refreshed = false)
@@ -295,6 +310,20 @@ public class RenderDirector
 
     private void Staging(Take take, IPlayer player, CCSPlayerPawn pawn)
     {
+        if (!take.Cleared)
+        {
+            take.Tick = 0;
+
+            // Despawned mid-read, the last take's smoke loses its voxel log.
+            if (_voxels.IsReading)
+            {
+                return;
+            }
+
+            ClearUtility();
+            take.Cleared = true;
+        }
+
         if (take.Tick < SettleTicks)
         {
             return;
@@ -456,6 +485,34 @@ public class RenderDirector
             case eRenderBeat.Bloom:
                 Shot(take, player, "bloom", "camera");
                 break;
+        }
+    }
+
+    // The pod stages the next lineup seconds after the last one landed, so its
+    // smoke or fire would still be standing in this one's shots.
+    private void ClearUtility()
+    {
+        foreach (string designer in UtilityClasses)
+        {
+            try
+            {
+                // A copy: despawning inside the entity system's own enumeration throws.
+                foreach (
+                    CBaseEntity entity in _core
+                        .EntitySystem.GetAllEntitiesByDesignerName<CBaseEntity>(designer)
+                        .ToList()
+                )
+                {
+                    if (entity.IsValid)
+                    {
+                        entity.Despawn();
+                    }
+                }
+            }
+            catch (Exception error)
+            {
+                _logger.LogWarning(error, "unable to clear {designer} before a render take", designer);
+            }
         }
     }
 
