@@ -25,25 +25,33 @@ public partial class PracticeReplay
         public readonly List<CPhysicsProp> Props = new();
     }
 
-    // One place to stand that is not the one the throw in focus is made from.
+    // One place to stand: where one or more of a spot's throws were made from,
+    // to the unit. It is drawn there once and never moved.
     private sealed class Stand
     {
         public required Vec3 At;
+        public readonly List<LineupRecord> Lineups = new();
         public bool On;
+
+        // The throw in focus is made from here.
+        public bool Lead;
         public readonly MarkerSet Set = new();
     }
 
+    // A spot is every throw within a few strides of each other, and they were
+    // not all made from the same square foot of floor: each place gets a ring
+    // of its own.
     private sealed class Pad
     {
         public required LineupSpot Spot;
-        public required Vec3 At;
-        public float Yaw;
-        public bool On;
-        public readonly MarkerSet Set = new();
+        public readonly List<Stand> Stands = new();
 
-        // A spot is every throw within a few strides of each other, and they
-        // were not all made from the same square foot of floor.
-        public readonly List<Stand> Others = new();
+        // Which way the throw in focus faces, at the place it is made from.
+        // The one part of a pad that is ever drawn somewhere else, because it
+        // belongs to the throw and not to the floor.
+        public readonly MarkerSet Arrow = new();
+        public Stand? ArrowAt;
+        public float ArrowYaw;
     }
 
     private sealed class AimMark
@@ -57,9 +65,6 @@ public partial class PracticeReplay
         public required Vec3 Center;
         public required Vec3 Forward;
         public required float Away;
-
-        // The eye the marker was last placed for.
-        public Vec3? Anchor;
         public eAimStage Stage;
         public bool Lined;
         public float Visibility = 1f;
@@ -78,12 +83,7 @@ public partial class PracticeReplay
         // The landing mark and the run-up lane of the throw in focus.
         public readonly MarkerSet Focus = new();
         public string? FocusSpot;
-        public float? FocusYaw;
-        public Vec3? FocusAt;
-
-        // Where the player's eye was the last time the aim was checked, to
-        // tell standing from moving.
-        public Vec3? LastEye;
+        public LineupRecord? FocusLineup;
 
         // Set by .clear and held until the player asks for something again.
         public bool Hidden;
@@ -110,9 +110,11 @@ public partial class PracticeReplay
     // A beam as long as it is wide is a square, which at this size is a dot.
     private const float PadDotUnits = 0.5f;
 
-    // Two throws made from within this of each other share a ring: closer
-    // than that and the two rings are one smudged one.
-    private const float StandApartUnits = 4f;
+    // Two throws share a ring only when they were made from the same place.
+    // Anything further apart than this is a different place to stand, however
+    // close, and gets a ring of its own: a ring a stride from where a throw
+    // was really made is a ring that makes it miss.
+    private const float StandSameUnits = 1f;
 
     // Further apart than a step, so walking along the edge does not draw and
     // remove the same footprints over and over.
@@ -685,60 +687,47 @@ public partial class PracticeReplay
                 continue;
             }
 
-            bool focused = world.FocusSpot == spot.Key;
-
-            var pad = new Pad
-            {
-                Spot = spot,
-                At = focused && world.FocusAt != null ? world.FocusAt.Value : floor,
-                Yaw =
-                    focused && world.FocusYaw != null
-                        ? world.FocusYaw.Value
-                        : spot.Lineups[0].release.yaw,
-            };
+            var pad = new Pad { Spot = spot };
 
             world.Pads[spot.Key] = pad;
             DrawPad(owner.SteamID, pad);
+            LeadPad(owner.SteamID, pad, world.FocusSpot == spot.Key ? world.FocusLineup : null);
         }
     }
 
     private void DrawPad(ulong owner, Pad pad)
     {
-        // The ring is the eight units that count as on the spot, so standing
-        // inside it IS being on it, and the dot is the exact place: looking
-        // straight down, it is what goes under the crosshair.
-        DrawStand(pad.Set, owner, pad.At, pad.Yaw, pad.On ? Green : Amber);
-        Segments(
-            pad.Set,
-            owner,
-            pad.At,
-            pad.Yaw,
-            PadZ(pad.At),
-            PracticeMarkerUtility.Facing(),
-            pad.On ? Green : Amber,
-            PadArrowWidth
-        );
-
         foreach (LineupRecord lineup in pad.Spot.Lineups)
         {
+            // Exactly where the throw was made: the ring is the eight units
+            // that count as on the spot, and the dot is the place itself --
+            // looking straight down, it is what goes under the crosshair.
             Vec3 feet = Grounded(lineup.release.feet_position);
+            Stand? stand = pad.Stands.FirstOrDefault(known =>
+                (known.At - feet).Length() <= StandSameUnits
+            );
 
-            if (
-                Flat(feet, pad.At) <= StandApartUnits
-                || pad.Others.Any(other => Flat(other.At, feet) <= StandApartUnits)
-            )
+            if (stand == null)
             {
-                continue;
+                stand = new Stand { At = feet };
+                pad.Stands.Add(stand);
             }
 
-            var stand = new Stand { At = feet };
+            stand.Lineups.Add(lineup);
+        }
 
-            pad.Others.Add(stand);
-            DrawStand(stand.Set, owner, stand.At, pad.Yaw, AmberDim);
+        foreach (Stand stand in pad.Stands)
+        {
+            DrawStand(stand.Set, owner, stand.At, StandColor(stand));
         }
     }
 
-    private void DrawStand(MarkerSet into, ulong owner, Vec3 at, float yaw, Color color)
+    private static Color StandColor(Stand stand)
+    {
+        return stand.On ? Green : stand.Lead ? Amber : AmberDim;
+    }
+
+    private void DrawStand(MarkerSet into, ulong owner, Vec3 at, Color color)
     {
         float z = PadZ(at);
 
@@ -746,7 +735,7 @@ public partial class PracticeReplay
             into,
             owner,
             at,
-            yaw,
+            0f,
             z,
             PracticeMarkerUtility.Ring(PracticeLineupUtility.StanceToleranceUnits, PadRingSegments),
             color,
@@ -756,7 +745,7 @@ public partial class PracticeReplay
             into,
             owner,
             at,
-            yaw,
+            0f,
             z,
             new[] { new MarkerSegment(-PadDotUnits, 0f, PadDotUnits, 0f) },
             color,
@@ -764,16 +753,80 @@ public partial class PracticeReplay
         );
     }
 
-    private void DespawnPad(Pad pad)
+    // Says which of a pad's places the throw in focus is made from: that ring
+    // goes bright and gets the arrow. No ring moves. A spot with one throw has
+    // nothing to choose between, so its one place leads whether or not
+    // anything is in focus.
+    private void LeadPad(ulong owner, Pad pad, LineupRecord? focus)
     {
-        Despawn(pad.Set);
+        LineupRecord? lead =
+            focus != null && pad.Spot.Lineups.Any(lineup => lineup.client_id == focus.client_id)
+                ? focus
+                : pad.Spot.Lineups.Count == 1 ? pad.Spot.Lineups[0]
+                : null;
 
-        foreach (Stand other in pad.Others)
+        Stand? leading =
+            lead == null
+                ? null
+                : pad.Stands.FirstOrDefault(stand =>
+                    stand.Lineups.Any(lineup => lineup.client_id == lead.client_id)
+                );
+
+        foreach (Stand stand in pad.Stands)
         {
-            Despawn(other.Set);
+            bool leads = stand == leading;
+
+            if (stand.Lead == leads)
+            {
+                continue;
+            }
+
+            stand.Lead = leads;
+            Recolour(stand.Set.Beams, StandColor(stand));
         }
 
-        pad.Others.Clear();
+        float yaw = lead?.release.yaw ?? 0f;
+
+        if (
+            pad.ArrowAt == leading
+            && (leading == null || PracticeLineupUtility.AngleGap(pad.ArrowYaw, yaw) <= 1f)
+        )
+        {
+            return;
+        }
+
+        Despawn(pad.Arrow);
+        pad.ArrowAt = leading;
+        pad.ArrowYaw = yaw;
+
+        if (leading == null)
+        {
+            return;
+        }
+
+        Segments(
+            pad.Arrow,
+            owner,
+            leading.At,
+            yaw,
+            PadZ(leading.At),
+            PracticeMarkerUtility.Facing(),
+            StandColor(leading),
+            PadArrowWidth
+        );
+    }
+
+    private void DespawnPad(Pad pad)
+    {
+        Despawn(pad.Arrow);
+        pad.ArrowAt = null;
+
+        foreach (Stand stand in pad.Stands)
+        {
+            Despawn(stand.Set);
+        }
+
+        pad.Stands.Clear();
     }
 
     // On the floor, unless the floor is under water: lines drawn below a
@@ -831,6 +884,11 @@ public partial class PracticeReplay
 
         if (world.Hidden || active.Count == 0)
         {
+            foreach (Pad pad in world.Pads.Values)
+            {
+                LeadPad(owner.SteamID, pad, null);
+            }
+
             return;
         }
 
@@ -861,7 +919,6 @@ public partial class PracticeReplay
         float visibility = AimVisibility(owner.SteamID);
         CCSPlayerPawn? viewing = owner.PlayerPawn;
         QAngle? eyes = viewing != null && viewing.IsValid ? viewing.EyeAngles : null;
-        Vec3? eye = EyeOf(viewing);
 
         if (onSpot)
         {
@@ -870,11 +927,6 @@ public partial class PracticeReplay
                 LineupRecord lineup = ordered[index];
                 (Vec3 center, Vec3 forward, float away) = AimPoint(lineup);
 
-                if (eye != null)
-                {
-                    (center, away) = AimFrom(eye.Value, forward);
-                }
-
                 var mark = new AimMark
                 {
                     Lineup = lineup,
@@ -882,7 +934,6 @@ public partial class PracticeReplay
                     Center = center,
                     Forward = forward,
                     Away = away,
-                    Anchor = eye,
                     Visibility = visibility,
                 };
 
@@ -924,36 +975,14 @@ public partial class PracticeReplay
             candidate.Lineups.Any(lineup => lineup.client_id == ordered[0].client_id)
         );
 
-        Vec3? feet = lead == null ? null : Grounded(lead.release.feet_position);
-
         world.FocusSpot = home?.Key;
-        world.FocusYaw = lead?.release.yaw;
-        world.FocusAt = feet;
+        world.FocusLineup = lead;
 
-        // The bright ring belongs to the throw in focus: where IT was thrown
-        // from, facing the way it faces. Throws that share a spot are near
-        // each other, not on top of each other, and a ring left where the
-        // first of them stood put the player a stride away from the second.
-        if (
-            home != null
-            && lead != null
-            && feet != null
-            && world.Pads.TryGetValue(home.Key, out Pad? pad)
-            && (
-                PracticeLineupUtility.AngleGap(pad.Yaw, lead.release.yaw) > 1f
-                || (pad.At - feet.Value).Length() > PadMovedUnits
-            )
-        )
+        foreach (Pad pad in world.Pads.Values)
         {
-            DespawnPad(pad);
-            pad.Yaw = lead.release.yaw;
-            pad.At = feet.Value;
-            pad.On = Flat(pad.At, stance) <= PracticeLineupUtility.StanceToleranceUnits;
-            DrawPad(owner.SteamID, pad);
+            LeadPad(owner.SteamID, pad, pad.Spot == home ? lead : null);
         }
     }
-
-    private const float PadMovedUnits = 0.5f;
 
     private void ClearFocus(PlayerWorld world)
     {
@@ -966,89 +995,23 @@ public partial class PracticeReplay
 
         world.Aims.Clear();
         world.FocusSpot = null;
-        world.FocusYaw = null;
-        world.FocusAt = null;
+        world.FocusLineup = null;
     }
 
-    private static Vec3? EyeOf(CCSPlayerPawn? pawn)
-    {
-        if (pawn == null || !pawn.IsValid || pawn.AbsOrigin is not Vector origin)
-        {
-            return null;
-        }
-
-        float view = pawn.ViewOffset.Z.Value;
-
-        return new Vec3(
-            origin.X,
-            origin.Y,
-            origin.Z + (view > 1f ? view : PracticeSolverUtility.StandingEyeHeight)
-        );
-    }
-
-    // Where the marker goes for somebody looking from `eye`: along the throw's
-    // own angles, to whatever those reach from THERE.
+    // Where a throw is aimed: the point its aim ray lands on, the way the ray
+    // runs, and how far that is from the eye it was aimed from.
     //
-    // Being lined up is decided by angle, so the marker has to be an angle
-    // too. Pinned to the piece of wall the throw was aimed at, it is only in
-    // the right place from the exact spot the throw was made on: a few units
-    // to one side and the marker says one thing while going green says
-    // another, and the marker is the one a player believes.
-    private (Vec3 center, float away) AimFrom(Vec3 eye, Vec3 forward)
-    {
-        float reach = AimFallbackRange;
-
-        try
-        {
-            var trace = _core.Trace.TraceShapeLine(
-                new Vector(eye.x, eye.y, eye.z),
-                new Vector(
-                    eye.x + forward.x * AimTraceRange,
-                    eye.y + forward.y * AimTraceRange,
-                    eye.z + forward.z * AimTraceRange
-                ),
-                SkipMarkersAndPlayers()
-            );
-
-            if (trace.DidHit)
-            {
-                var hit = new Vec3(trace.EndPos.X, trace.EndPos.Y, trace.EndPos.Z);
-
-                // Pulled back off the surface so the marker does not z-fight
-                // with the wall it is drawn on.
-                reach = MathF.Max(AimNearestUnits, (hit - eye).Length() - 2f);
-            }
-        }
-        catch (Exception error)
-        {
-            _logger.LogError(error, "unable to trace an aim from the eye");
-        }
-
-        return (
-            new Vec3(eye.x + forward.x * reach, eye.y + forward.y * reach, eye.z + forward.z * reach),
-            reach
-        );
-    }
-
-    // A wall the player is leaning on still gets a marker in front of the
-    // face rather than behind it.
-    private const float AimNearestUnits = 24f;
-
-    // Slower than this between two checks is standing still, and further than
-    // ReanchorUnits from where the marker was placed for is worth moving it.
-    private const float SettledUnits = 0.5f;
-    private const float ReanchorUnits = 0.75f;
-
-    // Where a throw is aimed, seen from its own spot: the point its aim ray
-    // lands on, the way the ray runs, and how far that is from the eye of
-    // somebody standing exactly there. The direction is what the marker is
-    // drawn from; the point is only where it goes when there is no eye to
-    // place it for (AimFrom).
+    // From the eye of somebody on THIS LINEUP'S spot, in the stance it was
+    // lined up in -- never from wherever the player happens to be, and never
+    // from a standing eye for a throw made crouched. The point is a fact about
+    // the lineup and the map: it is found once, drawn there, and does not move
+    // when the player does. Anywhere but the exact spot it is the wrong thing
+    // to put a crosshair on, which is what the ring on the floor is for.
     private (Vec3 center, Vec3 forward, float away) AimPoint(LineupRecord lineup)
     {
         Vec3 spot = Grounded(lineup.release.feet_position);
 
-        var eye = new Vec3(spot.x, spot.y, spot.z + PracticeSolverUtility.StandingEyeHeight);
+        var eye = new Vec3(spot.x, spot.y, spot.z + PracticeLineupUtility.AimEyeHeight(lineup));
 
         double yaw = lineup.release.yaw * Math.PI / 180.0;
         double pitch = lineup.release.pitch * Math.PI / 180.0;
@@ -1268,59 +1231,31 @@ public partial class PracticeReplay
 
         foreach (Pad pad in world.Pads.Values)
         {
-            bool on = Flat(pad.At, feet) <= PracticeLineupUtility.StanceToleranceUnits;
-
-            if (on == pad.On)
+            foreach (Stand stand in pad.Stands)
             {
-                continue;
-            }
+                bool on = Flat(stand.At, feet) <= PracticeLineupUtility.StanceToleranceUnits;
 
-            pad.On = on;
-            Recolour(pad.Set.Beams, on ? Green : Amber);
-        }
-
-        foreach (Pad pad in world.Pads.Values)
-        {
-            foreach (Stand other in pad.Others)
-            {
-                bool on = Flat(other.At, feet) <= PracticeLineupUtility.StanceToleranceUnits;
-
-                if (on == other.On)
+                if (on == stand.On)
                 {
                     continue;
                 }
 
-                other.On = on;
-                Recolour(other.Set.Beams, on ? Green : AmberDim);
+                stand.On = on;
+                Recolour(stand.Set.Beams, StandColor(stand));
+
+                if (stand == pad.ArrowAt)
+                {
+                    Recolour(pad.Arrow.Beams, StandColor(stand));
+                }
             }
         }
 
         float visibility = AimVisibility(player.SteamID);
 
-        // The marker follows the eye, but only once the eye has stopped: moved
-        // every frame of a walk onto the spot it would be rebuilt sixteen
-        // times a second for nobody to look at.
-        Vec3? eye = EyeOf(player.PlayerPawn);
-        bool settled =
-            eye != null
-            && world.LastEye != null
-            && (eye.Value - world.LastEye.Value).Length() < SettledUnits;
-
-        world.LastEye = eye;
-
         foreach (AimMark mark in world.Aims)
         {
             bool lined = mark.Lined;
             eAimStage stage = mark.Stage;
-            bool moved =
-                settled
-                && (mark.Anchor == null || (eye!.Value - mark.Anchor.Value).Length() > ReanchorUnits);
-
-            if (moved)
-            {
-                (mark.Center, mark.Away) = AimFrom(eye!.Value, mark.Forward);
-                mark.Anchor = eye;
-            }
 
             if (mark.Full)
             {
@@ -1335,8 +1270,7 @@ public partial class PracticeReplay
                 lined = PracticeLineupUtility.AimMiss(error, mark.Lineup.aim_tolerance) <= 0f;
             }
 
-            bool redraw =
-                moved || stage != mark.Stage || (visibility > 0f) != (mark.Visibility > 0f);
+            bool redraw = stage != mark.Stage || (visibility > 0f) != (mark.Visibility > 0f);
             bool recolour = lined != mark.Lined || Math.Abs(visibility - mark.Visibility) >= 0.01f;
 
             mark.Stage = stage;

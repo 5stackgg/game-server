@@ -103,6 +103,37 @@ public static class PracticeLineupUtility
         return gap > 180f ? 360f - gap : gap;
     }
 
+    // CS2's view heights above the feet, standing and fully crouched.
+    public const float StandingEyeHeight = 64f;
+    public const float CrouchedEyeHeight = 46f;
+
+    // How far outside those a recorded eye may sit and still be believed.
+    private const float EyeHeightSlack = 2f;
+
+    // How high the eye is, above the feet, when a throw is lined up.
+    //
+    // Thrown standing still, a grenade is released from where it was aimed, so
+    // the eye it recorded IS the eye it was aimed from, crouched or standing.
+    // A throw made in the air or on the move was aimed before either began, and
+    // what it recorded at release is somewhere else: for those the stance says.
+    public static float AimEyeHeight(LineupRecord lineup)
+    {
+        ThrowKeys keys = PracticeThrowKeys.For(lineup);
+        float recorded = lineup.release.eye_position.z - lineup.release.feet_position.z;
+
+        if (
+            !keys.Jump
+            && keys.Move.Count == 0
+            && recorded >= CrouchedEyeHeight - EyeHeightSlack
+            && recorded <= StandingEyeHeight + EyeHeightSlack
+        )
+        {
+            return recorded;
+        }
+
+        return keys.Crouch ? CrouchedEyeHeight : StandingEyeHeight;
+    }
+
     // How wrong the crosshair is for this throw, in degrees: the worse of the
     // two axes, because being dead on the yaw does not help if the pitch is off.
     public static float AimError(float eyeYaw, float eyePitch, float yaw, float pitch)

@@ -475,4 +475,56 @@ public class TitleCaseTests
     {
         Assert.False(PracticeLineupUtility.IsPanelId(id));
     }
+
+    private static LineupRecord Aimed(eThrowTechnique technique, float feet, float eye)
+    {
+        return new LineupRecord
+        {
+            technique = technique.ToString(),
+            release = new ThrowSnapshot
+            {
+                feet_position = new Vec3(0f, 0f, feet),
+                eye_position = new Vec3(0f, 0f, eye),
+            },
+        };
+    }
+
+    // A throw made standing still is aimed from the eye it recorded, which is
+    // what tells a crouched lineup from a standing one.
+    [Theory]
+    [InlineData(eThrowTechnique.Stationary, 64.06f, 64.06f)]
+    [InlineData(eThrowTechnique.Stationary, 46.04f, 46.04f)]
+    [InlineData(eThrowTechnique.Crouch, 46.04f, 46.04f)]
+    public void AStandingThrowIsAimedFromTheEyeItRecorded(
+        eThrowTechnique technique,
+        float recorded,
+        float expected
+    )
+    {
+        Assert.Equal(
+            expected,
+            PracticeLineupUtility.AimEyeHeight(Aimed(technique, 100f, 100f + recorded)),
+            2
+        );
+    }
+
+    // A jump throw is released in the air and a run throw somewhere else, so
+    // neither recorded the eye it was lined up from; and a row with no eye at
+    // all recorded nothing.
+    [Theory]
+    [InlineData(eThrowTechnique.Jump, 100f, 191f, PracticeLineupUtility.StandingEyeHeight)]
+    [InlineData(eThrowTechnique.RunJump, 100f, 191f, PracticeLineupUtility.StandingEyeHeight)]
+    [InlineData(eThrowTechnique.Running, 100f, 164f, PracticeLineupUtility.StandingEyeHeight)]
+    [InlineData(eThrowTechnique.CrouchJump, 100f, 180f, PracticeLineupUtility.CrouchedEyeHeight)]
+    [InlineData(eThrowTechnique.Crouch, 100f, 0f, PracticeLineupUtility.CrouchedEyeHeight)]
+    [InlineData(eThrowTechnique.Stationary, 100f, 0f, PracticeLineupUtility.StandingEyeHeight)]
+    public void AnyOtherThrowIsAimedFromItsStance(
+        eThrowTechnique technique,
+        float feet,
+        float eye,
+        float expected
+    )
+    {
+        Assert.Equal(expected, PracticeLineupUtility.AimEyeHeight(Aimed(technique, feet, eye)));
+    }
 }
