@@ -27,6 +27,18 @@ public class HudKit
     // because the map had not finished loading comes back on its own.
     private static readonly TimeSpan RetryGap = TimeSpan.FromSeconds(30);
 
+    // A running client keeps every layout it has loaded, by name, until it
+    // exits, so a rebuilt layout under the same name cannot be seen without
+    // relaunching the game. In a dev swap each HUD build therefore carries a tag
+    // in its file names (hud/build.sh), and this file names the build that has
+    // reached the client (scripts/hud-watch.sh, relayed by dev.sh). Empty or
+    // missing means the plain, published names.
+    private const string DevTagFile = "hud-live-tag";
+    private static readonly TimeSpan DevTagPoll = TimeSpan.FromSeconds(1);
+    private readonly bool _devSwapped = Environment.GetEnvironmentVariable("DEV_SWAPPED") == "1";
+    private string _devTag = "";
+    private DateTime _devTagChecked = DateTime.MinValue;
+
     public HudKit(ISwiftlyCore core, ILogger<HudKit> logger)
     {
         _core = core;
@@ -264,8 +276,48 @@ public class HudKit
         return open;
     }
 
+    // A new tag means every entity is showing a build the client should no longer
+    // be on. They are torn down the way an unload does it, and whoever asks next
+    // gets one spawned under the new names.
+    private void AdoptDevTag()
+    {
+        if (!_devSwapped || DateTime.UtcNow - _devTagChecked < DevTagPoll)
+        {
+            return;
+        }
+
+        _devTagChecked = DateTime.UtcNow;
+
+        string tag;
+
+        try
+        {
+            string path = Path.Join(_core.PluginPath, DevTagFile);
+            tag = File.Exists(path) ? File.ReadAllText(path).Trim() : "";
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return;
+        }
+
+        if (tag == _devTag || !tag.All(c => char.IsAsciiDigit(c) || char.IsAsciiLetterLower(c)))
+        {
+            return;
+        }
+
+        _logger.LogInformation(
+            "hud dev build {Tag}, respawning layouts",
+            tag.Length == 0 ? "(untagged)" : tag
+        );
+
+        Shutdown();
+        _devTag = tag;
+    }
+
     private CCSCustomHudLayout? Entity(HudLayoutSlots slots)
     {
+        AdoptDevTag();
+
         if (_entities.TryGetValue(slots.Layout, out CCSCustomHudLayout? entity) && entity.IsValid)
         {
             return entity;
@@ -283,7 +335,9 @@ public class HudKit
             // The COMPILED name. The docs example says .xml; both working
             // implementations say .vxml_c, and a path that resolves to nothing
             // spawns an entity that renders nothing.
-            created.StrLayout = $"panorama/layout/custom_game/{slots.Layout}.vxml_c";
+            string tagged = _devTag.Length == 0 ? slots.Layout : $"{slots.Layout}__{_devTag}";
+
+            created.StrLayout = $"panorama/layout/custom_game/{tagged}.vxml_c";
             created.StrLayoutUpdated();
             created.DispatchSpawn();
 
