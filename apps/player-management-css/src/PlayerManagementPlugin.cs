@@ -34,6 +34,7 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
     private readonly ServerAccessBook _access = new();
     private readonly PlayerRoster _roster = new();
     private SanctionSyncLoop? _loop;
+    private volatile bool _hibernating;
 
     // What was last applied to each player present, so changes are announced
     // once, and whose mute bit this plugin set, so it only ever lifts its own
@@ -98,6 +99,8 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
 
         RegisterListener<Listeners.OnServerHibernationUpdate>(hibernating =>
         {
+            _hibernating = hibernating;
+
             if (hibernating)
             {
                 _roster.Hibernating(DateTimeOffset.UtcNow);
@@ -119,6 +122,7 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             ModuleVersion,
             Runtime,
             SteamRelay,
+            () => _hibernating,
             message => Logger.LogWarning("{message}", message),
             message => Logger.LogInformation("{message}", message)
         );

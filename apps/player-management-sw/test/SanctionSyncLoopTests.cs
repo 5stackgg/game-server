@@ -15,6 +15,7 @@ public class SanctionSyncLoopTests
     {
         public readonly List<List<string>> Asked = new();
         public readonly List<SteamRelayReport> Relays = new();
+        public readonly List<bool> Hibernating = new();
         public int AccessFetches;
         public Func<List<string>, Task<HttpResponseMessage>> Answer = _ =>
             Task.FromResult(Sanctions());
@@ -48,6 +49,7 @@ public class SanctionSyncLoopTests
                     body.RootElement.GetProperty("steam_relay").GetString()
                 )
             );
+            Hibernating.Add(body.RootElement.GetProperty("hibernating").GetBoolean());
 
             return await Answer(steamIds);
         }
@@ -117,9 +119,13 @@ public class SanctionSyncLoopTests
         SanctionBook Book,
         Panel Panel,
         List<string> Warnings
-    ) Loop(Func<PlayerManagementSettings>? settings = null, SteamRelayReport relay = default)
+    ) Loop(
+        Func<PlayerManagementSettings>? settings = null,
+        SteamRelayReport relay = default,
+        bool hibernating = false
+    )
     {
-        var (loop, book, _, panel, warnings) = WithAccess(settings, relay);
+        var (loop, book, _, panel, warnings) = WithAccess(settings, relay, hibernating);
 
         return (loop, book, panel, warnings);
     }
@@ -130,7 +136,11 @@ public class SanctionSyncLoopTests
         ServerAccessBook Access,
         Panel Panel,
         List<string> Warnings
-    ) WithAccess(Func<PlayerManagementSettings>? settings = null, SteamRelayReport relay = default)
+    ) WithAccess(
+        Func<PlayerManagementSettings>? settings = null,
+        SteamRelayReport relay = default,
+        bool hibernating = false
+    )
     {
         Panel panel = new();
         SanctionBook book = new();
@@ -146,6 +156,7 @@ public class SanctionSyncLoopTests
             "0.0.9",
             "swiftlys2",
             () => relay,
+            () => hibernating,
             warnings.Add,
             _ => { }
         );
@@ -187,6 +198,26 @@ public class SanctionSyncLoopTests
         await loop.Tick(Start);
 
         Assert.Equal(new SteamRelayReport(false, null), Assert.Single(panel.Relays));
+    }
+
+    [Fact]
+    public async Task TheSyncSaysWhenTheServerIsHibernating()
+    {
+        var (loop, _, panel, _) = Loop(hibernating: true);
+
+        await loop.Tick(Start);
+
+        Assert.True(Assert.Single(panel.Hibernating));
+    }
+
+    [Fact]
+    public async Task TheSyncSaysWhenTheServerIsAwake()
+    {
+        var (loop, _, panel, _) = Loop();
+
+        await loop.Tick(Start);
+
+        Assert.False(Assert.Single(panel.Hibernating));
     }
 
     [Fact]

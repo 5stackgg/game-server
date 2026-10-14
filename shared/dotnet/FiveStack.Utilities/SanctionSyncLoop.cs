@@ -20,6 +20,7 @@ public sealed class SanctionSyncLoop : IDisposable
     private readonly string _version;
     private readonly string _runtime;
     private readonly Func<SteamRelayReport> _relay;
+    private readonly Func<bool> _hibernating;
     private readonly Action<string> _warn;
     private readonly Action<string> _info;
 
@@ -41,6 +42,7 @@ public sealed class SanctionSyncLoop : IDisposable
         string version,
         string runtime,
         Func<SteamRelayReport> relay,
+        Func<bool> hibernating,
         Action<string> warn,
         Action<string> info
     )
@@ -53,6 +55,7 @@ public sealed class SanctionSyncLoop : IDisposable
         _version = version;
         _runtime = runtime;
         _relay = relay;
+        _hibernating = hibernating;
         _warn = warn;
         _info = info;
     }
@@ -164,6 +167,7 @@ public sealed class SanctionSyncLoop : IDisposable
                     plugin_runtime = _runtime,
                     on_steam_relay = relay.OnRelay,
                     steam_relay = relay.Address,
+                    hibernating = _hibernating(),
                     players = roster.Players,
                     departed = roster.Departed,
                 }

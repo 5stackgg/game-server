@@ -19,6 +19,10 @@ public class PlayerSanctionsRequest
     public bool on_steam_relay { get; set; }
     public string? steam_relay { get; set; }
 
+    // A community server runs no match plugin, so this sync is the only thing
+    // that can tell the panel it is asleep rather than gone.
+    public bool hibernating { get; set; }
+
     // Null, not empty, while the roster is unknown or a map change is under
     // way: the panel leaves its sessions alone for null and closes them for [].
     public List<RosterPlayer>? players { get; set; }
