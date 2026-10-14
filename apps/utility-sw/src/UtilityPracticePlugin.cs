@@ -621,9 +621,10 @@ public partial class UtilityPracticePlugin : BasePlugin
     /// the other team.
     ///
     /// The point is something to flash and to blow up that does not move, so
-    /// it is frozen where it lands rather than allowed to play the round. The
-    /// quota alone brings it in, on the side bot_join_team names: a bot_add
-    /// on top of it was a second bot per press, and half the server's slots.
+    /// it is frozen where it lands rather than allowed to play the round.
+    /// bot_add alone brings it in and raises the quota itself: setting the
+    /// quota as well was a second bot per press, and the quota on its own
+    /// adds nobody until something else makes the engine look at it.
     /// </summary>
     public bool AddBot(IPlayer player)
     {
@@ -644,14 +645,20 @@ public partial class UtilityPracticePlugin : BasePlugin
         };
 
         _bots.Add(spot);
+        _botsAskedBy = player.SteamID;
 
-        // The other side, which is what utility is thrown at. bot_join_team is
-        // for the quota, which fills a slot of its own on whichever team it
-        // likes.
+        // The other side, which is what utility is thrown at.
         string side = pawn.TeamNum == 3 ? "t" : "ct";
 
-        Core.Engine.ExecuteCommand($"bot_join_team {side}");
-        HoldBotsStill();
+        Core.Engine.ExecuteCommand("sv_cheats 1;" + string.Join(";", BotsCfg));
+        Core.Engine.ExecuteCommand($"bot_add_{side}");
+
+        _logger.LogInformation(
+            "asked for a bot on {side}: {placed} placed, {joined} in game",
+            side,
+            _bots.Count,
+            BotsInGame()
+        );
 
         // The bot does not exist on the tick it is asked for, and it spawns
         // wherever the map puts it. Placing it is a second step, taken on the
@@ -664,6 +671,40 @@ public partial class UtilityPracticePlugin : BasePlugin
     // Five is a site's worth of defenders; past that a team is full before the
     // server is, and the press silently does nothing.
     public const int MaxBots = 5;
+
+    private ulong _botsAskedBy;
+
+    private int BotsInGame()
+    {
+        return Core.PlayerManager.GetAllPlayers().Count(player =>
+            player != null && player.IsValid && player.IsFakeClient && player.Controller.Team is Team.CT or Team.T
+        );
+    }
+
+    // A spot only counts once a bot has joined for it. A press the engine
+    // ignored used to keep its spot, and five of those read as five bots on
+    // an empty server.
+    private void DropBotsThatNeverCame()
+    {
+        int joined = BotsInGame();
+
+        if (joined >= _bots.Count)
+        {
+            return;
+        }
+
+        int missing = _bots.Count - joined;
+
+        _bots.RemoveRange(joined, missing);
+        _logger.LogWarning("{missing} bot(s) asked for never joined; {joined} in game", missing, joined);
+
+        IPlayer? asker = _system.Find(_botsAskedBy);
+
+        if (asker != null && asker.IsValid)
+        {
+            Toast(asker, "The bot did not join");
+        }
+    }
 
     // Every slot is a person or a bot, so a small server runs out sooner.
     public int BotSlotsLeft()
@@ -704,6 +745,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         {
             _botsDueBy = -1;
             _botAsked.Clear();
+            DropBotsThatNeverCame();
             PlaceBots();
 
             return;
