@@ -1,8 +1,21 @@
 name: Publish HUD Addon
 
-# Manual only. Publishing pushes files to every player who joins a practice
-# server, so it is a decision rather than a consequence of merging.
+# On every merge to main that changes what the addon is made of, and by hand.
+#
+# Publishing pushes files to every player who joins a practice server, and a
+# server may still be on last week's plugin when they arrive. That is safe only
+# because a layout or stylesheet that has been published keeps its name and its
+# contents (the rule is beside the names in HudSlots.cs): what a merge
+# publishes is files an older plugin never asks for. Unchanged sources are not
+# sent twice -- see "Has the addon actually changed?".
 on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/utility-sw/hud/panorama/**"
+      - "apps/utility-sw/hud/build.sh"
+      - "apps/utility-sw/hud/addoninfo.txt"
+      - "apps/utility-sw/hud/preview.*"
   workflow_dispatch:
     inputs:
       item_id:
@@ -20,6 +33,12 @@ on:
         type: boolean
         default: false
 
+# Two merges in a row must not race each other to Steam, and the second must
+# not be cancelled by the first: it is the one whose sources are current.
+concurrency:
+  group: hud-workshop
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -30,6 +49,31 @@ jobs:
         with:
           fetch-depth: 0
 
+      # A merge has nobody to ask which item to update, so it reads the one the
+      # servers are told to mount. Never blank on a merge: a blank id creates a
+      # NEW item, and that is a decision somebody makes by hand.
+      - name: Which Workshop item
+        id: item
+        env:
+          GIVEN: ${{ inputs.item_id }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          ID="$GIVEN"
+
+          if [ -z "$ID" ] && [ "$EVENT" = push ]; then
+            ID=$(grep -oE '^ENV HUD_WORKSHOP_ID="[0-9]+"' apps/swiftly/Dockerfile | grep -oE '[0-9]+' || true)
+
+            if [ -z "$ID" ]; then
+              echo "::error::apps/swiftly/Dockerfile names no HUD_WORKSHOP_ID, so there is no item to update"
+              exit 1
+            fi
+
+            echo "::notice::updating workshop item $ID, the one apps/swiftly/Dockerfile mounts"
+          fi
+
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+
 
       # A Workshop update notifies every subscriber and bumps the item, so an
       # identical republish is not free. Hashing the sources rather than the vpk
@@ -37,7 +81,7 @@ jobs:
       - name: Has the addon actually changed?
         id: changed
         env:
-          ITEM_ID: ${{ inputs.item_id }}
+          ITEM_ID: ${{ steps.item.outputs.id }}
           FORCE: ${{ inputs.force }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
@@ -105,7 +149,7 @@ jobs:
         # The vpk must be named after the item it will live in, so an update
         # needs the id at BUILD time, not just at upload time.
         env:
-          WORKSHOP_ITEM_ID: ${{ inputs.item_id }}
+          WORKSHOP_ITEM_ID: ${{ steps.item.outputs.id }}
         run: ./apps/utility-sw/hud/build.sh
 
       # An addon that mounts and resolves nothing is the failure mode with no
@@ -114,7 +158,7 @@ jobs:
       - name: Verify what was packed
         if: steps.changed.outputs.proceed == 'yes'
         env:
-          ITEM_ID: ${{ inputs.item_id }}
+          ITEM_ID: ${{ steps.item.outputs.id }}
         run: |
           set -euo pipefail
           VPK=$(ls apps/utility-sw/hud/build/upload/*.vpk 2>/dev/null | head -1)
@@ -194,7 +238,7 @@ jobs:
           STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
           STEAM_PASSWORD: ${{ secrets.STEAM_PASSWORD }}
           STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
-          ITEM_ID: ${{ inputs.item_id }}
+          ITEM_ID: ${{ steps.item.outputs.id }}
         run: |
           set -euo pipefail
           HUD="$GITHUB_WORKSPACE/apps/utility-sw/hud"
