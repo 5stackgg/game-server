@@ -147,6 +147,7 @@ public class NadeBarTemplate : HudTemplate
             Key? key = index < Keys.Count ? Keys[index] : null;
 
             surface.Set($"k{index + 1}", key?.Label ?? "");
+            surface.Set($"kb{index + 1}", HudSlots.LegendBindings[index]);
             surface.Class($"kr{index + 1}", "hidden", key == null);
             surface.Class($"kr{index + 1}", "on", key?.On == true);
             surface.Class($"kr{index + 1}", "dim", key?.Dim == true);

@@ -101,6 +101,21 @@ public static class HudSlots
     public static readonly IReadOnlyList<string> ThrowKeycaps =
         new[] { "shift", "ctrl", "w", "a", "s", "d", "jump" };
 
+    // The command behind each of those, for the csgo_key formatter.
+    public static string ThrowKeyBinding(string cap)
+    {
+        return cap switch
+        {
+            "shift" => "%sprint%",
+            "ctrl" => "%duck%",
+            "w" => "%forward%",
+            "a" => "%left%",
+            "s" => "%back%",
+            "d" => "%right%",
+            _ => "%jump%",
+        };
+    }
+
     // Fixed DOM, like the map's markers: the nearest spots win the pips.
     public const int CompassPips = 8;
     public const int CompassColumns = 256;
@@ -109,6 +124,19 @@ public static class HudSlots
     // TAB, E, R, then the three double taps and the clear key -- one row each,
     // in that order.
     public const int LegendKeys = 7;
+
+    // The command behind each keycap, in the form CS2's csgo_key formatter
+    // reads: it draws whatever key the player has bound to it.
+    public static readonly IReadOnlyList<string> LegendBindings = new[]
+    {
+        "%showscores%",
+        "%use%",
+        "%reload%",
+        "%duck%",
+        "%sprint%",
+        "%lookatweapon%",
+        "%sellbackall%",
+    };
 
     // Fixed DOM for the three lists the bar can show: what is out, the plan,
     // and what a flash did. The steps are how finely a bar can be drawn.
@@ -164,6 +192,13 @@ public static class HudSlots
             new HudVariable("aimerr", "aimerr"),
             new HudVariable("drill", "drill"),
             new HudVariable("drillkey", "drillkey"),
+            new HudVariable("kb_shift", "kc_shift"),
+            new HudVariable("kb_ctrl", "kc_ctrl"),
+            new HudVariable("kb_w", "kc_w"),
+            new HudVariable("kb_a", "kc_a"),
+            new HudVariable("kb_s", "kc_s"),
+            new HudVariable("kb_d", "kc_d"),
+            new HudVariable("kb_jump", "kc_jump"),
         },
         new string[0]
     );
@@ -251,6 +286,7 @@ public static class HudSlots
         for (int key = 1; key <= LegendKeys; key++)
         {
             yield return new HudVariable($"k{key}", $"k{key}");
+            yield return new HudVariable($"kb{key}", $"kc{key}");
         }
 
         yield return new HudVariable("ocount", "ocount");

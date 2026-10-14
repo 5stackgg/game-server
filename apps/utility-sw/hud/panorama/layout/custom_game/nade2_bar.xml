@@ -33,13 +33,13 @@
 			</Panel>
 
 			<Panel id="legend" class="nh-legend" hittest="false">
-				<Panel id="kr1" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="TAB" /><Label id="k1" class="nh-key-label" text="{s:k1}" /></Panel>
-				<Panel id="kr2" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="E" /><Label id="k2" class="nh-key-label" text="{s:k2}" /></Panel>
-				<Panel id="kr3" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="R" /><Label id="k3" class="nh-key-label" text="{s:k3}" /></Panel>
-				<Panel id="kr4" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="2× CTRL" /><Label id="k4" class="nh-key-label" text="{s:k4}" /></Panel>
-				<Panel id="kr5" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="2× SHIFT" /><Label id="k5" class="nh-key-label" text="{s:k5}" /></Panel>
-				<Panel id="kr6" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="2× F" /><Label id="k6" class="nh-key-label" text="{s:k6}" /></Panel>
-				<Panel id="kr7" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="DEL" /><Label id="k7" class="nh-key-label" text="{s:k7}" /></Panel>
+				<Panel id="kr1" class="nh-key-row" hittest="false"><Label id="kc1" class="nh-keycap" text="{g:csgo_key:kb1}" /><Label id="k1" class="nh-key-label" text="{s:k1}" /></Panel>
+				<Panel id="kr2" class="nh-key-row" hittest="false"><Label id="kc2" class="nh-keycap" text="{g:csgo_key:kb2}" /><Label id="k2" class="nh-key-label" text="{s:k2}" /></Panel>
+				<Panel id="kr3" class="nh-key-row" hittest="false"><Label id="kc3" class="nh-keycap" text="{g:csgo_key:kb3}" /><Label id="k3" class="nh-key-label" text="{s:k3}" /></Panel>
+				<Panel id="kr4" class="nh-key-row" hittest="false"><Label id="kc4" class="nh-keycap" text="2× {g:csgo_key:kb4}" /><Label id="k4" class="nh-key-label" text="{s:k4}" /></Panel>
+				<Panel id="kr5" class="nh-key-row" hittest="false"><Label id="kc5" class="nh-keycap" text="2× {g:csgo_key:kb5}" /><Label id="k5" class="nh-key-label" text="{s:k5}" /></Panel>
+				<Panel id="kr6" class="nh-key-row" hittest="false"><Label id="kc6" class="nh-keycap" text="2× {g:csgo_key:kb6}" /><Label id="k6" class="nh-key-label" text="{s:k6}" /></Panel>
+				<Panel id="kr7" class="nh-key-row" hittest="false"><Label id="kc7" class="nh-keycap" text="{g:csgo_key:kb7}" /><Label id="k7" class="nh-key-label" text="{s:k7}" /></Panel>
 			</Panel>
 
 			<Panel class="nh-right" hittest="false">

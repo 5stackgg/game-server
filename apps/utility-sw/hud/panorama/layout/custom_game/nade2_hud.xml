@@ -16,13 +16,13 @@
 			<Panel class="nh-throw" hittest="false">
 				<Panel id="fig" class="nh-fig" hittest="false" />
 				<Panel class="nh-caps" hittest="false">
-					<Label id="kc_shift" class="nh-cap" text="SHIFT" />
-					<Label id="kc_ctrl" class="nh-cap" text="CTRL" />
-					<Label id="kc_w" class="nh-cap" text="W" />
-					<Label id="kc_a" class="nh-cap" text="A" />
-					<Label id="kc_s" class="nh-cap" text="S" />
-					<Label id="kc_d" class="nh-cap" text="D" />
-					<Label id="kc_jump" class="nh-cap" text="JUMP" />
+					<Label id="kc_shift" class="nh-cap" text="{g:csgo_key:kb_shift}" />
+					<Label id="kc_ctrl" class="nh-cap" text="{g:csgo_key:kb_ctrl}" />
+					<Label id="kc_w" class="nh-cap" text="{g:csgo_key:kb_w}" />
+					<Label id="kc_a" class="nh-cap" text="{g:csgo_key:kb_a}" />
+					<Label id="kc_s" class="nh-cap" text="{g:csgo_key:kb_s}" />
+					<Label id="kc_d" class="nh-cap" text="{g:csgo_key:kb_d}" />
+					<Label id="kc_jump" class="nh-cap" text="{g:csgo_key:kb_jump}" />
 				</Panel>
 				<Panel class="nh-words" hittest="false">
 					<Label id="tech" class="nh-tech" text="{s:tech}" />

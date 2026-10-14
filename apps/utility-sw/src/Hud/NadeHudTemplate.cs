@@ -152,6 +152,7 @@ public class NadeHudTemplate : HudTemplate
         foreach (string cap in HudSlots.ThrowKeycaps)
         {
             surface.Class($"kc_{cap}", "on", Held(cap));
+            surface.Set($"kb_{cap}", HudSlots.ThrowKeyBinding(cap));
         }
 
         surface.Set("spotval", Spot);

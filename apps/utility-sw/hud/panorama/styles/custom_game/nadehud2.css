@@ -211,6 +211,8 @@
 	visibility: collapse;
 	margin-right: 5px;
 	padding: 5px 8px 3px;
+	text-transform: uppercase;
+	white-space: nowrap;
 	vertical-align: center;
 	font-family: Stratum2 Mono, 'Arial Unicode MS';
 	font-size: 15px;
