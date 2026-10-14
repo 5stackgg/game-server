@@ -195,6 +195,13 @@ public partial class UtilityPracticePlugin
         );
     }
 
+    // A grenade is first seen a tick after it leaves the hand, which is the
+    // tick this counts from; the one before it is added back.
+    private static string Seconds(int ticks)
+    {
+        return $"{(ticks + 1) / 64f:0.0}s";
+    }
+
     private (IReadOnlyList<NadeBarTemplate.Out> rows, int total) OutsFor(ulong viewer)
     {
         if (_live.Count == 0 || _outOff.Contains(viewer))
@@ -225,7 +232,8 @@ public partial class UtilityPracticePlugin
                 rows.Add(
                     new NadeBarTemplate.Out(
                         name,
-                        "IN THE AIR",
+                        $"flying {Seconds(_aimTick - entry.Thrown)}",
+                        "",
                         type,
                         entry.Color,
                         HudSlots.OutFillSteps - 1,
@@ -244,6 +252,7 @@ public partial class UtilityPracticePlugin
             rows.Add(
                 new NadeBarTemplate.Out(
                     name,
+                    $"flew {Seconds(entry.Popped - entry.Thrown)}",
                     $"{(left + 63) / 64}s",
                     type,
                     entry.Color,

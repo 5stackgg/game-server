@@ -1807,8 +1807,24 @@
 	text-overflow: ellipsis;
 }
 
+/* How long it was in the air: the half of a throw's timing that is decided
+   the moment it leaves the hand. Quieter than the time left, which is the
+   half still running. */
+.nh-out-flight
+{
+	vertical-align: center;
+	margin-right: 10px;
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: bold;
+	letter-spacing: 0.5px;
+	color: #a9b7c5;
+}
+
 .nh-out-time
 {
+	width: 34px;
+	text-align: right;
 	vertical-align: center;
 	font-family: Stratum2 Mono, 'Arial Unicode MS';
 	font-size: 15px;
@@ -1864,12 +1880,16 @@
 .nh-out-row.pink .nh-out-icon { wash-color: rgb(255, 150, 190); }
 .nh-out-row.pink .nh-out-fill { background-color: rgb(255, 150, 190); }
 
-/* Still in the air: nothing is counting down yet. */
+/* Still in the air: nothing is counting down yet, and the flight is the
+   number that is moving. */
 .nh-out-row.air .nh-out-time
 {
-	font-size: 11px;
-	letter-spacing: 1px;
-	color: #a9b7c5;
+	color: #7e8fa1;
+}
+
+.nh-out-row.air .nh-out-flight
+{
+	color: #f3f6fb;
 }
 
 .nh-out-row.air .nh-out-fill

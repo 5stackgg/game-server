@@ -35,10 +35,20 @@ public class NadeBarTemplate : HudTemplate
 
     public record Key(string Label, bool On = false, bool Dim = false);
 
-    // One smoke or fire in the world. Type is one of RadarMaps.Types, Color a
-    // throw colour's name or null, Fill how much of its life is left in
+    // One smoke or fire in the world. Flight is how long it was, or has been,
+    // in the air; Time what it has left. Type is one of RadarMaps.Types, Color
+    // a throw colour's name or null, Fill how much of its life is left in
     // HudSlots.OutFillSteps steps.
-    public record Out(string Name, string Time, string Type, string? Color, int Fill, bool Air, bool Fading);
+    public record Out(
+        string Name,
+        string Flight,
+        string Time,
+        string Type,
+        string? Color,
+        int Fill,
+        bool Air,
+        bool Fading
+    );
 
     // A list down the left edge: the plan being worked through, or the stack
     // of throws that go again together. Both are a title, rows and a foot.
@@ -168,6 +178,7 @@ public class NadeBarTemplate : HudTemplate
             }
 
             surface.Set($"on{row}", entry.Name);
+            surface.Set($"of{row}", entry.Flight);
             surface.Set($"ot{row}", entry.Time);
             surface.Class($"or{row}", "air", entry.Air);
             surface.Class($"or{row}", "fade", entry.Fading);

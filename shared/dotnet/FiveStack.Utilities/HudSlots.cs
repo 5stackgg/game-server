@@ -252,6 +252,7 @@ public static class HudSlots
         for (int row = 1; row <= OutRows; row++)
         {
             yield return new HudVariable($"on{row}", $"on{row}");
+            yield return new HudVariable($"of{row}", $"of{row}");
             yield return new HudVariable($"ot{row}", $"ot{row}");
         }
 
