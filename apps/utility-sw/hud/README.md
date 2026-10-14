@@ -11,14 +11,15 @@ it through `CCSCustomHudLayout`.
 | `nade2_wheel` | yes | TAB. Eight wedges around a hub, an outer ring of two more over each, and wedges that open a wheel of their own. Beside it, what the keys do. Generated with `nadewheel2.css` by `wheel.py`: edit that and run it, never the two files. |
 | `nade2_pick` | yes | Choosing a lineup: the map with a marker per landing spot beside the list, under one set of filter chips. |
 | `nade2_run` | no | The execute behind `.playbook`. Who throws what and when, yours in colour and everyone else's greyed. |
-| `nade2_edit` | yes | Rename, describe, change visibility. Fields ask for their value in chat. |
+| `nade3_edit` | yes | Rename, describe, change visibility. Fields ask for their value in chat. |
 
 All six include `nadehud2.css`, and the wheel `nadewheel2.css` as well: it
 uses things no other layout does, and a stylesheet the game rejects takes every
 layout that includes it down with it. `nade_hud`, `nade_list`, `nade_map`, `nade_run`,
 `nade_edit` and `nadehud.css` are the first published set, kept untouched for
 servers still on a plugin that asks for them; nothing in this repo drives them
-any more. `HudSlots.cs` has the rule for when a name has to change.
+any more. Neither does it drive `nade2_edit`, superseded by `nade3_edit` because its
+buttons used classes `nadehud2.css` never styled. `HudSlots.cs` has the rule for when a name has to change.
 
 Passive layouts must never capture input — a panel that takes the cursor while
 somebody is aiming takes the shot with it.
@@ -43,7 +44,7 @@ asserts against the files in this directory that:
 - every map with a `#radar.<map>` rule also has calibration in `radars/`;
 - every `PracticeStepColors` name has a chip and a swatch rule, and none of them
   is ever green or red — those two belong to the aim ramp;
-- `nade2_edit` contains no geometry field, so editing where a smoke lands can
+- `nade3_edit` contains no geometry field, so editing where a smoke lands can
   never arrive by accident on the back of a rename.
 
 Rename a slot in one place and `dotnet test apps/utility-sw/test` fails. That is

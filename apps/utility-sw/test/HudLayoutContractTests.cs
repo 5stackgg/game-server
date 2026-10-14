@@ -97,6 +97,21 @@ public class HudLayoutContractTests
         Assert.Empty(HudLayoutContract.Verify(slots, Layout(layout)));
     }
 
+    [Theory]
+    [MemberData(nameof(Layouts))]
+    public void EveryClassALayoutUsesIsStyled(string layout)
+    {
+        HudLayoutSlots slots = HudSlots.All.Single(candidate => candidate.Layout == layout);
+
+        Assert.Empty(
+            HudLayoutContract.VerifyClasses(
+                slots,
+                Layout(layout),
+                Sheet(HudSlots.StylesheetFor(slots))
+            )
+        );
+    }
+
     [Fact]
     public void EveryElementTheHudTogglesClassesOnExists()
     {
