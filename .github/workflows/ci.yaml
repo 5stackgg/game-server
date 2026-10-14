@@ -103,6 +103,20 @@ jobs:
       extra_test_dirs: apps/utility-sw apps/player-management-sw
     secrets: inherit
 
+  # The practice plugin ships in the SwiftlyS2 image, and the layouts it draws
+  # reach players from the Workshop. Published in the run that releases the
+  # image, on either channel, so a server never runs a plugin whose HUD is not
+  # there to be downloaded. Beside the build rather than after it: the files
+  # should be on the Workshop before the first server has pulled the image, and
+  # one that never ships costs nothing -- a published name is never reused.
+  practice-hud:
+    needs: changes
+    if: needs.changes.outputs.sw == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/hud-workshop.yaml
+    secrets: inherit
+
   gamedata-validator:
     needs: changes
     if: needs.changes.outputs.validator == 'true'
