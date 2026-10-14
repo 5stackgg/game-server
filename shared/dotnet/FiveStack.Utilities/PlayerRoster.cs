@@ -116,6 +116,16 @@ public class PlayerRoster
         }
     }
 
+    public bool IsHibernating(DateTimeOffset now)
+    {
+        lock (_lock)
+        {
+            return _worldAt != null
+                && now - _worldAt <= Silence
+                && (_observedAt == null || _worldAt - _observedAt > Silence);
+        }
+    }
+
     public void MapEnded(DateTimeOffset now)
     {
         lock (_lock)

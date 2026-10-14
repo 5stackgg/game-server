@@ -154,6 +154,7 @@ public partial class PlayerManagementPlugin : BasePlugin
             ModuleVersion,
             Runtime,
             SteamRelay,
+            () => _roster.IsHibernating(DateTimeOffset.UtcNow),
             message => _logger.LogWarning("{message}", message),
             message => _logger.LogInformation("{message}", message)
         );

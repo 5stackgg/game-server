@@ -168,6 +168,7 @@ public class PlayerRosterTests
             "0.0.9",
             "swiftlys2",
             () => default,
+            () => false,
             _ => { },
             _ => { }
         );
@@ -318,6 +319,48 @@ public class PlayerRosterTests
 
         Assert.Empty(panel.Players(1)!);
         Assert.Equal([("1", 0, 0)], panel.Departed(1));
+    }
+
+    [Fact]
+    public void ARosterSaysItIsHibernatingOnceTheWorldOutlivesItsTicks()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1")], Start);
+
+        for (int second = 1; second <= 5; second++)
+        {
+            roster.WorldUpdated(At(second));
+        }
+
+        Assert.False(roster.IsHibernating(At(5)));
+
+        roster.WorldUpdated(At(6));
+
+        Assert.True(roster.IsHibernating(At(6)));
+    }
+
+    [Fact]
+    public void ATickingServerIsNotHibernating()
+    {
+        PlayerRoster roster = new();
+
+        for (int second = 0; second <= 10; second++)
+        {
+            roster.Observe([], At(second));
+            roster.WorldUpdated(At(second));
+        }
+
+        Assert.False(roster.IsHibernating(At(10)));
+    }
+
+    [Fact]
+    public void AServerLoadingAMapIsNotHibernating()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1")], Start);
+        roster.WorldUpdated(Start);
+
+        Assert.False(roster.IsHibernating(At(30)));
     }
 
     // SwiftlyS2 hears of a map change only once the new map has loaded, and
