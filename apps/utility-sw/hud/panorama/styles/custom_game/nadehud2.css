@@ -1794,10 +1794,24 @@
 	wash-color: #c8d6e4;
 }
 
-.nh-out-name
+/* The name, and under it how long it was in the air and how it scored. */
+.nh-out-text
 {
 	width: fill-parent-flow(1);
 	vertical-align: center;
+	flow-children: down;
+}
+
+.nh-out-sub
+{
+	width: 100%;
+	flow-children: right;
+	margin-top: 1px;
+}
+
+.nh-out-name
+{
+	width: 100%;
 	font-family: Stratum2 Condensed, 'Arial Unicode MS';
 	font-size: 17px;
 	font-weight: bold;
@@ -1812,14 +1826,28 @@
    half still running. */
 .nh-out-flight
 {
-	vertical-align: center;
-	margin-right: 10px;
+	margin-right: 8px;
 	font-family: Stratum2 Mono, 'Arial Unicode MS';
-	font-size: 12px;
+	font-size: 11px;
 	font-weight: bold;
 	letter-spacing: 0.5px;
 	color: #a9b7c5;
 }
+
+/* The panel's verdict on a throw made at a lineup. */
+.nh-out-score
+{
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 11px;
+	font-weight: bold;
+	letter-spacing: 0.5px;
+	color: #7e8fa1;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.nh-out-row.landed .nh-out-score { color: rgb(96, 222, 128); }
+.nh-out-row.missed .nh-out-score { color: rgb(255, 104, 96); }
 
 .nh-out-time
 {
@@ -1854,6 +1882,15 @@
 .nh-out-row.molly .nh-out-icon { background-image: url("s2r://panorama/images/icons/equipment/molotov.vsvg"); wash-color: rgb(255, 106, 26); }
 .nh-out-row.molly { border-left: 3px solid rgb(255, 106, 26); }
 .nh-out-row.molly .nh-out-fill { background-color: rgb(255, 106, 26); }
+.nh-out-row.flash .nh-out-icon { background-image: url("s2r://panorama/images/icons/equipment/flashbang.vsvg"); wash-color: rgb(255, 210, 26); }
+.nh-out-row.flash { border-left: 3px solid rgb(255, 210, 26); }
+.nh-out-row.flash .nh-out-fill { background-color: rgb(255, 210, 26); }
+.nh-out-row.he .nh-out-icon { background-image: url("s2r://panorama/images/icons/equipment/hegrenade.vsvg"); wash-color: rgb(255, 59, 59); }
+.nh-out-row.he { border-left: 3px solid rgb(255, 59, 59); }
+.nh-out-row.he .nh-out-fill { background-color: rgb(255, 59, 59); }
+.nh-out-row.decoy .nh-out-icon { background-image: url("s2r://panorama/images/icons/equipment/decoy.vsvg"); wash-color: rgb(96, 222, 128); }
+.nh-out-row.decoy { border-left: 3px solid rgb(96, 222, 128); }
+.nh-out-row.decoy .nh-out-fill { background-color: rgb(96, 222, 128); }
 
 .nh-out-row.cyan { border-left: 3px solid rgb(0, 220, 255); }
 .nh-out-row.cyan .nh-out-icon { wash-color: rgb(0, 220, 255); }

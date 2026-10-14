@@ -32,7 +32,7 @@ public partial class UtilityPracticePlugin
     // after the first is the same pop being reported for the next player.
     private const int FlashSameTicks = 4;
 
-    private const int FlashCardTicks = 5 * 64;
+    private const int FlashCardTicks = 10 * 64;
 
     // The last three seconds of any blindness are the fade back to sight, and
     // everything before them is white. That is the client's own rule for

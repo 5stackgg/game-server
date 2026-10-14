@@ -1009,6 +1009,10 @@ public partial class PracticeReplay
                     LineupId = lineup.id,
                     ExpiresAt = DateTime.UtcNow.AddSeconds(GhostThrowSeconds),
                 };
+
+                uint index = projectile.Index;
+
+                _core.Scheduler.Delay(BlockableAfterTicks, () => MakeBlockable(projectile, index));
             }
         }
         catch (Exception error)
@@ -1018,6 +1022,39 @@ public partial class PracticeReplay
         finally
         {
             _recorder.Emitting = false;
+        }
+    }
+
+    // A rethrow is how a player stands in a throw's way to see whether a body
+    // blocks it. The engine's grenade passes through every player and skips
+    // its owner, so a few ticks out -- clear of whoever stands on the spot it
+    // was thrown from -- it is given the player layers and no owner. The
+    // thrower stays, which is what says whose throw it was.
+    private const int BlockableAfterTicks = 4;
+
+    // player, csgo_team1, csgo_team2.
+    private const ulong PlayerLayers = (1UL << 18) | (1UL << 31) | (1UL << 32);
+
+    private void MakeBlockable(CBaseCSGrenadeProjectile projectile, uint index)
+    {
+        try
+        {
+            if (!projectile.IsValid || projectile.Index != index)
+            {
+                return;
+            }
+
+            VPhysicsCollisionAttribute_t attribute = projectile.Collision.CollisionAttribute;
+
+            attribute.InteractsWith |= PlayerLayers;
+            attribute.InteractsWithUpdated();
+            projectile.OwnerEntity = CHandle<CBaseEntity>.Invalid;
+            projectile.OwnerEntityUpdated();
+            projectile.CollisionRulesChanged();
+        }
+        catch (Exception error)
+        {
+            _logger.LogWarning(error, "unable to make a rethrown grenade blockable");
         }
     }
 

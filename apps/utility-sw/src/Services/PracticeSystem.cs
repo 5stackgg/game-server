@@ -66,8 +66,6 @@ public class PracticeState
     // Lineups this player has already been told are not exact. Said once per
     // lineup: a warning repeated on every .rethrow is a warning nobody reads.
     public HashSet<string> WarnedInexact { get; } = new HashSet<string>();
-
-    public DateTime? TimerStartedAt { get; set; }
 }
 
 // Per-player practice state, plus the one repeating job the whole plugin
@@ -181,12 +179,6 @@ public class PracticeSystem
             }
 
             ApplyFlags(pawn, state, solving);
-
-            if (state.TimerStartedAt != null)
-            {
-                double elapsed = (DateTime.UtcNow - state.TimerStartedAt.Value).TotalSeconds;
-                player.SendCenter($"{elapsed:0.0}s");
-            }
         }
 
         _replay.Sweep();

@@ -46,6 +46,10 @@ public class PracticeScore
     // a miss: a drill counts on being able to tell the two apart.
     public event Action<ulong, string, UtilityPracticeResult?>? Scored;
 
+    // True for a player whose HUD shows the verdict beside the grenade, who
+    // then gets no line in chat about it as well.
+    public Func<ulong, bool>? Shown { get; set; }
+
     public void Reset()
     {
         _mastered.Clear();
@@ -182,7 +186,7 @@ public class PracticeScore
     {
         IPlayer? player = _system.Find(steamId);
 
-        if (player == null || !player.IsValid)
+        if (player == null || !player.IsValid || Shown?.Invoke(steamId) == true)
         {
             return;
         }

@@ -43,31 +43,31 @@
 			<Panel class="nh-right" hittest="false">
 			<Panel id="out" class="nh-out" hittest="false">
 				<Panel class="nh-out-head" hittest="false">
-					<Label class="nh-out-title" text="UTILITY OUT" />
+					<Label class="nh-out-title" text="RECENT UTILITY" />
 					<Label id="ocount" class="nh-out-count" text="{s:ocount}" />
 				</Panel>
 				<Panel id="or1" class="nh-out-row" hittest="false">
-					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Label id="on1" class="nh-out-name" text="{s:on1}" /><Label id="of1" class="nh-out-flight" text="{s:of1}" /><Label id="ot1" class="nh-out-time" text="{s:ot1}" /></Panel>
+					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Panel class="nh-out-text" hittest="false"><Label id="on1" class="nh-out-name" text="{s:on1}" /><Panel class="nh-out-sub" hittest="false"><Label id="of1" class="nh-out-flight" text="{s:of1}" /><Label id="os1" class="nh-out-score" text="{s:os1}" /></Panel></Panel><Label id="ot1" class="nh-out-time" text="{s:ot1}" /></Panel>
 					<Panel class="nh-out-track" hittest="false"><Panel id="ob1" class="nh-out-fill" hittest="false" /></Panel>
 				</Panel>
 				<Panel id="or2" class="nh-out-row" hittest="false">
-					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Label id="on2" class="nh-out-name" text="{s:on2}" /><Label id="of2" class="nh-out-flight" text="{s:of2}" /><Label id="ot2" class="nh-out-time" text="{s:ot2}" /></Panel>
+					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Panel class="nh-out-text" hittest="false"><Label id="on2" class="nh-out-name" text="{s:on2}" /><Panel class="nh-out-sub" hittest="false"><Label id="of2" class="nh-out-flight" text="{s:of2}" /><Label id="os2" class="nh-out-score" text="{s:os2}" /></Panel></Panel><Label id="ot2" class="nh-out-time" text="{s:ot2}" /></Panel>
 					<Panel class="nh-out-track" hittest="false"><Panel id="ob2" class="nh-out-fill" hittest="false" /></Panel>
 				</Panel>
 				<Panel id="or3" class="nh-out-row" hittest="false">
-					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Label id="on3" class="nh-out-name" text="{s:on3}" /><Label id="of3" class="nh-out-flight" text="{s:of3}" /><Label id="ot3" class="nh-out-time" text="{s:ot3}" /></Panel>
+					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Panel class="nh-out-text" hittest="false"><Label id="on3" class="nh-out-name" text="{s:on3}" /><Panel class="nh-out-sub" hittest="false"><Label id="of3" class="nh-out-flight" text="{s:of3}" /><Label id="os3" class="nh-out-score" text="{s:os3}" /></Panel></Panel><Label id="ot3" class="nh-out-time" text="{s:ot3}" /></Panel>
 					<Panel class="nh-out-track" hittest="false"><Panel id="ob3" class="nh-out-fill" hittest="false" /></Panel>
 				</Panel>
 				<Panel id="or4" class="nh-out-row" hittest="false">
-					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Label id="on4" class="nh-out-name" text="{s:on4}" /><Label id="of4" class="nh-out-flight" text="{s:of4}" /><Label id="ot4" class="nh-out-time" text="{s:ot4}" /></Panel>
+					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Panel class="nh-out-text" hittest="false"><Label id="on4" class="nh-out-name" text="{s:on4}" /><Panel class="nh-out-sub" hittest="false"><Label id="of4" class="nh-out-flight" text="{s:of4}" /><Label id="os4" class="nh-out-score" text="{s:os4}" /></Panel></Panel><Label id="ot4" class="nh-out-time" text="{s:ot4}" /></Panel>
 					<Panel class="nh-out-track" hittest="false"><Panel id="ob4" class="nh-out-fill" hittest="false" /></Panel>
 				</Panel>
 				<Panel id="or5" class="nh-out-row" hittest="false">
-					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Label id="on5" class="nh-out-name" text="{s:on5}" /><Label id="of5" class="nh-out-flight" text="{s:of5}" /><Label id="ot5" class="nh-out-time" text="{s:ot5}" /></Panel>
+					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Panel class="nh-out-text" hittest="false"><Label id="on5" class="nh-out-name" text="{s:on5}" /><Panel class="nh-out-sub" hittest="false"><Label id="of5" class="nh-out-flight" text="{s:of5}" /><Label id="os5" class="nh-out-score" text="{s:os5}" /></Panel></Panel><Label id="ot5" class="nh-out-time" text="{s:ot5}" /></Panel>
 					<Panel class="nh-out-track" hittest="false"><Panel id="ob5" class="nh-out-fill" hittest="false" /></Panel>
 				</Panel>
 				<Panel id="or6" class="nh-out-row" hittest="false">
-					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Label id="on6" class="nh-out-name" text="{s:on6}" /><Label id="of6" class="nh-out-flight" text="{s:of6}" /><Label id="ot6" class="nh-out-time" text="{s:ot6}" /></Panel>
+					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Panel class="nh-out-text" hittest="false"><Label id="on6" class="nh-out-name" text="{s:on6}" /><Panel class="nh-out-sub" hittest="false"><Label id="of6" class="nh-out-flight" text="{s:of6}" /><Label id="os6" class="nh-out-score" text="{s:os6}" /></Panel></Panel><Label id="ot6" class="nh-out-time" text="{s:ot6}" /></Panel>
 					<Panel class="nh-out-track" hittest="false"><Panel id="ob6" class="nh-out-fill" hittest="false" /></Panel>
 				</Panel>
 				<Label id="omore" class="nh-out-more" text="{s:omore}" />

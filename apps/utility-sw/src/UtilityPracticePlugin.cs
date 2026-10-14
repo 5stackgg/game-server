@@ -186,7 +186,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         _system.HoldUtility = _drill.Waiting;
         _score.Scored += _drill.OnScored;
         _score.Scored += OnScoredHint;
-        _score.Scored += OnScoredSay;
+        _score.Scored += LiveScored;
+        _score.Shown = UseHud;
         _api.LibraryProgress += OnLibraryProgress;
 
         WirePlaybook();
@@ -435,7 +436,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         _recorder.Thrown -= _drill.OnThrown;
         _score.Scored -= _drill.OnScored;
         _score.Scored -= OnScoredHint;
-        _score.Scored -= OnScoredSay;
+        _score.Scored -= LiveScored;
+        _score.Shown = null;
         _api.LibraryProgress -= OnLibraryProgress;
         if (_hud != null)
         {
@@ -1288,6 +1290,13 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void Hint(IPlayer player, int cooldown)
     {
+        // Where the HUD is up, its key legend and the menu already say all of
+        // this, and a line in chat every few minutes is only noise.
+        if (UseHud(player.SteamID))
+        {
+            return;
+        }
+
         if (
             _hintedAt.TryGetValue(player.SteamID, out int last)
             && _aimTick - last < cooldown
@@ -1297,19 +1306,6 @@ public partial class UtilityPracticePlugin : BasePlugin
         }
 
         _hintedAt[player.SteamID] = _aimTick;
-
-        // Where the panel is up, the thing worth teaching is the panel that
-        // replaces the typing, not two more commands to type.
-        if (UseHud(player.SteamID) && _hud!.Available(HudSlots.Pick))
-        {
-            Tell(
-                player.SteamID,
-                $" {ChatColors.Grey}tip: {ChatColors.Default}TAB ▸ Lineups{ChatColors.Grey} "
-                    + "picks a lineup off the map"
-            );
-
-            return;
-        }
 
         Tell(
             player.SteamID,
@@ -1329,33 +1325,11 @@ public partial class UtilityPracticePlugin : BasePlugin
         Core.Scheduler.NextTick(() => _drill.Seed(steamId, progress, masteryStreak));
     }
 
-    // What the panel made of the throw, where the eye already is: landed or
-    // not, by how much, and where that leaves the count to ten.
-    private void OnScoredSay(ulong steamId, string lineupId, UtilityPracticeResult? result)
-    {
-        IPlayer? player = _system.Find(steamId);
-
-        if (result == null || player == null || !player.IsValid)
-        {
-            return;
-        }
-
-        string off = PracticeLineupUtility.Metres(result.distance);
-        int bar = _drill.MasteryStreak;
-
-        Toast(
-            player,
-            !result.success ? $"Missed · {off} off"
-                : result.mastered_at != null ? $"Landed · {off} off · mastered"
-                : $"Landed · {off} off · {Math.Min(result.current_streak, bar)} of {bar} in a row"
-        );
-    }
-
     // Landing one is the natural point to move on, so that is where the nudge
     // to do so belongs.
     private void OnScoredHint(ulong steamId, string lineupId, UtilityPracticeResult? result)
     {
-        if (result?.success != true)
+        if (result?.success != true || UseHud(steamId))
         {
             return;
         }
@@ -2111,6 +2085,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         EndFollowEveryone();
         ForgetLive();
         ForgetStacks();
+        _mapChoices.Clear();
         _flashes.Clear();
         // A save held for a smoke on the old map goes now, without it.
         _voxels.Reset();

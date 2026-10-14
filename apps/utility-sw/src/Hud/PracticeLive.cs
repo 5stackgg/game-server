@@ -7,24 +7,32 @@ using SwiftlyS2.Shared.Players;
 
 namespace UtilityPractice;
 
-// What is out: every smoke and fire in the world, and how long each has left.
-// The game shows a player none of this, and "when does that smoke fade" is
-// half of what an execute is timed around.
-//
-// Only what stays. A flash or an HE is over as it lands, and a list of things
-// that are already gone is not a list anybody reads.
+// What was just thrown: every grenade in the air or recently gone off, how
+// long it was in the air, and for a smoke or a fire how long it has left. The
+// game shows a player none of this, and "when does that smoke fade" is half of
+// what an execute is timed around. A throw made at a lineup also says how it
+// scored, next to the grenade it is about rather than in chat.
 public partial class UtilityPracticePlugin
 {
     private class LiveUtility
     {
         public required uint Index;
         public required ulong Owner;
-        public required bool Smoke;
+
+        // RadarMaps' name for it: smoke, molly, flash, he or decoy.
+        public required string Kind;
         public required string Name;
         public required int Thrown;
         public string? Color;
         public int Popped = -1;
         public Vec3 At;
+        public bool Scored;
+        public UtilityPracticeResult? Result;
+
+        public bool Smoke => Kind == "smoke";
+
+        // A smoke and a fire stay where they land; the rest are over as they go off.
+        public bool Lingers => Kind is "smoke" or "molly";
     }
 
     private readonly List<LiveUtility> _live = new();
@@ -35,6 +43,10 @@ public partial class UtilityPracticePlugin
     // bar is right on any server whatever its cvars are set to.
     private int _smokeLifeTicks = 18 * 64;
     private int _fireLifeTicks = 7 * 64;
+
+    // A flash, an HE or a decoy stays on the list as long as a smoke would:
+    // long enough to read how it went, then out of the way.
+    private const int ShownTicks = 18 * 64;
 
     private const int LifeLeastTicks = 2 * 64;
     private const int LifeMostTicks = 40 * 64;
@@ -48,25 +60,65 @@ public partial class UtilityPracticePlugin
 
     private const int FadingTicks = 3 * 64;
 
+    private static string? LiveKind(string designer)
+    {
+        return designer switch
+        {
+            "smokegrenade_projectile" => "smoke",
+            "molotov_projectile" => "molly",
+            "flashbang_projectile" => "flash",
+            "hegrenade_projectile" => "he",
+            "decoy_projectile" => "decoy",
+            _ => null,
+        };
+    }
+
+    private static string KindName(string kind)
+    {
+        return kind switch
+        {
+            "smoke" => "Smoke",
+            "molly" => "Molotov",
+            "flash" => "Flash",
+            "he" => "HE",
+            _ => "Decoy",
+        };
+    }
+
+    private static string KindType(string kind)
+    {
+        return kind switch
+        {
+            "smoke" => "Smoke",
+            "molly" => "Molotov",
+            "flash" => "Flash",
+            "he" => "HighExplosive",
+            _ => "Decoy",
+        };
+    }
+
     private void TrackLive(IPlayer player, uint index, string designer)
     {
-        bool smoke = designer == "smokegrenade_projectile";
+        string? kind = LiveKind(designer);
 
-        if (!smoke && designer != "molotov_projectile")
+        if (kind == null)
         {
             return;
         }
 
         ulong steamId = player.SteamID;
         PracticeState state = _system.StateFor(steamId);
-        string type = smoke ? "Smoke" : "Molotov";
         LineupRecord? loaded = state.Loaded;
 
         // A rethrow knows what it is. A throw made with a lineup loaded is
         // taken to be an attempt at it, which is what it nearly always is.
         string name =
             _replay.GhostName(index)
-            ?? (loaded != null && loaded.utility_type == type ? DrillUtility.Name(loaded) : type);
+            ?? (
+                loaded != null && loaded.utility_type == KindType(kind)
+                    ? DrillUtility.Name(loaded)
+                    : KindName(kind)
+            );
 
         _live.RemoveAll(entry => entry.Index == index);
         _live.Add(
@@ -74,15 +126,16 @@ public partial class UtilityPracticePlugin
             {
                 Index = index,
                 Owner = steamId,
-                Smoke = smoke,
+                Kind = kind,
                 Name = PracticeLineupUtility.TitleCase(name),
                 Thrown = _aimTick,
-                Color = smoke && state.Colors ? InFlightColor(steamId).Name : null,
+                Color = kind == "smoke" && state.Colors ? InFlightColor(steamId).Name : null,
             }
         );
     }
 
-    private void LiveSmokePopped(uint index, Vec3 at)
+    // Everything but a molotov names itself when it goes off.
+    private void LivePopped(uint index, Vec3 at)
     {
         LiveUtility? entry = _live.FirstOrDefault(candidate => candidate.Index == index);
 
@@ -98,7 +151,7 @@ public partial class UtilityPracticePlugin
     private void LiveFirePopped(ulong steamId, Vec3 at)
     {
         LiveUtility? entry = _live
-            .Where(candidate => !candidate.Smoke && candidate.Owner == steamId && candidate.Popped < 0)
+            .Where(candidate => candidate.Kind == "molly" && candidate.Owner == steamId && candidate.Popped < 0)
             .OrderBy(candidate => candidate.Thrown)
             .FirstOrDefault();
 
@@ -106,6 +159,22 @@ public partial class UtilityPracticePlugin
         {
             entry.Popped = _aimTick;
             entry.At = at;
+        }
+    }
+
+    // The panel's verdict on a throw arrives after the grenade has gone off,
+    // so it goes on the newest of the thrower's grenades still waiting for one.
+    private void LiveScored(ulong steamId, string lineupId, UtilityPracticeResult? result)
+    {
+        LiveUtility? entry = _live
+            .Where(candidate => candidate.Owner == steamId && candidate.Popped >= 0 && !candidate.Scored)
+            .OrderByDescending(candidate => candidate.Popped)
+            .FirstOrDefault();
+
+        if (entry != null)
+        {
+            entry.Scored = true;
+            entry.Result = result;
         }
     }
 
@@ -155,7 +224,7 @@ public partial class UtilityPracticePlugin
     private LiveUtility? FireNear(Vec3 at)
     {
         return _live
-            .Where(candidate => !candidate.Smoke && candidate.Popped >= 0)
+            .Where(candidate => candidate.Kind == "molly" && candidate.Popped >= 0)
             .Select(candidate => (candidate, away: (candidate.At - at).Length()))
             .Where(pair => pair.away <= FireMatchUnits)
             .OrderBy(pair => pair.away)
@@ -177,7 +246,12 @@ public partial class UtilityPracticePlugin
 
     private int LifeOf(LiveUtility entry)
     {
-        return entry.Smoke ? _smokeLifeTicks : _fireLifeTicks;
+        return entry.Kind switch
+        {
+            "smoke" => _smokeLifeTicks,
+            "molly" => _fireLifeTicks,
+            _ => ShownTicks,
+        };
     }
 
     // Cleared by hand, or lost: the game reports neither.
@@ -191,7 +265,7 @@ public partial class UtilityPracticePlugin
         _live.RemoveAll(entry =>
             entry.Popped < 0
                 ? _aimTick - entry.Thrown > AirMostTicks
-                : _aimTick - entry.Popped > LifeOf(entry) + FadingTicks
+                : _aimTick - entry.Popped > LifeOf(entry) + (entry.Lingers ? FadingTicks : 0)
         );
     }
 
@@ -200,6 +274,35 @@ public partial class UtilityPracticePlugin
     private static string Seconds(int ticks)
     {
         return $"{(ticks + 1) / 64f:0.0}s";
+    }
+
+    // How the throw scored, short enough to sit under its name.
+    private string ScoreLine(LiveUtility entry)
+    {
+        if (!entry.Scored)
+        {
+            return "";
+        }
+
+        UtilityPracticeResult? result = entry.Result;
+
+        if (result == null)
+        {
+            return "not scored";
+        }
+
+        string off = PracticeLineupUtility.Metres(result.distance);
+
+        if (!result.success)
+        {
+            return $"missed · {off} off";
+        }
+
+        int bar = _drill.MasteryStreak;
+
+        return result.mastered_at != null
+            ? $"landed · {off} off · mastered"
+            : $"landed · {off} off · {Math.Min(result.current_streak, bar)}/{bar}";
     }
 
     private (IReadOnlyList<NadeBarTemplate.Out> rows, int total) OutsFor(ulong viewer)
@@ -211,7 +314,8 @@ public partial class UtilityPracticePlugin
 
         var rows = new List<NadeBarTemplate.Out>();
 
-        foreach (LiveUtility entry in _live.Take(HudSlots.OutRows))
+        // Newest first: the throw just made is the one being looked for.
+        foreach (LiveUtility entry in _live.AsEnumerable().Reverse().Take(HudSlots.OutRows))
         {
             string name = entry.Name;
 
@@ -225,20 +329,22 @@ public partial class UtilityPracticePlugin
                 }
             }
 
-            string type = entry.Smoke ? "smoke" : "molly";
+            bool? landed = entry.Scored && entry.Result != null ? entry.Result.success : null;
 
             if (entry.Popped < 0)
             {
                 rows.Add(
                     new NadeBarTemplate.Out(
                         name,
-                        $"flying {Seconds(_aimTick - entry.Thrown)}",
+                        $"in the air {Seconds(_aimTick - entry.Thrown)}",
                         "",
-                        type,
+                        "",
+                        entry.Kind,
                         entry.Color,
                         HudSlots.OutFillSteps - 1,
                         Air: true,
-                        Fading: false
+                        Fading: false,
+                        Landed: null
                     )
                 );
 
@@ -252,13 +358,15 @@ public partial class UtilityPracticePlugin
             rows.Add(
                 new NadeBarTemplate.Out(
                     name,
-                    $"flew {Seconds(entry.Popped - entry.Thrown)}",
-                    $"{(left + 63) / 64}s",
-                    type,
+                    $"air {Seconds(entry.Popped - entry.Thrown)}",
+                    ScoreLine(entry),
+                    entry.Lingers ? $"{(left + 63) / 64}s" : "",
+                    entry.Kind,
                     entry.Color,
                     (left * steps + life - 1) / life,
                     Air: false,
-                    Fading: left <= FadingTicks
+                    Fading: left <= FadingTicks,
+                    Landed: landed
                 )
             );
         }

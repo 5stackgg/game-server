@@ -115,8 +115,8 @@ public static class HudSlots
     public const int OutRows = 6;
     public const int OutFillSteps = 21;
 
-    // The two kinds of utility that stay: RadarMaps' names for them.
-    public static readonly IReadOnlyList<string> OutTypes = new[] { "smoke", "molly" };
+    // Every kind of grenade, by RadarMaps' names for them.
+    public static readonly IReadOnlyList<string> OutTypes = new[] { "smoke", "molly", "flash", "he", "decoy" };
     public const int PlanRows = 6;
     public const int FlashRows = 5;
     public const int FlashBarSteps = 21;
@@ -253,6 +253,7 @@ public static class HudSlots
         {
             yield return new HudVariable($"on{row}", $"on{row}");
             yield return new HudVariable($"of{row}", $"of{row}");
+            yield return new HudVariable($"os{row}", $"os{row}");
             yield return new HudVariable($"ot{row}", $"ot{row}");
         }
 

@@ -689,6 +689,8 @@ public partial class UtilityPracticePlugin
         _edits.Remove(steamId);
         ForgetBar(steamId);
         _wheelPath.Remove(steamId);
+        _wheelReturn.Remove(steamId);
+        _mapChoices.Remove(steamId);
         ClearFilters(steamId);
         _hud?.Forget(playerId);
     }

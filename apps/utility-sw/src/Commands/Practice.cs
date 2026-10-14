@@ -1074,31 +1074,6 @@ public partial class UtilityPracticePlugin
         Reply(context, $" {ChatColors.Green}god {Toggle(state.God)}");
     }
 
-    [Command("timer", registerRaw: false, permission: "")]
-    public void OnTimer(ICommandContext context)
-    {
-        IPlayer? player = context.Sender;
-
-        if (player == null || !player.IsValid)
-        {
-            return;
-        }
-
-        PracticeState state = _system.StateFor(player.SteamID);
-
-        if (state.TimerStartedAt == null)
-        {
-            state.TimerStartedAt = DateTime.UtcNow;
-            Reply(context, $" {ChatColors.Green}timer started");
-            return;
-        }
-
-        double elapsed = (DateTime.UtcNow - state.TimerStartedAt.Value).TotalSeconds;
-        state.TimerStartedAt = null;
-
-        Reply(context, $" {ChatColors.Green}timer stopped at {elapsed:0.00}s");
-    }
-
     [Command("solo", registerRaw: false, permission: "")]
     public void OnSolo(ICommandContext context)
     {
@@ -1554,7 +1529,7 @@ public partial class UtilityPracticePlugin
         $" {ChatColors.Default}.spawns / .spawn next {ChatColors.Grey}where rounds start from",
         $" {ChatColors.Default}.clear {ChatColors.Grey}or your {ChatColors.Default}ping key"
             + $" {ChatColors.Grey}-- smokes, fires and the preview",
-        $" {ChatColors.Default}.noclip / .god / .timer / .solo",
+        $" {ChatColors.Default}.noclip / .god / .solo",
     };
 
     private void StartPlaybook(IPlayer player, ICommandContext context)

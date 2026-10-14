@@ -39,15 +39,19 @@ public class NadeBarTemplate : HudTemplate
     // in the air; Time what it has left. Type is one of RadarMaps.Types, Color
     // a throw colour's name or null, Fill how much of its life is left in
     // HudSlots.OutFillSteps steps.
+    // Landed is the panel's verdict on a throw made at a lineup: null until
+    // there is one, or when the throw was not scored.
     public record Out(
         string Name,
         string Flight,
+        string Score,
         string Time,
         string Type,
         string? Color,
         int Fill,
         bool Air,
-        bool Fading
+        bool Fading,
+        bool? Landed
     );
 
     // A list down the left edge: the plan being worked through, or the stack
@@ -179,9 +183,12 @@ public class NadeBarTemplate : HudTemplate
 
             surface.Set($"on{row}", entry.Name);
             surface.Set($"of{row}", entry.Flight);
+            surface.Set($"os{row}", entry.Score);
             surface.Set($"ot{row}", entry.Time);
             surface.Class($"or{row}", "air", entry.Air);
             surface.Class($"or{row}", "fade", entry.Fading);
+            surface.Class($"or{row}", "landed", entry.Landed == true);
+            surface.Class($"or{row}", "missed", entry.Landed == false);
 
             foreach (string type in HudSlots.OutTypes)
             {

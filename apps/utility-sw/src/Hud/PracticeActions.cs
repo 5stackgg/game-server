@@ -38,6 +38,12 @@ public partial class UtilityPracticePlugin
     // there. Empty is the first one.
     private readonly Dictionary<ulong, List<string>> _wheelPath = new();
 
+    // Practice and the execute wheel are where a session is spent, so the menu
+    // opens back onto them. Anything else -- a confirm, a list to pick from --
+    // was a step on the way somewhere, and starts again from the top.
+    private static readonly HashSet<string> WheelReturnPages = new() { "practice", "execute" };
+    private readonly Dictionary<ulong, List<string>> _wheelReturn = new();
+
     private static string Switch(bool on)
     {
         return on ? "On" : "Off";
@@ -165,7 +171,7 @@ public partial class UtilityPracticePlugin
                             Opens: "execute"
                         ),
                         Toggle("bloom", "Smoke Outline", state.Bloom, state.Loaded == null || !_config.GhostPreview),
-                        Toggle("timer", "Timer", state.TimerStartedAt != null),
+                        new WheelItem("maps", "Change Map", MapLabel(_library.Map), Opens: "maps"),
                         new WheelItem("bot", "Place A Bot", "where I stand"),
                         new WheelItem(
                             "nobots",
@@ -245,6 +251,9 @@ public partial class UtilityPracticePlugin
                     }
                 );
 
+            case "maps":
+                return MapsPage(player);
+
             case "executes":
                 List<UtilityPlaybook>? books = ExecutesFor(player);
 
@@ -313,7 +322,7 @@ public partial class UtilityPracticePlugin
         bool thrown = _recorder.LastThrow(steamId) != null;
 
         return new WheelPage(
-            "Practice",
+            "Menu",
             new WheelItem?[]
             {
                 new WheelItem(
@@ -341,7 +350,7 @@ public partial class UtilityPracticePlugin
                 {
                     Quick = new WheelItem?[]
                     {
-                        new WheelItem("earlier", "Earlier", Disabled: !thrown),
+                        new WheelItem("earlier", "Earlier", Disabled: !HasEarlier(steamId)),
                         new WheelItem("landing", "Landing", Disabled: state.Loaded == null),
                     },
                 },
@@ -421,14 +430,34 @@ public partial class UtilityPracticePlugin
             return false;
         }
 
-        WheelPath(player.SteamID).Clear();
+        List<string> path = WheelPath(player.SteamID);
+
+        path.Clear();
+
+        if (_wheelReturn.Remove(player.SteamID, out List<string>? back))
+        {
+            path.AddRange(back);
+        }
 
         return RenderWheel(player);
     }
 
     private void CloseWheel(IPlayer player)
     {
-        _wheelPath.Remove(player.SteamID);
+        ulong steamId = player.SteamID;
+
+        if (_wheelPath.Remove(steamId, out List<string>? path))
+        {
+            if (path.Count > 0 && WheelReturnPages.Contains(path[^1]))
+            {
+                _wheelReturn[steamId] = path;
+            }
+            else
+            {
+                _wheelReturn.Remove(steamId);
+            }
+        }
+
         _hud?.Hide(player, HudSlots.Wheel);
     }
 
@@ -642,6 +671,13 @@ public partial class UtilityPracticePlugin
 
         string value = id[(split + 1)..];
 
+        if (id[..split] == "map")
+        {
+            ChangeMapTo(player, value);
+
+            return;
+        }
+
         if (id[..split] == "exec")
         {
             if (int.TryParse(value, out int execute))
@@ -812,21 +848,6 @@ public partial class UtilityPracticePlugin
                 ToggleBloom(player);
 
                 break;
-            case "timer":
-                if (state.TimerStartedAt == null)
-                {
-                    state.TimerStartedAt = DateTime.UtcNow;
-                    Toast(player, "Timer started");
-
-                    break;
-                }
-
-                double elapsed = (DateTime.UtcNow - state.TimerStartedAt.Value).TotalSeconds;
-
-                state.TimerStartedAt = null;
-                Toast(player, $"Timer stopped at {elapsed:0.00}s");
-
-                break;
             case "noclip":
                 state.Noclip = !state.Noclip;
                 _system.ApplyNow(player);
@@ -983,6 +1004,13 @@ public partial class UtilityPracticePlugin
     // How many throws back "Earlier" has walked for each player. Last Throw
     // puts it back to the most recent.
     private readonly Dictionary<ulong, int> _earlier = new();
+
+    private bool HasEarlier(ulong steamId)
+    {
+        int back = _earlier.TryGetValue(steamId, out int stepped) ? stepped + 1 : 1;
+
+        return _recorder.LastThrow(steamId, back) != null;
+    }
 
     private bool BackTo(IPlayer player, int back)
     {
