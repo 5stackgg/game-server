@@ -39,6 +39,9 @@ public class NadeHudTemplate : HudTemplate
 
     public Meter? Progress { get; init; }
 
+    // Landed or not, oldest first: the last few throws at this lineup.
+    public IReadOnlyList<bool> Last { get; init; } = Array.Empty<bool>();
+
     public static NadeHudTemplate For(
         LineupRecord lineup,
         float eyeYaw,
@@ -48,7 +51,8 @@ public class NadeHudTemplate : HudTemplate
         float away,
         bool onAngle,
         Meter? progress,
-        string position
+        string position,
+        IReadOnlyList<bool>? last = null
     )
     {
         ThrowKeys keys = PracticeThrowKeys.For(lineup);
@@ -81,6 +85,7 @@ public class NadeHudTemplate : HudTemplate
             ThrowColor = throwColor,
             Progress = progress,
             Position = position,
+            Last = last ?? Array.Empty<bool>(),
         };
     }
 
@@ -166,6 +171,18 @@ public class NadeHudTemplate : HudTemplate
             surface.Set("drill", Progress.Label);
             surface.Class("drillrow", "done", Progress.Done);
             surface.Pick("drillbar", "p", Progress.Tenths, HudSlots.MeterSteps);
+        }
+
+        // Newest on the right; the dots left of the first throw stay empty.
+        int empty = HudSlots.LastThrows - Math.Min(Last.Count, HudSlots.LastThrows);
+        int first = Math.Max(0, Last.Count - HudSlots.LastThrows);
+
+        for (int dot = 0; dot < HudSlots.LastThrows; dot++)
+        {
+            bool? landed = dot < empty ? null : Last[first + dot - empty];
+
+            surface.Class($"ld{dot + 1}", "hit", landed == true);
+            surface.Class($"ld{dot + 1}", "miss", landed == false);
         }
     }
 }

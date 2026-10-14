@@ -186,8 +186,11 @@ public partial class UtilityPracticePlugin : BasePlugin
         _system.HoldUtility = _drill.Waiting;
         _score.Scored += _drill.OnScored;
         _score.Scored += OnScoredHint;
-        _score.Scored += LiveScored;
+        _score.Scored += OnThrowScored;
+        _score.Attempted += OnAttempted;
         _score.Shown = UseHud;
+        _drill.Finished = OnDrillFinished;
+        _drill.Shown = UseHud;
         _api.LibraryProgress += OnLibraryProgress;
 
         WirePlaybook();
@@ -436,8 +439,11 @@ public partial class UtilityPracticePlugin : BasePlugin
         _recorder.Thrown -= _drill.OnThrown;
         _score.Scored -= _drill.OnScored;
         _score.Scored -= OnScoredHint;
-        _score.Scored -= LiveScored;
+        _score.Scored -= OnThrowScored;
+        _score.Attempted -= OnAttempted;
         _score.Shown = null;
+        _drill.Finished = null;
+        _drill.Shown = null;
         _api.LibraryProgress -= OnLibraryProgress;
         if (_hud != null)
         {
@@ -2085,6 +2091,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         EndFollowEveryone();
         ForgetLive();
         ForgetStacks();
+        ForgetEveryVerdict();
         _mapChoices.Clear();
         _flashes.Clear();
         // A save held for a smoke on the old map goes now, without it.

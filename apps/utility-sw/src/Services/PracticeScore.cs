@@ -50,6 +50,10 @@ public class PracticeScore
     // then gets no line in chat about it as well.
     public Func<ulong, bool>? Shown { get; set; }
 
+    // A throw that is about to be scored: the lineup it was meant to be and
+    // the throw itself. Raised before the answer, which arrives as Scored.
+    public event Action<ulong, LineupRecord, LineupRecord>? Attempted;
+
     public void Reset()
     {
         _mastered.Clear();
@@ -79,6 +83,8 @@ public class PracticeScore
         {
             return;
         }
+
+        Attempted?.Invoke(steamId, loaded, thrown);
 
         Vec3 landing = thrown.detonation_position;
         float distance = (landing - loaded.detonation_position).Length();

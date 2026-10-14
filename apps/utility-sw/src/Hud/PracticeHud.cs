@@ -208,7 +208,8 @@ public partial class UtilityPracticePlugin
                 Flat(lineup.release.feet_position, new Vec3(feet.X, feet.Y, feet.Z)),
                 onAngle,
                 MasteryOf(player.SteamID, lineup),
-                position
+                position,
+                LastFor(player.SteamID, lineup)
             )
         );
     }
@@ -691,6 +692,7 @@ public partial class UtilityPracticePlugin
         _wheelPath.Remove(steamId);
         _wheelReturn.Remove(steamId);
         _mapChoices.Remove(steamId);
+        ForgetVerdicts(steamId);
         ClearFilters(steamId);
         _hud?.Forget(playerId);
     }

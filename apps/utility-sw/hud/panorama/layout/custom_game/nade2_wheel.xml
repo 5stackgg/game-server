@@ -416,13 +416,13 @@
 			<Panel class="nw-keys" hittest="false">
 				<Label class="nw-keys-title" text="KEYS" hittest="false" />
 
-				<Panel class="nw-keys-row" hittest="false"><Label class="nw-keycap" text="SCOREBOARD" hittest="false" /><Label class="nw-keys-text" text="This menu · hold for the scoreboard" hittest="false" /></Panel>
-				<Panel class="nw-keys-row" hittest="false"><Label class="nw-keycap" text="USE" hittest="false" /><Label class="nw-keys-text" text="Snap onto the nearest spot · again for the next throw there" hittest="false" /></Panel>
-				<Panel class="nw-keys-row" hittest="false"><Label class="nw-keycap" text="RELOAD" hittest="false" /><Label class="nw-keys-text" text="Rethrow · hold to zoom" hittest="false" /></Panel>
-				<Panel class="nw-keys-row" hittest="false"><Label class="nw-keycap" text="RELOAD" hittest="false" /><Label class="nw-keys-text" text="With a grenade in the air: ride along with it" hittest="false" /></Panel>
-				<Panel class="nw-keys-row" hittest="false"><Label class="nw-keycap" text="2× CROUCH" hittest="false" /><Label class="nw-keys-text" text="Add a bot where you stand" hittest="false" /></Panel>
-				<Panel class="nw-keys-row" hittest="false"><Label class="nw-keycap" text="2× WALK" hittest="false" /><Label class="nw-keys-text" text="Noclip on or off" hittest="false" /></Panel>
-				<Panel class="nw-keys-row" hittest="false"><Label class="nw-keycap" text="2× INSPECT" hittest="false" /><Label class="nw-keys-text" text="Aim ring on or off · in a drill it fades as you land it" hittest="false" /></Panel>
+				<Panel class="nw-keys-row" hittest="false"><Label class="nw-keycap" text="TAB" hittest="false" /><Label class="nw-keys-text" text="This menu · hold for the scoreboard" hittest="false" /></Panel>
+				<Panel class="nw-keys-row" hittest="false"><Label class="nw-keycap" text="E" hittest="false" /><Label class="nw-keys-text" text="Snap onto the nearest spot · again for the next throw there" hittest="false" /></Panel>
+				<Panel class="nw-keys-row" hittest="false"><Label class="nw-keycap" text="R" hittest="false" /><Label class="nw-keys-text" text="Rethrow · hold to zoom" hittest="false" /></Panel>
+				<Panel class="nw-keys-row" hittest="false"><Label class="nw-keycap" text="R" hittest="false" /><Label class="nw-keys-text" text="With a grenade in the air: ride along with it" hittest="false" /></Panel>
+				<Panel class="nw-keys-row" hittest="false"><Label class="nw-keycap" text="2× CTRL" hittest="false" /><Label class="nw-keys-text" text="Add a bot where you stand" hittest="false" /></Panel>
+				<Panel class="nw-keys-row" hittest="false"><Label class="nw-keycap" text="2× SHIFT" hittest="false" /><Label class="nw-keys-text" text="Noclip on or off" hittest="false" /></Panel>
+				<Panel class="nw-keys-row" hittest="false"><Label class="nw-keycap" text="2× F" hittest="false" /><Label class="nw-keys-text" text="Aim ring on or off · in a drill it fades as you land it" hittest="false" /></Panel>
 				<Panel class="nw-keys-row" hittest="false"><Label class="nw-keycap" text="DEL" hittest="false" /><Label class="nw-keys-text" text="Clear smoke and fire · twice clears the bots" hittest="false" /></Panel>
 			</Panel>
 		</Panel>

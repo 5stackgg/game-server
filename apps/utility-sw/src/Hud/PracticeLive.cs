@@ -29,6 +29,9 @@ public partial class UtilityPracticePlugin
         public bool Scored;
         public UtilityPracticeResult? Result;
 
+        // How far off a jump throw's release was, when it was far enough to say.
+        public string? Timing;
+
         public bool Smoke => Kind == "smoke";
 
         // A smoke and a fire stay where they land; the rest are over as they go off.
@@ -164,7 +167,7 @@ public partial class UtilityPracticePlugin
 
     // The panel's verdict on a throw arrives after the grenade has gone off,
     // so it goes on the newest of the thrower's grenades still waiting for one.
-    private void LiveScored(ulong steamId, string lineupId, UtilityPracticeResult? result)
+    private LiveUtility? LiveScored(ulong steamId, string lineupId, UtilityPracticeResult? result)
     {
         LiveUtility? entry = _live
             .Where(candidate => candidate.Owner == steamId && candidate.Popped >= 0 && !candidate.Scored)
@@ -176,6 +179,8 @@ public partial class UtilityPracticePlugin
             entry.Scored = true;
             entry.Result = result;
         }
+
+        return entry;
     }
 
     [GameEventHandler(HookMode.Post)]
@@ -295,7 +300,7 @@ public partial class UtilityPracticePlugin
 
         if (!result.success)
         {
-            return $"missed · {off} off";
+            return entry.Timing != null ? $"missed · {off} off · {entry.Timing}" : $"missed · {off} off";
         }
 
         int bar = _drill.MasteryStreak;

@@ -118,6 +118,13 @@ public static class HudSlots
     // Every kind of grenade, by RadarMaps' names for them.
     public static readonly IReadOnlyList<string> OutTypes = new[] { "smoke", "molly", "flash", "he", "decoy" };
     public const int PlanRows = 6;
+
+    // The dots on the throw card: the last this many throws at its lineup.
+    public const int LastThrows = 5;
+
+    // The classes a scored throw sets on the bar for a moment, each of which
+    // plays its own sound as it is set.
+    public static readonly IReadOnlyList<string> VerdictKinds = new[] { "landed", "missed", "mastered" };
     public const int FlashRows = 5;
     public const int FlashBarSteps = 21;
 

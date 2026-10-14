@@ -56,6 +56,7 @@
 				<Panel class="nh-readout" hittest="false">
 					<Label id="drillkey" class="nh-readout-key" text="{s:drillkey}" />
 					<Label id="drill" class="nh-readout-val nh-readout-cyan" text="{s:drill}" />
+					<Panel class="nh-last" hittest="false"><Panel id="ld1" class="nh-last-dot" hittest="false" /><Panel id="ld2" class="nh-last-dot" hittest="false" /><Panel id="ld3" class="nh-last-dot" hittest="false" /><Panel id="ld4" class="nh-last-dot" hittest="false" /><Panel id="ld5" class="nh-last-dot" hittest="false" /></Panel>
 				</Panel>
 				<Panel class="nh-meter" hittest="false">
 					<Panel id="drillbar" class="nh-meter-fill" hittest="false" />

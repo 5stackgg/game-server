@@ -1639,20 +1639,23 @@
 
 .nh-keycap
 {
-	width: 104px;
-	margin-right: 9px;
-	padding: 4px 0px 3px;
+	width: 76px;
+	margin-right: 10px;
+	padding: 3px 0px 2px;
 	vertical-align: center;
-	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-family: Stratum2, 'Arial Unicode MS';
 	font-size: 13px;
 	font-weight: bold;
-	color: #f3f6fb;
-	text-align: center;
-	background-color: rgba(9, 15, 21, 0.82);
-	border: 1px solid rgba(146, 178, 208, 0.45);
-	border-radius: 2px;
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
 	text-overflow: shrink;
 	white-space: nowrap;
+	color: #10161c;
+	text-align: center;
+	background-color: #e9eef3;
+	border: 1px solid #c2ccd6;
+	border-bottom: 3px solid #8c99a6;
+	border-radius: 4px;
 	transition-property: background-color, color, border;
 	transition-duration: 0.12s;
 }
@@ -1660,11 +1663,9 @@
 .nh-key-label
 {
 	vertical-align: center;
-	font-family: Stratum2 Condensed, 'Arial Unicode MS';
-	font-size: 16px;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 15px;
 	font-weight: bold;
-	letter-spacing: 1px;
-	text-transform: uppercase;
 	color: #e6edf3;
 	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.9);
 	transition-property: color;
@@ -1677,6 +1678,7 @@
 	color: #0c1218;
 	background-color: #e4ae39;
 	border: 1px solid #e4ae39;
+	border-bottom: 3px solid #a87a1d;
 }
 
 .nh-key-row.on .nh-key-label
@@ -2601,3 +2603,56 @@
 #radar.de_overpass { background-image: url("s2r://panorama/images/overheadmaps/de_overpass_radar.psd"); }
 #radar.de_train { background-image: url("s2r://panorama/images/overheadmaps/de_train_radar.psd"); }
 #radar.de_vertigo { background-image: url("s2r://panorama/images/overheadmaps/de_vertigo_radar.psd"); }
+
+/* The last five throws at this lineup, oldest on the left: a streak building
+   is easier to see than a number counting up. */
+.nh-last
+{
+	vertical-align: center;
+	margin-left: 10px;
+	flow-children: right;
+}
+
+.nh-last-dot
+{
+	width: 8px;
+	height: 8px;
+	margin-left: 4px;
+	border-radius: 50%;
+	background-color: rgba(255, 255, 255, 0.14);
+	transition-property: background-color;
+	transition-duration: 0.2s;
+}
+
+.nh-last-dot.hit
+{
+	background-color: rgb(126, 226, 160);
+}
+
+.nh-last-dot.miss
+{
+	background-color: rgb(255, 143, 135);
+}
+
+/* Takes no room and draws nothing: the class a scored throw sets on it for a
+   moment is what plays that verdict's sound. */
+.nh-verdict
+{
+	width: 0px;
+	height: 0px;
+}
+
+.nh-verdict.landed
+{
+	sound: "UI.CounterDoneBeep";
+}
+
+.nh-verdict.missed
+{
+	sound: "UI.CounterBeep";
+}
+
+.nh-verdict.mastered
+{
+	sound: "UI.XP.LevelUp";
+}

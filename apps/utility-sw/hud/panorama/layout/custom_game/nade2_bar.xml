@@ -4,6 +4,7 @@
 	</styles>
 	<Panel class="nh-screen" hittest="false">
 		<Panel id="NadeBar" class="nh-bar" hittest="false">
+			<Panel id="verdict" class="nh-verdict" hittest="false" />
 			<Panel class="nh-top" hittest="false">
 				<Panel id="compass" class="nh-compass" hittest="false">
 					<Panel class="nh-compass-ribbon" hittest="false">
@@ -32,12 +33,12 @@
 			</Panel>
 
 			<Panel id="legend" class="nh-legend" hittest="false">
-				<Panel id="kr1" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="SCOREBOARD" /><Label id="k1" class="nh-key-label" text="{s:k1}" /></Panel>
-				<Panel id="kr2" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="USE" /><Label id="k2" class="nh-key-label" text="{s:k2}" /></Panel>
-				<Panel id="kr3" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="RELOAD" /><Label id="k3" class="nh-key-label" text="{s:k3}" /></Panel>
-				<Panel id="kr4" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="2× CROUCH" /><Label id="k4" class="nh-key-label" text="{s:k4}" /></Panel>
-				<Panel id="kr5" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="2× WALK" /><Label id="k5" class="nh-key-label" text="{s:k5}" /></Panel>
-				<Panel id="kr6" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="2× INSPECT" /><Label id="k6" class="nh-key-label" text="{s:k6}" /></Panel>
+				<Panel id="kr1" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="TAB" /><Label id="k1" class="nh-key-label" text="{s:k1}" /></Panel>
+				<Panel id="kr2" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="E" /><Label id="k2" class="nh-key-label" text="{s:k2}" /></Panel>
+				<Panel id="kr3" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="R" /><Label id="k3" class="nh-key-label" text="{s:k3}" /></Panel>
+				<Panel id="kr4" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="2× CTRL" /><Label id="k4" class="nh-key-label" text="{s:k4}" /></Panel>
+				<Panel id="kr5" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="2× SHIFT" /><Label id="k5" class="nh-key-label" text="{s:k5}" /></Panel>
+				<Panel id="kr6" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="2× F" /><Label id="k6" class="nh-key-label" text="{s:k6}" /></Panel>
 				<Panel id="kr7" class="nh-key-row" hittest="false"><Label class="nh-keycap" text="DEL" /><Label id="k7" class="nh-key-label" text="{s:k7}" /></Panel>
 			</Panel>
 

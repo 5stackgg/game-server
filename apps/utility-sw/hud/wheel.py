@@ -208,13 +208,13 @@ xml.append('''				<Button id="hub" class="nw-hub"><Label id="hubt" class="nw-hub
 ''')
 
 KEYS = [
-    ("SCOREBOARD", "This menu · hold for the scoreboard"),
-    ("USE", "Snap onto the nearest spot · again for the next throw there"),
-    ("RELOAD", "Rethrow · hold to zoom"),
-    ("RELOAD", "With a grenade in the air: ride along with it"),
-    ("2× CROUCH", "Add a bot where you stand"),
-    ("2× WALK", "Noclip on or off"),
-    ("2× INSPECT", "Aim ring on or off · in a drill it fades as you land it"),
+    ("TAB", "This menu · hold for the scoreboard"),
+    ("E", "Snap onto the nearest spot · again for the next throw there"),
+    ("R", "Rethrow · hold to zoom"),
+    ("R", "With a grenade in the air: ride along with it"),
+    ("2× CTRL", "Add a bot where you stand"),
+    ("2× SHIFT", "Noclip on or off"),
+    ("2× F", "Aim ring on or off · in a drill it fades as you land it"),
     ("DEL", "Clear smoke and fire · twice clears the bots"),
 ]
 
@@ -295,37 +295,40 @@ css.append(f'''/* nadewheel2.vcss -- the radial menu, and nothing else.
 {{
 	flow-children: right;
 	margin-bottom: 6px;
+	padding: 2px 12px 2px 2px;
+	background-color: rgba(9, 15, 21, 0.66);
+	border-radius: 3px;
 }}
 
 .nw-keycap
 {{
-	width: 104px;
+	width: 76px;
+	margin-right: 10px;
+	padding: 3px 0px 2px;
+	vertical-align: center;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 13px;
+	font-weight: bold;
+	letter-spacing: 0.5px;
 	text-transform: uppercase;
 	text-overflow: shrink;
 	white-space: nowrap;
-	margin-right: 9px;
-	padding: 4px 0px 3px;
-	vertical-align: center;
-	font-family: Stratum2 Mono, 'Arial Unicode MS';
-	font-size: 14px;
-	font-weight: bold;
-	color: #f3f6fb;
+	color: #10161c;
 	text-align: center;
-	background-color: rgba(9, 15, 21, 0.82);
-	border: 1px solid rgba(146, 178, 208, 0.45);
-	border-radius: 2px;
+	background-color: #e9eef3;
+	border: 1px solid #c2ccd6;
+	border-bottom: 3px solid #8c99a6;
+	border-radius: 4px;
 }}
 
 .nw-keys-text
 {{
 	vertical-align: center;
-	font-family: Stratum2 Condensed, 'Arial Unicode MS';
-	font-size: 16px;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 15px;
 	font-weight: bold;
-	letter-spacing: 1px;
-	text-transform: uppercase;
-	color: #c3d0dc;
-	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.65);
+	color: #e6edf3;
+	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.9);
 }}
 
 /* The whole screen, under the wheel: a click that lands on nothing closes it,

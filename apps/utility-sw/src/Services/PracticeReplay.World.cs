@@ -1400,4 +1400,70 @@ public partial class PracticeReplay
             _logger.LogWarning(error, "unable to clear transmit blocks");
         }
     }
+
+    // ── a scored throw: where it landed against where it was meant to ────
+
+    // For a few seconds after the panel answers, so "1.7m off" is something
+    // to look at rather than a number: the lineup's success radius round its
+    // target, a mark where this one landed, and the line between them.
+    private static readonly Color MissedRed = new Color(255, 112, 100, 255);
+    private const float VerdictSeconds = 5f;
+    private const float VerdictMarkUnits = 10f;
+    private readonly Dictionary<ulong, MarkerSet> _verdicts = new();
+
+    public void ShowVerdict(IPlayer owner, Vec3 landed, Vec3 target, float radius, bool landedIt)
+    {
+        if (!DrawMarkers)
+        {
+            return;
+        }
+
+        ulong steamId = owner.SteamID;
+
+        ClearVerdict(steamId);
+
+        var set = new MarkerSet();
+
+        _verdicts[steamId] = set;
+
+        Color color = landedIt ? Green : MissedRed;
+        var from = new Vec3(landed.x, landed.y, landed.z + PadLift);
+        var to = new Vec3(target.x, target.y, target.z + PadLift);
+
+        Segments(set, steamId, to, 0f, to.z, PracticeMarkerUtility.Ring(radius, 40), SpawnWhite, 0.6f);
+        Segments(
+            set,
+            steamId,
+            from,
+            0f,
+            from.z,
+            PracticeMarkerUtility.Ring(VerdictMarkUnits, 16),
+            color,
+            1.2f
+        );
+
+        if ((to - from).Length() > VerdictMarkUnits)
+        {
+            Beam(set, steamId, from, to, color, 0.8f);
+        }
+
+        _core.Scheduler.DelayBySeconds(
+            VerdictSeconds,
+            () =>
+            {
+                if (_verdicts.TryGetValue(steamId, out MarkerSet? current) && current == set)
+                {
+                    ClearVerdict(steamId);
+                }
+            }
+        );
+    }
+
+    public void ClearVerdict(ulong steamId)
+    {
+        if (_verdicts.Remove(steamId, out MarkerSet? set))
+        {
+            Despawn(set);
+        }
+    }
 }

@@ -112,6 +112,11 @@ public class HudLayoutContractTests
             "mb1",
             "mb2",
             "runup",
+            "ld1",
+            "ld2",
+            "ld3",
+            "ld4",
+            "ld5",
         };
 
         Assert.Empty(
@@ -172,6 +177,12 @@ public class HudLayoutContractTests
             ("mb2", "on"),
             ("runup", HudSlots.Shown),
         };
+
+        for (int dot = 1; dot <= HudSlots.LastThrows; dot++)
+        {
+            toggles.Add(($"ld{dot}", "hit"));
+            toggles.Add(($"ld{dot}", "miss"));
+        }
 
         foreach (string cap in HudSlots.ThrowKeycaps)
         {
@@ -279,6 +290,7 @@ public class HudLayoutContractTests
             "filter",
             "legend",
             "toast",
+            "verdict",
         };
 
         for (int pip = 1; pip <= HudSlots.CompassPips; pip++)
@@ -358,6 +370,11 @@ public class HudLayoutContractTests
         toggles.Add(("out", HudSlots.Shown));
         toggles.Add(("plan", HudSlots.Shown));
         toggles.Add(("flash", HudSlots.Shown));
+
+        foreach (string kind in HudSlots.VerdictKinds)
+        {
+            toggles.Add(("verdict", kind));
+        }
 
         for (int row = 1; row <= HudSlots.OutRows; row++)
         {
