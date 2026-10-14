@@ -44,23 +44,44 @@ public class PracticeThrowTimingTests
         Assert.Null(PracticeThrowTiming.TakeoffToRelease(null));
     }
 
-    [Fact]
-    public void LettingGoAfterTheLineupDidIsLate()
+    private static LineupRecord Lineup(bool bind, List<ApproachSample>? approach = null)
     {
-        List<ApproachSample> lineup = Approach((-16, true, 0), (0, true, Jump));
+        return new LineupRecord
+        {
+            release = new ThrowSnapshot { jump_throw = bind },
+            approach = approach ?? new List<ApproachSample>(),
+        };
+    }
+
+    // The library comes without run-up samples, which left every lineup with
+    // no take-off to compare against and the timing never shown.
+    [Fact]
+    public void ALineupThrownWithTheBindLetsGoAtTakeoffWithoutItsSamples()
+    {
         List<ApproachSample> thrown = Approach((-63, true, 0), (-47, false, Jump), (0, false, 0));
 
-        int? offset = PracticeThrowTiming.ReleaseOffset(thrown, lineup);
+        int? offset = PracticeThrowTiming.ReleaseOffset(thrown, Lineup(bind: true));
 
         Assert.Equal(47, offset);
-        Assert.Equal("let go 47ms late", PracticeThrowTiming.Describe(offset));
+        Assert.Equal("47ms late", PracticeThrowTiming.Describe(offset));
+    }
+
+    [Fact]
+    public void AHandThrownLineupIsTimedFromItsOwnSamples()
+    {
+        List<ApproachSample> lineup = Approach((-63, true, 0), (-31, false, Jump), (0, false, 0));
+        List<ApproachSample> thrown = Approach((-16, true, 0), (0, true, Jump));
+
+        Assert.Equal(-31, PracticeThrowTiming.ReleaseOffset(thrown, Lineup(bind: false, lineup)));
+        Assert.Null(PracticeThrowTiming.ReleaseOffset(thrown, Lineup(bind: false)));
     }
 
     [Fact]
     public void WithinATickIsOnTime()
     {
-        Assert.Null(PracticeThrowTiming.Describe(15));
-        Assert.Null(PracticeThrowTiming.Describe(-15));
-        Assert.Equal("let go 32ms early", PracticeThrowTiming.Describe(-32));
+        Assert.Equal("on time", PracticeThrowTiming.Describe(15));
+        Assert.Equal("on time", PracticeThrowTiming.Describe(-15));
+        Assert.Equal("32ms early", PracticeThrowTiming.Describe(-32));
+        Assert.Null(PracticeThrowTiming.Describe(null));
     }
 }

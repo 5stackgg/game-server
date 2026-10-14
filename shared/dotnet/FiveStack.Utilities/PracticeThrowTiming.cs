@@ -42,26 +42,37 @@ public static class PracticeThrowTiming
         return release.t - samples[grounded + 1].t;
     }
 
+    // When the lineup let go after take-off. The library is sent without its
+    // run-up samples, so a lineup thrown with the jump bind -- which lets go
+    // on the tick it jumps -- is 0 without them; one thrown by hand is known
+    // only from its samples.
+    public static int? LineupTakeoffToRelease(LineupRecord lineup)
+    {
+        return lineup.release.jump_throw ? 0 : TakeoffToRelease(lineup.approach);
+    }
+
     // How much later than the lineup this throw let go; negative is earlier.
     // Null when either was not a jump throw.
-    public static int? ReleaseOffset(
-        IReadOnlyList<ApproachSample>? thrown,
-        IReadOnlyList<ApproachSample>? lineup
-    )
+    public static int? ReleaseOffset(IReadOnlyList<ApproachSample>? thrown, LineupRecord lineup)
     {
         int? mine = TakeoffToRelease(thrown);
-        int? theirs = TakeoffToRelease(lineup);
+        int? theirs = LineupTakeoffToRelease(lineup);
 
         return mine == null || theirs == null ? null : mine - theirs;
     }
 
     public static string? Describe(int? offset)
     {
-        if (offset is not int ms || Math.Abs(ms) < SameMilliseconds)
+        if (offset is not int ms)
         {
             return null;
         }
 
-        return ms > 0 ? $"let go {ms}ms late" : $"let go {-ms}ms early";
+        if (Math.Abs(ms) < SameMilliseconds)
+        {
+            return "on time";
+        }
+
+        return ms > 0 ? $"{ms}ms late" : $"{-ms}ms early";
     }
 }

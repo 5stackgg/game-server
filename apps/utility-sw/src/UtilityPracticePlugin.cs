@@ -1264,7 +1264,8 @@ public partial class UtilityPracticePlugin : BasePlugin
                 player,
                 eyes.Y,
                 eyes.X,
-                new Vec3(standing.X, standing.Y, standing.Z)
+                new Vec3(standing.X, standing.Y, standing.Z),
+                PracticeReplay.EyeOf(pawn)
             );
 
             Panels(player, pawn);
@@ -1685,12 +1686,8 @@ public partial class UtilityPracticePlugin : BasePlugin
             Vec3 spot = loaded.release.feet_position;
 
             bool onAngle =
-                PracticeLineupUtility.AimError(
-                    eyes.Y,
-                    eyes.X,
-                    loaded.release.yaw,
-                    loaded.release.pitch
-                ) <= ToleranceFor(loaded);
+                _replay.AimErrorFrom(loaded, PracticeReplay.EyeOf(pawn), eyes.Y, eyes.X)
+                <= ToleranceFor(loaded);
 
             // Both halves, not just the angle. Saying you are lined up while
             // you stand in the wrong place is worse than saying nothing -- the

@@ -4,7 +4,6 @@
 	</styles>
 	<Panel class="nh-screen" hittest="false">
 		<Panel id="NadeBar" class="nh-bar" hittest="false">
-			<Panel id="verdict" class="nh-verdict" hittest="false" />
 			<Panel class="nh-top" hittest="false">
 				<Panel id="compass" class="nh-compass" hittest="false">
 					<Panel class="nh-compass-ribbon" hittest="false">

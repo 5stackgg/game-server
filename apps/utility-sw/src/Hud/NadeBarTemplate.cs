@@ -75,8 +75,6 @@ public class NadeBarTemplate : HudTemplate
 
     public string Filter { get; init; } = "";
 
-    // landed, missed or mastered for a moment after a throw is scored.
-    public string? Verdict { get; init; }
     public string Count { get; init; } = "";
     public bool Filtering { get; init; }
     public bool Cleared { get; init; }
@@ -159,11 +157,6 @@ public class NadeBarTemplate : HudTemplate
         ApplyOuts(surface);
         ApplyList(surface);
         ApplyFlash(surface);
-
-        foreach (string kind in HudSlots.VerdictKinds)
-        {
-            surface.Class("verdict", kind, kind == Verdict);
-        }
     }
 
     private void ApplyOuts(HudSurface surface)

@@ -1,13 +1,15 @@
 using FiveStack.Entities.Practice;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Logging;
+using SwiftlyS2.Shared.Natives;
 using SwiftlyS2.Shared.Players;
+using SwiftlyS2.Shared.Sounds;
 
 namespace UtilityPractice;
 
 // What happens the moment the panel scores a throw. The verdict goes beside
-// the grenade on the list, onto the floor where it landed, into the ear, and
-// into the five dots on the throw card; a drill that ends is summed up on the
-// right, where its plan was.
+// the grenade on the list, into the ear, and into the five dots on the throw
+// card; a drill that ends is summed up on the right, where its plan was.
 public partial class UtilityPracticePlugin
 {
     private class RunTally
@@ -23,13 +25,14 @@ public partial class UtilityPracticePlugin
     // Landed or not, oldest first, per player and lineup.
     private readonly Dictionary<(ulong steamId, string lineup), List<bool>> _lastThrows = new();
 
-    private readonly Dictionary<ulong, (string Kind, int Until)> _verdictPulse = new();
     private readonly Dictionary<ulong, RunTally> _runTally = new();
     private readonly Dictionary<ulong, (NadeBarTemplate.Card Card, int Until)> _summaries = new();
 
-    // Long enough for a few bar redraws to carry the class, so its sound plays
-    // once and the next verdict can play it again.
-    private const int VerdictPulseTicks = 32;
+    // Played to the thrower alone. A Panorama style's sound only plays on
+    // hover, never when the server sets a class.
+    private const string LandedSound = "UI.CounterDoneBeep";
+    private const string MissedSound = "UI.CounterBeep";
+    private const string MasteredSound = "UI.XP.LevelUp";
     private const int SummaryTicks = 10 * 64;
 
     private static string ScoreKey(LineupRecord lineup)
@@ -68,7 +71,7 @@ public partial class UtilityPracticePlugin
         if (entry != null)
         {
             entry.Timing = PracticeThrowTiming.Describe(
-                PracticeThrowTiming.ReleaseOffset(attempt.Thrown.approach, loaded.approach)
+                PracticeThrowTiming.ReleaseOffset(attempt.Thrown.approach, loaded)
             );
         }
 
@@ -85,22 +88,11 @@ public partial class UtilityPracticePlugin
             last.RemoveAt(0);
         }
 
-        _verdictPulse[steamId] = (
-            newlyMastered ? "mastered" : result.success ? "landed" : "missed",
-            _aimTick + VerdictPulseTicks
-        );
-
         IPlayer? player = _system.Find(steamId);
 
         if (player != null && player.IsValid)
         {
-            _replay.ShowVerdict(
-                player,
-                attempt.Thrown.detonation_position,
-                loaded.detonation_position,
-                result.radius > 0f ? result.radius : PracticeLineupUtility.FallbackSuccessRadius,
-                result.success
-            );
+            PlayVerdict(player, newlyMastered ? MasteredSound : result.success ? LandedSound : MissedSound);
         }
 
         if (_drill.Current(steamId) == null)
@@ -150,13 +142,11 @@ public partial class UtilityPracticePlugin
             rows.Add(new NadeBarTemplate.CardRow(worst.Key, $"missed {worst.Value}×"));
         }
 
-        rows.Add(new NadeBarTemplate.CardRow("Best run", $"{run.BestStreak} in a row"));
-
         _summaries[steamId] = (
             new NadeBarTemplate.Card(
                 run.Endless ? "Repeat done" : "Drill done",
                 $"{run.Attempts} throws · {run.Hits} landed · {run.Hits * 100 / run.Attempts}%",
-                "",
+                $"Best run {run.BestStreak} in a row",
                 rows.Take(HudSlots.PlanRows).ToList()
             ),
             _aimTick + SummaryTicks
@@ -180,21 +170,19 @@ public partial class UtilityPracticePlugin
         return summary.Card;
     }
 
-    private string? VerdictFor(ulong steamId)
+    private void PlayVerdict(IPlayer player, string sound)
     {
-        if (!_verdictPulse.TryGetValue(steamId, out (string Kind, int Until) pulse))
+        try
         {
-            return null;
-        }
+            using var play = new SoundEvent(sound);
 
-        if (_aimTick >= pulse.Until)
+            play.Recipients = CRecipientFilter.FromPlayers(player.Slot);
+            play.Emit();
+        }
+        catch (Exception error)
         {
-            _verdictPulse.Remove(steamId);
-
-            return null;
+            _logger.LogWarning(error, "unable to play {sound}", sound);
         }
-
-        return pulse.Kind;
     }
 
     private IReadOnlyList<bool> LastFor(ulong steamId, LineupRecord lineup)
@@ -207,22 +195,14 @@ public partial class UtilityPracticePlugin
     private void ForgetVerdicts(ulong steamId)
     {
         _attempts.Remove(steamId);
-        _verdictPulse.Remove(steamId);
         _runTally.Remove(steamId);
         _summaries.Remove(steamId);
         _lastThrows.Keys.Where(key => key.steamId == steamId).ToList().ForEach(key => _lastThrows.Remove(key));
-        _replay.ClearVerdict(steamId);
     }
 
     private void ForgetEveryVerdict()
     {
-        foreach (ulong steamId in _summaries.Keys.Concat(_verdictPulse.Keys).Concat(_attempts.Keys).Distinct().ToList())
-        {
-            _replay.ClearVerdict(steamId);
-        }
-
         _attempts.Clear();
-        _verdictPulse.Clear();
         _runTally.Clear();
         _summaries.Clear();
     }

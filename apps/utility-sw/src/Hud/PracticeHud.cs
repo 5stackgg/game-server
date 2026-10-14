@@ -209,6 +209,7 @@ public partial class UtilityPracticePlugin
                 onAngle,
                 MasteryOf(player.SteamID, lineup),
                 position,
+                _replay.AimAnglesFrom(lineup, PracticeReplay.EyeOf(pawn)),
                 LastFor(player.SteamID, lineup)
             )
         );

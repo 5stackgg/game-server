@@ -290,7 +290,6 @@ public class HudLayoutContractTests
             "filter",
             "legend",
             "toast",
-            "verdict",
         };
 
         for (int pip = 1; pip <= HudSlots.CompassPips; pip++)
@@ -370,11 +369,6 @@ public class HudLayoutContractTests
         toggles.Add(("out", HudSlots.Shown));
         toggles.Add(("plan", HudSlots.Shown));
         toggles.Add(("flash", HudSlots.Shown));
-
-        foreach (string kind in HudSlots.VerdictKinds)
-        {
-            toggles.Add(("verdict", kind));
-        }
 
         for (int row = 1; row <= HudSlots.OutRows; row++)
         {

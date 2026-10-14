@@ -52,24 +52,14 @@ public class NadeHudTemplate : HudTemplate
         bool onAngle,
         Meter? progress,
         string position,
+        (float yaw, float pitch) target,
         IReadOnlyList<bool>? last = null
     )
     {
         ThrowKeys keys = PracticeThrowKeys.For(lineup);
 
-        float error = PracticeLineupUtility.AimError(
-            eyeYaw,
-            eyePitch,
-            lineup.release.yaw,
-            lineup.release.pitch
-        );
-
-        string arrow = HudAimGrid.Arrow(
-            eyeYaw,
-            eyePitch,
-            lineup.release.yaw,
-            lineup.release.pitch
-        );
+        float error = PracticeLineupUtility.AimError(eyeYaw, eyePitch, target.yaw, target.pitch);
+        string arrow = HudAimGrid.Arrow(eyeYaw, eyePitch, target.yaw, target.pitch);
 
         return new NadeHudTemplate
         {

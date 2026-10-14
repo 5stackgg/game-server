@@ -1604,18 +1604,15 @@
 /* What the keys do right now. The lines change with where you are standing
    and what is in your hand, so the legend is the menu you never have to
    open. */
-/* Down the middle of the left edge. Lower, above the money, chat and the
-   game's own notices were drawn over it. */
+/* Down the middle of the left edge, quiet: no card, and every row at half
+   strength until it matters. Lower, above the money, chat and the game's own
+   notices were drawn over it. */
 .nh-legend
 {
 	horizontal-align: left;
 	vertical-align: center;
-	margin-left: 42px;
-	padding: 10px 16px 6px 12px;
+	margin-left: 30px;
 	flow-children: down;
-	background-color: rgba(9, 15, 21, 0.78);
-	border: 1px solid rgba(255, 255, 255, 0.08);
-	border-radius: 6px;
 }
 
 .nh-legend.hidden
@@ -1626,7 +1623,8 @@
 .nh-key-row
 {
 	flow-children: right;
-	margin-bottom: 6px;
+	margin-bottom: 5px;
+	opacity: 0.55;
 	transition-property: opacity;
 	transition-duration: 0.15s;
 }
@@ -1639,26 +1637,25 @@
 /* The key is there, and there is nothing for it to do from here. */
 .nh-key-row.dim
 {
-	opacity: 0.42;
+	opacity: 0.18;
 }
 
 .nh-keycap
 {
-	min-width: 30px;
-	padding: 4px 9px 3px;
+	min-width: 24px;
+	padding: 3px 6px 2px;
 	vertical-align: center;
 	font-family: Stratum2, 'Arial Unicode MS';
-	font-size: 13px;
+	font-size: 11px;
 	font-weight: bold;
 	letter-spacing: 0.5px;
 	text-transform: uppercase;
 	white-space: nowrap;
-	color: #10161c;
+	color: #eef2f5;
 	text-align: center;
-	background-color: #e9eef3;
-	border: 1px solid #c2ccd6;
-	border-bottom: 3px solid #8c99a6;
-	border-radius: 4px;
+	background-color: rgba(9, 15, 21, 0.42);
+	border: 1px solid rgba(238, 242, 245, 0.55);
+	border-radius: 3px;
 	transition-property: background-color, color, border;
 	transition-duration: 0.12s;
 }
@@ -1667,47 +1664,52 @@
    after it: a fixed column so every description starts on one line. */
 .nh-key-col
 {
-	width: 100px;
-	margin-right: 10px;
+	width: 84px;
+	margin-right: 8px;
 	vertical-align: center;
 	flow-children: right;
 }
 
 .nh-key-twice
 {
-	margin-left: 6px;
+	margin-left: 5px;
 	vertical-align: center;
 	font-family: Stratum2, 'Arial Unicode MS';
-	font-size: 13px;
+	font-size: 11px;
 	font-weight: bold;
-	color: #c3d0dc;
-	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.9);
+	color: rgba(238, 242, 245, 0.75);
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 1);
 }
 
 .nh-key-label
 {
 	vertical-align: center;
 	font-family: Stratum2, 'Arial Unicode MS';
-	font-size: 15px;
-	font-weight: bold;
-	color: #e6edf3;
-	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.9);
+	font-size: 14px;
+	font-weight: normal;
+	color: #eef2f5;
+	text-shadow: 0px 1px 2px 2 rgba(0, 0, 0, 0.95);
 	transition-property: color;
 	transition-duration: 0.12s;
 }
 
 /* The key is doing its thing this moment: zoom held, menu open. */
+/* Doing its thing this moment: full strength and amber. */
+.nh-key-row.on
+{
+	opacity: 1;
+}
+
 .nh-key-row.on .nh-keycap
 {
 	color: #0c1218;
 	background-color: #e4ae39;
 	border: 1px solid #e4ae39;
-	border-bottom: 3px solid #a87a1d;
 }
 
 .nh-key-row.on .nh-key-label
 {
-	color: #e4ae39;
+	color: #ffd27a;
 }
 
 /* What a key press just did. Where chat used to answer, except it does not
@@ -2656,27 +2658,4 @@
 .nh-last-dot.miss
 {
 	background-color: rgb(255, 143, 135);
-}
-
-/* Takes no room and draws nothing: the class a scored throw sets on it for a
-   moment is what plays that verdict's sound. */
-.nh-verdict
-{
-	width: 0px;
-	height: 0px;
-}
-
-.nh-verdict.landed
-{
-	sound: "UI.CounterDoneBeep";
-}
-
-.nh-verdict.missed
-{
-	sound: "UI.CounterBeep";
-}
-
-.nh-verdict.mastered
-{
-	sound: "UI.XP.LevelUp";
 }

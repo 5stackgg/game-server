@@ -156,6 +156,18 @@ public static class PracticeLineupUtility
 
     // How wrong the crosshair is for this throw, in degrees: the worse of the
     // two axes, because being dead on the yaw does not help if the pitch is off.
+    // The view angles that put the crosshair on a point from this eye, in
+    // CS2's convention: yaw from +x towards +y, pitch negative looking up.
+    public static (float yaw, float pitch) AnglesTo(Vec3 eye, Vec3 point)
+    {
+        Vec3 d = point - eye;
+
+        return (
+            MathF.Atan2(d.y, d.x) * 180f / MathF.PI,
+            -MathF.Atan2(d.z, d.LengthXY()) * 180f / MathF.PI
+        );
+    }
+
     public static float AimError(float eyeYaw, float eyePitch, float yaw, float pitch)
     {
         return Math.Max(AngleGap(eyeYaw, yaw), AngleGap(eyePitch, pitch));

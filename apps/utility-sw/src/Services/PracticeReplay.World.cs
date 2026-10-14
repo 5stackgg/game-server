@@ -972,14 +972,9 @@ public partial class PracticeReplay
                 // Born in the stage and colour it should already be, so a
                 // marker drawn while the player is ALREADY on the angle does
                 // not come up as a finder and correct itself a tick later.
-                if (mark.Full && eyes != null)
+                if (mark.Full && eyes != null && viewing != null)
                 {
-                    float error = PracticeLineupUtility.AimError(
-                        eyes.Value.Y,
-                        eyes.Value.X,
-                        lineup.release.yaw,
-                        lineup.release.pitch
-                    );
+                    float error = AimErrorFrom(lineup, EyeOf(viewing), eyes.Value.Y, eyes.Value.X);
 
                     mark.Stage = PracticeMarkerUtility.AimStage(error);
                     mark.Lined = PracticeLineupUtility.AimMiss(error, lineup.aim_tolerance) <= 0f;
@@ -1039,6 +1034,34 @@ public partial class PracticeReplay
     // the lineup and the map: it is found once, drawn there, and does not move
     // when the player does. Anywhere but the exact spot it is the wrong thing
     // to put a crosshair on, which is what the ring on the floor is for.
+    // Where the crosshair has to be for this throw, from this eye: the angles
+    // to the point its marker is drawn at. The marker is fixed where the
+    // recorded angles meet the wall from the recorded eye, so "lined up" has to
+    // mean on the marker. Measured against the recorded angles instead, it
+    // disagrees with the marker by however far this eye is from that one --
+    // on a close wall, enough to say lined up with the crosshair off the
+    // marker and not with it on.
+    public (float yaw, float pitch) AimAnglesFrom(LineupRecord lineup, Vec3 eye)
+    {
+        (Vec3 center, _, _) = AimPoint(lineup);
+
+        return PracticeLineupUtility.AnglesTo(eye, center);
+    }
+
+    public float AimErrorFrom(LineupRecord lineup, Vec3 eye, float eyeYaw, float eyePitch)
+    {
+        (float yaw, float pitch) = AimAnglesFrom(lineup, eye);
+
+        return PracticeLineupUtility.AimError(eyeYaw, eyePitch, yaw, pitch);
+    }
+
+    public static Vec3 EyeOf(CCSPlayerPawn pawn)
+    {
+        Vector origin = pawn.AbsOrigin ?? new Vector(0, 0, 0);
+
+        return new Vec3(origin.X, origin.Y, origin.Z + pawn.ViewOffset.Z.Value);
+    }
+
     private (Vec3 center, Vec3 forward, float away) AimPoint(LineupRecord lineup)
     {
         Vec3 spot = Grounded(lineup.release.feet_position);
@@ -1247,7 +1270,7 @@ public partial class PracticeReplay
     /// footprints go green inside the spot, and the aim marker sheds what it
     /// no longer needs as the crosshair closes in.
     /// </summary>
-    public void TintAim(IPlayer player, float eyeYaw, float eyePitch, Vec3 feet)
+    public void TintAim(IPlayer player, float eyeYaw, float eyePitch, Vec3 feet, Vec3 eye)
     {
         if (!DrawMarkers)
         {
@@ -1289,12 +1312,7 @@ public partial class PracticeReplay
 
             if (mark.Full)
             {
-                float error = PracticeLineupUtility.AimError(
-                    eyeYaw,
-                    eyePitch,
-                    mark.Lineup.release.yaw,
-                    mark.Lineup.release.pitch
-                );
+                float error = AimErrorFrom(mark.Lineup, eye, eyeYaw, eyePitch);
 
                 stage = PracticeMarkerUtility.AimStage(mark.Stage, error);
                 lined = PracticeLineupUtility.AimMiss(error, mark.Lineup.aim_tolerance) <= 0f;
@@ -1398,72 +1416,6 @@ public partial class PracticeReplay
         catch (Exception error)
         {
             _logger.LogWarning(error, "unable to clear transmit blocks");
-        }
-    }
-
-    // ── a scored throw: where it landed against where it was meant to ────
-
-    // For a few seconds after the panel answers, so "1.7m off" is something
-    // to look at rather than a number: the lineup's success radius round its
-    // target, a mark where this one landed, and the line between them.
-    private static readonly Color MissedRed = new Color(255, 112, 100, 255);
-    private const float VerdictSeconds = 5f;
-    private const float VerdictMarkUnits = 10f;
-    private readonly Dictionary<ulong, MarkerSet> _verdicts = new();
-
-    public void ShowVerdict(IPlayer owner, Vec3 landed, Vec3 target, float radius, bool landedIt)
-    {
-        if (!DrawMarkers)
-        {
-            return;
-        }
-
-        ulong steamId = owner.SteamID;
-
-        ClearVerdict(steamId);
-
-        var set = new MarkerSet();
-
-        _verdicts[steamId] = set;
-
-        Color color = landedIt ? Green : MissedRed;
-        var from = new Vec3(landed.x, landed.y, landed.z + PadLift);
-        var to = new Vec3(target.x, target.y, target.z + PadLift);
-
-        Segments(set, steamId, to, 0f, to.z, PracticeMarkerUtility.Ring(radius, 40), SpawnWhite, 0.6f);
-        Segments(
-            set,
-            steamId,
-            from,
-            0f,
-            from.z,
-            PracticeMarkerUtility.Ring(VerdictMarkUnits, 16),
-            color,
-            1.2f
-        );
-
-        if ((to - from).Length() > VerdictMarkUnits)
-        {
-            Beam(set, steamId, from, to, color, 0.8f);
-        }
-
-        _core.Scheduler.DelayBySeconds(
-            VerdictSeconds,
-            () =>
-            {
-                if (_verdicts.TryGetValue(steamId, out MarkerSet? current) && current == set)
-                {
-                    ClearVerdict(steamId);
-                }
-            }
-        );
-    }
-
-    public void ClearVerdict(ulong steamId)
-    {
-        if (_verdicts.Remove(steamId, out MarkerSet? set))
-        {
-            Despawn(set);
         }
     }
 }

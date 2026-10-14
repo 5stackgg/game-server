@@ -551,4 +551,31 @@ public class TitleCaseTests
         Assert.Equal(20f + y, dot.y, 2);
         Assert.Equal(100f, dot.z, 2);
     }
+
+    [Fact]
+    public void AnglesToAPointAreCs2ViewAngles()
+    {
+        (float yaw, float pitch) = PracticeLineupUtility.AnglesTo(new Vec3(0f, 0f, 0f), new Vec3(0f, 100f, 100f));
+
+        Assert.Equal(90f, yaw, 3);
+        Assert.Equal(-45f, pitch, 3);
+    }
+
+    // The marker is drawn where the recorded angles meet a wall from the
+    // recorded eye. From an eye a few units lower, the recorded angles point
+    // below the marker: "lined up" against them said yes with the crosshair
+    // under the marker and no with it on. On the marker is the answer.
+    [Fact]
+    public void FromALowerEyeTheRecordedAnglesMissTheMarker()
+    {
+        var recordedEye = new Vec3(0f, 0f, 64f);
+        var marker = new Vec3(100f, 0f, 64f + 100f * MathF.Tan(10f * MathF.PI / 180f));
+        var lowerEye = new Vec3(0f, 0f, 61f);
+
+        (float yaw, float pitch) = PracticeLineupUtility.AnglesTo(lowerEye, marker);
+        float againstRecorded = PracticeLineupUtility.AimError(yaw, pitch, 0f, -10f);
+
+        Assert.True(againstRecorded > 1.5f);
+        Assert.Equal(-10f, PracticeLineupUtility.AnglesTo(recordedEye, marker).pitch, 2);
+    }
 }

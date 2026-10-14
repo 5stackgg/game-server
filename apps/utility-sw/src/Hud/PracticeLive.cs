@@ -298,16 +298,12 @@ public partial class UtilityPracticePlugin
 
         string off = PracticeLineupUtility.Metres(result.distance);
 
-        if (!result.success)
-        {
-            return entry.Timing != null ? $"missed · {off} off · {entry.Timing}" : $"missed · {off} off";
-        }
+        string verdict =
+            !result.success ? $"missed · {off} off"
+            : result.mastered_at != null ? $"landed · {off} off · mastered"
+            : $"landed · {off} off";
 
-        int bar = _drill.MasteryStreak;
-
-        return result.mastered_at != null
-            ? $"landed · {off} off · mastered"
-            : $"landed · {off} off · {Math.Min(result.current_streak, bar)}/{bar}";
+        return entry.Timing != null ? $"{verdict} · {entry.Timing}" : verdict;
     }
 
     private (IReadOnlyList<NadeBarTemplate.Out> rows, int total) OutsFor(ulong viewer)
