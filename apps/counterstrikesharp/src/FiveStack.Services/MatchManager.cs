@@ -1155,12 +1155,10 @@ public class MatchManager
 
         CsTeam placementTeam = GetPlacementSide(expectedTeam);
 
-        bool shouldRespawn = ShouldRespawnOnTeamChange(expectedTeam);
-
         if (currentTeam != placementTeam)
         {
             _logger.LogInformation(
-                $"[team] Changing Team {player.PlayerName} ({player.SteamID}) {currentTeam} -> {placementTeam} (expected: {expectedTeam}, respawn: {shouldRespawn})"
+                $"[team] Changing Team {player.PlayerName} ({player.SteamID}) {currentTeam} -> {placementTeam} (expected: {expectedTeam})"
             );
 
             TimerUtility.AddTimer(
@@ -1183,26 +1181,6 @@ public class MatchManager
 
                     player.ChangeTeam(applyPlacementTeam);
 
-                    // Respawn only once the team change has landed. Respawning
-                    // first spawns the player while still unassigned, and the
-                    // weapons a spawn creates are what the inventory plugin
-                    // skins — a spawn on the wrong team wastes that one shot.
-                    if (shouldRespawn || ShouldRespawnOnTeamChange(applyExpectedTeam))
-                    {
-                        Server.NextFrame(() =>
-                        {
-                            if (!player.IsValid)
-                            {
-                                return;
-                            }
-
-                            _logger.LogInformation(
-                                $"[team] Respawning {player.PlayerName} ({player.SteamID}) after team change -> {applyPlacementTeam}"
-                            );
-                            player.Respawn();
-                        });
-                    }
-
                     _logger.LogInformation(
                         $"[team] ChangeTeam applied {player.PlayerName} ({player.SteamID}) -> {applyPlacementTeam} (expected: {applyExpectedTeam}, playerSwitchTeamsOnNextRoundReset: {player.SwitchTeamsOnNextRoundReset}, {TeamSwitchState()})"
                     );
@@ -1215,25 +1193,8 @@ public class MatchManager
                 player
             );
         }
-        // Only a dead player needs a body. Respawning a live one just ahead of a
-        // pending mp_restartgame left them at the world origin, under the map.
-        else if (shouldRespawn && !player.PawnIsAlive)
-        {
-            _logger.LogInformation(
-                $"[team] Respawning {player.PlayerName} ({player.SteamID}) (already on {placementTeam})"
-            );
-            player.Respawn();
-        }
 
         captainSystem.IsCaptain(player, expectedTeam);
-    }
-
-    // A spectator has no spawn point, so respawning one drops a body at the
-    // world origin that falls and dies on a loop.
-    private bool ShouldRespawnOnTeamChange(CsTeam team)
-    {
-        return team != CsTeam.Spectator
-            && (IsWarmup() || MatchUtility.Rules()?.FreezePeriod == true);
     }
 
     public void ReconcileMemberTeams()
