@@ -1621,6 +1621,9 @@
 	margin-bottom: 6px;
 	transition-property: opacity;
 	transition-duration: 0.15s;
+	padding: 2px 12px 2px 2px;
+	background-color: rgba(9, 15, 21, 0.66);
+	border-radius: 2px;
 }
 
 .nh-key-row.hidden
@@ -1636,12 +1639,12 @@
 
 .nh-keycap
 {
-	width: 88px;
+	width: 104px;
 	margin-right: 9px;
 	padding: 4px 0px 3px;
 	vertical-align: center;
 	font-family: Stratum2 Mono, 'Arial Unicode MS';
-	font-size: 14px;
+	font-size: 13px;
 	font-weight: bold;
 	color: #f3f6fb;
 	text-align: center;
@@ -1659,11 +1662,11 @@
 	vertical-align: center;
 	font-family: Stratum2 Condensed, 'Arial Unicode MS';
 	font-size: 16px;
-	font-weight: normal;
+	font-weight: bold;
 	letter-spacing: 1px;
 	text-transform: uppercase;
-	color: #c3d0dc;
-	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+	color: #e6edf3;
+	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.9);
 	transition-property: color;
 	transition-duration: 0.12s;
 }
