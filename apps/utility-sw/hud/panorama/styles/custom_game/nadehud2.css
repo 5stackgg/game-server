@@ -1611,7 +1611,11 @@
 	horizontal-align: left;
 	vertical-align: center;
 	margin-left: 42px;
+	padding: 10px 16px 6px 12px;
 	flow-children: down;
+	background-color: rgba(9, 15, 21, 0.78);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 6px;
 }
 
 .nh-legend.hidden
@@ -1625,9 +1629,6 @@
 	margin-bottom: 6px;
 	transition-property: opacity;
 	transition-duration: 0.15s;
-	padding: 2px 12px 2px 2px;
-	background-color: rgba(9, 15, 21, 0.66);
-	border-radius: 2px;
 }
 
 .nh-key-row.hidden
@@ -1666,8 +1667,8 @@
    after it: a fixed column so every description starts on one line. */
 .nh-key-col
 {
-	width: 118px;
-	margin-right: 8px;
+	width: 100px;
+	margin-right: 10px;
 	vertical-align: center;
 	flow-children: right;
 }
