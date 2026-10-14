@@ -60,7 +60,7 @@ public partial class UtilityPracticePlugin
             return HookResult.Continue;
         }
 
-        int cleared = _replay.ClearThrownUtility();
+        int cleared = ClearUtility();
 
         // Silent when there was nothing to clear: a ping is also just a ping.
         if (cleared > 0)
@@ -83,22 +83,35 @@ public partial class UtilityPracticePlugin
 
         if (duration > 0f && blinded != null && blinded.IsValid)
         {
-            if (blinded.IsFakeClient)
+            bool carded =
+                thrower != null
+                && thrower.IsValid
+                && !thrower.IsFakeClient
+                && FlashCardFor(thrower.SteamID);
+            bool own = thrower != null && thrower.IsValid && thrower.SteamID == blinded.SteamID;
+
+            // On the card, everybody it caught is a row, the thrower included.
+            // Without the card it is a line in chat for each.
+            if (carded)
+            {
+                RecordFlash(thrower!, blinded, @event.UserIdPawn, duration);
+            }
+            else if (blinded.IsFakeClient)
             {
                 ReportFlash(thrower, duration, "a bot");
             }
-            else
+            else if (thrower != null && thrower.IsValid && !own)
             {
-                // NoFlash below zeroes the blindness, so the screen never goes
-                // white and the number IS the feedback: "how long would that
-                // have had me" is the whole question a flash lineup asks, and
-                // the server was answering it for the bot only.
-                ReportFlash(blinded, duration, "you");
+                ReportFlash(thrower, duration, blinded.Controller.PlayerName);
+            }
 
-                if (thrower != null && thrower.IsValid && thrower.SteamID != blinded.SteamID)
-                {
-                    ReportFlash(thrower, duration, blinded.Controller.PlayerName);
-                }
+            // NoFlash below zeroes the blindness, so the screen never goes
+            // white and the number IS the feedback: "how long would that have
+            // had me" is the whole question a flash lineup asks. Somebody
+            // whose own card just said so is not told twice.
+            if (!blinded.IsFakeClient && !(carded && own))
+            {
+                ReportFlash(blinded, duration, "you");
             }
         }
 

@@ -960,7 +960,7 @@ public class RenderDirector
         services.FOVUpdated();
     }
 
-    private CDynamicProp? SpawnCamera(CCSPlayerPawn pawn)
+    public CDynamicProp? SpawnCamera(CCSPlayerPawn pawn)
     {
         try
         {

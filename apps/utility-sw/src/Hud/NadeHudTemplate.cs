@@ -3,123 +3,169 @@ using FiveStack.Utilities;
 
 namespace UtilityPractice;
 
-// The passive guidance panel: what this lineup is, how it is thrown, and how
-// far the crosshair still has to travel.
+// The throw bar: what this throw is, the hands that make it, and the two
+// things that have to be true before it leaves them.
 public class NadeHudTemplate : HudTemplate
 {
     public override HudLayoutSlots Slots => HudSlots.Hud;
 
-    public required string Kicker { get; init; }
+    public required string Type { get; init; }
+
+    // One of RadarMaps.Types, for the swatch beside the type.
+    public required string TypeClass { get; init; }
 
     // "3 / 14", or empty when nothing is being walked through.
     public string Position { get; init; } = "";
     public required string Title { get; init; }
     public required string Technique { get; init; }
 
+    // Which mouse buttons and keys the throw is made with. The bar draws
+    // them; the words beside them only name the technique.
+    public required ThrowKeys Keys { get; init; }
+
     public required bool OnSpot { get; init; }
-
-    // Whether the player has committed to this lineup -- loaded it, or is being
-    // drilled on it. Docks the panel; deliberately not the on-spot test, which
-    // flickers at the circle's edge and made every .load flash the panel from
-    // the top of the screen to the bottom.
-    public required bool Settled { get; init; }
+    public required string Spot { get; init; }
     public required bool OnAngle { get; init; }
+    public required string Aim { get; init; }
 
-    public required float AimErrorDegrees { get; init; }
-    public required string Steer { get; init; }
-
-    // Null when the player has colours off, or when nothing is about to be
-    // thrown. The chip hides rather than showing a stale colour.
+    // The colour the next smoke will come out in, as a PracticeStepColors
+    // name. Null with colours off, and for everything that is not a smoke:
+    // only a smoke is tinted, so only a smoke has a colour to promise.
     public string? ThrowColor { get; init; }
 
-    public bool HasWriteUp { get; init; }
-    public string? Drill { get; init; }
-    public int DrillTenths { get; init; }
+    // The meter under the locks: what it counts, the count, how full, and
+    // whether the count has reached what it was counting to.
+    public record Meter(string Key, string Label, int Tenths, bool Done = false);
+
+    public Meter? Progress { get; init; }
 
     public static NadeHudTemplate For(
         LineupRecord lineup,
         float eyeYaw,
         float eyePitch,
-        float tolerance,
         string? throwColor,
         bool onSpot,
-        bool settled,
+        float away,
         bool onAngle,
-        string? drill,
-        int drillTenths,
-        string position,
-        string lands
+        Meter? progress,
+        string position
     )
     {
+        ThrowKeys keys = PracticeThrowKeys.For(lineup);
+
+        float error = PracticeLineupUtility.AimError(
+            eyeYaw,
+            eyePitch,
+            lineup.release.yaw,
+            lineup.release.pitch
+        );
+
+        string arrow = HudAimGrid.Arrow(
+            eyeYaw,
+            eyePitch,
+            lineup.release.yaw,
+            lineup.release.pitch
+        );
+
         return new NadeHudTemplate
         {
-            // Where it lands beats which side it is for: the side is implied by
-            // the spot you are standing on, the destination is the whole point.
-            Kicker = lands.Length > 0
-                ? $"{lineup.utility_type} · {lands}"
-                : $"{lineup.utility_type} · {(lineup.side == "CT" ? "CT" : "T")} side",
-            Title = PracticeLineupUtility.TitleCase(lineup.name),
-            Technique = PracticeLineupUtility.TitleCase(PracticeReplay.ThrowHint(lineup)),
+            Type = lineup.utility_type == "HighExplosive" ? "HE" : lineup.utility_type,
+            TypeClass = RadarMaps.TypeClass(lineup.utility_type),
+            Title = DrillUtility.Name(lineup),
+            Technique = keys.Word,
+            Keys = keys,
             OnSpot = onSpot,
-            Settled = settled,
+            Spot = onSpot ? "On spot" : PracticeLineupUtility.Metres(away),
             OnAngle = onAngle,
-            AimErrorDegrees = PracticeLineupUtility.AimError(
-                eyeYaw,
-                eyePitch,
-                lineup.release.yaw,
-                lineup.release.pitch
-            ),
-            Steer = HudAimGrid.Direction(
-                eyeYaw,
-                eyePitch,
-                lineup.release.yaw,
-                lineup.release.pitch,
-                tolerance
-            ),
+            Aim = onAngle ? "Lined up" : $"{Degrees(error)} {arrow}".TrimEnd(),
             ThrowColor = throwColor,
-            HasWriteUp = !string.IsNullOrWhiteSpace(lineup.description),
-            Drill = drill,
-            DrillTenths = drillTenths,
+            Progress = progress,
             Position = position,
+        };
+    }
+
+    // Two decimals only where they mean something: inside a degree the
+    // hundredths are the instruction, past ten they are noise.
+    private static string Degrees(float error)
+    {
+        return error switch
+        {
+            < 1f => $"{error:0.00}°",
+            < 10f => $"{error:0.0}°",
+            _ => $"{error:0}°",
+        };
+    }
+
+    private bool Held(string cap)
+    {
+        return cap switch
+        {
+            "shift" => Keys.Walk,
+            "ctrl" => Keys.Crouch,
+            "jump" => Keys.Jump,
+            _ => Keys.Move.Contains(cap.ToUpperInvariant()),
         };
     }
 
     public override void Apply(HudSurface surface)
     {
-        surface.Set("kicker", Kicker);
-        surface.Set("pos", Position);
+        surface.Set("kicker", Type);
         surface.Set("title", Title);
-        surface.Set("tech", Technique);
-        surface.Set("aimerr", $"{AimErrorDegrees:0.00}°");
-        surface.Set("steer", Steer);
+        surface.Set("pos", Position);
 
-        surface.Class(Slots.RootId, "docked", Settled);
+        // The grenade it is and the body that throws it, as pictures. The type
+        // class picks the drawing; the colour classes below tint it.
+        foreach (string type in RadarMaps.Types)
+        {
+            surface.Class("nade", type, type == TypeClass);
+        }
 
-        surface.Class("spot", "on", OnSpot);
-        surface.Class("aim", "on", OnAngle);
-        surface.Class("aimerr", "on", OnAngle);
-        surface.Class("steer", "on", OnAngle);
+        foreach (string figure in PracticeThrowKeys.Figures)
+        {
+            surface.Class("fig", figure, figure == Keys.Figure);
+        }
 
-        surface.Set("throwcolor", ThrowColor ?? "");
-        surface.Class("throwcolor", "hidden", ThrowColor == null);
-
+        // With colours on, the icon and the bar's edge wear the colour this
+        // throw will come out in. Naming the colour in words beside an icon of
+        // another colour said two different things.
         for (int index = 0; index < PracticeStepColors.Count; index++)
         {
             string name = PracticeStepColors.For(index).Name;
+            bool worn = string.Equals(name, ThrowColor, StringComparison.OrdinalIgnoreCase);
 
-            surface.Class("throwcolor", name, name == ThrowColor);
+            surface.Class("nade", name, worn);
+            surface.Class(Slots.RootId, name, worn);
         }
 
-        surface.Class("noterow", HudSlots.Shown, HasWriteUp);
+        surface.Set("tech", Technique);
+        surface.Set("runup", Keys.RunUp);
+        surface.Class("runup", HudSlots.Shown, Keys.RunUp.Length > 0);
 
-        bool drilling = Drill != null;
+        surface.Class("mb1", "on", Keys.LeftClick);
+        surface.Class("mb2", "on", Keys.RightClick);
 
-        surface.Class("drillrow", HudSlots.Shown, drilling);
-
-        if (drilling)
+        foreach (string cap in HudSlots.ThrowKeycaps)
         {
-            surface.Set("drill", Drill!);
-            surface.Pick("drillbar", "p", DrillTenths, HudSlots.MeterSteps);
+            surface.Class($"kc_{cap}", "on", Held(cap));
+        }
+
+        surface.Set("spotval", Spot);
+        surface.Class("spot", "on", OnSpot);
+        surface.Set("aimerr", Aim);
+        surface.Class("aim", "on", OnAngle);
+
+        // Both locks at once is the whole instruction: the bar itself goes
+        // green, which is readable from the corner of an eye.
+        surface.Class(Slots.RootId, "go", OnSpot && OnAngle);
+
+        surface.Class("drillrow", HudSlots.Shown, Progress != null);
+
+        if (Progress != null)
+        {
+            surface.Set("drillkey", Progress.Key);
+            surface.Set("drill", Progress.Label);
+            surface.Class("drillrow", "done", Progress.Done);
+            surface.Pick("drillbar", "p", Progress.Tenths, HudSlots.MeterSteps);
         }
     }
 }

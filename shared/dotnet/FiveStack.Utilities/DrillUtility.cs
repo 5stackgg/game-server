@@ -214,6 +214,7 @@ public class DrillProgress
 {
     public int Attempts { get; set; }
     public int Successes { get; set; }
+    public int CurrentStreak { get; set; }
     public int BestStreak { get; set; }
     public bool Mastered { get; set; }
 
@@ -225,6 +226,7 @@ public class DrillProgress
         {
             Attempts = result.attempts,
             Successes = result.successes,
+            CurrentStreak = result.current_streak,
             BestStreak = result.best_streak,
             Mastered = result.mastered_at != null,
         };

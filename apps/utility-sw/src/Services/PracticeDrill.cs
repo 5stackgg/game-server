@@ -269,21 +269,89 @@ public class PracticeDrill
     // towards that, not towards the end of a queue.
     public const int MasteryTarget = 10;
 
-    // What a drill is for, sized for a HUD slot: how many landed out of how many
-    // thrown. Position in the queue was the old readout and it said nothing --
-    // on a single-lineup drill it read "1 / 1" for the whole run.
-    public (string Label, int Tenths)? HudProgress(ulong steamId)
+    // Where the panel last said this player stands on a lineup: from the
+    // library when it loaded, and from every throw scored since. Null for a
+    // lineup they have never thrown at.
+    public DrillProgress? ProgressFor(ulong steamId, string? lineupId)
     {
-        if (!_runs.TryGetValue(steamId, out PracticeDrillRun? run) || run.Finished)
+        return _progress.For(steamId, lineupId);
+    }
+
+    // Mastered is the panel's word and the panel's rule: this many landed in
+    // a row. Five is what it is today; the library says so when it loads, and
+    // what it says replaces this.
+    public int MasteryStreak { get; private set; } = 5;
+
+    public void Seed(
+        ulong steamId,
+        IReadOnlyDictionary<string, UtilityPracticeResult> progress,
+        int? masteryStreak
+    )
+    {
+        if (masteryStreak is > 0)
+        {
+            MasteryStreak = masteryStreak.Value;
+        }
+
+        foreach ((string lineupId, UtilityPracticeResult result) in progress)
+        {
+            _progress.Record(steamId, lineupId, result);
+        }
+    }
+
+    // A run over more than one lineup, as a list for somebody to draw. One
+    // lineup thrown until stopped is a drill, not a plan, and has no list.
+    public (IReadOnlyList<LineupRecord> Queue, int Index, int Rep, int Reps)? Plan(ulong steamId)
+    {
+        if (
+            !_runs.TryGetValue(steamId, out PracticeDrillRun? run)
+            || run.Finished
+            || run.Endless
+            || run.Length < 2
+        )
         {
             return null;
         }
 
-        int tenths = Math.Clamp(run.Hits, 0, MasteryTarget)
-            * (HudSlots.MeterSteps - 1)
-            / MasteryTarget;
+        return (run.Queue, run.Index, run.Rep, run.Reps);
+    }
 
-        return ($"{run.Hits} / {run.Attempts}", tenths);
+    // Everything on the map not known to be mastered, worst first. Known is
+    // the word: a lineup nobody has thrown since the map loaded has no record
+    // here, so it is in the plan until one throw at it says otherwise.
+    public eDrillStart StartPlan(ulong steamId)
+    {
+        if (_runs.ContainsKey(steamId))
+        {
+            return eDrillStart.AlreadyRunning;
+        }
+
+        if (!_config.ReplayEnabled)
+        {
+            return eDrillStart.ReplayDisabled;
+        }
+
+        if (!_config.IsConnected())
+        {
+            return eDrillStart.NotConnected;
+        }
+
+        Func<LineupRecord, DrillProgress?> progress = _progress.Lookup(steamId);
+        List<LineupRecord> open = DrillUtility
+            .Drillable(_library.For(steamId))
+            .Where(lineup => progress(lineup)?.Mastered != true)
+            .ToList();
+
+        if (open.Count == 0)
+        {
+            return eDrillStart.NothingToDrill;
+        }
+
+        return Begin(
+            steamId,
+            DrillUtility.Queue(open, open.Count, eDrillOrder.Worst, progress, _random),
+            "worst first"
+        );
     }
 
     public void Forget(ulong steamId)

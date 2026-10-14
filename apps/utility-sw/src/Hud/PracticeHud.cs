@@ -71,132 +71,9 @@ public partial class UtilityPracticePlugin
         );
     }
 
-    private bool OpenMap(IPlayer player)
-    {
-        if (!UseHud(player.SteamID) || !_hud!.Available(HudSlots.Map))
-        {
-            return false;
-        }
-
-        return RenderMap(player);
-    }
-
-    private void CloseMap(IPlayer player)
-    {
-        _hud?.Hide(player, HudSlots.Map);
-    }
-
-    private bool RenderMap(IPlayer player)
-    {
-        RadarCalibration? calibration = Calibration();
-
-        if (calibration == null || _hud == null)
-        {
-            return false;
-        }
-
-        List<UtilityTarget> targets = Targets(player.SteamID);
-        LineupRecord? loaded = _system.StateFor(player.SteamID).Loaded;
-        string? selected = _target.GetValueOrDefault(player.SteamID);
-
-        // What the player can actually throw from where they are standing. This
-        // is the search: walk somewhere and the map shows what is reachable.
-        Vec3? at = PracticeSystem.Where(player)?.feet_position;
-        HashSet<string> reachable = at == null
-            ? new HashSet<string>()
-            : PracticeReplay
-                .SpotAt(_library.For(player.SteamID), at.Value)
-                .Select(UtilityTargetCluster.Key)
-                .ToHashSet(StringComparer.Ordinal);
-
-        string map = RadarProjection.NormalizeMapName(_library.Map);
-
-        var template = new NadeMapTemplate
-        {
-            MapClass = map,
-            Title = PracticeLineupUtility.TitleCase(map.Replace("de_", "")),
-            Tag = $"{targets.Count} target{(targets.Count == 1 ? "" : "s")}",
-            Focus = selected == null ? "click a marker" : "",
-            Selected = Detail(targets, selected),
-        };
-
-        foreach (UtilityTarget target in targets)
-        {
-            (int column, int row) = RadarProjection.Cell(
-                target.Landing,
-                calibration,
-                HudSlots.MapGrid,
-                HudSlots.MapGrid
-            );
-
-            // The place, not somebody's name for one throw onto it. Falls back
-            // to the lineup name where the level defines no callout there.
-            string label = _callouts.Label(target.Landing);
-
-            template.Add(
-                new NadeMapTemplate.Marker(
-                    target.Id,
-                    label.Length > 0 ? label : PracticeLineupUtility.TitleCase(target.Name),
-                    column,
-                    row,
-                    RadarMaps.TypeClass(target.UtilityType),
-                    target.Count,
-                    target.Lineups.Any(l => reachable.Contains(UtilityTargetCluster.Key(l))),
-                    loaded != null && target.Lineups.Any(l => Key(l) == Key(loaded)),
-                    target.Id == selected
-                )
-            );
-        }
-
-        return _hud.Show(player, template);
-    }
-
-    private NadeMapTemplate.Detail? Detail(List<UtilityTarget> targets, string? selected)
-    {
-        UtilityTarget? target = targets.FirstOrDefault(candidate => candidate.Id == selected);
-
-        if (target == null)
-        {
-            return null;
-        }
-
-        string place = _callouts.Label(target.Landing);
-
-        // The second button only earns its place when there is more than one way
-        // to hit the spot.
-        return new NadeMapTemplate.Detail(
-            place.Length > 0 ? place : PracticeLineupUtility.TitleCase(target.Name),
-            $"{target.UtilityType} · {target.Count} lineup{(target.Count == 1 ? "" : "s")}",
-            "Load",
-            target.Count > 1 ? $"All {target.Count}" : null
-        );
-    }
-
-
-
     // Twice a second. Fast enough that the reachable ring keeps up with a
     // player walking onto a spot, slow enough to be free.
     private const int MapRefreshEveryTicks = 32;
-
-    // Where the panel currently believes the player is, which lags the raw test
-    // on purpose. About a third of a second at 64 tick: long enough that
-    // shuffling on the edge of the circle does not throw the panel across the
-    // screen, short enough that a deliberate step onto it feels immediate.
-    private const int SpotSettleTicks = 22;
-
-    private readonly Dictionary<ulong, HudSteady> _onSpotSteady = new();
-
-    private bool SteadyOnSpot(ulong steamId, bool onSpot)
-    {
-        HudSteady steady = _onSpotSteady.TryGetValue(steamId, out HudSteady found)
-            ? found
-            : HudSteady.Start(onSpot);
-
-        steady = steady.Read(onSpot, _aimTick, SpotSettleTicks);
-        _onSpotSteady[steamId] = steady;
-
-        return steady.Committed;
-    }
 
     // The execute follows the run rather than a command: it appears when one
     // starts and goes when it ends, because there is no moment during an execute
@@ -281,18 +158,18 @@ public partial class UtilityPracticePlugin
             return false;
         }
 
+        // Walking pace, not aiming pace. The surface diffs writes, so a redraw
+        // that changes nothing costs nothing.
+        if (_aimTick % MapRefreshEveryTicks == 0 && _hud!.IsOpen(player, HudSlots.Pick))
+        {
+            RenderPicker(player);
+        }
+
         if (lineup == null)
         {
             _hud!.Hide(player, HudSlots.Hud);
 
             return true;
-        }
-
-        // Walking pace, not aiming pace. The surface diffs writes, so a redraw
-        // that changes nothing costs nothing.
-        if (_aimTick % MapRefreshEveryTicks == 0 && _hud!.IsOpen(player, HudSlots.Map))
-        {
-            RenderMap(player);
         }
 
         // Every other tick of the aim job: the clock reads in tenths, so it has
@@ -303,14 +180,14 @@ public partial class UtilityPracticePlugin
         }
 
         QAngle eyes = pawn.EyeAngles;
-        (string Label, int Tenths)? drill = _drill.HudProgress(player.SteamID);
 
         // ThrowColor encodes "step beats cycle"; re-deriving it here is how that
         // rule drifts. Off means off -- .colors hides it everywhere, not just in
         // the world.
-        string? colour = _system.StateFor(player.SteamID).Colors
-            ? ThrowColor(player.SteamID).Name.ToUpperInvariant()
-            : null;
+        string? colour =
+            _system.StateFor(player.SteamID).Colors && lineup.utility_type == nameof(eUtilityType.Smoke)
+                ? ThrowColor(player.SteamID).Name
+                : null;
 
         PracticeState walking = _system.StateFor(player.SteamID);
         string position =
@@ -318,7 +195,7 @@ public partial class UtilityPracticePlugin
                 ? $"{walking.Index + 1} / {walking.Results.Count}"
                 : "";
 
-        string lands = _callouts.Label(lineup.detonation_position);
+        Vector feet = pawn.AbsOrigin ?? new Vector(0, 0, 0);
 
         return _hud!.Show(
             player,
@@ -326,19 +203,12 @@ public partial class UtilityPracticePlugin
                 lineup,
                 eyes.Y,
                 eyes.X,
-                ToleranceFor(lineup),
                 colour,
                 onSpot,
-                // Docked the moment they commit. A drill never leaves the right
-                // hand side, and a load arrives there rather than sliding to it.
-                _drill.Current(player.SteamID) != null
-                    || _system.StateFor(player.SteamID).Loaded != null
-                    || SteadyOnSpot(player.SteamID, onSpot),
+                Flat(lineup.release.feet_position, new Vec3(feet.X, feet.Y, feet.Z)),
                 onAngle,
-                drill?.Label,
-                drill?.Tenths ?? 0,
-                position,
-                lands
+                MasteryOf(player.SteamID, lineup),
+                position
             )
         );
     }
@@ -352,23 +222,48 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        if (layout == HudSlots.NadeMap)
+        if (layout == HudSlots.NadeWheel)
         {
-            OnMapClicked(player, button);
+            OnWheelClicked(player, button);
 
             return;
         }
 
-        if (layout != HudSlots.NadeList)
+        if (layout == HudSlots.NadePick)
         {
-            return;
+            OnPickClicked(player, button);
         }
+    }
 
-        MenuState menu = MenuFor(player.SteamID);
+    private void OnPickClicked(IPlayer player, string button)
+    {
+        ulong steamId = player.SteamID;
+        MenuState menu = MenuFor(steamId);
 
         if (button == "close")
         {
-            CloseMenu(player);
+            ClosePicker(player);
+
+            return;
+        }
+
+        if (button == "here")
+        {
+            if (!_reachableOnly.Add(steamId))
+            {
+                _reachableOnly.Remove(steamId);
+            }
+
+            menu.Page = 0;
+            RenderPicker(player);
+
+            return;
+        }
+
+        if (button == "reset")
+        {
+            ResetFilters(player);
+            RenderPicker(player);
 
             return;
         }
@@ -377,7 +272,8 @@ public partial class UtilityPracticePlugin
         {
             menu.Side = button["side_".Length..];
             menu.Page = 0;
-            RenderMenu(player);
+            FiltersChanged(player);
+            RenderPicker(player);
 
             return;
         }
@@ -386,7 +282,8 @@ public partial class UtilityPracticePlugin
         {
             menu.Scope = button["scope_".Length..];
             menu.Page = 0;
-            RenderMenu(player);
+            FiltersChanged(player);
+            RenderPicker(player);
 
             return;
         }
@@ -395,116 +292,97 @@ public partial class UtilityPracticePlugin
         {
             menu.Type = button["type_".Length..];
             menu.Page = 0;
-            RenderMenu(player);
+            FiltersChanged(player);
+            RenderPicker(player);
 
             return;
         }
-
 
         if (button is "next" or "prev")
         {
-            List<LineupRecord> rows = MenuRows(player.SteamID);
-            int pages = Math.Max(1, (rows.Count + HudSlots.ListRows - 1) / HudSlots.ListRows);
+            List<LineupRecord> paged = MenuRows(steamId);
+            int pages = Math.Max(1, (paged.Count + HudSlots.ListRows - 1) / HudSlots.ListRows);
 
             menu.Page = ((menu.Page + (button == "next" ? 1 : -1)) % pages + pages) % pages;
-            RenderMenu(player);
+            RenderPicker(player);
 
             return;
         }
 
-        if (button.StartsWith("lineup:", StringComparison.Ordinal))
+        if (button.StartsWith("target:", StringComparison.Ordinal))
         {
-            string key = button["lineup:".Length..];
-            LineupRecord? chosen = _library
-                .For(player.SteamID)
-                .FirstOrDefault(lineup => Key(lineup) == key);
+            PickTarget(player, button["target:".Length..]);
 
-            if (chosen == null)
-            {
-                Tell(player.SteamID, $" {ChatColors.Red}that lineup is no longer in your library");
-
-                return;
-            }
-
-            PracticeState state = _system.StateFor(player.SteamID);
-            List<LineupRecord> rows = MenuRows(player.SteamID);
-
-            // The menu the player was reading IS the result set .next and .prev
-            // should walk, so it replaces whatever an earlier query left behind.
-            state.Results.Clear();
-            state.Results.AddRange(rows);
-            state.Index = rows.FindIndex(row => Key(row) == key);
-
-            CloseMenu(player);
-            Apply(player, chosen);
+            return;
         }
+
+        if (!button.StartsWith("lineup:", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        string key = button["lineup:".Length..];
+        List<LineupRecord> rows = MenuRows(steamId);
+        LineupRecord? chosen = rows.FirstOrDefault(lineup => Key(lineup) == key);
+
+        if (chosen == null)
+        {
+            Toast(player, "That lineup is no longer in your library");
+            RenderPicker(player);
+
+            return;
+        }
+
+        LoadPicked(player, rows, chosen);
     }
 
-    private void OnMapClicked(IPlayer player, string button)
+    // A spot on the radar narrows the list beside it to the throws that land
+    // there; the same spot again lets go of it. One way to hit it is not a
+    // choice, so that one is loaded outright.
+    private void PickTarget(IPlayer player, string id)
     {
-        if (button == "close")
+        ulong steamId = player.SteamID;
+
+        if (_target.TryGetValue(steamId, out string? was) && was == id)
         {
-            CloseMap(player);
+            _target.Remove(steamId);
+        }
+        else
+        {
+            _target[steamId] = id;
+        }
+
+        MenuFor(steamId).Page = 0;
+
+        List<LineupRecord> rows = MenuRows(steamId);
+
+        if (_target.ContainsKey(steamId) && rows.Count == 1)
+        {
+            // Not left behind as a filter: nobody chose to narrow the world to
+            // one throw, they chose the throw.
+            _target.Remove(steamId);
+            FiltersChanged(player);
+            LoadPicked(player, rows, rows[0]);
 
             return;
         }
 
-        if (button is "load" or "list")
-        {
-            OnDetailClicked(player, button);
-
-            return;
-        }
-
-        if (!button.StartsWith("target:", StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        _target[player.SteamID] = button["target:".Length..];
-        MenuFor(player.SteamID).Page = 0;
-
-        // Answers in place. Opening the list on every marker click made picking
-        // a spot feel like leaving the map.
-        RenderMap(player);
+        FiltersChanged(player);
+        RenderPicker(player);
     }
 
-    private void OnDetailClicked(IPlayer player, string button)
+    // The list the player was reading IS the result set .next and .prev should
+    // walk, so it replaces whatever an earlier query left behind. Picking is
+    // the end of choosing: every menu goes.
+    private void LoadPicked(IPlayer player, List<LineupRecord> rows, LineupRecord chosen)
     {
-        if (!_target.TryGetValue(player.SteamID, out string? id))
-        {
-            return;
-        }
-
-        UtilityTarget? target = Targets(player.SteamID).FirstOrDefault(t => t.Id == id);
-
-        if (target == null)
-        {
-            return;
-        }
-
-        if (button == "list")
-        {
-            RenderMenu(player);
-
-            return;
-        }
-
-        // Nearest throw spot, so LOAD on a target with six lineups gives the one
-        // they can walk to rather than the first one recorded.
-        Vec3? at = PracticeSystem.Where(player)?.feet_position;
-        LineupRecord chosen = at == null
-            ? target.Lineups[0]
-            : target
-                .Lineups.OrderBy(l => (l.release.feet_position - at.Value).Length())
-                .First();
-
         PracticeState state = _system.StateFor(player.SteamID);
 
         state.Results.Clear();
-        state.Results.AddRange(target.Lineups);
-        state.Index = target.Lineups.FindIndex(l => Key(l) == Key(chosen));
+        state.Results.AddRange(rows);
+        state.Index = rows.FindIndex(row => Key(row) == Key(chosen));
 
+        CloseCursorPanels(player);
         Apply(player, chosen);
     }
 
@@ -527,7 +405,10 @@ public partial class UtilityPracticePlugin
         ["he"] = nameof(eUtilityType.HighExplosive),
     };
 
-    private List<LineupRecord> MenuRows(ulong steamId)
+    // Everything a player's filters let through, in library order. The world
+    // is drawn from this and the list is built on it, so a chip can never mean
+    // one thing on the panel and another on the map.
+    private List<LineupRecord> Narrowed(ulong steamId)
     {
         MenuState menu = MenuFor(steamId);
         IEnumerable<LineupRecord> lineups = _library.For(steamId);
@@ -573,19 +454,7 @@ public partial class UtilityPracticePlugin
             }
         }
 
-        Vec3? standing = Standing(steamId);
-
-        if (_reachableOnly.Contains(steamId) && standing != null)
-        {
-            var here = PracticeReplay
-                .SpotAt(_library.For(steamId), standing.Value)
-                .Select(UtilityTargetCluster.Key)
-                .ToHashSet(StringComparer.Ordinal);
-
-            lineups = lineups.Where(l => here.Contains(UtilityTargetCluster.Key(l)));
-        }
-
-        List<LineupRecord> matched = lineups
+        return lineups
             .Where(lineup =>
                 menu.Type == "all"
                 || string.Equals(
@@ -595,6 +464,22 @@ public partial class UtilityPracticePlugin
                 )
             )
             .ToList();
+    }
+
+    private List<LineupRecord> MenuRows(ulong steamId)
+    {
+        List<LineupRecord> matched = Narrowed(steamId);
+        Vec3? standing = Standing(steamId);
+
+        if (_reachableOnly.Contains(steamId) && standing != null)
+        {
+            var here = PracticeReplay
+                .SpotAt(_library.For(steamId), standing.Value)
+                .Select(UtilityTargetCluster.Key)
+                .ToHashSet(StringComparer.Ordinal);
+
+            matched = matched.Where(l => here.Contains(UtilityTargetCluster.Key(l))).ToList();
+        }
 
         if (standing == null)
         {
@@ -613,52 +498,70 @@ public partial class UtilityPracticePlugin
         return string.IsNullOrEmpty(lineup.id) ? lineup.client_id : lineup.id!;
     }
 
-    // Opened straight from .menu rather than off the map, so it shows the whole
-    // library again instead of whatever target was last picked.
-    private bool OpenMenu(IPlayer player)
+    // The filters are left as they were. They are what the world is drawn
+    // from, and opening the picker is not asking for that to change -- the
+    // reset chip is there for when it is.
+    private bool OpenPicker(IPlayer player)
     {
-        if (!UseHud(player.SteamID) || !_hud!.Available(HudSlots.List))
+        if (!UseHud(player.SteamID) || !_hud!.Available(HudSlots.Pick))
         {
             return false;
         }
 
-        ClearFilters(player.SteamID);
         MenuFor(player.SteamID).Page = 0;
 
-        return RenderMenu(player);
+        return RenderPicker(player);
     }
 
-    private void CloseMenu(IPlayer player)
+    private void ClosePicker(IPlayer player)
     {
-        _hud?.Hide(player, HudSlots.List);
+        _hud?.Hide(player, HudSlots.Pick);
     }
 
-    private bool RenderMenu(IPlayer player)
+    private bool RenderPicker(IPlayer player)
     {
-        MenuState menu = MenuFor(player.SteamID);
-        List<LineupRecord> rows = MenuRows(player.SteamID);
+        // Explicit rather than null-forgiving: an NRE here crosses back into
+        // native SwiftlyS2 and takes the server down instead of throwing.
+        if (_hud == null)
+        {
+            return false;
+        }
+
+        ulong steamId = player.SteamID;
+        MenuState menu = MenuFor(steamId);
+        List<LineupRecord> rows = MenuRows(steamId);
         int pages = Math.Max(1, (rows.Count + HudSlots.ListRows - 1) / HudSlots.ListRows);
 
         menu.Page = Math.Clamp(menu.Page, 0, pages - 1);
 
-        var template = new NadeListTemplate
+        RadarCalibration? calibration = Calibration();
+        string? selected = _target.GetValueOrDefault(steamId);
+        LineupRecord? loaded = _system.StateFor(steamId).Loaded;
+        Vec3? at = PracticeSystem.Where(player)?.feet_position;
+
+        var template = new NadePickTemplate
         {
-            Title = Narrowing(player.SteamID) ?? "Load a lineup",
-            Tag = Tag(player.SteamID, rows.Count),
+            Title = Narrowing(steamId) ?? "Pick a lineup",
+            Tag = Tag(steamId, rows.Count),
             Page = $"page {menu.Page + 1} / {pages}",
             Side = menu.Side,
             Type = menu.Type,
             Scope = menu.Scope,
             HasPager = pages > 1,
+            Here = _reachableOnly.Contains(steamId),
+            Filtering = Filtering(steamId) || _reachableOnly.Contains(steamId),
+            MapClass = calibration == null
+                ? null
+                : RadarProjection.NormalizeMapName(_library.Map),
+            Focus = selected == null
+                ? "click a spot for the throws that land there"
+                : "click it again to let go of it",
         };
-
-        LineupRecord? loaded = _system.StateFor(player.SteamID).Loaded;
-        Vec3? at = PracticeSystem.Where(player)?.feet_position;
 
         foreach (LineupRecord lineup in rows.Skip(menu.Page * HudSlots.ListRows).Take(HudSlots.ListRows))
         {
             template.Add(
-                new NadeListTemplate.Row(
+                new NadePickTemplate.Row(
                     $"lineup:{Key(lineup)}",
                     PracticeLineupUtility.TitleCase(lineup.name),
                     RowValue(lineup, at),
@@ -667,9 +570,49 @@ public partial class UtilityPracticePlugin
             );
         }
 
-        // Explicit rather than null-forgiving: an NRE here crosses back into
-        // native SwiftlyS2 and takes the server down instead of throwing.
-        return _hud != null && _hud.Show(player, template);
+        if (calibration == null)
+        {
+            return _hud.Show(player, template);
+        }
+
+        // What the player can actually throw from where they are standing. This
+        // is the search: walk somewhere and the map shows what is reachable.
+        HashSet<string> reachable = at == null
+            ? new HashSet<string>()
+            : PracticeReplay
+                .SpotAt(_library.For(steamId), at.Value)
+                .Select(UtilityTargetCluster.Key)
+                .ToHashSet(StringComparer.Ordinal);
+
+        foreach (UtilityTarget target in Targets(steamId))
+        {
+            (int column, int row) = RadarProjection.Cell(
+                target.Landing,
+                calibration,
+                HudSlots.MapGrid,
+                HudSlots.MapGrid
+            );
+
+            // The place, not somebody's name for one throw onto it. Falls back
+            // to the lineup name where the level defines no callout there.
+            string label = _callouts.Label(target.Landing);
+
+            template.Add(
+                new NadePickTemplate.Marker(
+                    target.Id,
+                    label.Length > 0 ? label : PracticeLineupUtility.TitleCase(target.Name),
+                    column,
+                    row,
+                    RadarMaps.TypeClass(target.UtilityType),
+                    target.Count,
+                    target.Lineups.Any(l => reachable.Contains(UtilityTargetCluster.Key(l))),
+                    loaded != null && target.Lineups.Any(l => Key(l) == Key(loaded)),
+                    target.Id == selected
+                )
+            );
+        }
+
+        return _hud.Show(player, template);
     }
 
     // Names whatever is currently narrowing the list. An empty list with no
@@ -742,14 +685,28 @@ public partial class UtilityPracticePlugin
     {
         _hudOff.Remove(steamId);
         _menus.Remove(steamId);
+        _shown.Remove(steamId);
         _edits.Remove(steamId);
-        _onSpotSteady.Remove(steamId);
+        ForgetBar(steamId);
+        _wheelPath.Remove(steamId);
         ClearFilters(steamId);
         _hud?.Forget(playerId);
     }
 
     [Command("menu", registerRaw: false, permission: "")]
     public void OnMenu(ICommandContext context)
+    {
+        TogglePicker(context);
+    }
+
+    // The map and the list are one panel now, so both words open it.
+    [Command("map", registerRaw: false, permission: "")]
+    public void OnMap(ICommandContext context)
+    {
+        TogglePicker(context);
+    }
+
+    private void TogglePicker(ICommandContext context)
     {
         IPlayer? player = context.Sender;
 
@@ -758,14 +715,14 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        if (_hud != null && _hud.IsOpen(player, HudSlots.List))
+        if (_hud != null && _hud.IsOpen(player, HudSlots.Pick))
         {
-            CloseMenu(player);
+            ClosePicker(player);
 
             return;
         }
 
-        if (OpenMenu(player))
+        if (OpenPicker(player))
         {
             return;
         }
@@ -783,11 +740,10 @@ public partial class UtilityPracticePlugin
 
         Reply(
             context,
-            $" {ChatColors.Red}the lineup menu needs the 5stack HUD addon. "
+            $" {ChatColors.Red}the lineup picker needs the 5stack HUD addon. "
                 + $"{ChatColors.Grey}use {ChatColors.Default}.list{ChatColors.Grey} instead"
         );
     }
-
 
     [Command("here", registerRaw: false, permission: "")]
     public void OnHere(ICommandContext context)
@@ -810,7 +766,7 @@ public partial class UtilityPracticePlugin
 
         int matches = MenuRows(player.SteamID).Count;
 
-        if (!UseHud(player.SteamID) || !RenderMenu(player))
+        if (!UseHud(player.SteamID) || !RenderPicker(player))
         {
             Reply(
                 context,
@@ -819,72 +775,6 @@ public partial class UtilityPracticePlugin
                     : $" {ChatColors.Grey}showing every lineup again"
             );
         }
-    }
-
-    [Command("map", registerRaw: false, permission: "")]
-    public void OnMap(ICommandContext context)
-    {
-        IPlayer? player = context.Sender;
-
-        if (player == null || !player.IsValid)
-        {
-            return;
-        }
-
-        if (_hud != null && _hud.IsOpen(player, HudSlots.Map))
-        {
-            CloseMap(player);
-
-            return;
-        }
-
-        if (OpenMap(player))
-        {
-            return;
-        }
-
-        if (_hudOff.Contains(player.SteamID))
-        {
-            Reply(
-                context,
-                $" {ChatColors.Red}you turned the panel off. "
-                    + $"{ChatColors.Default}.hud{ChatColors.Grey} turns it back on"
-            );
-
-            return;
-        }
-
-        if (!RadarMaps.Has(_library.Map))
-        {
-            Reply(context, $" {ChatColors.Red}no radar for {_library.Map}");
-
-            return;
-        }
-
-        // Distinguished rather than lumped together: the last thing that spoke
-        // gets blamed, and "needs the addon" sent someone hunting a mount that
-        // was fine when the real fault was a missing file server-side.
-        if (Calibration() == null)
-        {
-            _logger.LogWarning(
-                "no radar calibration for {Map}; radars/metadata.json is missing beside the plugin",
-                _library.Map
-            );
-
-            Reply(
-                context,
-                $" {ChatColors.Red}the server has no radar calibration for {_library.Map} "
-                    + $"{ChatColors.Grey}(server problem, not yours)"
-            );
-
-            return;
-        }
-
-        Reply(
-            context,
-            $" {ChatColors.Red}the map needs the 5stack HUD addon. "
-                + $"{ChatColors.Grey}use {ChatColors.Default}.menu{ChatColors.Grey} instead"
-        );
     }
 
     [Command("hud", registerRaw: false, permission: "")]
@@ -916,9 +806,7 @@ public partial class UtilityPracticePlugin
         }
         else
         {
-            _hud?.Hide(player, HudSlots.Hud);
-            CloseMenu(player);
-            CloseMap(player);
+            HudOff(player);
         }
 
         Reply(

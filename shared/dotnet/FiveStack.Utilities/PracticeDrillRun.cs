@@ -61,6 +61,10 @@ public class PracticeDrillRun
 
     public int Length => _queue.Count;
 
+    // The run as a list, for somebody to draw.
+    public IReadOnlyList<LineupRecord> Queue => _queue;
+    public int Index => Math.Clamp(_index, 0, Math.Max(0, _queue.Count - 1));
+
     // One based, so it reads as "3/10" while a run is going.
     public int Position => Math.Min(_index + 1, _queue.Count);
 

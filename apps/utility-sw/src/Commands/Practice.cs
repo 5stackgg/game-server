@@ -144,7 +144,7 @@ public partial class UtilityPracticePlugin
         // becomes the loaded one and gets its markers straight away.
         PracticeState saved = _system.StateFor(steamId);
 
-        saved.Cleared = false;
+        _replay.Unhide(steamId);
         saved.Loaded = thrown;
         saved.Results.Clear();
         saved.Results.Add(thrown);
@@ -508,36 +508,41 @@ public partial class UtilityPracticePlugin
         state.Index = -1;
         state.Bloom = false;
 
-        // Held until the next .load, .next, walk-on or save. Sweeping alone
-        // left the spot watcher free to redraw the spot under their feet on
-        // its next pass -- a quarter of a second, or the first time they
-        // glanced at another ring -- which is why .clear read as broken.
-        state.Cleared = true;
-
         _replay.ClearGhosts(player.SteamID);
 
+        // Theirs alone, and held until they load, save or walk onto something:
+        // everybody else's markers stay exactly where they were.
+        _replay.HideWorld(player.SteamID);
+
+        // So the spot they are standing on is drawn afresh when they ask for
+        // something again, rather than skipped as unchanged.
+        _standingIn.Remove(player.SteamID);
+
         // What everybody else's .clear means, and what a player standing in
-        // their own smoke is asking for. The ping key does this on its own --
-        // this is the same call, for anybody who types it.
-        int thrown = _replay.ClearThrownUtility();
-
-        // Swept rather than cleared: ClearMarkers can only despawn what this
-        // instance still has a handle to, and anything a previous load left
-        // behind is exactly what makes .clear look like it did nothing.
-        _replay.SweepMarkers();
-
-        // Safe to drop now the watcher is held off: nothing can match against
-        // it, so the first redraw after they ask again is decided by where
-        // they are then rather than by where they were when they cleared.
-        ForgetSpot(player.SteamID);
+        // their own smoke is asking for.
+        int thrown = ClearUtility();
 
         Reply(
             context,
             thrown > 0
-                ? $" {ChatColors.Green}cleared {ChatColors.Grey}the preview and the utility"
-                    + $" in the world"
+                ? $" {ChatColors.Green}cleared {ChatColors.Grey}the markers and the utility in the world"
                 : $" {ChatColors.Green}cleared"
         );
+    }
+
+    // The clear key as a command, for a keyboard with no delete key: any key
+    // bound to this does what delete does out of the box.
+    [Command("wipe", registerRaw: false, permission: "")]
+    public void OnWipe(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        ClearPressed(player);
     }
 
     [Command("bloom", registerRaw: false, permission: "")]
@@ -911,10 +916,13 @@ public partial class UtilityPracticePlugin
 
         if (_replay.SpawnsShown)
         {
+            _spawnsWanted = false;
             _replay.ClearSpawns();
             Reply(context, $" {ChatColors.Grey}spawn rings off");
             return;
         }
+
+        _spawnsWanted = true;
 
         List<ThrowSnapshot> spawns = _system.SpawnPoints();
 
@@ -1003,11 +1011,6 @@ public partial class UtilityPracticePlugin
 
         state.Crosshair = !state.Crosshair;
 
-        // Redrawn rather than left until the player steps off the spot and back
-        // on: a toggle that appears to do nothing gets pressed again.
-        _replay.ClearMarkers();
-        ForgetSpot(player.SteamID);
-
         Reply(
             context,
             state.Crosshair
@@ -1050,6 +1053,7 @@ public partial class UtilityPracticePlugin
 
         PracticeState state = _system.StateFor(player.SteamID);
         state.Noclip = !state.Noclip;
+        _system.ApplyNow(player);
 
         Reply(context, $" {ChatColors.Green}noclip {Toggle(state.Noclip)}");
     }
@@ -1126,12 +1130,18 @@ public partial class UtilityPracticePlugin
             return;
         }
 
+        DeleteLoaded(player);
+    }
+
+    private void DeleteLoaded(IPlayer player)
+    {
         PracticeState state = _system.StateFor(player.SteamID);
         LineupRecord? loaded = state.Loaded;
 
         if (loaded == null)
         {
-            Reply(context, $" {ChatColors.Red}load a lineup first");
+            Toast(player, "Load a lineup first");
+
             return;
         }
 
@@ -1140,7 +1150,7 @@ public partial class UtilityPracticePlugin
         state.Loaded = null;
         _replay.ClearGhosts(player.SteamID);
 
-        Reply(context, $" {ChatColors.Green}deleted {ChatColors.Default}{loaded.name}");
+        Toast(player, $"Deleted · {DrillUtility.Name(loaded)}");
 
         if (loaded.id == null)
         {
@@ -1187,8 +1197,6 @@ public partial class UtilityPracticePlugin
         reloading.Index = -1;
 
         _replay.ClearGhosts(steamId);
-        _replay.ClearMarkers();
-        ForgetSpot(steamId);
 
         _library.Refresh(
             steamId,
@@ -1685,7 +1693,7 @@ public partial class UtilityPracticePlugin
 
         // Asking for a lineup is asking to see it: whatever .clear held off
         // starts drawing again from here.
-        applying.Cleared = false;
+        _replay.Unhide(player.SteamID);
         applying.Loaded = lineup;
 
         // Standing the player on the lineup needs nothing but the flat fields,

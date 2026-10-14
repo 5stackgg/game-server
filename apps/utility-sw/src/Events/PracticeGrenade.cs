@@ -20,6 +20,8 @@ public partial class UtilityPracticePlugin
         uint index = EntityIndex(@event.EntityID);
         var position = new Vec3(@event.X, @event.Y, @event.Z);
 
+        LiveSmokePopped(index, position);
+
         LineupRecord? rendered = _director.TakeLineup(index);
         LineupRecord? thrown = Detonated(index, position);
 
@@ -70,6 +72,8 @@ public partial class UtilityPracticePlugin
         }
 
         var position = new Vec3(@event.X, @event.Y, @event.Z);
+
+        LiveFirePopped(thrower.SteamID, position);
 
         if (_director.OnMolotovDetonated(thrower.SteamID, position))
         {

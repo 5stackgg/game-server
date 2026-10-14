@@ -45,11 +45,27 @@ public class HudLayoutSlots
 
 public static class HudSlots
 {
-    public const string NadeHud = "nade_hud";
-    public const string NadeList = "nade_list";
-    public const string NadeMap = "nade_map";
-    public const string NadeRun = "nade_run";
-    public const string NadeEdit = "nade_edit";
+    // A name that has been published to the Workshop is frozen. Servers still
+    // on an older plugin keep asking the item for it, so changing the file
+    // changes their HUD under them; and a client that has the item mounted
+    // draws the published copy over a newer one of the same name, which is
+    // how a changed layout fails to show up on a dev server. A layout or
+    // stylesheet that changes after a publish gets a new name, and the old
+    // file stays in hud/panorama until no supported plugin asks for it.
+    //
+    // nade_* and nadehud are the first published set.
+    public const string Stylesheet = "nadehud2";
+
+    // The wheel's own. It draws with things nothing else here uses, and a
+    // stylesheet the game rejects takes every layout that includes it with it.
+    public const string WheelStylesheet = "nadewheel2";
+
+    public const string NadeHud = "nade2_hud";
+    public const string NadePick = "nade2_pick";
+    public const string NadeRun = "nade2_run";
+    public const string NadeEdit = "nade2_edit";
+    public const string NadeBar = "nade2_bar";
+    public const string NadeWheel = "nade2_wheel";
 
     // Class toggled on a layout's root to show it for one player. The layouts
     // are collapsed by default so a spawned entity is invisible until somebody
@@ -70,8 +86,8 @@ public static class HudSlots
     public static readonly IReadOnlyList<string> ListTypes =
         new[] { "all", "smoke", "flash", "molly", "he" };
 
-    // Fixed DOM: this many markers exist in nade_map.xml and no more. The busiest
-    // targets win the slots.
+    // Fixed DOM: this many markers exist in the picker's radar and no more. The
+    // busiest targets win the slots.
     public const int MapMarkers = 40;
 
     // Shared .nh-mx/.nh-my class groups, so the grid costs 2 x MapGrid rules
@@ -80,6 +96,52 @@ public static class HudSlots
 
     // Steps visible in the execute timeline; the panel scrolls past this.
     public const int RunSteps = 12;
+
+    // The keys a throw can ask for, in the order they sit on the card.
+    public static readonly IReadOnlyList<string> ThrowKeycaps =
+        new[] { "shift", "ctrl", "w", "a", "s", "d", "jump" };
+
+    // Fixed DOM, like the map's markers: the nearest spots win the pips.
+    public const int CompassPips = 8;
+    public const int CompassColumns = 256;
+    public const float CompassHalfSpanDegrees = 60f;
+
+    // TAB, E, R, then the two double taps and the clear key -- one row each,
+    // in that order.
+    public const int LegendKeys = 6;
+
+    // Fixed DOM for the three lists the bar can show: what is out, the plan,
+    // and what a flash did. The steps are how finely a bar can be drawn.
+    public const int OutRows = 6;
+    public const int OutFillSteps = 21;
+
+    // The two kinds of utility that stay: RadarMaps' names for them.
+    public static readonly IReadOnlyList<string> OutTypes = new[] { "smoke", "molly" };
+    public const int PlanRows = 6;
+    public const int FlashRows = 5;
+    public const int FlashBarSteps = 21;
+
+    // Wedges on the wheel, clockwise from the top. Fixed DOM again: the server
+    // refills the same eight for whichever wheel is open.
+    public const int WheelSlots = 8;
+
+    // The game only hit-tests rectangles, so a wedge is covered by a stack of
+    // invisible buttons. How many each one took, by slot; the layout is
+    // generated and these are counted from it.
+    public static readonly IReadOnlyList<int> WheelHits = new[] { 6, 7, 7, 7, 5, 7, 7, 7 };
+
+    // The outer ring: two small quick actions over each wedge, clockwise, so
+    // 2k and 2k + 1 sit over wedge k.
+    public const int WheelQuicks = WheelSlots * 2;
+
+    public static readonly IReadOnlyList<int> WheelQuickHits =
+        new[] { 5, 5, 7, 7, 8, 7, 8, 7, 5, 5, 7, 8, 7, 8, 7, 7 };
+
+    // One quick action on its own takes the whole width of its wedge, so
+    // each wedge also has a segment that wide. It and the two halves are
+    // never shown together.
+    public static readonly IReadOnlyList<int> WheelWideHits =
+        new[] { 5, 13, 17, 14, 5, 14, 17, 13 };
 
     public static readonly HudLayoutSlots Hud = new HudLayoutSlots(
         NadeHud,
@@ -90,26 +152,20 @@ public static class HudSlots
             new HudVariable("pos", "pos"),
             new HudVariable("title", "title"),
             new HudVariable("tech", "tech"),
+            new HudVariable("runup", "runup"),
+            new HudVariable("spotval", "spotval"),
             new HudVariable("aimerr", "aimerr"),
-            new HudVariable("steer", "steer"),
-            new HudVariable("throwcolor", "throwcolor"),
             new HudVariable("drill", "drill"),
+            new HudVariable("drillkey", "drillkey"),
         },
         new string[0]
     );
 
-    public static readonly HudLayoutSlots List = new HudLayoutSlots(
-        NadeList,
-        "NadeList",
-        Rows().ToArray(),
-        Buttons().ToArray()
-    );
-
-    public static readonly HudLayoutSlots Map = new HudLayoutSlots(
-        NadeMap,
-        "NadeMap",
-        MapVariables().ToArray(),
-        MapButtons().ToArray()
+    public static readonly HudLayoutSlots Pick = new HudLayoutSlots(
+        NadePick,
+        "NadePick",
+        PickVariables().ToArray(),
+        PickButtons().ToArray()
     );
 
     public static readonly HudLayoutSlots Run = new HudLayoutSlots(
@@ -138,8 +194,142 @@ public static class HudSlots
         EditButtons().ToArray()
     );
 
+    public static readonly HudLayoutSlots Bar = new HudLayoutSlots(
+        NadeBar,
+        "NadeBar",
+        BarVariables().ToArray(),
+        new string[0]
+    );
+
+    public static readonly HudLayoutSlots Wheel = new HudLayoutSlots(
+        NadeWheel,
+        "NadeWheel",
+        WheelVariables().ToArray(),
+        WheelButtons().ToArray()
+    );
+
     public static readonly IReadOnlyList<HudLayoutSlots> All =
-        new[] { Hud, List, Map, Run, Edit };
+        new[] { Hud, Pick, Run, Edit, Bar, Wheel };
+
+    // The stylesheet a layout draws with, which is the one its classes have to
+    // be checked against.
+    public static string StylesheetFor(HudLayoutSlots slots)
+    {
+        return slots.Layout == NadeWheel ? WheelStylesheet : Stylesheet;
+    }
+
+    public static string WheelHit(int slot, int hit)
+    {
+        return $"r{slot + 1}h{hit + 1}";
+    }
+
+    public static string WheelQuickHit(int quick, int hit)
+    {
+        return $"o{quick + 1}h{hit + 1}";
+    }
+
+    public static string WheelWideHit(int slot, int hit)
+    {
+        return $"x{slot + 1}h{hit + 1}";
+    }
+
+    private static IEnumerable<HudVariable> BarVariables()
+    {
+        yield return new HudVariable("cleft", "cleft");
+        yield return new HudVariable("cfocus", "cfocus");
+        yield return new HudVariable("cright", "cright");
+        yield return new HudVariable("ftext", "ftext");
+        yield return new HudVariable("fcount", "fcount");
+
+        for (int key = 1; key <= LegendKeys; key++)
+        {
+            yield return new HudVariable($"k{key}", $"k{key}");
+        }
+
+        yield return new HudVariable("ocount", "ocount");
+        yield return new HudVariable("omore", "omore");
+
+        for (int row = 1; row <= OutRows; row++)
+        {
+            yield return new HudVariable($"on{row}", $"on{row}");
+            yield return new HudVariable($"ot{row}", $"ot{row}");
+        }
+
+        yield return new HudVariable("pltitle", "pltitle");
+        yield return new HudVariable("plsub", "plsub");
+        yield return new HudVariable("plfoot", "plfoot");
+
+        for (int row = 1; row <= PlanRows; row++)
+        {
+            yield return new HudVariable($"pl{row}", $"pl{row}");
+            yield return new HudVariable($"plv{row}", $"plv{row}");
+        }
+
+        yield return new HudVariable("fltitle", "fltitle");
+        yield return new HudVariable("flsub", "flsub");
+        yield return new HudVariable("flfoot", "flfoot");
+
+        for (int row = 1; row <= FlashRows; row++)
+        {
+            yield return new HudVariable($"fw{row}", $"fw{row}");
+            yield return new HudVariable($"fs{row}", $"fs{row}");
+            yield return new HudVariable($"fg{row}", $"fg{row}");
+        }
+
+        yield return new HudVariable("toast", "toast");
+    }
+
+    private static IEnumerable<HudVariable> WheelVariables()
+    {
+        for (int slot = 1; slot <= WheelSlots; slot++)
+        {
+            yield return new HudVariable($"w{slot}", $"w{slot}");
+            yield return new HudVariable($"s{slot}", $"s{slot}");
+        }
+
+        for (int quick = 1; quick <= WheelQuicks; quick++)
+        {
+            yield return new HudVariable($"q{quick}", $"q{quick}");
+        }
+
+        for (int slot = 1; slot <= WheelSlots; slot++)
+        {
+            yield return new HudVariable($"xl{slot}", $"xl{slot}");
+        }
+
+        yield return new HudVariable("hubt", "hubt");
+        yield return new HudVariable("hubs", "hubs");
+    }
+
+    private static IEnumerable<string> WheelButtons()
+    {
+        for (int slot = 0; slot < WheelSlots; slot++)
+        {
+            for (int hit = 0; hit < WheelHits[slot]; hit++)
+            {
+                yield return WheelHit(slot, hit);
+            }
+        }
+
+        for (int quick = 0; quick < WheelQuicks; quick++)
+        {
+            for (int hit = 0; hit < WheelQuickHits[quick]; hit++)
+            {
+                yield return WheelQuickHit(quick, hit);
+            }
+        }
+
+        for (int slot = 0; slot < WheelSlots; slot++)
+        {
+            for (int hit = 0; hit < WheelWideHits[slot]; hit++)
+            {
+                yield return WheelWideHit(slot, hit);
+            }
+        }
+
+        yield return "hub";
+        yield return "close";
+    }
 
     private static IEnumerable<string> EditButtons()
     {
@@ -170,15 +360,20 @@ public static class HudSlots
         }
     }
 
-    private static IEnumerable<HudVariable> MapVariables()
+    private static IEnumerable<HudVariable> PickVariables()
     {
         yield return new HudVariable("title", "title");
         yield return new HudVariable("tag", "tag");
+        yield return new HudVariable("page", "page");
         yield return new HudVariable("focus", "focus");
-        yield return new HudVariable("dname", "dname");
-        yield return new HudVariable("dmeta", "dmeta");
-        yield return new HudVariable("dload", "dload");
-        yield return new HudVariable("dlist", "dlist");
+
+        // The buttons already own row1, so the labels inside them carry their
+        // own ids.
+        for (int row = 1; row <= ListRows; row++)
+        {
+            yield return new HudVariable($"row{row}", $"row{row}l");
+            yield return new HudVariable($"row{row}v", $"row{row}v");
+        }
 
         for (int marker = 1; marker <= MapMarkers; marker++)
         {
@@ -187,39 +382,16 @@ public static class HudSlots
         }
     }
 
-    private static IEnumerable<string> MapButtons()
-    {
-        for (int marker = 1; marker <= MapMarkers; marker++)
-        {
-            yield return $"m{marker}";
-        }
-
-        yield return "load";
-        yield return "list";
-        yield return "close";
-    }
-
-    private static IEnumerable<HudVariable> Rows()
-    {
-        yield return new HudVariable("title", "title");
-        yield return new HudVariable("tag", "tag");
-        yield return new HudVariable("page", "page");
-
-        // The buttons already own row1/tab1, so the labels inside them carry
-        // their own ids.
-        for (int row = 1; row <= ListRows; row++)
-        {
-            yield return new HudVariable($"row{row}", $"row{row}l");
-            yield return new HudVariable($"row{row}v", $"row{row}v");
-        }
-
-    }
-
-    private static IEnumerable<string> Buttons()
+    private static IEnumerable<string> PickButtons()
     {
         for (int row = 1; row <= ListRows; row++)
         {
             yield return $"row{row}";
+        }
+
+        for (int marker = 1; marker <= MapMarkers; marker++)
+        {
+            yield return $"m{marker}";
         }
 
         foreach (string side in ListSides)
@@ -237,6 +409,8 @@ public static class HudSlots
             yield return $"type_{type}";
         }
 
+        yield return "here";
+        yield return "reset";
         yield return "prev";
         yield return "next";
         yield return "close";

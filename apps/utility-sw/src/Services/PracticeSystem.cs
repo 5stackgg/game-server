@@ -47,7 +47,12 @@ public class PracticeState
     public int SpawnIndex { get; set; } = -1;
 
     public bool Noclip { get; set; }
-    public bool God { get; set; }
+
+    // On by default: somebody practising a molotov stands in their own fire
+    // a dozen times an hour. It has no bearing on what a grenade bounces off
+    // -- a grenade passes through its thrower and their side whether or not
+    // they can be hurt, which was measured rather than assumed.
+    public bool God { get; set; } = true;
 
     // On by default: a lineup preview is one player's working note, not
     // something the rest of the server asked to look at.
@@ -56,13 +61,6 @@ public class PracticeState
     // Off by default: the bloom outline is dozens of entities, and a player who
     // has not asked for it should not be paying for it.
     public bool Bloom { get; set; }
-
-    // Set by .clear and held until the player asks for something again. The
-    // spot watcher redraws whatever is under their feet four times a second
-    // and re-adopts the lineup they are looking at, so without a flag saying
-    // "they asked for nothing" it put the markers back inside a quarter of a
-    // second -- which is .clear appearing to do nothing at all.
-    public bool Cleared { get; set; }
 
 
     // Lineups this player has already been told are not exact. Said once per
@@ -86,6 +84,16 @@ public class PracticeSystem
 
     private readonly Dictionary<ulong, PracticeState> _states = new();
     private readonly List<(ulong steamId, string weapon)> _regive = new();
+
+    // Grenades that were handed back and still have to end up in the hand.
+    private readonly List<(ulong steamId, string weapon, int passes)> _reselect = new();
+
+    // The game puts something else in the hand as the throw finishes, and it
+    // does that a beat after the grenade has gone. Asked for once, the
+    // grenade is back for an instant and then swapped away again; asked for
+    // across this many passes of the tenth-of-a-second job, it stays. Short,
+    // because past it the player choosing another weapon has to win.
+    private const int ReselectPasses = 5;
 
     // Who a solve made invulnerable who had not asked for it, so the flag is
     // handed back rather than left on.
@@ -133,12 +141,14 @@ public class PracticeSystem
         _shielded.Remove(steamId);
         _replay.ClearGhosts(steamId);
         _regive.RemoveAll(pending => pending.steamId == steamId);
+        _reselect.RemoveAll(pending => pending.steamId == steamId);
     }
 
     public void Reset()
     {
         _states.Clear();
         _regive.Clear();
+        _reselect.Clear();
         _shielded.Clear();
         _replay.ClearAll();
     }
@@ -182,6 +192,21 @@ public class PracticeSystem
         _replay.Sweep();
     }
 
+    // The once-a-second pass is there to put flags back after a respawn. It
+    // is the wrong clock for a key press: somebody who asked for noclip asked
+    // for it now.
+    public void ApplyNow(IPlayer player)
+    {
+        CCSPlayerPawn? pawn = player.PlayerPawn;
+
+        if (pawn == null || !pawn.IsValid || !player.IsAlive)
+        {
+            return;
+        }
+
+        ApplyFlags(pawn, StateFor(player.SteamID), SolveRunning());
+    }
+
     // Called on the release edge, so a thrown grenade is in the player's hand
     // again a tick or two later.
     // Set by the plugin to the drill's Waiting check. A player mid-drill who
@@ -217,6 +242,8 @@ public class PracticeSystem
     // the only version that leaves the throw itself alone.
     public void RefillUtility()
     {
+        KeepInHand();
+
         if (_regive.Count == 0)
         {
             return;
@@ -235,12 +262,54 @@ public class PracticeSystem
                 continue;
             }
 
-            if (HasWeapon(pawn, weapon))
+            if (!HasWeapon(pawn, weapon))
             {
+                pawn.ItemServices?.GiveItem(weapon);
+            }
+
+            // In the hand, not just in the bag: the next throw of the same
+            // lineup is the one thing a player is certain to want.
+            _reselect.RemoveAll(entry => entry.steamId == steamId);
+            _reselect.Add((steamId, weapon, ReselectPasses));
+        }
+    }
+
+    private void KeepInHand()
+    {
+        for (int index = _reselect.Count - 1; index >= 0; index--)
+        {
+            (ulong steamId, string weapon, int passes) = _reselect[index];
+            IPlayer? player = Find(steamId);
+            CCSPlayerPawn? pawn = player?.PlayerPawn;
+
+            if (player == null || !player.IsAlive || pawn == null || !pawn.IsValid || passes <= 0)
+            {
+                _reselect.RemoveAt(index);
+
                 continue;
             }
 
-            pawn.ItemServices?.GiveItem(weapon);
+            _reselect[index] = (steamId, weapon, passes - 1);
+
+            try
+            {
+                CBasePlayerWeapon? active = pawn.WeaponServices?.ActiveWeapon.Value;
+
+                if (active != null && active.IsValid && active.DesignerName == weapon)
+                {
+                    continue;
+                }
+
+                if (HasWeapon(pawn, weapon))
+                {
+                    pawn.WeaponServices?.SelectWeaponByDesignerName(weapon);
+                }
+            }
+            catch (Exception error)
+            {
+                _logger.LogWarning(error, "unable to put {weapon} back in hand", weapon);
+                _reselect.RemoveAt(index);
+            }
         }
     }
 

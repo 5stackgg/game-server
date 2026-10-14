@@ -70,6 +70,34 @@ public class UtilityApiClient
         return id;
     }
 
+    // The executes a player can load from the menu: theirs and their team's,
+    // on the map the server is on. Null from a panel too old to be asked.
+    public async Task<List<UtilityPlaybook>?> Playbooks(ulong steamId)
+    {
+        string? body = await SendText(HttpMethod.Get, $"/utility/playbooks?steam_id={steamId}", null);
+
+        if (body == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return ReadList<UtilityPlaybook>(body, "playbooks");
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to read the executes");
+
+            return null;
+        }
+    }
+
+    // Raised off the game thread, with what the library said about how the
+    // player is doing: their totals by lineup id, and how many in a row the
+    // panel calls mastered. Either may be missing from an older panel.
+    public event Action<ulong, Dictionary<string, UtilityPracticeResult>, int?>? LibraryProgress;
+
     public async Task<List<LineupRecord>?> Library(string map, ulong steamId)
     {
         string? body = await SendText(
@@ -86,6 +114,17 @@ public class UtilityApiClient
         try
         {
             List<UtilityLibraryRow>? rows = ReadList<UtilityLibraryRow>(body, "lineups", "utility");
+
+            if (rows != null)
+            {
+                LibraryProgress?.Invoke(
+                    steamId,
+                    rows.Where(row => row.id != null && row.progress != null)
+                        .GroupBy(row => row.id!)
+                        .ToDictionary(group => group.Key, group => group.First().progress!),
+                    ReadInt(body, "mastery_streak")
+                );
+            }
 
             return rows == null
                 ? new List<LineupRecord>()
@@ -566,6 +605,19 @@ public class UtilityApiClient
 
     // Accepts either a bare array or an envelope naming one, so a wrapper key
     // on the API side is not a silently empty library.
+    private static int? ReadInt(string body, string property)
+    {
+        using JsonDocument document = JsonDocument.Parse(body);
+
+        return
+            document.RootElement.ValueKind == JsonValueKind.Object
+            && document.RootElement.TryGetProperty(property, out JsonElement value)
+            && value.ValueKind == JsonValueKind.Number
+            && value.TryGetInt32(out int number)
+            ? number
+            : null;
+    }
+
     private static List<T>? ReadList<T>(string body, params string[] properties)
     {
         using JsonDocument document = JsonDocument.Parse(body);
