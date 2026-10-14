@@ -135,13 +135,13 @@ public static class HudSlots
     public const int WheelQuicks = WheelSlots * 2;
 
     public static readonly IReadOnlyList<int> WheelQuickHits =
-        new[] { 5, 5, 7, 7, 8, 7, 8, 7, 5, 5, 7, 8, 7, 8, 7, 7 };
+        new[] { 4, 4, 6, 7, 7, 7, 7, 6, 4, 4, 6, 7, 7, 7, 7, 6 };
 
     // One quick action on its own takes the whole width of its wedge, so
     // each wedge also has a segment that wide. It and the two halves are
     // never shown together.
     public static readonly IReadOnlyList<int> WheelWideHits =
-        new[] { 5, 13, 17, 14, 5, 14, 17, 13 };
+        new[] { 4, 13, 17, 13, 4, 13, 17, 13 };
 
     public static readonly HudLayoutSlots Hud = new HudLayoutSlots(
         NadeHud,

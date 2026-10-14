@@ -493,7 +493,7 @@ public class HudLayoutContractTests
 
         for (int slot = 0; slot < HudSlots.WheelSlots; slot++)
         {
-            Assert.Matches($@"\.nw-x{slot} \.nw-qfill, \.nw-x{slot} \.nw-qlit \{{ clip: radial\(", styles);
+            Assert.Matches($@"\.nw-x{slot} \.nw-qfill, \.nw-x{slot} \.nw-qedge, \.nw-x{slot} \.nw-qlit \{{ clip: radial\(", styles);
             Assert.Matches($@"\.nw-x{slot} \.nw-qlabel \{{ margin-left: -?\d+px; margin-top: -?\d+px; \}}", styles);
 
             for (int hit = 0; hit < HudSlots.WheelWideHits[slot]; hit++)
@@ -507,7 +507,7 @@ public class HudLayoutContractTests
 
         for (int quick = 0; quick < HudSlots.WheelQuicks; quick++)
         {
-            Assert.Matches($@"\.nw-q{quick} \.nw-qfill, \.nw-q{quick} \.nw-qlit \{{ clip: radial\(", styles);
+            Assert.Matches($@"\.nw-q{quick} \.nw-qfill, \.nw-q{quick} \.nw-qedge, \.nw-q{quick} \.nw-qlit \{{ clip: radial\(", styles);
             Assert.Matches($@"\.nw-q{quick} \.nw-qlabel \{{ margin-left: -?\d+px; margin-top: -?\d+px; \}}", styles);
 
             for (int hit = 0; hit < HudSlots.WheelQuickHits[quick]; hit++)
