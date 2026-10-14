@@ -260,12 +260,6 @@ public partial class UtilityPracticePlugin
                     if (pressed && !CursorOpen(player) && DoubleTapped(player.SteamID, "inspect"))
                     {
                         Do(player, "crosshair");
-                        Toast(
-                            player,
-                            _system.StateFor(player.SteamID).Crosshair
-                                ? "Aim ring back"
-                                : "Aim ring hidden · 2× F brings it back"
-                        );
                     }
 
                     break;

@@ -311,7 +311,13 @@ public partial class UtilityPracticePlugin
                                 new WheelItem("flashcard", "Flash Card", On: !_flashCardOff.Contains(steamId)),
                             },
                         },
-                        Toggle("legend", "Key Legend", !_legendOff.Contains(steamId)),
+                        Toggle("legend", "Key Legend", !_legendOff.Contains(steamId)) with
+                        {
+                            Quick = new WheelItem?[]
+                            {
+                                new WheelItem("sounds", "Sounds", On: !_soundsOff.Contains(steamId)),
+                            },
+                        },
                         Toggle("solo", "Private Previews", state.Solo),
                         new WheelItem("reload", "Reload Library", $"{_library.For(steamId).Count} lineups"),
                     }
@@ -851,13 +857,11 @@ public partial class UtilityPracticePlugin
             case "noclip":
                 state.Noclip = !state.Noclip;
                 _system.ApplyNow(player);
-                Toast(player, $"Noclip {Switch(state.Noclip)}");
 
                 break;
             case "god":
                 state.God = !state.God;
                 _system.ApplyNow(player);
-                Toast(player, $"Take no damage · {Switch(state.God)}");
 
                 break;
             case "bot":
@@ -906,6 +910,10 @@ public partial class UtilityPracticePlugin
                 break;
             case "legend":
                 Flip(_legendOff, steamId);
+
+                break;
+            case "sounds":
+                Flip(_soundsOff, steamId);
 
                 break;
         }

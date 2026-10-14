@@ -2192,6 +2192,11 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         _shown.Remove(steamId);
 
+        if (pushed)
+        {
+            DropRemoved(steamId, _library.For(steamId));
+        }
+
         if (count > 0)
         {
             IReadOnlyList<LineupRecord> library = _library.For(steamId);
@@ -2232,6 +2237,42 @@ public partial class UtilityPracticePlugin : BasePlugin
         if (requeue)
         {
             RefreshAndShow(steamId, pushed: true);
+        }
+    }
+
+    // The panel pushes a refresh when a lineup is archived, deleted or hidden,
+    // and the fresh library no longer has it -- but the player can still be
+    // holding it, aiming at its ring or walking it in their results.
+    private void DropRemoved(ulong steamId, IReadOnlyList<LineupRecord> library)
+    {
+        HashSet<string> kept = library
+            .Select(row => row.id)
+            .Where(PracticeLineupUtility.IsPanelId)
+            .Select(id => id!)
+            .ToHashSet();
+
+        bool Gone(LineupRecord row) => PracticeLineupUtility.IsPanelId(row.id) && !kept.Contains(row.id!);
+
+        PracticeState state = _system.StateFor(steamId);
+
+        state.Results.RemoveAll(Gone);
+
+        if (state.Loaded == null || !Gone(state.Loaded))
+        {
+            return;
+        }
+
+        LineupRecord gone = state.Loaded;
+
+        state.Loaded = null;
+        state.Index = -1;
+        _replay.ClearGhosts(steamId);
+
+        IPlayer? player = _system.Find(steamId);
+
+        if (player != null && player.IsValid)
+        {
+            Toast(player, $"{PracticeLineupUtility.TitleCase(DrillUtility.Name(gone))} was removed on the panel");
         }
     }
 

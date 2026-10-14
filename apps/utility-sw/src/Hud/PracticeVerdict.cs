@@ -30,6 +30,8 @@ public partial class UtilityPracticePlugin
 
     // Played to the thrower alone. A Panorama style's sound only plays on
     // hover, never when the server sets a class.
+    private readonly HashSet<ulong> _soundsOff = new();
+
     private const string LandedSound = "UI.XP.Star.Full";
     private const string MissedSound = "UI.CounterBeep";
     private const string MasteredSound = "UI.XP.LevelUp";
@@ -172,6 +174,11 @@ public partial class UtilityPracticePlugin
 
     private void PlayVerdict(IPlayer player, string sound)
     {
+        if (_soundsOff.Contains(player.SteamID))
+        {
+            return;
+        }
+
         try
         {
             using var play = new SoundEvent(sound);
@@ -194,6 +201,7 @@ public partial class UtilityPracticePlugin
 
     private void ForgetVerdicts(ulong steamId)
     {
+        _soundsOff.Remove(steamId);
         _attempts.Remove(steamId);
         _runTally.Remove(steamId);
         _summaries.Remove(steamId);
