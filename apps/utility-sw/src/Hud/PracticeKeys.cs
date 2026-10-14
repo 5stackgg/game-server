@@ -168,7 +168,7 @@ public partial class UtilityPracticePlugin
     {
         KeyKind key = @event.Key;
 
-        if (key is not (KeyKind.Tab or KeyKind.R or KeyKind.Ctrl or KeyKind.Shift))
+        if (key is not (KeyKind.Tab or KeyKind.R or KeyKind.Ctrl or KeyKind.Shift or KeyKind.F))
         {
             return;
         }
@@ -251,6 +251,21 @@ public partial class UtilityPracticePlugin
                     if (pressed && !CursorOpen(player) && DoubleTapped(player.SteamID, "shift"))
                     {
                         Do(player, "noclip");
+                    }
+
+                    break;
+                // Inspect: bound by default, and twice in a row does nothing
+                // else worth keeping.
+                case KeyKind.F:
+                    if (pressed && !CursorOpen(player) && DoubleTapped(player.SteamID, "inspect"))
+                    {
+                        Do(player, "crosshair");
+                        Toast(
+                            player,
+                            _system.StateFor(player.SteamID).Crosshair
+                                ? "Aim ring back"
+                                : "Aim ring hidden · 2× F brings it back"
+                        );
                     }
 
                     break;

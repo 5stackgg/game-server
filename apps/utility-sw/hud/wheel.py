@@ -214,6 +214,7 @@ KEYS = [
     ("R", "With a grenade in the air: ride along with it"),
     ("2× CTRL", "Add a bot where you stand"),
     ("2× SHIFT", "Noclip on or off"),
+    ("2× F", "Aim ring on or off · in a drill it fades as you land it"),
     ("DEL", "Clear smoke and fire · twice clears the bots"),
 ]
 

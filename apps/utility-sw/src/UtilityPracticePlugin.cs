@@ -534,6 +534,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         StackTick();
         HurryBots();
         UseWatch();
+        _system.RefillUtility();
 
         // Cheap: it only redraws when the set of lineups under the player's
         // feet actually changes, which is when they step onto or off a spot.
@@ -1906,7 +1907,6 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void OnFastTick()
     {
-        _system.RefillUtility();
         _playbook.Tick();
         _solver.Pump();
         _discovery.Pump();

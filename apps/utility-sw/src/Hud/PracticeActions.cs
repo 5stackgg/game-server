@@ -992,7 +992,7 @@ public partial class UtilityPracticePlugin
             _drill.StartWith(steamId, new[] { here }, endless: true) switch
             {
                 eDrillStart.Started =>
-                    $"Repeating {PracticeLineupUtility.TitleCase(DrillUtility.Name(here))}",
+                    $"Repeating {PracticeLineupUtility.TitleCase(DrillUtility.Name(here))} · the aim ring fades as you land it",
                 eDrillStart.ReplayDisabled => "Replay is off on this server",
                 eDrillStart.NotConnected => "No panel, so a throw cannot be scored",
                 eDrillStart.AlreadyRunning => "Already drilling",
@@ -1129,7 +1129,7 @@ public partial class UtilityPracticePlugin
             player,
             _drill.StartPlan(steamId) switch
             {
-                eDrillStart.Started => "Drilling unmastered · worst first",
+                eDrillStart.Started => "Drilling unmastered · the aim ring fades as you land each one",
                 eDrillStart.ReplayDisabled => "Replay is off on this server",
                 eDrillStart.NotConnected => "No panel, so a throw cannot be scored",
                 eDrillStart.AlreadyRunning => "Already drilling",

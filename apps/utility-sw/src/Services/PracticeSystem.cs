@@ -83,15 +83,25 @@ public class PracticeSystem
     private readonly Dictionary<ulong, PracticeState> _states = new();
     private readonly List<(ulong steamId, string weapon)> _regive = new();
 
-    // Grenades that were handed back and still have to end up in the hand.
-    private readonly List<(ulong steamId, string weapon, int passes)> _reselect = new();
+    // A thrown grenade on its way back into the hand.
+    private class Reselect
+    {
+        public required ulong SteamId;
+        public required string Weapon;
+        public required int Until;
+        public bool Restored;
+    }
 
-    // The game puts something else in the hand as the throw finishes, and it
-    // does that a beat after the grenade has gone. Asked for once, the
-    // grenade is back for an instant and then swapped away again; asked for
-    // across this many passes of the tenth-of-a-second job, it stays. Short,
-    // because past it the player choosing another weapon has to win.
-    private const int ReselectPasses = 5;
+    private readonly List<Reselect> _reselect = new();
+    private int _tick;
+
+    // The game takes the thrown grenade away and puts something else in the
+    // hand a beat after release. The moment it does, the grenade is given back
+    // and selected, on the same tick -- waiting for a slower job is what had a
+    // rifle come up first. Watched for this long after release, and no longer
+    // once the grenade is back: past that, a player choosing another weapon
+    // has to win.
+    private const int ReselectTicks = 96;
 
     // Who a solve made invulnerable who had not asked for it, so the flag is
     // handed back rather than left on.
@@ -139,7 +149,7 @@ public class PracticeSystem
         _shielded.Remove(steamId);
         _replay.ClearGhosts(steamId);
         _regive.RemoveAll(pending => pending.steamId == steamId);
-        _reselect.RemoveAll(pending => pending.steamId == steamId);
+        _reselect.RemoveAll(pending => pending.SteamId == steamId);
     }
 
     public void Reset()
@@ -232,74 +242,75 @@ public class PracticeSystem
     // sv_infinite_ammo also freezes the throw animation and the pin, which
     // makes every recorded release strength wrong; handing the grenade back is
     // the only version that leaves the throw itself alone.
+    // Every game tick.
     public void RefillUtility()
     {
+        _tick++;
+
+        if (_regive.Count > 0)
+        {
+            foreach ((ulong steamId, string weapon) in _regive)
+            {
+                _reselect.RemoveAll(entry => entry.SteamId == steamId);
+                _reselect.Add(
+                    new Reselect
+                    {
+                        SteamId = steamId,
+                        Weapon = weapon,
+                        Until = _tick + ReselectTicks,
+                    }
+                );
+            }
+
+            _regive.Clear();
+        }
+
         KeepInHand();
-
-        if (_regive.Count == 0)
-        {
-            return;
-        }
-
-        var pending = _regive.ToList();
-        _regive.Clear();
-
-        foreach ((ulong steamId, string weapon) in pending)
-        {
-            IPlayer? player = Find(steamId);
-            CCSPlayerPawn? pawn = player?.PlayerPawn;
-
-            if (player == null || !player.IsAlive || pawn == null || !pawn.IsValid)
-            {
-                continue;
-            }
-
-            if (!HasWeapon(pawn, weapon))
-            {
-                pawn.ItemServices?.GiveItem(weapon);
-            }
-
-            // In the hand, not just in the bag: the next throw of the same
-            // lineup is the one thing a player is certain to want.
-            _reselect.RemoveAll(entry => entry.steamId == steamId);
-            _reselect.Add((steamId, weapon, ReselectPasses));
-        }
     }
 
     private void KeepInHand()
     {
         for (int index = _reselect.Count - 1; index >= 0; index--)
         {
-            (ulong steamId, string weapon, int passes) = _reselect[index];
-            IPlayer? player = Find(steamId);
+            Reselect entry = _reselect[index];
+            IPlayer? player = Find(entry.SteamId);
             CCSPlayerPawn? pawn = player?.PlayerPawn;
 
-            if (player == null || !player.IsAlive || pawn == null || !pawn.IsValid || passes <= 0)
+            if (player == null || !player.IsAlive || pawn == null || !pawn.IsValid || _tick > entry.Until)
             {
                 _reselect.RemoveAt(index);
 
                 continue;
             }
 
-            _reselect[index] = (steamId, weapon, passes - 1);
-
             try
             {
                 CBasePlayerWeapon? active = pawn.WeaponServices?.ActiveWeapon.Value;
+                bool inHand = active != null && active.IsValid && active.DesignerName == entry.Weapon;
 
-                if (active != null && active.IsValid && active.DesignerName == weapon)
+                // Still the thrown one, mid-throw: nothing to do yet. Or the
+                // new one, back where it belongs: done.
+                if (inHand)
                 {
+                    if (entry.Restored)
+                    {
+                        _reselect.RemoveAt(index);
+                    }
+
                     continue;
                 }
 
-                if (HasWeapon(pawn, weapon))
+                if (!HasWeapon(pawn, entry.Weapon))
                 {
-                    pawn.WeaponServices?.SelectWeaponByDesignerName(weapon);
+                    pawn.ItemServices?.GiveItem(entry.Weapon);
                 }
+
+                pawn.WeaponServices?.SelectWeaponByDesignerName(entry.Weapon);
+                entry.Restored = true;
             }
             catch (Exception error)
             {
-                _logger.LogWarning(error, "unable to put {weapon} back in hand", weapon);
+                _logger.LogWarning(error, "unable to put {weapon} back in hand", entry.Weapon);
                 _reselect.RemoveAt(index);
             }
         }

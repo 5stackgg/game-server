@@ -106,9 +106,9 @@ public static class HudSlots
     public const int CompassColumns = 256;
     public const float CompassHalfSpanDegrees = 60f;
 
-    // TAB, E, R, then the two double taps and the clear key -- one row each,
+    // TAB, E, R, then the three double taps and the clear key -- one row each,
     // in that order.
-    public const int LegendKeys = 6;
+    public const int LegendKeys = 7;
 
     // Fixed DOM for the three lists the bar can show: what is out, the plan,
     // and what a flash did. The steps are how finely a bar can be drawn.
