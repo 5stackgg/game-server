@@ -1199,7 +1199,7 @@ public class MatchManager
                             _logger.LogInformation(
                                 $"[team] Respawning {player.PlayerName} ({player.SteamID}) after team change -> {applyPlacementTeam}"
                             );
-                            player.Respawn();
+                            RespawnAndVerify(player, applyPlacementTeam);
                         });
                     }
 
@@ -1222,10 +1222,72 @@ public class MatchManager
             _logger.LogInformation(
                 $"[team] Respawning {player.PlayerName} ({player.SteamID}) (already on {placementTeam})"
             );
-            player.Respawn();
+            RespawnAndVerify(player, placementTeam);
         }
 
         captainSystem.IsCaptain(player, expectedTeam);
+    }
+
+    private const int MaxRespawnAttempts = 3;
+
+    // A respawn can leave the player alive at the world origin, under the map,
+    // where CS2's own round restarts never respawn them.
+    private void RespawnAndVerify(CCSPlayerController player, CsTeam team, int attempt = 1)
+    {
+        player.Respawn();
+
+        TimerUtility.AddTimer(
+            1.0f,
+            () =>
+            {
+                if (!player.IsValid || player.Team != team)
+                {
+                    return;
+                }
+
+                CCSPlayerPawn? pawn = player.PlayerPawn.Value;
+                bool hasPawn = pawn != null && pawn.IsValid;
+                Vector? origin = hasPawn ? pawn!.AbsOrigin : null;
+
+                if (
+                    player.PawnIsAlive
+                    && origin != null
+                    && !SpawnUtility.IsAtWorldOrigin(origin.X, origin.Y)
+                )
+                {
+                    return;
+                }
+
+                string state =
+                    $"alive={player.PawnIsAlive} origin={origin} pawnTeam={(hasPawn ? ((CsTeam)pawn!.TeamNum).ToString() : "none")} team={team}";
+
+                if (attempt >= MaxRespawnAttempts || !ShouldRespawnOnTeamChange(team))
+                {
+                    _logger.LogError(
+                        $"[team] Respawn of {player.PlayerName} ({player.SteamID}) did not land after {attempt} attempt(s), not retrying: {state}"
+                    );
+                    return;
+                }
+
+                _logger.LogWarning(
+                    $"[team] Respawn of {player.PlayerName} ({player.SteamID}) did not land, retrying: {state}"
+                );
+
+                // Respawning a live pawn is what stranded players at the origin in #230.
+                if (hasPawn && player.PawnIsAlive)
+                {
+                    pawn!.CommitSuicide(false, true);
+                }
+
+                Server.NextFrame(() =>
+                {
+                    if (player.IsValid)
+                    {
+                        RespawnAndVerify(player, team, attempt + 1);
+                    }
+                });
+            }
+        );
     }
 
     // A spectator has no spawn point, so respawning one drops a body at the
