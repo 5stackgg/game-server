@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -87,18 +88,18 @@ public class MatchService
                 httpResponse.EnsureSuccessStatusCode();
                 string response = await httpResponse.Content.ReadAsStringAsync();
 
-                MatchData? matchData = null;
+                CurrentMatchDecision current = CurrentMatchUtility.Read(
+                    response,
+                    serverId,
+                    _logger
+                );
 
-                if (response.Length > 0)
+                if (current.Action == eCurrentMatchAction.Ignore)
                 {
-                    matchData = JsonSerializer.Deserialize<MatchData>(response);
-
-                    if (matchData == null)
-                    {
-                        _logger.LogError($"Match info for server {serverId} was null");
-                        return;
-                    }
+                    return;
                 }
+
+                MatchData? matchData = current.Match;
 
                 HibernationUtility.NextTick(() =>
                 {
@@ -151,10 +152,6 @@ public class MatchService
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "HTTP request error");
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogCritical(ex, "JSON deserialization error");
         }
         catch (Exception ex)
         {
