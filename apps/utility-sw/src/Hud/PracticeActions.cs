@@ -129,6 +129,7 @@ public partial class UtilityPracticePlugin
                 bool drilling = _drill.Current(steamId) != null;
                 bool planning = _drill.Plan(steamId) != null;
                 int stacked = StackCount(steamId);
+                LineupRecord? repeatable = drilling ? null : DrillTarget(player);
 
                 return new WheelPage(
                     "Practice",
@@ -136,15 +137,18 @@ public partial class UtilityPracticePlugin
                     {
                         new WheelItem(
                             "drill",
-                            drilling && !planning ? "Stop Drill" : "Drill This",
-                            drilling && !planning ? "running" : "",
+                            drilling && !planning ? "Stop Repeating" : "Repeat Lineup",
+                            drilling && !planning ? "running"
+                                : repeatable != null
+                                    ? PracticeLineupUtility.TitleCase(DrillUtility.Name(repeatable))
+                                : "stand on one first",
                             On: drilling && !planning,
-                            Disabled: planning
+                            Disabled: planning || (!drilling && repeatable == null)
                         ),
                         new WheelItem(
                             "plan",
-                            planning ? "Stop Plan" : "Start Plan",
-                            planning ? "running" : "all unmastered",
+                            planning ? "Stop Drilling" : "Drill Unmastered",
+                            planning ? "running" : "worst first",
                             On: planning,
                             Disabled: drilling && !planning
                         )
@@ -382,7 +386,7 @@ public partial class UtilityPracticePlugin
                         new WheelItem("execute", "Execute", Opens: "execute", On: StackCount(steamId) > 0),
                         new WheelItem(
                             "plan",
-                            _drill.Plan(steamId) != null ? "Stop Plan" : "Plan",
+                            _drill.Plan(steamId) != null ? "Stop Drilling" : "Unmastered",
                             On: _drill.Plan(steamId) != null
                         ),
                     },
@@ -948,7 +952,7 @@ public partial class UtilityPracticePlugin
 
         if (_drill.Stop(steamId))
         {
-            Toast(player, "Drill stopped");
+            Toast(player, "Stopped repeating");
 
             return;
         }
@@ -957,7 +961,7 @@ public partial class UtilityPracticePlugin
 
         if (here == null)
         {
-            Toast(player, "Stand on a lineup, or load one, to drill it");
+            Toast(player, "Stand on a lineup, or load one, to repeat it");
 
             return;
         }
@@ -967,7 +971,7 @@ public partial class UtilityPracticePlugin
             _drill.StartWith(steamId, new[] { here }, endless: true) switch
             {
                 eDrillStart.Started =>
-                    $"Drilling {PracticeLineupUtility.TitleCase(DrillUtility.Name(here))}",
+                    $"Repeating {PracticeLineupUtility.TitleCase(DrillUtility.Name(here))}",
                 eDrillStart.ReplayDisabled => "Replay is off on this server",
                 eDrillStart.NotConnected => "No panel, so a throw cannot be scored",
                 eDrillStart.AlreadyRunning => "Already drilling",
@@ -1088,7 +1092,7 @@ public partial class UtilityPracticePlugin
 
         if (_drill.Stop(steamId))
         {
-            Toast(player, "Plan stopped");
+            Toast(player, "Stopped drilling");
 
             return;
         }
@@ -1097,7 +1101,7 @@ public partial class UtilityPracticePlugin
             player,
             _drill.StartPlan(steamId) switch
             {
-                eDrillStart.Started => "Plan started · worst first",
+                eDrillStart.Started => "Drilling unmastered · worst first",
                 eDrillStart.ReplayDisabled => "Replay is off on this server",
                 eDrillStart.NotConnected => "No panel, so a throw cannot be scored",
                 eDrillStart.AlreadyRunning => "Already drilling",

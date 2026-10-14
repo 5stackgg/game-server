@@ -36,7 +36,7 @@ public partial class UtilityPracticePlugin
             WelcomeDelaySeconds,
             () =>
             {
-                foreach (string line in WelcomeLines)
+                foreach (string line in UseHud(steamId) ? WelcomeLines : TypedWelcomeLines)
                 {
                     Tell(steamId, line);
                 }

@@ -59,7 +59,7 @@ public partial class UtilityPracticePlugin
                 Reply(
                     context,
                     $" {ChatColors.Grey}named by the map -- "
-                        + $"{ChatColors.Default}.edit{ChatColors.Grey} to change it"
+                        + $"{ChatColors.Default}TAB ▸ Save Throw ▸ Edit{ChatColors.Grey} to change it"
                 );
 
                 return;
@@ -1170,7 +1170,11 @@ public partial class UtilityPracticePlugin
             }
 
             Core.Scheduler.NextTick(() =>
-                Tell(steamId, $" {ChatColors.Red}{loaded.name} is still on the panel; try .reload")
+                Tell(
+                    steamId,
+                    $" {ChatColors.Red}{loaded.name} is still on the panel; "
+                        + $"try {ChatColors.Default}TAB ▸ Settings ▸ Reload Library"
+                )
             );
         });
     }
@@ -1323,7 +1327,10 @@ public partial class UtilityPracticePlugin
         switch (_drill.StartWith(steamId, queue))
         {
             case eDrillStart.AlreadyRunning:
-                Tell(steamId, $" {ChatColors.Red}already drilling; .cancel first");
+                Tell(
+                    steamId,
+                    $" {ChatColors.Red}already drilling; stop it from {ChatColors.Default}TAB ▸ Practice"
+                );
                 return;
             case eDrillStart.ReplayDisabled:
                 Tell(steamId, $" {ChatColors.Red}replay is disabled on this server");
@@ -1496,12 +1503,23 @@ public partial class UtilityPracticePlugin
 
     private const float WelcomeDelaySeconds = 2f;
 
-    // Deliberately short. The full list is sixteen lines and reads as spam on
-    // every join; these are the four that get somebody throwing, and .help is
-    // where the rest lives.
+    // Deliberately short, and about keys: everything is on the menu, and the
+    // bar on the left says what each key does as it changes.
     private static readonly string[] WelcomeLines = new[]
     {
-        $" {ChatColors.Green}utility practice {ChatColors.Grey}-- infinite utility, buy anywhere",
+        $" {ChatColors.Green}utility practice {ChatColors.Grey}-- infinite utility, nothing to type",
+        $" {ChatColors.Default}TAB {ChatColors.Grey}opens the menu: "
+            + "saving, lineups, bots, drills, settings",
+        $" {ChatColors.Default}E {ChatColors.Grey}snaps onto the nearest lineup, "
+            + $"{ChatColors.Default}R {ChatColors.Grey}rethrows, "
+            + $"{ChatColors.Default}DEL {ChatColors.Grey}clears smoke and fire",
+    };
+
+    // Where the menu cannot be drawn, typing is all there is. These are the
+    // four that get somebody throwing, and .help is where the rest lives.
+    private static readonly string[] TypedWelcomeLines = new[]
+    {
+        $" {ChatColors.Green}utility practice {ChatColors.Grey}-- infinite utility",
         $" {ChatColors.Default}.save <name> {ChatColors.Grey}saves the throw you just made",
         $" {ChatColors.Default}.load <query> {ChatColors.Grey}stands you on a saved lineup",
         $" {ChatColors.Default}.rethrow {ChatColors.Grey}throws it again from where it was thrown",

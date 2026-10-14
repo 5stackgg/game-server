@@ -1304,8 +1304,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         {
             Tell(
                 player.SteamID,
-                $" {ChatColors.Grey}tip: {ChatColors.Default}.menu{ChatColors.Grey} "
-                    + "picks a lineup off the screen"
+                $" {ChatColors.Grey}tip: {ChatColors.Default}TAB ▸ Lineups{ChatColors.Grey} "
+                    + "picks a lineup off the map"
             );
 
             return;
@@ -1810,7 +1810,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         // comes before everything else that assumes people can get in.
         _session.RetryIfMissing(TimeSpan.FromSeconds(15));
         EndWarmup();
-        ReloadWhenTheClockRunsOut();
+        KeepTheRoundClock();
         RespawnTheDead();
         KeepBotsStanding();
         PruneLive();
@@ -2238,11 +2238,13 @@ public partial class UtilityPracticePlugin : BasePlugin
 
                 if (!pushed)
                 {
+                    string walk = UseHud(steamId) ? "TAB ▸ Lineups" : ".next";
+
                     Tell(
                         steamId,
                         $" {ChatColors.Green}{count} lineup(s) {ChatColors.Grey}on "
                             + $"{ChatColors.Default}{map} {ChatColors.Grey}-- "
-                            + $"{ChatColors.Default}.next{ChatColors.Grey} to walk them"
+                            + $"{ChatColors.Default}{walk}{ChatColors.Grey} to walk them"
                     );
                 }
             }

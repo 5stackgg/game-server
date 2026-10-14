@@ -1,6 +1,8 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
+using SwiftlyS2.Shared.Convars;
 using SwiftlyS2.Shared.Memory;
 using SwiftlyS2.Shared.Natives;
 using SwiftlyS2.Shared.Players;
@@ -91,18 +93,67 @@ public partial class UtilityPracticePlugin
         _terminateRoundHookId = Guid.Empty;
     }
 
+    // A round's length is fixed as it starts, from what mp_roundtime said
+    // then, and the first round after a load starts on the map's own cfg
+    // before ours lands: two minutes. Lengthened in place instead.
+    private const int RoundSeconds = 60 * 60;
+
+    private void KeepTheRoundClock()
+    {
+        KeepBuyTimeOff();
+
+        CCSGameRules? rules = Core.EntitySystem.GetGameRules();
+
+        if (rules == null || rules.WarmupPeriod || rules.FreezePeriod)
+        {
+            return;
+        }
+
+        if (rules.RoundTime < RoundSeconds)
+        {
+            rules.RoundTime = RoundSeconds;
+            rules.RoundTimeUpdated();
+        }
+
+        ReloadWhenTheClockRunsOut(rules);
+    }
+
+    // Nothing is bought here, and the map's mode cfg lands after ours often
+    // enough to put a buy timer back on everybody's screen.
+    private void KeepBuyTimeOff()
+    {
+        try
+        {
+            IConVar? buyTime = Core.ConVar.FindAsString("mp_buytime");
+
+            if (
+                buyTime != null
+                && float.TryParse(buyTime.ValueAsString, CultureInfo.InvariantCulture, out float seconds)
+                && seconds > 0f
+            )
+            {
+                buyTime.ValueAsString = "0";
+            }
+        }
+        catch (Exception error)
+        {
+            _logger.LogWarning(error, "unable to turn buy time off");
+        }
+    }
+
     // A round that runs out of clock with nothing allowed to end it carries
     // on at 0:00, and from then on the game's animation crawls until the
     // level is loaded again. So it is loaded again, the same map, with a
     // minute's warning. Not under a render or a discovery: those change
     // level themselves, and reloading would drop the batch they are on.
     private const int ClockWarnSeconds = 60;
+    private static readonly int[] ClockWarnAt = { 60, 30, 10, 5, 4, 3, 2, 1 };
     private static readonly TimeSpan ClockReloadWait = TimeSpan.FromSeconds(30);
 
-    private bool _clockWarned;
+    private int _clockWarned = int.MaxValue;
     private DateTime _clockReloaded = DateTime.MinValue;
 
-    private void ReloadWhenTheClockRunsOut()
+    private void ReloadWhenTheClockRunsOut(CCSGameRules rules)
     {
         if (_config.RenderMode || _discovery.IsBusy)
         {
@@ -114,26 +165,22 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        CCSGameRules? rules = Core.EntitySystem.GetGameRules();
-
-        if (rules == null || rules.WarmupPeriod || rules.FreezePeriod)
-        {
-            return;
-        }
-
         float left =
             rules.RoundStartTime.Value + rules.RoundTime - Core.Engine.GlobalVars.CurrentTime;
 
         if (left > ClockWarnSeconds)
         {
-            _clockWarned = false;
+            _clockWarned = int.MaxValue;
             return;
         }
 
-        if (!_clockWarned)
+        int seconds = Math.Max((int)MathF.Ceiling(left), 1);
+        int mark = ClockWarnAt.Where(at => at >= seconds).DefaultIfEmpty(1).Min();
+
+        if (mark < _clockWarned)
         {
-            _clockWarned = true;
-            AnnounceClockReload((int)MathF.Ceiling(left));
+            AnnounceClockReload(seconds, _clockWarned == int.MaxValue);
+            _clockWarned = mark;
             return;
         }
 
@@ -152,11 +199,11 @@ public partial class UtilityPracticePlugin
         Core.Engine.ExecuteCommand(PracticeMapChangeUtility.Command(map));
     }
 
-    private void AnnounceClockReload(int seconds)
+    private void AnnounceClockReload(int seconds, bool first)
     {
         string chat =
             $" {ChatColors.Green}the round clock is nearly out {ChatColors.Grey}-- "
-            + $"the map reloads in {ChatColors.Default}{Math.Max(seconds, 1)}s";
+            + $"the map reloads in {ChatColors.Default}{seconds}s";
 
         foreach (IPlayer player in Core.PlayerManager.GetAllPlayers())
         {
@@ -165,7 +212,12 @@ public partial class UtilityPracticePlugin
                 continue;
             }
 
-            player.SendChat(chat.Colored());
+            player.SendAlert($"Map reloads in {seconds}s");
+
+            if (first)
+            {
+                player.SendChat(chat.Colored());
+            }
         }
     }
 }

@@ -361,7 +361,7 @@ public partial class UtilityPracticePlugin
         }
 
         return new NadeBarTemplate.Card(
-            "Plan",
+            "Unmastered",
             $"{at + 1} of {queue.Count} · worst first",
             $"Rep {rep} of {reps}",
             rows
