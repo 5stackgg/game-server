@@ -310,7 +310,7 @@
 {
 	width: 100%;
 	height: 100%;
-	background-color: gradient( radial, 50% 50%, 0% 0%, 100% 100%, from( #0b0d1000 ), color-stop( 0.4, #0b0d1000 ), color-stop( 0.4, #0b0d10c4 ), color-stop( 0.4543, #0b0d10c4 ), color-stop( 0.4543, #0b0d1000 ), to( #0b0d1000 ) );
+	background-color: gradient( radial, 50% 50%, 0% 0%, 100% 100%, from( #0b0d1000 ), color-stop( 0.4, #0b0d1000 ), color-stop( 0.4, #0b0d10eb ), color-stop( 0.4543, #0b0d10eb ), color-stop( 0.4543, #0b0d1000 ), to( #0b0d1000 ) );
 }
 
 .nw-quick.on .nw-qfill
@@ -359,19 +359,18 @@
 
 .nw-qlabel
 {
-	width: 110px;
-	height: 18px;
+	width: 112px;
+	height: 20px;
 	horizontal-align: left;
 	vertical-align: top;
-	font-family: Stratum2 Condensed, 'Arial Unicode MS';
-	font-size: 13px;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 14px;
 	font-weight: bold;
-	letter-spacing: 1.4px;
-	text-transform: uppercase;
-	color: #d4d4d8;
+	letter-spacing: 0.6px;
+	color: #fafafa;
 	text-align: center;
 	text-overflow: shrink;
-	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.9);
+	text-shadow: 0px 1px 3px 3 rgba(0, 0, 0, 1);
 }
 
 .nw-quick.on .nw-qlabel
@@ -573,22 +572,22 @@
 .nw-q14 .nw-qfill, .nw-q14 .nw-qedge, .nw-q14 .nw-qlit { clip: radial( 50% 50%, 293.7deg, 20.1deg ); }
 .nw-q15 .nw-qfill, .nw-q15 .nw-qedge, .nw-q15 .nw-qlit { clip: radial( 50% 50%, 316.2deg, 20.1deg ); }
 
-.nw-q0 .nw-qlabel { margin-left: 237px; margin-top: 48px; }
-.nw-q1 .nw-qlabel { margin-left: 353px; margin-top: 48px; }
-.nw-q2 .nw-qlabel { margin-left: 461px; margin-top: 92px; }
-.nw-q3 .nw-qlabel { margin-left: 544px; margin-top: 175px; }
-.nw-q4 .nw-qlabel { margin-left: 588px; margin-top: 283px; }
-.nw-q5 .nw-qlabel { margin-left: 588px; margin-top: 399px; }
-.nw-q6 .nw-qlabel { margin-left: 544px; margin-top: 507px; }
-.nw-q7 .nw-qlabel { margin-left: 461px; margin-top: 590px; }
-.nw-q8 .nw-qlabel { margin-left: 353px; margin-top: 634px; }
-.nw-q9 .nw-qlabel { margin-left: 237px; margin-top: 634px; }
-.nw-q10 .nw-qlabel { margin-left: 129px; margin-top: 590px; }
-.nw-q11 .nw-qlabel { margin-left: 46px; margin-top: 507px; }
-.nw-q12 .nw-qlabel { margin-left: 2px; margin-top: 399px; }
-.nw-q13 .nw-qlabel { margin-left: 2px; margin-top: 283px; }
-.nw-q14 .nw-qlabel { margin-left: 46px; margin-top: 175px; }
-.nw-q15 .nw-qlabel { margin-left: 129px; margin-top: 92px; }
+.nw-q0 .nw-qlabel { margin-left: 236px; margin-top: 47px; }
+.nw-q1 .nw-qlabel { margin-left: 352px; margin-top: 47px; }
+.nw-q2 .nw-qlabel { margin-left: 460px; margin-top: 91px; }
+.nw-q3 .nw-qlabel { margin-left: 543px; margin-top: 174px; }
+.nw-q4 .nw-qlabel { margin-left: 587px; margin-top: 282px; }
+.nw-q5 .nw-qlabel { margin-left: 587px; margin-top: 398px; }
+.nw-q6 .nw-qlabel { margin-left: 543px; margin-top: 506px; }
+.nw-q7 .nw-qlabel { margin-left: 460px; margin-top: 589px; }
+.nw-q8 .nw-qlabel { margin-left: 352px; margin-top: 633px; }
+.nw-q9 .nw-qlabel { margin-left: 236px; margin-top: 633px; }
+.nw-q10 .nw-qlabel { margin-left: 128px; margin-top: 589px; }
+.nw-q11 .nw-qlabel { margin-left: 45px; margin-top: 506px; }
+.nw-q12 .nw-qlabel { margin-left: 1px; margin-top: 398px; }
+.nw-q13 .nw-qlabel { margin-left: 1px; margin-top: 282px; }
+.nw-q14 .nw-qlabel { margin-left: 45px; margin-top: 174px; }
+.nw-q15 .nw-qlabel { margin-left: 128px; margin-top: 91px; }
 
 #o1h1 { margin-left: 249px; margin-top: 71px; width: 13px; height: 13px; }
 #o1h1 .nw-qlit { margin-left: -249px; margin-top: -71px; }
@@ -792,14 +791,14 @@
 .nw-x6 .nw-qfill, .nw-x6 .nw-qedge, .nw-x6 .nw-qlit { clip: radial( 50% 50%, 248.7deg, 42.6deg ); }
 .nw-x7 .nw-qfill, .nw-x7 .nw-qedge, .nw-x7 .nw-qlit { clip: radial( 50% 50%, 293.7deg, 42.6deg ); }
 
-.nw-x0 .nw-qlabel { margin-left: 295px; margin-top: 42px; }
-.nw-x1 .nw-qlabel { margin-left: 506px; margin-top: 130px; }
-.nw-x2 .nw-qlabel { margin-left: 594px; margin-top: 341px; }
-.nw-x3 .nw-qlabel { margin-left: 506px; margin-top: 552px; }
-.nw-x4 .nw-qlabel { margin-left: 295px; margin-top: 640px; }
-.nw-x5 .nw-qlabel { margin-left: 84px; margin-top: 552px; }
-.nw-x6 .nw-qlabel { margin-left: -4px; margin-top: 341px; }
-.nw-x7 .nw-qlabel { margin-left: 84px; margin-top: 130px; }
+.nw-x0 .nw-qlabel { margin-left: 294px; margin-top: 41px; }
+.nw-x1 .nw-qlabel { margin-left: 505px; margin-top: 129px; }
+.nw-x2 .nw-qlabel { margin-left: 593px; margin-top: 340px; }
+.nw-x3 .nw-qlabel { margin-left: 505px; margin-top: 551px; }
+.nw-x4 .nw-qlabel { margin-left: 294px; margin-top: 639px; }
+.nw-x5 .nw-qlabel { margin-left: 83px; margin-top: 551px; }
+.nw-x6 .nw-qlabel { margin-left: -5px; margin-top: 340px; }
+.nw-x7 .nw-qlabel { margin-left: 83px; margin-top: 129px; }
 
 #x1h1 { margin-left: 249px; margin-top: 71px; width: 13px; height: 13px; }
 #x1h1 .nw-qlit { margin-left: -249px; margin-top: -71px; }
