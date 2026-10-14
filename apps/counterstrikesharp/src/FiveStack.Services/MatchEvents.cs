@@ -226,9 +226,7 @@ public class MatchEvents
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(
-                            $"Failed to parse messageId '{messageIdStr}': {ex.Message}"
-                        );
+                        _logger.LogError(ex, $"Failed to parse messageId '{messageIdStr}'");
                     }
                 }
             }
@@ -271,7 +269,7 @@ public class MatchEvents
             }
             catch (WebSocketException ex)
             {
-                _logger.LogWarning($"Error closing existing WebSocket: {ex.Message}");
+                _logger.LogWarning(ex, "Error closing existing WebSocket");
             }
             _webSocket.Dispose();
             _webSocket = null;
@@ -315,13 +313,13 @@ public class MatchEvents
         }
         catch (WebSocketException ex)
         {
-            _logger.LogWarning("Failed to connect to WebSocket server: " + ex.Message);
+            _logger.LogWarning($"Failed to connect to WebSocket server: {ex.Message}");
             newWebSocket?.Dispose();
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogCritical("An error occurred: " + ex.Message);
+            _logger.LogCritical(ex, "An error occurred");
             newWebSocket?.Dispose();
             return false;
         }
@@ -389,7 +387,7 @@ public class MatchEvents
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error retrying message {message.Key}: {ex.Message}");
+                _logger.LogError(ex, $"Error retrying message {message.Key}");
             }
         }
     }
@@ -442,7 +440,7 @@ public class MatchEvents
         }
         catch (Exception error)
         {
-            _logger.LogCritical($"Error: {error.Message}");
+            _logger.LogCritical(error, "Error");
         }
     }
 

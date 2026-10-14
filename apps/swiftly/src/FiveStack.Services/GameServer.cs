@@ -176,7 +176,7 @@ public class GameServer
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogCritical($"Unexpected error during ping: {ex.Message}");
+                    _logger.LogCritical(ex, "Unexpected error during ping");
                 }
             });
         });

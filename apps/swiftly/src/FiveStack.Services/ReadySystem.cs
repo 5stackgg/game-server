@@ -380,7 +380,7 @@ public class ReadySystem
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error sending ready status message to player: {ex.Message}");
+                _logger.LogError(ex, "Error sending ready status message to player");
             }
         }
     }

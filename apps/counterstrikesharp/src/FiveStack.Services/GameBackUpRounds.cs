@@ -283,7 +283,7 @@ public class GameBackUpRounds
         }
         catch (Exception ex)
         {
-            _logger.LogError($"An error occurred during backup round upload: {ex.Message}");
+            _logger.LogError(ex, "An error occurred during backup round upload");
         }
         return null;
     }

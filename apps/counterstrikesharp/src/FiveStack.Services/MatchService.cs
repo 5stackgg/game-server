@@ -31,35 +31,9 @@ public class MatchService
 
     public async Task GetMatchConfigs()
     {
-        string directoryPath = Path.Join(Server.GameDirectory + "/csgo/cfg");
-        foreach (
-            var file in new[]
-            {
-                "5stack.competitive.cfg",
-                "5stack.duel.cfg",
-                "5stack.knife.cfg",
-                "5stack.lan.cfg",
-                "5stack.rush.cfg",
-                "5stack.warmup.cfg",
-                "5stack.wingman.cfg",
-            }
-        )
-        {
-            if (!File.Exists(Path.Join(directoryPath, file)))
-            {
-                _logger.LogInformation($"Downloading Config: {file}");
-                string url =
-                    $"https://raw.githubusercontent.com/5stackgg/game-server/main/shared/cfg/{file}";
-                var response = await HttpClientProvider.Client.GetAsync(url);
-                if (!response.IsSuccessStatusCode)
-                {
-                    _logger.LogError($"Failed to download config {file}: {response.StatusCode}");
-                    continue;
-                }
-                var content = await response.Content.ReadAsStringAsync();
-                File.WriteAllText(Path.Join(directoryPath, file), content);
-            }
-        }
+        await new MatchConfigDownloader(_logger).Download(
+            Path.Join(Server.GameDirectory + "/csgo/cfg")
+        );
     }
 
     public unsafe string GetWorkshopID()
@@ -112,13 +86,26 @@ public class MatchService
 
                 var httpResponse = await HttpClientProvider.Client.SendAsync(request);
                 httpResponse.EnsureSuccessStatusCode();
-                string? response = await httpResponse.Content.ReadAsStringAsync();
+                string response = await httpResponse.Content.ReadAsStringAsync();
+
+                MatchData? matchData = null;
+
+                if (response.Length > 0)
+                {
+                    matchData = JsonSerializer.Deserialize<MatchData>(response);
+
+                    if (matchData == null)
+                    {
+                        _logger.LogError($"Match info for server {serverId} was null");
+                        return;
+                    }
+                }
 
                 HibernationUtility.NextFrame(() =>
                 {
                     Guid? previousMatchId = _currentMatch?.GetMatchData()?.id;
 
-                    if (response.Length == 0)
+                    if (matchData == null)
                     {
                         if (_currentMatch != null)
                         {
@@ -132,13 +119,6 @@ public class MatchService
                         _logger.LogWarning(
                             $"No match assigned — clearing match {previousMatchId?.ToString() ?? "none"}"
                         );
-                        return;
-                    }
-
-                    MatchData? matchData = JsonSerializer.Deserialize<MatchData>(response);
-
-                    if (matchData == null)
-                    {
                         return;
                     }
 
@@ -171,15 +151,15 @@ public class MatchService
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError($"HTTP request error: {ex.Message}");
+            _logger.LogError(ex, "HTTP request error");
         }
         catch (JsonException ex)
         {
-            _logger.LogCritical($"JSON deserialization error: {ex.Message}");
+            _logger.LogCritical(ex, "JSON deserialization error");
         }
         catch (Exception ex)
         {
-            _logger.LogError($"An unexpected error occurred: {ex.Message}");
+            _logger.LogError(ex, "An unexpected error occurred");
         }
     }
 
@@ -261,13 +241,11 @@ public class MatchService
         }
         catch (JsonException ex)
         {
-            _logger.LogCritical($"JSON deserialization error for offline match data: {ex.Message}");
+            _logger.LogCritical(ex, "JSON deserialization error for offline match data");
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                $"An unexpected error occurred while loading offline match data: {ex.Message}"
-            );
+            _logger.LogError(ex, "An unexpected error occurred while loading offline match data");
         }
     }
 
