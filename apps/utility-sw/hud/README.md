@@ -79,10 +79,11 @@ whenever anything under `panorama/` changes, alongside the plugin's own
 hot-reload. A broken layout logs to `/tmp/hud-build.log` and never stops the C#
 from reloading.
 
-The addon half is **not** hot-reloadable, though — the vpk has to reach a game
-*client*, which means a local `gameinfo.gi` override or the Workshop. Building it
-in the pod keeps it compiled and catches layout errors next to the C# ones; it
-does not put it in front of anyone.
+The addon half is **not** hot-reloadable, though — the layouts have to reach a
+game *client*, which means the Workshop or `scripts/hud-watch.sh` (see
+[Getting it onto clients](#getting-it-onto-clients)). Building it in the pod
+keeps it compiled and catches layout errors next to the C# ones; it does not put
+it in front of anyone.
 
 By hand:
 
@@ -91,8 +92,8 @@ By hand:
 ```
 
 Clones and builds [PanoramaCompiler](https://github.com/nicedayzhu/PanoramaCompiler),
-compiles `panorama/` into `build/stage/panorama/`, and packs
-`build/upload/<WORKSHOP_ITEM_ID>.vpk`.
+compiles `panorama/` into `build/stage/panorama/`, copies that tree loose to
+`dist/panorama/`, and packs `build/upload/<WORKSHOP_ITEM_ID>.vpk`.
 
 **The vpk must be named after the workshop item id.** CS2 resolves an addon as
 `steamapps/workshop/content/730/<id>/<id>.vpk`, so a friendly name downloads
@@ -153,7 +154,42 @@ best-effort: if the entity will not spawn, every panel falls back to the centre
 text that has always worked, and `.hud` lets a player choose the text path
 anyway.
 
-- **Development** — point CS2 at `build/` as a local override via `gameinfo.gi`.
+- **Development** — `scripts/hud-watch.sh`, run locally once `codepier up` has
+  the pod building. `build/` does not cross the sync, so `build.sh` also leaves
+  the compiled tree in `dist/panorama/`; the script copies it as loose files
+  into `game/csgo/panorama/` of a CS2 install (`CS2_DIR`, by default the game
+  PC's share) and removes them again on exit.
+
+  A running client keeps every layout and stylesheet it has loaded, by name,
+  until it exits, so a rebuilt file under the same name needs CS2 relaunched to
+  be seen. The dev loop gives each build names the client has never seen
+  instead. `dev.sh` builds with `HUD_DEV_TAG` set to a timestamp; `build.sh`
+  then compiles, beside the plain build, a copy in which every file under a
+  `custom_game/` directory is renamed `<stem>__<tag>` and the references between
+  them rewritten. `hud-watch.sh` writes the tag of the build it has finished
+  copying to `dist/hud-live-tag`, `dev.sh` relays that into the plugin
+  directory, and `HudKit` respawns the layouts under the tagged names, closing
+  whatever panel was open. The previous build's tagged files leave the install
+  as the new ones land. The sources, the names in `HudSlots.cs`, the vpk and a
+  published build are never tagged. `hud-watch.sh --plain` keeps the plugin on
+  the plain names. All of it rests on a running client loading a file it has
+  not seen before, which it does (seen in game, 2026-10-13).
+
+  `gameinfo.gi` is never touched: `game/csgo` is already on the stock search
+  path, and an edited `gameinfo.gi` puts the client in untrusted mode. The
+  script keeps a copy of the stock file beside it as `gameinfo.gi.original`
+  (and in `~/.5stack/cs2-gameinfo/`) and warns if the live one stops being
+  Valve's.
+
+  **A mounted workshop addon wins over a loose file at the same path** (seen in
+  game, 2026-10-13): the client drew the published `nade_hud` and stylesheet,
+  while layouts that existed only loose loaded from disk and came out unstyled.
+  Two things keep that from biting. Blank `HUD_WORKSHOP_ID` on the dev server:
+  `setup.sh` then never links AddonsManager, so no addon is announced. It takes
+  a server restart and a CS2 relaunch to show, and a client without the loose
+  files then gets no HUD there. And a layout or stylesheet that changes after a
+  publish takes a new name, so the loose copy is seen even on a server that
+  still serves the addon; the rule sits beside the names in `HudSlots.cs`.
 - **Production** — already wired. `HUD_WORKSHOP_ID` in `apps/swiftly/Dockerfile`
   holds the published id, and `setup.sh` installs
   [AddonsManager](https://github.com/SwiftlyS2-Plugins/AddonsManager) and writes
@@ -192,22 +228,32 @@ workshop path, so a Private item is not downloadable by the server or by anyone
 else.
 
 **`AddonConfig/VpkDirectories` decides what the item contains.** CS2's Workshop
-Manager only collects whitelisted directories, and neither
-`panorama/layout/custom_game` nor `panorama/styles/custom_game` is in the default
-list. Publish without adding them and you get a valid, public, *empty* item — no
+Manager only collects whitelisted directories. The stock `gameinfo.gi` lists
+`panorama/layout/custom_game` and `panorama/styles/custom_game` (checked
+2026-10-13) and nothing else under `panorama/layout` or `panorama/styles`.
+Publish from outside the list and you get a valid, public, *empty* item — no
 error anywhere. Workshop Manager's contents preview must list `[vxml_c]` and
 `[vcss_c]` before you submit.
 
 ### Publishing from CI
 
-`.github/workflows/hud-workshop.yaml` is the reliable route: run **Publish HUD
-Addon** from the Actions tab. It runs the slot contract, builds the addon,
-refuses to upload one that is missing a layout or the `panorama/` prefix, and
-publishes. `dry_run` does everything except the upload.
+The addon is published with the plugin that needs it. The practice plugin ships
+in the SwiftlyS2 image, so the CI run that releases that image (a push to `main`
+or `beta` that changes it) also runs **Publish HUD Addon**, which checks the
+slot contract, builds the addon, refuses to upload one that is missing a layout
+or the `panorama/` prefix, and updates the item `apps/swiftly/Dockerfile` mounts
+(`HUD_WORKSHOP_ID`). Unchanged sources are skipped, so most releases publish
+nothing.
 
-Leave `item_id` blank the first time; the run logs the id it created. Pass that
-id on every run afterwards or you will publish a second item rather than update
-the first.
+There is one Workshop item for every server on both channels, so a release
+reaches players on servers still running an older plugin. That is the reason a
+published layout or stylesheet is never edited in place: a change takes a new
+name, so a publish only ever adds files the older plugin does not ask for. The
+rule is beside the names in `HudSlots.cs`.
+
+It can still be run by hand from the Actions tab. `dry_run` does everything
+except the upload. By hand, a blank `item_id` creates a new item and logs its
+id; pass an id to update that item instead.
 
 **An unchanged addon is not republished.** A Workshop update notifies every
 subscriber and bumps the item, so the run first hashes everything that decides
