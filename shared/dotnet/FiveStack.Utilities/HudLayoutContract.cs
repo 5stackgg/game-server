@@ -24,6 +24,11 @@ public static class HudLayoutContract
         RegexOptions.Compiled
     );
 
+    private static readonly Regex ClassAttribute = new Regex(
+        "\\bclass=\"([^\"]*)\"",
+        RegexOptions.Compiled
+    );
+
     public static SortedSet<string> Variables(string layoutXml)
     {
         return Collect(Variable, layoutXml);
@@ -207,6 +212,35 @@ public static class HudLayoutContract
         }
 
         return problems;
+    }
+
+    // A class no rule selects draws with Panorama's defaults: a row of buttons
+    // with no flow stacks them all on one spot.
+    public static List<string> VerifyClasses(HudLayoutSlots declared, string layoutXml, string css)
+    {
+        var problems = new List<string>();
+
+        foreach (string name in Classes(layoutXml))
+        {
+            if (!new Regex($"\\.{Regex.Escape(name)}(?![A-Za-z0-9_-])").IsMatch(css))
+            {
+                problems.Add($"{declared.Layout}: nothing styles .{name}");
+            }
+        }
+
+        return problems;
+    }
+
+    private static SortedSet<string> Classes(string layoutXml)
+    {
+        var found = new SortedSet<string>(StringComparer.Ordinal);
+
+        foreach (string attribute in Collect(ClassAttribute, layoutXml))
+        {
+            found.UnionWith(attribute.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        }
+
+        return found;
     }
 
     private static SortedSet<string> Collect(Regex pattern, string source)

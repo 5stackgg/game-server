@@ -53,7 +53,8 @@ public static class HudSlots
     // stylesheet that changes after a publish gets a new name, and the old
     // file stays in hud/panorama until no supported plugin asks for it.
     //
-    // nade_* and nadehud are the first published set.
+    // nade_* and nadehud are the first published set. nade2_edit was published
+    // drawing its buttons with classes nadehud2 never styled.
     public const string Stylesheet = "nadehud2";
 
     // The wheel's own. It draws with things nothing else here uses, and a
@@ -63,7 +64,7 @@ public static class HudSlots
     public const string NadeHud = "nade2_hud";
     public const string NadePick = "nade2_pick";
     public const string NadeRun = "nade2_run";
-    public const string NadeEdit = "nade2_edit";
+    public const string NadeEdit = "nade3_edit";
     public const string NadeBar = "nade2_bar";
     public const string NadeWheel = "nade2_wheel";
 
