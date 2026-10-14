@@ -527,4 +527,28 @@ public class TitleCaseTests
     {
         Assert.Equal(expected, PracticeLineupUtility.AimEyeHeight(Aimed(technique, feet, eye)));
     }
+
+    // The game stops a look down a degree short of straight down, so the
+    // crosshair lands in front of the feet. The dot was drawn on the feet,
+    // where no crosshair could ever be put.
+    [Theory]
+    [InlineData(eThrowTechnique.Stationary, 164f, 0f, 1.117f, 0f)]
+    [InlineData(eThrowTechnique.Crouch, 146f, 90f, 0f, 0.803f)]
+    public void TheLookDownDotIsWhereTheCrosshairLandsFacingTheThrow(
+        eThrowTechnique technique,
+        float eye,
+        float yaw,
+        float x,
+        float y
+    )
+    {
+        LineupRecord lineup = Aimed(technique, 100f, eye);
+        lineup.release.yaw = yaw;
+
+        Vec3 dot = PracticeLineupUtility.LookDownPoint(lineup, new Vec3(10f, 20f, 100f));
+
+        Assert.Equal(10f + x, dot.x, 2);
+        Assert.Equal(20f + y, dot.y, 2);
+        Assert.Equal(100f, dot.z, 2);
+    }
 }

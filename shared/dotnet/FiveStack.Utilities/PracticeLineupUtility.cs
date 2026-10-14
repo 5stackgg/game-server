@@ -134,6 +134,26 @@ public static class PracticeLineupUtility
         return keys.Crouch ? CrouchedEyeHeight : StandingEyeHeight;
     }
 
+    // The furthest down the game lets anybody look. It is short of straight
+    // down, so the crosshair lands a little in front of the feet, not on them.
+    public const float MaxPitchDegrees = 89f;
+
+    // Where the crosshair lands on the floor, looking as far down as the game
+    // allows while facing the way this throw is made. A mark on the feet sat
+    // an inch behind it, where no crosshair could ever be put.
+    public static Vec3 LookDownPoint(LineupRecord lineup, Vec3 feet)
+    {
+        float shortOf = (90f - MaxPitchDegrees) * MathF.PI / 180f;
+        float ahead = AimEyeHeight(lineup) * MathF.Tan(shortOf);
+        float yaw = lineup.release.yaw * MathF.PI / 180f;
+
+        return new Vec3(
+            feet.x + (MathF.Cos(yaw) * ahead),
+            feet.y + (MathF.Sin(yaw) * ahead),
+            feet.z
+        );
+    }
+
     // How wrong the crosshair is for this throw, in degrees: the worse of the
     // two axes, because being dead on the yaw does not help if the pitch is off.
     public static float AimError(float eyeYaw, float eyePitch, float yaw, float pitch)

@@ -35,6 +35,10 @@ public partial class PracticeReplay
 
         // The throw in focus is made from here.
         public bool Lead;
+
+        // The throw the dot is drawn for: it sits where that throw's
+        // crosshair lands looking down, which depends on the way it faces.
+        public required LineupRecord Dot;
         public readonly MarkerSet Set = new();
     }
 
@@ -700,8 +704,8 @@ public partial class PracticeReplay
         foreach (LineupRecord lineup in pad.Spot.Lineups)
         {
             // Exactly where the throw was made: the ring is the eight units
-            // that count as on the spot, and the dot is the place itself --
-            // looking straight down, it is what goes under the crosshair.
+            // that count as on the spot, and the dot is what goes under the
+            // crosshair looking straight down, facing the arrow.
             Vec3 feet = Grounded(lineup.release.feet_position);
             Stand? stand = pad.Stands.FirstOrDefault(known =>
                 (known.At - feet).Length() <= StandSameUnits
@@ -709,7 +713,7 @@ public partial class PracticeReplay
 
             if (stand == null)
             {
-                stand = new Stand { At = feet };
+                stand = new Stand { At = feet, Dot = lineup };
                 pad.Stands.Add(stand);
             }
 
@@ -718,7 +722,7 @@ public partial class PracticeReplay
 
         foreach (Stand stand in pad.Stands)
         {
-            DrawStand(stand.Set, owner, stand.At, StandColor(stand));
+            DrawStand(stand, owner);
         }
     }
 
@@ -727,12 +731,14 @@ public partial class PracticeReplay
         return stand.On ? Green : stand.Lead ? Amber : AmberDim;
     }
 
-    private void DrawStand(MarkerSet into, ulong owner, Vec3 at, Color color)
+    private void DrawStand(Stand stand, ulong owner)
     {
+        Vec3 at = stand.At;
         float z = PadZ(at);
+        Color color = StandColor(stand);
 
         Segments(
-            into,
+            stand.Set,
             owner,
             at,
             0f,
@@ -742,9 +748,9 @@ public partial class PracticeReplay
             PadRingWidth
         );
         Segments(
-            into,
+            stand.Set,
             owner,
-            at,
+            PracticeLineupUtility.LookDownPoint(stand.Dot, at),
             0f,
             z,
             new[] { new MarkerSegment(-PadDotUnits, 0f, PadDotUnits, 0f) },
@@ -775,6 +781,18 @@ public partial class PracticeReplay
         foreach (Stand stand in pad.Stands)
         {
             bool leads = stand == leading;
+
+            // Two throws off one place that face different ways put the dot
+            // in different places, so it follows the one in focus.
+            if (leads && lead != null && stand.Dot.client_id != lead.client_id)
+            {
+                stand.Lead = true;
+                stand.Dot = lead;
+                Despawn(stand.Set);
+                DrawStand(stand, owner);
+
+                continue;
+            }
 
             if (stand.Lead == leads)
             {
@@ -922,10 +940,24 @@ public partial class PracticeReplay
 
         if (onSpot)
         {
+            List<(Vec3 center, Vec3 forward, float away)> aims = ordered.Select(AimPoint).ToList();
+            int leadAt = lead != null ? ordered.IndexOf(lead) : -1;
+            (Vec3 center, Vec3 forward, float away) seen = aims[Math.Max(leadAt, 0)];
+            bool[] ringed = PracticeMarkerUtility.Ringed(
+                seen.center - (seen.forward * seen.away),
+                aims.Select(aim => aim.center).ToList(),
+                leadAt
+            );
+
             for (int index = 0; index < ordered.Count; index++)
             {
+                if (!ringed[index])
+                {
+                    continue;
+                }
+
                 LineupRecord lineup = ordered[index];
-                (Vec3 center, Vec3 forward, float away) = AimPoint(lineup);
+                (Vec3 center, Vec3 forward, float away) = aims[index];
 
                 var mark = new AimMark
                 {
@@ -1112,9 +1144,7 @@ public partial class PracticeReplay
 
         float Units(float degrees) => PracticeMarkerUtility.Subtend(mark.Away, degrees);
 
-        // Thin lines vanish at range, so the weight grows with distance the
-        // same way the size does.
-        float width = Math.Clamp(mark.Away * 0.0018f, MarkerWidth, 2.2f);
+        float width = Units(PracticeMarkerUtility.LineDegrees);
         Color color = AimColor(mark);
 
         void Ring(float radius, int segments)
@@ -1138,7 +1168,7 @@ public partial class PracticeReplay
         // says which throw is in hand.
         if (!mark.Full)
         {
-            Ring(Units(1f), 8);
+            Ring(Units(PracticeMarkerUtility.OtherRingDegrees), PracticeMarkerUtility.OtherRingSegments);
 
             return;
         }

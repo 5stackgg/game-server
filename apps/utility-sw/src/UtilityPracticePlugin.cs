@@ -285,6 +285,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         Core.Event.OnClientSteamAuthorize += _authorizeHandler;
 
         InitializeConnectClientHook();
+        InitializeTerminateRoundHook();
 
         // One repeating job for the whole plugin, not one per player. These
         // deliberately do not get StopOnMapChange: the plugin is not reloaded
@@ -481,6 +482,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         }
 
         UninstallConnectClientHook();
+        UninstallTerminateRoundHook();
 
         _secondTimer?.Cancel();
         _secondTimer = null;
@@ -606,7 +608,8 @@ public partial class UtilityPracticePlugin : BasePlugin
     private readonly List<ThrowSnapshot> _bots = new();
 
     /// <summary>
-    /// Put a bot where the caller is standing, facing the way they face.
+    /// Put a bot where the caller is standing, facing the way they face, on
+    /// the other team.
     ///
     /// The point is something to flash and to blow up that does not move, so
     /// it is frozen where it lands rather than allowed to play the round. The
@@ -633,10 +636,14 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         _bots.Add(spot);
 
+        // The other side, which is what utility is thrown at. bot_join_team is
+        // for the quota, which fills a slot of its own on whichever team it
+        // likes.
+        string side = pawn.TeamNum == 3 ? "t" : "ct";
+
+        Core.Engine.ExecuteCommand($"bot_join_team {side}");
         HoldBotsStill();
-        Core.Engine.ExecuteCommand(
-            pawn.TeamNum == 3 ? "bot_add_ct" : "bot_add_t"
-        );
+        Core.Engine.ExecuteCommand($"bot_add_{side}");
 
         // The bot does not exist on the tick it is asked for, and it spawns
         // wherever the map puts it. Placing it is a second step, taken on the
@@ -839,6 +846,30 @@ public partial class UtilityPracticePlugin : BasePlugin
                 new QAngle(0, spot.yaw, 0),
                 new Vector(0, 0, 0)
             );
+
+            Unblock(pawn);
+        }
+    }
+
+    // A bot is put where the player is standing, so it starts inside them,
+    // and one on the other side is solid whatever mp_solid_teammates says.
+    // Debris stands on the world and is in nobody's way. A respawn undoes it,
+    // so it is set every time a bot is stood on its spot.
+    private void Unblock(CCSPlayerPawn pawn)
+    {
+        try
+        {
+            CCollisionProperty collision = pawn.Collision;
+
+            collision.CollisionGroup = (byte)CollisionGroup.Debris;
+            collision.CollisionGroupUpdated();
+            collision.CollisionAttribute.CollisionGroup = (byte)CollisionGroup.Debris;
+            collision.CollisionAttribute.CollisionGroupUpdated();
+            pawn.CollisionRulesChanged();
+        }
+        catch (Exception error)
+        {
+            _logger.LogWarning(error, "unable to make a placed bot non-solid");
         }
     }
 
@@ -905,7 +936,13 @@ public partial class UtilityPracticePlugin : BasePlugin
         // What they are pointing at wins over what they are near: with two
         // stances in reach, the crosshair is the only thing that says which.
         LineupRecord? target =
-            LookingAt(pawn, at, library, PracticeReplay.SpotAt(library, at))
+            LookingAt(
+                pawn,
+                at,
+                library,
+                PracticeReplay.SpotAt(library, at),
+                _system.StateFor(player.SteamID).Loaded
+            )
             ?? Nearest(library, at);
 
         if (target == null)
@@ -1008,7 +1045,13 @@ public partial class UtilityPracticePlugin : BasePlugin
             // walking in cannot say which throw is meant -- and picking one by
             // arrival order means the aim marker changes depending on which
             // side you stepped in from. Pointing at a ring is unambiguous.
-            LineupRecord? aimedAt = LookingAt(pawn, at, library, here);
+            LineupRecord? aimedAt = LookingAt(
+                pawn,
+                at,
+                library,
+                here,
+                _system.StateFor(player.SteamID).Loaded
+            );
 
             // Standing on a spot shows every throw off it -- you cannot choose
             // between options you cannot see. Looking toward one only decides
@@ -1077,7 +1120,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         CCSPlayerPawn pawn,
         Vec3 at,
         IReadOnlyList<LineupRecord> library,
-        IReadOnlyList<LineupRecord> here
+        IReadOnlyList<LineupRecord> here,
+        LineupRecord? loaded
     )
     {
         QAngle eyes = pawn.EyeAngles;
@@ -1105,7 +1149,10 @@ public partial class UtilityPracticePlugin : BasePlugin
 
             if (bestAim != null)
             {
-                return bestAim;
+                return PracticeMarkerUtility.Chosen(
+                    bestAim,
+                    here.FirstOrDefault(lineup => lineup.client_id == loaded?.client_id)
+                );
             }
 
             // Standing on a spot but looking nowhere near any of its throws:
@@ -1632,8 +1679,8 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         IReadOnlyList<LineupRecord> library = Shown(player.SteamID);
         List<LineupRecord> here = PracticeReplay.SpotAt(library, at);
-        LineupRecord? aimedAt = LookingAt(pawn, at, library, here);
         LineupRecord? loaded = _system.StateFor(player.SteamID).Loaded;
+        LineupRecord? aimedAt = LookingAt(pawn, at, library, here, loaded);
 
         // A drill has already decided what the player is working on, and it
         // stays decided even when they walk off the spot -- the panels are how
@@ -1763,6 +1810,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         // comes before everything else that assumes people can get in.
         _session.RetryIfMissing(TimeSpan.FromSeconds(15));
         EndWarmup();
+        ReloadWhenTheClockRunsOut();
         RespawnTheDead();
         KeepBotsStanding();
         PruneLive();
