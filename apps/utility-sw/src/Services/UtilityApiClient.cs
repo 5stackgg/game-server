@@ -235,6 +235,44 @@ public class UtilityApiClient
         );
     }
 
+    // A lineup discovery the panel wants thrown, by its id. Only a render
+    // server is ever told to run one.
+    public async Task<DiscoveryJob?> DiscoveryJob(string id)
+    {
+        string? body = await SendText(HttpMethod.Get, $"/utility/discovery/{Uri.EscapeDataString(id)}/job", null);
+
+        if (body == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<DiscoveryJob>(body, PracticeJson.Options);
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to read discovery {id}", id);
+            return null;
+        }
+    }
+
+    public async Task<bool> DiscoveryResults(string id, List<DiscoveryOutcome> outcomes)
+    {
+        string body = JsonSerializer.Serialize(new { outcomes }, PracticeJson.Options);
+
+        return await SendText(HttpMethod.Post, $"/utility/discovery/{Uri.EscapeDataString(id)}/results", body)
+            != null;
+    }
+
+    public async Task<bool> DiscoveryDone(string id, string? error)
+    {
+        string body = JsonSerializer.Serialize(new { error }, PracticeJson.Options);
+
+        return await SendText(HttpMethod.Post, $"/utility/discovery/{Uri.EscapeDataString(id)}/done", body)
+            != null;
+    }
+
     public async Task<bool> Delete(string id)
     {
         return await SendText(HttpMethod.Delete, $"/utility/{Uri.EscapeDataString(id)}", null)
