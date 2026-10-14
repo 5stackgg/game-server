@@ -1619,6 +1619,8 @@
 {
 	flow-children: right;
 	margin-bottom: 6px;
+	transition-property: opacity;
+	transition-duration: 0.15s;
 }
 
 .nh-key-row.hidden
@@ -1634,7 +1636,7 @@
 
 .nh-keycap
 {
-	width: 78px;
+	width: 88px;
 	margin-right: 9px;
 	padding: 4px 0px 3px;
 	vertical-align: center;
@@ -1646,6 +1648,10 @@
 	background-color: rgba(9, 15, 21, 0.82);
 	border: 1px solid rgba(146, 178, 208, 0.45);
 	border-radius: 2px;
+	text-overflow: shrink;
+	white-space: nowrap;
+	transition-property: background-color, color, border;
+	transition-duration: 0.12s;
 }
 
 .nh-key-label
@@ -1653,11 +1659,13 @@
 	vertical-align: center;
 	font-family: Stratum2 Condensed, 'Arial Unicode MS';
 	font-size: 16px;
-	font-weight: bold;
+	font-weight: normal;
 	letter-spacing: 1px;
 	text-transform: uppercase;
 	color: #c3d0dc;
-	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.65);
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+	transition-property: color;
+	transition-duration: 0.12s;
 }
 
 /* The key is doing its thing this moment: zoom held, menu open. */
@@ -1685,7 +1693,7 @@
 	opacity: 0;
 	font-family: Stratum2 Condensed, 'Arial Unicode MS';
 	font-size: 17px;
-	font-weight: bold;
+	font-weight: normal;
 	letter-spacing: 1.1px;
 	text-transform: uppercase;
 	color: #f3f6fb;
@@ -1693,14 +1701,18 @@
 	border: 1px solid rgba(255, 255, 255, 0.08);
 	border-left: 3px solid #e4ae39;
 	border-radius: 2px;
-	transition-property: opacity;
-	transition-duration: 0.12s;
+	transition-property: opacity, transform;
+	transition-duration: 0.15s;
+	transform: translate3d( 0px, 8px, 0px );
+	transition-timing-function: ease-out;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-toast.shown
 {
 	visibility: visible;
 	opacity: 1;
+	transform: translate3d( 0px, 0px, 0px );
 }
 
 
@@ -1724,11 +1736,15 @@
 	margin-bottom: 8px;
 	flow-children: down;
 	visibility: collapse;
+	opacity: 0;
+	transition-property: opacity;
+	transition-duration: 0.15s;
 }
 
 .nh-out.shown
 {
 	visibility: visible;
+	opacity: 1;
 }
 
 .nh-out-head
@@ -1743,19 +1759,19 @@
 	width: fill-parent-flow(1);
 	font-family: Stratum2 Mono, 'Arial Unicode MS';
 	font-size: 12px;
-	font-weight: bold;
+	font-weight: normal;
 	letter-spacing: 2px;
 	color: #a9b7c5;
-	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.65);
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-out-count
 {
 	font-family: Stratum2 Mono, 'Arial Unicode MS';
 	font-size: 12px;
-	font-weight: bold;
+	font-weight: normal;
 	color: #f3f6fb;
-	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.65);
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-out-row
@@ -1763,16 +1779,23 @@
 	width: 100%;
 	flow-children: down;
 	margin-bottom: 4px;
-	background-color: rgba(9, 15, 21, 0.82);
+	background-color: rgba(9, 15, 21, 0.9);
 	border: 1px solid rgba(255, 255, 255, 0.08);
 	border-left: 3px solid #c8d6e4;
 	border-radius: 2px;
 	visibility: collapse;
+	opacity: 0;
+	transform: translate3d( 16px, 0px, 0px );
+	transition-property: opacity, transform;
+	transition-duration: 0.18s;
+	transition-timing-function: ease-out;
 }
 
 .nh-out-row.shown
 {
 	visibility: visible;
+	opacity: 1;
+	transform: translate3d( 0px, 0px, 0px );
 }
 
 .nh-out-line
@@ -1814,11 +1837,12 @@
 	width: 100%;
 	font-family: Stratum2 Condensed, 'Arial Unicode MS';
 	font-size: 17px;
-	font-weight: bold;
+	font-weight: normal;
 	letter-spacing: 0.6px;
 	color: #f3f6fb;
 	white-space: nowrap;
 	text-overflow: ellipsis;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 /* How long it was in the air: the half of a throw's timing that is decided
@@ -1827,27 +1851,29 @@
 .nh-out-flight
 {
 	margin-right: 8px;
-	font-family: Stratum2 Mono, 'Arial Unicode MS';
-	font-size: 11px;
-	font-weight: bold;
-	letter-spacing: 0.5px;
-	color: #a9b7c5;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
+	color: #b9c6d3;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 /* The panel's verdict on a throw made at a lineup. */
 .nh-out-score
 {
-	font-family: Stratum2 Mono, 'Arial Unicode MS';
-	font-size: 11px;
-	font-weight: bold;
-	letter-spacing: 0.5px;
-	color: #7e8fa1;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
+	color: #9aa9b8;
 	white-space: nowrap;
 	text-overflow: ellipsis;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
-.nh-out-row.landed .nh-out-score { color: rgb(96, 222, 128); }
-.nh-out-row.missed .nh-out-score { color: rgb(255, 104, 96); }
+.nh-out-row.landed .nh-out-score { color: rgb(126, 226, 160); }
+.nh-out-row.missed .nh-out-score { color: rgb(255, 143, 135); }
 
 .nh-out-time
 {
@@ -1856,8 +1882,9 @@
 	vertical-align: center;
 	font-family: Stratum2 Mono, 'Arial Unicode MS';
 	font-size: 15px;
-	font-weight: bold;
+	font-weight: normal;
 	color: #f3f6fb;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-out-track
@@ -1980,15 +2007,19 @@
 	width: 100%;
 	flow-children: down;
 	visibility: collapse;
-	background-color: rgba(9, 15, 21, 0.84);
+	background-color: rgba(9, 15, 21, 0.9);
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	border-left: 3px solid #e4ae39;
 	border-radius: 2px;
+	opacity: 0;
+	transition-property: opacity;
+	transition-duration: 0.15s;
 }
 
 .nh-plan.shown
 {
 	visibility: visible;
+	opacity: 1;
 }
 
 .nh-plan-head
@@ -2004,19 +2035,21 @@
 	width: fill-parent-flow(1);
 	font-family: Stratum2 Condensed, 'Arial Unicode MS';
 	font-size: 18px;
-	font-weight: bold;
+	font-weight: normal;
 	letter-spacing: 1px;
 	color: #f3f6fb;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-plan-sub
 {
 	vertical-align: center;
-	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-family: Stratum2, 'Arial Unicode MS';
 	font-size: 12px;
-	font-weight: bold;
-	letter-spacing: 1px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
 	color: #e4ae39;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-plan-row
@@ -2026,11 +2059,18 @@
 	padding: 5px 10px 4px;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 	visibility: collapse;
+	opacity: 0;
+	transform: translate3d( 12px, 0px, 0px );
+	transition-property: opacity, transform;
+	transition-duration: 0.18s;
+	transition-timing-function: ease-out;
 }
 
 .nh-plan-row.shown
 {
 	visibility: visible;
+	opacity: 1;
+	transform: translate3d( 0px, 0px, 0px );
 }
 
 .nh-plan-row.now
@@ -2043,11 +2083,12 @@
 	width: fill-parent-flow(1);
 	font-family: Stratum2 Condensed, 'Arial Unicode MS';
 	font-size: 16px;
-	font-weight: bold;
+	font-weight: normal;
 	letter-spacing: 0.6px;
 	color: #c3d0dc;
 	white-space: nowrap;
 	text-overflow: ellipsis;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-plan-row.now .nh-plan-name
@@ -2060,8 +2101,9 @@
 	vertical-align: center;
 	font-family: Stratum2 Mono, 'Arial Unicode MS';
 	font-size: 13px;
-	font-weight: bold;
+	font-weight: normal;
 	color: #a9b7c5;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-plan-row.done .nh-plan-name
@@ -2077,11 +2119,12 @@
 .nh-plan-foot
 {
 	padding: 6px 10px 7px;
-	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-family: Stratum2, 'Arial Unicode MS';
 	font-size: 12px;
-	font-weight: bold;
-	letter-spacing: 1px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
 	color: #a9b7c5;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 /* ── what the flash did ───────────────────────────────────
@@ -2096,7 +2139,7 @@
 	flow-children: down;
 	visibility: collapse;
 	opacity: 0;
-	background-color: rgba(9, 15, 21, 0.86);
+	background-color: rgba(9, 15, 21, 0.9);
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	border-left: 3px solid rgb(255, 210, 26);
 	border-radius: 2px;
@@ -2122,10 +2165,11 @@
 {
 	font-family: Stratum2 Condensed, 'Arial Unicode MS';
 	font-size: 18px;
-	font-weight: bold;
+	font-weight: normal;
 	letter-spacing: 1px;
 	text-transform: uppercase;
 	color: #f3f6fb;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-flash-sub
@@ -2133,11 +2177,12 @@
 	width: fill-parent-flow(1);
 	vertical-align: center;
 	text-align: right;
-	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-family: Stratum2, 'Arial Unicode MS';
 	font-size: 12px;
-	font-weight: bold;
-	letter-spacing: 1px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
 	color: rgb(255, 210, 26);
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-flash-row
@@ -2146,11 +2191,18 @@
 	flow-children: right;
 	padding: 4px 10px;
 	visibility: collapse;
+	opacity: 0;
+	transform: translate3d( 12px, 0px, 0px );
+	transition-property: opacity, transform;
+	transition-duration: 0.18s;
+	transition-timing-function: ease-out;
 }
 
 .nh-flash-row.shown
 {
 	visibility: visible;
+	opacity: 1;
+	transform: translate3d( 0px, 0px, 0px );
 }
 
 .nh-flash-who
@@ -2159,10 +2211,11 @@
 	vertical-align: center;
 	font-family: Stratum2 Condensed, 'Arial Unicode MS';
 	font-size: 16px;
-	font-weight: bold;
+	font-weight: normal;
 	color: #f3f6fb;
 	white-space: nowrap;
 	text-overflow: ellipsis;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-flash-track
@@ -2197,8 +2250,9 @@
 	text-align: right;
 	font-family: Stratum2 Mono, 'Arial Unicode MS';
 	font-size: 14px;
-	font-weight: bold;
+	font-weight: normal;
 	color: #f3f6fb;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-flash-tag
@@ -2206,12 +2260,13 @@
 	width: 118px;
 	margin-left: 8px;
 	vertical-align: center;
-	font-family: Stratum2 Mono, 'Arial Unicode MS';
-	font-size: 11px;
-	font-weight: bold;
-	letter-spacing: 1px;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
 	text-transform: uppercase;
 	color: #a9b7c5;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 /* Your own side, you included. */
@@ -2224,12 +2279,13 @@
 {
 	padding: 5px 10px 6px;
 	border-top: 1px solid rgba(255, 255, 255, 0.07);
-	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-family: Stratum2, 'Arial Unicode MS';
 	font-size: 12px;
-	font-weight: bold;
-	letter-spacing: 1px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
 	text-transform: uppercase;
 	color: #a9b7c5;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-flash-fade.d0 { width: 0%; }

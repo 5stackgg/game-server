@@ -70,7 +70,9 @@
 
 .nw-keycap
 {
-	width: 78px;
+	width: 96px;
+	text-overflow: shrink;
+	white-space: nowrap;
 	margin-right: 9px;
 	padding: 4px 0px 3px;
 	vertical-align: center;

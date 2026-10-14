@@ -208,14 +208,14 @@ xml.append('''				<Button id="hub" class="nw-hub"><Label id="hubt" class="nw-hub
 ''')
 
 KEYS = [
-    ("TAB", "This menu · hold for the scoreboard"),
-    ("E", "Snap onto the nearest spot · again for the next throw there"),
-    ("R", "Rethrow · hold to zoom"),
-    ("R", "With a grenade in the air: ride along with it"),
-    ("2× CTRL", "Add a bot where you stand"),
-    ("2× SHIFT", "Noclip on or off"),
-    ("2× F", "Aim ring on or off · in a drill it fades as you land it"),
-    ("DEL", "Clear smoke and fire · twice clears the bots"),
+    ("${+showscores}", "This menu · hold for the scoreboard"),
+    ("${+use}", "Snap onto the nearest spot · again for the next throw there"),
+    ("${+reload}", "Rethrow · hold to zoom"),
+    ("${+reload}", "With a grenade in the air: ride along with it"),
+    ("2× ${+duck}", "Add a bot where you stand"),
+    ("2× ${+speed}", "Noclip on or off"),
+    ("2× ${+lookatweapon}", "Aim ring on or off · in a drill it fades as you land it"),
+    ("${sellbackall}", "Clear smoke and fire · twice clears the bots"),
 ]
 
 for cap, text in KEYS:
@@ -299,7 +299,9 @@ css.append(f'''/* nadewheel2.vcss -- the radial menu, and nothing else.
 
 .nw-keycap
 {{
-	width: 78px;
+	width: 96px;
+	text-overflow: shrink;
+	white-space: nowrap;
 	margin-right: 9px;
 	padding: 4px 0px 3px;
 	vertical-align: center;
