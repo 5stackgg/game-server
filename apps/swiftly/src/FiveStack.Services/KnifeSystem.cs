@@ -142,8 +142,11 @@ public class KnifeSystem
     // a CT win -- that is just the "target saved" rule, and it hands the side
     // decision to CT for doing nothing. Resolve it on the round's actual state
     // instead: most players alive, then most total health, then a coin flip.
-    public Team ResolveTimedOutKnifeWinner(Team reported)
+    // Null when the round was never really played and has to be replayed.
+    public Team? ResolveTimedOutKnifeWinner(Team reported)
     {
+        int tPlayers = 0;
+        int ctPlayers = 0;
         int tAlive = 0;
         int ctAlive = 0;
         int tHealth = 0;
@@ -151,6 +154,17 @@ public class KnifeSystem
 
         foreach (IPlayer player in MatchUtility.Players())
         {
+            Team team = player.Controller.Team;
+
+            if (team == Team.T)
+            {
+                tPlayers++;
+            }
+            else if (team == Team.CT)
+            {
+                ctPlayers++;
+            }
+
             int health = player.PlayerPawn?.Health ?? 0;
 
             if (health <= 0)
@@ -158,16 +172,24 @@ public class KnifeSystem
                 continue;
             }
 
-            if (player.Controller.Team == Team.T)
+            if (team == Team.T)
             {
                 tAlive++;
                 tHealth += health;
             }
-            else if (player.Controller.Team == Team.CT)
+            else if (team == Team.CT)
             {
                 ctAlive++;
                 ctHealth += health;
             }
+        }
+
+        if (KnifeUtility.IsUnplayedTimeout(tPlayers, tAlive, ctPlayers, ctAlive))
+        {
+            _logger.LogWarning(
+                $"knife round timed out with a side that never played (T {tAlive}/{tPlayers} alive, CT {ctAlive}/{ctPlayers} alive) -- replaying it"
+            );
+            return null;
         }
 
         if (tAlive != ctAlive)

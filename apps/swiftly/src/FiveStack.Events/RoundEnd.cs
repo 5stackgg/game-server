@@ -112,16 +112,23 @@ public partial class FiveStackPlugin
         }
         else if (match.IsKnife())
         {
-            Team knifeWinner = TeamUtility.TeamNumToTeam(@event.Winner);
+            Team? knifeWinner = TeamUtility.TeamNumToTeam(@event.Winner);
 
             // Nobody was eliminated, the clock just ran out -- CS2 always calls
             // that for CT ("target saved"), which is not a knife-round result.
             if (reason == eWinReason.TimeRanOut)
             {
-                knifeWinner = match.knifeSystem.ResolveTimedOutKnifeWinner(knifeWinner);
+                knifeWinner = match.knifeSystem.ResolveTimedOutKnifeWinner(knifeWinner.Value);
             }
 
-            match.knifeSystem.SetWinningTeam(knifeWinner);
+            if (knifeWinner == null)
+            {
+                match.knifeSystem.Start();
+            }
+            else
+            {
+                match.knifeSystem.SetWinningTeam(knifeWinner.Value);
+            }
         }
 
         int liveTScoreAtEnd = 0;
