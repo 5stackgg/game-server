@@ -1604,14 +1604,13 @@
 /* What the keys do right now. The lines change with where you are standing
    and what is in your hand, so the legend is the menu you never have to
    open. */
-/* Just above the money, bottom left: in the corner the eye already visits,
-   and out of the middle of the screen where it was a distraction. */
+/* Down the middle of the left edge. Lower, above the money, chat and the
+   game's own notices were drawn over it. */
 .nh-legend
 {
 	horizontal-align: left;
-	vertical-align: bottom;
-	margin-left: 22px;
-	margin-bottom: 78px;
+	vertical-align: center;
+	margin-left: 42px;
 	flow-children: down;
 }
 
