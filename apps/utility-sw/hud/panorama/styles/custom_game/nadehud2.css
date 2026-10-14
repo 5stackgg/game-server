@@ -211,6 +211,8 @@
 	visibility: collapse;
 	margin-right: 5px;
 	padding: 5px 8px 3px;
+	text-transform: uppercase;
+	white-space: nowrap;
 	vertical-align: center;
 	font-family: Stratum2 Mono, 'Arial Unicode MS';
 	font-size: 15px;
@@ -1602,11 +1604,14 @@
 /* What the keys do right now. The lines change with where you are standing
    and what is in your hand, so the legend is the menu you never have to
    open. */
+/* Down the middle of the left edge, quiet: no card, and every row at half
+   strength until it matters. Lower, above the money, chat and the game's own
+   notices were drawn over it. */
 .nh-legend
 {
 	horizontal-align: left;
 	vertical-align: center;
-	margin-left: 42px;
+	margin-left: 30px;
 	flow-children: down;
 }
 
@@ -1618,7 +1623,10 @@
 .nh-key-row
 {
 	flow-children: right;
-	margin-bottom: 6px;
+	margin-bottom: 5px;
+	opacity: 0.55;
+	transition-property: opacity;
+	transition-duration: 0.15s;
 }
 
 .nh-key-row.hidden
@@ -1629,38 +1637,69 @@
 /* The key is there, and there is nothing for it to do from here. */
 .nh-key-row.dim
 {
-	opacity: 0.42;
+	opacity: 0.18;
 }
 
 .nh-keycap
 {
-	width: 78px;
-	margin-right: 9px;
-	padding: 4px 0px 3px;
+	min-width: 24px;
+	padding: 3px 6px 2px;
 	vertical-align: center;
-	font-family: Stratum2 Mono, 'Arial Unicode MS';
-	font-size: 14px;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 11px;
 	font-weight: bold;
-	color: #f3f6fb;
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
+	white-space: nowrap;
+	color: #eef2f5;
 	text-align: center;
-	background-color: rgba(9, 15, 21, 0.82);
-	border: 1px solid rgba(146, 178, 208, 0.45);
-	border-radius: 2px;
+	background-color: rgba(9, 15, 21, 0.42);
+	border: 1px solid rgba(238, 242, 245, 0.55);
+	border-radius: 3px;
+	transition-property: background-color, color, border;
+	transition-duration: 0.12s;
+}
+
+/* The key, sized to its name the way a keyboard's are, and a press count
+   after it: a fixed column so every description starts on one line. */
+.nh-key-col
+{
+	width: 84px;
+	margin-right: 8px;
+	vertical-align: center;
+	flow-children: right;
+}
+
+.nh-key-twice
+{
+	margin-left: 5px;
+	vertical-align: center;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 11px;
+	font-weight: bold;
+	color: rgba(238, 242, 245, 0.75);
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 1);
 }
 
 .nh-key-label
 {
 	vertical-align: center;
-	font-family: Stratum2 Condensed, 'Arial Unicode MS';
-	font-size: 16px;
-	font-weight: bold;
-	letter-spacing: 1px;
-	text-transform: uppercase;
-	color: #c3d0dc;
-	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.65);
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: normal;
+	color: #eef2f5;
+	text-shadow: 0px 1px 2px 2 rgba(0, 0, 0, 0.95);
+	transition-property: color;
+	transition-duration: 0.12s;
 }
 
 /* The key is doing its thing this moment: zoom held, menu open. */
+/* Doing its thing this moment: full strength and amber. */
+.nh-key-row.on
+{
+	opacity: 1;
+}
+
 .nh-key-row.on .nh-keycap
 {
 	color: #0c1218;
@@ -1670,7 +1709,7 @@
 
 .nh-key-row.on .nh-key-label
 {
-	color: #e4ae39;
+	color: #ffd27a;
 }
 
 /* What a key press just did. Where chat used to answer, except it does not
@@ -1685,7 +1724,7 @@
 	opacity: 0;
 	font-family: Stratum2 Condensed, 'Arial Unicode MS';
 	font-size: 17px;
-	font-weight: bold;
+	font-weight: normal;
 	letter-spacing: 1.1px;
 	text-transform: uppercase;
 	color: #f3f6fb;
@@ -1693,14 +1732,18 @@
 	border: 1px solid rgba(255, 255, 255, 0.08);
 	border-left: 3px solid #e4ae39;
 	border-radius: 2px;
-	transition-property: opacity;
-	transition-duration: 0.12s;
+	transition-property: opacity, transform;
+	transition-duration: 0.15s;
+	transform: translate3d( 0px, 8px, 0px );
+	transition-timing-function: ease-out;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-toast.shown
 {
 	visibility: visible;
 	opacity: 1;
+	transform: translate3d( 0px, 0px, 0px );
 }
 
 
@@ -1724,11 +1767,15 @@
 	margin-bottom: 8px;
 	flow-children: down;
 	visibility: collapse;
+	opacity: 0;
+	transition-property: opacity;
+	transition-duration: 0.15s;
 }
 
 .nh-out.shown
 {
 	visibility: visible;
+	opacity: 1;
 }
 
 .nh-out-head
@@ -1743,19 +1790,19 @@
 	width: fill-parent-flow(1);
 	font-family: Stratum2 Mono, 'Arial Unicode MS';
 	font-size: 12px;
-	font-weight: bold;
+	font-weight: normal;
 	letter-spacing: 2px;
 	color: #a9b7c5;
-	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.65);
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-out-count
 {
 	font-family: Stratum2 Mono, 'Arial Unicode MS';
 	font-size: 12px;
-	font-weight: bold;
+	font-weight: normal;
 	color: #f3f6fb;
-	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.65);
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-out-row
@@ -1763,16 +1810,23 @@
 	width: 100%;
 	flow-children: down;
 	margin-bottom: 4px;
-	background-color: rgba(9, 15, 21, 0.82);
+	background-color: rgba(9, 15, 21, 0.9);
 	border: 1px solid rgba(255, 255, 255, 0.08);
 	border-left: 3px solid #c8d6e4;
 	border-radius: 2px;
 	visibility: collapse;
+	opacity: 0;
+	transform: translate3d( 16px, 0px, 0px );
+	transition-property: opacity, transform;
+	transition-duration: 0.18s;
+	transition-timing-function: ease-out;
 }
 
 .nh-out-row.shown
 {
 	visibility: visible;
+	opacity: 1;
+	transform: translate3d( 0px, 0px, 0px );
 }
 
 .nh-out-line
@@ -1794,26 +1848,74 @@
 	wash-color: #c8d6e4;
 }
 
-.nh-out-name
+/* The name, and under it how long it was in the air and how it scored. */
+.nh-out-text
 {
 	width: fill-parent-flow(1);
 	vertical-align: center;
+	flow-children: down;
+}
+
+.nh-out-sub
+{
+	width: 100%;
+	flow-children: right;
+	margin-top: 1px;
+}
+
+.nh-out-name
+{
+	width: 100%;
 	font-family: Stratum2 Condensed, 'Arial Unicode MS';
 	font-size: 17px;
-	font-weight: bold;
+	font-weight: normal;
 	letter-spacing: 0.6px;
 	color: #f3f6fb;
 	white-space: nowrap;
 	text-overflow: ellipsis;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
+
+/* How long it was in the air: the half of a throw's timing that is decided
+   the moment it leaves the hand. Quieter than the time left, which is the
+   half still running. */
+.nh-out-flight
+{
+	margin-right: 8px;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
+	color: #b9c6d3;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+/* The panel's verdict on a throw made at a lineup. */
+.nh-out-score
+{
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
+	color: #9aa9b8;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+.nh-out-row.landed .nh-out-score { color: rgb(126, 226, 160); }
+.nh-out-row.missed .nh-out-score { color: rgb(255, 143, 135); }
 
 .nh-out-time
 {
+	width: 34px;
+	text-align: right;
 	vertical-align: center;
 	font-family: Stratum2 Mono, 'Arial Unicode MS';
 	font-size: 15px;
-	font-weight: bold;
+	font-weight: normal;
 	color: #f3f6fb;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-out-track
@@ -1838,6 +1940,15 @@
 .nh-out-row.molly .nh-out-icon { background-image: url("s2r://panorama/images/icons/equipment/molotov.vsvg"); wash-color: rgb(255, 106, 26); }
 .nh-out-row.molly { border-left: 3px solid rgb(255, 106, 26); }
 .nh-out-row.molly .nh-out-fill { background-color: rgb(255, 106, 26); }
+.nh-out-row.flash .nh-out-icon { background-image: url("s2r://panorama/images/icons/equipment/flashbang.vsvg"); wash-color: rgb(255, 210, 26); }
+.nh-out-row.flash { border-left: 3px solid rgb(255, 210, 26); }
+.nh-out-row.flash .nh-out-fill { background-color: rgb(255, 210, 26); }
+.nh-out-row.he .nh-out-icon { background-image: url("s2r://panorama/images/icons/equipment/hegrenade.vsvg"); wash-color: rgb(255, 59, 59); }
+.nh-out-row.he { border-left: 3px solid rgb(255, 59, 59); }
+.nh-out-row.he .nh-out-fill { background-color: rgb(255, 59, 59); }
+.nh-out-row.decoy .nh-out-icon { background-image: url("s2r://panorama/images/icons/equipment/decoy.vsvg"); wash-color: rgb(96, 222, 128); }
+.nh-out-row.decoy { border-left: 3px solid rgb(96, 222, 128); }
+.nh-out-row.decoy .nh-out-fill { background-color: rgb(96, 222, 128); }
 
 .nh-out-row.cyan { border-left: 3px solid rgb(0, 220, 255); }
 .nh-out-row.cyan .nh-out-icon { wash-color: rgb(0, 220, 255); }
@@ -1864,12 +1975,16 @@
 .nh-out-row.pink .nh-out-icon { wash-color: rgb(255, 150, 190); }
 .nh-out-row.pink .nh-out-fill { background-color: rgb(255, 150, 190); }
 
-/* Still in the air: nothing is counting down yet. */
+/* Still in the air: nothing is counting down yet, and the flight is the
+   number that is moving. */
 .nh-out-row.air .nh-out-time
 {
-	font-size: 11px;
-	letter-spacing: 1px;
-	color: #a9b7c5;
+	color: #7e8fa1;
+}
+
+.nh-out-row.air .nh-out-flight
+{
+	color: #f3f6fb;
 }
 
 .nh-out-row.air .nh-out-fill
@@ -1923,15 +2038,19 @@
 	width: 100%;
 	flow-children: down;
 	visibility: collapse;
-	background-color: rgba(9, 15, 21, 0.84);
+	background-color: rgba(9, 15, 21, 0.9);
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	border-left: 3px solid #e4ae39;
 	border-radius: 2px;
+	opacity: 0;
+	transition-property: opacity;
+	transition-duration: 0.15s;
 }
 
 .nh-plan.shown
 {
 	visibility: visible;
+	opacity: 1;
 }
 
 .nh-plan-head
@@ -1947,19 +2066,21 @@
 	width: fill-parent-flow(1);
 	font-family: Stratum2 Condensed, 'Arial Unicode MS';
 	font-size: 18px;
-	font-weight: bold;
+	font-weight: normal;
 	letter-spacing: 1px;
 	color: #f3f6fb;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-plan-sub
 {
 	vertical-align: center;
-	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-family: Stratum2, 'Arial Unicode MS';
 	font-size: 12px;
-	font-weight: bold;
-	letter-spacing: 1px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
 	color: #e4ae39;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-plan-row
@@ -1969,11 +2090,18 @@
 	padding: 5px 10px 4px;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 	visibility: collapse;
+	opacity: 0;
+	transform: translate3d( 12px, 0px, 0px );
+	transition-property: opacity, transform;
+	transition-duration: 0.18s;
+	transition-timing-function: ease-out;
 }
 
 .nh-plan-row.shown
 {
 	visibility: visible;
+	opacity: 1;
+	transform: translate3d( 0px, 0px, 0px );
 }
 
 .nh-plan-row.now
@@ -1986,11 +2114,12 @@
 	width: fill-parent-flow(1);
 	font-family: Stratum2 Condensed, 'Arial Unicode MS';
 	font-size: 16px;
-	font-weight: bold;
+	font-weight: normal;
 	letter-spacing: 0.6px;
 	color: #c3d0dc;
 	white-space: nowrap;
 	text-overflow: ellipsis;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-plan-row.now .nh-plan-name
@@ -2003,8 +2132,9 @@
 	vertical-align: center;
 	font-family: Stratum2 Mono, 'Arial Unicode MS';
 	font-size: 13px;
-	font-weight: bold;
+	font-weight: normal;
 	color: #a9b7c5;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-plan-row.done .nh-plan-name
@@ -2020,11 +2150,12 @@
 .nh-plan-foot
 {
 	padding: 6px 10px 7px;
-	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-family: Stratum2, 'Arial Unicode MS';
 	font-size: 12px;
-	font-weight: bold;
-	letter-spacing: 1px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
 	color: #a9b7c5;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 /* ── what the flash did ───────────────────────────────────
@@ -2039,7 +2170,7 @@
 	flow-children: down;
 	visibility: collapse;
 	opacity: 0;
-	background-color: rgba(9, 15, 21, 0.86);
+	background-color: rgba(9, 15, 21, 0.9);
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	border-left: 3px solid rgb(255, 210, 26);
 	border-radius: 2px;
@@ -2065,10 +2196,11 @@
 {
 	font-family: Stratum2 Condensed, 'Arial Unicode MS';
 	font-size: 18px;
-	font-weight: bold;
+	font-weight: normal;
 	letter-spacing: 1px;
 	text-transform: uppercase;
 	color: #f3f6fb;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-flash-sub
@@ -2076,11 +2208,12 @@
 	width: fill-parent-flow(1);
 	vertical-align: center;
 	text-align: right;
-	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-family: Stratum2, 'Arial Unicode MS';
 	font-size: 12px;
-	font-weight: bold;
-	letter-spacing: 1px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
 	color: rgb(255, 210, 26);
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-flash-row
@@ -2089,11 +2222,18 @@
 	flow-children: right;
 	padding: 4px 10px;
 	visibility: collapse;
+	opacity: 0;
+	transform: translate3d( 12px, 0px, 0px );
+	transition-property: opacity, transform;
+	transition-duration: 0.18s;
+	transition-timing-function: ease-out;
 }
 
 .nh-flash-row.shown
 {
 	visibility: visible;
+	opacity: 1;
+	transform: translate3d( 0px, 0px, 0px );
 }
 
 .nh-flash-who
@@ -2102,10 +2242,11 @@
 	vertical-align: center;
 	font-family: Stratum2 Condensed, 'Arial Unicode MS';
 	font-size: 16px;
-	font-weight: bold;
+	font-weight: normal;
 	color: #f3f6fb;
 	white-space: nowrap;
 	text-overflow: ellipsis;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-flash-track
@@ -2140,8 +2281,9 @@
 	text-align: right;
 	font-family: Stratum2 Mono, 'Arial Unicode MS';
 	font-size: 14px;
-	font-weight: bold;
+	font-weight: normal;
 	color: #f3f6fb;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-flash-tag
@@ -2149,15 +2291,18 @@
 	width: 118px;
 	margin-left: 8px;
 	vertical-align: center;
-	font-family: Stratum2 Mono, 'Arial Unicode MS';
-	font-size: 11px;
-	font-weight: bold;
-	letter-spacing: 1px;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
 	text-transform: uppercase;
 	color: #a9b7c5;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 /* Your own side, you included. */
+.nh-flash.fire .nh-flash-title { color: rgb(255, 150, 60); }
+.nh-flash.fire .nh-flash-track { visibility: collapse; }
 .nh-flash-row.bad .nh-flash-who { color: rgb(255, 59, 59); }
 .nh-flash-row.bad .nh-flash-secs { color: rgb(255, 59, 59); }
 .nh-flash-row.bad .nh-flash-full { background-color: rgb(255, 59, 59); }
@@ -2167,12 +2312,13 @@
 {
 	padding: 5px 10px 6px;
 	border-top: 1px solid rgba(255, 255, 255, 0.07);
-	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-family: Stratum2, 'Arial Unicode MS';
 	font-size: 12px;
-	font-weight: bold;
-	letter-spacing: 1px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
 	text-transform: uppercase;
 	color: #a9b7c5;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
 }
 
 .nh-flash-fade.d0 { width: 0%; }
@@ -2485,3 +2631,33 @@
 #radar.de_overpass { background-image: url("s2r://panorama/images/overheadmaps/de_overpass_radar.psd"); }
 #radar.de_train { background-image: url("s2r://panorama/images/overheadmaps/de_train_radar.psd"); }
 #radar.de_vertigo { background-image: url("s2r://panorama/images/overheadmaps/de_vertigo_radar.psd"); }
+
+/* The last five throws at this lineup, oldest on the left: a streak building
+   is easier to see than a number counting up. */
+.nh-last
+{
+	vertical-align: center;
+	margin-left: 10px;
+	flow-children: right;
+}
+
+.nh-last-dot
+{
+	width: 8px;
+	height: 8px;
+	margin-left: 4px;
+	border-radius: 50%;
+	background-color: rgba(255, 255, 255, 0.14);
+	transition-property: background-color;
+	transition-duration: 0.2s;
+}
+
+.nh-last-dot.hit
+{
+	background-color: rgb(126, 226, 160);
+}
+
+.nh-last-dot.miss
+{
+	background-color: rgb(255, 143, 135);
+}

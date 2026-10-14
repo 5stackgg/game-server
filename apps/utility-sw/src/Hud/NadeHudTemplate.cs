@@ -39,6 +39,9 @@ public class NadeHudTemplate : HudTemplate
 
     public Meter? Progress { get; init; }
 
+    // Landed or not, oldest first: the last few throws at this lineup.
+    public IReadOnlyList<bool> Last { get; init; } = Array.Empty<bool>();
+
     public static NadeHudTemplate For(
         LineupRecord lineup,
         float eyeYaw,
@@ -48,24 +51,15 @@ public class NadeHudTemplate : HudTemplate
         float away,
         bool onAngle,
         Meter? progress,
-        string position
+        string position,
+        (float yaw, float pitch) target,
+        IReadOnlyList<bool>? last = null
     )
     {
         ThrowKeys keys = PracticeThrowKeys.For(lineup);
 
-        float error = PracticeLineupUtility.AimError(
-            eyeYaw,
-            eyePitch,
-            lineup.release.yaw,
-            lineup.release.pitch
-        );
-
-        string arrow = HudAimGrid.Arrow(
-            eyeYaw,
-            eyePitch,
-            lineup.release.yaw,
-            lineup.release.pitch
-        );
+        float error = PracticeLineupUtility.AimError(eyeYaw, eyePitch, target.yaw, target.pitch);
+        string arrow = HudAimGrid.Arrow(eyeYaw, eyePitch, target.yaw, target.pitch);
 
         return new NadeHudTemplate
         {
@@ -81,6 +75,7 @@ public class NadeHudTemplate : HudTemplate
             ThrowColor = throwColor,
             Progress = progress,
             Position = position,
+            Last = last ?? Array.Empty<bool>(),
         };
     }
 
@@ -147,6 +142,7 @@ public class NadeHudTemplate : HudTemplate
         foreach (string cap in HudSlots.ThrowKeycaps)
         {
             surface.Class($"kc_{cap}", "on", Held(cap));
+            surface.Set($"kb_{cap}", HudSlots.ThrowKeyBinding(cap));
         }
 
         surface.Set("spotval", Spot);
@@ -166,6 +162,18 @@ public class NadeHudTemplate : HudTemplate
             surface.Set("drill", Progress.Label);
             surface.Class("drillrow", "done", Progress.Done);
             surface.Pick("drillbar", "p", Progress.Tenths, HudSlots.MeterSteps);
+        }
+
+        // Newest on the right; the dots left of the first throw stay empty.
+        int empty = HudSlots.LastThrows - Math.Min(Last.Count, HudSlots.LastThrows);
+        int first = Math.Max(0, Last.Count - HudSlots.LastThrows);
+
+        for (int dot = 0; dot < HudSlots.LastThrows; dot++)
+        {
+            bool? landed = dot < empty ? null : Last[first + dot - empty];
+
+            surface.Class($"ld{dot + 1}", "hit", landed == true);
+            surface.Class($"ld{dot + 1}", "miss", landed == false);
         }
     }
 }

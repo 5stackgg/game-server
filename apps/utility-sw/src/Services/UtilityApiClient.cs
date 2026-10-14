@@ -93,6 +93,75 @@ public class UtilityApiClient
         }
     }
 
+    // The maps the menu offers, and whether this player may move the server
+    // to one. Null from a panel too old to be asked.
+    public async Task<PracticeMaps?> MapsFor(ulong steamId)
+    {
+        string? body = await SendText(
+            HttpMethod.Get,
+            $"/utility/practice-maps?steam_id={steamId}",
+            null
+        );
+
+        if (body == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<PracticeMaps>(body, PracticeJson.Options);
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to read the practice maps");
+
+            return null;
+        }
+    }
+
+    // Asks the panel to move this server, as the panel's own button does: the
+    // panel then tells the server to change level. Null when it went through,
+    // otherwise why not.
+    public async Task<string?> ChangePracticeMap(ulong steamId, string map)
+    {
+        string body = JsonSerializer.Serialize(
+            new { steam_id = steamId.ToString(), map_name = map },
+            PracticeJson.Options
+        );
+
+        string? response = await SendText(HttpMethod.Post, "/utility/practice-map", body);
+
+        if (response == null)
+        {
+            return "the website did not answer";
+        }
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(response);
+            JsonElement root = document.RootElement;
+
+            if (
+                root.TryGetProperty("success", out JsonElement success)
+                && success.ValueKind == JsonValueKind.True
+            )
+            {
+                return null;
+            }
+
+            return
+                root.TryGetProperty("error", out JsonElement error)
+                && error.ValueKind == JsonValueKind.String
+                ? error.GetString()
+                : "the website refused";
+        }
+        catch (JsonException)
+        {
+            return "the website gave an answer this cannot read";
+        }
+    }
+
     // Raised off the game thread, with what the library said about how the
     // player is doing: their totals by lineup id, and how many in a row the
     // panel calls mastered. Either may be missing from an older panel.

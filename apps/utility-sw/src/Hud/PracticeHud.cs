@@ -208,7 +208,9 @@ public partial class UtilityPracticePlugin
                 Flat(lineup.release.feet_position, new Vec3(feet.X, feet.Y, feet.Z)),
                 onAngle,
                 MasteryOf(player.SteamID, lineup),
-                position
+                position,
+                _replay.AimAnglesFrom(lineup, PracticeReplay.EyeOf(pawn)),
+                LastFor(player.SteamID, lineup)
             )
         );
     }
@@ -689,6 +691,9 @@ public partial class UtilityPracticePlugin
         _edits.Remove(steamId);
         ForgetBar(steamId);
         _wheelPath.Remove(steamId);
+        _wheelReturn.Remove(steamId);
+        _mapChoices.Remove(steamId);
+        ForgetVerdicts(steamId);
         ClearFilters(steamId);
         _hud?.Forget(playerId);
     }

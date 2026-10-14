@@ -103,8 +103,71 @@ public static class PracticeLineupUtility
         return gap > 180f ? 360f - gap : gap;
     }
 
+    // CS2's view heights above the feet, standing and fully crouched.
+    public const float StandingEyeHeight = 64f;
+    public const float CrouchedEyeHeight = 46f;
+
+    // How far outside those a recorded eye may sit and still be believed.
+    private const float EyeHeightSlack = 2f;
+
+    // How high the eye is, above the feet, when a throw is lined up.
+    //
+    // Thrown standing still, a grenade is released from where it was aimed, so
+    // the eye it recorded IS the eye it was aimed from, crouched or standing.
+    // A throw made in the air or on the move was aimed before either began, and
+    // what it recorded at release is somewhere else: for those the stance says.
+    public static float AimEyeHeight(LineupRecord lineup)
+    {
+        ThrowKeys keys = PracticeThrowKeys.For(lineup);
+        float recorded = lineup.release.eye_position.z - lineup.release.feet_position.z;
+
+        if (
+            !keys.Jump
+            && keys.Move.Count == 0
+            && recorded >= CrouchedEyeHeight - EyeHeightSlack
+            && recorded <= StandingEyeHeight + EyeHeightSlack
+        )
+        {
+            return recorded;
+        }
+
+        return keys.Crouch ? CrouchedEyeHeight : StandingEyeHeight;
+    }
+
+    // The furthest down the game lets anybody look. It is short of straight
+    // down, so the crosshair lands a little in front of the feet, not on them.
+    public const float MaxPitchDegrees = 89f;
+
+    // Where the crosshair lands on the floor, looking as far down as the game
+    // allows while facing the way this throw is made. A mark on the feet sat
+    // an inch behind it, where no crosshair could ever be put.
+    public static Vec3 LookDownPoint(LineupRecord lineup, Vec3 feet)
+    {
+        float shortOf = (90f - MaxPitchDegrees) * MathF.PI / 180f;
+        float ahead = AimEyeHeight(lineup) * MathF.Tan(shortOf);
+        float yaw = lineup.release.yaw * MathF.PI / 180f;
+
+        return new Vec3(
+            feet.x + (MathF.Cos(yaw) * ahead),
+            feet.y + (MathF.Sin(yaw) * ahead),
+            feet.z
+        );
+    }
+
     // How wrong the crosshair is for this throw, in degrees: the worse of the
     // two axes, because being dead on the yaw does not help if the pitch is off.
+    // The view angles that put the crosshair on a point from this eye, in
+    // CS2's convention: yaw from +x towards +y, pitch negative looking up.
+    public static (float yaw, float pitch) AnglesTo(Vec3 eye, Vec3 point)
+    {
+        Vec3 d = point - eye;
+
+        return (
+            MathF.Atan2(d.y, d.x) * 180f / MathF.PI,
+            -MathF.Atan2(d.z, d.LengthXY()) * 180f / MathF.PI
+        );
+    }
+
     public static float AimError(float eyeYaw, float eyePitch, float yaw, float pitch)
     {
         return Math.Max(AngleGap(eyeYaw, yaw), AngleGap(eyePitch, pitch));

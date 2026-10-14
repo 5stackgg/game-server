@@ -101,23 +101,54 @@ public static class HudSlots
     public static readonly IReadOnlyList<string> ThrowKeycaps =
         new[] { "shift", "ctrl", "w", "a", "s", "d", "jump" };
 
+    // The command behind each of those, for the csgo_key formatter.
+    public static string ThrowKeyBinding(string cap)
+    {
+        return cap switch
+        {
+            "shift" => "%sprint%",
+            "ctrl" => "%duck%",
+            "w" => "%forward%",
+            "a" => "%left%",
+            "s" => "%back%",
+            "d" => "%right%",
+            _ => "%jump%",
+        };
+    }
+
     // Fixed DOM, like the map's markers: the nearest spots win the pips.
     public const int CompassPips = 8;
     public const int CompassColumns = 256;
     public const float CompassHalfSpanDegrees = 60f;
 
-    // TAB, E, R, then the two double taps and the clear key -- one row each,
+    // TAB, E, R, then the three double taps and the clear key -- one row each,
     // in that order.
-    public const int LegendKeys = 6;
+    public const int LegendKeys = 7;
+
+    // The command behind each keycap, in the form CS2's csgo_key formatter
+    // reads: it draws whatever key the player has bound to it.
+    public static readonly IReadOnlyList<string> LegendBindings = new[]
+    {
+        "%showscores%",
+        "%use%",
+        "%reload%",
+        "%duck%",
+        "%sprint%",
+        "%lookatweapon%",
+        "%sellbackall%",
+    };
 
     // Fixed DOM for the three lists the bar can show: what is out, the plan,
     // and what a flash did. The steps are how finely a bar can be drawn.
     public const int OutRows = 6;
     public const int OutFillSteps = 21;
 
-    // The two kinds of utility that stay: RadarMaps' names for them.
-    public static readonly IReadOnlyList<string> OutTypes = new[] { "smoke", "molly" };
+    // Every kind of grenade, by RadarMaps' names for them.
+    public static readonly IReadOnlyList<string> OutTypes = new[] { "smoke", "molly", "flash", "he", "decoy" };
     public const int PlanRows = 6;
+
+    // The dots on the throw card: the last this many throws at its lineup.
+    public const int LastThrows = 5;
     public const int FlashRows = 5;
     public const int FlashBarSteps = 21;
 
@@ -135,13 +166,13 @@ public static class HudSlots
     public const int WheelQuicks = WheelSlots * 2;
 
     public static readonly IReadOnlyList<int> WheelQuickHits =
-        new[] { 5, 5, 7, 7, 8, 7, 8, 7, 5, 5, 7, 8, 7, 8, 7, 7 };
+        new[] { 4, 4, 6, 7, 7, 7, 7, 6, 4, 4, 6, 7, 7, 7, 7, 6 };
 
     // One quick action on its own takes the whole width of its wedge, so
     // each wedge also has a segment that wide. It and the two halves are
     // never shown together.
     public static readonly IReadOnlyList<int> WheelWideHits =
-        new[] { 5, 13, 17, 14, 5, 14, 17, 13 };
+        new[] { 4, 13, 17, 13, 4, 13, 17, 13 };
 
     public static readonly HudLayoutSlots Hud = new HudLayoutSlots(
         NadeHud,
@@ -157,6 +188,13 @@ public static class HudSlots
             new HudVariable("aimerr", "aimerr"),
             new HudVariable("drill", "drill"),
             new HudVariable("drillkey", "drillkey"),
+            new HudVariable("kb_shift", "kc_shift"),
+            new HudVariable("kb_ctrl", "kc_ctrl"),
+            new HudVariable("kb_w", "kc_w"),
+            new HudVariable("kb_a", "kc_a"),
+            new HudVariable("kb_s", "kc_s"),
+            new HudVariable("kb_d", "kc_d"),
+            new HudVariable("kb_jump", "kc_jump"),
         },
         new string[0]
     );
@@ -244,6 +282,7 @@ public static class HudSlots
         for (int key = 1; key <= LegendKeys; key++)
         {
             yield return new HudVariable($"k{key}", $"k{key}");
+            yield return new HudVariable($"kb{key}", $"kc{key}");
         }
 
         yield return new HudVariable("ocount", "ocount");
@@ -252,6 +291,8 @@ public static class HudSlots
         for (int row = 1; row <= OutRows; row++)
         {
             yield return new HudVariable($"on{row}", $"on{row}");
+            yield return new HudVariable($"of{row}", $"of{row}");
+            yield return new HudVariable($"os{row}", $"os{row}");
             yield return new HudVariable($"ot{row}", $"ot{row}");
         }
 

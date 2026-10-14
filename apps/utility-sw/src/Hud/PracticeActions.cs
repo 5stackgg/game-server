@@ -38,6 +38,12 @@ public partial class UtilityPracticePlugin
     // there. Empty is the first one.
     private readonly Dictionary<ulong, List<string>> _wheelPath = new();
 
+    // Practice and the execute wheel are where a session is spent, so the menu
+    // opens back onto them. Anything else -- a confirm, a list to pick from --
+    // was a step on the way somewhere, and starts again from the top.
+    private static readonly HashSet<string> WheelReturnPages = new() { "practice", "execute" };
+    private readonly Dictionary<ulong, List<string>> _wheelReturn = new();
+
     private static string Switch(bool on)
     {
         return on ? "On" : "Off";
@@ -129,6 +135,7 @@ public partial class UtilityPracticePlugin
                 bool drilling = _drill.Current(steamId) != null;
                 bool planning = _drill.Plan(steamId) != null;
                 int stacked = StackCount(steamId);
+                LineupRecord? repeatable = drilling ? null : DrillTarget(player);
 
                 return new WheelPage(
                     "Practice",
@@ -136,15 +143,18 @@ public partial class UtilityPracticePlugin
                     {
                         new WheelItem(
                             "drill",
-                            drilling && !planning ? "Stop Drill" : "Drill This",
-                            drilling && !planning ? "running" : "",
+                            drilling && !planning ? "Stop Repeating" : "Repeat Lineup",
+                            drilling && !planning ? "running"
+                                : repeatable != null
+                                    ? PracticeLineupUtility.TitleCase(DrillUtility.Name(repeatable))
+                                : "stand on one first",
                             On: drilling && !planning,
-                            Disabled: planning
+                            Disabled: planning || (!drilling && repeatable == null)
                         ),
                         new WheelItem(
                             "plan",
-                            planning ? "Stop Plan" : "Start Plan",
-                            planning ? "running" : "all unmastered",
+                            planning ? "Stop Drilling" : "Drill Unmastered",
+                            planning ? "running" : "worst first",
                             On: planning,
                             Disabled: drilling && !planning
                         )
@@ -161,8 +171,13 @@ public partial class UtilityPracticePlugin
                             Opens: "execute"
                         ),
                         Toggle("bloom", "Smoke Outline", state.Bloom, state.Loaded == null || !_config.GhostPreview),
-                        Toggle("timer", "Timer", state.TimerStartedAt != null),
-                        new WheelItem("bot", "Place A Bot", "where I stand"),
+                        new WheelItem("maps", "Change Map", MapLabel(_library.Map), Opens: "maps"),
+                        new WheelItem(
+                            "bot",
+                            "Place A Bot",
+                            _bots.Count == 0 ? "where I stand" : $"{_bots.Count} of {MaxBots}",
+                            Disabled: BotSlotsLeft() == 0
+                        ),
                         new WheelItem(
                             "nobots",
                             "Remove Bots",
@@ -241,6 +256,9 @@ public partial class UtilityPracticePlugin
                     }
                 );
 
+            case "maps":
+                return MapsPage(player);
+
             case "executes":
                 List<UtilityPlaybook>? books = ExecutesFor(player);
 
@@ -298,7 +316,13 @@ public partial class UtilityPracticePlugin
                                 new WheelItem("flashcard", "Flash Card", On: !_flashCardOff.Contains(steamId)),
                             },
                         },
-                        Toggle("legend", "Key Legend", !_legendOff.Contains(steamId)),
+                        Toggle("legend", "Key Legend", !_legendOff.Contains(steamId)) with
+                        {
+                            Quick = new WheelItem?[]
+                            {
+                                new WheelItem("sounds", "Sounds", On: !_soundsOff.Contains(steamId)),
+                            },
+                        },
                         Toggle("solo", "Private Previews", state.Solo),
                         new WheelItem("reload", "Reload Library", $"{_library.For(steamId).Count} lineups"),
                     }
@@ -309,7 +333,7 @@ public partial class UtilityPracticePlugin
         bool thrown = _recorder.LastThrow(steamId) != null;
 
         return new WheelPage(
-            "Practice",
+            "Menu",
             new WheelItem?[]
             {
                 new WheelItem(
@@ -337,7 +361,7 @@ public partial class UtilityPracticePlugin
                 {
                     Quick = new WheelItem?[]
                     {
-                        new WheelItem("earlier", "Earlier", Disabled: !thrown),
+                        new WheelItem("earlier", "Earlier", Disabled: !HasEarlier(steamId)),
                         new WheelItem("landing", "Landing", Disabled: state.Loaded == null),
                     },
                 },
@@ -382,7 +406,7 @@ public partial class UtilityPracticePlugin
                         new WheelItem("execute", "Execute", Opens: "execute", On: StackCount(steamId) > 0),
                         new WheelItem(
                             "plan",
-                            _drill.Plan(steamId) != null ? "Stop Plan" : "Plan",
+                            _drill.Plan(steamId) != null ? "Stop Drilling" : "Unmastered",
                             On: _drill.Plan(steamId) != null
                         ),
                     },
@@ -417,14 +441,34 @@ public partial class UtilityPracticePlugin
             return false;
         }
 
-        WheelPath(player.SteamID).Clear();
+        List<string> path = WheelPath(player.SteamID);
+
+        path.Clear();
+
+        if (_wheelReturn.Remove(player.SteamID, out List<string>? back))
+        {
+            path.AddRange(back);
+        }
 
         return RenderWheel(player);
     }
 
     private void CloseWheel(IPlayer player)
     {
-        _wheelPath.Remove(player.SteamID);
+        ulong steamId = player.SteamID;
+
+        if (_wheelPath.Remove(steamId, out List<string>? path))
+        {
+            if (path.Count > 0 && WheelReturnPages.Contains(path[^1]))
+            {
+                _wheelReturn[steamId] = path;
+            }
+            else
+            {
+                _wheelReturn.Remove(steamId);
+            }
+        }
+
         _hud?.Hide(player, HudSlots.Wheel);
     }
 
@@ -532,7 +576,8 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        WheelPage page = WheelFor(player, path.Count == 0 ? "root" : path[^1]);
+        string current = path.Count == 0 ? "root" : path[^1];
+        WheelPage page = WheelFor(player, current);
 
         WheelItem? quick = null;
         bool outer = false;
@@ -569,8 +614,7 @@ public partial class UtilityPracticePlugin
                 return;
             }
 
-            CloseWheel(player);
-            Pick(player, quick.Id);
+            PickFrom(player, current, quick.Id);
 
             return;
         }
@@ -598,10 +642,32 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        // Gone before the action runs: picking is the end of the menu, and
-        // some of these open a panel of their own that wants the cursor.
-        CloseWheel(player);
-        Pick(player, item.Id);
+        PickFrom(player, current, item.Id);
+    }
+
+    // Settings are flipped several at a time and a filter is set a few ways
+    // before looking, so those pages stay up until TAB or the middle. Anything
+    // else is gone before the action runs: picking is the end of the menu, and
+    // some of these open a panel of their own that wants the cursor.
+    private void PickFrom(IPlayer player, string page, string id)
+    {
+        bool staysOpen = page switch
+        {
+            "settings" or "type" or "side" or "who" => true,
+            "filters" => id == "reset",
+            _ => false,
+        };
+
+        if (!staysOpen)
+        {
+            CloseWheel(player);
+            Pick(player, id);
+
+            return;
+        }
+
+        Pick(player, id);
+        RenderWheel(player);
     }
 
     private void Pick(IPlayer player, string id)
@@ -637,6 +703,13 @@ public partial class UtilityPracticePlugin
         }
 
         string value = id[(split + 1)..];
+
+        if (id[..split] == "map")
+        {
+            ChangeMapTo(player, value);
+
+            return;
+        }
 
         if (id[..split] == "exec")
         {
@@ -808,34 +881,24 @@ public partial class UtilityPracticePlugin
                 ToggleBloom(player);
 
                 break;
-            case "timer":
-                if (state.TimerStartedAt == null)
-                {
-                    state.TimerStartedAt = DateTime.UtcNow;
-                    Toast(player, "Timer started");
-
-                    break;
-                }
-
-                double elapsed = (DateTime.UtcNow - state.TimerStartedAt.Value).TotalSeconds;
-
-                state.TimerStartedAt = null;
-                Toast(player, $"Timer stopped at {elapsed:0.00}s");
-
-                break;
             case "noclip":
                 state.Noclip = !state.Noclip;
                 _system.ApplyNow(player);
-                Toast(player, $"Noclip {Switch(state.Noclip)}");
 
                 break;
             case "god":
                 state.God = !state.God;
                 _system.ApplyNow(player);
-                Toast(player, $"Take no damage · {Switch(state.God)}");
 
                 break;
             case "bot":
+                if (BotSlotsLeft() == 0)
+                {
+                    Toast(player, _bots.Count >= MaxBots ? $"{MaxBots} bots at most" : "The server has no room for another bot");
+
+                    break;
+                }
+
                 Toast(player, AddBot(player) ? "Bot placed" : "No room for a bot here");
 
                 break;
@@ -881,6 +944,10 @@ public partial class UtilityPracticePlugin
                 break;
             case "legend":
                 Flip(_legendOff, steamId);
+
+                break;
+            case "sounds":
+                Flip(_soundsOff, steamId);
 
                 break;
         }
@@ -948,7 +1015,7 @@ public partial class UtilityPracticePlugin
 
         if (_drill.Stop(steamId))
         {
-            Toast(player, "Drill stopped");
+            Toast(player, "Stopped repeating");
 
             return;
         }
@@ -957,7 +1024,7 @@ public partial class UtilityPracticePlugin
 
         if (here == null)
         {
-            Toast(player, "Stand on a lineup, or load one, to drill it");
+            Toast(player, "Stand on a lineup, or load one, to repeat it");
 
             return;
         }
@@ -967,7 +1034,7 @@ public partial class UtilityPracticePlugin
             _drill.StartWith(steamId, new[] { here }, endless: true) switch
             {
                 eDrillStart.Started =>
-                    $"Drilling {PracticeLineupUtility.TitleCase(DrillUtility.Name(here))}",
+                    $"Repeating {PracticeLineupUtility.TitleCase(DrillUtility.Name(here))} · the aim ring fades as you land it",
                 eDrillStart.ReplayDisabled => "Replay is off on this server",
                 eDrillStart.NotConnected => "No panel, so a throw cannot be scored",
                 eDrillStart.AlreadyRunning => "Already drilling",
@@ -979,6 +1046,13 @@ public partial class UtilityPracticePlugin
     // How many throws back "Earlier" has walked for each player. Last Throw
     // puts it back to the most recent.
     private readonly Dictionary<ulong, int> _earlier = new();
+
+    private bool HasEarlier(ulong steamId)
+    {
+        int back = _earlier.TryGetValue(steamId, out int stepped) ? stepped + 1 : 1;
+
+        return _recorder.LastThrow(steamId, back) != null;
+    }
 
     private bool BackTo(IPlayer player, int back)
     {
@@ -1088,7 +1162,7 @@ public partial class UtilityPracticePlugin
 
         if (_drill.Stop(steamId))
         {
-            Toast(player, "Plan stopped");
+            Toast(player, "Stopped drilling");
 
             return;
         }
@@ -1097,7 +1171,7 @@ public partial class UtilityPracticePlugin
             player,
             _drill.StartPlan(steamId) switch
             {
-                eDrillStart.Started => "Plan started · worst first",
+                eDrillStart.Started => "Drilling unmastered · the aim ring fades as you land each one",
                 eDrillStart.ReplayDisabled => "Replay is off on this server",
                 eDrillStart.NotConnected => "No panel, so a throw cannot be scored",
                 eDrillStart.AlreadyRunning => "Already drilling",
