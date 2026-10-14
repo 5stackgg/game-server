@@ -245,7 +245,7 @@ public class GameDemos
         }
         catch (Exception ex)
         {
-            _logger.LogCritical($"An error occurred during file upload: {ex.Message}");
+            _logger.LogCritical(ex, "An error occurred during file upload");
         }
     }
 
