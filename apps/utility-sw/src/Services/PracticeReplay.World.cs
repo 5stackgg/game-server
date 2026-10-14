@@ -1200,9 +1200,11 @@ public partial class PracticeReplay
 
         // A beam as long as it is wide is a square, which at this size is a
         // dot. The ring says roughly where; this is what the crosshair goes on.
+        // A beam comes out twice as thick as the width it is given, so a dot
+        // given its own length as width draws as two pixels stacked.
         float dot = Units(PracticeMarkerUtility.DotDegrees) / 2f;
 
-        Beam(mark.Set, owner, Point(-dot, 0f), Point(dot, 0f), color, dot * 2f);
+        Beam(mark.Set, owner, Point(-dot, 0f), Point(dot, 0f), color, dot);
 
         if (mark.Stage == eAimStage.On)
         {

@@ -44,18 +44,33 @@ public static class PracticeThrowTiming
 
     // When the lineup let go after take-off. The library is sent without its
     // run-up samples, so a lineup thrown with the jump bind -- which lets go
-    // on the tick it jumps -- is 0 without them; one thrown by hand is known
-    // only from its samples.
+    // on the tick it jumps -- is 0 without them, and so is any other jump
+    // throw with none on record: letting go at take-off is what a jump throw
+    // is.
     public static int? LineupTakeoffToRelease(LineupRecord lineup)
     {
-        return lineup.release.jump_throw ? 0 : TakeoffToRelease(lineup.approach);
+        if (lineup.release.jump_throw)
+        {
+            return 0;
+        }
+
+        return TakeoffToRelease(lineup.approach) ?? (PracticeThrowKeys.For(lineup).Jump ? 0 : null);
+    }
+
+    // When this throw let go after take-off. Its run-up is cut from the last
+    // tick the player stood still, which for a jump from a standstill is the
+    // release itself, leaving no take-off in it; the engine's own jump-throw
+    // flag says it let go at take-off.
+    public static int? ThrowTakeoffToRelease(LineupRecord thrown)
+    {
+        return TakeoffToRelease(thrown.approach) ?? (thrown.release.jump_throw ? 0 : null);
     }
 
     // How much later than the lineup this throw let go; negative is earlier.
     // Null when either was not a jump throw.
-    public static int? ReleaseOffset(IReadOnlyList<ApproachSample>? thrown, LineupRecord lineup)
+    public static int? ReleaseOffset(LineupRecord thrown, LineupRecord lineup)
     {
-        int? mine = TakeoffToRelease(thrown);
+        int? mine = ThrowTakeoffToRelease(thrown);
         int? theirs = LineupTakeoffToRelease(lineup);
 
         return mine == null || theirs == null ? null : mine - theirs;

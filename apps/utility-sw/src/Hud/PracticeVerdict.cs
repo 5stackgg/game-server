@@ -30,7 +30,7 @@ public partial class UtilityPracticePlugin
 
     // Played to the thrower alone. A Panorama style's sound only plays on
     // hover, never when the server sets a class.
-    private const string LandedSound = "UI.CounterDoneBeep";
+    private const string LandedSound = "UI.DeathMatchBonusKill";
     private const string MissedSound = "UI.CounterBeep";
     private const string MasteredSound = "UI.XP.LevelUp";
     private const int SummaryTicks = 10 * 64;
@@ -71,7 +71,7 @@ public partial class UtilityPracticePlugin
         if (entry != null)
         {
             entry.Timing = PracticeThrowTiming.Describe(
-                PracticeThrowTiming.ReleaseOffset(attempt.Thrown.approach, loaded)
+                PracticeThrowTiming.ReleaseOffset(attempt.Thrown, loaded)
             );
         }
 
