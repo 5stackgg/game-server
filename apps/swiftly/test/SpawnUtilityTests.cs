@@ -14,4 +14,24 @@ public class SpawnUtilityTests
     {
         Assert.Equal(expected, SpawnUtility.IsAtWorldOrigin(x, y));
     }
+
+    [Fact]
+    public void SideOnTheServerWithNobodyAliveNeverPlayed()
+    {
+        Assert.True(SpawnUtility.IsUnplayedKnifeTimeout(2, 2, 2, 0));
+        Assert.True(SpawnUtility.IsUnplayedKnifeTimeout(5, 0, 5, 3));
+    }
+
+    [Fact]
+    public void BothSidesAliveIsAResult()
+    {
+        Assert.False(SpawnUtility.IsUnplayedKnifeTimeout(2, 2, 2, 1));
+        Assert.False(SpawnUtility.IsUnplayedKnifeTimeout(5, 1, 5, 1));
+    }
+
+    [Fact]
+    public void SideWithNobodyOnTheServerIsAResult()
+    {
+        Assert.False(SpawnUtility.IsUnplayedKnifeTimeout(2, 2, 0, 0));
+    }
 }
