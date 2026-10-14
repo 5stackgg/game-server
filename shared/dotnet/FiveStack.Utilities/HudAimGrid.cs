@@ -122,6 +122,26 @@ public static class HudAimGrid
         return "LOOK " + string.Join(" AND ", parts);
     }
 
+    private static readonly string[] Arrows = { "→", "↗", "↑", "↖", "←", "↙", "↓", "↘" };
+
+    // Direction again, as one glyph: which way the crosshair has to travel.
+    // Same operand order as above, for the same reason.
+    public static string Arrow(float eyeYaw, float eyePitch, float targetYaw, float targetPitch)
+    {
+        float right = Delta(eyeYaw, targetYaw);
+        float up = Delta(eyePitch, targetPitch);
+
+        if (right == 0f && up == 0f)
+        {
+            return "";
+        }
+
+        double angle = Math.Atan2(up, right) * 180.0 / Math.PI;
+        int step = ((int)Math.Round(angle / 45.0) % 8 + 8) % 8;
+
+        return Arrows[step];
+    }
+
     private static int Cell(float degrees, float tolerance, int count)
     {
         if (count < 2)

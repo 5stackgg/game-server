@@ -14,6 +14,7 @@ public class HudSurface
 
     private readonly Dictionary<string, string> _variables = new();
     private readonly Dictionary<(string, string), bool> _classes = new();
+    private readonly Dictionary<(string, string), int> _moved = new();
 
     public HudSurface(CCSCustomHudLayout layout, HudLayoutSlots slots, int playerId)
     {
@@ -73,6 +74,27 @@ public class HudSurface
         Class(elementId, $"{prefix}{chosen}", true);
     }
 
+    // Pick, for something that never stops moving: only the cell it left is
+    // cleared, where Pick clears every cell it is not in. Never mix the two on
+    // one element -- each keeps its own idea of where the thing is.
+    public void Move(string elementId, string prefix, int index)
+    {
+        (string, string) key = (elementId, prefix);
+
+        if (_moved.TryGetValue(key, out int was))
+        {
+            if (was == index)
+            {
+                return;
+            }
+
+            Class(elementId, $"{prefix}{was}", false);
+        }
+
+        _moved[key] = index;
+        Class(elementId, $"{prefix}{index}", true);
+    }
+
     public void Show(bool on)
     {
         Class(_slots.RootId, HudSlots.Shown, on);
@@ -90,5 +112,6 @@ public class HudSurface
     {
         _variables.Clear();
         _classes.Clear();
+        _moved.Clear();
     }
 }

@@ -143,9 +143,22 @@ public class PracticeRecorder
     // and scoring it would count an attempt nobody took.
     public bool Emitting { get; set; }
 
+    // Grenades the plugin threw itself, by entity index, and the tick each
+    // went. A projectile is only read a tick after it is created, because that
+    // is when it knows who threw it -- and by then Emitting is false again. On
+    // its own the flag never stopped a rethrow being taken for somebody's
+    // throw: it was recorded, it was their last throw, and it was scored as an
+    // attempt at whatever they had loaded.
+    private readonly Dictionary<uint, int> _emitted = new();
+
+    // An index is only believed for this long: one that never came through
+    // would otherwise be waiting for the real grenade that reuses it.
+    private const int EmittedForTicks = 8;
+
     public void Forget(uint entityIndex)
     {
         _tracked.Remove(entityIndex);
+        _emitted[entityIndex] = _tick;
     }
 
     public void Reset()
@@ -465,7 +478,13 @@ public class PracticeRecorder
             PracticeLineupUtility.LearnUtilityModel(utilityType, model.GetModel());
         }
 
-        if (Emitting)
+        if (
+            Emitting
+            || (
+                _emitted.Remove(entity.Index, out int emittedAt)
+                && _tick - emittedAt <= EmittedForTicks
+            )
+        )
         {
             return;
         }

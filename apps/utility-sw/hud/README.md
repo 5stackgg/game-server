@@ -6,11 +6,19 @@ it through `CCSCustomHudLayout`.
 
 | Layout | Captures input | What it is |
 | --- | --- | --- |
-| `nade_hud` | no | Guidance: where it lands, how to throw it, which way to look, live aim error, drill progress. Replaces the three centre-text channels. |
-| `nade_list` | yes | The picker behind `.menu`. Side and type chips, a *from here* toggle, 16 natively scrolling rows. |
-| `nade_map` | yes | The minimap behind `.map`. Up to 40 markers, one per landing spot, with an on-map detail popover. |
-| `nade_run` | no | The execute behind `.playbook`. Who throws what and when, yours in colour and everyone else's greyed. |
-| `nade_edit` | yes | Rename, describe, change visibility. Fields ask for their value in chat. |
+| `nade2_bar` | no | Everything on screen while you play: a compass with a grenade icon per spot, what the world is filtered to, what the keys do right now, and what the last key did. On the right, what utility is out and for how long, and the plan or stack being worked through. In the middle, for a few seconds, what a flash did. |
+| `nade2_hud` | no | The throw card, bottom right: where it lands, a drawn mouse and keycaps for how to throw it, the run-up, live aim error, and how far along the run of landed throws that counts as mastered. |
+| `nade2_wheel` | yes | TAB. Eight wedges around a hub, an outer ring of two more over each, and wedges that open a wheel of their own. Beside it, what the keys do. Generated with `nadewheel2.css` by `wheel.py`: edit that and run it, never the two files. |
+| `nade2_pick` | yes | Choosing a lineup: the map with a marker per landing spot beside the list, under one set of filter chips. |
+| `nade2_run` | no | The execute behind `.playbook`. Who throws what and when, yours in colour and everyone else's greyed. |
+| `nade2_edit` | yes | Rename, describe, change visibility. Fields ask for their value in chat. |
+
+All six include `nadehud2.css`, and the wheel `nadewheel2.css` as well: it
+uses things no other layout does, and a stylesheet the game rejects takes every
+layout that includes it down with it. `nade_hud`, `nade_list`, `nade_map`, `nade_run`,
+`nade_edit` and `nadehud.css` are the first published set, kept untouched for
+servers still on a plugin that asks for them; nothing in this repo drives them
+any more. `HudSlots.cs` has the rule for when a name has to change.
 
 Passive layouts must never capture input — a panel that takes the cursor while
 somebody is aiming takes the shot with it.
@@ -35,7 +43,7 @@ asserts against the files in this directory that:
 - every map with a `#radar.<map>` rule also has calibration in `radars/`;
 - every `PracticeStepColors` name has a chip and a swatch rule, and none of them
   is ever green or red — those two belong to the aim ramp;
-- `nade_edit` contains no geometry field, so editing where a smoke lands can
+- `nade2_edit` contains no geometry field, so editing where a smoke lands can
   never arrive by accident on the back of a rename.
 
 Rename a slot in one place and `dotnet test apps/utility-sw/test` fails. That is
@@ -101,7 +109,7 @@ it yourself or the build stops after compiling. Both `.tools/` and the
 `.compiler/` clone are gitignored and excluded from the codepier sync — the
 clone is ~570 MB and would otherwise be copied into the pod on every `up`.
 
-The addon ships **no images**. The minimap draws on CS2's own
+The addon ships **no raster images**. The minimap draws on CS2's own
 `s2r://panorama/images/overheadmaps/<map>_radar.psd`, because a texture compiled
 by PanoramaCompiler's experimental image path spawned an entity that rendered
 nothing. The web panel's radars are SimpleRadar — a drop-in replacement for
@@ -112,6 +120,20 @@ why `scripts/sync-radars.sh` mirrors the calibration only.
 Known limit: SimpleRadar puts Nuke's and Vertigo's two levels on one image and
 Valve ships them as separate `_lower_radar` files, so lower-level markers on
 those two maps are offset. The other eight are exact.
+
+Icons are SVG. One of CS2's own draws from the stylesheet as
+`background-image: url("s2r://panorama/images/icons/equipment/molotov.vsvg")`
+(seen in game, 2026-10-13). The extension is `.vsvg`, the compiled name without
+its `_c`, which is the form the stock stylesheets use themselves; `wash-color`
+tints the white art. The figures in `panorama/images/custom_game/` compile to
+`.vsvg_c` and are referenced the same way, but whether an SVG of our own draws
+is not yet confirmed.
+
+A raster image needs more than the compiler gives it. Stock stores `x.png` as
+`x_png.vtex_c` (every one of its 34,080 textures carries the source extension in
+its name) and PanoramaCompiler writes `x.vtex_c`, so a reference to it looks for
+a file that is not there. That may be all that went wrong with the earlier
+attempt; it has not been retried.
 
 The staged tree keeps its `panorama/` prefix, and the pack step refuses to
 finish without it: `StrLayout` resolves `panorama/layout/custom_game/<name>.vxml_c`

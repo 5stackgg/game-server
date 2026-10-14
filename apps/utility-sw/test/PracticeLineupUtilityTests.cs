@@ -475,4 +475,107 @@ public class TitleCaseTests
     {
         Assert.False(PracticeLineupUtility.IsPanelId(id));
     }
+
+    private static LineupRecord Aimed(eThrowTechnique technique, float feet, float eye)
+    {
+        return new LineupRecord
+        {
+            technique = technique.ToString(),
+            release = new ThrowSnapshot
+            {
+                feet_position = new Vec3(0f, 0f, feet),
+                eye_position = new Vec3(0f, 0f, eye),
+            },
+        };
+    }
+
+    // A throw made standing still is aimed from the eye it recorded, which is
+    // what tells a crouched lineup from a standing one.
+    [Theory]
+    [InlineData(eThrowTechnique.Stationary, 64.06f, 64.06f)]
+    [InlineData(eThrowTechnique.Stationary, 46.04f, 46.04f)]
+    [InlineData(eThrowTechnique.Crouch, 46.04f, 46.04f)]
+    public void AStandingThrowIsAimedFromTheEyeItRecorded(
+        eThrowTechnique technique,
+        float recorded,
+        float expected
+    )
+    {
+        Assert.Equal(
+            expected,
+            PracticeLineupUtility.AimEyeHeight(Aimed(technique, 100f, 100f + recorded)),
+            2
+        );
+    }
+
+    // A jump throw is released in the air and a run throw somewhere else, so
+    // neither recorded the eye it was lined up from; and a row with no eye at
+    // all recorded nothing.
+    [Theory]
+    [InlineData(eThrowTechnique.Jump, 100f, 191f, PracticeLineupUtility.StandingEyeHeight)]
+    [InlineData(eThrowTechnique.RunJump, 100f, 191f, PracticeLineupUtility.StandingEyeHeight)]
+    [InlineData(eThrowTechnique.Running, 100f, 164f, PracticeLineupUtility.StandingEyeHeight)]
+    [InlineData(eThrowTechnique.CrouchJump, 100f, 180f, PracticeLineupUtility.CrouchedEyeHeight)]
+    [InlineData(eThrowTechnique.Crouch, 100f, 0f, PracticeLineupUtility.CrouchedEyeHeight)]
+    [InlineData(eThrowTechnique.Stationary, 100f, 0f, PracticeLineupUtility.StandingEyeHeight)]
+    public void AnyOtherThrowIsAimedFromItsStance(
+        eThrowTechnique technique,
+        float feet,
+        float eye,
+        float expected
+    )
+    {
+        Assert.Equal(expected, PracticeLineupUtility.AimEyeHeight(Aimed(technique, feet, eye)));
+    }
+
+    // The game stops a look down a degree short of straight down, so the
+    // crosshair lands in front of the feet. The dot was drawn on the feet,
+    // where no crosshair could ever be put.
+    [Theory]
+    [InlineData(eThrowTechnique.Stationary, 164f, 0f, 1.117f, 0f)]
+    [InlineData(eThrowTechnique.Crouch, 146f, 90f, 0f, 0.803f)]
+    public void TheLookDownDotIsWhereTheCrosshairLandsFacingTheThrow(
+        eThrowTechnique technique,
+        float eye,
+        float yaw,
+        float x,
+        float y
+    )
+    {
+        LineupRecord lineup = Aimed(technique, 100f, eye);
+        lineup.release.yaw = yaw;
+
+        Vec3 dot = PracticeLineupUtility.LookDownPoint(lineup, new Vec3(10f, 20f, 100f));
+
+        Assert.Equal(10f + x, dot.x, 2);
+        Assert.Equal(20f + y, dot.y, 2);
+        Assert.Equal(100f, dot.z, 2);
+    }
+
+    [Fact]
+    public void AnglesToAPointAreCs2ViewAngles()
+    {
+        (float yaw, float pitch) = PracticeLineupUtility.AnglesTo(new Vec3(0f, 0f, 0f), new Vec3(0f, 100f, 100f));
+
+        Assert.Equal(90f, yaw, 3);
+        Assert.Equal(-45f, pitch, 3);
+    }
+
+    // The marker is drawn where the recorded angles meet a wall from the
+    // recorded eye. From an eye a few units lower, the recorded angles point
+    // below the marker: "lined up" against them said yes with the crosshair
+    // under the marker and no with it on. On the marker is the answer.
+    [Fact]
+    public void FromALowerEyeTheRecordedAnglesMissTheMarker()
+    {
+        var recordedEye = new Vec3(0f, 0f, 64f);
+        var marker = new Vec3(100f, 0f, 64f + 100f * MathF.Tan(10f * MathF.PI / 180f));
+        var lowerEye = new Vec3(0f, 0f, 61f);
+
+        (float yaw, float pitch) = PracticeLineupUtility.AnglesTo(lowerEye, marker);
+        float againstRecorded = PracticeLineupUtility.AimError(yaw, pitch, 0f, -10f);
+
+        Assert.True(againstRecorded > 1.5f);
+        Assert.Equal(-10f, PracticeLineupUtility.AnglesTo(recordedEye, marker).pitch, 2);
+    }
 }

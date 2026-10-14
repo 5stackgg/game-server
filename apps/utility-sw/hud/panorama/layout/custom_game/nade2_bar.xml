@@ -1,0 +1,133 @@
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/custom_game/nadehud2.vcss_c" />
+	</styles>
+	<Panel class="nh-screen" hittest="false">
+		<Panel id="NadeBar" class="nh-bar" hittest="false">
+			<Panel class="nh-top" hittest="false">
+				<Panel id="compass" class="nh-compass" hittest="false">
+					<Panel class="nh-compass-ribbon" hittest="false">
+						<Panel class="nh-compass-tick" hittest="false" />
+						<Panel id="p1" class="nh-pip" hittest="false" />
+						<Panel id="p2" class="nh-pip" hittest="false" />
+						<Panel id="p3" class="nh-pip" hittest="false" />
+						<Panel id="p4" class="nh-pip" hittest="false" />
+						<Panel id="p5" class="nh-pip" hittest="false" />
+						<Panel id="p6" class="nh-pip" hittest="false" />
+						<Panel id="p7" class="nh-pip" hittest="false" />
+						<Panel id="p8" class="nh-pip" hittest="false" />
+					</Panel>
+					<Panel class="nh-compass-line" hittest="false" />
+					<Panel class="nh-compass-foot" hittest="false">
+						<Label id="cleft" class="nh-compass-more" text="{s:cleft}" />
+						<Label id="cfocus" class="nh-compass-focus" text="{s:cfocus}" />
+						<Label id="cright" class="nh-compass-more nh-compass-right" text="{s:cright}" />
+					</Panel>
+				</Panel>
+
+				<Panel id="filter" class="nh-filter" hittest="false">
+					<Label id="ftext" class="nh-filter-text" text="{s:ftext}" />
+					<Label id="fcount" class="nh-filter-count" text="{s:fcount}" />
+				</Panel>
+			</Panel>
+
+			<Panel id="legend" class="nh-legend" hittest="false">
+				<Panel id="kr1" class="nh-key-row" hittest="false"><Panel class="nh-key-col" hittest="false"><Label id="kc1" class="nh-keycap" text="{g:csgo_key:kb1}" /></Panel><Label id="k1" class="nh-key-label" text="{s:k1}" /></Panel>
+				<Panel id="kr2" class="nh-key-row" hittest="false"><Panel class="nh-key-col" hittest="false"><Label id="kc2" class="nh-keycap" text="{g:csgo_key:kb2}" /></Panel><Label id="k2" class="nh-key-label" text="{s:k2}" /></Panel>
+				<Panel id="kr3" class="nh-key-row" hittest="false"><Panel class="nh-key-col" hittest="false"><Label id="kc3" class="nh-keycap" text="{g:csgo_key:kb3}" /></Panel><Label id="k3" class="nh-key-label" text="{s:k3}" /></Panel>
+				<Panel id="kr4" class="nh-key-row" hittest="false"><Panel class="nh-key-col" hittest="false"><Label id="kc4" class="nh-keycap" text="{g:csgo_key:kb4}" /><Label class="nh-key-twice" text="×2" /></Panel><Label id="k4" class="nh-key-label" text="{s:k4}" /></Panel>
+				<Panel id="kr5" class="nh-key-row" hittest="false"><Panel class="nh-key-col" hittest="false"><Label id="kc5" class="nh-keycap" text="{g:csgo_key:kb5}" /><Label class="nh-key-twice" text="×2" /></Panel><Label id="k5" class="nh-key-label" text="{s:k5}" /></Panel>
+				<Panel id="kr6" class="nh-key-row" hittest="false"><Panel class="nh-key-col" hittest="false"><Label id="kc6" class="nh-keycap" text="{g:csgo_key:kb6}" /><Label class="nh-key-twice" text="×2" /></Panel><Label id="k6" class="nh-key-label" text="{s:k6}" /></Panel>
+				<Panel id="kr7" class="nh-key-row" hittest="false"><Panel class="nh-key-col" hittest="false"><Label id="kc7" class="nh-keycap" text="{g:csgo_key:kb7}" /></Panel><Label id="k7" class="nh-key-label" text="{s:k7}" /></Panel>
+			</Panel>
+
+			<Panel class="nh-right" hittest="false">
+			<Panel id="out" class="nh-out" hittest="false">
+				<Panel class="nh-out-head" hittest="false">
+					<Label class="nh-out-title" text="RECENT UTILITY" />
+					<Label id="ocount" class="nh-out-count" text="{s:ocount}" />
+				</Panel>
+				<Panel id="or1" class="nh-out-row" hittest="false">
+					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Panel class="nh-out-text" hittest="false"><Label id="on1" class="nh-out-name" text="{s:on1}" /><Panel class="nh-out-sub" hittest="false"><Label id="of1" class="nh-out-flight" text="{s:of1}" /><Label id="os1" class="nh-out-score" text="{s:os1}" /></Panel></Panel><Label id="ot1" class="nh-out-time" text="{s:ot1}" /></Panel>
+					<Panel class="nh-out-track" hittest="false"><Panel id="ob1" class="nh-out-fill" hittest="false" /></Panel>
+				</Panel>
+				<Panel id="or2" class="nh-out-row" hittest="false">
+					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Panel class="nh-out-text" hittest="false"><Label id="on2" class="nh-out-name" text="{s:on2}" /><Panel class="nh-out-sub" hittest="false"><Label id="of2" class="nh-out-flight" text="{s:of2}" /><Label id="os2" class="nh-out-score" text="{s:os2}" /></Panel></Panel><Label id="ot2" class="nh-out-time" text="{s:ot2}" /></Panel>
+					<Panel class="nh-out-track" hittest="false"><Panel id="ob2" class="nh-out-fill" hittest="false" /></Panel>
+				</Panel>
+				<Panel id="or3" class="nh-out-row" hittest="false">
+					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Panel class="nh-out-text" hittest="false"><Label id="on3" class="nh-out-name" text="{s:on3}" /><Panel class="nh-out-sub" hittest="false"><Label id="of3" class="nh-out-flight" text="{s:of3}" /><Label id="os3" class="nh-out-score" text="{s:os3}" /></Panel></Panel><Label id="ot3" class="nh-out-time" text="{s:ot3}" /></Panel>
+					<Panel class="nh-out-track" hittest="false"><Panel id="ob3" class="nh-out-fill" hittest="false" /></Panel>
+				</Panel>
+				<Panel id="or4" class="nh-out-row" hittest="false">
+					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Panel class="nh-out-text" hittest="false"><Label id="on4" class="nh-out-name" text="{s:on4}" /><Panel class="nh-out-sub" hittest="false"><Label id="of4" class="nh-out-flight" text="{s:of4}" /><Label id="os4" class="nh-out-score" text="{s:os4}" /></Panel></Panel><Label id="ot4" class="nh-out-time" text="{s:ot4}" /></Panel>
+					<Panel class="nh-out-track" hittest="false"><Panel id="ob4" class="nh-out-fill" hittest="false" /></Panel>
+				</Panel>
+				<Panel id="or5" class="nh-out-row" hittest="false">
+					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Panel class="nh-out-text" hittest="false"><Label id="on5" class="nh-out-name" text="{s:on5}" /><Panel class="nh-out-sub" hittest="false"><Label id="of5" class="nh-out-flight" text="{s:of5}" /><Label id="os5" class="nh-out-score" text="{s:os5}" /></Panel></Panel><Label id="ot5" class="nh-out-time" text="{s:ot5}" /></Panel>
+					<Panel class="nh-out-track" hittest="false"><Panel id="ob5" class="nh-out-fill" hittest="false" /></Panel>
+				</Panel>
+				<Panel id="or6" class="nh-out-row" hittest="false">
+					<Panel class="nh-out-line" hittest="false"><Panel class="nh-out-icon" hittest="false" /><Panel class="nh-out-text" hittest="false"><Label id="on6" class="nh-out-name" text="{s:on6}" /><Panel class="nh-out-sub" hittest="false"><Label id="of6" class="nh-out-flight" text="{s:of6}" /><Label id="os6" class="nh-out-score" text="{s:os6}" /></Panel></Panel><Label id="ot6" class="nh-out-time" text="{s:ot6}" /></Panel>
+					<Panel class="nh-out-track" hittest="false"><Panel id="ob6" class="nh-out-fill" hittest="false" /></Panel>
+				</Panel>
+				<Label id="omore" class="nh-out-more" text="{s:omore}" />
+			</Panel>
+
+			<Panel id="plan" class="nh-plan" hittest="false">
+				<Panel class="nh-plan-head" hittest="false">
+					<Label id="pltitle" class="nh-plan-title" text="{s:pltitle}" />
+					<Label id="plsub" class="nh-plan-sub" text="{s:plsub}" />
+				</Panel>
+				<Panel id="plr1" class="nh-plan-row" hittest="false"><Label id="pl1" class="nh-plan-name" text="{s:pl1}" /><Label id="plv1" class="nh-plan-val" text="{s:plv1}" /></Panel>
+				<Panel id="plr2" class="nh-plan-row" hittest="false"><Label id="pl2" class="nh-plan-name" text="{s:pl2}" /><Label id="plv2" class="nh-plan-val" text="{s:plv2}" /></Panel>
+				<Panel id="plr3" class="nh-plan-row" hittest="false"><Label id="pl3" class="nh-plan-name" text="{s:pl3}" /><Label id="plv3" class="nh-plan-val" text="{s:plv3}" /></Panel>
+				<Panel id="plr4" class="nh-plan-row" hittest="false"><Label id="pl4" class="nh-plan-name" text="{s:pl4}" /><Label id="plv4" class="nh-plan-val" text="{s:plv4}" /></Panel>
+				<Panel id="plr5" class="nh-plan-row" hittest="false"><Label id="pl5" class="nh-plan-name" text="{s:pl5}" /><Label id="plv5" class="nh-plan-val" text="{s:plv5}" /></Panel>
+				<Panel id="plr6" class="nh-plan-row" hittest="false"><Label id="pl6" class="nh-plan-name" text="{s:pl6}" /><Label id="plv6" class="nh-plan-val" text="{s:plv6}" /></Panel>
+				<Label id="plfoot" class="nh-plan-foot" text="{s:plfoot}" />
+			</Panel>
+			</Panel>
+
+			<Panel id="flash" class="nh-flash" hittest="false">
+				<Panel class="nh-flash-head" hittest="false">
+					<Label id="fltitle" class="nh-flash-title" text="{s:fltitle}" />
+					<Label id="flsub" class="nh-flash-sub" text="{s:flsub}" />
+				</Panel>
+				<Panel id="fr1" class="nh-flash-row" hittest="false">
+					<Label id="fw1" class="nh-flash-who" text="{s:fw1}" />
+					<Panel class="nh-flash-track" hittest="false"><Panel id="fa1" class="nh-flash-fade" hittest="false" /><Panel id="fu1" class="nh-flash-full" hittest="false" /></Panel>
+					<Label id="fs1" class="nh-flash-secs" text="{s:fs1}" />
+					<Label id="fg1" class="nh-flash-tag" text="{s:fg1}" />
+				</Panel>
+				<Panel id="fr2" class="nh-flash-row" hittest="false">
+					<Label id="fw2" class="nh-flash-who" text="{s:fw2}" />
+					<Panel class="nh-flash-track" hittest="false"><Panel id="fa2" class="nh-flash-fade" hittest="false" /><Panel id="fu2" class="nh-flash-full" hittest="false" /></Panel>
+					<Label id="fs2" class="nh-flash-secs" text="{s:fs2}" />
+					<Label id="fg2" class="nh-flash-tag" text="{s:fg2}" />
+				</Panel>
+				<Panel id="fr3" class="nh-flash-row" hittest="false">
+					<Label id="fw3" class="nh-flash-who" text="{s:fw3}" />
+					<Panel class="nh-flash-track" hittest="false"><Panel id="fa3" class="nh-flash-fade" hittest="false" /><Panel id="fu3" class="nh-flash-full" hittest="false" /></Panel>
+					<Label id="fs3" class="nh-flash-secs" text="{s:fs3}" />
+					<Label id="fg3" class="nh-flash-tag" text="{s:fg3}" />
+				</Panel>
+				<Panel id="fr4" class="nh-flash-row" hittest="false">
+					<Label id="fw4" class="nh-flash-who" text="{s:fw4}" />
+					<Panel class="nh-flash-track" hittest="false"><Panel id="fa4" class="nh-flash-fade" hittest="false" /><Panel id="fu4" class="nh-flash-full" hittest="false" /></Panel>
+					<Label id="fs4" class="nh-flash-secs" text="{s:fs4}" />
+					<Label id="fg4" class="nh-flash-tag" text="{s:fg4}" />
+				</Panel>
+				<Panel id="fr5" class="nh-flash-row" hittest="false">
+					<Label id="fw5" class="nh-flash-who" text="{s:fw5}" />
+					<Panel class="nh-flash-track" hittest="false"><Panel id="fa5" class="nh-flash-fade" hittest="false" /><Panel id="fu5" class="nh-flash-full" hittest="false" /></Panel>
+					<Label id="fs5" class="nh-flash-secs" text="{s:fs5}" />
+					<Label id="fg5" class="nh-flash-tag" text="{s:fg5}" />
+				</Panel>
+				<Label id="flfoot" class="nh-flash-foot" text="{s:flfoot}" />
+			</Panel>
+
+			<Label id="toast" class="nh-toast" text="{s:toast}" />
+		</Panel>
+	</Panel>
+</root>

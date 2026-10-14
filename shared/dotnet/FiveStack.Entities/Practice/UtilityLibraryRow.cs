@@ -52,6 +52,11 @@ public class UtilityLibraryRow
 
     public List<UtilityApproachPoint>? approach { get; set; }
 
+    // Where the player the library was asked for stands on this lineup, in
+    // the panel's own totals. Null for one they have never thrown at, and
+    // from a panel too old to send it.
+    public UtilityPracticeResult? progress { get; set; }
+
     public LineupRecord ToLineup()
     {
         float originX = origin_x ?? 0f;

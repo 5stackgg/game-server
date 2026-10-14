@@ -153,7 +153,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         _replay.IsSolo = _system.IsSolo;
         _replay.AnnouncesLoad = steamId => !UseHud(steamId);
-        _replay.All = steamId => _library.For(steamId);
+        _replay.Shown = Shown;
         // A solve rains live HE and molotovs on a map people are standing in.
         _system.SolveRunning = () => _solver.IsBusy || _discovery.IsBusy;
         _session.Refreshed += OnSessionRefreshed;
@@ -186,12 +186,19 @@ public partial class UtilityPracticePlugin : BasePlugin
         _system.HoldUtility = _drill.Waiting;
         _score.Scored += _drill.OnScored;
         _score.Scored += OnScoredHint;
+        _score.Scored += OnThrowScored;
+        _score.Attempted += OnAttempted;
+        _score.Shown = UseHud;
+        _drill.Finished = OnDrillFinished;
+        _drill.Shown = UseHud;
+        _api.LibraryProgress += OnLibraryProgress;
 
         WirePlaybook();
         WireDrill();
 
         _tickHandler = OnGameTick;
         Core.Event.OnTick += _tickHandler;
+        WireKeys();
 
         if (_hud != null)
         {
@@ -219,6 +226,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
                 _recorder.OnProjectileCreated(entity);
                 TintSmoke(entity);
+                TrackFlight(entity);
             });
         };
         Core.Event.OnEntityCreated += _entityCreatedHandler;
@@ -252,6 +260,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             // cannot resolve is exactly when the roster most needs re-reading.
             _occupancyDirty = true;
             _prompt?.Cancel(@event.PlayerId);
+            _replay.ForgetViewer(@event.PlayerId);
 
             ForPlayer(
                 @event.PlayerId,
@@ -280,6 +289,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         Core.Event.OnClientSteamAuthorize += _authorizeHandler;
 
         InitializeConnectClientHook();
+        InitializeTerminateRoundHook();
 
         // One repeating job for the whole plugin, not one per player. These
         // deliberately do not get StopOnMapChange: the plugin is not reloaded
@@ -293,12 +303,18 @@ public partial class UtilityPracticePlugin : BasePlugin
         // A hot reload has already missed that event, so this is its only chance.
         // Whatever the last instance drew is still in the world and nothing in
         // this one has a handle to it.
-        int swept = _replay.SweepMarkers();
-
-        if (swept > 0)
+        //
+        // Deferred: Load runs on the plugin manager's thread, and the entity
+        // system only answers on the game's.
+        Core.Scheduler.NextTick(() =>
         {
-            _logger.LogInformation("swept {swept} marker(s) left by a previous load", swept);
-        }
+            int swept = _replay.SweepMarkers();
+
+            if (swept > 0)
+            {
+                _logger.LogInformation("swept {swept} marker(s) left by a previous load", swept);
+            }
+        });
 
         if (hotReload)
         {
@@ -423,6 +439,12 @@ public partial class UtilityPracticePlugin : BasePlugin
         _recorder.Thrown -= _drill.OnThrown;
         _score.Scored -= _drill.OnScored;
         _score.Scored -= OnScoredHint;
+        _score.Scored -= OnThrowScored;
+        _score.Attempted -= OnAttempted;
+        _score.Shown = null;
+        _drill.Finished = null;
+        _drill.Shown = null;
+        _api.LibraryProgress -= OnLibraryProgress;
         if (_hud != null)
         {
             _hud.Clicked -= OnHudClicked;
@@ -435,6 +457,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         }
 
         _prompt?.Stop();
+        UnwireKeys();
 
         if (_tickHandler != null)
         {
@@ -467,6 +490,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         }
 
         UninstallConnectClientHook();
+        UninstallTerminateRoundHook();
 
         _secondTimer?.Cancel();
         _secondTimer = null;
@@ -511,7 +535,12 @@ public partial class UtilityPracticePlugin : BasePlugin
         _recorder.OnTick();
         _solver.OnTick();
         AimFeedback();
+        CompassTick();
+        FollowTick();
+        StackTick();
+        HurryBots();
         UseWatch();
+        _system.RefillUtility();
 
         // Cheap: it only redraws when the set of lineups under the player's
         // feet actually changes, which is when they step onto or off a spot.
@@ -588,12 +617,14 @@ public partial class UtilityPracticePlugin : BasePlugin
     private readonly List<ThrowSnapshot> _bots = new();
 
     /// <summary>
-    /// Put a bot where the caller is standing, facing the way they face.
+    /// Put a bot where the caller is standing, facing the way they face, on
+    /// the other team.
     ///
     /// The point is something to flash and to blow up that does not move, so
-    /// it is frozen where it lands rather than allowed to play the round. The
-    /// quota is raised first: bot_add on its own is refused once the quota is
-    /// full, and the quota starts at zero on a practice server.
+    /// it is frozen where it lands rather than allowed to play the round.
+    /// bot_add alone brings it in and raises the quota itself: setting the
+    /// quota as well was a second bot per press, and the quota on its own
+    /// adds nobody until something else makes the engine look at it.
     /// </summary>
     public bool AddBot(IPlayer player)
     {
@@ -614,18 +645,188 @@ public partial class UtilityPracticePlugin : BasePlugin
         };
 
         _bots.Add(spot);
+        _botsAskedBy = player.SteamID;
 
-        Core.Engine.ExecuteCommand(string.Join(";", BotsCfg));
-        Core.Engine.ExecuteCommand($"bot_quota {_bots.Count}");
-        Core.Engine.ExecuteCommand(
-            pawn.TeamNum == 3 ? "bot_add_ct" : "bot_add_t"
+        // The other side, which is what utility is thrown at.
+        string side = pawn.TeamNum == 3 ? "t" : "ct";
+
+        Core.Engine.ExecuteCommand("sv_cheats 1;" + string.Join(";", BotsCfg));
+        MakeRoomOn(side == "ct" ? Team.CT : Team.T);
+        Core.Engine.ExecuteCommand($"bot_add_{side}");
+
+        _logger.LogInformation(
+            "asked for a bot on {side}: {placed} placed, {joined} in game",
+            side,
+            _bots.Count,
+            BotsInGame()
         );
 
         // The bot does not exist on the tick it is asked for, and it spawns
-        // wherever the map puts it. Placing it is a second step.
-        Core.Scheduler.DelayBySeconds(BotPlaceDelaySeconds, PlaceBots);
+        // wherever the map puts it. Placing it is a second step, taken on the
+        // first tick there is a bot to place.
+        _botsDueBy = _aimTick + BotHurryTicks;
 
         return true;
+    }
+
+    // Five is a site's worth of defenders; past that a team is full before the
+    // server is, and the press silently does nothing.
+    public const int MaxBots = 5;
+
+    private ulong _botsAskedBy;
+
+    // The engine turns a bot away once its side holds as many players as the
+    // side has room for, and after a map change it can count no room at all:
+    // "Team is full" on an empty side. Nothing here plays a real round, so the
+    // side is given room for every bot it may be asked for.
+    private void MakeRoomOn(Team team)
+    {
+        CCSGameRules? rules = Core.EntitySystem.GetGameRules();
+
+        if (rules == null)
+        {
+            return;
+        }
+
+        bool ct = team == Team.CT;
+        int players = ct ? rules.NumCT : rules.NumTerrorist;
+        int room = players + MaxBots;
+
+        _logger.LogInformation(
+            "room on {team} before a bot: {players} on it, max {max}, spawns {spawns}",
+            team,
+            players,
+            ct ? rules.MaxNumCTs : rules.MaxNumTerrorists,
+            ct ? rules.SpawnPointCount_CT : rules.SpawnPointCount_Terrorist
+        );
+
+        if (ct)
+        {
+            rules.MaxNumCTs = Math.Max(rules.MaxNumCTs, room);
+            rules.SpawnPointCount_CT = Math.Max(rules.SpawnPointCount_CT, room);
+        }
+        else
+        {
+            rules.MaxNumTerrorists = Math.Max(rules.MaxNumTerrorists, room);
+            rules.SpawnPointCount_Terrorist = Math.Max(rules.SpawnPointCount_Terrorist, room);
+        }
+    }
+
+    private int BotsInGame()
+    {
+        return Core.PlayerManager.GetAllPlayers().Count(player =>
+            player != null && player.IsValid && player.IsFakeClient && player.Controller.Team is Team.CT or Team.T
+        );
+    }
+
+    // A spot only counts once a bot has joined for it. A press the engine
+    // ignored used to keep its spot, and five of those read as five bots on
+    // an empty server.
+    private void DropBotsThatNeverCame()
+    {
+        int joined = BotsInGame();
+
+        if (joined >= _bots.Count)
+        {
+            return;
+        }
+
+        int missing = _bots.Count - joined;
+
+        _bots.RemoveRange(joined, missing);
+        _logger.LogWarning("{missing} bot(s) asked for never joined; {joined} in game", missing, joined);
+
+        IPlayer? asker = _system.Find(_botsAskedBy);
+
+        if (asker != null && asker.IsValid)
+        {
+            Toast(asker, "The bot did not join");
+        }
+    }
+
+    // Every slot is a person or a bot, so a small server runs out sooner.
+    public int BotSlotsLeft()
+    {
+        int people = Core.PlayerManager.GetAllPlayers().Count(player => player != null && player.IsValid && !player.IsFakeClient);
+        int free = Core.Engine.GlobalVars.MaxClients - people - _bots.Count;
+
+        return Math.Max(0, Math.Min(MaxBots - _bots.Count, free));
+    }
+
+    // A bot asked for is watched for until this tick, rather than waited on
+    // for a fixed time: it turns up, dead, a tick or two after the command,
+    // and every tick spent waiting past that is the player looking at nothing.
+    private int _botsDueBy = -1;
+    private const int BotHurryTicks = 3 * 64;
+
+    // Asking twice for the same respawn restarts it, so each bot is asked
+    // once and given this long to stand up.
+    private readonly Dictionary<int, int> _botAsked = new();
+    private const int BotRespawnTicks = 16;
+
+    private void HurryBots()
+    {
+        if (_botsDueBy < 0)
+        {
+            return;
+        }
+
+        if (_bots.Count == 0)
+        {
+            _botsDueBy = -1;
+
+            return;
+        }
+
+        // Out of time: the slow path that was the only path still gets there.
+        if (_aimTick > _botsDueBy)
+        {
+            _botsDueBy = -1;
+            _botAsked.Clear();
+            DropBotsThatNeverCame();
+            PlaceBots();
+
+            return;
+        }
+
+        int ready = 0;
+
+        foreach (IPlayer player in Core.PlayerManager.GetAllPlayers())
+        {
+            if (player == null || !player.IsValid || !player.IsFakeClient)
+            {
+                continue;
+            }
+
+            if (!player.IsAlive)
+            {
+                bool asked =
+                    _botAsked.TryGetValue(player.PlayerID, out int at)
+                    && _aimTick - at < BotRespawnTicks;
+
+                if (!asked && player.Controller.Team is Team.CT or Team.T)
+                {
+                    _botAsked[player.PlayerID] = _aimTick;
+                    player.Respawn();
+                }
+
+                continue;
+            }
+
+            CCSPlayerPawn? pawn = player.PlayerPawn;
+
+            if (pawn != null && pawn.IsValid)
+            {
+                ready++;
+            }
+        }
+
+        if (ready >= _bots.Count)
+        {
+            _botsDueBy = -1;
+            _botAsked.Clear();
+            StandBotsOnSpots();
+        }
     }
 
     public int ClearBots()
@@ -746,6 +947,30 @@ public partial class UtilityPracticePlugin : BasePlugin
                 new QAngle(0, spot.yaw, 0),
                 new Vector(0, 0, 0)
             );
+
+            Unblock(pawn);
+        }
+    }
+
+    // A bot is put where the player is standing, so it starts inside them,
+    // and one on the other side is solid whatever mp_solid_teammates says.
+    // Debris stands on the world and is in nobody's way. A respawn undoes it,
+    // so it is set every time a bot is stood on its spot.
+    private void Unblock(CCSPlayerPawn pawn)
+    {
+        try
+        {
+            CCollisionProperty collision = pawn.Collision;
+
+            collision.CollisionGroup = (byte)CollisionGroup.Debris;
+            collision.CollisionGroupUpdated();
+            collision.CollisionAttribute.CollisionGroup = (byte)CollisionGroup.Debris;
+            collision.CollisionAttribute.CollisionGroupUpdated();
+            pawn.CollisionRulesChanged();
+        }
+        catch (Exception error)
+        {
+            _logger.LogWarning(error, "unable to make a placed bot non-solid");
         }
     }
 
@@ -793,7 +1018,7 @@ public partial class UtilityPracticePlugin : BasePlugin
                 continue;
             }
 
-            StandOnNearest(player, pawn);
+            UsePressed(player, pawn);
         }
     }
 
@@ -802,7 +1027,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         Vector origin = pawn.AbsOrigin ?? new Vector(0, 0, 0);
         var at = new Vec3(origin.X, origin.Y, origin.Z);
 
-        IReadOnlyList<LineupRecord> library = _library.For(player.SteamID);
+        IReadOnlyList<LineupRecord> library = Shown(player.SteamID);
 
         if (library.Count == 0)
         {
@@ -812,7 +1037,13 @@ public partial class UtilityPracticePlugin : BasePlugin
         // What they are pointing at wins over what they are near: with two
         // stances in reach, the crosshair is the only thing that says which.
         LineupRecord? target =
-            LookingAt(pawn, at, library, PracticeReplay.SpotAt(library, at))
+            LookingAt(
+                pawn,
+                at,
+                library,
+                PracticeReplay.SpotAt(library, at),
+                _system.StateFor(player.SteamID).Loaded
+            )
             ?? Nearest(library, at);
 
         if (target == null)
@@ -837,11 +1068,16 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         if (_replay.StandOn(player, target))
         {
-            PracticeState state = _system.StateFor(player.SteamID);
+            _system.StateFor(player.SteamID).Loaded = target;
+
+            // The grenade the throw is made with, in the hand: snapping onto a
+            // molotov spot holding a smoke is half an answer.
+            _replay.GiveUtility(player, target.utility_type);
 
             // Walking onto a spot on purpose is asking to see it again.
-            state.Cleared = false;
-            state.Loaded = target;
+            _replay.Unhide(player.SteamID);
+            _standingIn.Remove(player.SteamID);
+            ShowWorldFor(player.SteamID);
         }
     }
 
@@ -886,7 +1122,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             // .clear asked for an empty world, and this is the loop that would
             // otherwise hand it straight back: both the markers and the
             // Loaded assignment below.
-            if (_system.StateFor(player.SteamID).Cleared)
+            if (_replay.IsHidden(player.SteamID))
             {
                 continue;
             }
@@ -894,14 +1130,29 @@ public partial class UtilityPracticePlugin : BasePlugin
             Vector origin = pawn.AbsOrigin ?? new Vector(0, 0, 0);
             var at = new Vec3(origin.X, origin.Y, origin.Z);
 
-            IReadOnlyList<LineupRecord> library = _library.For(player.SteamID);
+            // .clear asked for an empty world, and this is the loop that would
+            // otherwise hand it straight back.
+            if (_replay.IsHidden(player.SteamID))
+            {
+                continue;
+            }
+
+            IReadOnlyList<LineupRecord> library = Shown(player.SteamID);
             List<LineupRecord> here = PracticeReplay.SpotAt(library, at);
+
+            _replay.WatchSpots(player, at);
 
             // Which ring the player is LOOKING at. Where two stances overlap,
             // walking in cannot say which throw is meant -- and picking one by
             // arrival order means the aim marker changes depending on which
             // side you stepped in from. Pointing at a ring is unambiguous.
-            LineupRecord? aimedAt = LookingAt(pawn, at, library, here);
+            LineupRecord? aimedAt = LookingAt(
+                pawn,
+                at,
+                library,
+                here,
+                _system.StateFor(player.SteamID).Loaded
+            );
 
             // Standing on a spot shows every throw off it -- you cannot choose
             // between options you cannot see. Looking toward one only decides
@@ -966,11 +1217,12 @@ public partial class UtilityPracticePlugin : BasePlugin
     //     one spot and every ring is under your feet;
     //   - failing that, a ring they are pointing at from a distance, which is
     //     how you pick a spot across the room.
-    private static LineupRecord? LookingAt(
+    private LineupRecord? LookingAt(
         CCSPlayerPawn pawn,
         Vec3 at,
         IReadOnlyList<LineupRecord> library,
-        IReadOnlyList<LineupRecord> here
+        IReadOnlyList<LineupRecord> here,
+        LineupRecord? loaded
     )
     {
         QAngle eyes = pawn.EyeAngles;
@@ -998,7 +1250,10 @@ public partial class UtilityPracticePlugin : BasePlugin
 
             if (bestAim != null)
             {
-                return bestAim;
+                return PracticeMarkerUtility.Chosen(
+                    bestAim,
+                    here.FirstOrDefault(lineup => lineup.client_id == loaded?.client_id)
+                );
             }
 
             // Standing on a spot but looking nowhere near any of its throws:
@@ -1021,26 +1276,21 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         var eye = new Vec3(at.x, at.y, at.z + 64f);
 
-        LineupRecord? best = null;
-        double bestAngle = RingHoverDegrees;
+        var pointed = new List<(double Angle, LineupRecord Lineup, Vec3 At)>();
 
         foreach (LineupRecord lineup in library)
         {
             Vec3 feet = lineup.release.feet_position;
 
             // The floating grenade is the spot's face, so pointing at it has
-            // to count the same as pointing at the ground ring under it --
-            // with no ground text left, the model is what a player actually
-            // aims at to ask "what is this one called".
+            // to count the same as pointing at the ground under it: the model
+            // is what a player actually aims at to ask "what is this one".
             foreach (
                 float lift in new[] { 0f, PracticeReplay.UtilityModelHeight }
             )
             {
-                var toRing = new Vec3(
-                    feet.x - eye.x,
-                    feet.y - eye.y,
-                    feet.z + lift - eye.z
-                );
+                var point = new Vec3(feet.x, feet.y, feet.z + lift);
+                var toRing = new Vec3(point.x - eye.x, point.y - eye.y, point.z - eye.z);
                 float length = toRing.Length();
 
                 // A ring you are standing on is straight down from the eye,
@@ -1057,15 +1307,24 @@ public partial class UtilityPracticePlugin : BasePlugin
                 double angle =
                     Math.Acos(Math.Clamp(dot, -1.0, 1.0)) * 180.0 / Math.PI;
 
-                if (angle < bestAngle)
+                if (angle < RingHoverDegrees)
                 {
-                    bestAngle = angle;
-                    best = lineup;
+                    pointed.Add((angle, lineup, point));
                 }
             }
         }
 
-        return best;
+        // Nearest the crosshair first, and only one that is actually in view:
+        // the crosshair passes over a great many spots that are behind a wall.
+        foreach ((double _, LineupRecord lineup, Vec3 point) in pointed.OrderBy(entry => entry.Angle))
+        {
+            if (_replay.Sees(eye, point))
+            {
+                return lineup;
+            }
+        }
+
+        return null;
     }
 
     private void AimFeedback()
@@ -1097,10 +1356,13 @@ public partial class UtilityPracticePlugin : BasePlugin
                 player,
                 eyes.Y,
                 eyes.X,
-                new Vec3(standing.X, standing.Y, standing.Z)
+                new Vec3(standing.X, standing.Y, standing.Z),
+                PracticeReplay.EyeOf(pawn)
             );
 
             Panels(player, pawn);
+            ZoomWatch(player, pawn);
+            HudBar(player, pawn);
         }
     }
 
@@ -1128,6 +1390,13 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void Hint(IPlayer player, int cooldown)
     {
+        // Where the HUD is up, its key legend and the menu already say all of
+        // this, and a line in chat every few minutes is only noise.
+        if (UseHud(player.SteamID))
+        {
+            return;
+        }
+
         if (
             _hintedAt.TryGetValue(player.SteamID, out int last)
             && _aimTick - last < cooldown
@@ -1138,19 +1407,6 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         _hintedAt[player.SteamID] = _aimTick;
 
-        // Where the panel is up, the thing worth teaching is the panel that
-        // replaces the typing, not two more commands to type.
-        if (UseHud(player.SteamID) && _hud!.Available(HudSlots.List))
-        {
-            Tell(
-                player.SteamID,
-                $" {ChatColors.Grey}tip: {ChatColors.Default}.menu{ChatColors.Grey} "
-                    + "picks a lineup off the screen"
-            );
-
-            return;
-        }
-
         Tell(
             player.SteamID,
             $" {ChatColors.Grey}tip: {ChatColors.Default}.next{ChatColors.Grey} and "
@@ -1158,11 +1414,22 @@ public partial class UtilityPracticePlugin : BasePlugin
         );
     }
 
+    // The library answers on a worker thread, and the progress book is read
+    // by the game's.
+    private void OnLibraryProgress(
+        ulong steamId,
+        Dictionary<string, UtilityPracticeResult> progress,
+        int? masteryStreak
+    )
+    {
+        Core.Scheduler.NextTick(() => _drill.Seed(steamId, progress, masteryStreak));
+    }
+
     // Landing one is the natural point to move on, so that is where the nudge
     // to do so belongs.
     private void OnScoredHint(ulong steamId, string lineupId, UtilityPracticeResult? result)
     {
-        if (result?.success != true)
+        if (result?.success != true || UseHud(steamId))
         {
             return;
         }
@@ -1484,10 +1751,10 @@ public partial class UtilityPracticePlugin : BasePlugin
         Vector origin = pawn.AbsOrigin ?? new Vector(0, 0, 0);
         var at = new Vec3(origin.X, origin.Y, origin.Z);
 
-        IReadOnlyList<LineupRecord> library = _library.For(player.SteamID);
+        IReadOnlyList<LineupRecord> library = Shown(player.SteamID);
         List<LineupRecord> here = PracticeReplay.SpotAt(library, at);
-        LineupRecord? aimedAt = LookingAt(pawn, at, library, here);
         LineupRecord? loaded = _system.StateFor(player.SteamID).Loaded;
+        LineupRecord? aimedAt = LookingAt(pawn, at, library, here, loaded);
 
         // A drill has already decided what the player is working on, and it
         // stays decided even when they walk off the spot -- the panels are how
@@ -1511,12 +1778,8 @@ public partial class UtilityPracticePlugin : BasePlugin
             Vec3 spot = loaded.release.feet_position;
 
             bool onAngle =
-                PracticeLineupUtility.AimError(
-                    eyes.Y,
-                    eyes.X,
-                    loaded.release.yaw,
-                    loaded.release.pitch
-                ) <= ToleranceFor(loaded);
+                _replay.AimErrorFrom(loaded, PracticeReplay.EyeOf(pawn), eyes.Y, eyes.X)
+                <= ToleranceFor(loaded);
 
             // Both halves, not just the angle. Saying you are lined up while
             // you stand in the wrong place is worse than saying nothing -- the
@@ -1617,8 +1880,10 @@ public partial class UtilityPracticePlugin : BasePlugin
         // comes before everything else that assumes people can get in.
         _session.RetryIfMissing(TimeSpan.FromSeconds(15));
         EndWarmup();
+        KeepTheRoundClock();
         RespawnTheDead();
         KeepBotsStanding();
+        PruneLive();
         KeepEveryoneStocked();
         ReportOccupancy();
         _system.Tick();
@@ -1629,6 +1894,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _callouts.Report(_session.Map);
         DrainLibraryLoads();
         DrainPendingMapLoad();
+        KeepWorldsCurrent();
     }
 
     // Nobody stays dead on a practice server. Rejoining while dead, falling off
@@ -1736,7 +2002,6 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void OnFastTick()
     {
-        _system.RefillUtility();
         _playbook.Tick();
         _solver.Pump();
         _discovery.Pump();
@@ -1830,10 +2095,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         _drill.Forget(steamId);
         _system.Forget(steamId);
 
-        // Their selection is theirs: leaving it behind leaks the entities and
-        // leaves standing transmit blocks pointing at indices the engine will
-        // hand to something else.
-        _replay.ClearSelectionFor(steamId);
+        _replay.ForgetPlayer(steamId);
+        _shown.Remove(steamId);
         _standingIn.Remove(steamId);
         _hintedAt.Remove(steamId);
         _showing.Remove((steamId, PanelKind.Title));
@@ -1908,6 +2171,18 @@ public partial class UtilityPracticePlugin : BasePlugin
         _director.Reset(null);
         _hud?.Reset();
         _menus.Clear();
+        _shown.Clear();
+        _standingIn.Clear();
+        _filterText.Clear();
+        _pipSlots.Clear();
+        _pipSpots.Clear();
+        UnzoomEveryone();
+        EndFollowEveryone();
+        ForgetLive();
+        ForgetStacks();
+        ForgetEveryVerdict();
+        _mapChoices.Clear();
+        _flashes.Clear();
         // A save held for a smoke on the old map goes now, without it.
         _voxels.Reset();
         _recorder.Reset();
@@ -2007,11 +2282,18 @@ public partial class UtilityPracticePlugin : BasePlugin
         load.RetryAt = null;
         load.LoadedFor = map;
 
+        _shown.Remove(steamId);
+
+        if (pushed)
+        {
+            DropRemoved(steamId, _library.For(steamId));
+        }
+
         if (count > 0)
         {
             IReadOnlyList<LineupRecord> library = _library.For(steamId);
 
-            ShowLibraryFor(steamId, library);
+            ShowWorldFor(steamId);
 
             // .next and .prev walk state.Results, and a refresh never filled it
             // -- so every lineup on the map was drawn and none of them could be
@@ -2032,11 +2314,13 @@ public partial class UtilityPracticePlugin : BasePlugin
 
                 if (!pushed)
                 {
+                    string walk = UseHud(steamId) ? "TAB ▸ Lineups" : ".next";
+
                     Tell(
                         steamId,
                         $" {ChatColors.Green}{count} lineup(s) {ChatColors.Grey}on "
                             + $"{ChatColors.Default}{map} {ChatColors.Grey}-- "
-                            + $"{ChatColors.Default}.next{ChatColors.Grey} to walk them"
+                            + $"{ChatColors.Default}{walk}{ChatColors.Grey} to walk them"
                     );
                 }
             }
@@ -2048,35 +2332,80 @@ public partial class UtilityPracticePlugin : BasePlugin
         }
     }
 
-    // Markers are one shared set of entities for the whole server (see
-    // PracticeReplay.ShowLibrary) while a library is filtered per player by the
-    // panel, so drawing one on somebody's behalf only holds while there is
-    // nobody else it could be shown to. With company it drew whoever's fetch
-    // landed last, which put one player's private lineups in front of everyone.
-    // Their own .load, .next and .menu still draw, because those were asked for.
-    private void ShowLibraryFor(ulong steamId, IReadOnlyList<LineupRecord> library)
+    // The panel pushes a refresh when a lineup is archived, deleted or hidden,
+    // and the fresh library no longer has it -- but the player can still be
+    // holding it, aiming at its ring or walking it in their results.
+    private void DropRemoved(ulong steamId, IReadOnlyList<LineupRecord> library)
+    {
+        HashSet<string> kept = library
+            .Select(row => row.id)
+            .Where(PracticeLineupUtility.IsPanelId)
+            .Select(id => id!)
+            .ToHashSet();
+
+        bool Gone(LineupRecord row) => PracticeLineupUtility.IsPanelId(row.id) && !kept.Contains(row.id!);
+
+        PracticeState state = _system.StateFor(steamId);
+
+        state.Results.RemoveAll(Gone);
+
+        if (state.Loaded == null || !Gone(state.Loaded))
+        {
+            return;
+        }
+
+        LineupRecord gone = state.Loaded;
+
+        state.Loaded = null;
+        state.Index = -1;
+        _replay.ClearGhosts(steamId);
+
+        IPlayer? player = _system.Find(steamId);
+
+        if (player != null && player.IsValid)
+        {
+            Toast(player, $"{PracticeLineupUtility.TitleCase(DrillUtility.Name(gone))} was removed on the panel");
+        }
+    }
+
+    // A player's markers are their own, drawn from their library after their
+    // own filters, so nothing here has to care who else is connected. Free
+    // when nothing changed, which is what lets the second tick call it.
+    private void ShowWorldFor(ulong steamId)
     {
         if (_config.RenderMode)
         {
             return;
         }
 
-        List<ulong> connected = _system.ConnectedSteamIds();
+        IPlayer? player = _system.Find(steamId);
 
-        if (connected.Count != 1 || connected[0] != steamId)
+        if (player == null || !player.IsValid)
         {
             return;
         }
 
-        // A refresh nobody asked for does not get to undo .clear: the drain
-        // runs on its own schedule, and the panel pushing an edit is not the
-        // player asking for their markers back.
-        if (_system.StateFor(steamId).Cleared)
+        _replay.ShowWorld(player, Shown(steamId));
+    }
+
+    // Filters, a library edit, an execute starting or ending: all of them
+    // change what a player should be looking at, and none of them say so.
+    private void KeepWorldsCurrent()
+    {
+        KeepPracticeCfg();
+
+        if (_config.RenderMode)
         {
             return;
         }
 
-        _replay.ShowLibrary(library);
+        _replay.SyncViewers();
+        KeepSpawnsShown();
+
+        foreach (ulong steamId in _system.ConnectedSteamIds())
+        {
+            ShowWorldFor(steamId);
+        }
     }
 
     private LibraryLoad LibraryLoadFor(ulong steamId)
@@ -2229,8 +2558,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         "mp_roundtime 60",
         "mp_roundtime_defuse 60",
         "mp_respawn_immunitytime 0",
-        "mp_buy_anywhere 1",
-        "mp_buytime 60000",
+        "mp_buy_anywhere 0",
+        "mp_buytime 0",
         "mp_maxmoney 65535",
         "mp_startmoney 65535",
         "mp_afterroundmoney 65535",
@@ -2283,6 +2612,10 @@ public partial class UtilityPracticePlugin : BasePlugin
     private void KeepRoundsMoving()
     {
         Core.Engine.ExecuteCommand("mp_freezetime 0;mp_warmup_pausetimer 0;mp_warmup_end");
+
+        // A new round puts the map's entities back, buy zones included, and a
+        // beat later than the event that announces it.
+        Core.Scheduler.NextTick(RemoveBuyZones);
     }
 
     // Nobody is here but the thrower unless somebody has asked for a bot to
@@ -2309,6 +2642,38 @@ public partial class UtilityPracticePlugin : BasePlugin
         "mp_autoteambalance 0",
     };
 
+    // Every one of these is cheat protected, so cheats are asserted in the
+    // same breath: said while they are off, the server answers "change
+    // ignored" and the bots it then adds are the ordinary kind, which walk off
+    // and shoot back.
+    private void HoldBotsStill()
+    {
+        Core.Engine.ExecuteCommand("sv_cheats 1;" + string.Join(";", BotsCfg));
+        Core.Engine.ExecuteCommand($"bot_quota {_bots.Count}");
+    }
+
+    // An empty server that hibernates wakes up with its game cvars back at
+    // their defaults -- cheats off, the round rules live, bots filling the
+    // teams -- and nothing about a player joining says so. Cheats being off is
+    // the one of those that is never true here otherwise, so it is the tell.
+    private void KeepPracticeCfg()
+    {
+        try
+        {
+            if (Core.ConVar.Find<bool>("sv_cheats")?.Value != false)
+            {
+                return;
+            }
+        }
+        catch
+        {
+            return;
+        }
+
+        _logger.LogInformation("the practice cvars were reset under us; applying them again");
+        RunPracticeCfg();
+    }
+
     private void RunPracticeCfg()
     {
         Core.Engine.ExecuteCommand(string.Join(";", PracticeCfg));
@@ -2324,6 +2689,12 @@ public partial class UtilityPracticePlugin : BasePlugin
         {
             Core.Engine.ExecuteCommand(string.Join(";", NoBotsCfg));
         }
+        else
+        {
+            HoldBotsStill();
+        }
+
+        RemoveBuyZones();
 
         // The map change did not take the session with it, and sv_password is
         // the one thing here that is per-session rather than per-map.

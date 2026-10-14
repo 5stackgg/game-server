@@ -1,0 +1,2663 @@
+/* nadehud2.vcss -- one stylesheet for every nade2_* utility-practice layout.
+
+   Positions that a dialog variable cannot carry (the aim dot, the drill meter)
+   are encoded as one-of-N class groups the server picks between. The C# side
+   owns the mapping in HudSlots; both ends are asserted against this file by
+   HudLayoutContractTests. */
+
+.nh-screen
+{
+	width: 100%;
+	height: 100%;
+}
+
+/* ── shared type ─────────────────────────────────────────── */
+
+.nh-kicker
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	color: #e4ae39;
+	font-size: 15px;
+	font-weight: bold;
+	letter-spacing: 1.4px;
+	text-transform: uppercase;
+	margin-bottom: 1px;
+}
+
+.nh-rule
+{
+	width: 100%;
+	height: 1px;
+	margin-bottom: 12px;
+	background-color: gradient(linear, 0% 0%, 100% 0%, from(rgba(228, 174, 57, 0.62)), color-stop(0.55, rgba(50, 129, 172, 0.26)), to(rgba(50, 129, 172, 0)));
+}
+
+/* ══════════════════════════════════════════════════════════
+   nade2_hud -- the throw bar. Passive; never captures input.
+   ══════════════════════════════════════════════════════════ */
+
+/* Bottom right: clear of the compass along the top, the ammo counter below
+   and the middle of the screen, which is where the aim marker is. Three rows:
+   what the throw is, the hands that make it, and the two things that have to
+   be true before it leaves them. */
+.nh-root
+{
+	width: 432px;
+	horizontal-align: right;
+	vertical-align: bottom;
+	margin-right: 42px;
+	margin-bottom: 130px;
+	flow-children: down;
+	visibility: collapse;
+	opacity: 0;
+	background-color: rgba(9, 9, 11, 0.84);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 6px;
+	box-shadow: rgba(0, 0, 0, 0.8) 0px 12px 30px 0px;
+	world-blur: gaussian(3, 3, 3);
+	transition-property: opacity;
+	transition-duration: 0.14s;
+}
+
+.nh-root.shown
+{
+	visibility: visible;
+	opacity: 1;
+}
+
+.nh-root.cyan { border-left: 3px solid rgb(0, 220, 255); }
+.nh-root.yellow { border-left: 3px solid rgb(255, 225, 60); }
+.nh-root.magenta { border-left: 3px solid rgb(255, 90, 220); }
+.nh-root.blue { border-left: 3px solid rgb(90, 130, 255); }
+.nh-root.orange { border-left: 3px solid rgb(255, 150, 40); }
+.nh-root.purple { border-left: 3px solid rgb(185, 120, 255); }
+.nh-root.white { border-left: 3px solid rgb(240, 240, 240); }
+.nh-root.pink { border-left: 3px solid rgb(255, 150, 190); }
+
+/* On the spot and on the line. The whole bar says so, so it reads from the
+   corner of an eye that is on the crosshair. After the colours above, so it
+   takes the edge back from them. */
+.nh-root.go
+{
+	border: 1px solid rgba(74, 222, 128, 0.75);
+	box-shadow: rgba(74, 222, 128, 0.55) 0px 0px 22px 0px;
+}
+
+.nh-kick
+{
+	width: 100%;
+	flow-children: right;
+	padding: 8px 14px 6px;
+}
+
+/* The grenade itself, from the game's own icon set, so nothing has to ship
+   for it. White art, tinted by what kind it is -- or, for a smoke with throw
+   colours on, by the colour the next one will come out in, which the bar's
+   left edge then matches. PracticeStepColors has no green and no red: those
+   two belong to the locks below. */
+.nh-nade
+{
+	width: 22px;
+	height: 22px;
+	margin-right: 8px;
+	vertical-align: center;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: 50% 50%;
+}
+
+.nh-nade.smoke { background-image: url("s2r://panorama/images/icons/equipment/smokegrenade.vsvg"); wash-color: rgb(50, 214, 224); }
+.nh-nade.flash { background-image: url("s2r://panorama/images/icons/equipment/flashbang.vsvg"); wash-color: rgb(255, 210, 26); }
+.nh-nade.molly { background-image: url("s2r://panorama/images/icons/equipment/molotov.vsvg"); wash-color: rgb(255, 106, 26); }
+.nh-nade.he { background-image: url("s2r://panorama/images/icons/equipment/hegrenade.vsvg"); wash-color: rgb(255, 59, 59); }
+
+.nh-nade.cyan { wash-color: rgb(0, 220, 255); }
+.nh-nade.yellow { wash-color: rgb(255, 225, 60); }
+.nh-nade.magenta { wash-color: rgb(255, 90, 220); }
+.nh-nade.blue { wash-color: rgb(90, 130, 255); }
+.nh-nade.orange { wash-color: rgb(255, 150, 40); }
+.nh-nade.purple { wash-color: rgb(185, 120, 255); }
+.nh-nade.white { wash-color: rgb(240, 240, 240); }
+.nh-nade.pink { wash-color: rgb(255, 150, 190); }
+
+.nh-kick-type
+{
+	margin-right: 9px;
+	vertical-align: center;
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: bold;
+	letter-spacing: 2.2px;
+	text-transform: uppercase;
+	color: #a1a1aa;
+}
+
+.nh-kick-name
+{
+	width: fill-parent-flow(1);
+	vertical-align: center;
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: bold;
+	letter-spacing: 2.2px;
+	text-transform: uppercase;
+	color: #fafafa;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.nh-kick-pos
+{
+	margin-left: 9px;
+	vertical-align: center;
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: bold;
+	letter-spacing: 1.4px;
+	color: #a1a1aa;
+}
+
+.nh-split
+{
+	width: 100%;
+	height: 1px;
+	background-color: rgba(255, 255, 255, 0.07);
+}
+
+/* The hands. Keycaps for every key to hold, the technique in words, and a
+   mouse with the buttons to press lit. Drawn from panels because no image
+   ships with the addon. */
+.nh-throw
+{
+	width: 100%;
+	height: 76px;
+	flow-children: right;
+	padding: 0px 17px 0px 14px;
+}
+
+/* The body that makes the throw: standing, crouched, running, in the air. Our
+   own drawings, one per technique, compiled into the addon beside the
+   layouts. */
+.nh-fig
+{
+	width: 46px;
+	height: 46px;
+	margin-right: 8px;
+	vertical-align: center;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: 50% 50%;
+}
+
+.nh-fig.stationary { background-image: url("s2r://panorama/images/custom_game/nade2_fig_stationary.vsvg"); }
+.nh-fig.walking { background-image: url("s2r://panorama/images/custom_game/nade2_fig_walking.vsvg"); }
+.nh-fig.running { background-image: url("s2r://panorama/images/custom_game/nade2_fig_running.vsvg"); }
+.nh-fig.crouch { background-image: url("s2r://panorama/images/custom_game/nade2_fig_crouch.vsvg"); }
+.nh-fig.jump { background-image: url("s2r://panorama/images/custom_game/nade2_fig_jump.vsvg"); }
+.nh-fig.runjump { background-image: url("s2r://panorama/images/custom_game/nade2_fig_runjump.vsvg"); }
+.nh-fig.walkjump { background-image: url("s2r://panorama/images/custom_game/nade2_fig_walkjump.vsvg"); }
+.nh-fig.crouchjump { background-image: url("s2r://panorama/images/custom_game/nade2_fig_crouchjump.vsvg"); }
+
+.nh-caps
+{
+	flow-children: right;
+	vertical-align: center;
+}
+
+/* Every key a throw can ask for exists in the layout; the ones this throw
+   wants are the ones shown. */
+.nh-cap
+{
+	visibility: collapse;
+	margin-right: 5px;
+	padding: 5px 8px 3px;
+	text-transform: uppercase;
+	white-space: nowrap;
+	vertical-align: center;
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 15px;
+	font-weight: bold;
+	color: #f99e2f;
+	background-color: rgba(249, 158, 47, 0.2);
+	border: 1px solid #f99e2f;
+	border-radius: 3px;
+}
+
+.nh-cap.on
+{
+	visibility: visible;
+}
+
+.nh-words
+{
+	margin-left: 7px;
+	flow-children: down;
+	vertical-align: center;
+}
+
+.nh-tech
+{
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 26px;
+	font-weight: bold;
+	color: #fafafa;
+	white-space: nowrap;
+}
+
+.nh-runup
+{
+	visibility: collapse;
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 15px;
+	font-weight: bold;
+	letter-spacing: 0.6px;
+	color: #a1a1aa;
+	white-space: nowrap;
+}
+
+.nh-runup.shown
+{
+	visibility: visible;
+}
+
+.nh-dash
+{
+	width: fill-parent-flow(1);
+	height: 1px;
+	margin-left: 13px;
+	margin-right: 13px;
+	vertical-align: center;
+	background-color: rgba(161, 161, 170, 0.3);
+}
+
+/* The rounded outline clips the two buttons, so they sit flush in the top of
+   it the way the real ones do. */
+.nh-mouse
+{
+	width: 40px;
+	height: 58px;
+	vertical-align: center;
+	flow-children: right;
+	background-color: rgba(255, 255, 255, 0.03);
+	border: 2px solid #71717a;
+	border-radius: 18px;
+}
+
+.nh-mouse-btn
+{
+	width: fill-parent-flow(1);
+	height: 24px;
+	background-color: rgba(255, 255, 255, 0.08);
+}
+
+.nh-mouse-btn.on
+{
+	background-color: #f99e2f;
+}
+
+.nh-mouse-mid
+{
+	width: 2px;
+	height: 24px;
+	background-color: #71717a;
+}
+
+/* The two locks. Feet first, because the aim means nothing from the wrong
+   place. */
+.nh-locks
+{
+	width: 100%;
+	flow-children: right;
+}
+
+.nh-lock
+{
+	width: fill-parent-flow(1);
+	flow-children: right;
+	padding: 9px 14px 7px;
+}
+
+.nh-lock-split
+{
+	width: 1px;
+	height: 34px;
+	background-color: rgba(255, 255, 255, 0.07);
+}
+
+.nh-lock-dot
+{
+	width: 11px;
+	height: 11px;
+	margin-right: 9px;
+	vertical-align: center;
+	border: 2px solid #f99e2f;
+	border-radius: 50%;
+}
+
+.nh-lock-key
+{
+	width: fill-parent-flow(1);
+	vertical-align: center;
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: bold;
+	letter-spacing: 2px;
+	text-transform: uppercase;
+	color: #a1a1aa;
+}
+
+.nh-lock-val
+{
+	vertical-align: center;
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: bold;
+	letter-spacing: 2px;
+	text-transform: uppercase;
+	color: #f99e2f;
+	white-space: nowrap;
+}
+
+.nh-lock.on .nh-lock-dot
+{
+	background-color: #4ade80;
+	border: 2px solid #4ade80;
+}
+
+/* Fires as the class lands, which is the instant the lock closes. In practice
+   you are staring at the crosshair, not the bar, so this is the feedback that
+   reaches you without looking away. */
+.nh-lock.on .nh-lock-val
+{
+	color: #4ade80;
+	sound: "UIPanorama.generic_button_click";
+}
+
+/* ── drill ───────────────────────────────────────────────── */
+
+.nh-readout
+{
+	width: 100%;
+	flow-children: right;
+	margin-bottom: 4px;
+}
+
+.nh-readout-key
+{
+	width: fill-parent-flow(1);
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: bold;
+	letter-spacing: 1.3px;
+	text-transform: uppercase;
+	color: #5d6f80;
+}
+
+.nh-readout-val
+{
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 16px;
+	font-weight: bold;
+	color: #f99e2f;
+}
+
+.nh-readout-cyan
+{
+	color: #82d7ff;
+}
+
+.nh-drill
+{
+	width: 100%;
+	flow-children: down;
+	padding: 8px 14px 10px;
+	visibility: collapse;
+}
+
+.nh-drill.shown
+{
+	visibility: visible;
+}
+
+.nh-meter
+{
+	width: 100%;
+	height: 5px;
+	background-color: rgba(255, 255, 255, 0.07);
+	border-radius: 1px;
+	flow-children: none;
+}
+
+.nh-meter-fill
+{
+	height: 100%;
+	horizontal-align: left;
+	background-color: #82d7ff;
+	border-radius: 1px;
+	transition-property: width;
+	transition-duration: 0.15s;
+}
+
+/* Five landed in a row is what the panel calls mastered, so the meter is cut
+   into five: the cells are only the gaps, laid over whatever the fill has
+   reached. */
+.nh-meter-cells
+{
+	width: 100%;
+	height: 100%;
+	flow-children: right;
+}
+
+.nh-meter-cell
+{
+	width: 20%;
+	height: 100%;
+	border-right: 2px solid rgb(9, 15, 21);
+}
+
+.nh-drill.done .nh-meter-fill
+{
+	background-color: rgb(60, 230, 90);
+}
+
+.nh-drill.done .nh-readout-cyan
+{
+	color: rgb(60, 230, 90);
+}
+
+#drillbar.p0 { width: 0%; }
+#drillbar.p1 { width: 10%; }
+#drillbar.p2 { width: 20%; }
+#drillbar.p3 { width: 30%; }
+#drillbar.p4 { width: 40%; }
+#drillbar.p5 { width: 50%; }
+#drillbar.p6 { width: 60%; }
+#drillbar.p7 { width: 70%; }
+#drillbar.p8 { width: 80%; }
+#drillbar.p9 { width: 90%; }
+#drillbar.p10 { width: 100%; }
+
+/* ══════════════════════════════════════════════════════════
+   nade2_pick -- choosing a lineup: the map and the list, side by side,
+   over the same filters. Interactive.
+   ══════════════════════════════════════════════════════════ */
+
+.nh-pick
+{
+	width: 840px;
+	horizontal-align: center;
+	vertical-align: center;
+	flow-children: down;
+	padding: 18px 20px 14px;
+	visibility: collapse;
+	opacity: 0;
+	background-color: gradient(linear, 75% 100%, 0% 0%, from(rgba(9, 15, 21, 0.96)), to(rgba(15, 23, 31, 0.94)));
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-left: 3px solid #82d7ff;
+	border-radius: 2px;
+	box-shadow: rgba(0, 0, 0, 0.78) 0px 0px 34px 0px;
+	world-blur: gaussian(3, 3, 3);
+	transition-property: opacity;
+	transition-duration: 0.12s;
+}
+
+.nh-pick.shown
+{
+	visibility: visible;
+	opacity: 1;
+	animation-name: 'PanelIn';
+	animation-duration: 0.14s;
+	animation-timing-function: ease-out;
+	animation-iteration-count: 1;
+}
+
+.nh-pick-cols
+{
+	width: 100%;
+	flow-children: right;
+}
+
+/* A spot on the map narrows the list beside it to the throws that land
+   there. Gone on a map with no radar to draw. */
+.nh-pick-map
+{
+	width: 300px;
+	margin-right: 18px;
+	flow-children: down;
+}
+
+.nh-pick-map.hidden
+{
+	visibility: collapse;
+}
+
+.nh-pick-list
+{
+	width: fill-parent-flow(1);
+	flow-children: down;
+}
+
+.nh-list-head
+{
+	width: 100%;
+	flow-children: right;
+	margin-bottom: 10px;
+}
+
+.nh-list-titles
+{
+	width: fill-parent-flow(1);
+	flow-children: down;
+}
+
+.nh-list-title
+{
+	font-family: Stratum2, 'Arial Unicode MS';
+	color: #f3f6fb;
+	font-size: 27px;
+	font-weight: bold;
+	text-overflow: ellipsis;
+}
+
+.nh-nav
+{
+	width: 30px;
+	height: 30px;
+	margin-right: 10px;
+	vertical-align: center;
+	background-color: rgba(130, 215, 255, 0.04);
+	border: 1px solid rgba(130, 215, 255, 0.16);
+	border-radius: 2px;
+}
+
+.nh-nav:hover
+{
+	sound: "UIPanorama.generic_button_rollover";
+	background-color: rgba(130, 215, 255, 0.14);
+	border: 1px solid rgba(130, 215, 255, 0.4);
+}
+
+.nh-nav.hidden
+{
+	visibility: collapse;
+}
+
+.nh-nav-close
+{
+	margin-right: 0px;
+	margin-left: 10px;
+}
+
+.nh-nav-glyph
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 17px;
+	font-weight: bold;
+	color: #82d7ff;
+	horizontal-align: center;
+	vertical-align: center;
+}
+
+
+.nh-chips
+{
+	width: 100%;
+	flow-children: down;
+}
+
+/* Filter chips. Everything the old chat commands did, in the panel, because a
+   filter you have to leave the panel to set is not a filter anyone uses. */
+.nh-chiprow
+{
+	width: 100%;
+	flow-children: right;
+	margin-bottom: 5px;
+}
+
+.nh-chip-key
+{
+	width: 56px;
+	vertical-align: center;
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: bold;
+	letter-spacing: 1.3px;
+	text-transform: uppercase;
+	color: #5d6f80;
+}
+
+.nh-chip
+{
+	width: fill-parent-flow(1);
+	height: 24px;
+	margin-right: 4px;
+	background-color: rgba(255, 255, 255, 0.025);
+	border: 1px solid rgba(255, 255, 255, 0.05);
+	border-radius: 2px;
+}
+
+
+.nh-chip:hover
+{
+	background-color: rgba(255, 255, 255, 0.08);
+	sound: "UIPanorama.generic_button_rollover";
+}
+
+.nh-chip:active
+{
+	sound: "UIPanorama.generic_button_click";
+}
+
+.nh-chip.on
+{
+	background-color: #e4ae39;
+	border: 1px solid #e4ae39;
+}
+
+.nh-chip-label
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 13px;
+	font-weight: bold;
+	letter-spacing: 1.2px;
+	text-transform: uppercase;
+	color: #7e8fa1;
+	horizontal-align: center;
+	vertical-align: center;
+}
+
+.nh-chip.on .nh-chip-label
+{
+	color: #0c1218;
+}
+
+.nh-chip.hidden
+{
+	visibility: collapse;
+}
+
+.nh-chip-reset
+{
+	border: 1px solid rgba(249, 158, 47, 0.55);
+}
+
+.nh-chip-reset .nh-chip-label
+{
+	color: #f99e2f;
+}
+
+/* Native scroll, so a long library is a long list rather than a page count.
+   Fixed height or there is nothing to scroll within. */
+.nh-list-body
+{
+	width: 100%;
+	height: 340px;
+	flow-children: down;
+	margin-top: 3px;
+	overflow: squish scroll;
+}
+
+.nh-row
+{
+	width: 100%;
+	height: 38px;
+	margin-bottom: 5px;
+	flow-children: right;
+	padding: 0px 12px;
+	background-color: gradient(linear, 0% 0%, 100% 0%, from(rgba(255, 255, 255, 0.035)), color-stop(0.55, rgba(88, 112, 136, 0.11)), to(rgba(0, 0, 0, 0.2)));
+	border: 1px solid rgba(255, 255, 255, 0.05);
+	border-left: 3px solid rgba(228, 174, 57, 0.42);
+	border-radius: 2px;
+}
+
+.nh-row:active
+{
+	sound: "UIPanorama.generic_button_click";
+}
+
+.nh-row:hover
+{
+	sound: "UIPanorama.generic_button_rollover";
+	border-left: 3px solid #e4ae39;
+	background-color: gradient(linear, 0% 0%, 100% 0%, from(rgba(228, 174, 57, 0.14)), to(rgba(0, 0, 0, 0.2)));
+}
+
+.nh-row.selected
+{
+	border-left: 3px solid #82d7ff;
+	background-color: gradient(linear, 0% 0%, 100% 0%, from(rgba(130, 215, 255, 0.13)), color-stop(0.6, rgba(130, 215, 255, 0.045)), to(rgba(0, 0, 0, 0.2)));
+}
+
+.nh-row.disabled
+{
+	opacity: 0.4;
+}
+
+.nh-row.hidden
+{
+	visibility: collapse;
+}
+
+.nh-row-key
+{
+	width: 22px;
+	height: 22px;
+	vertical-align: center;
+	margin-right: 11px;
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 15px;
+	font-weight: bold;
+	color: #82d7ff;
+	text-align: center;
+	background-color: rgba(130, 215, 255, 0.05);
+	border: 1px solid rgba(130, 215, 255, 0.18);
+	border-radius: 2px;
+}
+
+.nh-row-label
+{
+	width: fill-parent-flow(1);
+	vertical-align: center;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 19px;
+	font-weight: bold;
+	color: #e9eff5;
+	text-overflow: ellipsis;
+}
+
+.nh-row-value
+{
+	vertical-align: center;
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: bold;
+	letter-spacing: 1.2px;
+	text-transform: uppercase;
+	color: #7e8fa1;
+}
+
+.nh-pager
+{
+	width: 100%;
+	flow-children: right;
+	margin-top: 4px;
+}
+
+.nh-pager.hidden
+{
+	visibility: collapse;
+}
+
+.nh-pager-btn
+{
+	width: 90px;
+	height: 24px;
+	background-color: rgba(255, 255, 255, 0.025);
+	border: 1px solid rgba(255, 255, 255, 0.05);
+	border-radius: 2px;
+}
+
+.nh-pager-btn:hover
+{
+	background-color: rgba(130, 215, 255, 0.12);
+	sound: "UIPanorama.generic_button_rollover";
+}
+
+.nh-pager-btn.hidden
+{
+	visibility: collapse;
+}
+
+.nh-pager-label
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: bold;
+	letter-spacing: 1.3px;
+	text-transform: uppercase;
+	color: #82d7ff;
+	horizontal-align: center;
+	vertical-align: center;
+}
+
+.nh-pager-info
+{
+	width: fill-parent-flow(1);
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 14px;
+	letter-spacing: 1.3px;
+	text-transform: uppercase;
+	color: #5d6f80;
+	text-align: center;
+	vertical-align: center;
+}
+
+/* ══════════════════════════════════════════════════════════
+   The radar inside the picker.
+   Markers are TARGETS (a place utility lands), not lineups: a worked
+   map has hundreds of lineups but a couple of dozen spots worth hitting.
+   ══════════════════════════════════════════════════════════ */
+
+/* The radar itself. flow-children none so every marker positions independently. */
+.nh-radar
+{
+	overflow: noclip;
+	width: 300px;
+	height: 300px;
+	horizontal-align: center;
+	flow-children: none;
+	background-color: #16202a;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: 50% 50%;
+	border: 1px solid rgba(146, 178, 208, 0.14);
+	border-radius: 2px;
+}
+
+
+/* Zero-size anchors: the marker hangs off them, so the two class groups
+   below are shared by all 24 markers rather than duplicated per id. */
+
+
+
+/* Positioned by two independent class groups on the SAME element: margin-left
+   and margin-top never collide, so a marker needs no wrapper. The earlier
+   version hung each marker off nested 0x0 anchor panels, and Panorama laid out
+   nothing inside a parent with no size -- markers existed, were positioned
+   correctly, and never drew. Half the dot is subtracted from each offset so the
+   class value is the CENTRE of the marker. */
+.nh-marker
+{
+	horizontal-align: left;
+	vertical-align: top;
+	overflow: noclip;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background-color: rgba(200, 214, 228, 0.75);
+	border: 1px solid rgba(10, 14, 19, 0.9);
+	transition-property: background-color, width, height, margin-left, margin-top;
+	transition-duration: 0.1s;
+}
+
+.nh-marker:hover
+{
+	width: 20px;
+	height: 20px;
+	sound: "UIPanorama.generic_button_rollover";
+}
+
+.nh-marker:active
+{
+	sound: "UIPanorama.generic_button_click";
+}
+
+.nh-marker.hidden { visibility: collapse; }
+
+.nh-marker.smoke  { background-color: rgba(214, 224, 234, 0.85); }
+.nh-marker.flash  { background-color: rgba(240, 214, 92, 0.9); }
+.nh-marker.molly  { background-color: rgba(240, 130, 48, 0.9); }
+.nh-marker.he     { background-color: rgba(226, 92, 74, 0.9); }
+
+/* Throwable from where the player is standing right now. This is the search:
+   walk somewhere and the map shows what you can actually hit from there. */
+.nh-marker.reachable
+{
+	border: 2px solid #6fd08c;
+	box-shadow: rgba(111, 208, 140, 0.7) 0px 0px 8px 0px;
+}
+
+.nh-marker.loaded
+{
+	border: 2px solid #82d7ff;
+	box-shadow: rgba(130, 215, 255, 0.85) 0px 0px 10px 0px;
+}
+
+.nh-marker.selected
+{
+	width: 20px;
+	height: 20px;
+	border: 2px solid #e4ae39;
+	box-shadow: rgba(228, 174, 57, 0.9) 0px 0px 12px 0px;
+}
+
+/* Named on hover, entirely client-side: every marker already carries its
+   target name, so revealing one costs no round trip and works while the server
+   is doing nothing. This is the only interaction in the HUD with no latency. */
+.nh-marker-name
+{
+	visibility: collapse;
+	horizontal-align: center;
+	margin-bottom: 22px;
+	vertical-align: bottom;
+	padding: 3px 6px;
+	white-space: nowrap;
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: bold;
+	letter-spacing: 0.7px;
+	text-transform: uppercase;
+	color: #f3f6fb;
+	background-color: rgba(8, 12, 17, 0.95);
+	border: 1px solid rgba(146, 178, 208, 0.3);
+	border-radius: 2px;
+	z-index: 10;
+}
+
+.nh-marker:hover .nh-marker-name
+{
+	visibility: visible;
+}
+
+.nh-marker-count
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 11px;
+	font-weight: bold;
+	color: #0c1218;
+	horizontal-align: center;
+	vertical-align: center;
+}
+
+.nh-map-focus
+{
+	width: 100%;
+	margin-top: 10px;
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 15px;
+	letter-spacing: 1.1px;
+	text-transform: uppercase;
+	color: #7e8fa1;
+	text-align: center;
+}
+
+.nh-marker.x0 { margin-left: -7px; }
+.nh-marker.x1 { margin-left: -2px; }
+.nh-marker.x2 { margin-left: 3px; }
+.nh-marker.x3 { margin-left: 7px; }
+.nh-marker.x4 { margin-left: 12px; }
+.nh-marker.x5 { margin-left: 17px; }
+.nh-marker.x6 { margin-left: 22px; }
+.nh-marker.x7 { margin-left: 26px; }
+.nh-marker.x8 { margin-left: 31px; }
+.nh-marker.x9 { margin-left: 36px; }
+.nh-marker.x10 { margin-left: 41px; }
+.nh-marker.x11 { margin-left: 45px; }
+.nh-marker.x12 { margin-left: 50px; }
+.nh-marker.x13 { margin-left: 55px; }
+.nh-marker.x14 { margin-left: 60px; }
+.nh-marker.x15 { margin-left: 64px; }
+.nh-marker.x16 { margin-left: 69px; }
+.nh-marker.x17 { margin-left: 74px; }
+.nh-marker.x18 { margin-left: 79px; }
+.nh-marker.x19 { margin-left: 83px; }
+.nh-marker.x20 { margin-left: 88px; }
+.nh-marker.x21 { margin-left: 93px; }
+.nh-marker.x22 { margin-left: 98px; }
+.nh-marker.x23 { margin-left: 103px; }
+.nh-marker.x24 { margin-left: 107px; }
+.nh-marker.x25 { margin-left: 112px; }
+.nh-marker.x26 { margin-left: 117px; }
+.nh-marker.x27 { margin-left: 122px; }
+.nh-marker.x28 { margin-left: 126px; }
+.nh-marker.x29 { margin-left: 131px; }
+.nh-marker.x30 { margin-left: 136px; }
+.nh-marker.x31 { margin-left: 141px; }
+.nh-marker.x32 { margin-left: 145px; }
+.nh-marker.x33 { margin-left: 150px; }
+.nh-marker.x34 { margin-left: 155px; }
+.nh-marker.x35 { margin-left: 160px; }
+.nh-marker.x36 { margin-left: 164px; }
+.nh-marker.x37 { margin-left: 169px; }
+.nh-marker.x38 { margin-left: 174px; }
+.nh-marker.x39 { margin-left: 179px; }
+.nh-marker.x40 { margin-left: 183px; }
+.nh-marker.x41 { margin-left: 188px; }
+.nh-marker.x42 { margin-left: 193px; }
+.nh-marker.x43 { margin-left: 198px; }
+.nh-marker.x44 { margin-left: 203px; }
+.nh-marker.x45 { margin-left: 207px; }
+.nh-marker.x46 { margin-left: 212px; }
+.nh-marker.x47 { margin-left: 217px; }
+.nh-marker.x48 { margin-left: 222px; }
+.nh-marker.x49 { margin-left: 226px; }
+.nh-marker.x50 { margin-left: 231px; }
+.nh-marker.x51 { margin-left: 236px; }
+.nh-marker.x52 { margin-left: 241px; }
+.nh-marker.x53 { margin-left: 245px; }
+.nh-marker.x54 { margin-left: 250px; }
+.nh-marker.x55 { margin-left: 255px; }
+.nh-marker.x56 { margin-left: 260px; }
+.nh-marker.x57 { margin-left: 264px; }
+.nh-marker.x58 { margin-left: 269px; }
+.nh-marker.x59 { margin-left: 274px; }
+.nh-marker.x60 { margin-left: 279px; }
+.nh-marker.x61 { margin-left: 283px; }
+.nh-marker.x62 { margin-left: 288px; }
+.nh-marker.x63 { margin-left: 293px; }
+
+.nh-marker.y0 { margin-top: -7px; }
+.nh-marker.y1 { margin-top: -2px; }
+.nh-marker.y2 { margin-top: 3px; }
+.nh-marker.y3 { margin-top: 7px; }
+.nh-marker.y4 { margin-top: 12px; }
+.nh-marker.y5 { margin-top: 17px; }
+.nh-marker.y6 { margin-top: 22px; }
+.nh-marker.y7 { margin-top: 26px; }
+.nh-marker.y8 { margin-top: 31px; }
+.nh-marker.y9 { margin-top: 36px; }
+.nh-marker.y10 { margin-top: 41px; }
+.nh-marker.y11 { margin-top: 45px; }
+.nh-marker.y12 { margin-top: 50px; }
+.nh-marker.y13 { margin-top: 55px; }
+.nh-marker.y14 { margin-top: 60px; }
+.nh-marker.y15 { margin-top: 64px; }
+.nh-marker.y16 { margin-top: 69px; }
+.nh-marker.y17 { margin-top: 74px; }
+.nh-marker.y18 { margin-top: 79px; }
+.nh-marker.y19 { margin-top: 83px; }
+.nh-marker.y20 { margin-top: 88px; }
+.nh-marker.y21 { margin-top: 93px; }
+.nh-marker.y22 { margin-top: 98px; }
+.nh-marker.y23 { margin-top: 103px; }
+.nh-marker.y24 { margin-top: 107px; }
+.nh-marker.y25 { margin-top: 112px; }
+.nh-marker.y26 { margin-top: 117px; }
+.nh-marker.y27 { margin-top: 122px; }
+.nh-marker.y28 { margin-top: 126px; }
+.nh-marker.y29 { margin-top: 131px; }
+.nh-marker.y30 { margin-top: 136px; }
+.nh-marker.y31 { margin-top: 141px; }
+.nh-marker.y32 { margin-top: 145px; }
+.nh-marker.y33 { margin-top: 150px; }
+.nh-marker.y34 { margin-top: 155px; }
+.nh-marker.y35 { margin-top: 160px; }
+.nh-marker.y36 { margin-top: 164px; }
+.nh-marker.y37 { margin-top: 169px; }
+.nh-marker.y38 { margin-top: 174px; }
+.nh-marker.y39 { margin-top: 179px; }
+.nh-marker.y40 { margin-top: 183px; }
+.nh-marker.y41 { margin-top: 188px; }
+.nh-marker.y42 { margin-top: 193px; }
+.nh-marker.y43 { margin-top: 198px; }
+.nh-marker.y44 { margin-top: 203px; }
+.nh-marker.y45 { margin-top: 207px; }
+.nh-marker.y46 { margin-top: 212px; }
+.nh-marker.y47 { margin-top: 217px; }
+.nh-marker.y48 { margin-top: 222px; }
+.nh-marker.y49 { margin-top: 226px; }
+.nh-marker.y50 { margin-top: 231px; }
+.nh-marker.y51 { margin-top: 236px; }
+.nh-marker.y52 { margin-top: 241px; }
+.nh-marker.y53 { margin-top: 245px; }
+.nh-marker.y54 { margin-top: 250px; }
+.nh-marker.y55 { margin-top: 255px; }
+.nh-marker.y56 { margin-top: 260px; }
+.nh-marker.y57 { margin-top: 264px; }
+.nh-marker.y58 { margin-top: 269px; }
+.nh-marker.y59 { margin-top: 274px; }
+.nh-marker.y60 { margin-top: 279px; }
+.nh-marker.y61 { margin-top: 283px; }
+.nh-marker.y62 { margin-top: 288px; }
+.nh-marker.y63 { margin-top: 293px; }
+
+@keyframes 'PanelIn'
+{
+	0%   { opacity: 0.0; transform: translateY(-6px); }
+	100% { opacity: 1.0; transform: translateY(0px); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   nade_run -- the execute, as asked for: who throws what and when,
+   yours in colour and everyone else's greyed. Passive; never takes
+   the cursor, because it is up while the round is being run.
+   ══════════════════════════════════════════════════════════ */
+
+.nh-run
+{
+	width: 290px;
+	horizontal-align: left;
+	vertical-align: center;
+	margin-left: 42px;
+	flow-children: down;
+	padding: 16px 18px 14px;
+	visibility: collapse;
+	opacity: 0;
+	background-color: gradient(linear, 75% 100%, 0% 0%, from(rgba(9, 15, 21, 0.94)), to(rgba(15, 23, 31, 0.91)));
+	border: 1px solid rgba(255, 255, 255, 0.055);
+	border-left: 3px solid #e4ae39;
+	border-radius: 2px;
+	box-shadow: rgba(0, 0, 0, 0.7) 0px 0px 26px 0px;
+	world-blur: gaussian(3, 3, 3);
+	transition-property: opacity;
+	transition-duration: 0.12s;
+}
+
+.nh-run.shown
+{
+	visibility: visible;
+	opacity: 1;
+	animation-name: 'PanelIn';
+	animation-duration: 0.14s;
+	animation-timing-function: ease-out;
+	animation-iteration-count: 1;
+}
+
+.nh-run-head
+{
+	width: 100%;
+	flow-children: right;
+	margin-bottom: 8px;
+}
+
+.nh-run-titles
+{
+	width: fill-parent-flow(1);
+	flow-children: down;
+}
+
+.nh-run-title
+{
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 22px;
+	font-weight: bold;
+	color: #f3f6fb;
+	text-overflow: ellipsis;
+}
+
+.nh-run-clock
+{
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 26px;
+	font-weight: bold;
+	color: #e4ae39;
+	vertical-align: center;
+}
+
+.nh-run-steps
+{
+	width: 100%;
+	flow-children: down;
+	max-height: 300px;
+	overflow: squish scroll;
+}
+
+.nh-step
+{
+	width: 100%;
+	flow-children: right;
+	margin-bottom: 4px;
+	padding: 3px 0px;
+}
+
+.nh-step.hidden { visibility: collapse; }
+
+/* Done is struck through rather than hidden: the point of the list is seeing
+   the whole execute, including the part that has already gone up. */
+.nh-step.done .nh-step-name
+{
+	color: #5d6f80;
+	text-decoration: line-through;
+}
+
+.nh-step.done .nh-step-swatch { opacity: 0.3; }
+
+.nh-step.now .nh-step-name { color: #f3f6fb; }
+.nh-step.now .nh-step-time { color: #e4ae39; }
+
+/* Somebody else's throw, greyed so a glance finds yours. */
+.nh-step.theirs .nh-step-name { color: #7e8fa1; }
+.nh-step.theirs .nh-step-swatch { opacity: 0.28; }
+
+.nh-step-time
+{
+	width: 40px;
+	flex-shrink: 0;
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 13px;
+	color: #5d6f80;
+	vertical-align: center;
+}
+
+.nh-step-swatch
+{
+	width: 9px;
+	height: 9px;
+	margin-right: 9px;
+	border-radius: 50%;
+	vertical-align: center;
+	background-color: #7e8fa1;
+}
+
+.nh-step-swatch.cyan
+{
+	background-color: rgb(0, 220, 255);
+}
+
+.nh-step-swatch.yellow
+{
+	background-color: rgb(255, 225, 60);
+}
+
+.nh-step-swatch.magenta
+{
+	background-color: rgb(255, 90, 220);
+}
+
+.nh-step-swatch.blue
+{
+	background-color: rgb(90, 130, 255);
+}
+
+.nh-step-swatch.orange
+{
+	background-color: rgb(255, 150, 40);
+}
+
+.nh-step-swatch.purple
+{
+	background-color: rgb(185, 120, 255);
+}
+
+.nh-step-swatch.white
+{
+	background-color: rgb(240, 240, 240);
+}
+
+.nh-step-swatch.pink
+{
+	background-color: rgb(255, 150, 190);
+}
+
+.nh-step-name
+{
+	width: fill-parent-flow(1);
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 16px;
+	font-weight: bold;
+	color: #c3d0dc;
+	vertical-align: center;
+	text-overflow: ellipsis;
+}
+
+.nh-step-who
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: bold;
+	letter-spacing: 1px;
+	text-transform: uppercase;
+	color: #5d6f80;
+	vertical-align: center;
+}
+
+.nh-step.mine .nh-step-who { color: #82d7ff; }
+
+/* ══════════════════════════════════════════════════════════
+   nade_edit -- rename, describe, change who can see it.
+   No geometry: editing where a smoke lands would silently turn every
+   scored attempt against it into a measurement of something else.
+   ══════════════════════════════════════════════════════════ */
+
+.nh-edit
+{
+	width: 400px;
+	horizontal-align: center;
+	vertical-align: center;
+	flow-children: down;
+	padding: 18px 20px 16px;
+	visibility: collapse;
+	opacity: 0;
+	background-color: gradient(linear, 75% 100%, 0% 0%, from(rgba(9, 15, 21, 0.96)), to(rgba(15, 23, 31, 0.94)));
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-left: 3px solid #e4ae39;
+	border-radius: 2px;
+	box-shadow: rgba(0, 0, 0, 0.78) 0px 0px 34px 0px;
+	world-blur: gaussian(3, 3, 3);
+	transition-property: opacity;
+	transition-duration: 0.12s;
+}
+
+.nh-edit.shown
+{
+	visibility: visible;
+	opacity: 1;
+	animation-name: 'PanelIn';
+	animation-duration: 0.14s;
+	animation-timing-function: ease-out;
+	animation-iteration-count: 1;
+}
+
+.nh-edit-key
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 13px;
+	font-weight: bold;
+	letter-spacing: 1.3px;
+	text-transform: uppercase;
+	color: #5d6f80;
+	margin-top: 8px;
+	margin-bottom: 3px;
+}
+
+/* A field is a button: clicking it asks for the value in chat, because a
+   Panorama panel has no way to accept typing. */
+.nh-edit-field
+{
+	width: 100%;
+	height: 30px;
+	padding: 0px 10px;
+	margin-bottom: 2px;
+	background-color: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.07);
+	border-radius: 2px;
+}
+
+.nh-edit-field:hover
+{
+	background-color: rgba(255, 255, 255, 0.1);
+	border: 1px solid rgba(228, 174, 57, 0.5);
+	sound: "UIPanorama.generic_button_rollover";
+}
+
+.nh-edit-field:active
+{
+	sound: "UIPanorama.generic_button_click";
+}
+
+/* Waiting for the player to type the answer in chat. */
+.nh-edit-field.asking
+{
+	border: 1px solid #e4ae39;
+	background-color: rgba(228, 174, 57, 0.12);
+}
+
+.nh-edit-value
+{
+	width: 100%;
+	vertical-align: center;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 16px;
+	color: #e9eff5;
+	text-overflow: ellipsis;
+}
+
+.nh-edit-value.empty
+{
+	color: #5d6f80;
+}
+
+.nh-edit-hint
+{
+	width: 100%;
+	margin-top: 10px;
+	margin-bottom: 8px;
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 13px;
+	letter-spacing: 0.9px;
+	text-transform: uppercase;
+	color: #7e8fa1;
+	text-align: center;
+}
+
+.nh-edit-hint.warn { color: #f99e2f; }
+.nh-edit-hint.bad { color: #f2554b; }
+.nh-edit-hint.good { color: #6fd08c; }
+
+/* ══════════════════════════════════════════════════════════
+   nade_bar -- everything that is on screen while you play: where the
+   spots are, what is filtered, and what the keys do. Passive; never
+   takes the cursor.
+   ══════════════════════════════════════════════════════════ */
+
+.nh-bar
+{
+	width: 100%;
+	height: 100%;
+	visibility: collapse;
+}
+
+.nh-bar.shown
+{
+	visibility: visible;
+}
+
+.nh-top
+{
+	width: 640px;
+	horizontal-align: center;
+	vertical-align: top;
+	margin-top: 84px;
+	flow-children: down;
+}
+
+/* A strip of the horizon. A spot's pip sits where the spot is relative to
+   the way you are facing, so turning until one is under the tick is turning
+   to face it.
+
+   The server can only move a pip from one cell to another, and does it on
+   every tick while the view is turning. The glide between cells is the
+   game's: a straight-line transition a little longer than two ticks, so a pip
+   is always travelling toward where it was last told to be, and one late
+   update is ridden through rather than seen. */
+.nh-compass
+{
+	width: 100%;
+	flow-children: down;
+}
+
+.nh-compass.hidden
+{
+	visibility: collapse;
+}
+
+.nh-compass-ribbon
+{
+	width: 100%;
+	height: 22px;
+	flow-children: none;
+	background-color: gradient(linear, 0% 0%, 100% 0%, from(rgba(9, 15, 21, 0)), color-stop(0.5, rgba(9, 15, 21, 0.62)), to(rgba(9, 15, 21, 0)));
+}
+
+.nh-compass-tick
+{
+	width: 2px;
+	height: 100%;
+	horizontal-align: center;
+	background-color: rgba(228, 174, 57, 0.8);
+}
+
+.nh-compass-line
+{
+	width: 100%;
+	height: 1px;
+	background-color: gradient(linear, 0% 0%, 100% 0%, from(rgba(146, 178, 208, 0)), color-stop(0.5, rgba(146, 178, 208, 0.5)), to(rgba(146, 178, 208, 0)));
+}
+
+/* The grenade itself, not a colour standing for it: which of four colours
+   means molotov is something to learn, and the shape is not. The columns
+   place a pip by its left edge and were cut for a ten pixel dot, so the
+   wider icon is pulled back by half the difference to sit on its column. */
+.nh-pip
+{
+	horizontal-align: left;
+	vertical-align: center;
+	width: 18px;
+	height: 18px;
+	transform: translateX( -4px );
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: 50% 50%;
+	wash-color: rgb(170, 186, 202);
+	transition-property: margin-left;
+	transition-duration: 0.04s;
+	transition-timing-function: linear;
+}
+
+.nh-pip.hidden { visibility: collapse; }
+
+.nh-pip.smoke { background-image: url("s2r://panorama/images/icons/equipment/smokegrenade.vsvg"); }
+.nh-pip.flash { background-image: url("s2r://panorama/images/icons/equipment/flashbang.vsvg"); }
+.nh-pip.molly { background-image: url("s2r://panorama/images/icons/equipment/molotov.vsvg"); }
+.nh-pip.he    { background-image: url("s2r://panorama/images/icons/equipment/hegrenade.vsvg"); }
+
+/* The one under the tick, or nearest to it: the spot the line below names. */
+.nh-pip.focus
+{
+	width: 22px;
+	height: 22px;
+	transform: translateX( -6px );
+	wash-color: #f3f6fb;
+}
+
+.nh-compass-foot
+{
+	width: 100%;
+	flow-children: right;
+	margin-top: 4px;
+}
+
+.nh-compass-more
+{
+	width: 90px;
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 13px;
+	font-weight: bold;
+	color: #7e8fa1;
+	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.65);
+}
+
+.nh-compass-right
+{
+	text-align: right;
+}
+
+.nh-compass-focus
+{
+	width: fill-parent-flow(1);
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 15px;
+	font-weight: bold;
+	letter-spacing: 1.1px;
+	text-transform: uppercase;
+	color: #f3f6fb;
+	text-align: center;
+	text-overflow: ellipsis;
+	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.65);
+}
+
+/* What the world is being narrowed to, always in view: a marker that is
+   missing because of a filter and one that is missing because it broke look
+   the same until something says which. */
+.nh-filter
+{
+	horizontal-align: center;
+	flow-children: right;
+	margin-top: 7px;
+	padding: 4px 10px 3px;
+	background-color: rgba(9, 15, 21, 0.62);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-radius: 2px;
+}
+
+.nh-filter.on
+{
+	border: 1px solid rgba(228, 174, 57, 0.6);
+	background-color: rgba(228, 174, 57, 0.1);
+}
+
+.nh-filter.cleared
+{
+	border: 1px solid rgba(242, 85, 75, 0.6);
+	background-color: rgba(242, 85, 75, 0.1);
+}
+
+.nh-filter-text
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: bold;
+	letter-spacing: 1.2px;
+	text-transform: uppercase;
+	color: #7e8fa1;
+}
+
+.nh-filter.on .nh-filter-text
+{
+	color: #e4ae39;
+}
+
+.nh-filter.cleared .nh-filter-text
+{
+	color: #f2554b;
+}
+
+.nh-filter-count
+{
+	margin-left: 10px;
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 13px;
+	font-weight: bold;
+	color: #c3d0dc;
+}
+
+/* What the keys do right now. The lines change with where you are standing
+   and what is in your hand, so the legend is the menu you never have to
+   open. */
+/* Down the middle of the left edge, quiet: no card, and every row at half
+   strength until it matters. Lower, above the money, chat and the game's own
+   notices were drawn over it. */
+.nh-legend
+{
+	horizontal-align: left;
+	vertical-align: center;
+	margin-left: 30px;
+	flow-children: down;
+}
+
+.nh-legend.hidden
+{
+	visibility: collapse;
+}
+
+.nh-key-row
+{
+	flow-children: right;
+	margin-bottom: 5px;
+	opacity: 0.55;
+	transition-property: opacity;
+	transition-duration: 0.15s;
+}
+
+.nh-key-row.hidden
+{
+	visibility: collapse;
+}
+
+/* The key is there, and there is nothing for it to do from here. */
+.nh-key-row.dim
+{
+	opacity: 0.18;
+}
+
+.nh-keycap
+{
+	min-width: 24px;
+	padding: 3px 6px 2px;
+	vertical-align: center;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 11px;
+	font-weight: bold;
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
+	white-space: nowrap;
+	color: #eef2f5;
+	text-align: center;
+	background-color: rgba(9, 15, 21, 0.42);
+	border: 1px solid rgba(238, 242, 245, 0.55);
+	border-radius: 3px;
+	transition-property: background-color, color, border;
+	transition-duration: 0.12s;
+}
+
+/* The key, sized to its name the way a keyboard's are, and a press count
+   after it: a fixed column so every description starts on one line. */
+.nh-key-col
+{
+	width: 84px;
+	margin-right: 8px;
+	vertical-align: center;
+	flow-children: right;
+}
+
+.nh-key-twice
+{
+	margin-left: 5px;
+	vertical-align: center;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 11px;
+	font-weight: bold;
+	color: rgba(238, 242, 245, 0.75);
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 1);
+}
+
+.nh-key-label
+{
+	vertical-align: center;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: normal;
+	color: #eef2f5;
+	text-shadow: 0px 1px 2px 2 rgba(0, 0, 0, 0.95);
+	transition-property: color;
+	transition-duration: 0.12s;
+}
+
+/* The key is doing its thing this moment: zoom held, menu open. */
+/* Doing its thing this moment: full strength and amber. */
+.nh-key-row.on
+{
+	opacity: 1;
+}
+
+.nh-key-row.on .nh-keycap
+{
+	color: #0c1218;
+	background-color: #e4ae39;
+	border: 1px solid #e4ae39;
+}
+
+.nh-key-row.on .nh-key-label
+{
+	color: #ffd27a;
+}
+
+/* What a key press just did. Where chat used to answer, except it does not
+   scroll away under the next line. */
+.nh-toast
+{
+	horizontal-align: center;
+	vertical-align: bottom;
+	margin-bottom: 250px;
+	padding: 7px 14px 6px;
+	visibility: collapse;
+	opacity: 0;
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 17px;
+	font-weight: normal;
+	letter-spacing: 1.1px;
+	text-transform: uppercase;
+	color: #f3f6fb;
+	background-color: rgba(9, 15, 21, 0.88);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-left: 3px solid #e4ae39;
+	border-radius: 2px;
+	transition-property: opacity, transform;
+	transition-duration: 0.15s;
+	transform: translate3d( 0px, 8px, 0px );
+	transition-timing-function: ease-out;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+.nh-toast.shown
+{
+	visibility: visible;
+	opacity: 1;
+	transform: translate3d( 0px, 0px, 0px );
+}
+
+
+/* ── what is out ──────────────────────────────────────────
+   Every smoke and fire in the world and how long it has left, in the corner
+   the kill feed has on a server where anybody dies. The bar is stepped by the
+   server about once a second and the game glides it between steps. */
+.nh-right
+{
+	horizontal-align: right;
+	vertical-align: top;
+	margin-top: 150px;
+	margin-right: 26px;
+	width: 300px;
+	flow-children: down;
+}
+
+.nh-out
+{
+	width: 100%;
+	margin-bottom: 8px;
+	flow-children: down;
+	visibility: collapse;
+	opacity: 0;
+	transition-property: opacity;
+	transition-duration: 0.15s;
+}
+
+.nh-out.shown
+{
+	visibility: visible;
+	opacity: 1;
+}
+
+.nh-out-head
+{
+	width: 100%;
+	flow-children: right;
+	margin-bottom: 4px;
+}
+
+.nh-out-title
+{
+	width: fill-parent-flow(1);
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: normal;
+	letter-spacing: 2px;
+	color: #a9b7c5;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+.nh-out-count
+{
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: normal;
+	color: #f3f6fb;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+.nh-out-row
+{
+	width: 100%;
+	flow-children: down;
+	margin-bottom: 4px;
+	background-color: rgba(9, 15, 21, 0.9);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-left: 3px solid #c8d6e4;
+	border-radius: 2px;
+	visibility: collapse;
+	opacity: 0;
+	transform: translate3d( 16px, 0px, 0px );
+	transition-property: opacity, transform;
+	transition-duration: 0.18s;
+	transition-timing-function: ease-out;
+}
+
+.nh-out-row.shown
+{
+	visibility: visible;
+	opacity: 1;
+	transform: translate3d( 0px, 0px, 0px );
+}
+
+.nh-out-line
+{
+	width: 100%;
+	flow-children: right;
+	padding: 5px 8px 4px 8px;
+}
+
+.nh-out-icon
+{
+	width: 20px;
+	height: 20px;
+	margin-right: 8px;
+	vertical-align: center;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: 50% 50%;
+	wash-color: #c8d6e4;
+}
+
+/* The name, and under it how long it was in the air and how it scored. */
+.nh-out-text
+{
+	width: fill-parent-flow(1);
+	vertical-align: center;
+	flow-children: down;
+}
+
+.nh-out-sub
+{
+	width: 100%;
+	flow-children: right;
+	margin-top: 1px;
+}
+
+.nh-out-name
+{
+	width: 100%;
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 17px;
+	font-weight: normal;
+	letter-spacing: 0.6px;
+	color: #f3f6fb;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+/* How long it was in the air: the half of a throw's timing that is decided
+   the moment it leaves the hand. Quieter than the time left, which is the
+   half still running. */
+.nh-out-flight
+{
+	margin-right: 8px;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
+	color: #b9c6d3;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+/* The panel's verdict on a throw made at a lineup. */
+.nh-out-score
+{
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
+	color: #9aa9b8;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+.nh-out-row.landed .nh-out-score { color: rgb(126, 226, 160); }
+.nh-out-row.missed .nh-out-score { color: rgb(255, 143, 135); }
+
+.nh-out-time
+{
+	width: 34px;
+	text-align: right;
+	vertical-align: center;
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 15px;
+	font-weight: normal;
+	color: #f3f6fb;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+.nh-out-track
+{
+	width: 100%;
+	height: 3px;
+	background-color: rgba(255, 255, 255, 0.08);
+	flow-children: none;
+}
+
+.nh-out-fill
+{
+	height: 100%;
+	horizontal-align: left;
+	background-color: #c8d6e4;
+	transition-property: width;
+	transition-duration: 1.0s;
+	transition-timing-function: linear;
+}
+
+.nh-out-row.smoke .nh-out-icon { background-image: url("s2r://panorama/images/icons/equipment/smokegrenade.vsvg"); }
+.nh-out-row.molly .nh-out-icon { background-image: url("s2r://panorama/images/icons/equipment/molotov.vsvg"); wash-color: rgb(255, 106, 26); }
+.nh-out-row.molly { border-left: 3px solid rgb(255, 106, 26); }
+.nh-out-row.molly .nh-out-fill { background-color: rgb(255, 106, 26); }
+.nh-out-row.flash .nh-out-icon { background-image: url("s2r://panorama/images/icons/equipment/flashbang.vsvg"); wash-color: rgb(255, 210, 26); }
+.nh-out-row.flash { border-left: 3px solid rgb(255, 210, 26); }
+.nh-out-row.flash .nh-out-fill { background-color: rgb(255, 210, 26); }
+.nh-out-row.he .nh-out-icon { background-image: url("s2r://panorama/images/icons/equipment/hegrenade.vsvg"); wash-color: rgb(255, 59, 59); }
+.nh-out-row.he { border-left: 3px solid rgb(255, 59, 59); }
+.nh-out-row.he .nh-out-fill { background-color: rgb(255, 59, 59); }
+.nh-out-row.decoy .nh-out-icon { background-image: url("s2r://panorama/images/icons/equipment/decoy.vsvg"); wash-color: rgb(96, 222, 128); }
+.nh-out-row.decoy { border-left: 3px solid rgb(96, 222, 128); }
+.nh-out-row.decoy .nh-out-fill { background-color: rgb(96, 222, 128); }
+
+.nh-out-row.cyan { border-left: 3px solid rgb(0, 220, 255); }
+.nh-out-row.cyan .nh-out-icon { wash-color: rgb(0, 220, 255); }
+.nh-out-row.cyan .nh-out-fill { background-color: rgb(0, 220, 255); }
+.nh-out-row.yellow { border-left: 3px solid rgb(255, 225, 60); }
+.nh-out-row.yellow .nh-out-icon { wash-color: rgb(255, 225, 60); }
+.nh-out-row.yellow .nh-out-fill { background-color: rgb(255, 225, 60); }
+.nh-out-row.magenta { border-left: 3px solid rgb(255, 90, 220); }
+.nh-out-row.magenta .nh-out-icon { wash-color: rgb(255, 90, 220); }
+.nh-out-row.magenta .nh-out-fill { background-color: rgb(255, 90, 220); }
+.nh-out-row.blue { border-left: 3px solid rgb(90, 130, 255); }
+.nh-out-row.blue .nh-out-icon { wash-color: rgb(90, 130, 255); }
+.nh-out-row.blue .nh-out-fill { background-color: rgb(90, 130, 255); }
+.nh-out-row.orange { border-left: 3px solid rgb(255, 150, 40); }
+.nh-out-row.orange .nh-out-icon { wash-color: rgb(255, 150, 40); }
+.nh-out-row.orange .nh-out-fill { background-color: rgb(255, 150, 40); }
+.nh-out-row.purple { border-left: 3px solid rgb(185, 120, 255); }
+.nh-out-row.purple .nh-out-icon { wash-color: rgb(185, 120, 255); }
+.nh-out-row.purple .nh-out-fill { background-color: rgb(185, 120, 255); }
+.nh-out-row.white { border-left: 3px solid rgb(240, 240, 240); }
+.nh-out-row.white .nh-out-icon { wash-color: rgb(240, 240, 240); }
+.nh-out-row.white .nh-out-fill { background-color: rgb(240, 240, 240); }
+.nh-out-row.pink { border-left: 3px solid rgb(255, 150, 190); }
+.nh-out-row.pink .nh-out-icon { wash-color: rgb(255, 150, 190); }
+.nh-out-row.pink .nh-out-fill { background-color: rgb(255, 150, 190); }
+
+/* Still in the air: nothing is counting down yet, and the flight is the
+   number that is moving. */
+.nh-out-row.air .nh-out-time
+{
+	color: #7e8fa1;
+}
+
+.nh-out-row.air .nh-out-flight
+{
+	color: #f3f6fb;
+}
+
+.nh-out-row.air .nh-out-fill
+{
+	opacity: 0.3;
+}
+
+/* The last three seconds: a gap is about to open. */
+.nh-out-row.fade .nh-out-time
+{
+	color: #e4ae39;
+}
+
+.nh-out-more
+{
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: bold;
+	letter-spacing: 1px;
+	color: #7e8fa1;
+	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.65);
+}
+
+.nh-out-fill.f0 { width: 0%; }
+.nh-out-fill.f1 { width: 5%; }
+.nh-out-fill.f2 { width: 10%; }
+.nh-out-fill.f3 { width: 15%; }
+.nh-out-fill.f4 { width: 20%; }
+.nh-out-fill.f5 { width: 25%; }
+.nh-out-fill.f6 { width: 30%; }
+.nh-out-fill.f7 { width: 35%; }
+.nh-out-fill.f8 { width: 40%; }
+.nh-out-fill.f9 { width: 45%; }
+.nh-out-fill.f10 { width: 50%; }
+.nh-out-fill.f11 { width: 55%; }
+.nh-out-fill.f12 { width: 60%; }
+.nh-out-fill.f13 { width: 65%; }
+.nh-out-fill.f14 { width: 70%; }
+.nh-out-fill.f15 { width: 75%; }
+.nh-out-fill.f16 { width: 80%; }
+.nh-out-fill.f17 { width: 85%; }
+.nh-out-fill.f18 { width: 90%; }
+.nh-out-fill.f19 { width: 95%; }
+.nh-out-fill.f20 { width: 100%; }
+
+/* ── the plan ─────────────────────────────────────────────
+   A plan being worked through, or the stack of throws that go again
+   together: a title, rows and a foot, under whatever is out. */
+.nh-plan
+{
+	width: 100%;
+	flow-children: down;
+	visibility: collapse;
+	background-color: rgba(9, 15, 21, 0.9);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-left: 3px solid #e4ae39;
+	border-radius: 2px;
+	opacity: 0;
+	transition-property: opacity;
+	transition-duration: 0.15s;
+}
+
+.nh-plan.shown
+{
+	visibility: visible;
+	opacity: 1;
+}
+
+.nh-plan-head
+{
+	width: 100%;
+	flow-children: right;
+	padding: 7px 10px 5px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.nh-plan-title
+{
+	width: fill-parent-flow(1);
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 18px;
+	font-weight: normal;
+	letter-spacing: 1px;
+	color: #f3f6fb;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+.nh-plan-sub
+{
+	vertical-align: center;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
+	color: #e4ae39;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+.nh-plan-row
+{
+	width: 100%;
+	flow-children: right;
+	padding: 5px 10px 4px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+	visibility: collapse;
+	opacity: 0;
+	transform: translate3d( 12px, 0px, 0px );
+	transition-property: opacity, transform;
+	transition-duration: 0.18s;
+	transition-timing-function: ease-out;
+}
+
+.nh-plan-row.shown
+{
+	visibility: visible;
+	opacity: 1;
+	transform: translate3d( 0px, 0px, 0px );
+}
+
+.nh-plan-row.now
+{
+	background-color: rgba(228, 174, 57, 0.16);
+}
+
+.nh-plan-name
+{
+	width: fill-parent-flow(1);
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 16px;
+	font-weight: normal;
+	letter-spacing: 0.6px;
+	color: #c3d0dc;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+.nh-plan-row.now .nh-plan-name
+{
+	color: #f3f6fb;
+}
+
+.nh-plan-val
+{
+	vertical-align: center;
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 13px;
+	font-weight: normal;
+	color: #a9b7c5;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+.nh-plan-row.done .nh-plan-name
+{
+	color: rgb(60, 230, 90);
+}
+
+.nh-plan-row.done .nh-plan-val
+{
+	color: rgb(60, 230, 90);
+}
+
+.nh-plan-foot
+{
+	padding: 6px 10px 7px;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
+	color: #a9b7c5;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+/* ── what the flash did ───────────────────────────────────
+   One row for everybody it caught. The solid part of a bar is time spent
+   seeing nothing at all; the pale part is the fade back. */
+.nh-flash
+{
+	horizontal-align: center;
+	vertical-align: center;
+	margin-top: 300px;
+	width: 480px;
+	flow-children: down;
+	visibility: collapse;
+	opacity: 0;
+	background-color: rgba(9, 15, 21, 0.9);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-left: 3px solid rgb(255, 210, 26);
+	border-radius: 2px;
+	transition-property: opacity;
+	transition-duration: 0.12s;
+}
+
+.nh-flash.shown
+{
+	visibility: visible;
+	opacity: 1;
+}
+
+.nh-flash-head
+{
+	width: 100%;
+	flow-children: right;
+	padding: 7px 10px 5px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.nh-flash-title
+{
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 18px;
+	font-weight: normal;
+	letter-spacing: 1px;
+	text-transform: uppercase;
+	color: #f3f6fb;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+.nh-flash-sub
+{
+	width: fill-parent-flow(1);
+	vertical-align: center;
+	text-align: right;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
+	color: rgb(255, 210, 26);
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+.nh-flash-row
+{
+	width: 100%;
+	flow-children: right;
+	padding: 4px 10px;
+	visibility: collapse;
+	opacity: 0;
+	transform: translate3d( 12px, 0px, 0px );
+	transition-property: opacity, transform;
+	transition-duration: 0.18s;
+	transition-timing-function: ease-out;
+}
+
+.nh-flash-row.shown
+{
+	visibility: visible;
+	opacity: 1;
+	transform: translate3d( 0px, 0px, 0px );
+}
+
+.nh-flash-who
+{
+	width: 120px;
+	vertical-align: center;
+	font-family: Stratum2 Condensed, 'Arial Unicode MS';
+	font-size: 16px;
+	font-weight: normal;
+	color: #f3f6fb;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+.nh-flash-track
+{
+	width: fill-parent-flow(1);
+	height: 8px;
+	margin-left: 8px;
+	margin-right: 8px;
+	vertical-align: center;
+	background-color: rgba(255, 255, 255, 0.08);
+	flow-children: none;
+}
+
+.nh-flash-fade
+{
+	height: 100%;
+	horizontal-align: left;
+	background-color: rgba(255, 210, 26, 0.4);
+}
+
+.nh-flash-full
+{
+	height: 100%;
+	horizontal-align: left;
+	background-color: rgb(255, 210, 26);
+}
+
+.nh-flash-secs
+{
+	width: 48px;
+	vertical-align: center;
+	text-align: right;
+	font-family: Stratum2 Mono, 'Arial Unicode MS';
+	font-size: 14px;
+	font-weight: normal;
+	color: #f3f6fb;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+.nh-flash-tag
+{
+	width: 118px;
+	margin-left: 8px;
+	vertical-align: center;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
+	text-transform: uppercase;
+	color: #a9b7c5;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+/* Your own side, you included. */
+.nh-flash.fire .nh-flash-title { color: rgb(255, 150, 60); }
+.nh-flash.fire .nh-flash-track { visibility: collapse; }
+.nh-flash-row.bad .nh-flash-who { color: rgb(255, 59, 59); }
+.nh-flash-row.bad .nh-flash-secs { color: rgb(255, 59, 59); }
+.nh-flash-row.bad .nh-flash-full { background-color: rgb(255, 59, 59); }
+.nh-flash-row.bad .nh-flash-fade { background-color: rgba(255, 59, 59, 0.4); }
+
+.nh-flash-foot
+{
+	padding: 5px 10px 6px;
+	border-top: 1px solid rgba(255, 255, 255, 0.07);
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 12px;
+	font-weight: normal;
+	letter-spacing: 0.3px;
+	text-transform: uppercase;
+	color: #a9b7c5;
+	text-shadow: 0px 1px 2px 1 rgba(0, 0, 0, 0.8);
+}
+
+.nh-flash-fade.d0 { width: 0%; }
+.nh-flash-fade.d1 { width: 5%; }
+.nh-flash-fade.d2 { width: 10%; }
+.nh-flash-fade.d3 { width: 15%; }
+.nh-flash-fade.d4 { width: 20%; }
+.nh-flash-fade.d5 { width: 25%; }
+.nh-flash-fade.d6 { width: 30%; }
+.nh-flash-fade.d7 { width: 35%; }
+.nh-flash-fade.d8 { width: 40%; }
+.nh-flash-fade.d9 { width: 45%; }
+.nh-flash-fade.d10 { width: 50%; }
+.nh-flash-fade.d11 { width: 55%; }
+.nh-flash-fade.d12 { width: 60%; }
+.nh-flash-fade.d13 { width: 65%; }
+.nh-flash-fade.d14 { width: 70%; }
+.nh-flash-fade.d15 { width: 75%; }
+.nh-flash-fade.d16 { width: 80%; }
+.nh-flash-fade.d17 { width: 85%; }
+.nh-flash-fade.d18 { width: 90%; }
+.nh-flash-fade.d19 { width: 95%; }
+.nh-flash-fade.d20 { width: 100%; }
+.nh-flash-full.d0 { width: 0%; }
+.nh-flash-full.d1 { width: 5%; }
+.nh-flash-full.d2 { width: 10%; }
+.nh-flash-full.d3 { width: 15%; }
+.nh-flash-full.d4 { width: 20%; }
+.nh-flash-full.d5 { width: 25%; }
+.nh-flash-full.d6 { width: 30%; }
+.nh-flash-full.d7 { width: 35%; }
+.nh-flash-full.d8 { width: 40%; }
+.nh-flash-full.d9 { width: 45%; }
+.nh-flash-full.d10 { width: 50%; }
+.nh-flash-full.d11 { width: 55%; }
+.nh-flash-full.d12 { width: 60%; }
+.nh-flash-full.d13 { width: 65%; }
+.nh-flash-full.d14 { width: 70%; }
+.nh-flash-full.d15 { width: 75%; }
+.nh-flash-full.d16 { width: 80%; }
+.nh-flash-full.d17 { width: 85%; }
+.nh-flash-full.d18 { width: 90%; }
+.nh-flash-full.d19 { width: 95%; }
+.nh-flash-full.d20 { width: 100%; }
+
+.nh-pip.x0 { margin-left: 0px; }
+.nh-pip.x1 { margin-left: 2.5px; }
+.nh-pip.x2 { margin-left: 5px; }
+.nh-pip.x3 { margin-left: 7.5px; }
+.nh-pip.x4 { margin-left: 10px; }
+.nh-pip.x5 { margin-left: 12.5px; }
+.nh-pip.x6 { margin-left: 15px; }
+.nh-pip.x7 { margin-left: 17.5px; }
+.nh-pip.x8 { margin-left: 20px; }
+.nh-pip.x9 { margin-left: 22.5px; }
+.nh-pip.x10 { margin-left: 25px; }
+.nh-pip.x11 { margin-left: 27.5px; }
+.nh-pip.x12 { margin-left: 30px; }
+.nh-pip.x13 { margin-left: 32.5px; }
+.nh-pip.x14 { margin-left: 35px; }
+.nh-pip.x15 { margin-left: 37.5px; }
+.nh-pip.x16 { margin-left: 40px; }
+.nh-pip.x17 { margin-left: 42.5px; }
+.nh-pip.x18 { margin-left: 45px; }
+.nh-pip.x19 { margin-left: 47.5px; }
+.nh-pip.x20 { margin-left: 50px; }
+.nh-pip.x21 { margin-left: 52.5px; }
+.nh-pip.x22 { margin-left: 55px; }
+.nh-pip.x23 { margin-left: 57.5px; }
+.nh-pip.x24 { margin-left: 60px; }
+.nh-pip.x25 { margin-left: 62.5px; }
+.nh-pip.x26 { margin-left: 65px; }
+.nh-pip.x27 { margin-left: 67.5px; }
+.nh-pip.x28 { margin-left: 70px; }
+.nh-pip.x29 { margin-left: 72.5px; }
+.nh-pip.x30 { margin-left: 75px; }
+.nh-pip.x31 { margin-left: 77.5px; }
+.nh-pip.x32 { margin-left: 80px; }
+.nh-pip.x33 { margin-left: 82.5px; }
+.nh-pip.x34 { margin-left: 85px; }
+.nh-pip.x35 { margin-left: 87.5px; }
+.nh-pip.x36 { margin-left: 90px; }
+.nh-pip.x37 { margin-left: 92.5px; }
+.nh-pip.x38 { margin-left: 95px; }
+.nh-pip.x39 { margin-left: 97.5px; }
+.nh-pip.x40 { margin-left: 100px; }
+.nh-pip.x41 { margin-left: 102.5px; }
+.nh-pip.x42 { margin-left: 105px; }
+.nh-pip.x43 { margin-left: 107.5px; }
+.nh-pip.x44 { margin-left: 110px; }
+.nh-pip.x45 { margin-left: 112.5px; }
+.nh-pip.x46 { margin-left: 115px; }
+.nh-pip.x47 { margin-left: 117.5px; }
+.nh-pip.x48 { margin-left: 120px; }
+.nh-pip.x49 { margin-left: 122.5px; }
+.nh-pip.x50 { margin-left: 125px; }
+.nh-pip.x51 { margin-left: 127.5px; }
+.nh-pip.x52 { margin-left: 130px; }
+.nh-pip.x53 { margin-left: 132.5px; }
+.nh-pip.x54 { margin-left: 135px; }
+.nh-pip.x55 { margin-left: 137.5px; }
+.nh-pip.x56 { margin-left: 140px; }
+.nh-pip.x57 { margin-left: 142.5px; }
+.nh-pip.x58 { margin-left: 145px; }
+.nh-pip.x59 { margin-left: 147.5px; }
+.nh-pip.x60 { margin-left: 150px; }
+.nh-pip.x61 { margin-left: 152.5px; }
+.nh-pip.x62 { margin-left: 155px; }
+.nh-pip.x63 { margin-left: 157.5px; }
+.nh-pip.x64 { margin-left: 160px; }
+.nh-pip.x65 { margin-left: 162.5px; }
+.nh-pip.x66 { margin-left: 165px; }
+.nh-pip.x67 { margin-left: 167.5px; }
+.nh-pip.x68 { margin-left: 170px; }
+.nh-pip.x69 { margin-left: 172.5px; }
+.nh-pip.x70 { margin-left: 175px; }
+.nh-pip.x71 { margin-left: 177.5px; }
+.nh-pip.x72 { margin-left: 180px; }
+.nh-pip.x73 { margin-left: 182.5px; }
+.nh-pip.x74 { margin-left: 185px; }
+.nh-pip.x75 { margin-left: 187.5px; }
+.nh-pip.x76 { margin-left: 190px; }
+.nh-pip.x77 { margin-left: 192.5px; }
+.nh-pip.x78 { margin-left: 195px; }
+.nh-pip.x79 { margin-left: 197.5px; }
+.nh-pip.x80 { margin-left: 200px; }
+.nh-pip.x81 { margin-left: 202.5px; }
+.nh-pip.x82 { margin-left: 205px; }
+.nh-pip.x83 { margin-left: 207.5px; }
+.nh-pip.x84 { margin-left: 210px; }
+.nh-pip.x85 { margin-left: 212.5px; }
+.nh-pip.x86 { margin-left: 215px; }
+.nh-pip.x87 { margin-left: 217.5px; }
+.nh-pip.x88 { margin-left: 220px; }
+.nh-pip.x89 { margin-left: 222.5px; }
+.nh-pip.x90 { margin-left: 225px; }
+.nh-pip.x91 { margin-left: 227.5px; }
+.nh-pip.x92 { margin-left: 230px; }
+.nh-pip.x93 { margin-left: 232.5px; }
+.nh-pip.x94 { margin-left: 235px; }
+.nh-pip.x95 { margin-left: 237.5px; }
+.nh-pip.x96 { margin-left: 240px; }
+.nh-pip.x97 { margin-left: 242.5px; }
+.nh-pip.x98 { margin-left: 245px; }
+.nh-pip.x99 { margin-left: 247.5px; }
+.nh-pip.x100 { margin-left: 250px; }
+.nh-pip.x101 { margin-left: 252.5px; }
+.nh-pip.x102 { margin-left: 255px; }
+.nh-pip.x103 { margin-left: 257.5px; }
+.nh-pip.x104 { margin-left: 260px; }
+.nh-pip.x105 { margin-left: 262.5px; }
+.nh-pip.x106 { margin-left: 265px; }
+.nh-pip.x107 { margin-left: 267.5px; }
+.nh-pip.x108 { margin-left: 270px; }
+.nh-pip.x109 { margin-left: 272.5px; }
+.nh-pip.x110 { margin-left: 275px; }
+.nh-pip.x111 { margin-left: 277.5px; }
+.nh-pip.x112 { margin-left: 280px; }
+.nh-pip.x113 { margin-left: 282.5px; }
+.nh-pip.x114 { margin-left: 285px; }
+.nh-pip.x115 { margin-left: 287.5px; }
+.nh-pip.x116 { margin-left: 290px; }
+.nh-pip.x117 { margin-left: 292.5px; }
+.nh-pip.x118 { margin-left: 295px; }
+.nh-pip.x119 { margin-left: 297.5px; }
+.nh-pip.x120 { margin-left: 300px; }
+.nh-pip.x121 { margin-left: 302.5px; }
+.nh-pip.x122 { margin-left: 305px; }
+.nh-pip.x123 { margin-left: 307.5px; }
+.nh-pip.x124 { margin-left: 310px; }
+.nh-pip.x125 { margin-left: 312.5px; }
+.nh-pip.x126 { margin-left: 315px; }
+.nh-pip.x127 { margin-left: 317.5px; }
+.nh-pip.x128 { margin-left: 320px; }
+.nh-pip.x129 { margin-left: 322.5px; }
+.nh-pip.x130 { margin-left: 325px; }
+.nh-pip.x131 { margin-left: 327.5px; }
+.nh-pip.x132 { margin-left: 330px; }
+.nh-pip.x133 { margin-left: 332.5px; }
+.nh-pip.x134 { margin-left: 335px; }
+.nh-pip.x135 { margin-left: 337.5px; }
+.nh-pip.x136 { margin-left: 340px; }
+.nh-pip.x137 { margin-left: 342.5px; }
+.nh-pip.x138 { margin-left: 345px; }
+.nh-pip.x139 { margin-left: 347.5px; }
+.nh-pip.x140 { margin-left: 350px; }
+.nh-pip.x141 { margin-left: 352.5px; }
+.nh-pip.x142 { margin-left: 355px; }
+.nh-pip.x143 { margin-left: 357.5px; }
+.nh-pip.x144 { margin-left: 360px; }
+.nh-pip.x145 { margin-left: 362.5px; }
+.nh-pip.x146 { margin-left: 365px; }
+.nh-pip.x147 { margin-left: 367.5px; }
+.nh-pip.x148 { margin-left: 370px; }
+.nh-pip.x149 { margin-left: 372.5px; }
+.nh-pip.x150 { margin-left: 375px; }
+.nh-pip.x151 { margin-left: 377.5px; }
+.nh-pip.x152 { margin-left: 380px; }
+.nh-pip.x153 { margin-left: 382.5px; }
+.nh-pip.x154 { margin-left: 385px; }
+.nh-pip.x155 { margin-left: 387.5px; }
+.nh-pip.x156 { margin-left: 390px; }
+.nh-pip.x157 { margin-left: 392.5px; }
+.nh-pip.x158 { margin-left: 395px; }
+.nh-pip.x159 { margin-left: 397.5px; }
+.nh-pip.x160 { margin-left: 400px; }
+.nh-pip.x161 { margin-left: 402.5px; }
+.nh-pip.x162 { margin-left: 405px; }
+.nh-pip.x163 { margin-left: 407.5px; }
+.nh-pip.x164 { margin-left: 410px; }
+.nh-pip.x165 { margin-left: 412.5px; }
+.nh-pip.x166 { margin-left: 415px; }
+.nh-pip.x167 { margin-left: 417.5px; }
+.nh-pip.x168 { margin-left: 420px; }
+.nh-pip.x169 { margin-left: 422.5px; }
+.nh-pip.x170 { margin-left: 425px; }
+.nh-pip.x171 { margin-left: 427.5px; }
+.nh-pip.x172 { margin-left: 430px; }
+.nh-pip.x173 { margin-left: 432.5px; }
+.nh-pip.x174 { margin-left: 435px; }
+.nh-pip.x175 { margin-left: 437.5px; }
+.nh-pip.x176 { margin-left: 440px; }
+.nh-pip.x177 { margin-left: 442.5px; }
+.nh-pip.x178 { margin-left: 445px; }
+.nh-pip.x179 { margin-left: 447.5px; }
+.nh-pip.x180 { margin-left: 450px; }
+.nh-pip.x181 { margin-left: 452.5px; }
+.nh-pip.x182 { margin-left: 455px; }
+.nh-pip.x183 { margin-left: 457.5px; }
+.nh-pip.x184 { margin-left: 460px; }
+.nh-pip.x185 { margin-left: 462.5px; }
+.nh-pip.x186 { margin-left: 465px; }
+.nh-pip.x187 { margin-left: 467.5px; }
+.nh-pip.x188 { margin-left: 470px; }
+.nh-pip.x189 { margin-left: 472.5px; }
+.nh-pip.x190 { margin-left: 475px; }
+.nh-pip.x191 { margin-left: 477.5px; }
+.nh-pip.x192 { margin-left: 480px; }
+.nh-pip.x193 { margin-left: 482.5px; }
+.nh-pip.x194 { margin-left: 485px; }
+.nh-pip.x195 { margin-left: 487.5px; }
+.nh-pip.x196 { margin-left: 490px; }
+.nh-pip.x197 { margin-left: 492.5px; }
+.nh-pip.x198 { margin-left: 495px; }
+.nh-pip.x199 { margin-left: 497.5px; }
+.nh-pip.x200 { margin-left: 500px; }
+.nh-pip.x201 { margin-left: 502.5px; }
+.nh-pip.x202 { margin-left: 505px; }
+.nh-pip.x203 { margin-left: 507.5px; }
+.nh-pip.x204 { margin-left: 510px; }
+.nh-pip.x205 { margin-left: 512.5px; }
+.nh-pip.x206 { margin-left: 515px; }
+.nh-pip.x207 { margin-left: 517.5px; }
+.nh-pip.x208 { margin-left: 520px; }
+.nh-pip.x209 { margin-left: 522.5px; }
+.nh-pip.x210 { margin-left: 525px; }
+.nh-pip.x211 { margin-left: 527.5px; }
+.nh-pip.x212 { margin-left: 530px; }
+.nh-pip.x213 { margin-left: 532.5px; }
+.nh-pip.x214 { margin-left: 535px; }
+.nh-pip.x215 { margin-left: 537.5px; }
+.nh-pip.x216 { margin-left: 540px; }
+.nh-pip.x217 { margin-left: 542.5px; }
+.nh-pip.x218 { margin-left: 545px; }
+.nh-pip.x219 { margin-left: 547.5px; }
+.nh-pip.x220 { margin-left: 550px; }
+.nh-pip.x221 { margin-left: 552.5px; }
+.nh-pip.x222 { margin-left: 555px; }
+.nh-pip.x223 { margin-left: 557.5px; }
+.nh-pip.x224 { margin-left: 560px; }
+.nh-pip.x225 { margin-left: 562.5px; }
+.nh-pip.x226 { margin-left: 565px; }
+.nh-pip.x227 { margin-left: 567.5px; }
+.nh-pip.x228 { margin-left: 570px; }
+.nh-pip.x229 { margin-left: 572.5px; }
+.nh-pip.x230 { margin-left: 575px; }
+.nh-pip.x231 { margin-left: 577.5px; }
+.nh-pip.x232 { margin-left: 580px; }
+.nh-pip.x233 { margin-left: 582.5px; }
+.nh-pip.x234 { margin-left: 585px; }
+.nh-pip.x235 { margin-left: 587.5px; }
+.nh-pip.x236 { margin-left: 590px; }
+.nh-pip.x237 { margin-left: 592.5px; }
+.nh-pip.x238 { margin-left: 595px; }
+.nh-pip.x239 { margin-left: 597.5px; }
+.nh-pip.x240 { margin-left: 600px; }
+.nh-pip.x241 { margin-left: 602.5px; }
+.nh-pip.x242 { margin-left: 605px; }
+.nh-pip.x243 { margin-left: 607.5px; }
+.nh-pip.x244 { margin-left: 610px; }
+.nh-pip.x245 { margin-left: 612.5px; }
+.nh-pip.x246 { margin-left: 615px; }
+.nh-pip.x247 { margin-left: 617.5px; }
+.nh-pip.x248 { margin-left: 620px; }
+.nh-pip.x249 { margin-left: 622.5px; }
+.nh-pip.x250 { margin-left: 625px; }
+.nh-pip.x251 { margin-left: 627.5px; }
+.nh-pip.x252 { margin-left: 630px; }
+.nh-pip.x253 { margin-left: 632.5px; }
+.nh-pip.x254 { margin-left: 635px; }
+.nh-pip.x255 { margin-left: 637.5px; }
+
+#radar.de_ancient { background-image: url("s2r://panorama/images/overheadmaps/de_ancient_radar.psd"); }
+#radar.de_anubis { background-image: url("s2r://panorama/images/overheadmaps/de_anubis_radar.psd"); }
+#radar.de_cache { background-image: url("s2r://panorama/images/overheadmaps/de_cache_radar.psd"); }
+#radar.de_dust2 { background-image: url("s2r://panorama/images/overheadmaps/de_dust2_radar.psd"); }
+#radar.de_inferno { background-image: url("s2r://panorama/images/overheadmaps/de_inferno_radar.psd"); }
+#radar.de_mirage { background-image: url("s2r://panorama/images/overheadmaps/de_mirage_radar.psd"); }
+#radar.de_nuke { background-image: url("s2r://panorama/images/overheadmaps/de_nuke_radar.psd"); }
+#radar.de_overpass { background-image: url("s2r://panorama/images/overheadmaps/de_overpass_radar.psd"); }
+#radar.de_train { background-image: url("s2r://panorama/images/overheadmaps/de_train_radar.psd"); }
+#radar.de_vertigo { background-image: url("s2r://panorama/images/overheadmaps/de_vertigo_radar.psd"); }
+
+/* The last five throws at this lineup, oldest on the left: a streak building
+   is easier to see than a number counting up. */
+.nh-last
+{
+	vertical-align: center;
+	margin-left: 10px;
+	flow-children: right;
+}
+
+.nh-last-dot
+{
+	width: 8px;
+	height: 8px;
+	margin-left: 4px;
+	border-radius: 50%;
+	background-color: rgba(255, 255, 255, 0.14);
+	transition-property: background-color;
+	transition-duration: 0.2s;
+}
+
+.nh-last-dot.hit
+{
+	background-color: rgb(126, 226, 160);
+}
+
+.nh-last-dot.miss
+{
+	background-color: rgb(255, 143, 135);
+}

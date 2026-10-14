@@ -59,7 +59,7 @@ public partial class UtilityPracticePlugin
                 Reply(
                     context,
                     $" {ChatColors.Grey}named by the map -- "
-                        + $"{ChatColors.Default}.edit{ChatColors.Grey} to change it"
+                        + $"{ChatColors.Default}TAB ▸ Save Throw ▸ Edit{ChatColors.Grey} to change it"
                 );
 
                 return;
@@ -144,7 +144,7 @@ public partial class UtilityPracticePlugin
         // becomes the loaded one and gets its markers straight away.
         PracticeState saved = _system.StateFor(steamId);
 
-        saved.Cleared = false;
+        _replay.Unhide(steamId);
         saved.Loaded = thrown;
         saved.Results.Clear();
         saved.Results.Add(thrown);
@@ -508,36 +508,41 @@ public partial class UtilityPracticePlugin
         state.Index = -1;
         state.Bloom = false;
 
-        // Held until the next .load, .next, walk-on or save. Sweeping alone
-        // left the spot watcher free to redraw the spot under their feet on
-        // its next pass -- a quarter of a second, or the first time they
-        // glanced at another ring -- which is why .clear read as broken.
-        state.Cleared = true;
-
         _replay.ClearGhosts(player.SteamID);
 
+        // Theirs alone, and held until they load, save or walk onto something:
+        // everybody else's markers stay exactly where they were.
+        _replay.HideWorld(player.SteamID);
+
+        // So the spot they are standing on is drawn afresh when they ask for
+        // something again, rather than skipped as unchanged.
+        _standingIn.Remove(player.SteamID);
+
         // What everybody else's .clear means, and what a player standing in
-        // their own smoke is asking for. The ping key does this on its own --
-        // this is the same call, for anybody who types it.
-        int thrown = _replay.ClearThrownUtility();
-
-        // Swept rather than cleared: ClearMarkers can only despawn what this
-        // instance still has a handle to, and anything a previous load left
-        // behind is exactly what makes .clear look like it did nothing.
-        _replay.SweepMarkers();
-
-        // Safe to drop now the watcher is held off: nothing can match against
-        // it, so the first redraw after they ask again is decided by where
-        // they are then rather than by where they were when they cleared.
-        ForgetSpot(player.SteamID);
+        // their own smoke is asking for.
+        int thrown = ClearUtility();
 
         Reply(
             context,
             thrown > 0
-                ? $" {ChatColors.Green}cleared {ChatColors.Grey}the preview and the utility"
-                    + $" in the world"
+                ? $" {ChatColors.Green}cleared {ChatColors.Grey}the markers and the utility in the world"
                 : $" {ChatColors.Green}cleared"
         );
+    }
+
+    // The clear key as a command, for a keyboard with no delete key: any key
+    // bound to this does what delete does out of the box.
+    [Command("wipe", registerRaw: false, permission: "")]
+    public void OnWipe(ICommandContext context)
+    {
+        IPlayer? player = context.Sender;
+
+        if (player == null || !player.IsValid)
+        {
+            return;
+        }
+
+        ClearPressed(player);
     }
 
     [Command("bloom", registerRaw: false, permission: "")]
@@ -911,10 +916,13 @@ public partial class UtilityPracticePlugin
 
         if (_replay.SpawnsShown)
         {
+            _spawnsWanted = false;
             _replay.ClearSpawns();
             Reply(context, $" {ChatColors.Grey}spawn rings off");
             return;
         }
+
+        _spawnsWanted = true;
 
         List<ThrowSnapshot> spawns = _system.SpawnPoints();
 
@@ -1003,11 +1011,6 @@ public partial class UtilityPracticePlugin
 
         state.Crosshair = !state.Crosshair;
 
-        // Redrawn rather than left until the player steps off the spot and back
-        // on: a toggle that appears to do nothing gets pressed again.
-        _replay.ClearMarkers();
-        ForgetSpot(player.SteamID);
-
         Reply(
             context,
             state.Crosshair
@@ -1050,6 +1053,7 @@ public partial class UtilityPracticePlugin
 
         PracticeState state = _system.StateFor(player.SteamID);
         state.Noclip = !state.Noclip;
+        _system.ApplyNow(player);
 
         Reply(context, $" {ChatColors.Green}noclip {Toggle(state.Noclip)}");
     }
@@ -1068,31 +1072,6 @@ public partial class UtilityPracticePlugin
         state.God = !state.God;
 
         Reply(context, $" {ChatColors.Green}god {Toggle(state.God)}");
-    }
-
-    [Command("timer", registerRaw: false, permission: "")]
-    public void OnTimer(ICommandContext context)
-    {
-        IPlayer? player = context.Sender;
-
-        if (player == null || !player.IsValid)
-        {
-            return;
-        }
-
-        PracticeState state = _system.StateFor(player.SteamID);
-
-        if (state.TimerStartedAt == null)
-        {
-            state.TimerStartedAt = DateTime.UtcNow;
-            Reply(context, $" {ChatColors.Green}timer started");
-            return;
-        }
-
-        double elapsed = (DateTime.UtcNow - state.TimerStartedAt.Value).TotalSeconds;
-        state.TimerStartedAt = null;
-
-        Reply(context, $" {ChatColors.Green}timer stopped at {elapsed:0.00}s");
     }
 
     [Command("solo", registerRaw: false, permission: "")]
@@ -1126,12 +1105,18 @@ public partial class UtilityPracticePlugin
             return;
         }
 
+        DeleteLoaded(player);
+    }
+
+    private void DeleteLoaded(IPlayer player)
+    {
         PracticeState state = _system.StateFor(player.SteamID);
         LineupRecord? loaded = state.Loaded;
 
         if (loaded == null)
         {
-            Reply(context, $" {ChatColors.Red}load a lineup first");
+            Toast(player, "Load a lineup first");
+
             return;
         }
 
@@ -1140,7 +1125,7 @@ public partial class UtilityPracticePlugin
         state.Loaded = null;
         _replay.ClearGhosts(player.SteamID);
 
-        Reply(context, $" {ChatColors.Green}deleted {ChatColors.Default}{loaded.name}");
+        Toast(player, $"Deleted · {DrillUtility.Name(loaded)}");
 
         if (loaded.id == null)
         {
@@ -1160,7 +1145,11 @@ public partial class UtilityPracticePlugin
             }
 
             Core.Scheduler.NextTick(() =>
-                Tell(steamId, $" {ChatColors.Red}{loaded.name} is still on the panel; try .reload")
+                Tell(
+                    steamId,
+                    $" {ChatColors.Red}{loaded.name} is still on the panel; "
+                        + $"try {ChatColors.Default}TAB ▸ Settings ▸ Reload Library"
+                )
             );
         });
     }
@@ -1187,8 +1176,6 @@ public partial class UtilityPracticePlugin
         reloading.Index = -1;
 
         _replay.ClearGhosts(steamId);
-        _replay.ClearMarkers();
-        ForgetSpot(steamId);
 
         _library.Refresh(
             steamId,
@@ -1315,7 +1302,10 @@ public partial class UtilityPracticePlugin
         switch (_drill.StartWith(steamId, queue))
         {
             case eDrillStart.AlreadyRunning:
-                Tell(steamId, $" {ChatColors.Red}already drilling; .cancel first");
+                Tell(
+                    steamId,
+                    $" {ChatColors.Red}already drilling; stop it from {ChatColors.Default}TAB ▸ Practice"
+                );
                 return;
             case eDrillStart.ReplayDisabled:
                 Tell(steamId, $" {ChatColors.Red}replay is disabled on this server");
@@ -1488,12 +1478,23 @@ public partial class UtilityPracticePlugin
 
     private const float WelcomeDelaySeconds = 2f;
 
-    // Deliberately short. The full list is sixteen lines and reads as spam on
-    // every join; these are the four that get somebody throwing, and .help is
-    // where the rest lives.
+    // Deliberately short, and about keys: everything is on the menu, and the
+    // bar on the left says what each key does as it changes.
     private static readonly string[] WelcomeLines = new[]
     {
-        $" {ChatColors.Green}utility practice {ChatColors.Grey}-- infinite utility, buy anywhere",
+        $" {ChatColors.Green}utility practice {ChatColors.Grey}-- infinite utility, nothing to type",
+        $" {ChatColors.Default}TAB {ChatColors.Grey}opens the menu: "
+            + "saving, lineups, bots, drills, settings",
+        $" {ChatColors.Default}E {ChatColors.Grey}snaps onto the nearest lineup, "
+            + $"{ChatColors.Default}R {ChatColors.Grey}rethrows, "
+            + $"{ChatColors.Default}DEL {ChatColors.Grey}clears smoke and fire",
+    };
+
+    // Where the menu cannot be drawn, typing is all there is. These are the
+    // four that get somebody throwing, and .help is where the rest lives.
+    private static readonly string[] TypedWelcomeLines = new[]
+    {
+        $" {ChatColors.Green}utility practice {ChatColors.Grey}-- infinite utility",
         $" {ChatColors.Default}.save <name> {ChatColors.Grey}saves the throw you just made",
         $" {ChatColors.Default}.load <query> {ChatColors.Grey}stands you on a saved lineup",
         $" {ChatColors.Default}.rethrow {ChatColors.Grey}throws it again from where it was thrown",
@@ -1528,7 +1529,7 @@ public partial class UtilityPracticePlugin
         $" {ChatColors.Default}.spawns / .spawn next {ChatColors.Grey}where rounds start from",
         $" {ChatColors.Default}.clear {ChatColors.Grey}or your {ChatColors.Default}ping key"
             + $" {ChatColors.Grey}-- smokes, fires and the preview",
-        $" {ChatColors.Default}.noclip / .god / .timer / .solo",
+        $" {ChatColors.Default}.noclip / .god / .solo",
     };
 
     private void StartPlaybook(IPlayer player, ICommandContext context)
@@ -1685,7 +1686,7 @@ public partial class UtilityPracticePlugin
 
         // Asking for a lineup is asking to see it: whatever .clear held off
         // starts drawing again from here.
-        applying.Cleared = false;
+        _replay.Unhide(player.SteamID);
         applying.Loaded = lineup;
 
         // Standing the player on the lineup needs nothing but the flat fields,

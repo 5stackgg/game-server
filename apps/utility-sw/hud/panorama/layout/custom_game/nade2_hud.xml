@@ -1,0 +1,68 @@
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/custom_game/nadehud2.vcss_c" />
+	</styles>
+	<Panel class="nh-screen" hittest="false">
+		<Panel id="NadeHud" class="nh-root" hittest="false">
+			<Panel class="nh-kick" hittest="false">
+				<Panel id="nade" class="nh-nade" hittest="false" />
+				<Label id="kicker" class="nh-kick-type" text="{s:kicker}" />
+				<Label id="title" class="nh-kick-name" text="{s:title}" />
+				<Label id="pos" class="nh-kick-pos" text="{s:pos}" />
+			</Panel>
+
+			<Panel class="nh-split" hittest="false" />
+
+			<Panel class="nh-throw" hittest="false">
+				<Panel id="fig" class="nh-fig" hittest="false" />
+				<Panel class="nh-caps" hittest="false">
+					<Label id="kc_shift" class="nh-cap" text="{g:csgo_key:kb_shift}" />
+					<Label id="kc_ctrl" class="nh-cap" text="{g:csgo_key:kb_ctrl}" />
+					<Label id="kc_w" class="nh-cap" text="{g:csgo_key:kb_w}" />
+					<Label id="kc_a" class="nh-cap" text="{g:csgo_key:kb_a}" />
+					<Label id="kc_s" class="nh-cap" text="{g:csgo_key:kb_s}" />
+					<Label id="kc_d" class="nh-cap" text="{g:csgo_key:kb_d}" />
+					<Label id="kc_jump" class="nh-cap" text="{g:csgo_key:kb_jump}" />
+				</Panel>
+				<Panel class="nh-words" hittest="false">
+					<Label id="tech" class="nh-tech" text="{s:tech}" />
+					<Label id="runup" class="nh-runup" text="{s:runup}" />
+				</Panel>
+				<Panel class="nh-dash" hittest="false" />
+				<Panel class="nh-mouse" hittest="false">
+					<Panel id="mb1" class="nh-mouse-btn" hittest="false" />
+					<Panel class="nh-mouse-mid" hittest="false" />
+					<Panel id="mb2" class="nh-mouse-btn" hittest="false" />
+				</Panel>
+			</Panel>
+
+			<Panel class="nh-split" hittest="false" />
+
+			<Panel class="nh-locks" hittest="false">
+				<Panel id="spot" class="nh-lock" hittest="false">
+					<Panel class="nh-lock-dot" hittest="false" />
+					<Label class="nh-lock-key" text="FEET" />
+					<Label id="spotval" class="nh-lock-val" text="{s:spotval}" />
+				</Panel>
+				<Panel class="nh-lock-split" hittest="false" />
+				<Panel id="aim" class="nh-lock" hittest="false">
+					<Panel class="nh-lock-dot" hittest="false" />
+					<Label class="nh-lock-key" text="AIM" />
+					<Label id="aimerr" class="nh-lock-val" text="{s:aimerr}" />
+				</Panel>
+			</Panel>
+
+			<Panel id="drillrow" class="nh-drill" hittest="false">
+				<Panel class="nh-readout" hittest="false">
+					<Label id="drillkey" class="nh-readout-key" text="{s:drillkey}" />
+					<Label id="drill" class="nh-readout-val nh-readout-cyan" text="{s:drill}" />
+					<Panel class="nh-last" hittest="false"><Panel id="ld1" class="nh-last-dot" hittest="false" /><Panel id="ld2" class="nh-last-dot" hittest="false" /><Panel id="ld3" class="nh-last-dot" hittest="false" /><Panel id="ld4" class="nh-last-dot" hittest="false" /><Panel id="ld5" class="nh-last-dot" hittest="false" /></Panel>
+				</Panel>
+				<Panel class="nh-meter" hittest="false">
+					<Panel id="drillbar" class="nh-meter-fill" hittest="false" />
+					<Panel class="nh-meter-cells" hittest="false"><Panel class="nh-meter-cell" hittest="false" /><Panel class="nh-meter-cell" hittest="false" /><Panel class="nh-meter-cell" hittest="false" /><Panel class="nh-meter-cell" hittest="false" /><Panel class="nh-meter-cell" hittest="false" /></Panel>
+				</Panel>
+			</Panel>
+		</Panel>
+	</Panel>
+</root>

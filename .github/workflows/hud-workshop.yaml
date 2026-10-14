@@ -137,7 +137,10 @@ jobs:
           for expected in \
             panorama \
             nade_hud.vxml_c nade_list.vxml_c nade_map.vxml_c \
-            nade_run.vxml_c nade_edit.vxml_c nadehud.vcss_c
+            nade_run.vxml_c nade_edit.vxml_c nadehud.vcss_c \
+            nade2_hud.vxml_c nade2_pick.vxml_c \
+            nade2_run.vxml_c nade2_edit.vxml_c nade2_bar.vxml_c \
+            nade2_wheel.vxml_c nadehud2.vcss_c nadewheel2.vcss_c
           do
             case "$TREE" in
               *"$expected"*) ;;

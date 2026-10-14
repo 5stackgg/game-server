@@ -1,0 +1,418 @@
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/custom_game/nadewheel2.vcss_c" />
+	</styles>
+	<Panel class="nw-screen" hittest="false">
+		<Panel id="NadeWheel" class="nw-wheel" hittest="true">
+			<Button id="close" class="nw-away" />
+			<Panel class="nw-box" hittest="false">
+				<Panel class="nw-shade" hittest="false" />
+				<Panel class="nw-floor" hittest="false" />
+				<Panel id="r1" class="nw-wedge nw-k0" hittest="false">
+					<Panel class="nw-fill" hittest="false" />
+					<Panel class="nw-rim" hittest="false" />
+					<Button id="r1h1" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r1h2" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r1h3" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r1h4" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r1h5" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r1h6" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Panel class="nw-text" hittest="false"><Label id="w1" class="nw-label" text="{s:w1}" hittest="false" /><Label id="s1" class="nw-sub" text="{s:s1}" hittest="false" /></Panel>
+				</Panel>
+				<Panel id="r2" class="nw-wedge nw-k1" hittest="false">
+					<Panel class="nw-fill" hittest="false" />
+					<Panel class="nw-rim" hittest="false" />
+					<Button id="r2h1" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r2h2" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r2h3" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r2h4" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r2h5" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r2h6" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r2h7" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Panel class="nw-text" hittest="false"><Label id="w2" class="nw-label" text="{s:w2}" hittest="false" /><Label id="s2" class="nw-sub" text="{s:s2}" hittest="false" /></Panel>
+				</Panel>
+				<Panel id="r3" class="nw-wedge nw-k2" hittest="false">
+					<Panel class="nw-fill" hittest="false" />
+					<Panel class="nw-rim" hittest="false" />
+					<Button id="r3h1" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r3h2" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r3h3" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r3h4" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r3h5" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r3h6" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r3h7" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Panel class="nw-text" hittest="false"><Label id="w3" class="nw-label" text="{s:w3}" hittest="false" /><Label id="s3" class="nw-sub" text="{s:s3}" hittest="false" /></Panel>
+				</Panel>
+				<Panel id="r4" class="nw-wedge nw-k3" hittest="false">
+					<Panel class="nw-fill" hittest="false" />
+					<Panel class="nw-rim" hittest="false" />
+					<Button id="r4h1" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r4h2" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r4h3" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r4h4" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r4h5" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r4h6" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r4h7" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Panel class="nw-text" hittest="false"><Label id="w4" class="nw-label" text="{s:w4}" hittest="false" /><Label id="s4" class="nw-sub" text="{s:s4}" hittest="false" /></Panel>
+				</Panel>
+				<Panel id="r5" class="nw-wedge nw-k4" hittest="false">
+					<Panel class="nw-fill" hittest="false" />
+					<Panel class="nw-rim" hittest="false" />
+					<Button id="r5h1" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r5h2" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r5h3" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r5h4" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r5h5" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Panel class="nw-text" hittest="false"><Label id="w5" class="nw-label" text="{s:w5}" hittest="false" /><Label id="s5" class="nw-sub" text="{s:s5}" hittest="false" /></Panel>
+				</Panel>
+				<Panel id="r6" class="nw-wedge nw-k5" hittest="false">
+					<Panel class="nw-fill" hittest="false" />
+					<Panel class="nw-rim" hittest="false" />
+					<Button id="r6h1" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r6h2" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r6h3" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r6h4" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r6h5" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r6h6" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r6h7" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Panel class="nw-text" hittest="false"><Label id="w6" class="nw-label" text="{s:w6}" hittest="false" /><Label id="s6" class="nw-sub" text="{s:s6}" hittest="false" /></Panel>
+				</Panel>
+				<Panel id="r7" class="nw-wedge nw-k6" hittest="false">
+					<Panel class="nw-fill" hittest="false" />
+					<Panel class="nw-rim" hittest="false" />
+					<Button id="r7h1" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r7h2" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r7h3" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r7h4" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r7h5" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r7h6" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r7h7" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Panel class="nw-text" hittest="false"><Label id="w7" class="nw-label" text="{s:w7}" hittest="false" /><Label id="s7" class="nw-sub" text="{s:s7}" hittest="false" /></Panel>
+				</Panel>
+				<Panel id="r8" class="nw-wedge nw-k7" hittest="false">
+					<Panel class="nw-fill" hittest="false" />
+					<Panel class="nw-rim" hittest="false" />
+					<Button id="r8h1" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r8h2" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r8h3" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r8h4" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r8h5" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r8h6" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Button id="r8h7" class="nw-hit"><Panel class="nw-lit" hittest="false" /></Button>
+					<Panel class="nw-text" hittest="false"><Label id="w8" class="nw-label" text="{s:w8}" hittest="false" /><Label id="s8" class="nw-sub" text="{s:s8}" hittest="false" /></Panel>
+				</Panel>
+				<Panel id="o1" class="nw-quick nw-q0" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="o1h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o1h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o1h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o1h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="q1" class="nw-qlabel" text="{s:q1}" hittest="false" />
+				</Panel>
+				<Panel id="o2" class="nw-quick nw-q1" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="o2h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o2h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o2h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o2h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="q2" class="nw-qlabel" text="{s:q2}" hittest="false" />
+				</Panel>
+				<Panel id="o3" class="nw-quick nw-q2" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="o3h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o3h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o3h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o3h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o3h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o3h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="q3" class="nw-qlabel" text="{s:q3}" hittest="false" />
+				</Panel>
+				<Panel id="o4" class="nw-quick nw-q3" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="o4h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o4h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o4h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o4h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o4h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o4h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o4h7" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="q4" class="nw-qlabel" text="{s:q4}" hittest="false" />
+				</Panel>
+				<Panel id="o5" class="nw-quick nw-q4" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="o5h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o5h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o5h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o5h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o5h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o5h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o5h7" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="q5" class="nw-qlabel" text="{s:q5}" hittest="false" />
+				</Panel>
+				<Panel id="o6" class="nw-quick nw-q5" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="o6h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o6h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o6h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o6h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o6h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o6h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o6h7" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="q6" class="nw-qlabel" text="{s:q6}" hittest="false" />
+				</Panel>
+				<Panel id="o7" class="nw-quick nw-q6" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="o7h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o7h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o7h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o7h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o7h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o7h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o7h7" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="q7" class="nw-qlabel" text="{s:q7}" hittest="false" />
+				</Panel>
+				<Panel id="o8" class="nw-quick nw-q7" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="o8h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o8h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o8h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o8h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o8h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o8h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="q8" class="nw-qlabel" text="{s:q8}" hittest="false" />
+				</Panel>
+				<Panel id="o9" class="nw-quick nw-q8" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="o9h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o9h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o9h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o9h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="q9" class="nw-qlabel" text="{s:q9}" hittest="false" />
+				</Panel>
+				<Panel id="o10" class="nw-quick nw-q9" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="o10h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o10h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o10h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o10h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="q10" class="nw-qlabel" text="{s:q10}" hittest="false" />
+				</Panel>
+				<Panel id="o11" class="nw-quick nw-q10" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="o11h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o11h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o11h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o11h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o11h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o11h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="q11" class="nw-qlabel" text="{s:q11}" hittest="false" />
+				</Panel>
+				<Panel id="o12" class="nw-quick nw-q11" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="o12h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o12h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o12h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o12h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o12h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o12h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o12h7" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="q12" class="nw-qlabel" text="{s:q12}" hittest="false" />
+				</Panel>
+				<Panel id="o13" class="nw-quick nw-q12" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="o13h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o13h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o13h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o13h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o13h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o13h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o13h7" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="q13" class="nw-qlabel" text="{s:q13}" hittest="false" />
+				</Panel>
+				<Panel id="o14" class="nw-quick nw-q13" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="o14h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o14h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o14h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o14h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o14h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o14h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o14h7" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="q14" class="nw-qlabel" text="{s:q14}" hittest="false" />
+				</Panel>
+				<Panel id="o15" class="nw-quick nw-q14" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="o15h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o15h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o15h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o15h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o15h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o15h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o15h7" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="q15" class="nw-qlabel" text="{s:q15}" hittest="false" />
+				</Panel>
+				<Panel id="o16" class="nw-quick nw-q15" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="o16h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o16h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o16h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o16h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o16h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="o16h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="q16" class="nw-qlabel" text="{s:q16}" hittest="false" />
+				</Panel>
+				<Panel id="x1" class="nw-quick nw-x0" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="x1h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x1h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x1h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x1h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="xl1" class="nw-qlabel" text="{s:xl1}" hittest="false" />
+				</Panel>
+				<Panel id="x2" class="nw-quick nw-x1" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="x2h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x2h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x2h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x2h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x2h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x2h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x2h7" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x2h8" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x2h9" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x2h10" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x2h11" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x2h12" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x2h13" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="xl2" class="nw-qlabel" text="{s:xl2}" hittest="false" />
+				</Panel>
+				<Panel id="x3" class="nw-quick nw-x2" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="x3h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x3h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x3h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x3h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x3h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x3h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x3h7" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x3h8" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x3h9" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x3h10" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x3h11" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x3h12" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x3h13" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x3h14" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x3h15" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x3h16" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x3h17" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="xl3" class="nw-qlabel" text="{s:xl3}" hittest="false" />
+				</Panel>
+				<Panel id="x4" class="nw-quick nw-x3" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="x4h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x4h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x4h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x4h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x4h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x4h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x4h7" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x4h8" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x4h9" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x4h10" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x4h11" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x4h12" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x4h13" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="xl4" class="nw-qlabel" text="{s:xl4}" hittest="false" />
+				</Panel>
+				<Panel id="x5" class="nw-quick nw-x4" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="x5h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x5h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x5h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x5h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="xl5" class="nw-qlabel" text="{s:xl5}" hittest="false" />
+				</Panel>
+				<Panel id="x6" class="nw-quick nw-x5" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="x6h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x6h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x6h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x6h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x6h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x6h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x6h7" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x6h8" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x6h9" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x6h10" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x6h11" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x6h12" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x6h13" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="xl6" class="nw-qlabel" text="{s:xl6}" hittest="false" />
+				</Panel>
+				<Panel id="x7" class="nw-quick nw-x6" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="x7h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x7h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x7h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x7h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x7h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x7h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x7h7" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x7h8" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x7h9" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x7h10" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x7h11" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x7h12" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x7h13" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x7h14" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x7h15" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x7h16" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x7h17" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="xl7" class="nw-qlabel" text="{s:xl7}" hittest="false" />
+				</Panel>
+				<Panel id="x8" class="nw-quick nw-x7" hittest="false">
+					<Panel class="nw-qfill" hittest="false" />
+					<Panel class="nw-qedge" hittest="false" />
+					<Button id="x8h1" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x8h2" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x8h3" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x8h4" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x8h5" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x8h6" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x8h7" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x8h8" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x8h9" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x8h10" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x8h11" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x8h12" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Button id="x8h13" class="nw-hit"><Panel class="nw-qlit" hittest="false" /></Button>
+					<Label id="xl8" class="nw-qlabel" text="{s:xl8}" hittest="false" />
+				</Panel>
+				<Button id="hub" class="nw-hub"><Label id="hubt" class="nw-hub-title" text="{s:hubt}" hittest="false" /><Label id="hubs" class="nw-hub-sub" text="{s:hubs}" hittest="false" /></Button>
+			</Panel>
+		</Panel>
+	</Panel>
+</root>

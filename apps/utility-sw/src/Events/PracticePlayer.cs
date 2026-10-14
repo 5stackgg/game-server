@@ -36,7 +36,7 @@ public partial class UtilityPracticePlugin
             WelcomeDelaySeconds,
             () =>
             {
-                foreach (string line in WelcomeLines)
+                foreach (string line in UseHud(steamId) ? WelcomeLines : TypedWelcomeLines)
                 {
                     Tell(steamId, line);
                 }
@@ -60,7 +60,7 @@ public partial class UtilityPracticePlugin
             return HookResult.Continue;
         }
 
-        int cleared = _replay.ClearThrownUtility();
+        int cleared = ClearUtility();
 
         // Silent when there was nothing to clear: a ping is also just a ping.
         if (cleared > 0)
@@ -83,22 +83,35 @@ public partial class UtilityPracticePlugin
 
         if (duration > 0f && blinded != null && blinded.IsValid)
         {
-            if (blinded.IsFakeClient)
+            bool carded =
+                thrower != null
+                && thrower.IsValid
+                && !thrower.IsFakeClient
+                && FlashCardFor(thrower.SteamID);
+            bool own = thrower != null && thrower.IsValid && thrower.SteamID == blinded.SteamID;
+
+            // On the card, everybody it caught is a row, the thrower included.
+            // Without the card it is a line in chat for each.
+            if (carded)
+            {
+                RecordFlash(thrower!, blinded, @event.UserIdPawn, duration);
+            }
+            else if (blinded.IsFakeClient)
             {
                 ReportFlash(thrower, duration, "a bot");
             }
-            else
+            else if (thrower != null && thrower.IsValid && !own)
             {
-                // NoFlash below zeroes the blindness, so the screen never goes
-                // white and the number IS the feedback: "how long would that
-                // have had me" is the whole question a flash lineup asks, and
-                // the server was answering it for the bot only.
-                ReportFlash(blinded, duration, "you");
+                ReportFlash(thrower, duration, blinded.Controller.PlayerName);
+            }
 
-                if (thrower != null && thrower.IsValid && thrower.SteamID != blinded.SteamID)
-                {
-                    ReportFlash(thrower, duration, blinded.Controller.PlayerName);
-                }
+            // NoFlash below zeroes the blindness, so the screen never goes
+            // white and the number IS the feedback: "how long would that have
+            // had me" is the whole question a flash lineup asks. Somebody
+            // whose own card just said so is not told twice.
+            if (!blinded.IsFakeClient && !(carded && own))
+            {
+                ReportFlash(blinded, duration, "you");
             }
         }
 
@@ -129,17 +142,26 @@ public partial class UtilityPracticePlugin
         IPlayer? hurt = @event.UserIdPlayer;
         IPlayer? attacker = @event.AttackerPlayer;
 
-        if (hurt == null || !hurt.IsValid || !hurt.IsFakeClient)
-        {
-            return HookResult.Continue;
-        }
-
-        if (attacker == null || !attacker.IsValid || attacker.IsFakeClient)
+        if (hurt == null || !hurt.IsValid || attacker == null || !attacker.IsValid || attacker.IsFakeClient)
         {
             return HookResult.Continue;
         }
 
         string weapon = @event.Weapon ?? "";
+
+        // On the card, everybody a fire reached is a row, the thrower included,
+        // and the per-tick damage lines stay out of chat.
+        bool carded = weapon.Contains("inferno") && FlashCardFor(attacker.SteamID);
+
+        if (carded)
+        {
+            RecordBurn(attacker, hurt);
+        }
+
+        if (!hurt.IsFakeClient)
+        {
+            return HookResult.Continue;
+        }
 
         // Bullets are not what this server is for, and a bot being shot would
         // fill the chat with numbers nobody asked for.
@@ -155,11 +177,14 @@ public partial class UtilityPracticePlugin
         // about the bot instead of about the throw.
         int dealt = @event.ActualDmgHealth;
 
-        Tell(
-            attacker.SteamID,
-            $" {ChatColors.Default}{dealt} {ChatColors.Grey}damage to a bot "
-                + $"{ChatColors.Default}({Friendly(weapon)})"
-        );
+        if (!carded)
+        {
+            Tell(
+                attacker.SteamID,
+                $" {ChatColors.Default}{dealt} {ChatColors.Grey}damage to a bot "
+                    + $"{ChatColors.Default}({Friendly(weapon)})"
+            );
+        }
 
         // Topped back up so the next throw is measured against the same target.
         // Without this a second HE onto a hurt bot reads lower than the first
