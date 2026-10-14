@@ -38,6 +38,11 @@ public class PracticeDrill
     // A repeat of the lineup already loaded: hand the grenade back where they
     // stand, and leave it to them to walk to the spot again.
     public Action<ulong, LineupRecord>? Rearm { get; set; }
+
+    // A run that has ended, for the HUD to sum up. Where it is shown, the
+    // summary is not also said in chat.
+    public Action<ulong, PracticeDrillRun>? Finished { get; set; }
+    public Func<ulong, bool>? Shown { get; set; }
     public Action<ulong, string>? Tell { get; set; }
     public Action<ulong, string>? Note { get; set; }
     public Action<ulong, string>? Center { get; set; }
@@ -418,6 +423,13 @@ public class PracticeDrill
     private void Finish(ulong steamId, PracticeDrillRun run)
     {
         _runs.Remove(steamId);
+
+        Finished?.Invoke(steamId, run);
+
+        if (Shown?.Invoke(steamId) == true)
+        {
+            return;
+        }
 
         foreach (string line in run.Summary())
         {

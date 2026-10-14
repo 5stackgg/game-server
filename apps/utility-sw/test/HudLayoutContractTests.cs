@@ -112,6 +112,11 @@ public class HudLayoutContractTests
             "mb1",
             "mb2",
             "runup",
+            "ld1",
+            "ld2",
+            "ld3",
+            "ld4",
+            "ld5",
         };
 
         Assert.Empty(
@@ -172,6 +177,12 @@ public class HudLayoutContractTests
             ("mb2", "on"),
             ("runup", HudSlots.Shown),
         };
+
+        for (int dot = 1; dot <= HudSlots.LastThrows; dot++)
+        {
+            toggles.Add(($"ld{dot}", "hit"));
+            toggles.Add(($"ld{dot}", "miss"));
+        }
 
         foreach (string cap in HudSlots.ThrowKeycaps)
         {
@@ -358,6 +369,7 @@ public class HudLayoutContractTests
         toggles.Add(("out", HudSlots.Shown));
         toggles.Add(("plan", HudSlots.Shown));
         toggles.Add(("flash", HudSlots.Shown));
+        toggles.Add(("flash", "fire"));
 
         for (int row = 1; row <= HudSlots.OutRows; row++)
         {
@@ -493,7 +505,7 @@ public class HudLayoutContractTests
 
         for (int slot = 0; slot < HudSlots.WheelSlots; slot++)
         {
-            Assert.Matches($@"\.nw-x{slot} \.nw-qfill, \.nw-x{slot} \.nw-qlit \{{ clip: radial\(", styles);
+            Assert.Matches($@"\.nw-x{slot} \.nw-qfill, \.nw-x{slot} \.nw-qedge, \.nw-x{slot} \.nw-qlit \{{ clip: radial\(", styles);
             Assert.Matches($@"\.nw-x{slot} \.nw-qlabel \{{ margin-left: -?\d+px; margin-top: -?\d+px; \}}", styles);
 
             for (int hit = 0; hit < HudSlots.WheelWideHits[slot]; hit++)
@@ -507,7 +519,7 @@ public class HudLayoutContractTests
 
         for (int quick = 0; quick < HudSlots.WheelQuicks; quick++)
         {
-            Assert.Matches($@"\.nw-q{quick} \.nw-qfill, \.nw-q{quick} \.nw-qlit \{{ clip: radial\(", styles);
+            Assert.Matches($@"\.nw-q{quick} \.nw-qfill, \.nw-q{quick} \.nw-qedge, \.nw-q{quick} \.nw-qlit \{{ clip: radial\(", styles);
             Assert.Matches($@"\.nw-q{quick} \.nw-qlabel \{{ margin-left: -?\d+px; margin-top: -?\d+px; \}}", styles);
 
             for (int hit = 0; hit < HudSlots.WheelQuickHits[quick]; hit++)

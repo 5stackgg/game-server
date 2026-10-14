@@ -36,7 +36,7 @@ public partial class UtilityPracticePlugin
             WelcomeDelaySeconds,
             () =>
             {
-                foreach (string line in WelcomeLines)
+                foreach (string line in UseHud(steamId) ? WelcomeLines : TypedWelcomeLines)
                 {
                     Tell(steamId, line);
                 }
@@ -142,17 +142,26 @@ public partial class UtilityPracticePlugin
         IPlayer? hurt = @event.UserIdPlayer;
         IPlayer? attacker = @event.AttackerPlayer;
 
-        if (hurt == null || !hurt.IsValid || !hurt.IsFakeClient)
-        {
-            return HookResult.Continue;
-        }
-
-        if (attacker == null || !attacker.IsValid || attacker.IsFakeClient)
+        if (hurt == null || !hurt.IsValid || attacker == null || !attacker.IsValid || attacker.IsFakeClient)
         {
             return HookResult.Continue;
         }
 
         string weapon = @event.Weapon ?? "";
+
+        // On the card, everybody a fire reached is a row, the thrower included,
+        // and the per-tick damage lines stay out of chat.
+        bool carded = weapon.Contains("inferno") && FlashCardFor(attacker.SteamID);
+
+        if (carded)
+        {
+            RecordBurn(attacker, hurt);
+        }
+
+        if (!hurt.IsFakeClient)
+        {
+            return HookResult.Continue;
+        }
 
         // Bullets are not what this server is for, and a bot being shot would
         // fill the chat with numbers nobody asked for.
@@ -168,11 +177,14 @@ public partial class UtilityPracticePlugin
         // about the bot instead of about the throw.
         int dealt = @event.ActualDmgHealth;
 
-        Tell(
-            attacker.SteamID,
-            $" {ChatColors.Default}{dealt} {ChatColors.Grey}damage to a bot "
-                + $"{ChatColors.Default}({Friendly(weapon)})"
-        );
+        if (!carded)
+        {
+            Tell(
+                attacker.SteamID,
+                $" {ChatColors.Default}{dealt} {ChatColors.Grey}damage to a bot "
+                    + $"{ChatColors.Default}({Friendly(weapon)})"
+            );
+        }
 
         // Topped back up so the next throw is measured against the same target.
         // Without this a second HE onto a hurt bot reads lower than the first

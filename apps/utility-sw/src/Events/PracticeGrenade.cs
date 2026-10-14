@@ -20,7 +20,7 @@ public partial class UtilityPracticePlugin
         uint index = EntityIndex(@event.EntityID);
         var position = new Vec3(@event.X, @event.Y, @event.Z);
 
-        LiveSmokePopped(index, position);
+        LivePopped(index, position);
 
         LineupRecord? rendered = _director.TakeLineup(index);
         LineupRecord? thrown = Detonated(index, position);
@@ -40,6 +40,7 @@ public partial class UtilityPracticePlugin
     [GameEventHandler(HookMode.Post)]
     public HookResult OnFlashDetonate(EventFlashbangDetonate @event)
     {
+        LivePopped(EntityIndex(@event.EntityID), new Vec3(@event.X, @event.Y, @event.Z));
         Detonated(EntityIndex(@event.EntityID), new Vec3(@event.X, @event.Y, @event.Z));
         return HookResult.Continue;
     }
@@ -47,6 +48,7 @@ public partial class UtilityPracticePlugin
     [GameEventHandler(HookMode.Post)]
     public HookResult OnHeDetonate(EventHegrenadeDetonate @event)
     {
+        LivePopped(EntityIndex(@event.EntityID), new Vec3(@event.X, @event.Y, @event.Z));
         Detonated(EntityIndex(@event.EntityID), new Vec3(@event.X, @event.Y, @event.Z));
         return HookResult.Continue;
     }
@@ -54,6 +56,7 @@ public partial class UtilityPracticePlugin
     [GameEventHandler(HookMode.Post)]
     public HookResult OnDecoyStarted(EventDecoyStarted @event)
     {
+        LivePopped(EntityIndex(@event.EntityID), new Vec3(@event.X, @event.Y, @event.Z));
         Detonated(EntityIndex(@event.EntityID), new Vec3(@event.X, @event.Y, @event.Z));
         return HookResult.Continue;
     }

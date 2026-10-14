@@ -37,6 +37,9 @@ public class SmokeVoxelRecorder
 
     private readonly List<Reading> _reading = new List<Reading>();
 
+    // A cloud is still growing, and its log is lost if its projectile goes now.
+    public bool IsReading => _reading.Count > 0;
+
     private int _tick;
 
     public SmokeVoxelRecorder(ISwiftlyCore core, ILogger<SmokeVoxelRecorder> logger)

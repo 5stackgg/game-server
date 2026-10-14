@@ -150,8 +150,8 @@ public partial class UtilityPracticePlugin
             {
                 Outs = outs,
                 OutTotal = outTotal,
-                List = PlanCard(steamId) ?? StackCard(steamId),
-                Flash = FlashFor(steamId),
+                List = PlanCard(steamId) ?? StackCard(steamId) ?? SummaryCard(steamId),
+                Flash = CardFor(steamId),
                 Compass = !_compassOff.Contains(steamId) && !cleared && total > 0,
                 Pips = pips,
                 Left = left,
@@ -479,8 +479,35 @@ public partial class UtilityPracticePlugin
             new NadeBarTemplate.Key(reload, zoomed || following),
             new NadeBarTemplate.Key("Add a bot here"),
             new NadeBarTemplate.Key(noclip ? "Noclip · on" : "Noclip", noclip),
+            AimRingKey(steamId),
             new NadeBarTemplate.Key("Clear smoke and fire · twice for bots"),
         };
+    }
+
+    // Also where a drill's fading ring is explained: it says so while it is
+    // happening, which is the only time anybody wonders where it went.
+    private NadeBarTemplate.Key AimRingKey(ulong steamId)
+    {
+        if (!_system.StateFor(steamId).Crosshair)
+        {
+            return new NadeBarTemplate.Key("Aim ring hidden · show it", On: true);
+        }
+
+        float assist = _drill.Assist(steamId);
+
+        if (assist <= 0f)
+        {
+            return new NadeBarTemplate.Key("Aim ring off · throw it from memory", On: true);
+        }
+
+        if (assist < 1f)
+        {
+            return new NadeBarTemplate.Key("Aim ring fading · it goes as you land it", On: true);
+        }
+
+        return new NadeBarTemplate.Key(
+            _drill.Current(steamId) != null ? "Aim ring · fades as you land it" : "Hide the aim ring"
+        );
     }
 
     // What use would do if it were pressed now, in the order UsePressed

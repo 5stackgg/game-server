@@ -8,7 +8,7 @@ it through `CCSCustomHudLayout`.
 | --- | --- | --- |
 | `nade2_bar` | no | Everything on screen while you play: a compass with a grenade icon per spot, what the world is filtered to, what the keys do right now, and what the last key did. On the right, what utility is out and for how long, and the plan or stack being worked through. In the middle, for a few seconds, what a flash did. |
 | `nade2_hud` | no | The throw card, bottom right: where it lands, a drawn mouse and keycaps for how to throw it, the run-up, live aim error, and how far along the run of landed throws that counts as mastered. |
-| `nade2_wheel` | yes | TAB. Eight wedges around a hub, an outer ring of two more over each, and wedges that open a wheel of their own. Beside it, what the keys do. Generated, with `nadewheel2.css`. |
+| `nade2_wheel` | yes | TAB. Eight wedges around a hub, an outer ring of two more over each, and wedges that open a wheel of their own. Beside it, what the keys do. Generated with `nadewheel2.css` by `wheel.py`: edit that and run it, never the two files. |
 | `nade2_pick` | yes | Choosing a lineup: the map with a marker per landing spot beside the list, under one set of filter chips. |
 | `nade2_run` | no | The execute behind `.playbook`. Who throws what and when, yours in colour and everyone else's greyed. |
 | `nade2_edit` | yes | Rename, describe, change visibility. Fields ask for their value in chat. |

@@ -46,6 +46,14 @@ public class PracticeScore
     // a miss: a drill counts on being able to tell the two apart.
     public event Action<ulong, string, UtilityPracticeResult?>? Scored;
 
+    // True for a player whose HUD shows the verdict beside the grenade, who
+    // then gets no line in chat about it as well.
+    public Func<ulong, bool>? Shown { get; set; }
+
+    // A throw that is about to be scored: the lineup it was meant to be and
+    // the throw itself. Raised before the answer, which arrives as Scored.
+    public event Action<ulong, LineupRecord, LineupRecord>? Attempted;
+
     public void Reset()
     {
         _mastered.Clear();
@@ -75,6 +83,8 @@ public class PracticeScore
         {
             return;
         }
+
+        Attempted?.Invoke(steamId, loaded, thrown);
 
         Vec3 landing = thrown.detonation_position;
         float distance = (landing - loaded.detonation_position).Length();
@@ -182,7 +192,7 @@ public class PracticeScore
     {
         IPlayer? player = _system.Find(steamId);
 
-        if (player == null || !player.IsValid)
+        if (player == null || !player.IsValid || Shown?.Invoke(steamId) == true)
         {
             return;
         }

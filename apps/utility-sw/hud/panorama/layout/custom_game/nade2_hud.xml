@@ -16,13 +16,13 @@
 			<Panel class="nh-throw" hittest="false">
 				<Panel id="fig" class="nh-fig" hittest="false" />
 				<Panel class="nh-caps" hittest="false">
-					<Label id="kc_shift" class="nh-cap" text="SHIFT" />
-					<Label id="kc_ctrl" class="nh-cap" text="CTRL" />
-					<Label id="kc_w" class="nh-cap" text="W" />
-					<Label id="kc_a" class="nh-cap" text="A" />
-					<Label id="kc_s" class="nh-cap" text="S" />
-					<Label id="kc_d" class="nh-cap" text="D" />
-					<Label id="kc_jump" class="nh-cap" text="JUMP" />
+					<Label id="kc_shift" class="nh-cap" text="{g:csgo_key:kb_shift}" />
+					<Label id="kc_ctrl" class="nh-cap" text="{g:csgo_key:kb_ctrl}" />
+					<Label id="kc_w" class="nh-cap" text="{g:csgo_key:kb_w}" />
+					<Label id="kc_a" class="nh-cap" text="{g:csgo_key:kb_a}" />
+					<Label id="kc_s" class="nh-cap" text="{g:csgo_key:kb_s}" />
+					<Label id="kc_d" class="nh-cap" text="{g:csgo_key:kb_d}" />
+					<Label id="kc_jump" class="nh-cap" text="{g:csgo_key:kb_jump}" />
 				</Panel>
 				<Panel class="nh-words" hittest="false">
 					<Label id="tech" class="nh-tech" text="{s:tech}" />
@@ -56,6 +56,7 @@
 				<Panel class="nh-readout" hittest="false">
 					<Label id="drillkey" class="nh-readout-key" text="{s:drillkey}" />
 					<Label id="drill" class="nh-readout-val nh-readout-cyan" text="{s:drill}" />
+					<Panel class="nh-last" hittest="false"><Panel id="ld1" class="nh-last-dot" hittest="false" /><Panel id="ld2" class="nh-last-dot" hittest="false" /><Panel id="ld3" class="nh-last-dot" hittest="false" /><Panel id="ld4" class="nh-last-dot" hittest="false" /><Panel id="ld5" class="nh-last-dot" hittest="false" /></Panel>
 				</Panel>
 				<Panel class="nh-meter" hittest="false">
 					<Panel id="drillbar" class="nh-meter-fill" hittest="false" />

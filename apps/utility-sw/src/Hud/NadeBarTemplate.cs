@@ -35,10 +35,24 @@ public class NadeBarTemplate : HudTemplate
 
     public record Key(string Label, bool On = false, bool Dim = false);
 
-    // One smoke or fire in the world. Type is one of RadarMaps.Types, Color a
-    // throw colour's name or null, Fill how much of its life is left in
+    // One smoke or fire in the world. Flight is how long it was, or has been,
+    // in the air; Time what it has left. Type is one of RadarMaps.Types, Color
+    // a throw colour's name or null, Fill how much of its life is left in
     // HudSlots.OutFillSteps steps.
-    public record Out(string Name, string Time, string Type, string? Color, int Fill, bool Air, bool Fading);
+    // Landed is the panel's verdict on a throw made at a lineup: null until
+    // there is one, or when the throw was not scored.
+    public record Out(
+        string Name,
+        string Flight,
+        string Score,
+        string Time,
+        string Type,
+        string? Color,
+        int Fill,
+        bool Air,
+        bool Fading,
+        bool? Landed
+    );
 
     // A list down the left edge: the plan being worked through, or the stack
     // of throws that go again together. Both are a title, rows and a foot.
@@ -49,7 +63,15 @@ public class NadeBarTemplate : HudTemplate
     // Total and Full are lengths of bar, in HudSlots.FlashBarSteps steps.
     public record FlashRow(string Who, string Seconds, string Tag, int Total, int Full, bool Bad);
 
-    public record FlashCard(string Title, string Sub, string Foot, IReadOnlyList<FlashRow> Rows);
+    // Fire is the same card with no bars: whether a fire reached somebody,
+    // not how long they stood in it.
+    public record FlashCard(
+        string Title,
+        string Sub,
+        string Foot,
+        IReadOnlyList<FlashRow> Rows,
+        bool Fire = false
+    );
 
     public override HudLayoutSlots Slots => HudSlots.Bar;
 
@@ -60,6 +82,7 @@ public class NadeBarTemplate : HudTemplate
     public string Focus { get; init; } = "";
 
     public string Filter { get; init; } = "";
+
     public string Count { get; init; } = "";
     public bool Filtering { get; init; }
     public bool Cleared { get; init; }
@@ -130,6 +153,7 @@ public class NadeBarTemplate : HudTemplate
             Key? key = index < Keys.Count ? Keys[index] : null;
 
             surface.Set($"k{index + 1}", key?.Label ?? "");
+            surface.Set($"kb{index + 1}", HudSlots.LegendBindings[index]);
             surface.Class($"kr{index + 1}", "hidden", key == null);
             surface.Class($"kr{index + 1}", "on", key?.On == true);
             surface.Class($"kr{index + 1}", "dim", key?.Dim == true);
@@ -168,9 +192,13 @@ public class NadeBarTemplate : HudTemplate
             }
 
             surface.Set($"on{row}", entry.Name);
+            surface.Set($"of{row}", entry.Flight);
+            surface.Set($"os{row}", entry.Score);
             surface.Set($"ot{row}", entry.Time);
             surface.Class($"or{row}", "air", entry.Air);
             surface.Class($"or{row}", "fade", entry.Fading);
+            surface.Class($"or{row}", "landed", entry.Landed == true);
+            surface.Class($"or{row}", "missed", entry.Landed == false);
 
             foreach (string type in HudSlots.OutTypes)
             {
@@ -229,6 +257,7 @@ public class NadeBarTemplate : HudTemplate
             return;
         }
 
+        surface.Class("flash", "fire", Flash.Fire);
         surface.Set("fltitle", Flash.Title);
         surface.Set("flsub", Flash.Sub);
         surface.Set("flfoot", Flash.Foot);

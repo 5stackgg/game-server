@@ -35,10 +35,9 @@ namespace UtilityPractice;
 public partial class UtilityPracticePlugin
 {
     private EventDelegates.OnClientKeyStateChanged? _keyHandler;
-    private Guid? _dropHook;
+    private Guid? _commandHook;
 
-    // What the default binds for drop and for delete send.
-    private const string DropCommand = "drop";
+    // What the default bind for delete sends.
     private const string SellBackCommand = "sellbackall";
 
     // Two presses of one key inside a third of a second are one gesture.
@@ -76,15 +75,9 @@ public partial class UtilityPracticePlugin
     {
         _keyHandler = OnKey;
         Core.Event.OnClientKeyStateChanged += _keyHandler;
-        _dropHook = Core.Command.HookClientCommand(OnClientCommand);
+        _commandHook = Core.Command.HookClientCommand(OnClientCommand);
     }
 
-    // The drop key is the menu too. Tab is where a hand goes for a menu, but
-    // the game draws its scoreboard the instant Tab is down and nothing on a
-    // server can stop that, so a tap of it flickers. Drop has no such thing
-    // attached: it reaches the server as a command, the command is refused,
-    // and nothing happens on screen but the wheel. Nothing here is worth
-    // dropping anyway -- every grenade is handed straight back.
     private HookResult OnClientCommand(int playerId, string commandLine)
     {
         if (_tornDown || _config.RenderMode)
@@ -94,7 +87,7 @@ public partial class UtilityPracticePlugin
 
         string command = commandLine.Trim().Split(' ')[0];
 
-        if (command is not (DropCommand or SellBackCommand))
+        if (command != SellBackCommand)
         {
             return HookResult.Continue;
         }
@@ -110,23 +103,7 @@ public partial class UtilityPracticePlugin
 
             try
             {
-                if (command == SellBackCommand)
-                {
-                    ClearPressed(player);
-
-                    return;
-                }
-
-                if (CursorOpen(player))
-                {
-                    CloseCursorPanels(player);
-
-                    return;
-                }
-
-                Unzoom(player);
-                EndFollow(player.SteamID);
-                OpenWheel(player);
+                ClearPressed(player);
             }
             catch (Exception error)
             {
@@ -174,10 +151,10 @@ public partial class UtilityPracticePlugin
             _keyHandler = null;
         }
 
-        if (_dropHook is { } hook)
+        if (_commandHook is { } hook)
         {
             Core.Command.UnhookClientCommand(hook);
-            _dropHook = null;
+            _commandHook = null;
         }
 
         // A reload that left somebody zoomed would leave them zoomed for good:
@@ -191,7 +168,7 @@ public partial class UtilityPracticePlugin
     {
         KeyKind key = @event.Key;
 
-        if (key is not (KeyKind.Tab or KeyKind.R or KeyKind.Ctrl or KeyKind.Shift))
+        if (key is not (KeyKind.Tab or KeyKind.R or KeyKind.Ctrl or KeyKind.Shift or KeyKind.F))
         {
             return;
         }
@@ -274,6 +251,15 @@ public partial class UtilityPracticePlugin
                     if (pressed && !CursorOpen(player) && DoubleTapped(player.SteamID, "shift"))
                     {
                         Do(player, "noclip");
+                    }
+
+                    break;
+                // Inspect: bound by default, and twice in a row does nothing
+                // else worth keeping.
+                case KeyKind.F:
+                    if (pressed && !CursorOpen(player) && DoubleTapped(player.SteamID, "inspect"))
+                    {
+                        Do(player, "crosshair");
                     }
 
                     break;

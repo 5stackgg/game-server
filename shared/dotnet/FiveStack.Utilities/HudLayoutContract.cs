@@ -7,8 +7,10 @@ namespace FiveStack.Utilities;
 // does not need to understand the markup.
 public static class HudLayoutContract
 {
+    // {g:csgo_key:name} reads a variable too: the client draws the key bound
+    // to the command it holds.
     private static readonly Regex Variable = new Regex(
-        @"\{s:([A-Za-z0-9_]+)\}",
+        @"\{(?:s|g:csgo_key):([A-Za-z0-9_]+)\}",
         RegexOptions.Compiled
     );
 

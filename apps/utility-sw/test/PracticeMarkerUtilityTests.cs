@@ -190,4 +190,97 @@ public class PracticeMarkerUtilityTests
         Assert.Null(PracticeMarkerUtility.RunUpOf(Approach((-100, 0, true), (0, 0, true))));
         Assert.Null(PracticeMarkerUtility.RunUpOf(null));
     }
+
+    private static LineupRecord Aimed(string id, float yaw, float pitch)
+    {
+        return new LineupRecord
+        {
+            client_id = id,
+            utility_type = "Smoke",
+            release = new ThrowSnapshot { yaw = yaw, pitch = pitch },
+        };
+    }
+
+    // Two throws off one spot aimed at the same point drew the lead's ring
+    // with the other's inside it: one marker that looked broken.
+    [Fact]
+    public void AThrowAimedInsideTheLeadsRingGetsNoRingOfItsOwn()
+    {
+        var eye = new Vec3(0f, 0f, 0f);
+        var aims = new List<Vec3>
+        {
+            new(1000f, 0f, 0f),
+            new(1000f, 5f, 0f),
+            new(1000f, 100f, 0f),
+        };
+
+        Assert.Equal(new[] { true, false, true }, PracticeMarkerUtility.Ringed(eye, aims, 0));
+    }
+
+    [Fact]
+    public void WithNoLeadTheFirstOfTwoAimsAtOnePointKeepsTheRing()
+    {
+        var eye = new Vec3(0f, 0f, 0f);
+        var aims = new List<Vec3> { new(1000f, 0f, 0f), new(1000f, 0f, 3f) };
+
+        Assert.Equal(new[] { true, false }, PracticeMarkerUtility.Ringed(eye, aims, -1));
+    }
+
+    [Fact]
+    public void AimsFarEnoughApartForTwoRingsBothGetOne()
+    {
+        var eye = new Vec3(0f, 0f, 0f);
+        float side = PracticeMarkerUtility.Subtend(
+            1000f,
+            PracticeMarkerUtility.CrowdedDegrees + 0.1f
+        );
+        var aims = new List<Vec3> { new(1000f, 0f, 0f), new(1000f, side, 0f) };
+
+        Assert.Equal(new[] { true, true }, PracticeMarkerUtility.Ringed(eye, aims, 0));
+    }
+
+    [Fact]
+    public void ApartIsTheAngleBetweenTwoPointsFromTheEye()
+    {
+        var eye = new Vec3(0f, 0f, 0f);
+        var ahead = new Vec3(10f, 0f, 0f);
+
+        Assert.Equal(45f, PracticeMarkerUtility.Apart(eye, ahead, new Vec3(10f, 10f, 0f)), 3);
+        Assert.Equal(0f, PracticeMarkerUtility.Apart(eye, ahead, new Vec3(500f, 0f, 0f)), 3);
+    }
+
+    // The crosshair between two throws aimed at one point picked whichever
+    // was nearer by a hair, so the loaded throw flipped as the hand shook.
+    [Fact]
+    public void TheLoadedThrowStaysWhenAnotherIsAimedAtTheSamePoint()
+    {
+        LineupRecord loaded = Aimed("loaded", 90f, -10f);
+        LineupRecord twin = Aimed("twin", 90.3f, -10f);
+
+        Assert.Same(loaded, PracticeMarkerUtility.Chosen(twin, loaded));
+    }
+
+    [Fact]
+    public void LookingAtAThrowAimedElsewhereChoosesIt()
+    {
+        LineupRecord loaded = Aimed("loaded", 90f, -10f);
+        LineupRecord other = Aimed("other", 100f, -10f);
+
+        Assert.Same(other, PracticeMarkerUtility.Chosen(other, loaded));
+        Assert.Same(other, PracticeMarkerUtility.Chosen(other, null));
+    }
+
+    // A wall close to the stance drew lines wider than the ring's pieces are
+    // long, and the ring came out as a blot.
+    [Theory]
+    [InlineData(30f)]
+    [InlineData(2000f)]
+    public void TheLinesAreThinnerThanTheRingsPiecesAreLong(float away)
+    {
+        float radius = PracticeMarkerUtility.Subtend(away, PracticeMarkerUtility.RingDegrees);
+        float piece = 2f * MathF.PI * radius / PracticeMarkerUtility.RingSegments;
+        float width = PracticeMarkerUtility.Subtend(away, PracticeMarkerUtility.LineDegrees);
+
+        Assert.True(width < piece / 2f);
+    }
 }

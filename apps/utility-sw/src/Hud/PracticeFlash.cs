@@ -32,7 +32,7 @@ public partial class UtilityPracticePlugin
     // after the first is the same pop being reported for the next player.
     private const int FlashSameTicks = 4;
 
-    private const int FlashCardTicks = 5 * 64;
+    private const int FlashCardTicks = 10 * 64;
 
     // The last three seconds of any blindness are the fade back to sight, and
     // everything before them is white. That is the client's own rule for
@@ -41,9 +41,6 @@ public partial class UtilityPracticePlugin
 
     // The bars are drawn against this: about as long as a flash ever lasts.
     private const float FlashBarSeconds = 5f;
-
-    // Blind for at least this long with nothing to see is a flash that worked.
-    private const float FlashWorkedSeconds = 1f;
 
     // How bright it got, out of 255, says which way they were facing.
     private const float FlashFacingAlpha = 250f;
@@ -127,7 +124,37 @@ public partial class UtilityPracticePlugin
         int steps = HudSlots.FlashBarSteps - 1;
         var rows = new List<NadeBarTemplate.FlashRow>();
 
-        foreach (FlashHit hit in report.Hits.OrderByDescending(hit => hit.Seconds).Take(HudSlots.FlashRows))
+        if (report.Hits.Count > HudSlots.FlashRows)
+        {
+            List<PracticeCardGroups.FlashHit> hits = report
+                .Hits.Select(hit => new PracticeCardGroups.FlashHit(
+                    hit.Seconds,
+                    MathF.Max(0f, hit.Seconds - FlashFadeSeconds),
+                    hit.Target,
+                    hit.Bad
+                ))
+                .ToList();
+
+            foreach (PracticeCardGroups.Group group in PracticeCardGroups.Flash(hits))
+            {
+                rows.Add(
+                    new NadeBarTemplate.FlashRow(
+                        $"{group.Count} {group.Label}",
+                        $"{group.Seconds:0.0}s",
+                        "longest",
+                        Bar(group.Seconds, steps),
+                        Bar(group.White, steps),
+                        group.Bad
+                    )
+                );
+            }
+        }
+
+        foreach (
+            FlashHit hit in rows.Count > 0
+                ? Enumerable.Empty<FlashHit>()
+                : report.Hits.OrderByDescending(hit => hit.Seconds).Take(HudSlots.FlashRows)
+        )
         {
             float white = MathF.Max(0f, hit.Seconds - FlashFadeSeconds);
 
@@ -148,7 +175,7 @@ public partial class UtilityPracticePlugin
 
         int targets = report.Hits.Count(hit => hit.Target);
         int worked = report.Hits.Count(hit =>
-            hit.Target && hit.Seconds - FlashFadeSeconds >= FlashWorkedSeconds
+            hit.Target && hit.Seconds - FlashFadeSeconds >= PracticeCardGroups.WorkedWhiteSeconds
         );
         string foot = targets == 0 ? "No targets caught" : $"{worked} of {targets} fully blind 1s+";
 

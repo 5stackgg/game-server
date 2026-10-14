@@ -50,6 +50,18 @@ public static class PracticeMarkerUtility
     // enough to sit in the gap of a crosshair instead of under its arms.
     public const float DotDegrees = 0.14f;
 
+    // How heavy the lines are, in degrees like everything else. A weight in
+    // units is too heavy for a wall close to the stance: each piece of the
+    // ring comes out wider than it is long, and the ring draws as a blot.
+    public const float LineDegrees = 0.1f;
+
+    // The plain ring round each of the other throws off the spot.
+    public const float OtherRingDegrees = 1f;
+    public const int OtherRingSegments = 8;
+
+    // Two aims closer than this would draw one ring inside the other.
+    public const float CrowdedDegrees = RingDegrees + OtherRingDegrees;
+
     public static eAimStage AimStage(eAimStage current, float errorDegrees)
     {
         switch (current)
@@ -83,6 +95,70 @@ public static class PracticeMarkerUtility
     public static float Subtend(float distance, float degrees)
     {
         return distance * MathF.Tan(degrees * MathF.PI / 180f);
+    }
+
+    // The angle between two points, seen from the eye.
+    public static float Apart(Vec3 eye, Vec3 a, Vec3 b)
+    {
+        float cos = (a - eye).Normalized().Dot((b - eye).Normalized());
+
+        return MathF.Acos(Math.Clamp(cos, -1f, 1f)) * 180f / MathF.PI;
+    }
+
+    // Which aims off one spot get a ring, given which is the lead (or -1).
+    // An aim inside a ring already drawn would put a second ring inside the
+    // first, and two rings round one point read as one broken marker rather
+    // than as two throws. The wheel still steps between them.
+    public static bool[] Ringed(Vec3 eye, IReadOnlyList<Vec3> aims, int lead)
+    {
+        var ringed = new bool[aims.Count];
+        var drawn = new List<(Vec3 At, float Radius)>();
+
+        if (lead >= 0)
+        {
+            ringed[lead] = true;
+            drawn.Add((aims[lead], RingDegrees));
+        }
+
+        for (int index = 0; index < aims.Count; index++)
+        {
+            if (index == lead)
+            {
+                continue;
+            }
+
+            Vec3 aim = aims[index];
+
+            if (drawn.Any(ring => Apart(eye, ring.At, aim) < ring.Radius + OtherRingDegrees))
+            {
+                continue;
+            }
+
+            ringed[index] = true;
+            drawn.Add((aim, OtherRingDegrees));
+        }
+
+        return ringed;
+    }
+
+    // The crosshair on two throws aimed at one point cannot say which is
+    // meant, and the nearer by a hair flips as the hand shakes. The one
+    // already loaded stays; the wheel steps to the other.
+    public static LineupRecord Chosen(LineupRecord nearest, LineupRecord? loaded)
+    {
+        if (loaded == null || loaded.client_id == nearest.client_id)
+        {
+            return nearest;
+        }
+
+        float apart = PracticeLineupUtility.AimError(
+            nearest.release.yaw,
+            nearest.release.pitch,
+            loaded.release.yaw,
+            loaded.release.pitch
+        );
+
+        return apart < CrowdedDegrees ? loaded : nearest;
     }
 
     public static List<MarkerSegment> Ring(float radius, int segments)
