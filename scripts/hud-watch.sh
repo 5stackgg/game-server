@@ -337,6 +337,17 @@ uninstall() {
   log "removed ${count} dev HUD file(s) from ${DEST}"
 }
 
+# A share that drops while this runs does not come back by itself, and a watch
+# left waiting on it quietly is one nobody notices has stopped working.
+volume_gone() {
+  if command -v osascript >/dev/null 2>&1; then
+    osascript -e 'display notification "Reconnect the CS2 share, then run hud-watch again" with title "hud-watch stopped"' \
+      >/dev/null 2>&1 || true
+  fi
+
+  die "${CS2_DIR} went away: reconnect the game PC's CS2 share, then run $0 again"
+}
+
 on_exit() {
   trap - EXIT INT TERM
   set +e
@@ -381,9 +392,10 @@ previous=""
 sources_seen="$(fingerprint "$SOURCES")"
 waiting_since=0
 announced_empty=false
-volume_lost=false
 
 while true; do
+  installed_at_cs2_dir || volume_gone
+
   current="$(fingerprint "$SRC")"
   sources_now="$(fingerprint "$SOURCES")"
 
@@ -400,36 +412,30 @@ while true; do
     fi
   # Settled across two polls, so a sync landing file by file is copied once.
   elif [ "$current" != "$synced" ] && [ "$current" = "$previous" ]; then
-    if ! installed_at_cs2_dir; then
-      if ! $volume_lost; then
-        warn "${CS2_DIR} is gone, waiting for it to come back"
-        volume_lost=true
+    if sync_tree; then
+      synced="$current"
+      waiting_since=0
+
+      if $plain; then
+        set_live_tag ""
+      else
+        set_live_tag "$(installed_tag)"
       fi
-    else
-      volume_lost=false
 
-      if sync_tree; then
-        synced="$current"
-        waiting_since=0
-
-        if $plain; then
-          set_live_tag ""
+      if [ "$copied" -gt 0 ] || [ "$removed" -gt 0 ]; then
+        if [ -n "$announced" ]; then
+          log "${copied} copied, ${removed} removed: build ${announced} handed to the plugin"
         else
-          set_live_tag "$(installed_tag)"
-        fi
-
-        if [ "$copied" -gt 0 ] || [ "$removed" -gt 0 ]; then
-          if [ -n "$announced" ]; then
-            log "${copied} copied, ${removed} removed: build ${announced} handed to the plugin"
-          else
-            log "${copied} copied, ${removed} removed: relaunch CS2 (-insecure) to load it"
-          fi
-        else
-          log "install already matches the build"
+          log "${copied} copied, ${removed} removed: relaunch CS2 (-insecure) to load it"
         fi
       else
-        sleep 5
+        log "install already matches the build"
       fi
+    else
+      # A copy that failed because the share dropped mid-way says so here,
+      # not five seconds and another failed copy later.
+      installed_at_cs2_dir || volume_gone
+      sleep 5
     fi
   fi
 
