@@ -651,6 +651,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         string side = pawn.TeamNum == 3 ? "t" : "ct";
 
         Core.Engine.ExecuteCommand("sv_cheats 1;" + string.Join(";", BotsCfg));
+        MakeRoomOn(side == "ct" ? Team.CT : Team.T);
         Core.Engine.ExecuteCommand($"bot_add_{side}");
 
         _logger.LogInformation(
@@ -673,6 +674,43 @@ public partial class UtilityPracticePlugin : BasePlugin
     public const int MaxBots = 5;
 
     private ulong _botsAskedBy;
+
+    // The engine turns a bot away once its side holds as many players as the
+    // side has room for, and after a map change it can count no room at all:
+    // "Team is full" on an empty side. Nothing here plays a real round, so the
+    // side is given room for every bot it may be asked for.
+    private void MakeRoomOn(Team team)
+    {
+        CCSGameRules? rules = Core.EntitySystem.GetGameRules();
+
+        if (rules == null)
+        {
+            return;
+        }
+
+        bool ct = team == Team.CT;
+        int players = ct ? rules.NumCT : rules.NumTerrorist;
+        int room = players + MaxBots;
+
+        _logger.LogInformation(
+            "room on {team} before a bot: {players} on it, max {max}, spawns {spawns}",
+            team,
+            players,
+            ct ? rules.MaxNumCTs : rules.MaxNumTerrorists,
+            ct ? rules.SpawnPointCount_CT : rules.SpawnPointCount_Terrorist
+        );
+
+        if (ct)
+        {
+            rules.MaxNumCTs = Math.Max(rules.MaxNumCTs, room);
+            rules.SpawnPointCount_CT = Math.Max(rules.SpawnPointCount_CT, room);
+        }
+        else
+        {
+            rules.MaxNumTerrorists = Math.Max(rules.MaxNumTerrorists, room);
+            rules.SpawnPointCount_Terrorist = Math.Max(rules.SpawnPointCount_Terrorist, room);
+        }
+    }
 
     private int BotsInGame()
     {
