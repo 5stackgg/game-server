@@ -622,8 +622,8 @@ public partial class UtilityPracticePlugin : BasePlugin
     ///
     /// The point is something to flash and to blow up that does not move, so
     /// it is frozen where it lands rather than allowed to play the round. The
-    /// quota is raised first: bot_add on its own is refused once the quota is
-    /// full, and the quota starts at zero on a practice server.
+    /// quota alone brings it in, on the side bot_join_team names: a bot_add
+    /// on top of it was a second bot per press, and half the server's slots.
     /// </summary>
     public bool AddBot(IPlayer player)
     {
@@ -652,7 +652,6 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         Core.Engine.ExecuteCommand($"bot_join_team {side}");
         HoldBotsStill();
-        Core.Engine.ExecuteCommand($"bot_add_{side}");
 
         // The bot does not exist on the tick it is asked for, and it spawns
         // wherever the map puts it. Placing it is a second step, taken on the
@@ -660,6 +659,14 @@ public partial class UtilityPracticePlugin : BasePlugin
         _botsDueBy = _aimTick + BotHurryTicks;
 
         return true;
+    }
+
+    // Every slot is a person or a bot, so the server's size is the limit.
+    public int BotSlotsLeft()
+    {
+        int people = Core.PlayerManager.GetAllPlayers().Count(player => player != null && player.IsValid && !player.IsFakeClient);
+
+        return Math.Max(0, Core.Engine.GlobalVars.MaxClients - people - _bots.Count);
     }
 
     // A bot asked for is watched for until this tick, rather than waited on

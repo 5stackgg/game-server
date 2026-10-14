@@ -21,7 +21,9 @@ public delegate void TerminateRoundDelegate(nint rules, uint reason, nint team, 
 // friend joining it -- ends the round as "Game Commencing" and restarts it
 // three seconds later: everybody back to spawn, every smoke gone. Round win
 // conditions are already off here, so that is the one ending left, and it is
-// refused.
+// refused -- once there is a round to lose. On a map just loaded it is how
+// the first real round begins, and refusing it there left everybody stuck in
+// buy time.
 public partial class UtilityPracticePlugin
 {
     private const string TerminateRoundSignature = "CGameRules::TerminateRound";
@@ -52,7 +54,7 @@ public partial class UtilityPracticePlugin
             _terminateRoundHookId = _terminateRoundFunc.AddHook(next =>
                 (rules, reason, team, delay) =>
                 {
-                    if (reason == (uint)RoundEndReason.GameCommencing)
+                    if (reason == (uint)RoundEndReason.GameCommencing && RoundUnderway())
                     {
                         if (!_commencingRefused)
                         {
@@ -73,6 +75,20 @@ public partial class UtilityPracticePlugin
         {
             _logger.LogError(ex, "Failed to initialize TerminateRound hook");
         }
+    }
+
+    // Nothing can have been thrown yet: still in warmup or freeze time, or in
+    // the first minute of the map, which is when its first player arrives.
+    private const float FreshMapSeconds = 60f;
+
+    private bool RoundUnderway()
+    {
+        CCSGameRules? rules = Core.EntitySystem.GetGameRules();
+
+        return rules != null
+            && !rules.WarmupPeriod
+            && !rules.FreezePeriod
+            && Core.Engine.GlobalVars.CurrentTime > FreshMapSeconds;
     }
 
     private void UninstallTerminateRoundHook()

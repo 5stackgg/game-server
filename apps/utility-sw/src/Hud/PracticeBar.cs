@@ -151,7 +151,7 @@ public partial class UtilityPracticePlugin
                 Outs = outs,
                 OutTotal = outTotal,
                 List = PlanCard(steamId) ?? StackCard(steamId) ?? SummaryCard(steamId),
-                Flash = FlashFor(steamId),
+                Flash = CardFor(steamId),
                 Compass = !_compassOff.Contains(steamId) && !cleared && total > 0,
                 Pips = pips,
                 Left = left,

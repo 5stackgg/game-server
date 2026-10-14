@@ -63,7 +63,15 @@ public class NadeBarTemplate : HudTemplate
     // Total and Full are lengths of bar, in HudSlots.FlashBarSteps steps.
     public record FlashRow(string Who, string Seconds, string Tag, int Total, int Full, bool Bad);
 
-    public record FlashCard(string Title, string Sub, string Foot, IReadOnlyList<FlashRow> Rows);
+    // Fire is the same card with no bars: whether a fire reached somebody,
+    // not how long they stood in it.
+    public record FlashCard(
+        string Title,
+        string Sub,
+        string Foot,
+        IReadOnlyList<FlashRow> Rows,
+        bool Fire = false
+    );
 
     public override HudLayoutSlots Slots => HudSlots.Bar;
 
@@ -249,6 +257,7 @@ public class NadeBarTemplate : HudTemplate
             return;
         }
 
+        surface.Class("flash", "fire", Flash.Fire);
         surface.Set("fltitle", Flash.Title);
         surface.Set("flsub", Flash.Sub);
         surface.Set("flfoot", Flash.Foot);

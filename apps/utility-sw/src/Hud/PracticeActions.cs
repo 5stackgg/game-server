@@ -887,6 +887,13 @@ public partial class UtilityPracticePlugin
 
                 break;
             case "bot":
+                if (BotSlotsLeft() == 0)
+                {
+                    Toast(player, "The server has no room for another bot");
+
+                    break;
+                }
+
                 Toast(player, AddBot(player) ? "Bot placed" : "No room for a bot here");
 
                 break;

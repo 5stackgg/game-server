@@ -2301,6 +2301,8 @@
 }
 
 /* Your own side, you included. */
+.nh-flash.fire .nh-flash-title { color: rgb(255, 150, 60); }
+.nh-flash.fire .nh-flash-track { visibility: collapse; }
 .nh-flash-row.bad .nh-flash-who { color: rgb(255, 59, 59); }
 .nh-flash-row.bad .nh-flash-secs { color: rgb(255, 59, 59); }
 .nh-flash-row.bad .nh-flash-full { background-color: rgb(255, 59, 59); }
