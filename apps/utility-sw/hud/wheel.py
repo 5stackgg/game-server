@@ -203,25 +203,6 @@ for slot in range(SLOTS):
 
 xml.append('''				<Button id="hub" class="nw-hub"><Label id="hubt" class="nw-hub-title" text="{s:hubt}" hittest="false" /><Label id="hubs" class="nw-hub-sub" text="{s:hubs}" hittest="false" /></Button>
 			</Panel>
-			<Panel class="nw-keys" hittest="false">
-				<Label class="nw-keys-title" text="KEYS" hittest="false" />
-''')
-
-KEYS = [
-    ("TAB", "This menu · hold for the scoreboard"),
-    ("E", "Snap onto the nearest spot · again for the next throw there"),
-    ("R", "Rethrow · hold to zoom"),
-    ("R", "With a grenade in the air: ride along with it"),
-    ("2× CTRL", "Add a bot where you stand"),
-    ("2× SHIFT", "Noclip on or off"),
-    ("2× F", "Aim ring on or off · in a drill it fades as you land it"),
-    ("DEL", "Clear smoke and fire · twice clears the bots"),
-]
-
-for cap, text in KEYS:
-    xml.append(f'\t\t\t\t<Panel class="nw-keys-row" hittest="false"><Label class="nw-keycap" text="{cap}" hittest="false" /><Label class="nw-keys-text" text="{text}" hittest="false" /></Panel>')
-
-xml.append('''			</Panel>
 		</Panel>
 	</Panel>
 </root>
@@ -267,68 +248,6 @@ css.append(f'''/* nadewheel2.vcss -- the radial menu, and nothing else.
 {{
 	visibility: visible;
 	opacity: 1;
-}}
-
-/* What the keys do, beside the wheel. The menu is where a player goes to find
-   out what is possible, so it is where the things that are NOT on the menu
-   have to be written down. */
-.nw-keys
-{{
-	horizontal-align: left;
-	vertical-align: center;
-	margin-left: 42px;
-	flow-children: down;
-}}
-
-.nw-keys-title
-{{
-	margin-bottom: 8px;
-	font-family: Stratum2 Mono, 'Arial Unicode MS';
-	font-size: 13px;
-	font-weight: bold;
-	letter-spacing: 2px;
-	color: #e4ae39;
-	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.65);
-}}
-
-.nw-keys-row
-{{
-	flow-children: right;
-	margin-bottom: 6px;
-	padding: 2px 12px 2px 2px;
-	background-color: rgba(9, 15, 21, 0.66);
-	border-radius: 3px;
-}}
-
-.nw-keycap
-{{
-	width: 76px;
-	margin-right: 10px;
-	padding: 3px 0px 2px;
-	vertical-align: center;
-	font-family: Stratum2, 'Arial Unicode MS';
-	font-size: 13px;
-	font-weight: bold;
-	letter-spacing: 0.5px;
-	text-transform: uppercase;
-	text-overflow: shrink;
-	white-space: nowrap;
-	color: #10161c;
-	text-align: center;
-	background-color: #e9eef3;
-	border: 1px solid #c2ccd6;
-	border-bottom: 3px solid #8c99a6;
-	border-radius: 4px;
-}}
-
-.nw-keys-text
-{{
-	vertical-align: center;
-	font-family: Stratum2, 'Arial Unicode MS';
-	font-size: 15px;
-	font-weight: bold;
-	color: #e6edf3;
-	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.9);
 }}
 
 /* The whole screen, under the wheel: a click that lands on nothing closes it,

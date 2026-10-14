@@ -1602,11 +1602,14 @@
 /* What the keys do right now. The lines change with where you are standing
    and what is in your hand, so the legend is the menu you never have to
    open. */
+/* Just above the money, bottom left: in the corner the eye already visits,
+   and out of the middle of the screen where it was a distraction. */
 .nh-legend
 {
 	horizontal-align: left;
-	vertical-align: center;
-	margin-left: 42px;
+	vertical-align: bottom;
+	margin-left: 22px;
+	margin-bottom: 78px;
 	flow-children: down;
 }
 
