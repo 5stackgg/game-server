@@ -172,7 +172,12 @@ public partial class UtilityPracticePlugin
                         ),
                         Toggle("bloom", "Smoke Outline", state.Bloom, state.Loaded == null || !_config.GhostPreview),
                         new WheelItem("maps", "Change Map", MapLabel(_library.Map), Opens: "maps"),
-                        new WheelItem("bot", "Place A Bot", "where I stand"),
+                        new WheelItem(
+                            "bot",
+                            "Place A Bot",
+                            _bots.Count == 0 ? "where I stand" : $"{_bots.Count} of {MaxBots}",
+                            Disabled: BotSlotsLeft() == 0
+                        ),
                         new WheelItem(
                             "nobots",
                             "Remove Bots",
@@ -889,7 +894,7 @@ public partial class UtilityPracticePlugin
             case "bot":
                 if (BotSlotsLeft() == 0)
                 {
-                    Toast(player, "The server has no room for another bot");
+                    Toast(player, _bots.Count >= MaxBots ? $"{MaxBots} bots at most" : "The server has no room for another bot");
 
                     break;
                 }

@@ -661,12 +661,17 @@ public partial class UtilityPracticePlugin : BasePlugin
         return true;
     }
 
-    // Every slot is a person or a bot, so the server's size is the limit.
+    // Five is a site's worth of defenders; past that a team is full before the
+    // server is, and the press silently does nothing.
+    public const int MaxBots = 5;
+
+    // Every slot is a person or a bot, so a small server runs out sooner.
     public int BotSlotsLeft()
     {
         int people = Core.PlayerManager.GetAllPlayers().Count(player => player != null && player.IsValid && !player.IsFakeClient);
+        int free = Core.Engine.GlobalVars.MaxClients - people - _bots.Count;
 
-        return Math.Max(0, Core.Engine.GlobalVars.MaxClients - people - _bots.Count);
+        return Math.Max(0, Math.Min(MaxBots - _bots.Count, free));
     }
 
     // A bot asked for is watched for until this tick, rather than waited on
