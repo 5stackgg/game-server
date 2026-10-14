@@ -107,6 +107,77 @@ cp "${HUD_DIR}/addoninfo.txt" "${STAGE_DIR}/addoninfo.txt"
 log "compiled:"
 find "${STAGE_DIR}" -name '*_c' -o -name 'addoninfo.txt' | sed "s|${STAGE_DIR}/|  |"
 
+# A running client keeps every layout and stylesheet it has loaded, by name,
+# until it exits, so a dev build that reuses a name cannot be seen without a
+# relaunch. With HUD_DEV_TAG set, a second copy of this build is compiled in
+# which every file is renamed <stem>__<tag> and the references between them
+# rewritten to match, so each one is new to the client.
+# apps/utility-sw/scripts/dev.sh sets it; a publish never does.
+#
+# Beside the plain build, not instead of it: the plain names are what a plugin
+# asks for until it is told a tagged build has reached the client, and they are
+# the only ones packed.
+TAGGED_SOURCE="${OUT_DIR}/tagged"
+TAGGED_STAGE="${OUT_DIR}/stage-tagged"
+rm -rf "${TAGGED_SOURCE}" "${TAGGED_STAGE}"
+
+if [ -n "${HUD_DEV_TAG:-}" ]; then
+	case "${HUD_DEV_TAG}" in
+		*[!a-z0-9]*) die "HUD_DEV_TAG takes lowercase letters and digits only" ;;
+	esac
+
+	mkdir -p "${TAGGED_SOURCE}"
+	cp -R "${HUD_DIR}/panorama/." "${TAGGED_SOURCE}/"
+
+	renames="${OUT_DIR}/tagged.sed"
+	: > "${renames}"
+
+	find "${TAGGED_SOURCE}" -type f -path '*/custom_game/*' | while IFS= read -r file; do
+		stem="$(basename "${file%.*}")"
+
+		case "${stem}" in
+			*[!A-Za-z0-9_]*) die "cannot tag ${file}: only letters, digits and _ in a name" ;;
+		esac
+
+		printf 's#custom_game/%s\\.#custom_game/%s__%s.#g\n' "${stem}" "${stem}" "${HUD_DEV_TAG}" >> "${renames}"
+	done
+
+	# References first, while every file still answers to its old name.
+	find "${TAGGED_SOURCE}" -type f \( -name '*.xml' -o -name '*.css' \) | while IFS= read -r file; do
+		sed -f "${renames}" "${file}" > "${file}.tagging"
+		mv "${file}.tagging" "${file}"
+	done
+
+	find "${TAGGED_SOURCE}" -type f -path '*/custom_game/*' | while IFS= read -r file; do
+		mv "${file}" "${file%.*}__${HUD_DEV_TAG}.${file##*.}"
+	done
+
+	log "compiling dev build ${HUD_DEV_TAG}"
+	dotnet "${COMPILER_DLL}" compile-tree \
+		--input-root "${TAGGED_SOURCE}" \
+		--output-root "${TAGGED_STAGE}/panorama"
+fi
+
+# The loose copy scripts/hud-watch.sh mirrors into a local CS2 install: build/
+# never crosses the codepier sync, and the machine with the game cannot unpack a
+# vpk. Updated in place -- emptying the directory first would reach the watcher
+# as every layout being deleted. The last dev build's tagged files go here, as
+# this one's arrive.
+mkdir -p "${DIST_DIR}/panorama"
+cp -R "${STAGE_DIR}/panorama/." "${DIST_DIR}/panorama/"
+
+if [ -d "${TAGGED_STAGE}/panorama" ]; then
+	cp -R "${TAGGED_STAGE}/panorama/." "${DIST_DIR}/panorama/"
+fi
+
+find "${DIST_DIR}/panorama" -type f | while IFS= read -r loose; do
+	relative="${loose#"${DIST_DIR}/panorama/"}"
+
+	if [ ! -f "${STAGE_DIR}/panorama/${relative}" ] && [ ! -f "${TAGGED_STAGE}/panorama/${relative}" ]; then
+		rm -f "${loose}"
+	fi
+done
+
 # The client resolves panorama/layout/custom_game/nade_hud.vxml_c, so the tree
 # above has to be packed at its root -- not nested under another directory.
 if ensure_vpkeditcli; then
@@ -140,6 +211,6 @@ else
 
 	  vpkeditcli unavailable, so the addon tree was built but not packed.
 	  Install https://github.com/craftablescience/VPKEdit to produce the .vpk,
-	  or point CS2 at ${STAGE_DIR} directly for a local override test.
+	  scripts/hud-watch.sh still tests the loose copy in ${DIST_DIR}/panorama.
 	EOF
 fi
