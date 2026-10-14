@@ -1644,16 +1644,14 @@
 
 .nh-keycap
 {
-	width: 76px;
-	margin-right: 10px;
-	padding: 3px 0px 2px;
+	min-width: 30px;
+	padding: 4px 9px 3px;
 	vertical-align: center;
 	font-family: Stratum2, 'Arial Unicode MS';
 	font-size: 13px;
 	font-weight: bold;
 	letter-spacing: 0.5px;
 	text-transform: uppercase;
-	text-overflow: shrink;
 	white-space: nowrap;
 	color: #10161c;
 	text-align: center;
@@ -1663,6 +1661,27 @@
 	border-radius: 4px;
 	transition-property: background-color, color, border;
 	transition-duration: 0.12s;
+}
+
+/* The key, sized to its name the way a keyboard's are, and a press count
+   after it: a fixed column so every description starts on one line. */
+.nh-key-col
+{
+	width: 118px;
+	margin-right: 8px;
+	vertical-align: center;
+	flow-children: right;
+}
+
+.nh-key-twice
+{
+	margin-left: 6px;
+	vertical-align: center;
+	font-family: Stratum2, 'Arial Unicode MS';
+	font-size: 13px;
+	font-weight: bold;
+	color: #c3d0dc;
+	text-shadow: 1px 1px 2px 2 rgba(0, 0, 0, 0.9);
 }
 
 .nh-key-label
