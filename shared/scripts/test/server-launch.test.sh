@@ -17,7 +17,7 @@ fail() {
 # Runs server.sh beside a crash-report.sh whose run_server only prints the
 # command it was handed, one argument per line.
 launch_args() {
-  local server_sh="$1" game_id="$2" workdir
+  local server_sh="$1" game_id="$2" server_type="$3" workdir
   workdir="$(mktemp -d)"
 
   cp "$server_sh" "$workdir/server.sh"
@@ -30,6 +30,7 @@ EOF
 
   env -i PATH="$PATH" \
     GAME_ID="$game_id" \
+    SERVER_TYPE="$server_type" \
     INSTANCE_SERVER_DIR="$workdir/instance" \
     STEAMCMD_DIR="$workdir/steamcmd" \
     SERVER_PORT=27015 \
@@ -48,13 +49,28 @@ has_arg() {
 for server_sh in "$REPO_DIR/apps/counterstrikesharp/scripts/server.sh" "$REPO_DIR/apps/swiftly/scripts/server.sh"; do
   name="${server_sh#"$REPO_DIR"/}"
 
-  echo "$name lets cs2 write and load round backup files"
-  args="$(launch_args "$server_sh" 730)"
-  if ! has_arg "$args" "-allow_round_backup_files"; then
-    fail "$name does not start cs2 with -allow_round_backup_files: $(printf '%s' "$args" | tr '\n' ' ')"
+  for server_type in Ranked Competitive; do
+    echo "$name lets a $server_type cs2 server write and load round backup files"
+    args="$(launch_args "$server_sh" 730 "$server_type")"
+    if ! has_arg "$args" "-allow_round_backup_files"; then
+      fail "$name does not start a $server_type cs2 server with -allow_round_backup_files: $(printf '%s' "$args" | tr '\n' ' ')"
+    fi
+  done
+
+  for server_type in Casual Wingman Deathmatch ArmsRace Retake Practice Custom; do
+    echo "$name keeps round backup files off on a $server_type server"
+    if has_arg "$(launch_args "$server_sh" 730 "$server_type")" "-allow_round_backup_files"; then
+      fail "$name starts a $server_type server with -allow_round_backup_files"
+    fi
+  done
+
+  echo "$name keeps the cs2-only flag off csgo"
+  if has_arg "$(launch_args "$server_sh" 740 Ranked)" "-allow_round_backup_files"; then
+    fail "$name starts csgo with -allow_round_backup_files"
   fi
 
   echo "$name still passes the match's own params"
+  args="$(launch_args "$server_sh" 730 Ranked)"
   if ! has_arg "$args" "de_overpass"; then
     fail "$name dropped EXTRA_GAME_PARAMS: $(printf '%s' "$args" | tr '\n' ' ')"
   fi
