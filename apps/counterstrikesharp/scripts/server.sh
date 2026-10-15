@@ -24,6 +24,11 @@ if [ "${GAME_ID}" = "740" ]; then
 else
     SERVER_BINARY="${INSTANCE_SERVER_DIR}/game/bin/linuxsteamrt64/cs2"
     GAME_ARGS=""
+    case "${SERVER_TYPE}" in
+        Ranked|Competitive)
+            GAME_ARGS="-allow_round_backup_files"
+            ;;
+    esac
 fi
 
 run_server "${SERVER_BINARY}" ${GAME_ARGS} -ip 0.0.0.0 -port ${SERVER_PORT} +tv_port ${TV_PORT} -dedicated -dev -usercon +rcon_password ${RCON_PASSWORD} ${EXTRA_GAME_PARAMS}
