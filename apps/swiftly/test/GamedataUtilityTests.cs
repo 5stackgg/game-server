@@ -14,6 +14,8 @@ public class GamedataUtilityTests
     [InlineData("FiveStack_ConnectClient", "engine2", false)]
     [InlineData("FiveStack_CCSPlayerController_SetClan", "server", true)]
     [InlineData("FiveStack_CCSPlayerController_SetClan", "server", false)]
+    [InlineData("FiveStack_CCSPlayerController_UpdateResourceData", "server", true)]
+    [InlineData("FiveStack_CCSPlayerController_UpdateResourceData", "server", false)]
     public void EverySignatureAPluginAsksForShipsWithIt(string name, string library, bool linux)
     {
         GamedataSignature? signature = GamedataUtility.Parse(Shipped(), name, linux);
