@@ -98,7 +98,7 @@ public static class PracticeMapChangeUtility
     }
 
     // A workshop map has a numeric id where its name would be, and changelevel
-    // cannot load one. Same branch MatchManager.ChangeMap takes.
+    // cannot load one.
     public static string Command(string map)
     {
         return IsWorkshopId(map) ? $"host_workshop_map {map}" : $"changelevel \"{map}\"";

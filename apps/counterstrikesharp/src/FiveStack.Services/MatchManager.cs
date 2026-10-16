@@ -536,26 +536,18 @@ public class MatchManager
             $"Game State {_currentMap.status} expected {_currentMap.map.name}, on {Server.MapName}"
         );
 
-        if (_currentMap.map.workshop_map_id is not null)
-        {
-            string currentWorkshopID = _matchService.GetWorkshopID();
-            _logger.LogInformation(
-                $"Checking Workshop Map {_currentMap.map.workshop_map_id} / {currentWorkshopID}"
-            );
-
-            if (_currentMap.map.workshop_map_id != currentWorkshopID)
-            {
-                _logger.LogInformation(
-                    $"Map switch required: workshop {currentWorkshopID} -> {_currentMap.map.workshop_map_id} (match {_matchData.id})"
-                );
-                ChangeMap(_currentMap.map);
-                return;
-            }
-        }
-        else if (!Server.MapName.ToLower().Contains(_currentMap.map.name.ToLower()))
+        string currentWorkshopID = _matchService.GetWorkshopID();
+        if (
+            !MapLoadUtility.IsLoaded(
+                _currentMap.map,
+                Server.MapName,
+                currentWorkshopID,
+                Server.IsMapValid
+            )
+        )
         {
             _logger.LogInformation(
-                $"Map switch required: on {Server.MapName}, need {_currentMap.map.name} (match {_matchData.id})"
+                $"Map switch required: on {Server.MapName} / {currentWorkshopID}, need {_currentMap.map.name} / {_currentMap.map.workshop_map_id} (match {_matchData.id})"
             );
             ChangeMap(_currentMap.map);
             return;
@@ -790,22 +782,11 @@ public class MatchManager
         // the previous map's mode was.
         string[] gameModeCommands = GetGameModeCommands();
 
-        if (map.workshop_map_id == null && Server.IsMapValid(map.name))
-        {
-            _logger.LogInformation(
-                $"Changing Map {map.name} (match {_matchData?.id.ToString() ?? "none"})"
-            );
-            _gameServer.SendCommands([.. gameModeCommands, $"changelevel \"{map.name}\""]);
-        }
-        else
-        {
-            _logger.LogInformation(
-                $"Changing Map {map.name} / {map.workshop_map_id} (match {_matchData?.id.ToString() ?? "none"})"
-            );
-            _gameServer.SendCommands(
-                [.. gameModeCommands, $"host_workshop_map {map.workshop_map_id}"]
-            );
-        }
+        string changeCommand = MapLoadUtility.ChangeCommand(map, Server.IsMapValid);
+        _logger.LogInformation(
+            $"Changing Map {map.name} with {changeCommand} (match {_matchData?.id.ToString() ?? "none"})"
+        );
+        _gameServer.SendCommands([.. gameModeCommands, changeCommand]);
     }
 
     // game_type/game_mode are integers, not mode names: game_type 0 (Classic)
