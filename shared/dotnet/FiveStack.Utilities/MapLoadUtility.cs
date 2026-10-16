@@ -5,10 +5,13 @@ namespace FiveStack.Utilities;
 public static class MapLoadUtility
 {
     // A workshop id only says where to fetch a map the install does not ship;
-    // when the client has its own copy, that is the one a match plays.
+    // when the client has its own copy, that is the one a match plays. A map
+    // named after its workshop id is workshop-only: SwiftlyS2's IsMapValid
+    // passes any downloaded id, and changelevel cannot load one.
     public static bool LoadsFromWorkshop(Map map, Func<string, bool> isMapValid)
     {
-        return !string.IsNullOrEmpty(map.workshop_map_id) && !isMapValid(map.name);
+        return !string.IsNullOrEmpty(map.workshop_map_id)
+            && (PracticeMapChangeUtility.IsWorkshopId(map.name) || !isMapValid(map.name));
     }
 
     public static string ChangeCommand(Map map, Func<string, bool> isMapValid)
@@ -30,6 +33,6 @@ public static class MapLoadUtility
             return map.workshop_map_id == currentWorkshopId;
         }
 
-        return currentMapName.ToLower().Contains(map.name.ToLower());
+        return string.Equals(currentMapName, map.name, StringComparison.OrdinalIgnoreCase);
     }
 }
