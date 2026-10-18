@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
+using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -25,8 +26,11 @@ public partial class FiveStackPlugin
             return;
         }
 
-        if (_gameBackupRounds.RoundRestoresDisabled())
+        string? refusal = _gameBackupRounds.RestoreRefusal();
+        if (refusal != null)
         {
+            _logger.LogWarning($"Restore round {round} refused: {refusal}");
+            command.ReplyToCommand($"{RoundRestoreGateUtility.RefusedPrefix} {refusal}");
             return;
         }
 

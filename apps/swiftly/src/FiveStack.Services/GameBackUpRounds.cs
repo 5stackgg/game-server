@@ -610,6 +610,22 @@ public class GameBackUpRounds
         });
     }
 
+    // restore_round hands the round to the api, which marks the later rounds'
+    // stats deleted before it sends api_restore_round back, so a restore that
+    // would be refused there has to be refused before it leaves.
+    public string? RestoreRefusal()
+    {
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        return RoundRestoreGateUtility.Refusal(
+            match != null && !match.options.CanRestoreRounds(),
+            IsResettingRound(),
+            MatchUtility.PlayerCount(),
+            _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10,
+            match?.options.type ?? ""
+        );
+    }
+
     public bool RoundRestoresDisabled()
     {
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
