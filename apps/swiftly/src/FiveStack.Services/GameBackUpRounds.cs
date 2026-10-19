@@ -341,12 +341,7 @@ public class GameBackUpRounds
             return;
         }
 
-        BackupRound? backupRound = matchMap.rounds.FirstOrDefault(
-            (backupRound) =>
-            {
-                return backupRound.round == round;
-            }
-        );
+        BackupRound? backupRound = RoundRestoreGateUtility.LatestBackup(matchMap.rounds, round);
 
         if (backupRound == null)
         {
@@ -374,8 +369,24 @@ public class GameBackUpRounds
                 () =>
                 {
                     _logger.LogInformation("restore round vote passed");
-                    SendRestoreRoundToBackend(round);
                     _resetRound = null;
+
+                    string? refusal = RestoreRefusal();
+                    if (refusal != null)
+                    {
+                        _logger.LogWarning(
+                            $"Restore round {round} refused after the vote: {refusal}"
+                        );
+                        _gameServer.Message(
+                            MessageType.Alert,
+                            $" Restore round blocked: {refusal}."
+                        );
+                        restoreRoundVote = null;
+                        _matchService.GetCurrentMatch()?.ResumeMatch();
+                        return;
+                    }
+
+                    SendRestoreRoundToBackend(round);
                 },
                 () =>
                 {
@@ -533,12 +544,7 @@ public class GameBackUpRounds
             return;
         }
 
-        BackupRound? backupRound = matchMap.rounds.FirstOrDefault(
-            (backupRound) =>
-            {
-                return backupRound.round == round;
-            }
-        );
+        BackupRound? backupRound = RoundRestoreGateUtility.LatestBackup(matchMap.rounds, round);
 
         if (backupRound == null)
         {

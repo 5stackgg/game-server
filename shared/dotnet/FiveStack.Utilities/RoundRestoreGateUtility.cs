@@ -1,3 +1,5 @@
+using FiveStack.Entities;
+
 namespace FiveStack.Utilities
 {
     public static class RoundRestoreGateUtility
@@ -30,6 +32,16 @@ namespace FiveStack.Utilities
             }
 
             return null;
+        }
+
+        // A map's backups are appended as rounds are played, so a round played
+        // again after a restore is listed twice and the newer backup is the one
+        // that matches what was replayed.
+        public static BackupRound? LatestBackup(IEnumerable<BackupRound> rounds, int round)
+        {
+            return rounds.LastOrDefault(backup =>
+                backup.round == round && string.IsNullOrEmpty(backup.deleted_at)
+            );
         }
     }
 }
