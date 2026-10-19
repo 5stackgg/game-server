@@ -176,7 +176,7 @@ public class GameBackUpRounds
 
         try
         {
-            if (!matchMap.rounds.Any(backupRound => backupRound.round == highestNumber))
+            if (RoundRestoreGateUtility.LatestBackup(matchMap.rounds, highestNumber) == null)
             {
                 string content = File.ReadAllText(backupFilePath);
                 matchMap.rounds = matchMap
