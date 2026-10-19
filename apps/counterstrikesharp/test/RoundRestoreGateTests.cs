@@ -1,4 +1,5 @@
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Xunit;
 
@@ -78,5 +79,75 @@ public class RoundRestoreGateTests
         };
 
         Assert.Equal("undone", RoundRestoreGateUtility.LatestBackup(rounds, 6)?.backup_file);
+    }
+
+    [Fact]
+    public void SkipsABackupWithNothingInIt()
+    {
+        var rounds = new[]
+        {
+            new BackupRound { round = 6, backup_file = "kept" },
+            new BackupRound { round = 6, backup_file = "" },
+        };
+
+        Assert.Equal("kept", RoundRestoreGateUtility.LatestBackup(rounds, 6)?.backup_file);
+    }
+
+    [Fact]
+    public void TellsAnUndoneRoundFromOnePlayedAgain()
+    {
+        var rounds = new[]
+        {
+            new BackupRound
+            {
+                round = 6,
+                backup_file = "undone",
+                deleted_at = "2026-10-19T09:00:00Z",
+            },
+            new BackupRound
+            {
+                round = 7,
+                backup_file = "undone",
+                deleted_at = "2026-10-19T09:00:00Z",
+            },
+            new BackupRound { round = 7, backup_file = "replayed" },
+        };
+
+        Assert.True(RoundRestoreGateUtility.IsUndone(rounds, 6));
+        Assert.False(RoundRestoreGateUtility.IsUndone(rounds, 7));
+        Assert.False(RoundRestoreGateUtility.IsUndone(rounds, 8));
+    }
+
+    [Fact]
+    public void RefusesWarmupWithoutAMatch()
+    {
+        Assert.Equal(
+            "no match is loaded",
+            RoundRestoreGateUtility.WarmupRefusal(false, eMapStatus.Unknown)
+        );
+    }
+
+    [Theory]
+    [InlineData(eMapStatus.WaitingForTV)]
+    [InlineData(eMapStatus.UploadingDemo)]
+    [InlineData(eMapStatus.Finished)]
+    [InlineData(eMapStatus.Surrendered)]
+    public void RefusesWarmupOnAMapThatIsOver(eMapStatus current)
+    {
+        Assert.Equal(
+            "the map is already over",
+            RoundRestoreGateUtility.WarmupRefusal(true, current)
+        );
+    }
+
+    [Theory]
+    [InlineData(eMapStatus.Warmup)]
+    [InlineData(eMapStatus.Knife)]
+    [InlineData(eMapStatus.Live)]
+    [InlineData(eMapStatus.Overtime)]
+    [InlineData(eMapStatus.Paused)]
+    public void SendsAMapBeingPlayedBackToWarmup(eMapStatus current)
+    {
+        Assert.Null(RoundRestoreGateUtility.WarmupRefusal(true, current));
     }
 }

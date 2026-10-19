@@ -150,7 +150,11 @@ public class GameBackUpRounds
         string csgoDir = BackupDirectory;
         string prefix = MatchUtility.GetSafeMatchPrefix(match);
 
-        int highestNumber = GetHighestBackupRoundOnDisk(csgoDir, prefix);
+        int highestNumber = GetHighestBackupRoundOnDisk(
+            csgoDir,
+            prefix,
+            round => RoundRestoreGateUtility.IsUndone(matchMap.rounds, round)
+        );
         int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
 
         _logger.LogInformation(
@@ -239,7 +243,7 @@ public class GameBackUpRounds
 
     // Scans the game dir for CS2 round backup files ({prefix}_round<NN>.txt) and
     // returns the highest round number present (0 if none).
-    private int GetHighestBackupRoundOnDisk(string csgoDir, string prefix)
+    private int GetHighestBackupRoundOnDisk(string csgoDir, string prefix, Func<int, bool> skip)
     {
         int highest = 0;
 
@@ -260,7 +264,7 @@ public class GameBackUpRounds
                 }
 
                 string numberPart = name.Substring(idx + "_round".Length);
-                if (int.TryParse(numberPart, out int round) && round > highest)
+                if (int.TryParse(numberPart, out int round) && round > highest && !skip(round))
                 {
                     highest = round;
                 }

@@ -1,3 +1,4 @@
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using SwiftlyS2.Shared.Commands;
 
@@ -24,8 +25,22 @@ public partial class FiveStackPlugin
             return;
         }
 
-        _matchService
-            .GetCurrentMatch()
-            ?.UpdateMapStatus(MatchUtility.MapStatusStringToEnum(string.Join(" ", context.Args)));
+        MatchManager? match = _matchService.GetCurrentMatch();
+        eMapStatus status = MatchUtility.MapStatusStringToEnum(string.Join(" ", context.Args));
+
+        if (status == eMapStatus.Warmup)
+        {
+            string? refusal = RoundRestoreGateUtility.WarmupRefusal(
+                match?.GetMatchData() != null,
+                match?.GetCurrentMapStatus() ?? eMapStatus.Unknown
+            );
+            if (refusal != null)
+            {
+                context.Reply($"{RoundRestoreGateUtility.MatchStateRefusedPrefix} {refusal}");
+                return;
+            }
+        }
+
+        match?.UpdateMapStatus(status);
     }
 }
