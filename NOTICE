@@ -101,8 +101,9 @@ swiftly-solution/gamedata-validator
 states no license. Its image includes:
 
 - s2binlib (https://github.com/swiftly-solution/s2binlib), GNU GPL
-  version 3, as the prebuilt lib/s2binlib.so with its Python binding
-  s2binlib.py. Its source is in that repository.
+  version 3, as the prebuilt lib/s2binlib.so, whose source is in that
+  repository. The Python binding s2binlib.py comes from
+  swiftly-solution/gamedata-validator.
 - json5 for Python (https://github.com/dpranke/pyjson5), Apache License
   2.0.
 
