@@ -15,6 +15,7 @@ namespace FiveStack.Utilities
         public static string? Refusal(
             bool restoresDisabled,
             bool alreadyRestoring,
+            eMapStatus mapStatus,
             int round,
             bool hasBackup,
             int connectedPlayers,
@@ -30,6 +31,18 @@ namespace FiveStack.Utilities
             if (alreadyRestoring)
             {
                 return "a round restore is already in progress";
+            }
+
+            // CS2 restarts the game when warmup or knife ends, which would wipe a
+            // round loaded before that, so the api ignores a restore until then.
+            if (mapStatus == eMapStatus.Warmup || mapStatus == eMapStatus.Knife)
+            {
+                return "the map isn't live yet";
+            }
+
+            if (IsOver(mapStatus))
+            {
+                return "the map is already over";
             }
 
             if (!hasBackup)
@@ -72,17 +85,20 @@ namespace FiveStack.Utilities
                 return "no match is loaded";
             }
 
-            if (
-                current == eMapStatus.WaitingForTV
-                || current == eMapStatus.UploadingDemo
-                || current == eMapStatus.Finished
-                || current == eMapStatus.Surrendered
-            )
+            if (IsOver(current))
             {
                 return "the map is already over";
             }
 
             return null;
+        }
+
+        private static bool IsOver(eMapStatus status)
+        {
+            return status == eMapStatus.WaitingForTV
+                || status == eMapStatus.UploadingDemo
+                || status == eMapStatus.Finished
+                || status == eMapStatus.Surrendered;
         }
     }
 }
