@@ -1,3 +1,4 @@
+using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared.Commands;
 
@@ -27,8 +28,11 @@ public partial class FiveStackPlugin
             return;
         }
 
-        if (_gameBackupRounds.RoundRestoresDisabled())
+        string? refusal = _gameBackupRounds.RestoreRefusal();
+        if (refusal != null)
         {
+            _logger.LogWarning($"Restore round {round} refused: {refusal}");
+            context.Reply($"{RoundRestoreGateUtility.RefusedPrefix} {refusal}");
             return;
         }
 

@@ -176,12 +176,7 @@ public class GameBackUpRounds
             return;
         }
 
-        BackupRound? backupRound = matchMap.rounds.FirstOrDefault(
-            (backupRound) =>
-            {
-                return backupRound.round == round;
-            }
-        );
+        BackupRound? backupRound = RoundRestoreGateUtility.LatestBackup(matchMap.rounds, round);
 
         if (backupRound == null)
         {
@@ -209,8 +204,23 @@ public class GameBackUpRounds
                 () =>
                 {
                     _logger.LogInformation("restore round vote passed");
-                    SendRestoreRoundToBackend(round);
                     _resetRound = null;
+
+                    string? refusal = RestoreRefusal();
+                    if (refusal != null)
+                    {
+                        _logger.LogWarning(
+                            $"Restore round {round} refused after the vote: {refusal}"
+                        );
+                        _gameServer.Message(
+                            HudDestination.Alert,
+                            $" Restore round blocked: {refusal}."
+                        );
+                        restoreRoundVote = null;
+                        return;
+                    }
+
+                    SendRestoreRoundToBackend(round);
                 },
                 () =>
                 {
@@ -327,12 +337,7 @@ public class GameBackUpRounds
             return;
         }
 
-        BackupRound? backupRound = matchMap.rounds.FirstOrDefault(
-            (backupRound) =>
-            {
-                return backupRound.round == round;
-            }
-        );
+        BackupRound? backupRound = RoundRestoreGateUtility.LatestBackup(matchMap.rounds, round);
 
         if (backupRound == null)
         {
@@ -377,6 +382,22 @@ public class GameBackUpRounds
                 );
             });
         });
+    }
+
+    // restore_round hands the round to the api, which marks the later rounds'
+    // stats deleted before it sends api_restore_round back, so a restore that
+    // would be refused there has to be refused before it leaves.
+    public string? RestoreRefusal()
+    {
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        return RoundRestoreGateUtility.Refusal(
+            match != null && !match.options.CanRestoreRounds(),
+            IsResettingRound(),
+            MatchUtility.Players().Count,
+            _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10,
+            match?.options.type ?? ""
+        );
     }
 
     public bool RoundRestoresDisabled()
