@@ -72,7 +72,7 @@ the copyright holder: https://github.com/lukepolo
 THIRD-PARTY SOFTWARE
 
 The plugins in apps/ are built against, and the game server images
-download and run, the following software:
+include, the following software:
 
 - CounterStrikeSharp (https://github.com/roflmuffin/CounterStrikeSharp),
   GNU GPL version 3, with an exception that lets plugins be licensed
@@ -90,8 +90,21 @@ download and run, the following software:
   no license.
 - The .NET runtime and Microsoft.Extensions packages
   (https://github.com/dotnet), MIT License.
+
+apps/utility-sw/hud/radars/metadata.json, the map radar calibration, is
+vendored from boltobserv by boltgolt
+(https://github.com/boltgolt/boltobserv), GNU GPL version 3.
+
+The gamedata validator (apps/gamedata-validator) is adapted from
+swiftly-solution/gamedata-validator
+(https://github.com/swiftly-solution/gamedata-validator), whose repository
+states no license. Its image includes:
+
+- s2binlib (https://github.com/swiftly-solution/s2binlib), GNU GPL
+  version 3, as the prebuilt lib/s2binlib.so with its Python binding
+  s2binlib.py. Its source is in that repository.
 - json5 for Python (https://github.com/dpranke/pyjson5), Apache License
-  2.0, used by the gamedata validator.
+  2.0.
 
 The images are based on Valve's Steam Runtime (sniper). Counter-Strike 2
 is downloaded from Steam at run time under Valve's terms and is not
