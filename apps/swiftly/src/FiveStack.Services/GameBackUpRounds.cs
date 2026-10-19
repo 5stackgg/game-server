@@ -382,7 +382,6 @@ public class GameBackUpRounds
                             $" Restore round blocked: {refusal}."
                         );
                         restoreRoundVote = null;
-                        _matchService.GetCurrentMatch()?.ResumeMatch();
                         return;
                     }
 
