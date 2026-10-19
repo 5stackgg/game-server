@@ -40,6 +40,11 @@ namespace FiveStack.Utilities
                 return "the map isn't live yet";
             }
 
+            if (IsOver(mapStatus))
+            {
+                return "the map is already over";
+            }
+
             if (!hasBackup)
             {
                 return $"the server has no backup of round {round}";
@@ -80,17 +85,20 @@ namespace FiveStack.Utilities
                 return "no match is loaded";
             }
 
-            if (
-                current == eMapStatus.WaitingForTV
-                || current == eMapStatus.UploadingDemo
-                || current == eMapStatus.Finished
-                || current == eMapStatus.Surrendered
-            )
+            if (IsOver(current))
             {
                 return "the map is already over";
             }
 
             return null;
+        }
+
+        private static bool IsOver(eMapStatus status)
+        {
+            return status == eMapStatus.WaitingForTV
+                || status == eMapStatus.UploadingDemo
+                || status == eMapStatus.Finished
+                || status == eMapStatus.Surrendered;
         }
     }
 }

@@ -78,6 +78,19 @@ public class RoundRestoreGateTests
         );
     }
 
+    [Theory]
+    [InlineData(eMapStatus.WaitingForTV)]
+    [InlineData(eMapStatus.UploadingDemo)]
+    [InlineData(eMapStatus.Finished)]
+    [InlineData(eMapStatus.Surrendered)]
+    public void RefusesOnAMapThatIsOver(eMapStatus status)
+    {
+        Assert.Equal(
+            "the map is already over",
+            RoundRestoreGateUtility.Refusal(false, false, status, 4, true, 10, 10, "Competitive")
+        );
+    }
+
     // A server that reloads mid-map offers its restore before it has a status,
     // and the vote passes once it is back on the api's Live or Paused.
     [Theory]
