@@ -58,3 +58,7 @@ release as the match plugin and extract it into `game/csgo`:
 Either config takes `API_DOMAIN`, `SERVER_ID` and `SERVER_API_PASSWORD`; the panel's player
 management card shows the values for each server. Environment variables of the same names win over
 the file. Over RCON, `player_management_status` reports what the plugin sees.
+
+## License
+
+Licensed under the [GNU GPL v3](LICENSE), with the additional terms in [NOTICE](NOTICE): keep the "Powered by 5Stack" credit, and do not present a modified version as the official 5Stack. CounterStrikeSharp and SwiftlyS2 let their plugins use only the GPL or MIT, so this repository uses the GPL. Versions published before this change remain under the MIT License. For other licensing, contact [@lukepolo](https://github.com/lukepolo). Contributors sign the [CLA](CLA.md) on their first pull request.
