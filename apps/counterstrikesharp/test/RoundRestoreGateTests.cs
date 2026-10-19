@@ -7,7 +7,7 @@ public class RoundRestoreGateTests
     [Fact]
     public void LetsARestoreThroughWithEveryoneIn()
     {
-        Assert.Null(RoundRestoreGateUtility.Refusal(false, false, 10, 10, "Competitive"));
+        Assert.Null(RoundRestoreGateUtility.Refusal(false, false, 4, true, 10, 10, "Competitive"));
     }
 
     [Fact]
@@ -15,7 +15,7 @@ public class RoundRestoreGateTests
     {
         Assert.Equal(
             "waiting for all players to reconnect (3/10)",
-            RoundRestoreGateUtility.Refusal(false, false, 3, 10, "Competitive")
+            RoundRestoreGateUtility.Refusal(false, false, 4, true, 3, 10, "Competitive")
         );
     }
 
@@ -24,7 +24,7 @@ public class RoundRestoreGateTests
     {
         Assert.Equal(
             "a round restore is already in progress",
-            RoundRestoreGateUtility.Refusal(false, true, 10, 10, "Competitive")
+            RoundRestoreGateUtility.Refusal(false, true, 4, true, 10, 10, "Competitive")
         );
     }
 
@@ -33,7 +33,16 @@ public class RoundRestoreGateTests
     {
         Assert.Equal(
             "round restores are disabled in Rush",
-            RoundRestoreGateUtility.Refusal(true, false, 6, 6, "Rush")
+            RoundRestoreGateUtility.Refusal(true, false, 4, true, 6, 6, "Rush")
+        );
+    }
+
+    [Fact]
+    public void RefusesARoundTheServerHasNoBackupOf()
+    {
+        Assert.Equal(
+            "the server has no backup of round 4",
+            RoundRestoreGateUtility.Refusal(false, false, 4, false, 10, 10, "Competitive")
         );
     }
 
@@ -56,7 +65,7 @@ public class RoundRestoreGateTests
     }
 
     [Fact]
-    public void SkipsABackupTheApiMarkedDeleted()
+    public void StillLoadsARoundARestoreUndid()
     {
         var rounds = new[]
         {
@@ -68,6 +77,6 @@ public class RoundRestoreGateTests
             },
         };
 
-        Assert.Null(RoundRestoreGateUtility.LatestBackup(rounds, 6));
+        Assert.Equal("undone", RoundRestoreGateUtility.LatestBackup(rounds, 6)?.backup_file);
     }
 }

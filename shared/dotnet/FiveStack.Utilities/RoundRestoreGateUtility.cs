@@ -11,6 +11,8 @@ namespace FiveStack.Utilities
         public static string? Refusal(
             bool restoresDisabled,
             bool alreadyRestoring,
+            int round,
+            bool hasBackup,
             int connectedPlayers,
             int expectedPlayers,
             string matchType
@@ -26,6 +28,11 @@ namespace FiveStack.Utilities
                 return "a round restore is already in progress";
             }
 
+            if (!hasBackup)
+            {
+                return $"the server has no backup of round {round}";
+            }
+
             if (connectedPlayers < expectedPlayers)
             {
                 return $"waiting for all players to reconnect ({connectedPlayers}/{expectedPlayers})";
@@ -36,12 +43,11 @@ namespace FiveStack.Utilities
 
         // A map's backups are appended as rounds are played, so a round played
         // again after a restore is listed twice and the newer backup is the one
-        // that matches what was replayed.
+        // that matches what was replayed. A round the api marked deleted was
+        // undone by a restore, and stays loadable until a round is played again.
         public static BackupRound? LatestBackup(IEnumerable<BackupRound> rounds, int round)
         {
-            return rounds.LastOrDefault(backup =>
-                backup.round == round && string.IsNullOrEmpty(backup.deleted_at)
-            );
+            return rounds.LastOrDefault(backup => backup.round == round);
         }
     }
 }

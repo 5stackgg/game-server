@@ -371,7 +371,7 @@ public class GameBackUpRounds
                     _logger.LogInformation("restore round vote passed");
                     _resetRound = null;
 
-                    string? refusal = RestoreRefusal();
+                    string? refusal = RestoreRefusal(round);
                     if (refusal != null)
                     {
                         _logger.LogWarning(
@@ -618,13 +618,17 @@ public class GameBackUpRounds
     // restore_round hands the round to the api, which marks the later rounds'
     // stats deleted before it sends api_restore_round back, so a restore that
     // would be refused there has to be refused before it leaves.
-    public string? RestoreRefusal()
+    public string? RestoreRefusal(int round)
     {
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchMap? matchMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
 
         return RoundRestoreGateUtility.Refusal(
             match != null && !match.options.CanRestoreRounds(),
             IsResettingRound(),
+            round,
+            matchMap != null
+                && RoundRestoreGateUtility.LatestBackup(matchMap.rounds, round) != null,
             MatchUtility.PlayerCount(),
             _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10,
             match?.options.type ?? ""
