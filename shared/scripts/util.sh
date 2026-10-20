@@ -350,6 +350,22 @@ enable_steam_relay() {
   mv -f "$file.relay" "$file"
 }
 
+# The public server.cfg is only seeded when missing, so an older one never gets
+# this line from the seed. Any line naming the option is left as the admin's.
+ensure_p2p_ice_disabled() {
+  local file="$1"
+
+  if [ ! -f "$file" ] || grep -q 'P2P_Transport_ICE_Enable' "$file"; then
+    return 0
+  fi
+
+  if [ -s "$file" ] && [ -n "$(tail -c 1 "$file")" ]; then
+    printf '\n' >> "$file"
+  fi
+
+  printf 'net_option P2P_Transport_ICE_Enable 0\n' >> "$file"
+}
+
 # Only whole-line // comments are stripped; a trailing // may be inside a URL.
 ensure_command_prefix() {
   local file="$1"

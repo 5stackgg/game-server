@@ -128,6 +128,8 @@ if [ "$SERVER_TYPE" != "Ranked" ] && [ "$SERVER_TYPE" != "Practice" ]; then
     cp "/opt/server-cfg/public.server.cfg" "/opt/custom-plugins/cfg/server.cfg"
   fi
 
+  ensure_p2p_ice_disabled "/opt/custom-plugins/cfg/server.cfg"
+
   if [ ! -e "/opt/custom-plugins/addons/swiftlys2/configs/core.jsonc" ]; then
     cp "/opt/server-cfg/core.jsonc" "/opt/custom-plugins/addons/swiftlys2/configs/core.jsonc"
   fi

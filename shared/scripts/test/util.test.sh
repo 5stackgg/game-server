@@ -457,6 +457,57 @@ assert_missing "$workdir/instance/game/csgo/addons/swiftlys2/plugins/AddonsManag
 assert_missing "$(addons_manager_config)" "a config was written for a plugin that is not there"
 teardown
 
+ice_line='net_option P2P_Transport_ICE_Enable 0'
+
+# The public server.cfg is only seeded when missing, so one seeded before the
+# line existed has to be given it on boot.
+echo "ensure_p2p_ice_disabled adds the line to a server.cfg seeded before it"
+setup
+printf 'sv_hibernate_when_empty 1\nmapgroup mg_public\n' > "$workdir/server.cfg"
+ensure_p2p_ice_disabled "$workdir/server.cfg" > /dev/null 2>&1
+assert_equals "$(cat "$workdir/server.cfg")" "$(printf 'sv_hibernate_when_empty 1\nmapgroup mg_public\n%s' "$ice_line")" \
+  "the line was not appended after the existing cvars"
+teardown
+
+echo "ensure_p2p_ice_disabled keeps a last line that has no newline"
+setup
+printf 'sv_hibernate_when_empty 1\nmapgroup mg_public' > "$workdir/server.cfg"
+ensure_p2p_ice_disabled "$workdir/server.cfg" > /dev/null 2>&1
+assert_equals "$(grep -cx 'mapgroup mg_public' "$workdir/server.cfg")" "1" "the last cvar was joined onto the new line"
+assert_equals "$(grep -cx "$ice_line" "$workdir/server.cfg")" "1" "the line was not added on a line of its own"
+teardown
+
+echo "ensure_p2p_ice_disabled adds it once across boots"
+setup
+printf 'mapgroup mg_public\n' > "$workdir/server.cfg"
+ensure_p2p_ice_disabled "$workdir/server.cfg" > /dev/null 2>&1
+ensure_p2p_ice_disabled "$workdir/server.cfg" > /dev/null 2>&1
+assert_equals "$(grep -c 'P2P_Transport_ICE_Enable' "$workdir/server.cfg")" "1" "a second boot added it again"
+teardown
+
+echo "ensure_p2p_ice_disabled leaves an admin's own setting alone"
+setup
+printf 'mapgroup mg_public\nnet_option P2P_Transport_ICE_Enable -1\n' > "$workdir/server.cfg"
+original="$(cat "$workdir/server.cfg")"
+ensure_p2p_ice_disabled "$workdir/server.cfg" > /dev/null 2>&1
+assert_equals "$(cat "$workdir/server.cfg")" "$original" "an admin's -1 was overridden"
+teardown
+
+echo "ensure_p2p_ice_disabled creates no server.cfg of its own"
+setup
+ensure_p2p_ice_disabled "$workdir/server.cfg" > /dev/null 2>&1
+assert_equals "$?" "0" "a missing server.cfg should not abort setup"
+assert_missing "$workdir/server.cfg" "a server.cfg was created"
+teardown
+
+echo "every CS2 setup.sh gives the public server.cfg the line, and CS:GO's does not"
+for setup in "${SCRIPT_DIR}/../../../apps/counterstrikesharp/scripts/setup.sh" "${SCRIPT_DIR}/../../../apps/swiftly/scripts/setup.sh"; do
+  assert_equals "$(grep -cx '  ensure_p2p_ice_disabled "/opt/custom-plugins/cfg/server.cfg"' "$setup")" "1" \
+    "$(basename "$(dirname "$(dirname "$setup")")") setup.sh never adds the line to an existing server.cfg"
+done
+assert_equals "$(grep -c 'ensure_p2p_ice_disabled' "${SCRIPT_DIR}/../setup-csgo.sh")" "0" \
+  "setup-csgo.sh adds a command CS:GO does not have"
+
 if [ "$failures" -gt 0 ]; then
   echo "$failures assertion(s) failed" >&2
   exit 1
