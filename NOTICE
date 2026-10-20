@@ -1,0 +1,112 @@
+5Stack Game Server
+Copyright (C) 2024-2026 Luke Policinski
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License, version 3 only, as
+published by the Free Software Foundation (see LICENSE), together with the
+additional terms below.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details.
+
+
+ADDITIONAL TERMS (GNU GPL version 3, section 7)
+
+These terms apply to every copy of this program and to every work based
+on it.
+
+1. Attribution (section 7(b)). Keep this NOTICE file and every copyright
+   notice in the source. Any user interface that displays Appropriate
+   Legal Notices must include the credit "Powered by 5Stack" with a
+   working link to https://5stack.gg. In the 5Stack web panel that credit
+   is on the sign-in page and on the Licenses page (/licenses).
+
+2. Origin (section 7(c)). Do not present a modified version as the
+   official 5Stack, or as made or endorsed by its author, and mark a
+   modified version as changed from the original.
+
+3. Names and marks (section 7(e)). This license grants no right to use
+   the 5Stack name or logo, except to give the credit in term 1 and to
+   describe the origin of the work truthfully.
+
+
+EARLIER VERSIONS
+
+Versions of this repository published before this NOTICE file was added
+were released under the MIT License and remain under it. The
+contributions they contain were made under that license, whose notice
+follows:
+
+    MIT License
+
+    Copyright (c) 2025 5Stack.gg
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+    LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+    WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+OTHER LICENSING
+
+To use this program under terms other than the license above, contact
+the copyright holder: https://github.com/lukepolo
+
+
+THIRD-PARTY SOFTWARE
+
+The plugins in apps/ are built against, and the game server images
+include, the following software:
+
+- CounterStrikeSharp (https://github.com/roflmuffin/CounterStrikeSharp),
+  GNU GPL version 3, with an exception that lets plugins be licensed
+  under the MIT License.
+- SwiftlyS2 (https://github.com/swiftly-solution/swiftlys2), GNU GPL
+  version 3, with the same exception.
+- Metamod:Source (https://github.com/alliedmodders/metamod-source),
+  Copyright Metamod:Source Development Team, zlib/libpng License.
+- SourceMod (https://github.com/alliedmodders/sourcemod), for CS:GO
+  servers, GNU GPL version 3 with the SourceMod exceptions.
+- AddonsManager (https://github.com/SwiftlyS2-Plugins/AddonsManager),
+  GNU GPL version 3.
+- NoLobbyReservation by nuxencs
+  (https://github.com/nuxencs/NoLobbyReservation). Its repository states
+  no license.
+- The .NET runtime and Microsoft.Extensions packages
+  (https://github.com/dotnet), MIT License.
+
+apps/utility-sw/hud/radars/metadata.json, the map radar calibration, is
+vendored from boltobserv by boltgolt
+(https://github.com/boltgolt/boltobserv), GNU GPL version 3.
+
+The gamedata validator (apps/gamedata-validator) is adapted from
+swiftly-solution/gamedata-validator
+(https://github.com/swiftly-solution/gamedata-validator), whose repository
+states no license. Its image includes:
+
+- s2binlib (https://github.com/swiftly-solution/s2binlib), GNU GPL
+  version 3, as the prebuilt lib/s2binlib.so, whose source is in that
+  repository. The Python binding s2binlib.py comes from
+  swiftly-solution/gamedata-validator.
+- json5 for Python (https://github.com/dpranke/pyjson5), Apache License
+  2.0.
+
+The images are based on Valve's Steam Runtime (sniper). Counter-Strike 2
+is downloaded from Steam at run time under Valve's terms and is not
+distributed with the images.
