@@ -103,6 +103,8 @@ if [ "$SERVER_TYPE" != "Ranked" ]; then
     cp "/opt/server-cfg/public.server.cfg" "/opt/custom-plugins/cfg/server.cfg"
   fi
 
+  ensure_p2p_ice_disabled "/opt/custom-plugins/cfg/server.cfg"
+
   if [ ! -e "/opt/custom-plugins/addons/counterstrikesharp/configs/core.json" ]; then
     cp "/opt/server-cfg/core.json" "/opt/custom-plugins/addons/counterstrikesharp/configs/core.json"
   fi

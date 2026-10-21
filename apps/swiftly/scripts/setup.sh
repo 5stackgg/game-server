@@ -67,12 +67,13 @@ if [ "$SERVER_TYPE" = "Ranked" ]; then
 fi
 
 # A practice server runs no match plugin to hold it awake, so the base
-# server.cfg it would otherwise be linked to is copied in with hibernation off.
+# server.cfg it would otherwise be linked to is copied in with hibernation off,
+# and with ICE off like ranked.server.cfg.
 if [ "$SERVER_TYPE" = "Practice" ]; then
   if [ -f "$BASE_SERVER_DIR/game/csgo/cfg/server.cfg" ]; then
     cp "$BASE_SERVER_DIR/game/csgo/cfg/server.cfg" "$INSTANCE_SERVER_DIR/game/csgo/cfg/server.cfg"
   fi
-  printf '\nsv_hibernate_when_empty 0\n' >> "$INSTANCE_SERVER_DIR/game/csgo/cfg/server.cfg"
+  printf '\nsv_hibernate_when_empty 0\nnet_option P2P_Transport_ICE_Enable 0\n' >> "$INSTANCE_SERVER_DIR/game/csgo/cfg/server.cfg"
 fi
 
 if [ ! -d "/opt/custom-plugins/addons/swiftlys2/configs" ]; then
@@ -126,6 +127,8 @@ if [ "$SERVER_TYPE" != "Ranked" ] && [ "$SERVER_TYPE" != "Practice" ]; then
   if [ ! -e "/opt/custom-plugins/cfg/server.cfg" ]; then
     cp "/opt/server-cfg/public.server.cfg" "/opt/custom-plugins/cfg/server.cfg"
   fi
+
+  ensure_p2p_ice_disabled "/opt/custom-plugins/cfg/server.cfg"
 
   if [ ! -e "/opt/custom-plugins/addons/swiftlys2/configs/core.jsonc" ]; then
     cp "/opt/server-cfg/core.jsonc" "/opt/custom-plugins/addons/swiftlys2/configs/core.jsonc"
