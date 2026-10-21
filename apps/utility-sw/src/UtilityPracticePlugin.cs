@@ -53,6 +53,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private EventDelegates.OnTick? _tickHandler;
     private EventDelegates.OnEntityCreated? _entityCreatedHandler;
+    private EventDelegates.OnEntitySpawned? _entitySpawnedHandler;
     private readonly HashSet<ulong> _welcomed = new();
 
     // A load waiting for the far side of a changelevel. Deliberately a plain
@@ -230,6 +231,9 @@ public partial class UtilityPracticePlugin : BasePlugin
             });
         };
         Core.Event.OnEntityCreated += _entityCreatedHandler;
+
+        _entitySpawnedHandler = @event => _callouts.OnSpawned(@event.Entity);
+        Core.Event.OnEntitySpawned += _entitySpawnedHandler;
 
         _mapLoadHandler = @event => OnMapLoad(@event.MapName);
         Core.Event.OnMapLoad += _mapLoadHandler;
@@ -470,6 +474,11 @@ public partial class UtilityPracticePlugin : BasePlugin
         if (_entityCreatedHandler != null)
         {
             Core.Event.OnEntityCreated -= _entityCreatedHandler;
+        }
+
+        if (_entitySpawnedHandler != null)
+        {
+            Core.Event.OnEntitySpawned -= _entitySpawnedHandler;
         }
 
         if (_mapLoadHandler != null)
@@ -2216,8 +2225,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         _library.SetMap(mapName);
         _session.Map = mapName;
-        _callouts.Reset();
-        _callouts.Report(mapName);
+        _callouts.MapLoaded();
 
         ApplyPracticeCfg();
 
