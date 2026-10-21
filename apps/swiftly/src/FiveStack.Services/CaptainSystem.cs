@@ -1,4 +1,5 @@
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
@@ -111,6 +112,12 @@ public class CaptainSystem
         _captains[team] = null;
         ClearCaptainBySteamId(player.SteamID.ToString());
 
+        MatchData? matchData = match.GetMatchData();
+        if (matchData != null)
+        {
+            ReleaseCaptainFlag(matchData, player.SteamID.ToString(), player.Name);
+        }
+
         _matchEvents.PublishGameEvent(
             "captain",
             new Dictionary<string, object>
@@ -122,6 +129,41 @@ public class CaptainSystem
         );
 
         ShowCaptains();
+    }
+
+    public void PlayerLeft(IPlayer player, bool isKnife)
+    {
+        if (!HoldsCaptainThroughDisconnect(isKnife))
+        {
+            RemoveCaptain(player);
+            return;
+        }
+
+        if (!IsCaptain(player, player.Controller.Team))
+        {
+            return;
+        }
+
+        // Only the slot: their flag in the match data stays set, so IsCaptain
+        // hands them the spot back when they reconnect unless a teammate has
+        // claimed it by then.
+        ClearCaptainBySteamId(player.SteamID.ToString());
+
+        ShowCaptains();
+    }
+
+    public static bool HoldsCaptainThroughDisconnect(bool isKnife)
+    {
+        return !isKnife;
+    }
+
+    // A map with no knife round would otherwise go live behind a captain who
+    // left in warmup. Never from the knife round, which picked on the way in and
+    // hands over before the players have swapped sides, and never once a round
+    // is played or from a fresh plugin, which must not move a captain mid-match.
+    public static bool PicksCaptainsGoingLive(eMapStatus from, int roundsPlayed)
+    {
+        return (from == eMapStatus.Warmup || from == eMapStatus.Paused) && roundsPlayed == 0;
     }
 
     public IPlayer? GetTeamCaptain(Team team)
@@ -362,6 +404,12 @@ public class CaptainSystem
             return;
         }
 
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+        if (matchData != null)
+        {
+            HandCaptainFlag(matchData, player.SteamID.ToString(), player.Name);
+        }
+
         _matchEvents.PublishGameEvent(
             "captain",
             new Dictionary<string, object>
@@ -371,6 +419,41 @@ public class CaptainSystem
                 { "player_name", player.Name },
             }
         );
+    }
+
+    // The api moves the flag the same way, but until the match is fetched again
+    // the one who left still holds it here, and reconnecting would take it back.
+    public static void HandCaptainFlag(MatchData matchData, string steamId, string playerName)
+    {
+        MatchMember? captain = MatchUtility.GetMemberFromLineup(matchData, steamId, playerName);
+        if (captain == null)
+        {
+            return;
+        }
+
+        foreach (MatchLineUp lineup in new[] { matchData.lineup_1, matchData.lineup_2 })
+        {
+            if (!lineup.lineup_players.Contains(captain))
+            {
+                continue;
+            }
+
+            foreach (MatchMember member in lineup.lineup_players)
+            {
+                member.captain = member == captain;
+            }
+        }
+    }
+
+    // IsCaptain seats any flagged player, so a captain who released the spot
+    // would otherwise be handed it straight back.
+    public static void ReleaseCaptainFlag(MatchData matchData, string steamId, string playerName)
+    {
+        MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, steamId, playerName);
+        if (member != null)
+        {
+            member.captain = false;
+        }
     }
 
     private void ClearCaptainBySteamId(string steamId, Team? ignoreTeam = null)

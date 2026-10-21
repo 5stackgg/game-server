@@ -432,6 +432,16 @@ public class MatchManager
                 PauseMatch(null, true);
                 break;
             case eMapStatus.Live:
+                if (
+                    CaptainSystem.PicksCaptainsGoingLive(
+                        _currentMapStatus,
+                        _gameServer.GetTotalRoundsPlayed()
+                    )
+                )
+                {
+                    captainSystem.AutoSelectCaptains();
+                }
+
                 StartLive();
                 break;
             case eMapStatus.WaitingForTV:
