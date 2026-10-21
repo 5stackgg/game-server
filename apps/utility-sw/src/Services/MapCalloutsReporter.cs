@@ -20,21 +20,18 @@ public class MapCalloutsReporter
     // somebody tied to the class by accident, not an area anyone calls out.
     private const float MinExtent = 8f;
 
+    private const string PlaceClass = "env_cs_place";
+
     private readonly ISwiftlyCore _core;
     private readonly UtilityApiClient _api;
     private readonly ILogger<MapCalloutsReporter> _logger;
 
-    // env_cs_place entities are not guaranteed to have spawned by the time the
-    // map-load handler runs, so an empty walk means "not yet", not "this map
-    // has none". Report is asked again on the per-second tick until one of them
-    // answers or the attempts run out -- without it a map that was slow to
-    // spawn stays unnamed for the whole session, silently: no HUD kicker, no
-    // auto-named save, and nothing ever POSTed for the workshop maps this
-    // endpoint exists for.
-    private const int MaxAttempts = 10;
-
-    private string _reported = string.Empty;
-    private int _attempts;
+    // Report is asked on the per-second tick, never from the map-load handler:
+    // MapCalloutsWalk says when a walk is the map's answer, and it is asked again
+    // until one is -- otherwise the map stays unnamed for the whole session,
+    // silently: no HUD kicker, no auto-named save, and nothing ever POSTed for the
+    // workshop maps this endpoint exists for.
+    private readonly MapCalloutsWalk _walk = new MapCalloutsWalk();
     private List<MapCalloutPayload> _cached = new List<MapCalloutPayload>();
 
     public MapCalloutsReporter(
@@ -48,11 +45,18 @@ public class MapCalloutsReporter
         _logger = logger;
     }
 
-    public void Reset()
+    public void MapLoaded()
     {
-        _reported = string.Empty;
-        _attempts = 0;
+        _walk.MapLoaded();
         _cached = new List<MapCalloutPayload>();
+    }
+
+    public void OnSpawned(CEntityInstance entity)
+    {
+        if (entity.DesignerName == PlaceClass)
+        {
+            _walk.Spawned(entity.Index);
+        }
     }
 
     /// <summary>
@@ -73,8 +77,8 @@ public class MapCalloutsReporter
     }
 
     /// <summary>
-    /// Reads every env_cs_place in the level. Safe to call from a map-load
-    /// handler; it only touches entities the game already made.
+    /// Reads the level's env_cs_place entities -- after a map load, only the
+    /// ones that spawned since.
     /// </summary>
     public List<MapCalloutPayload> Collect()
     {
@@ -82,11 +86,11 @@ public class MapCalloutsReporter
 
         foreach (
             CCSPlace place in _core.EntitySystem.GetAllEntitiesByDesignerName<CCSPlace>(
-                "env_cs_place"
+                PlaceClass
             )
         )
         {
-            if (!place.IsValid)
+            if (!place.IsValid || !_walk.Counts(place.Index))
             {
                 continue;
             }
@@ -136,17 +140,16 @@ public class MapCalloutsReporter
 
     /// <summary>
     /// Reports the level's callouts once per map. Safe to call every tick: it
-    /// stops the moment it has an answer, and gives up after MaxAttempts so a
-    /// map that genuinely has no places is not walked for ever.
+    /// stops the moment it has an answer, and gives up after
+    /// MapCalloutsWalk.MaxAttempts so a map that genuinely has no places is not
+    /// walked for ever.
     /// </summary>
     public void Report(string? mapName)
     {
-        if (string.IsNullOrEmpty(mapName) || _reported == mapName || _attempts >= MaxAttempts)
+        if (!_walk.Begin(mapName))
         {
             return;
         }
-
-        _attempts++;
 
         List<MapCalloutPayload> callouts;
 
@@ -166,7 +169,8 @@ public class MapCalloutsReporter
         }
 
         _cached = callouts;
-        _reported = mapName;
+        _walk.Answered(mapName);
+        _logger.LogInformation("reporting {count} callout(s) for {map}", callouts.Count, mapName);
         _ = Task.Run(async () => await _api.Callouts(mapName, callouts));
     }
 }
