@@ -130,7 +130,7 @@ public class GameServer
                 : workshopID;
 
             string endpoint =
-                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={mapName}&pluginVersion={pluginVersion}&pluginRuntime=swiftlys2&hibernating={(HibernationUtility.IsHibernating ? "true" : "false")}";
+                $"{_environmentService.GetApiUrl()}/game-server-node/ping/{serverId}?map={mapName}&pluginVersion={pluginVersion}&pluginRuntime=swiftlys2&hibernating={(HibernationUtility.IsHibernating ? "true" : "false")}&players={MatchUtility.PlayerCount()}&mapName={Uri.EscapeDataString(_core.Engine.GlobalVars.MapName.ToString())}";
 
             SteamRelayReport relay = SteamRelayUtility.Report(
                 _listening,
