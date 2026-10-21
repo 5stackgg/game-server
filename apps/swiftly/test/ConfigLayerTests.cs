@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using FiveStack;
 using FiveStack.Entities;
@@ -87,5 +88,68 @@ public class ConfigLayerTests
             new[] { "Competitive", "lan", "global", "plugin.inventory-simulator", "mode" },
             MatchManager.ConfigLayerKeys(match)
         );
+    }
+
+    private static string SharedCfg(string file, [CallerFilePath] string testFile = "")
+    {
+        return File.ReadAllText(
+            Path.Combine(Path.GetDirectoryName(testFile)!, "..", "..", "..", "shared", "cfg", file)
+        );
+    }
+
+    private static string? CfgValue(string cfg, string cvar)
+    {
+        return cfg.Split('\n')
+            .Select(line =>
+                line.Split("//")[0].Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+            )
+            .Where(tokens => tokens.Length >= 2 && tokens[0] == cvar)
+            .Select(tokens => tokens[1])
+            .LastOrDefault();
+    }
+
+    [Fact]
+    public void Warmup_Protects_A_Respawned_Player()
+    {
+        Assert.Equal("4", CfgValue(SharedCfg("5stack.warmup.cfg"), "mp_respawn_immunitytime"));
+    }
+
+    // Nothing re-execs the type cfg between warmup and the knife round, so
+    // the knife cfg is the only thing standing between it and warmup's value.
+    [Fact]
+    public void The_Knife_Round_Turns_Respawn_Immunity_Off()
+    {
+        Assert.Equal("-1", CfgValue(SharedCfg("5stack.knife.cfg"), "mp_respawn_immunitytime"));
+    }
+
+    [Theory]
+    [InlineData("5stack.competitive.cfg")]
+    [InlineData("5stack.wingman.cfg")]
+    [InlineData("5stack.duel.cfg")]
+    [InlineData("5stack.rush.cfg")]
+    public void Every_Type_Cfg_Turns_Respawn_Immunity_Off(string file)
+    {
+        Assert.Equal("-1", CfgValue(SharedCfg(file), "mp_respawn_immunitytime"));
+    }
+
+    // An admin's type cfg replaces the shipped file outright, so it may not
+    // set immunity back; the reset has to come before the layers so a mode
+    // that wants spawn protection can still turn it on.
+    [Theory]
+    [InlineData("Competitive")]
+    [InlineData("Rush")]
+    public void Going_Live_Clears_Warmup_Respawn_Immunity_Before_The_Layers(string type)
+    {
+        var match = Match(Layered);
+        match.options.type = type;
+        match.options.cfg_overrides[type] = "mp_freezetime 5";
+
+        string[] commands = MatchManager.MatchConfigExecCommands(match);
+
+        int reset = Array.IndexOf(commands, "mp_respawn_immunitytime -1");
+        int firstExec = Array.FindIndex(commands, command => command.StartsWith("exec "));
+
+        Assert.True(reset >= 0, string.Join("; ", commands));
+        Assert.True(reset < firstExec, string.Join("; ", commands));
     }
 }

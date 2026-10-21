@@ -985,18 +985,43 @@ public class MatchManager
 
     public string[] MatchConfigExecCommands()
     {
-        string[] execs = ConfigLayerKeys()
+        return MatchConfigExecCommands(
+            _matchData,
+            (key) => _logger.LogWarning($"Refusing config layer: {key}")
+        );
+    }
+
+    public static string[] MatchConfigExecCommands(
+        MatchData? _matchData,
+        Action<string>? onRefused = null
+    )
+    {
+        string[] execs = ConfigLayerKeys(_matchData, onRefused)
             .Select(key => $"exec 5stack.{key.ToLower()}.cfg")
             .ToArray();
 
-        if (_matchData == null || _matchData.options.IsRush())
+        if (_matchData == null)
         {
             return execs;
         }
 
+        // Warmup's spawn protection: an admin's type cfg replaces the shipped
+        // one and may never set it back.
+        string[] resets = ["mp_respawn_immunitytime -1"];
+
+        if (_matchData.options.IsRush())
+        {
+            return [.. resets, .. execs];
+        }
+
         // Rush's map script and cfg set these, and a dedicated server reused
         // for another match type keeps them: no other cfg sets them back.
-        return ["mp_ignore_round_win_conditions 0", "cash_team_per_dead_enemy 0", .. execs];
+        return [
+            .. resets,
+            "mp_ignore_round_win_conditions 0",
+            "cash_team_per_dead_enemy 0",
+            .. execs,
+        ];
     }
 
     private void ApplyWorkshopBlockedCvars()
