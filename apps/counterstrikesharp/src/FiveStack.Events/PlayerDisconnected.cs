@@ -51,7 +51,7 @@ public partial class FiveStackPlugin
         if (match.IsWarmup() || match.IsKnife())
         {
             match.readySystem.UnreadyPlayer(player);
-            match.captainSystem.RemoveCaptain(@event.Userid);
+            match.captainSystem.PlayerLeft(player, match.IsKnife());
         }
 
         _surrenderSystem.RemovePlayerVoteOnDisconnect(player.SteamID);
