@@ -166,6 +166,15 @@ RUN apt-get update && \
 	locale-gen && \
 	rm -rf /var/lib/apt/lists/*
 
+# bullseye's ca-certificates never got Debian's fix for the compromised eMudhra
+# intermediates (12 and 13 dropped both roots), and the plugins reach the api
+# over HTTPS through .NET, which trusts this store. Make the same edit Debian
+# did; the ls fails the build if Valve's package names the roots differently.
+RUN sed -i -e 's|^mozilla/Comodo_AAA_Services_root\.crt$|!&|' \
+	-e 's|^mozilla/emSign_ECC_Root_CA_-_G3\.crt$|!&|' /etc/ca-certificates.conf && \
+	update-ca-certificates --fresh && \
+	! ls /etc/ssl/certs | grep -qE 'AAA|emSign_ECC_Root_CA_-_G3'
+
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
