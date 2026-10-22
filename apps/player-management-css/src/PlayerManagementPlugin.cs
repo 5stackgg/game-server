@@ -22,6 +22,8 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
 
     private const long EnforceEveryMs = 1000;
 
+    private static readonly TimeSpan IdleReloadCheckEvery = TimeSpan.FromMinutes(1);
+
     public override string ModuleName => "PlayerManagement";
     public override string ModuleVersion => "__RELEASE_VERSION__";
     public override string ModuleAuthor => "5Stack.gg";
@@ -44,6 +46,9 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
     private readonly HashSet<ulong> _kicked = new();
 
     private long _lastEnforceMs;
+
+    private INetworkServerService? _networkServerService;
+    private Timer? _idleReloadTimer;
 
     public void OnConfigParsed(PlayerManagementConfig config)
     {
@@ -140,10 +145,23 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         }
 
         _loop.Start();
+
+        // Queued onto a world update by a thread timer: an empty server
+        // hibernates, and its frames and game timers stop while it does.
+        _networkServerService = new INetworkServerService();
+        _idleReloadTimer = new Timer(
+            _ => Server.NextWorldUpdate(ReloadIdleMap),
+            null,
+            IdleReloadCheckEvery,
+            IdleReloadCheckEvery
+        );
     }
 
     public override void Unload(bool hotReload)
     {
+        _idleReloadTimer?.Dispose();
+        _idleReloadTimer = null;
+
         _loop?.Dispose();
         _loop = null;
 
@@ -232,6 +250,29 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         {
             Logger.LogError(error, "unable to enforce sanctions");
         }
+    }
+
+    private void ReloadIdleMap()
+    {
+        float curTime = Server.CurrentTime;
+
+        if (!IdleMapReloadUtility.ShouldReload(curTime, Humans().Count, hasMatch: false))
+        {
+            return;
+        }
+
+        string command = IdleMapReloadUtility.ReloadCommand(
+            Server.MapName,
+            _networkServerService?.GetWorkshopID()
+        );
+
+        Logger.LogInformation(
+            "empty server at curtime {curTime:0}s (hibernating: {hibernating}), reloading the map: {command}",
+            curTime,
+            _hibernating,
+            command
+        );
+        Server.ExecuteCommand(command);
     }
 
     private void Enforce(List<CCSPlayerController> humans)
