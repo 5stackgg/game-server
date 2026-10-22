@@ -18,6 +18,7 @@ public partial class FiveStackPlugin : BasePlugin
     private readonly MatchService _matchService;
     private readonly CaptainSystem _captainSystem;
     private readonly RankSystem _rankSystem;
+    private readonly IdleMapReload _idleMapReload;
     private readonly CameraSystem _cameraSystem;
     private readonly SurrenderSystem _surrenderSystem;
     private readonly IStringLocalizer _localizer;
@@ -39,6 +40,7 @@ public partial class FiveStackPlugin : BasePlugin
         MatchService matchService,
         CaptainSystem captainSystem,
         RankSystem rankSystem,
+        IdleMapReload idleMapReload,
         CameraSystem cameraSystem,
         ReadySystem readySystem,
         TimeoutSystem timeoutSystem,
@@ -59,6 +61,7 @@ public partial class FiveStackPlugin : BasePlugin
         _matchService = matchService;
         _captainSystem = captainSystem;
         _rankSystem = rankSystem;
+        _idleMapReload = idleMapReload;
         _cameraSystem = cameraSystem;
         _timeoutSystem = timeoutSystem;
         _surrenderSystem = surrenderSystem;
@@ -108,6 +111,8 @@ public partial class FiveStackPlugin : BasePlugin
 
         ListenForMapChange();
 
+        _idleMapReload.Start();
+
         _gameServer.Ping(ModuleVersion);
 
         AddCommandListener("say", OnPlayerChat, HookMode.Pre);
@@ -128,6 +133,7 @@ public partial class FiveStackPlugin : BasePlugin
     public override void Unload(bool hotReload)
     {
         _pingTimer?.Dispose();
+        _idleMapReload.Stop();
         ConnectClientFunc.Unhook(ConnectClientHook, HookMode.Pre);
         ClanTagUtility.Unhook();
 

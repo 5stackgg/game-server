@@ -35,6 +35,7 @@ public partial class FiveStackPlugin : BasePlugin
     private CaptainSystem _captainSystem = null!;
     private CoachSystem _coachSystem = null!;
     private RankSystem _rankSystem = null!;
+    private IdleMapReload _idleMapReload = null!;
     private CameraSystem _cameraSystem = null!;
     private SurrenderSystem _surrenderSystem = null!;
     private GameBackUpRounds _gameBackupRounds = null!;
@@ -85,6 +86,7 @@ public partial class FiveStackPlugin : BasePlugin
             .AddSingleton<CoachSystem>()
             .AddSingleton<CaptainSystem>()
             .AddSingleton<RankSystem>()
+            .AddSingleton<IdleMapReload>()
             // Singleton: the offline set has to outlive the transient
             // MatchManager that gets rebuilt on every match refresh.
             .AddSingleton<CameraSystem>()
@@ -114,6 +116,7 @@ public partial class FiveStackPlugin : BasePlugin
         _coachSystem = _serviceProvider.GetRequiredService<CoachSystem>();
         _captainSystem = _serviceProvider.GetRequiredService<CaptainSystem>();
         _rankSystem = _serviceProvider.GetRequiredService<RankSystem>();
+        _idleMapReload = _serviceProvider.GetRequiredService<IdleMapReload>();
         _cameraSystem = _serviceProvider.GetRequiredService<CameraSystem>();
 
         _environmentService.Load();
@@ -137,6 +140,7 @@ public partial class FiveStackPlugin : BasePlugin
         }
 
         _rankSystem.Start();
+        _idleMapReload.Start();
 
         Core.Event.OnMapLoad += OnMapLoad;
 
@@ -221,6 +225,7 @@ public partial class FiveStackPlugin : BasePlugin
         try
         {
             _rankSystem.Stop();
+            _idleMapReload.Stop();
             Core.Event.OnMapLoad -= OnMapLoad;
 
             if (_precacheHandler != null)

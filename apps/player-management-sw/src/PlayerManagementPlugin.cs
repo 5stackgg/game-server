@@ -34,6 +34,8 @@ public partial class PlayerManagementPlugin : BasePlugin
 
     private const long EnforceEveryMs = 1000;
 
+    private const long IdleReloadCheckEveryMs = 60_000;
+
     private ILogger<PlayerManagementPlugin> _logger = null!;
     private IConfiguration _configuration = null!;
     private ServiceProvider? _serviceProvider;
@@ -60,6 +62,7 @@ public partial class PlayerManagementPlugin : BasePlugin
     private Guid _chatHookId;
     private long _lastEnforceMs;
     private long _lastWorldUpdateMs;
+    private long _lastIdleReloadCheckMs;
 
     public PlayerManagementPlugin(ISwiftlyCore core)
         : base(core) { }
@@ -486,7 +489,8 @@ public partial class PlayerManagementPlugin : BasePlugin
     }
 
     // Still called while the server hibernates, when OnTick is not, which is
-    // how the roster tells an empty server from one loading a map.
+    // how the roster tells an empty server from one loading a map, and what
+    // lets an empty server reload its map.
     private void OnWorldUpdate()
     {
         long nowMs = Environment.TickCount64;
@@ -498,6 +502,41 @@ public partial class PlayerManagementPlugin : BasePlugin
 
         _lastWorldUpdateMs = nowMs;
         _roster.WorldUpdated(DateTimeOffset.UtcNow);
+
+        if (nowMs - _lastIdleReloadCheckMs < IdleReloadCheckEveryMs)
+        {
+            return;
+        }
+
+        _lastIdleReloadCheckMs = nowMs;
+        ReloadIdleMap();
+    }
+
+    // Every client counts, still loading or not: SwiftlyS2 lists a player from
+    // the moment the engine accepts the connection, and only bots and CSTV are
+    // fake clients.
+    private void ReloadIdleMap()
+    {
+        float curTime = Core.Engine.GlobalVars.CurrentTime;
+        int players = Core.PlayerManager.GetAllPlayers().Count(player => !player.IsFakeClient);
+
+        if (!IdleMapReloadUtility.ShouldReload(curTime, players, hasMatch: false))
+        {
+            return;
+        }
+
+        string command = IdleMapReloadUtility.ReloadCommand(
+            Core.Engine.GlobalVars.MapName.ToString(),
+            Core.Engine.WorkshopId
+        );
+
+        _logger.LogInformation(
+            "empty server at curtime {curTime:0}s (hibernating: {hibernating}), reloading the map: {command}",
+            curTime,
+            _roster.IsHibernating(DateTimeOffset.UtcNow),
+            command
+        );
+        Core.Engine.ExecuteCommand(command);
     }
 
     private HookResult OnChat(int playerId)
