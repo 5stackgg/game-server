@@ -12,7 +12,6 @@ namespace FiveStack;
 public partial class FiveStackPlugin
 {
     private readonly HashSet<ulong> _overCapacityKicks = new();
-    private readonly HashSet<ulong> _reportedConnected = new();
 
     [GameEventHandler]
     public HookResult OnPlayerConnect(EventPlayerConnectFull @event, GameEventInfo info)
@@ -124,8 +123,6 @@ public partial class FiveStackPlugin
                 { "steam_id", player.SteamID.ToString() },
             }
         );
-
-        _reportedConnected.Add(player.SteamID);
 
         return HookResult.Continue;
     }
