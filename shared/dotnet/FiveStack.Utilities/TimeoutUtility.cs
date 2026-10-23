@@ -23,20 +23,20 @@ namespace FiveStack.Utilities
 
         // Never fed the clan tag: lineup players wear their team's short name
         // there, and team owners pick it freely.
-        public static bool IsStaff(string? connectedRole, string? lineupRole)
+        public static bool IsStaff(ePlayerRoles? connectedRole, ePlayerRoles? lineupRole)
         {
-            return IsStaffConnectedRole(connectedRole) || IsStaffLineupRole(lineupRole);
+            return IsStaffRole(connectedRole) || IsStaffRole(lineupRole);
         }
 
         public static bool CanPause(
             eTimeoutSettings setting,
-            string? connectedRole,
-            string? lineupRole,
+            ePlayerRoles? connectedRole,
+            ePlayerRoles? lineupRole,
             bool isCoach,
             bool isCaptain
         )
         {
-            if (IsStaffConnectedRole(connectedRole))
+            if (IsStaffRole(connectedRole))
             {
                 return true;
             }
@@ -48,26 +48,14 @@ namespace FiveStack.Utilities
                 case eTimeoutSettings.CoachAndCaptains:
                     return isCoach || isCaptain;
                 case eTimeoutSettings.Admin:
-                    return IsStaffLineupRole(lineupRole);
+                    return IsStaffRole(lineupRole);
             }
 
             return true;
         }
 
-        private static bool IsStaffConnectedRole(string? connectedRole)
+        private static bool IsStaffRole(ePlayerRoles? role)
         {
-            return connectedRole == "admin" || connectedRole == "organizer";
-        }
-
-        private static bool IsStaffLineupRole(string? lineupRole)
-        {
-            if (lineupRole == null)
-            {
-                return false;
-            }
-
-            ePlayerRoles role = PlayerRoleUtility.PlayerRoleStringToEnum(lineupRole);
-
             return role == ePlayerRoles.Administrator
                 || role == ePlayerRoles.MatchOrganizer
                 || role == ePlayerRoles.TournamentOrganizer;

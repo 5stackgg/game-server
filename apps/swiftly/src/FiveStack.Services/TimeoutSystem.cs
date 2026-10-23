@@ -496,21 +496,30 @@ public class TimeoutSystem
         );
     }
 
-    private static string? ConnectedRole(IPlayer player, MatchData? matchData)
+    private static ePlayerRoles? ConnectedRole(IPlayer player, MatchData? matchData)
     {
         return FiveStackPlugin.ConnectRoles.RoleIn(player.SteamID, matchData?.id);
     }
 
-    private static string? LineupRole(IPlayer player, MatchData? matchData)
+    private static ePlayerRoles? LineupRole(IPlayer player, MatchData? matchData)
     {
         if (matchData == null)
         {
             return null;
         }
 
-        return MatchUtility
-            .GetMemberFromLineup(matchData, player.SteamID.ToString(), player.Controller.PlayerName)
-            ?.role;
+        MatchMember? member = MatchUtility.GetMemberFromLineup(
+            matchData,
+            player.SteamID.ToString(),
+            player.Controller.PlayerName
+        );
+
+        if (member == null)
+        {
+            return null;
+        }
+
+        return PlayerRoleUtility.PlayerRoleStringToEnum(member.role);
     }
 
     private void SendTimeoutAlreadyActiveMessage(IPlayer? player)

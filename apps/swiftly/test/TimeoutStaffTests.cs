@@ -2,9 +2,8 @@ using FiveStack.Enums;
 using FiveStack.Utilities;
 using Xunit;
 
-// Staff override the pause, resume, camera and empty-team gates. A lineup
-// player's clan tag is their team's short name, which the team owner picks, so
-// a team called "admin" is just a lineup player with no connected role.
+// Staff override the pause, resume, camera and empty-team gates. Only the role
+// a player connected with and their own lineup role count, never the clan tag.
 public class TimeoutStaffTests
 {
     private const ulong LineupPlayer = 76561198000000001;
@@ -15,16 +14,29 @@ public class TimeoutStaffTests
 
     private static readonly eTimeoutSettings[] Settings = Enum.GetValues<eTimeoutSettings>();
 
-    [Fact]
-    public void A_Lineup_Player_On_A_Team_Tagged_Admin_Is_Not_Staff()
+    private static ConnectRoleBook Connected(string role)
     {
         ConnectRoleBook roles = new();
+        roles.Offer(Staff, MatchA, role);
+        roles.Claim(Staff, MatchA);
 
-        string? connectedRole = roles.RoleIn(LineupPlayer, MatchA);
+        return roles;
+    }
 
-        Assert.False(TimeoutUtility.IsStaff(connectedRole, "user"));
+    [Fact]
+    public void A_Lineup_Player_With_No_Connected_Role_Is_Not_Staff()
+    {
+        ePlayerRoles? connectedRole = new ConnectRoleBook().RoleIn(LineupPlayer, MatchA);
+
+        Assert.False(TimeoutUtility.IsStaff(connectedRole, ePlayerRoles.User));
         Assert.False(
-            TimeoutUtility.CanPause(eTimeoutSettings.Admin, connectedRole, "user", false, false)
+            TimeoutUtility.CanPause(
+                eTimeoutSettings.Admin,
+                connectedRole,
+                ePlayerRoles.User,
+                false,
+                false
+            )
         );
     }
 
@@ -33,11 +45,7 @@ public class TimeoutStaffTests
     [InlineData("organizer")]
     public void A_Player_Who_Connected_With_A_Staff_Role_Is_Staff(string role)
     {
-        ConnectRoleBook roles = new();
-        roles.Offer(Staff, MatchA, role);
-        roles.Claim(Staff, MatchA);
-
-        Assert.True(TimeoutUtility.IsStaff(roles.RoleIn(Staff, MatchA), null));
+        Assert.True(TimeoutUtility.IsStaff(Connected(role).RoleIn(Staff, MatchA), null));
     }
 
     [Theory]
@@ -45,11 +53,7 @@ public class TimeoutStaffTests
     [InlineData("organizer")]
     public void A_Staff_Role_From_An_Earlier_Match_Is_Not_Staff(string role)
     {
-        ConnectRoleBook roles = new();
-        roles.Offer(Staff, MatchA, role);
-        roles.Claim(Staff, MatchA);
-
-        string? connectedRole = roles.RoleIn(Staff, MatchB);
+        ePlayerRoles? connectedRole = Connected(role).RoleIn(Staff, MatchB);
 
         Assert.False(TimeoutUtility.IsStaff(connectedRole, null));
         Assert.False(
@@ -60,9 +64,11 @@ public class TimeoutStaffTests
     [Fact]
     public void A_Streamer_Is_Not_Staff()
     {
-        Assert.False(TimeoutUtility.IsStaff("streamer", null));
+        ePlayerRoles? connectedRole = Connected("streamer").RoleIn(Staff, MatchA);
+
+        Assert.False(TimeoutUtility.IsStaff(connectedRole, null));
         Assert.False(
-            TimeoutUtility.CanPause(eTimeoutSettings.Admin, "streamer", null, false, false)
+            TimeoutUtility.CanPause(eTimeoutSettings.Admin, connectedRole, null, false, false)
         );
     }
 
@@ -78,7 +84,10 @@ public class TimeoutStaffTests
         bool staff
     )
     {
-        Assert.Equal(staff, TimeoutUtility.IsStaff(null, lineupRole));
+        Assert.Equal(
+            staff,
+            TimeoutUtility.IsStaff(null, PlayerRoleUtility.PlayerRoleStringToEnum(lineupRole))
+        );
     }
 
     [Theory]
@@ -86,9 +95,11 @@ public class TimeoutStaffTests
     [InlineData("organizer")]
     public void Connected_Staff_Can_Pause_Under_Every_Setting(string role)
     {
+        ePlayerRoles? connectedRole = Connected(role).RoleIn(Staff, MatchA);
+
         foreach (eTimeoutSettings setting in Settings)
         {
-            Assert.True(TimeoutUtility.CanPause(setting, role, null, false, false));
+            Assert.True(TimeoutUtility.CanPause(setting, connectedRole, null, false, false));
         }
     }
 
@@ -108,7 +119,10 @@ public class TimeoutStaffTests
         bool canPause
     )
     {
-        Assert.Equal(canPause, TimeoutUtility.CanPause(setting, null, "user", isCoach, isCaptain));
+        Assert.Equal(
+            canPause,
+            TimeoutUtility.CanPause(setting, null, ePlayerRoles.User, isCoach, isCaptain)
+        );
     }
 
     [Theory]
@@ -122,7 +136,7 @@ public class TimeoutStaffTests
     {
         Assert.Equal(
             canPause,
-            TimeoutUtility.CanPause(setting, null, "administrator", false, false)
+            TimeoutUtility.CanPause(setting, null, ePlayerRoles.Administrator, false, false)
         );
     }
 }
