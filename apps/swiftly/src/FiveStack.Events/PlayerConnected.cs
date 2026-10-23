@@ -107,6 +107,7 @@ public partial class FiveStackPlugin
             {
                 role = PendingPlayers[player.SteamID];
                 ClanTagUtility.Set(player.Controller, role);
+                ConnectedRoles[player.SteamID] = role;
                 PendingPlayers.Remove(player.SteamID);
             }
 

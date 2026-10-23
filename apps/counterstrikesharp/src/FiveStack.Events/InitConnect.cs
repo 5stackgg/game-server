@@ -15,6 +15,7 @@ public partial class FiveStackPlugin
     private static int PasswordBufferLength = 86;
     public static nint PasswordBuffer { get; set; } = nint.Zero;
     public static Dictionary<ulong, string> PendingPlayers = new();
+    public static Dictionary<ulong, string> ConnectedRoles = new();
 
     // near "CNetworkGameServerBase::ConnectClient( name=\'%s\', remote=\'%s\' )\n"
     private static string ConnectClientSignature = RuntimeInformation.IsOSPlatform(OSPlatform.Linux)

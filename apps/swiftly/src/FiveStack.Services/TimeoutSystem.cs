@@ -142,7 +142,7 @@ public class TimeoutSystem
         bool isCoach = _coachSystem.IsCoach(player, player.Controller.Team);
         bool isCaptain = _captainSystem.IsCaptain(player, player.Controller.Team);
 
-        if (player.Controller.Clan == "admin" || player.Controller.Clan == "organizer")
+        if (IsStaffRole(ConnectedRole(player)))
         {
             return true;
         }
@@ -164,33 +164,7 @@ public class TimeoutSystem
             case eTimeoutSettings.Admin:
                 MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
 
-                if (matchData == null)
-                {
-                    return false;
-                }
-
-                MatchMember? lineupPlayer = MatchUtility.GetMemberFromLineup(
-                    matchData,
-                    player.SteamID.ToString(),
-                    player.Controller.PlayerName
-                );
-
-                if (lineupPlayer == null)
-                {
-                    return false;
-                }
-
-                var roleEnum = PlayerRoleUtility.PlayerRoleStringToEnum(lineupPlayer.role);
-                if (
-                    roleEnum == ePlayerRoles.Administrator
-                    || roleEnum == ePlayerRoles.MatchOrganizer
-                    || roleEnum == ePlayerRoles.TournamentOrganizer
-                )
-                {
-                    return true;
-                }
-
-                return false;
+                return matchData != null && IsAdminOrOrganizer(player, matchData);
         }
 
         return true;
@@ -536,15 +510,32 @@ public class TimeoutSystem
 
     private bool IsAdminOrOrganizer(IPlayer player, MatchData matchData)
     {
-        if (player.Controller.Clan == "admin" || player.Controller.Clan == "organizer")
+        return IsStaff(
+            matchData,
+            player.SteamID,
+            player.Controller.PlayerName,
+            ConnectedRole(player)
+        );
+    }
+
+    // Never read from the clan tag: lineup players wear their team's short
+    // name there, and team owners pick it freely.
+    public static bool IsStaff(
+        MatchData matchData,
+        ulong steamId,
+        string playerName,
+        string? connectedRole
+    )
+    {
+        if (IsStaffRole(connectedRole))
         {
             return true;
         }
 
         MatchMember? lineupPlayer = MatchUtility.GetMemberFromLineup(
             matchData,
-            player.SteamID.ToString(),
-            player.Controller.PlayerName
+            steamId.ToString(),
+            playerName
         );
 
         if (lineupPlayer == null)
@@ -556,6 +547,16 @@ public class TimeoutSystem
         return roleEnum == ePlayerRoles.Administrator
             || roleEnum == ePlayerRoles.MatchOrganizer
             || roleEnum == ePlayerRoles.TournamentOrganizer;
+    }
+
+    private static bool IsStaffRole(string? connectedRole)
+    {
+        return connectedRole == "admin" || connectedRole == "organizer";
+    }
+
+    private static string? ConnectedRole(IPlayer player)
+    {
+        return FiveStackPlugin.ConnectedRoles.GetValueOrDefault(player.SteamID);
     }
 
     private void SendTimeoutAlreadyActiveMessage(IPlayer? player)

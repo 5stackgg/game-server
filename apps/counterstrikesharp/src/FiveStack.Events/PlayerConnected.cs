@@ -96,17 +96,18 @@ public partial class FiveStackPlugin
             shouldKick = false;
         }
 
-        if (shouldKick && lineup_id == null)
+        if (lineup_id == null)
         {
             string? role = null;
             if (PendingPlayers.ContainsKey(player.SteamID))
             {
                 role = PendingPlayers[player.SteamID];
                 ClanTagUtility.Set(player, role);
+                ConnectedRoles[player.SteamID] = role;
                 PendingPlayers.Remove(player.SteamID);
             }
 
-            if (role == null)
+            if (shouldKick && role == null)
             {
                 Server.ExecuteCommand($"kickid {player.UserId}");
                 return HookResult.Continue;
