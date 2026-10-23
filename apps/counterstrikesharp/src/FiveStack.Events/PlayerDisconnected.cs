@@ -16,7 +16,7 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        ConnectedRoles.Remove(@event.Userid.SteamID);
+        ConnectRoles.Leave(@event.Userid.SteamID);
 
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();

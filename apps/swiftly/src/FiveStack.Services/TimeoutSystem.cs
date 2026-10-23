@@ -139,35 +139,15 @@ public class TimeoutSystem
             return true;
         }
 
-        bool isCoach = _coachSystem.IsCoach(player, player.Controller.Team);
-        bool isCaptain = _captainSystem.IsCaptain(player, player.Controller.Team);
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
 
-        if (IsStaffRole(ConnectedRole(player)))
-        {
-            return true;
-        }
-
-        switch (GetTechnicalPauseSetting())
-        {
-            case eTimeoutSettings.Coach:
-                if (!isCoach)
-                {
-                    return false;
-                }
-                break;
-            case eTimeoutSettings.CoachAndCaptains:
-                if (!isCoach && !isCaptain)
-                {
-                    return false;
-                }
-                break;
-            case eTimeoutSettings.Admin:
-                MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
-
-                return matchData != null && IsAdminOrOrganizer(player, matchData);
-        }
-
-        return true;
+        return TimeoutUtility.CanPause(
+            GetTechnicalPauseSetting(),
+            ConnectedRole(player, matchData),
+            LineupRole(player, matchData),
+            _coachSystem.IsCoach(player, player.Controller.Team),
+            _captainSystem.IsCaptain(player, player.Controller.Team)
+        );
     }
 
     private bool CanCallTacticalTimeout(IPlayer? player)
@@ -510,53 +490,27 @@ public class TimeoutSystem
 
     private bool IsAdminOrOrganizer(IPlayer player, MatchData matchData)
     {
-        return IsStaff(
-            matchData,
-            player.SteamID,
-            player.Controller.PlayerName,
-            ConnectedRole(player)
+        return TimeoutUtility.IsStaff(
+            ConnectedRole(player, matchData),
+            LineupRole(player, matchData)
         );
     }
 
-    // Never read from the clan tag: lineup players wear their team's short
-    // name there, and team owners pick it freely.
-    public static bool IsStaff(
-        MatchData matchData,
-        ulong steamId,
-        string playerName,
-        string? connectedRole
-    )
+    private static string? ConnectedRole(IPlayer player, MatchData? matchData)
     {
-        if (IsStaffRole(connectedRole))
-        {
-            return true;
-        }
-
-        MatchMember? lineupPlayer = MatchUtility.GetMemberFromLineup(
-            matchData,
-            steamId.ToString(),
-            playerName
-        );
-
-        if (lineupPlayer == null)
-        {
-            return false;
-        }
-
-        var roleEnum = PlayerRoleUtility.PlayerRoleStringToEnum(lineupPlayer.role);
-        return roleEnum == ePlayerRoles.Administrator
-            || roleEnum == ePlayerRoles.MatchOrganizer
-            || roleEnum == ePlayerRoles.TournamentOrganizer;
+        return FiveStackPlugin.ConnectRoles.RoleIn(player.SteamID, matchData?.id);
     }
 
-    private static bool IsStaffRole(string? connectedRole)
+    private static string? LineupRole(IPlayer player, MatchData? matchData)
     {
-        return connectedRole == "admin" || connectedRole == "organizer";
-    }
+        if (matchData == null)
+        {
+            return null;
+        }
 
-    private static string? ConnectedRole(IPlayer player)
-    {
-        return FiveStackPlugin.ConnectedRoles.GetValueOrDefault(player.SteamID);
+        return MatchUtility
+            .GetMemberFromLineup(matchData, player.SteamID.ToString(), player.Controller.PlayerName)
+            ?.role;
     }
 
     private void SendTimeoutAlreadyActiveMessage(IPlayer? player)

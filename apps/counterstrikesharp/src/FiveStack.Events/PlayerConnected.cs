@@ -98,13 +98,11 @@ public partial class FiveStackPlugin
 
         if (lineup_id == null)
         {
-            string? role = null;
-            if (PendingPlayers.ContainsKey(player.SteamID))
+            string? role = ConnectRoles.Claim(player.SteamID, matchData.id);
+
+            if (role != null)
             {
-                role = PendingPlayers[player.SteamID];
                 ClanTagUtility.Set(player, role);
-                ConnectedRoles[player.SteamID] = role;
-                PendingPlayers.Remove(player.SteamID);
             }
 
             if (shouldKick && role == null)

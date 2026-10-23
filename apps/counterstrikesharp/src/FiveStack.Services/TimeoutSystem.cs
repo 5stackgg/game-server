@@ -135,35 +135,15 @@ public class TimeoutSystem
             return true;
         }
 
-        bool isCoach = _coachSystem.IsCoach(player, player.Team);
-        bool isCaptain = _captainSystem.IsCaptain(player, player.Team);
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
 
-        if (IsStaffRole(ConnectedRole(player)))
-        {
-            return true;
-        }
-
-        switch (GetTechnicalPauseSetting())
-        {
-            case eTimeoutSettings.Coach:
-                if (!isCoach)
-                {
-                    return false;
-                }
-                break;
-            case eTimeoutSettings.CoachAndCaptains:
-                if (!isCoach && !isCaptain)
-                {
-                    return false;
-                }
-                break;
-            case eTimeoutSettings.Admin:
-                MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
-
-                return matchData != null && IsAdminOrOrganizer(player, matchData);
-        }
-
-        return true;
+        return TimeoutUtility.CanPause(
+            GetTechnicalPauseSetting(),
+            ConnectedRole(player, matchData),
+            LineupRole(player, matchData),
+            _coachSystem.IsCoach(player, player.Team),
+            _captainSystem.IsCaptain(player, player.Team)
+        );
     }
 
     private bool CanCallTacticalTimeout(CCSPlayerController? player)
@@ -509,48 +489,27 @@ public class TimeoutSystem
 
     private bool IsAdminOrOrganizer(CCSPlayerController player, MatchData matchData)
     {
-        return IsStaff(matchData, player.SteamID, player.PlayerName, ConnectedRole(player));
-    }
-
-    // Never read from the clan tag: lineup players wear their team's short
-    // name there, and team owners pick it freely.
-    public static bool IsStaff(
-        MatchData matchData,
-        ulong steamId,
-        string playerName,
-        string? connectedRole
-    )
-    {
-        if (IsStaffRole(connectedRole))
-        {
-            return true;
-        }
-
-        MatchMember? lineupPlayer = MatchUtility.GetMemberFromLineup(
-            matchData,
-            steamId.ToString(),
-            playerName
+        return TimeoutUtility.IsStaff(
+            ConnectedRole(player, matchData),
+            LineupRole(player, matchData)
         );
+    }
 
-        if (lineupPlayer == null)
+    private static string? ConnectedRole(CCSPlayerController player, MatchData? matchData)
+    {
+        return FiveStackPlugin.ConnectRoles.RoleIn(player.SteamID, matchData?.id);
+    }
+
+    private static string? LineupRole(CCSPlayerController player, MatchData? matchData)
+    {
+        if (matchData == null)
         {
-            return false;
+            return null;
         }
 
-        var roleEnum = PlayerRoleUtility.PlayerRoleStringToEnum(lineupPlayer.role);
-        return roleEnum == ePlayerRoles.Administrator
-            || roleEnum == ePlayerRoles.MatchOrganizer
-            || roleEnum == ePlayerRoles.TournamentOrganizer;
-    }
-
-    private static bool IsStaffRole(string? connectedRole)
-    {
-        return connectedRole == "admin" || connectedRole == "organizer";
-    }
-
-    private static string? ConnectedRole(CCSPlayerController player)
-    {
-        return FiveStackPlugin.ConnectedRoles.GetValueOrDefault(player.SteamID);
+        return MatchUtility
+            .GetMemberFromLineup(matchData, player.SteamID.ToString(), player.PlayerName)
+            ?.role;
     }
 
     private void SendTimeoutAlreadyActiveMessage(CCSPlayerController? player)

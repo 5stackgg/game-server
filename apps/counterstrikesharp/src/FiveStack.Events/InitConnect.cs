@@ -14,8 +14,7 @@ public partial class FiveStackPlugin
 {
     private static int PasswordBufferLength = 86;
     public static nint PasswordBuffer { get; set; } = nint.Zero;
-    public static Dictionary<ulong, string> PendingPlayers = new();
-    public static Dictionary<ulong, string> ConnectedRoles = new();
+    public static ConnectRoleBook ConnectRoles = new();
 
     // near "CNetworkGameServerBase::ConnectClient( name=\'%s\', remote=\'%s\' )\n"
     private static string ConnectClientSignature = RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
@@ -64,10 +63,7 @@ public partial class FiveStackPlugin
 
         ConnectDecision decision = ConnectUtility.Authorize(rules, steamId, token);
 
-        if (decision.pending_role != null)
-        {
-            PendingPlayers[steamId] = decision.pending_role;
-        }
+        ConnectRoles.Offer(steamId, rules?.match_id, decision.pending_role);
 
         _logger.LogInformation(
             "{connect}",
