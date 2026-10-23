@@ -2,6 +2,11 @@ name: Check Dependency Releases
 
 on:
   workflow_dispatch:
+    inputs:
+      swiftly_beta:
+        description: "Move SwiftlyS2 to its newest beta; scheduled runs then follow its betas until that version's stable release ships"
+        type: boolean
+        default: false
   schedule:
     - cron: "23 * * * *"
 
@@ -29,31 +34,70 @@ jobs:
       # end the s command and GNU sed's `e` run a shell command with this job's
       # write token, so each has to match its expected shape before it is used.
       - name: SwiftlyS2
+        env:
+          SWIFTLY_BETA: ${{ inputs.swiftly_beta }}
         run: |
           set -euo pipefail
           CURRENT=$(grep -oP 'SWIFTLYS2_VERSION="\K[^"]+' apps/swiftly/Dockerfile)
-          LATEST=$(gh api "repos/swiftly-solution/swiftlys2/releases?per_page=40" \
-            --jq '[.[] | select(.prerelease == false) | select(.tag_name | test("-beta") | not)] | .[0].tag_name')
-          echo "current=$CURRENT latest=$LATEST"
+          RELEASES=$(gh api "repos/swiftly-solution/swiftlys2/releases?per_page=40")
+          STABLE=$(jq -r '[.[] | select(.prerelease == false) | select(.tag_name | test("-beta") | not)] | .[0].tag_name // ""' <<<"$RELEASES")
+          BETA=$(jq -r '[.[] | select(.tag_name | test("-beta"))] | .[0].tag_name // ""' <<<"$RELEASES")
+          echo "current=$CURRENT stable=$STABLE beta=$BETA"
 
-          # A deliberate beta pin outranks "latest stable": this only ever picks
-          # a non-prerelease, so left alone it walks a beta back to the release
-          # before it and takes whatever the beta was pinned for with it.
+          for tag in "$CURRENT" "$STABLE" "$BETA"; do
+            if [ -n "$tag" ] && [[ ! "$tag" =~ ^v[0-9]+(\.[0-9]+)+(-beta\.[0-9]+)?$ ]]; then
+              echo "::error::unexpected SwiftlyS2 tag: $tag"
+              exit 1
+            fi
+          done
+
+          # v1.5.0-beta.25 -> 1.5.0
+          base() { local v="${1#v}"; echo "${v%%-*}"; }
+          newer() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n 1)" = "$1" ]; }
+          newer_beta() {
+            newer "$(base "$1")" "$(base "$2")" \
+              || { [ "$(base "$1")" = "$(base "$2")" ] && [ "${1##*-beta.}" -gt "${2##*-beta.}" ]; }
+          }
+
+          # A beta pin follows newer betas until the stable release of its
+          # version (or a later one) ships; picking only stables would walk it
+          # back to the release before it and lose whatever it was pinned for.
+          TARGET=""
           if [[ "$CURRENT" == *-beta* ]]; then
-            echo "::notice::SwiftlyS2 pinned to $CURRENT (prerelease); leaving it alone. Latest stable is $LATEST."
+            if [ -n "$STABLE" ] && ! newer "$(base "$CURRENT")" "$(base "$STABLE")"; then
+              TARGET="$STABLE"
+            elif [ -n "$BETA" ] && newer_beta "$BETA" "$CURRENT"; then
+              TARGET="$BETA"
+            fi
+          elif [ "$SWIFTLY_BETA" = "true" ]; then
+            if [ -n "$BETA" ] && newer "$(base "$BETA")" "$(base "$CURRENT")"; then
+              TARGET="$BETA"
+            else
+              echo "::notice::no SwiftlyS2 beta is ahead of $CURRENT"
+            fi
+          elif [ -n "$STABLE" ] && [ "$STABLE" != "$CURRENT" ]; then
+            TARGET="$STABLE"
+          fi
+          if [ -z "$TARGET" ]; then
             exit 0
           fi
-          if [ -z "$LATEST" ] || [ "$LATEST" = "null" ] || [ "$CURRENT" = "$LATEST" ]; then
-            exit 0
-          fi
-          if [[ ! "$LATEST" =~ ^v[0-9]+(\.[0-9]+)+$ ]]; then
-            echo "::error::unexpected SwiftlyS2 tag: $LATEST"
-            exit 1
-          fi
-          NUGET_VERSION="${LATEST#v}"
+          NUGET_VERSION="${TARGET#v}"
 
-          sed -i "s|SWIFTLYS2_VERSION=\"[^\"]*\"|SWIFTLYS2_VERSION=\"${LATEST}\"|" apps/swiftly/Dockerfile
-          grep -q "SWIFTLYS2_VERSION=\"${LATEST}\"" apps/swiftly/Dockerfile \
+          # NuGet and the release's zips trail the GitHub release by minutes;
+          # pinning before they land bakes an image that fails to build
+          ZIP="swiftlys2-linux-${TARGET}-with-runtimes.zip"
+          if ! jq -e --arg tag "$TARGET" --arg zip "$ZIP" 'any(.[] | select(.tag_name == $tag) | .assets[]; .name == $zip)' <<<"$RELEASES" > /dev/null; then
+            echo "::notice::SwiftlyS2 ${TARGET} has no ${ZIP} yet; the next run picks it up"
+            exit 0
+          fi
+          if ! curl -fsSL --retry 3 https://api.nuget.org/v3-flatcontainer/swiftlys2.cs2/index.json \
+            | jq -e --arg v "$NUGET_VERSION" '.versions | index($v)' > /dev/null; then
+            echo "::notice::SwiftlyS2.CS2 ${NUGET_VERSION} is not on NuGet yet; the next run picks it up"
+            exit 0
+          fi
+
+          sed -i "s|SWIFTLYS2_VERSION=\"[^\"]*\"|SWIFTLYS2_VERSION=\"${TARGET}\"|" apps/swiftly/Dockerfile
+          grep -q "SWIFTLYS2_VERSION=\"${TARGET}\"" apps/swiftly/Dockerfile \
             || { echo "::error::could not set SWIFTLYS2_VERSION in apps/swiftly/Dockerfile"; exit 1; }
 
           # The runtime zip and EVERY plugin's nuget must move together. The
@@ -73,7 +117,7 @@ jobs:
 
           git add apps/swiftly/Dockerfile "${CSPROJS[@]}"
           echo sw >> "$RUNNER_TEMP/images"
-          echo "SwiftlyS2 to ${LATEST}" >> "$RUNNER_TEMP/bumps"
+          echo "SwiftlyS2 to ${TARGET}" >> "$RUNNER_TEMP/bumps"
 
       - name: CounterStrikeSharp
         if: ${{ !cancelled() }}
