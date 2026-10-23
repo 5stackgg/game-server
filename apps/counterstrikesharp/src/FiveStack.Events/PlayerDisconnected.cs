@@ -38,15 +38,24 @@ public partial class FiveStackPlugin
             player.PlayerName
         );
 
+        if (
+            PlayerPresenceUtility.ShouldReportDisconnect(
+                _reportedConnected,
+                player.SteamID,
+                member != null
+            )
+        )
+        {
+            _matchEvents.PublishGameEvent(
+                "player-disconnected",
+                new Dictionary<string, object> { { "steam_id", player.SteamID.ToString() } }
+            );
+        }
+
         if (member == null)
         {
             return HookResult.Continue;
         }
-
-        _matchEvents.PublishGameEvent(
-            "player-disconnected",
-            new Dictionary<string, object> { { "steam_id", player.SteamID.ToString() } }
-        );
 
         if (match.IsWarmup() || match.IsKnife())
         {
