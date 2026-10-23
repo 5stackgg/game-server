@@ -57,8 +57,9 @@ RUN dotnet restore apps/player-management-css/src/PlayerManagement.csproj
 
 COPY shared shared
 COPY apps/player-management-css apps/player-management-css
-# The relay rule's Steam calls are the match plugin's, compiled in by path.
-COPY apps/counterstrikesharp/src/FiveStack.Services/SteamAPI.cs apps/counterstrikesharp/src/FiveStack.Services/
+# The relay rule's Steam calls and the idle reload's workshop lookup are the
+# match plugin's, compiled in by path.
+COPY apps/counterstrikesharp/src/FiveStack.Services/SteamAPI.cs apps/counterstrikesharp/src/FiveStack.Services/NetworkServices.cs apps/counterstrikesharp/src/FiveStack.Services/
 
 ARG RELEASE_VERSION
 ENV RELEASE_VERSION=${RELEASE_VERSION}

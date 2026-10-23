@@ -3,6 +3,8 @@ name: Set Min Game Build
 # Run this when a CS2 update breaks a runtime (the gamedata validator failing
 # for it is the sign): every release that runtime cuts from then on carries the
 # new build id, so nodes still on the old build keep the release that works there.
+# The old build only ever hands out its newest release again, so the older ones
+# on it are removed.
 on:
   workflow_dispatch:
     inputs:
@@ -105,6 +107,10 @@ jobs:
             echo >> "$GITHUB_STEP_SUMMARY"
             echo "The newest ${PREFIXES[*]} release will be retagged too." >> "$GITHUB_STEP_SUMMARY"
           fi
+          if [ "$changes" -gt 0 ]; then
+            echo >> "$GITHUB_STEP_SUMMARY"
+            echo "Each plugin's old build keeps only its newest release; the older ones and their images are deleted." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
           echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
 
@@ -116,6 +122,7 @@ jobs:
     environment: min-game-build
     permissions:
       contents: write
+      packages: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       RUNTIME: ${{ inputs.runtime }}
@@ -148,6 +155,7 @@ jobs:
               mv "$RUNNER_TEMP/min-game-build.json" min-game-build.json
               echo "$prefix: $current -> $BUILD_ID"
               echo "$prefix" >> "$RUNNER_TEMP/bumped"
+              echo "$prefix $current" >> "$RUNNER_TEMP/closed"
             fi
           done
 
@@ -183,3 +191,15 @@ jobs:
             gh release edit "$latest" --repo "$GITHUB_REPOSITORY" --notes "$BUILD_ID" > /dev/null
             echo "$latest now requires build $BUILD_ID"
           done
+
+      # after the retag, so a fix that already shipped has left the old build
+      # and its newest release there is the one that works on it
+      - name: Prune the old build's releases
+        run: |
+          set -euo pipefail
+          if [ ! -s "$RUNNER_TEMP/closed" ]; then
+            exit 0
+          fi
+          while read -r prefix build; do
+            bash scripts/remove-releases.sh "$prefix" "$build" -y < /dev/null
+          done < "$RUNNER_TEMP/closed"

@@ -1,12 +1,34 @@
 #!/bin/bash
 
 # gh auth login --scopes read:packages,write:packages,delete:packages
+#
+# remove-releases.sh [css|sw] [build id] [-y]
+# Keeps the newest release on a CS2 build and removes the older ones on it. The
+# build defaults to the latest release's; -y skips the confirmation, which is
+# how Set Min Game Build prunes the build it moves off.
 
 # gh pipes tty output through less; the backgrounded deletes each open one and
 # fight over the terminal
 export GH_PAGER=cat
 
-read -e -p "Which plugin to prune? (css/sw): " prefix
+confirmed=false
+args=()
+for arg in "$@"; do
+  case "$arg" in
+    -y) confirmed=true ;;
+    *) args+=("$arg") ;;
+  esac
+done
+prefix="${args[0]:-}"
+build_id="${args[1]:-}"
+
+if [[ -z "$prefix" ]]; then
+  read -e -p "Which plugin to prune? (css/sw): " prefix
+fi
+if [[ -n "$build_id" && ! "$build_id" =~ ^[0-9]+$ ]]; then
+  echo "Invalid CS2 build id: $build_id"
+  exit 1
+fi
 
 case "$prefix" in
   css) package="game-server-css" ;;
@@ -36,35 +58,46 @@ fi
 # "<counter>\t<tag>\t<build id>", newest first
 resolved=$(sort -n <<<"$releases" | awk -F'\t' -v OFS='\t' '$3 ~ /^[0-9]+$/ { id = $3 } { print $1, $2, id }' | sort -rn)
 
-IFS=$'\t' read -r latest_num latest_tag build_id <<<"$(head -n 1 <<<"$resolved")"
+if [[ -z "$build_id" ]]; then
+  IFS=$'\t' read -r _ _ build_id <<<"$(head -n 1 <<<"$resolved")"
+fi
 
 if [[ -z "$build_id" ]]; then
   echo "No $prefix release carries a CS2 build id"
   exit 1
 fi
 
-echo "Latest $prefix release: $latest_tag"
-echo "CS2 build id: $build_id"
+# the API hands a node the newest release on its build, so that one supersedes
+# every older one on the same build
+IFS=$'\t' read -r keep_num keep_tag _ <<<"$(awk -F'\t' -v id="$build_id" '$3 == id' <<<"$resolved" | head -n 1)"
 
-# the latest release supersedes every older one on the same build
-stale_tags=$(awk -F'\t' -v id="$build_id" -v to="$latest_num" '$3 == id && $1 < to { print $2 }' <<<"$resolved")
+if [[ -z "$keep_tag" ]]; then
+  echo "No $prefix release on CS2 build $build_id"
+  exit 0
+fi
+
+echo "Newest $prefix release on CS2 build $build_id: $keep_tag"
+
+stale_tags=$(awk -F'\t' -v id="$build_id" -v to="$keep_num" '$3 == id && $1 < to { print $2 }' <<<"$resolved")
 
 if [[ -z "$stale_tags" ]]; then
   echo "Nothing to prune"
   exit 0
 fi
 
-echo "Keeping $latest_tag on build $build_id and removing:"
+echo "Keeping $keep_tag on build $build_id and removing:"
 echo "$stale_tags" | sed 's/^/  /'
-read -e -p "Continue? (y/N): " confirm
 
-if [[ "$confirm" != "y" ]]; then
-  exit 1
+if [[ "$confirmed" != "true" ]]; then
+  read -e -p "Continue? (y/N): " confirm
+  if [[ "$confirm" != "y" ]]; then
+    exit 1
+  fi
 fi
 
 # before any delete, so a failed edit can't lose the build id
-if ! gh release edit "$latest_tag" --notes "$build_id" > /dev/null; then
-  echo "Failed to set the build id on $latest_tag"
+if ! gh release edit "$keep_tag" --notes "$build_id" > /dev/null; then
+  echo "Failed to set the build id on $keep_tag"
   exit 1
 fi
 
@@ -74,6 +107,7 @@ for tag in $stale_tags; do
 done
 
 echo "Removing Containers Images"
+pids=()
 image_versions=$(gh api --paginate \
   -H "Accept: application/vnd.github+json" \
   -H "X-GitHub-Api-Version: 2022-11-28" \
@@ -92,9 +126,17 @@ for tag in $stale_tags; do
       -H "Accept: application/vnd.github+json" \
       -H "X-GitHub-Api-Version: 2022-11-28" \
       "/orgs/5stackgg/packages/container/${package}/versions/$image_id" &
+    pids+=($!)
   else
     echo "No container image found for tag $image_tag"
   fi
 done
 
-wait
+failed=0
+for pid in "${pids[@]}"; do
+  wait "$pid" || failed=1
+done
+if [[ "$failed" -ne 0 ]]; then
+  echo "Failed to delete some container image versions"
+  exit 1
+fi
