@@ -139,61 +139,15 @@ public class TimeoutSystem
             return true;
         }
 
-        bool isCoach = _coachSystem.IsCoach(player, player.Controller.Team);
-        bool isCaptain = _captainSystem.IsCaptain(player, player.Controller.Team);
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
 
-        if (player.Controller.Clan == "admin" || player.Controller.Clan == "organizer")
-        {
-            return true;
-        }
-
-        switch (GetTechnicalPauseSetting())
-        {
-            case eTimeoutSettings.Coach:
-                if (!isCoach)
-                {
-                    return false;
-                }
-                break;
-            case eTimeoutSettings.CoachAndCaptains:
-                if (!isCoach && !isCaptain)
-                {
-                    return false;
-                }
-                break;
-            case eTimeoutSettings.Admin:
-                MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
-
-                if (matchData == null)
-                {
-                    return false;
-                }
-
-                MatchMember? lineupPlayer = MatchUtility.GetMemberFromLineup(
-                    matchData,
-                    player.SteamID.ToString(),
-                    player.Controller.PlayerName
-                );
-
-                if (lineupPlayer == null)
-                {
-                    return false;
-                }
-
-                var roleEnum = PlayerRoleUtility.PlayerRoleStringToEnum(lineupPlayer.role);
-                if (
-                    roleEnum == ePlayerRoles.Administrator
-                    || roleEnum == ePlayerRoles.MatchOrganizer
-                    || roleEnum == ePlayerRoles.TournamentOrganizer
-                )
-                {
-                    return true;
-                }
-
-                return false;
-        }
-
-        return true;
+        return TimeoutUtility.CanPause(
+            GetTechnicalPauseSetting(),
+            ConnectedRole(player, matchData),
+            LineupRole(player, matchData),
+            _coachSystem.IsCoach(player, player.Controller.Team),
+            _captainSystem.IsCaptain(player, player.Controller.Team)
+        );
     }
 
     private bool CanCallTacticalTimeout(IPlayer? player)
@@ -536,26 +490,36 @@ public class TimeoutSystem
 
     private bool IsAdminOrOrganizer(IPlayer player, MatchData matchData)
     {
-        if (player.Controller.Clan == "admin" || player.Controller.Clan == "organizer")
+        return TimeoutUtility.IsStaff(
+            ConnectedRole(player, matchData),
+            LineupRole(player, matchData)
+        );
+    }
+
+    private static ePlayerRoles? ConnectedRole(IPlayer player, MatchData? matchData)
+    {
+        return FiveStackPlugin.ConnectRoles.RoleIn(player.SteamID, matchData?.id);
+    }
+
+    private static ePlayerRoles? LineupRole(IPlayer player, MatchData? matchData)
+    {
+        if (matchData == null)
         {
-            return true;
+            return null;
         }
 
-        MatchMember? lineupPlayer = MatchUtility.GetMemberFromLineup(
+        MatchMember? member = MatchUtility.GetMemberFromLineup(
             matchData,
             player.SteamID.ToString(),
             player.Controller.PlayerName
         );
 
-        if (lineupPlayer == null)
+        if (member == null)
         {
-            return false;
+            return null;
         }
 
-        var roleEnum = PlayerRoleUtility.PlayerRoleStringToEnum(lineupPlayer.role);
-        return roleEnum == ePlayerRoles.Administrator
-            || roleEnum == ePlayerRoles.MatchOrganizer
-            || roleEnum == ePlayerRoles.TournamentOrganizer;
+        return PlayerRoleUtility.PlayerRoleStringToEnum(member.role);
     }
 
     private void SendTimeoutAlreadyActiveMessage(IPlayer? player)

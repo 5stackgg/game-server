@@ -14,16 +14,17 @@ public partial class FiveStackPlugin
     [GameEventHandler(HookMode.Post)]
     public HookResult OnPlayerDisconnect(EventPlayerDisconnect @event)
     {
+        if (@event.UserIdPlayer == null || !@event.UserIdPlayer.IsValid)
+        {
+            return HookResult.Continue;
+        }
+
+        ConnectRoles.Leave(@event.UserIdPlayer.SteamID);
+
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();
         MatchData? matchData = match?.GetMatchData();
-        if (
-            @event.UserIdPlayer == null
-            || !@event.UserIdPlayer.IsValid
-            || match == null
-            || currentMap == null
-            || matchData == null
-        )
+        if (match == null || currentMap == null || matchData == null)
         {
             return HookResult.Continue;
         }
