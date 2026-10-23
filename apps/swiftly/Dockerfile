@@ -133,7 +133,7 @@ ENV STEAM_RELAY="false"
 ENV SERVER_TYPE="Ranked"
 ENV HIBERNATE_WHEN_EMPTY="false"
 
-ENV SWIFTLYS2_VERSION="v1.5.0-beta.25"
+ENV SWIFTLYS2_VERSION="v1.5.0-beta.26"
 ENV SWIFTLYS2_URL=https://github.com/swiftly-solution/swiftlys2/releases/download/${SWIFTLYS2_VERSION}/swiftlys2-linux-${SWIFTLYS2_VERSION}-with-runtimes.zip
 
 ENV ENABLE_CSS_COMPAT=false
