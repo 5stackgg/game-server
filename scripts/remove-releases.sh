@@ -7,8 +7,7 @@
 # build defaults to the latest release's; -y skips the confirmation, which is
 # how Set Min Game Build prunes the build it moves off.
 
-# gh pipes tty output through less; the backgrounded deletes each open one and
-# fight over the terminal
+# gh pipes tty output through less, which would stop at every delete
 export GH_PAGER=cat
 
 confirmed=false
@@ -101,18 +100,15 @@ if ! gh release edit "$keep_tag" --notes "$build_id" > /dev/null; then
   exit 1
 fi
 
-echo "Removing releases"
-for tag in $stale_tags; do
-  gh release delete "$tag" -y --cleanup-tag
-done
-
-echo "Removing Containers Images"
-pids=()
 image_versions=$(gh api --paginate \
   -H "Accept: application/vnd.github+json" \
   -H "X-GitHub-Api-Version: 2022-11-28" \
   "/orgs/5stackgg/packages/container/${package}/versions?per_page=100")
 
+# Each image goes before its release, and a release whose image failed to delete
+# is kept, so a rerun still finds it. One at a time, so a prune doesn't burst
+# past GitHub's secondary rate limit.
+failed=0
 for tag in $stale_tags; do
   # the image is namespaced by package, so its version tag stays bare
   image_tag="${tag#"${prefix}"-}"
@@ -122,21 +118,24 @@ for tag in $stale_tags; do
 
   if [[ -n "$image_id" ]]; then
     echo "Deleting container image version with tag $image_tag (id: $image_id)"
-    gh api -X DELETE \
+    if ! gh api -X DELETE \
       -H "Accept: application/vnd.github+json" \
       -H "X-GitHub-Api-Version: 2022-11-28" \
-      "/orgs/5stackgg/packages/container/${package}/versions/$image_id" &
-    pids+=($!)
+      "/orgs/5stackgg/packages/container/${package}/versions/$image_id"; then
+      echo "Keeping $tag: its image did not delete"
+      failed=1
+      continue
+    fi
   else
     echo "No container image found for tag $image_tag"
   fi
+
+  if ! gh release delete "$tag" -y --cleanup-tag; then
+    failed=1
+  fi
 done
 
-failed=0
-for pid in "${pids[@]}"; do
-  wait "$pid" || failed=1
-done
 if [[ "$failed" -ne 0 ]]; then
-  echo "Failed to delete some container image versions"
+  echo "Some releases or images were not removed; run this again to retry them"
   exit 1
 fi

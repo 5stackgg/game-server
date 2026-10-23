@@ -40,7 +40,8 @@ afterwards requires that build, so nodes still on the old one keep the release t
 The old build only ever hands out its newest release again, so the run then deletes the older releases on
 it and their images (`scripts/remove-releases.sh <css|sw> <build id>` does the same by hand). Deleting
 the images needs the repo to have the Admin role on the `game-server-css` and `game-server-sw` packages
-(package settings → Manage Actions access).
+(package settings → Manage Actions access); a release whose image fails to delete is kept, so rerunning
+the script retries it.
 
 The approval comes from the `min-game-build` environment (Settings → Environments). Give it required
 reviewers, or the run commits without waiting.
