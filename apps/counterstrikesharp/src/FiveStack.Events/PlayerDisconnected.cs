@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 
 namespace FiveStack;
@@ -16,7 +17,6 @@ public partial class FiveStackPlugin
         if (
             @event.Userid == null
             || !@event.Userid.IsValid
-            || @event.Userid.IsBot
             || match == null
             || currentMap == null
             || matchData == null
@@ -27,18 +27,19 @@ public partial class FiveStackPlugin
 
         CCSPlayerController player = @event.Userid;
 
-        if (_overCapacityKicks.Remove(player.SteamID))
-        {
-            return HookResult.Continue;
-        }
-
         MatchMember? member = MatchUtility.GetMemberFromLineup(
             matchData,
             player.SteamID.ToString(),
             player.PlayerName
         );
 
-        if (member == null)
+        eDisconnectHandling handling = PlayerDisconnectUtility.Handle(
+            player.IsBot,
+            _overCapacityKicks.Remove(player.SteamID),
+            member != null
+        );
+
+        if (handling == eDisconnectHandling.Ignore)
         {
             return HookResult.Continue;
         }
@@ -47,6 +48,11 @@ public partial class FiveStackPlugin
             "player-disconnected",
             new Dictionary<string, object> { { "steam_id", player.SteamID.ToString() } }
         );
+
+        if (handling != eDisconnectHandling.LineupMemberLeft)
+        {
+            return HookResult.Continue;
+        }
 
         if (match.IsWarmup() || match.IsKnife())
         {

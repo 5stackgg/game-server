@@ -1,4 +1,5 @@
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using SwiftlyS2.Shared.GameEventDefinitions;
 using SwiftlyS2.Shared.GameEvents;
@@ -19,7 +20,6 @@ public partial class FiveStackPlugin
         if (
             @event.UserIdPlayer == null
             || !@event.UserIdPlayer.IsValid
-            || @event.UserIdPlayer.IsFakeClient
             || match == null
             || currentMap == null
             || matchData == null
@@ -30,18 +30,19 @@ public partial class FiveStackPlugin
 
         IPlayer player = @event.UserIdPlayer;
 
-        if (_overCapacityKicks.Remove(player.SteamID))
-        {
-            return HookResult.Continue;
-        }
-
         MatchMember? member = MatchUtility.GetMemberFromLineup(
             matchData,
             player.SteamID.ToString(),
             player.Name
         );
 
-        if (member == null)
+        eDisconnectHandling handling = PlayerDisconnectUtility.Handle(
+            player.IsFakeClient,
+            _overCapacityKicks.Remove(player.SteamID),
+            member != null
+        );
+
+        if (handling == eDisconnectHandling.Ignore)
         {
             return HookResult.Continue;
         }
@@ -50,6 +51,11 @@ public partial class FiveStackPlugin
             "player-disconnected",
             new Dictionary<string, object> { { "steam_id", player.SteamID.ToString() } }
         );
+
+        if (handling != eDisconnectHandling.LineupMemberLeft)
+        {
+            return HookResult.Continue;
+        }
 
         if (match.IsWarmup() || match.IsKnife())
         {
