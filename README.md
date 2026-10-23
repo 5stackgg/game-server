@@ -35,7 +35,12 @@ When a CS2 update breaks a plugin (the gamedata validator failing for that runti
 current public CS2 build. The run shows the build id it resolved and waits for approval before
 committing it; it refuses an id that is not higher than the current one. Every release that plugin cuts
 afterwards requires that build, so nodes still on the old one keep the release that works there. Tick
-*retag latest* when the fix has already shipped.
+*retag latest* when the fix has already shipped; without it, the fix stays the old build's newest release.
+
+The old build only ever hands out its newest release again, so the run then deletes the older releases on
+it and their images (`scripts/remove-releases.sh <css|sw> <build id>` does the same by hand). Deleting
+the images needs the repo to have the Admin role on the `game-server-css` and `game-server-sw` packages
+(package settings → Manage Actions access).
 
 The approval comes from the `min-game-build` environment (Settings → Environments). Give it required
 reviewers, or the run commits without waiting.

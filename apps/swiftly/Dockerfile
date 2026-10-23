@@ -133,7 +133,7 @@ ENV STEAM_RELAY="false"
 ENV SERVER_TYPE="Ranked"
 ENV HIBERNATE_WHEN_EMPTY="false"
 
-ENV SWIFTLYS2_VERSION="v1.4.14"
+ENV SWIFTLYS2_VERSION="v1.5.0-beta.25"
 ENV SWIFTLYS2_URL=https://github.com/swiftly-solution/swiftlys2/releases/download/${SWIFTLYS2_VERSION}/swiftlys2-linux-${SWIFTLYS2_VERSION}-with-runtimes.zip
 
 ENV ENABLE_CSS_COMPAT=false
@@ -154,8 +154,10 @@ ENV HUD_WORKSHOP_ID="3791548068"
 # ARG, not ENV: the download below happens once at build time, so these are set
 # with --build-arg. As ENV they read as runtime knobs beside HUD_WORKSHOP_ID and
 # would silently do nothing when overridden at docker run.
-ARG ADDONS_MANAGER_VERSION="v2.1.0"
-ARG ADDONS_MANAGER_URL=https://github.com/SwiftlyS2-Plugins/AddonsManager/releases/download/${ADDONS_MANAGER_VERSION}/AddonsManager-${ADDONS_MANAGER_VERSION}.zip
+ARG ADDONS_MANAGER_VERSION="v2.1.0-2"
+# a rebuild tag keeps the zip name of the version it rebuilds
+ARG ADDONS_MANAGER_ASSET="AddonsManager-v2.1.0.zip"
+ARG ADDONS_MANAGER_URL=https://github.com/SwiftlyS2-Plugins/AddonsManager/releases/download/${ADDONS_MANAGER_VERSION}/${ADDONS_MANAGER_ASSET}
 
 # steamcmd's 32-bit deps and .NET's libicu67 already ship in the sniper image
 # as i386 multiarch packages, so no lib32* / libicu-dev here.

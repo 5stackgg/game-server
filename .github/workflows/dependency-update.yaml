@@ -163,23 +163,36 @@ jobs:
           if [ -z "$LATEST" ] || [ "$LATEST" = "null" ] || [ "$CURRENT" = "$LATEST" ]; then
             exit 0
           fi
-          if [[ ! "$LATEST" =~ ^v[0-9]+(\.[0-9]+)+$ ]]; then
+          # a rebuild of a release is tagged v2.1.0-2
+          if [[ ! "$LATEST" =~ ^v[0-9]+(\.[0-9]+)+(-[0-9]+)?$ ]]; then
             echo "::error::unexpected AddonsManager tag: $LATEST"
             exit 1
           fi
 
-          # The download URL is built from the version, and the asset has been
-          # renamed before (AddonsManager.zip became AddonsManager-v2.0.4.zip),
-          # so a version-only bump would bake an image whose download 404s.
-          ASSET="AddonsManager-${LATEST}.zip"
-          if ! jq -e --arg name "$ASSET" 'any(.assets[]; .name == $name)' <<<"$RELEASE" > /dev/null; then
-            echo "::error::AddonsManager ${LATEST} ships no ${ASSET} ($(jq -r '[.assets[].name] | join(", ")' <<<"$RELEASE")); update ADDONS_MANAGER_URL in apps/swiftly/Dockerfile by hand"
+          # The download URL is built from the tag and the asset name, and the
+          # asset has been renamed before (AddonsManager.zip became
+          # AddonsManager-v2.0.4.zip) and a rebuild keeps the zip name of the
+          # version it rebuilds (v2.1.0-2 ships AddonsManager-v2.1.0.zip), so
+          # the name is read off the release or the image's download 404s.
+          ASSET=""
+          for name in "AddonsManager-${LATEST}.zip" "AddonsManager-${LATEST%-*}.zip"; do
+            if jq -e --arg name "$name" 'any(.assets[]; .name == $name)' <<<"$RELEASE" > /dev/null; then
+              ASSET="$name"
+              break
+            fi
+          done
+          if [ -z "$ASSET" ]; then
+            echo "::error::AddonsManager ${LATEST} ships no AddonsManager-${LATEST}.zip ($(jq -r '[.assets[].name] | join(", ")' <<<"$RELEASE")); update ADDONS_MANAGER_ASSET in apps/swiftly/Dockerfile by hand"
             exit 1
           fi
 
           sed -i "s|ADDONS_MANAGER_VERSION=\"[^\"]*\"|ADDONS_MANAGER_VERSION=\"${LATEST}\"|" apps/swiftly/Dockerfile
-          grep -q "ADDONS_MANAGER_VERSION=\"${LATEST}\"" apps/swiftly/Dockerfile \
-            || { echo "::error::could not set ADDONS_MANAGER_VERSION in apps/swiftly/Dockerfile"; exit 1; }
+          sed -i "s|ADDONS_MANAGER_ASSET=\"[^\"]*\"|ADDONS_MANAGER_ASSET=\"${ASSET}\"|" apps/swiftly/Dockerfile
+          if ! grep -q "ADDONS_MANAGER_VERSION=\"${LATEST}\"" apps/swiftly/Dockerfile \
+            || ! grep -q "ADDONS_MANAGER_ASSET=\"${ASSET}\"" apps/swiftly/Dockerfile; then
+            echo "::error::could not set ADDONS_MANAGER_VERSION/ADDONS_MANAGER_ASSET in apps/swiftly/Dockerfile"
+            exit 1
+          fi
 
           git add apps/swiftly/Dockerfile
           echo sw >> "$RUNNER_TEMP/images"
