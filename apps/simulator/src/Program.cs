@@ -6,19 +6,24 @@ SimulatorSettings settings = SimulatorSettings.FromEnvironment(
 );
 
 using var shutdown = new CancellationTokenSource();
-using var sigterm = PosixSignalRegistration.Create(
-    PosixSignal.SIGTERM,
-    context =>
-    {
-        context.Cancel = true;
-        shutdown.Cancel();
-    }
-);
-Console.CancelKeyPress += (_, args) =>
+
+void Stop(PosixSignalContext context)
 {
-    args.Cancel = true;
+    context.Cancel = true;
+    Log.Info(
+        $"received {(context.Signal is PosixSignal.SIGTERM or PosixSignal.SIGINT ? context.Signal : "SIGUSR1")}, stopping"
+    );
     shutdown.Cancel();
-};
+}
+
+// SIGUSR1 is how the panel stops a match server; as PID 1 an unhandled one
+// would be ignored and the pod left running until the api removed it.
+using var sigusr1 = PosixSignalRegistration.Create(
+    (PosixSignal)(OperatingSystem.IsMacOS() ? 30 : 10),
+    Stop
+);
+using var sigterm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, Stop);
+using var sigint = PosixSignalRegistration.Create(PosixSignal.SIGINT, Stop);
 
 Log.Info(
     $"5Stack simulated game server: server {settings.ServerId ?? "unassigned"}, map {settings.StartMap}, x{settings.Speed} speed"
