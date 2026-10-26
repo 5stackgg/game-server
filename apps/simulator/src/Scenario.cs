@@ -121,6 +121,30 @@ public static class MapScript
         return rounds;
     }
 
+    // The rest of a map restored at winnerScore-loserScore, still won by the
+    // same lineup.
+    public static List<Guid> Rest(
+        MatchOptions options,
+        Guid winner,
+        Guid loser,
+        int winnerScore,
+        int loserScore,
+        Random random
+    )
+    {
+        int toWin = options.MaxRounds() / 2 + 1;
+        int lost = random.Next(0, Math.Max(0, toWin - 1 - loserScore) + 1);
+
+        List<Guid> rounds = Enumerable
+            .Repeat(winner, Math.Max(0, toWin - 1 - winnerScore))
+            .Concat(Enumerable.Repeat(loser, lost))
+            .OrderBy(_ => random.Next())
+            .ToList();
+        rounds.Add(winner);
+
+        return rounds;
+    }
+
     // Level at the end of regulation, which only ends the map without overtime.
     public static List<Guid> Tied(MatchOptions options, Guid lineup1, Guid lineup2, Random random)
     {

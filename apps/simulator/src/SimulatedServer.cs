@@ -308,7 +308,13 @@ public sealed class SimulatedServer
                 return null;
             case "match_state":
                 return MatchState(args);
-            case "restore_round" or "api_restore_round":
+            case "api_restore_round":
+                if (int.TryParse(args, out int round))
+                {
+                    run?.RestoreRound(round);
+                }
+                return null;
+            case "restore_round":
                 return $"{RestoreRefused} the simulated server keeps no round backups";
             case "fivestack_status":
                 return StatusReport();
