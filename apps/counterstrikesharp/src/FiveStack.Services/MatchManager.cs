@@ -842,7 +842,7 @@ public class MatchManager
             return 10;
         }
 
-        return _matchData.options.ExpectedPlayerCount();
+        return _matchData.ExpectedPlayerCount();
     }
 
     private void StartWarmup()

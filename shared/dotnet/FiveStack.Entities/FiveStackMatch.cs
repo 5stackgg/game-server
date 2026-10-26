@@ -29,4 +29,15 @@ public class MatchData
 
     public MatchLineUp lineup_1 { get; set; } = new MatchLineUp();
     public MatchLineUp lineup_2 { get; set; } = new MatchLineUp();
+
+    // Two sides of the type's size, unless both lineups are smaller, as in a
+    // 3v3 Competitive: counting the type's players would hold the match for
+    // players who don't exist.
+    public int ExpectedPlayerCount()
+    {
+        int side = options.ExpectedPlayerCount() / 2;
+        int largest = Math.Max(lineup_1.lineup_players.Count, lineup_2.lineup_players.Count);
+
+        return 2 * (largest == 0 ? side : Math.Min(side, largest));
+    }
 }
