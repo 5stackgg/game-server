@@ -1108,7 +1108,7 @@ public class MatchManager
 
         ConVar.Find("sv_disable_teamselect_menu")?.SetValue(true);
 
-        ConVar.Find("mp_backup_round_auto")?.SetValue(1);
+        _backUpManagement.SetBackupWriting(!_backUpManagement.IsHoldingForRestore());
 
         ConVar.Find("mp_maxrounds")?.SetValue(_matchData.options.MaxRounds());
         ConVar.Find("mp_overtime_enable")?.SetValue(_matchData.options.OvertimeEnabled());

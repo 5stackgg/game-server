@@ -80,6 +80,7 @@ public partial class FiveStackPlugin
         // knife, or when the pause came from RoundStart going short-handed. If
         // the roster is whole again there is nothing left to wait for.
         _surrenderSystem.ResumeIfRosterWhole();
+        _core.Scheduler.NextTick(() => _gameBackupRounds.OfferPendingRestore());
 
         List<MatchMember> players = matchData
             .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)

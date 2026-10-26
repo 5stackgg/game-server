@@ -94,6 +94,29 @@ namespace FiveStack.Utilities
             return Math.Max(highestOnDisk, kept);
         }
 
+        // Any round recorded past the server, restorable or not: a server behind
+        // with nothing to restore plays the map again from 0-0 rather than over
+        // the rounds the backend has.
+        public static int HighestRecordedRound(IEnumerable<BackupRound> rounds, int highestOnDisk)
+        {
+            int kept = rounds
+                .Where(backup => !IsUndone(rounds, backup.round))
+                .Select(backup => backup.round)
+                .DefaultIfEmpty(0)
+                .Max();
+
+            return Math.Max(highestOnDisk, kept);
+        }
+
+        // Only a map being played is held for a restore: one that is over refuses
+        // it, and would hold forever.
+        public static bool IsInPlay(eMapStatus status)
+        {
+            return status == eMapStatus.Live
+                || status == eMapStatus.Overtime
+                || status == eMapStatus.Paused;
+        }
+
         public static string? WarmupRefusal(bool matchLoaded, eMapStatus current)
         {
             if (!matchLoaded)
