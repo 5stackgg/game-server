@@ -40,6 +40,7 @@ server = new SimulatedServer(
     settings.Seed is int seed ? new Random(seed) : new Random(),
     shutdown.Token
 );
+server.Demos = api;
 var rcon = new RconServer(settings.Port, settings.RconPassword, server.Execute);
 
 async Task Ping()

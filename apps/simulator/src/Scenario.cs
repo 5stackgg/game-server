@@ -6,7 +6,8 @@ namespace FiveStack.Simulator;
 // What a match asks the simulator to play, from a `sim:` word in either
 // lineup's name or tag: `sim:3-1` (that lineup takes the series 3-1),
 // `sim:tie`, `sim:surrender`, `sim:noshow`, `sim:disconnect`, `sim:abandon`,
-// `sim:decline` (votes against restoring a round after a restart).
+// `sim:decline` (votes against restoring a round after a restart),
+// `sim:timeouts` (a tactical timeout and a technical pause), `sim:chat`.
 // The lineup carrying the word is the one the scenario happens to.
 public sealed partial record Scenario
 {
@@ -19,9 +20,19 @@ public sealed partial record Scenario
     public bool Disconnect { get; init; }
     public bool Abandon { get; init; }
     public bool DeclineRestore { get; init; }
+    public bool Timeouts { get; init; }
+    public bool Chat { get; init; }
 
     public bool IsEmpty =>
-        Wins == null && !Tie && !Surrender && !NoShow && !Disconnect && !Abandon && !DeclineRestore;
+        Wins == null
+        && !Tie
+        && !Surrender
+        && !NoShow
+        && !Disconnect
+        && !Abandon
+        && !DeclineRestore
+        && !Timeouts
+        && !Chat;
 
     [GeneratedRegex(@"\bsim:([a-z0-9-]+)", RegexOptions.IgnoreCase)]
     private static partial Regex Word();
@@ -57,6 +68,8 @@ public sealed partial record Scenario
                     Disconnect = scenario.Disconnect || value == "disconnect",
                     Abandon = scenario.Abandon || value == "abandon",
                     DeclineRestore = scenario.DeclineRestore || value == "decline",
+                    Timeouts = scenario.Timeouts || value == "timeouts",
+                    Chat = scenario.Chat || value == "chat",
                 };
             }
         }
