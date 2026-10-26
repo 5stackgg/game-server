@@ -131,3 +131,36 @@ public class SeriesTests
         Assert.InRange(api.MapWinners.Count, 2, 3);
     }
 }
+
+public class TieTests
+{
+    [Fact]
+    public async Task ATiedMapEndsLevelAndIsReportedAsTheSecondLineupsTheWayThePluginDefaultsIt()
+    {
+        MatchData match = Matches.Build(overtime: false);
+        match.lineup_1.name = "Alpha sim:tie";
+        var sink = new RecordingSink();
+        SimulatedServer server = Matches.Server(
+            new FakeSource()
+                .Then(Matches.Live(match))
+                .Then(new MatchFetch(FiveStack.Enums.eCurrentMatchAction.Clear)),
+            sink
+        );
+
+        await server.RefreshMatch();
+        await Matches.Finish(server.LastRun);
+
+        Published last = sink.Events.Last(e => e.Name == "score");
+        Assert.Equal(24, Convert.ToInt32(last.Data["round"]));
+        Assert.Equal(12, Convert.ToInt32(last.Data["lineup_1_score"]));
+        Assert.Equal(12, Convert.ToInt32(last.Data["lineup_2_score"]));
+        Assert.DoesNotContain("Overtime", sink.Statuses());
+
+        Assert.All(
+            sink.Events.Where(e =>
+                e.Name == "mapStatus" && (string)e.Data["status"] is "WaitingForTV" or "Finished"
+            ),
+            e => Assert.Equal(match.lineup_2_id.ToString(), e.Data["winning_lineup_id"])
+        );
+    }
+}

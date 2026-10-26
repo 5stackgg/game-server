@@ -11,6 +11,11 @@ public sealed class MapRun
     private const double ShortFreezeTime = 10;
     private const double HalftimeDuration = 15;
     private const int Timeouts = 3;
+    private const int SurrenderAfterRounds = 8;
+    private const int LeavesAfterRounds = 5;
+    private const double ReconnectAfter = 60;
+    private const double AbandonAfter = 3 * 60;
+    private const double VoteTime = 15;
 
     private readonly SimulatedServer _server;
     private readonly MatchData _match;
@@ -27,6 +32,8 @@ public sealed class MapRun
     private TaskCompletionSource? _resumed;
     private bool _inKnife;
     private bool _overtime;
+    private bool _waitingForReady;
+    private readonly HashSet<string> _absent = new();
 
     public MapRun(
         SimulatedServer server,
@@ -52,11 +59,18 @@ public sealed class MapRun
 
     public Guid MapId => _map.id;
     public bool WaitingForLive => !_live.Task.IsCompleted;
+    public bool WaitingForReady => _waitingForReady;
     public eMapStatus Status { get; private set; } = eMapStatus.Unknown;
     public int ConnectedPlayers { get; private set; }
     public Task Task { get; set; } = Task.CompletedTask;
 
     private MatchOptions Options => _match.options;
+
+    // A scenario happens on the first map of the series.
+    private bool ScenarioMap => _map.order <= 1;
+
+    private Guid Opponent(Guid lineup) =>
+        lineup == _roster.Lineup1Id ? _roster.Lineup2Id : _roster.Lineup1Id;
 
     private static TaskCompletionSource Signal()
     {
@@ -129,9 +143,12 @@ public sealed class MapRun
             stamped: false
         );
 
-        (int lineup1Score, int lineup2Score) = await PlayRounds(token);
+        (int lineup1Score, int lineup2Score, bool gameEnded) = await PlayRounds(token);
 
-        await EndMap(lineup1Score, lineup2Score, token);
+        if (gameEnded)
+        {
+            await EndMap(lineup1Score, lineup2Score, token);
+        }
     }
 
     public void UpdateMapStatus(eMapStatus status, Guid? winningLineupId = null)
@@ -203,7 +220,8 @@ public sealed class MapRun
     private async Task ConnectPlayers(CancellationToken token)
     {
         var arrivals = _roster
-            .All.Select(player => (At: 3 + _random.NextDouble() * 40, Player: player))
+            .All.Where(player => !(_scenario.NoShow && player.LineupId == _scenario.Subject))
+            .Select(player => (At: 3 + _random.NextDouble() * 40, Player: player))
             .OrderBy(arrival => arrival.At)
             .ToList();
 
@@ -248,7 +266,9 @@ public sealed class MapRun
             Log.Info(
                 $"waiting for force_ready ({Options.ready_setting} ready, {ConnectedPlayers} of {Options.ExpectedPlayerCount()} players)"
             );
+            _waitingForReady = true;
             await _ready.Task.WaitAsync(token);
+            _waitingForReady = false;
             return;
         }
 
@@ -362,13 +382,20 @@ public sealed class MapRun
         return finished == _skipKnife.Task;
     }
 
-    private async Task<(int Lineup1, int Lineup2)> PlayRounds(CancellationToken token)
+    private async Task<(int Lineup1, int Lineup2, bool GameEnded)> PlayRounds(
+        CancellationToken token
+    )
     {
         int lineup1Score = 0;
         int lineup2Score = 0;
         int roundsPlayed = 0;
         int maxMoney = Economy.MaxMoney(Options);
-        List<Guid>? script = RoundScript();
+        bool surrenders = _scenario.Surrender && ScenarioMap;
+        bool leaves = (_scenario.Disconnect || _scenario.Abandon) && ScenarioMap;
+        SimPlayer? leaver = null;
+        List<Guid>? script = surrenders
+            ? MapScript.Won(Options, Opponent(_scenario.Subject), _scenario.Subject, _random)
+            : RoundScript();
         var lossStreak = new Dictionary<Guid, int>
         {
             [_roster.Lineup1Id] = 0,
@@ -398,15 +425,89 @@ public sealed class MapRun
                 await resumed.Task.WaitAsync(token);
             }
 
+            // RoundStart.cs: a round that starts short of players is paused
+            if (leaver != null && _absent.Contains(leaver.SteamId) && Status != eMapStatus.Paused)
+            {
+                UpdateMapStatus(eMapStatus.Paused);
+
+                if (_scenario.Disconnect)
+                {
+                    await _pacer.Wait(ReconnectAfter, token);
+                    _absent.Remove(leaver.SteamId);
+                    Connected(leaver);
+                    UpdateMapStatus(_overtime ? eMapStatus.Overtime : eMapStatus.Live);
+                }
+                else
+                {
+                    // SurrenderSystem's disconnect timer: the leaver is reported
+                    // and their team votes to surrender, while the game stays
+                    // paused for the player who never comes back.
+                    await _pacer.Wait(AbandonAfter, token);
+                    _server.Emit(
+                        _match.id,
+                        _map.id,
+                        "abandoned",
+                        new Dictionary<string, object> { { "steam_id", leaver.SteamId } },
+                        stamped: true
+                    );
+                    await _pacer.Wait(VoteTime, token);
+                    Surrender();
+                    return (lineup1Score, lineup2Score, false);
+                }
+            }
+
+            if (surrenders && roundsPlayed == SurrenderAfterRounds)
+            {
+                await _pacer.Wait(FreezeTime + 10, token);
+                Surrender();
+
+                // with nobody left on one side, CS2 gives every round to the
+                // other until it has won the map
+                Guid remaining = Opponent(_scenario.Subject);
+                Side winnerSide = Side.None;
+                while (!SideRules.IsMapOver(Options, lineup1Score, lineup2Score))
+                {
+                    winnerSide = SideOf(remaining, roundsPlayed);
+                    await _pacer.Wait(FreezeTime + 2 + (Options.round_restart_delay ?? 7), token);
+                    if (remaining == _roster.Lineup1Id)
+                    {
+                        lineup1Score++;
+                    }
+                    else
+                    {
+                        lineup2Score++;
+                    }
+                    roundsPlayed++;
+                }
+
+                _server.Emit(
+                    _match.id,
+                    _map.id,
+                    "score",
+                    Score(
+                        roundsPlayed,
+                        lineup1Score,
+                        lineup2Score,
+                        winnerSide,
+                        winnerSide == Side.T ? eWinReason.TerroristsWin : eWinReason.CTsWin
+                    ),
+                    stamped: true
+                );
+                return (lineup1Score, lineup2Score, true);
+            }
+
             await _pacer.Wait(
                 Options.type is "Wingman" or "Duel" ? ShortFreezeTime : FreezeTime,
                 token
             );
 
             Side lineup1Side = Lineup1Side(roundsPlayed);
-            List<SimPlayer> terrorists = lineup1Side == Side.T ? _roster.Lineup1 : _roster.Lineup2;
-            List<SimPlayer> counterTerrorists =
-                lineup1Side == Side.T ? _roster.Lineup2 : _roster.Lineup1;
+            List<SimPlayer> terrorists = Present(
+                lineup1Side == Side.T ? _roster.Lineup1 : _roster.Lineup2
+            );
+            List<SimPlayer> counterTerrorists = Present(
+                lineup1Side == Side.T ? _roster.Lineup2 : _roster.Lineup1
+            );
             bool pistolRound =
                 roundsPlayed == 0 || (roundsPlayed == Options.mr && Options.SwapsSides());
 
@@ -482,13 +583,22 @@ public sealed class MapRun
                 roundsPlayed,
                 lineup1Score,
                 lineup2Score,
-                outcome
+                outcome.Winner,
+                outcome.Reason
             );
 
             if (SideRules.IsMapOver(Options, lineup1Score, lineup2Score))
             {
                 _server.Emit(_match.id, _map.id, "score", score, stamped: true);
-                return (lineup1Score, lineup2Score);
+                return (lineup1Score, lineup2Score, true);
+            }
+
+            if (leaves && leaver == null && roundsPlayed == LeavesAfterRounds)
+            {
+                List<SimPlayer> lineup = _roster.Of(_scenario.Subject);
+                leaver = lineup.FirstOrDefault(player => !player.FlaggedCaptain) ?? lineup[0];
+                _absent.Add(leaver.SteamId);
+                Disconnected(leaver);
             }
 
             await _pacer.Wait(Options.round_restart_delay ?? 7, token);
@@ -516,6 +626,52 @@ public sealed class MapRun
             if (SideRules.SidesSwitch(Options, roundsPlayed))
             {
                 await _pacer.Wait(HalftimeDuration, token);
+            }
+        }
+    }
+
+    private List<SimPlayer> Present(List<SimPlayer> lineup)
+    {
+        return lineup.Where(player => !_absent.Contains(player.SteamId)).ToList();
+    }
+
+    private void Connected(SimPlayer player)
+    {
+        _server.Emit(
+            _match.id,
+            _map.id,
+            "player-connected",
+            new Dictionary<string, object>
+            {
+                { "player_name", player.Name },
+                { "steam_id", player.SteamId },
+            },
+            stamped: false
+        );
+    }
+
+    private void Disconnected(SimPlayer player)
+    {
+        _server.Emit(
+            _match.id,
+            _map.id,
+            "player-disconnected",
+            new Dictionary<string, object> { { "steam_id", player.SteamId } },
+            stamped: false
+        );
+    }
+
+    // SurrenderSystem: the vote passes, the map goes to the other lineup, and
+    // the lineup that gave up leaves.
+    private void Surrender()
+    {
+        UpdateMapStatus(eMapStatus.Surrendered, Opponent(_scenario.Subject));
+
+        foreach (SimPlayer player in _roster.Of(_scenario.Subject))
+        {
+            if (_absent.Add(player.SteamId))
+            {
+                Disconnected(player);
             }
         }
     }
@@ -558,7 +714,8 @@ public sealed class MapRun
         int roundsPlayed,
         int lineup1Score,
         int lineup2Score,
-        RoundOutcome outcome
+        Side winner,
+        eWinReason reason
     )
     {
         Side lineup1Side = Lineup1Side(roundsPlayed - 1);
@@ -575,8 +732,8 @@ public sealed class MapRun
             { "lineup_2_timeouts_available", $"{Timeouts}" },
             { "lineup_1_side", SideRules.ToApi(lineup1Side) },
             { "lineup_2_side", SideRules.ToApi(SideRules.Opposite(lineup1Side)) },
-            { "winning_side", SideRules.ToApi(outcome.Winner) },
-            { "winning_reason", outcome.Reason.ToString() },
+            { "winning_side", SideRules.ToApi(winner) },
+            { "winning_reason", reason.ToString() },
             // CS2 writes the backup round file; there is none to send here
             { "backup_file", "" },
         };
