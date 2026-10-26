@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        plugin: [counterstrikesharp, swiftly, player-management-sw]
+        plugin: [counterstrikesharp, swiftly, player-management-sw, simulator]
     steps:
       - uses: actions/checkout@v7
 

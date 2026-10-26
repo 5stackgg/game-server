@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>simulator</AssemblyName>
+    <RootNamespace>FiveStack.Simulator</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile
+      Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Entities/*.cs"
+      LinkBase="Shared"
+    />
+    <Compile
+      Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Enums/*.cs"
+      LinkBase="Shared"
+    />
+  </ItemGroup>
+</Project>

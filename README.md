@@ -10,6 +10,7 @@ This repo holds the CS2 game server images and the tooling that keeps them hones
 | [`apps/swiftly`](apps/swiftly) | the same plugin on SwiftlyS2 | `ghcr.io/5stackgg/game-server-sw` |
 | [`apps/player-management-css`](apps/player-management-css) / [`apps/player-management-sw`](apps/player-management-sw) | enforces panel bans, mutes and gags on community servers | ships inside both game-server images |
 | [`apps/gamedata-validator`](apps/gamedata-validator) | checks our byte-pattern signatures still resolve after a CS2 update | `ghcr.io/5stackgg/gamedata-validator` |
+| [`apps/simulator`](apps/simulator) | a stand-in game server that plays matches without CS2, for developing the panel | `ghcr.io/5stackgg/game-server-sim` |
 
 `shared/` holds what the two plugins have in common: the server `cfg/`, the setup `scripts/`,
 the signature `gamedata/`, and the framework-agnostic C# (entities, enums, utilities) that both

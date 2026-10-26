@@ -1,0 +1,51 @@
+name: Simulator Build
+
+on:
+  workflow_call:
+    inputs:
+      channel:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Test
+        run: dotnet test apps/simulator/test/FiveStack.Tests.csproj -c Release
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # arm64 is the point: a panel developed on Apple Silicon can't run CS2
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/simulator/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            RELEASE_VERSION=${{ github.sha }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/game-server-sim:${{ inputs.channel }}
+            ghcr.io/${{ github.repository_owner }}/game-server-sim:${{ github.sha }}
+          cache-from: |
+            type=registry,ref=ghcr.io/${{ github.repository_owner }}/game-server-sim:buildcache
+          cache-to: |
+            type=registry,ref=ghcr.io/${{ github.repository_owner }}/game-server-sim:buildcache,mode=max
