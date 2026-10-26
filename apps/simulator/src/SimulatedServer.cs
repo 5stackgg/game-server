@@ -159,7 +159,6 @@ public sealed class SimulatedServer
 
         _run = run;
         _runCancel = cancel;
-        LastRun = run;
 
         run.Task = Task.Run(async () =>
         {
@@ -173,6 +172,9 @@ public sealed class SimulatedServer
                 Log.Warn($"map run failed: {error}");
             }
         });
+
+        // only once it has its task, so a reader never waits on a stand-in
+        LastRun = run;
     }
 
     private void StopRun()

@@ -18,6 +18,7 @@ public sealed class MapRun
     private readonly IPacer _pacer;
     private readonly Random _random;
     private readonly Roster _roster;
+    private readonly Scenario _scenario;
 
     private readonly TaskCompletionSource _live = Signal();
     private readonly TaskCompletionSource _ready = Signal();
@@ -41,6 +42,7 @@ public sealed class MapRun
         _pacer = pacer;
         _random = random;
         _roster = Roster.From(match, random);
+        _scenario = Scenario.From(match);
     }
 
     public Guid MapId => _map.id;
@@ -361,6 +363,7 @@ public sealed class MapRun
         int lineup2Score = 0;
         int roundsPlayed = 0;
         int maxMoney = Economy.MaxMoney(Options);
+        List<Guid>? script = RoundScript();
         var lossStreak = new Dictionary<Guid, int>
         {
             [_roster.Lineup1Id] = 0,
@@ -419,7 +422,10 @@ public sealed class MapRun
                     Terrorists = terrorists,
                     CounterTerrorists = counterTerrorists,
                 },
-                _random
+                _random,
+                script != null && roundsPlayed < script.Count
+                    ? SideOf(script[roundsPlayed], roundsPlayed)
+                    : null
             );
 
             double elapsed = 0;
@@ -507,6 +513,40 @@ public sealed class MapRun
                 await _pacer.Wait(HalftimeDuration, token);
             }
         }
+    }
+
+    // Who wins each round, when the scenario decides this map.
+    private List<Guid>? RoundScript()
+    {
+        Guid Other(Guid lineup) =>
+            lineup == _roster.Lineup1Id ? _roster.Lineup2Id : _roster.Lineup1Id;
+
+        if (_scenario.Tie)
+        {
+            return MapScript.Tied(Options, _roster.Lineup1Id, _roster.Lineup2Id, _random);
+        }
+
+        if (_scenario.Wins == null)
+        {
+            return null;
+        }
+
+        List<bool>? plan = _scenario.SeriesPlan(Options.best_of);
+        if (plan == null)
+        {
+            Log.Warn(
+                $"sim:{_scenario.Wins}-{_scenario.Losses} cannot end a best of {Options.best_of}, playing it out"
+            );
+            return null;
+        }
+
+        if (_map.order < 1 || _map.order > plan.Count)
+        {
+            return null;
+        }
+
+        Guid winner = plan[_map.order - 1] ? _scenario.Subject : Other(_scenario.Subject);
+        return MapScript.Won(Options, winner, Other(winner), _random);
     }
 
     private Dictionary<string, object> Score(

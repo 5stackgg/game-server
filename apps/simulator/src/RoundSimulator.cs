@@ -45,6 +45,8 @@ public sealed class RoundSimulator
 
     private readonly RoundSetup _setup;
     private readonly Random _random;
+    private readonly Side _favoured;
+    private readonly double _edge;
     private readonly List<PlannedEvent> _events = new();
     private readonly Dictionary<string, Side> _sides = new();
     private readonly Dictionary<string, Dictionary<string, int>> _damageTaken = new();
@@ -56,10 +58,12 @@ public sealed class RoundSimulator
     private double? _defuseAt;
     private SimPlayer? _planter;
 
-    private RoundSimulator(RoundSetup setup, Random random)
+    private RoundSimulator(RoundSetup setup, Random random, Side favoured, double edge)
     {
         _setup = setup;
         _random = random;
+        _favoured = favoured;
+        _edge = edge;
 
         foreach (SimPlayer player in setup.Terrorists)
         {
@@ -72,9 +76,39 @@ public sealed class RoundSimulator
         }
     }
 
-    public static RoundOutcome Play(RoundSetup setup, Random random)
+    // A scenario that needs the round to go one way replays it, leaning a
+    // little harder on that side each time, until it does.
+    public static RoundOutcome Play(RoundSetup setup, Random random, Side? winner = null)
     {
-        return new RoundSimulator(setup, random).Run();
+        if (winner is not Side needed)
+        {
+            return new RoundSimulator(setup, random, Side.None, 1).Run();
+        }
+
+        List<SimPlayer> players = setup.Terrorists.Concat(setup.CounterTerrorists).ToList();
+        List<(int Health, int Armor)> start = players
+            .Select(player => (player.Health, player.Armor))
+            .ToList();
+
+        for (int attempt = 0; ; attempt++)
+        {
+            RoundOutcome outcome = new RoundSimulator(
+                setup,
+                random,
+                needed,
+                Math.Pow(1.5, attempt)
+            ).Run();
+
+            if (outcome.Winner == needed)
+            {
+                return outcome;
+            }
+
+            for (int index = 0; index < players.Count; index++)
+            {
+                (players[index].Health, players[index].Armor) = start[index];
+            }
+        }
     }
 
     private List<SimPlayer> Alive(Side side)
@@ -286,7 +320,11 @@ public sealed class RoundSimulator
         bool blind = _blinded.TryGetValue(player.SteamId, out var flash) && flash.Until > now;
         bool defending = _sides[player.SteamId] == (_planted ? Side.T : Side.CT);
 
-        return player.Skill * gear * (blind ? 0.4 : 1) * (defending ? (_planted ? 1.3 : 1.05) : 1);
+        return player.Skill
+            * gear
+            * (blind ? 0.4 : 1)
+            * (defending ? (_planted ? 1.3 : 1.05) : 1)
+            * (_sides[player.SteamId] == _favoured ? _edge : 1);
     }
 
     private double Fight(double now)
