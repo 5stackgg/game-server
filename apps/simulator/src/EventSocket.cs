@@ -1,7 +1,5 @@
 using System.Collections.Concurrent;
-using System.Net.Security;
 using System.Net.WebSockets;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
@@ -44,24 +42,6 @@ public static class EventMessages
     public static Guid? Ack(string text)
     {
         return Guid.TryParse(text.Trim().Trim('"'), out Guid id) ? id : null;
-    }
-}
-
-public static class Tls
-{
-    // A .localhost name is the panel's local dev setup, served with mkcert's
-    // certificate, which no container trusts.
-    public static bool Trusts(Uri uri, SslPolicyErrors errors)
-    {
-        return errors == SslPolicyErrors.None
-            || uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
-            || uri.Host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase);
-    }
-
-    public static RemoteCertificateValidationCallback For(Uri uri)
-    {
-        return (object _, X509Certificate? _, X509Chain? _, SslPolicyErrors errors) =>
-            Trusts(uri, errors);
     }
 }
 
@@ -137,9 +117,8 @@ public sealed class EventSocket : IEventSink
                     "Authorization",
                     $"Basic {Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_settings.ServerId}:{_settings.ApiPassword}"))}"
                 );
-                socket.Options.RemoteCertificateValidationCallback = Tls.For(uri);
-
-                await socket.ConnectAsync(uri, token);
+                using var invoker = new HttpMessageInvoker(Network.Handler(uri));
+                await socket.ConnectAsync(uri, invoker, token);
                 _socket = socket;
                 Log.Info($"connected to {uri}");
 

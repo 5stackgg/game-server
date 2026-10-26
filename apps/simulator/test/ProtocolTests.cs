@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Net.Security;
 using System.Net.Sockets;
 using System.Text.Json;
 using FiveStack.Enums;
@@ -116,24 +115,6 @@ public class ProtocolTests
 
         Assert.Equal(SimulatorSettings.DefaultSpeed, settings.Speed);
         Assert.Equal("de_inferno", settings.StartMap);
-    }
-
-    [Fact]
-    public void OnlyTheLocalDevSetupGetsAPassOnItsCertificate()
-    {
-        Assert.True(
-            Tls.Trusts(
-                new Uri("https://api.5stack.localhost"),
-                SslPolicyErrors.RemoteCertificateChainErrors
-            )
-        );
-        Assert.False(
-            Tls.Trusts(
-                new Uri("https://api.5stack.gg"),
-                SslPolicyErrors.RemoteCertificateChainErrors
-            )
-        );
-        Assert.True(Tls.Trusts(new Uri("https://api.5stack.gg"), SslPolicyErrors.None));
     }
 
     private static async Task<(int Id, int Type, string Body)> Exchange(

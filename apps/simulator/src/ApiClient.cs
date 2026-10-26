@@ -27,13 +27,14 @@ public sealed class ApiClient : IMatchSource
     {
         _settings = settings;
 
-        var handler = new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(5) };
-        if (Uri.TryCreate(settings.ApiUrl, UriKind.Absolute, out Uri? api))
+        _http = new HttpClient(
+            Network.Handler(
+                Uri.TryCreate(settings.ApiUrl, UriKind.Absolute, out Uri? api) ? api : null
+            )
+        )
         {
-            handler.SslOptions.RemoteCertificateValidationCallback = Tls.For(api);
-        }
-
-        _http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) };
+            Timeout = TimeSpan.FromSeconds(10),
+        };
     }
 
     public async Task<MatchFetch> Fetch(CancellationToken token)
