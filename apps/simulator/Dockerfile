@@ -24,6 +24,11 @@ COPY apps/simulator/scripts /opt/scripts
 
 ARG RELEASE_VERSION
 ENV RELEASE_VERSION=${RELEASE_VERSION}
+# Game seconds per real second; empty plays at the simulator's default pace.
+# A dev setup that builds the image bakes its own in, since the api launches
+# match servers with an environment of its own.
+ARG SIM_SPEED
+ENV SIM_SPEED=${SIM_SPEED}
 ENV GAME_SERVER_IMAGE="game-server-sim"
 
 ENTRYPOINT ["dotnet", "/app/simulator.dll"]
