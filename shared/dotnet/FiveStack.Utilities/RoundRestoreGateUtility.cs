@@ -78,6 +78,22 @@ namespace FiveStack.Utilities
             );
         }
 
+        // The newest round a server that reloaded mid-map can offer: the higher of
+        // its own backup files and the backups the api kept. A server that came
+        // back on another node or a fresh pod has only the api's.
+        public static int HighestRestorableRound(IEnumerable<BackupRound> rounds, int highestOnDisk)
+        {
+            int kept = rounds
+                .Where(backup =>
+                    !string.IsNullOrEmpty(backup.backup_file) && !IsUndone(rounds, backup.round)
+                )
+                .Select(backup => backup.round)
+                .DefaultIfEmpty(0)
+                .Max();
+
+            return Math.Max(highestOnDisk, kept);
+        }
+
         public static string? WarmupRefusal(bool matchLoaded, eMapStatus current)
         {
             if (!matchLoaded)

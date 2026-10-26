@@ -144,21 +144,26 @@ public class GameBackUpRounds
             return false;
         }
 
-        // Detect from the backup files on disk (written by mp_backup_round_auto),
-        // not just the backend's recorded rounds — the files are the ground truth
-        // and exist even when the backend/offline match data has no rounds.
+        // The backup files on disk (written by mp_backup_round_auto) hold rounds
+        // the backend may not have recorded, as with offline match data. A server
+        // that came back on another node or a fresh pod has none, only the
+        // backups the backend kept.
         string csgoDir = BackupDirectory;
         string prefix = MatchUtility.GetSafeMatchPrefix(match);
 
-        int highestNumber = GetHighestBackupRoundOnDisk(
+        int highestOnDisk = GetHighestBackupRoundOnDisk(
             csgoDir,
             prefix,
             round => RoundRestoreGateUtility.IsUndone(matchMap.rounds, round)
         );
+        int highestNumber = RoundRestoreGateUtility.HighestRestorableRound(
+            matchMap.rounds,
+            highestOnDisk
+        );
         int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
 
         _logger.LogInformation(
-            $"Highest Backup Round (disk): {highestNumber}, and total rounds played is {totalRoundsPlayed}"
+            $"Highest Backup Round: {highestNumber} (disk {highestOnDisk}), and total rounds played is {totalRoundsPlayed}"
         );
 
         // Nothing ahead of the current round — we are live where we should be.
@@ -167,8 +172,8 @@ public class GameBackUpRounds
             return false;
         }
 
-        // A backup file exists ahead of the current round (server/match restarted).
-        // Load it so the restore flow has it, then prompt to restore.
+        // A backup ahead of the current round (the server or match restarted). One
+        // only on disk is loaded so the restore flow has it; then prompt to restore.
         string backupFilePath = Path.Join(
             csgoDir,
             $"{prefix}_round{highestNumber.ToString().PadLeft(2, '0')}.txt"
