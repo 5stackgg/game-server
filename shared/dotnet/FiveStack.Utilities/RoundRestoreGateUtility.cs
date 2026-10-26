@@ -78,6 +78,45 @@ namespace FiveStack.Utilities
             );
         }
 
+        // The newest round a server that reloaded mid-map can offer: the higher of
+        // its own backup files and the backups the api kept. A server that came
+        // back on another node or a fresh pod has only the api's.
+        public static int HighestRestorableRound(IEnumerable<BackupRound> rounds, int highestOnDisk)
+        {
+            int kept = rounds
+                .Where(backup =>
+                    !string.IsNullOrEmpty(backup.backup_file) && !IsUndone(rounds, backup.round)
+                )
+                .Select(backup => backup.round)
+                .DefaultIfEmpty(0)
+                .Max();
+
+            return Math.Max(highestOnDisk, kept);
+        }
+
+        // Any round recorded past the server, restorable or not: a server behind
+        // with nothing to restore plays the map again from 0-0 rather than over
+        // the rounds the backend has.
+        public static int HighestRecordedRound(IEnumerable<BackupRound> rounds, int highestOnDisk)
+        {
+            int kept = rounds
+                .Where(backup => !IsUndone(rounds, backup.round))
+                .Select(backup => backup.round)
+                .DefaultIfEmpty(0)
+                .Max();
+
+            return Math.Max(highestOnDisk, kept);
+        }
+
+        // Only a map being played is held for a restore: one that is over refuses
+        // it, and would hold forever.
+        public static bool IsInPlay(eMapStatus status)
+        {
+            return status == eMapStatus.Live
+                || status == eMapStatus.Overtime
+                || status == eMapStatus.Paused;
+        }
+
         public static string? WarmupRefusal(bool matchLoaded, eMapStatus current)
         {
             if (!matchLoaded)
