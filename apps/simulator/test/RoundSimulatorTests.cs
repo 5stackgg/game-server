@@ -228,6 +228,53 @@ public class RoundSimulatorTests
         Assert.All(outcome.Events, planned => Assert.True(planned.At <= outcome.Duration + 1));
     }
 
+    [Theory]
+    [InlineData(Side.T)]
+    [InlineData(Side.CT)]
+    public void AScriptedRoundIsWonByTheSideItNeeds(Side winner)
+    {
+        for (int seed = 0; seed < 300; seed++)
+        {
+            var random = new Random(seed);
+            var setup = new RoundSetup
+            {
+                Round = 1,
+                MatchMapId = MapId,
+                MapName = "de_inferno",
+                // a full buy against an eco is the hardest round to hand over
+                Terrorists = Team(
+                    "t",
+                    Side.T,
+                    5,
+                    winner == Side.T ? BuyTier.Pistol : BuyTier.Full,
+                    random
+                ),
+                CounterTerrorists = Team(
+                    "ct",
+                    Side.CT,
+                    5,
+                    winner == Side.CT ? BuyTier.Pistol : BuyTier.Full,
+                    random
+                ),
+            };
+
+            RoundOutcome outcome = RoundSimulator.Play(setup, random, winner);
+
+            Assert.Equal(winner, outcome.Winner);
+            foreach (SimPlayer player in setup.Terrorists.Concat(setup.CounterTerrorists))
+            {
+                int dealt = outcome
+                    .Events.Where(planned =>
+                        planned.Name == "damage"
+                        && Steam(planned, "attacked_steam_id") == player.SteamId
+                    )
+                    .Sum(planned => (int)planned.Data["damage"]);
+
+                Assert.Equal(100 - player.Health, dealt);
+            }
+        }
+    }
+
     [Fact]
     public void BothSidesWinAndEveryEndingHappens()
     {
