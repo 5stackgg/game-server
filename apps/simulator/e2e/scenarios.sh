@@ -240,7 +240,7 @@ noshow_tournament() {
     create_match "$match" "$server" 1 "Alpha" "Bravo sim:noshow" auto_cancel_duration=1
     make_tournament_match "$match"
     start_match "$match"
-    wait_for 300 "$(ended "$match" "$server")" || echo "  (timed out waiting for the deadline)"
+    wait_for 300 "$(settled "$match" "$server")" || echo "  (timed out waiting for the deadline)"
     no_show_checks "$match" "$server" Forfeit "-150 x5" || failed=1
     check -v match="$match" <<'SQL' || failed=1
 SELECT 'forfeit goes to the lineup that turned up', lineup_1_id::text, coalesce(winning_lineup_id::text, '')
