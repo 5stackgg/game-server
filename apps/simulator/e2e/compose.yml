@@ -1,0 +1,147 @@
+# The api with its Postgres, Hasura, Redis and Typesense, and simulated game
+# servers for it to play matches on. run.sh drives it.
+name: 5stack-sim-e2e
+
+x-api-env: &api-env
+  POSTGRES_HOST: postgres
+  POSTGRES_SERVICE_PORT: "5432"
+  POSTGRES_USER: hasura
+  POSTGRES_PASSWORD: hasura
+  POSTGRES_DB: hasura
+  REDIS_HOST: redis
+  REDIS_SERVICE_PORT: "6379"
+  HASURA_GRAPHQL_ENDPOINT: http://hasura:8080
+  HASURA_GRAPHQL_ADMIN_SECRET: e2e
+  TYPESENSE_API_KEY: e2e
+  APP_KEY: sim-e2e-key
+  ENC_SECRET: sim-e2e-session
+  WEB_DOMAIN: localhost
+  API_DOMAIN: api
+  WS_DOMAIN: api
+  DEMOS_DOMAIN: api
+  RELAY_DOMAIN: api
+  SECURE_COOKIE: "false"
+
+x-sim: &sim
+  image: ${SIM_IMAGE:-5stack-sim-e2e:local}
+  depends_on:
+    api:
+      condition: service_healthy
+  environment: &sim-env
+    API_DOMAIN: http://api:5585
+    WS_DOMAIN: ws://api:5585/ws
+    SERVER_PORT: "27015"
+    RCON_PASSWORD: e2e-rcon
+    EXTRA_GAME_PARAMS: "+map de_inferno"
+    SIM_SPEED: ${SIM_SPEED:-90}
+
+services:
+  postgres:
+    image: timescale/timescaledb:2.31.0-pg18
+    environment:
+      POSTGRES_USER: hasura
+      POSTGRES_PASSWORD: hasura
+      POSTGRES_DB: hasura
+      PGDATA: /var/lib/postgresql/data
+      TIMESCALEDB_TELEMETRY: "off"
+      TS_TUNE_MEMORY: 1GB
+      TS_TUNE_NUM_CPUS: "2"
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_preload_libraries=pg_stat_statements,timescaledb
+      - -c
+      - fivestack.app_key=sim-e2e-key
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "hasura"]
+      interval: 2s
+      retries: 30
+
+  redis:
+    image: redis:8.10.2-alpine
+
+  typesense:
+    image: typesense/typesense:30.2
+    command: ["--data-dir=/tmp", "--api-key=e2e"]
+
+  # Hasura's metadata ships inside the api image.
+  metadata:
+    image: ${API_IMAGE:-ghcr.io/5stackgg/api:latest}
+    entrypoint: ["sh", "-c", "cp -r /opt/5stack/hasura/metadata/. /metadata/"]
+    volumes:
+      - metadata:/metadata
+
+  migrate:
+    image: ${API_IMAGE:-ghcr.io/5stackgg/api:latest}
+    environment:
+      <<: *api-env
+      RUN_MIGRATIONS: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  hasura:
+    image: hasura/graphql-engine:v2.50.5-ce.cli-migrations-v3
+    volumes:
+      - metadata:/hasura-metadata:ro
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: postgres://hasura:hasura@postgres:5432/hasura
+      HASURA_GRAPHQL_METADATA_DIR: /hasura-metadata
+      HASURA_GRAPHQL_ADMIN_SECRET: e2e
+      HASURA_GRAPHQL_AUTH_HOOK: http://api:5585/hasura
+      HASURA_GRAPHQL_EVENT_HOOK: http://api:5585/hasura/events
+      HASURA_GRAPHQL_ACTIONS_HOOK: http://api:5585/hasura/actions
+      HASURA_GRAPHQL_CONFIGURED_HEADER_PRECEDENCE: "true"
+      HASURA_GRAPHQL_STRINGIFY_NUMERIC_TYPES: "true"
+      HASURA_GRAPHQL_ENABLE_TELEMETRY: "false"
+      HASURA_GRAPHQL_LOG_LEVEL: warn
+    depends_on:
+      metadata:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "localhost:8080/healthz"]
+      interval: 2s
+      retries: 90
+
+  api:
+    image: ${API_IMAGE:-ghcr.io/5stackgg/api:latest}
+    environment:
+      <<: *api-env
+    depends_on:
+      hasura:
+        condition: service_healthy
+      typesense:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "localhost:5585/hasura"]
+      interval: 2s
+      retries: 90
+
+  # One per server row seed.sql makes; a scenario plays on one of them.
+  sim-1:
+    <<: *sim
+    environment:
+      <<: *sim-env
+      SERVER_ID: 5e5e5e5e-0000-4000-8000-000000000001
+      SERVER_API_PASSWORD: 5e5e5e5e-0000-4000-8000-0000000000a1
+  sim-2:
+    <<: *sim
+    environment:
+      <<: *sim-env
+      SERVER_ID: 5e5e5e5e-0000-4000-8000-000000000002
+      SERVER_API_PASSWORD: 5e5e5e5e-0000-4000-8000-0000000000a2
+  sim-3:
+    <<: *sim
+    environment:
+      <<: *sim-env
+      SERVER_ID: 5e5e5e5e-0000-4000-8000-000000000003
+      SERVER_API_PASSWORD: 5e5e5e5e-0000-4000-8000-0000000000a3
+
+volumes:
+  metadata:

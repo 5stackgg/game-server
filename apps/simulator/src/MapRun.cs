@@ -43,6 +43,11 @@ public sealed class MapRun
         _random = random;
         _roster = Roster.From(match, random);
         _scenario = Scenario.From(match);
+
+        if (!_scenario.IsEmpty)
+        {
+            Log.Info($"scenario for lineup {_scenario.Subject}: {_scenario}");
+        }
     }
 
     public Guid MapId => _map.id;
