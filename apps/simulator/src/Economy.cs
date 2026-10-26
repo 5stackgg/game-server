@@ -15,7 +15,6 @@ public sealed record Weapon(
 
 public static class Weapons
 {
-    public static readonly Weapon Knife = new("knife", 0, 34, 65, 65, 1500);
     public static readonly Weapon Glock = new("glock", 0, 13, 25, 70, 300);
     public static readonly Weapon Usp = new("usp_silencer", 0, 18, 35, 100, 300);
     public static readonly Weapon P2000 = new("hkp2000", 0, 18, 35, 100, 300);
@@ -128,7 +127,7 @@ public static class Economy
             switch (tier)
             {
                 case BuyTier.Pistol:
-                    if (random.Next(3) == 0)
+                    if (random.Next(3) == 0 && budget >= 650)
                     {
                         armor = 100;
                         budget -= 650;
