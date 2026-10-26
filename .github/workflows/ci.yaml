@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "Comma-separated images to build (css, sw, validator); blank builds all"
+        description: "Comma-separated images to build (css, sw, validator, simulator); blank builds all"
         type: string
         default: ""
 
@@ -23,6 +23,7 @@ jobs:
       css: ${{ (github.event_name == 'workflow_dispatch' && (inputs.only == '' || contains(inputs.only, 'css'))) || steps.filter.outputs.css == 'true' }}
       sw: ${{ (github.event_name == 'workflow_dispatch' && (inputs.only == '' || contains(inputs.only, 'sw'))) || steps.filter.outputs.sw == 'true' }}
       validator: ${{ (github.event_name == 'workflow_dispatch' && (inputs.only == '' || contains(inputs.only, 'validator'))) || steps.filter.outputs.validator == 'true' }}
+      simulator: ${{ (github.event_name == 'workflow_dispatch' && (inputs.only == '' || contains(inputs.only, 'simulator'))) || steps.filter.outputs.simulator == 'true' }}
       channel: ${{ steps.channel.outputs.channel }}
     steps:
       - uses: actions/checkout@v7
@@ -71,6 +72,12 @@ jobs:
               - '.github/workflows/validator-build.yaml'
               # CCS_GAMEDATA_REF is baked from this Dockerfile's CounterStrikeSharp URL
               - 'apps/counterstrikesharp/Dockerfile'
+            simulator:
+              - 'apps/simulator/**'
+              - 'shared/dotnet/FiveStack.Entities/**'
+              - 'shared/dotnet/FiveStack.Enums/**'
+              - 'Directory.Build.props'
+              - '.github/workflows/simulator-build.yaml'
 
   counterstrikesharp:
     needs: changes
@@ -121,6 +128,14 @@ jobs:
     needs: changes
     if: needs.changes.outputs.validator == 'true'
     uses: ./.github/workflows/validator-build.yaml
+    with:
+      channel: ${{ needs.changes.outputs.channel }}
+    secrets: inherit
+
+  simulator:
+    needs: changes
+    if: needs.changes.outputs.simulator == 'true'
+    uses: ./.github/workflows/simulator-build.yaml
     with:
       channel: ${{ needs.changes.outputs.channel }}
     secrets: inherit
