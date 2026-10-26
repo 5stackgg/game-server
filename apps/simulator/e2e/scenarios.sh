@@ -17,6 +17,7 @@ SCENARIOS=(
     "noshow-tournament noshow_tournament"
     "disconnect disconnect"
     "abandon abandon"
+    "resume resume"
 )
 
 ENDED="('Finished', 'Tie', 'Canceled', 'Forfeit', 'Surrendered')"
@@ -315,6 +316,75 @@ SELECT 'the leaver takes the leaver penalty', '-150',
 UNION ALL
 SELECT 'server released', 'true',
        (SELECT (reserved_by_match_id IS DISTINCT FROM :'match')::text FROM servers WHERE id = :'server')
+SQL
+    release "$match"
+    return "$failed"
+}
+
+# Each map so far as order:status:winner:score.
+maps_so_far() {
+    echo "SELECT string_agg(\"order\" || ':' || status || ':' || coalesce(winning_lineup_id::text, '-')
+                        || ':' || lineup_1_score(mm) || '-' || lineup_2_score(mm), ',' ORDER BY \"order\")
+            FROM match_maps mm WHERE match_id = '$1' AND \"order\" <= $2"
+}
+
+# resume <server>: a bo5 canceled during its fourth map at 2-1, then resumed.
+# The server it comes back on offers to restore the last round backed up
+# before the cancel, and the series finishes 3-1 with the first three maps as
+# they were.
+resume() {
+    local server=$1 match failed=0 map4 maps_before maps_after canceled_at restored logged
+    match=$(new_id)
+    create_match "$match" "$server" 5 "Alpha" "Bravo sim:3-1"
+    start_match "$match"
+
+    wait_for 900 "SELECT count(*) >= 5 FROM match_map_rounds r JOIN match_maps mm ON mm.id = r.match_map_id
+                   WHERE mm.match_id = '$match' AND mm.\"order\" = 4 AND r.backup_file <> ''" \
+        || echo "  (timed out waiting for the fourth map)"
+    map4=$(sql -c "SELECT id FROM match_maps WHERE match_id = '$match' AND \"order\" = 4")
+    maps_before=$(sql -c "$(maps_so_far "$match" 3)")
+
+    sql -c "UPDATE matches SET status = 'Canceled' WHERE id = '$match'" >/dev/null
+    wait_for 120 "SELECT NOT EXISTS (SELECT 1 FROM servers WHERE reserved_by_match_id = '$match')" || true
+    canceled_at=$(sql -c "SELECT now()")
+    restored=$(sql -c "SELECT max(round) FROM match_map_rounds
+                        WHERE match_map_id = '$map4' AND backup_file <> '' AND deleted_at IS NULL")
+
+    # what resumeMatch does, with the server it had so the other queues keep theirs
+    sql -c "UPDATE matches SET status = 'Live', server_id = '$(server_id "$server")'
+             WHERE id = '$match' AND status = 'Canceled'" >/dev/null
+    wait_for 900 "$(settled "$match" "$server")" || echo "  (timed out waiting for the series to finish)"
+
+    logged=$(docker compose logs api 2>/dev/null | grep -c "resetting match map $map4 to round $restored," || true)
+    maps_after=$(sql -c "$(maps_so_far "$match" 3)")
+
+    check -v match="$match" -v map4="$map4" -v maps_before="$maps_before" -v canceled_at="$canceled_at" \
+        -v restored="$restored" -v logged="$logged" -v maps_after="$maps_after" <<'SQL' || failed=1
+WITH m AS (SELECT * FROM matches WHERE id = :'match'),
+alive AS (SELECT * FROM match_map_rounds WHERE match_map_id = :'map4' AND deleted_at IS NULL)
+SELECT 'match status', 'Finished', (SELECT status FROM m)
+UNION ALL
+SELECT 'the series goes to the lineup that had it', (SELECT lineup_2_id::text FROM m), (SELECT coalesce(winning_lineup_id::text, '') FROM m)
+UNION ALL
+SELECT 'the first three maps are as they were', :'maps_before', :'maps_after'
+UNION ALL
+SELECT 'the vote restored the last round backed up before the cancel', '1', :'logged'
+UNION ALL
+SELECT 'the rounds up to it are the ones played before the cancel', :'restored',
+       (SELECT count(*)::text FROM alive WHERE round <= :'restored'::int AND "time" < :'canceled_at'::timestamptz)
+UNION ALL
+SELECT 'no round of the fourth map is recorded twice', (SELECT count(*)::text FROM alive), (SELECT count(DISTINCT round)::text FROM alive)
+UNION ALL
+SELECT 'the fourth map goes to the lineup that had it', (SELECT lineup_2_id::text FROM m),
+       (SELECT coalesce(winning_lineup_id::text, '') FROM match_maps WHERE id = :'map4')
+UNION ALL
+SELECT 'the fifth map is never played', 'Scheduled', (SELECT status FROM match_maps WHERE match_id = :'match' AND "order" = 5)
+UNION ALL
+SELECT 'every player rated', '10', (SELECT count(*)::text FROM player_elo WHERE match_id = :'match')
+UNION ALL
+SELECT 'series multiplier', '2', (SELECT string_agg(DISTINCT series_multiplier::text, ',') FROM player_elo WHERE match_id = :'match')
+UNION ALL
+SELECT 'server released', 'true', (SELECT (NOT EXISTS (SELECT 1 FROM servers WHERE reserved_by_match_id = :'match'))::text)
 SQL
     release "$match"
     return "$failed"
