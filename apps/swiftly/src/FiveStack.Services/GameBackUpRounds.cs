@@ -14,6 +14,11 @@ namespace FiveStack;
 public class GameBackUpRounds
 {
     private int? _resetRound;
+
+    // A server that came back behind the backend, holding the round it can
+    // restore until every player is back to vote on it. Meanwhile nothing is
+    // played, published or written over the backups being restored.
+    private int? _pendingRestore;
     private readonly ISwiftlyCore _core;
     private readonly MatchEvents _matchEvents;
     private readonly GameServer _gameServer;
@@ -107,10 +112,7 @@ public class GameBackUpRounds
             fileConVar.ValueAsString = prefix;
         }
 
-        if (!TrySetConVar("mp_backup_round_auto", true) && !TrySetConVar("mp_backup_round_auto", 1))
-        {
-            _logger.LogWarning("Backup Setup: could not enable mp_backup_round_auto");
-        }
+        SetBackupWriting(_pendingRestore == null);
 
         // Read the values straight back from the engine to confirm the sets applied.
         string autoReadback =
@@ -119,8 +121,9 @@ public class GameBackUpRounds
             _core.ConVar.FindAsString("mp_backup_round_file")?.ValueAsString ?? "<null>";
 
         _logger.LogInformation(
-            "Backup Setup: set mp_backup_round_file={Prefix}, mp_backup_round_auto=1 | readback auto={Auto} file={File} (files: {Dir}/{Prefix}_round<NN>.txt)",
+            "Backup Setup: set mp_backup_round_file={Prefix}, mp_backup_round_auto={Writing} | readback auto={Auto} file={File} (files: {Dir}/{Prefix}_round<NN>.txt)",
             prefix,
+            _pendingRestore == null ? 1 : 0,
             autoReadback,
             fileReadback,
             BackupDirectory,
@@ -130,7 +133,52 @@ public class GameBackUpRounds
 
     public bool IsResettingRound()
     {
-        return _resetRound != null;
+        return _resetRound != null || _pendingRestore != null;
+    }
+
+    public bool IsHoldingForRestore()
+    {
+        return _pendingRestore != null;
+    }
+
+    private void SetBackupWriting(bool enabled)
+    {
+        if (!TrySetConVar("mp_backup_round_auto", enabled) && !TrySetConVar("mp_backup_round_auto", enabled ? 1 : 0))
+        {
+            _logger.LogWarning($"Backup Setup: could not set mp_backup_round_auto to {enabled}");
+        }
+    }
+
+    // Offers the vote on the round a restarted server is behind by once every
+    // player is back. Called when the match loads and as players connect.
+    public void OfferPendingRestore()
+    {
+        if (_pendingRestore == null || restoreRoundVote != null)
+        {
+            return;
+        }
+
+        int round = _pendingRestore.Value;
+        int connectedPlayers = MatchUtility.PlayerCount();
+        int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
+
+        if (connectedPlayers < expectedPlayers)
+        {
+            _gameServer.Message(
+                MessageType.Alert,
+                $" Waiting for all players ({connectedPlayers}/{expectedPlayers}) to vote on restoring round {round}."
+            );
+            return;
+        }
+
+        _pendingRestore = null;
+        RequestRestoreBackupRound(round, null, true, recovering: true);
+
+        // Refused for another reason: keep holding for the next player.
+        if (_resetRound == null)
+        {
+            _pendingRestore = round;
+        }
     }
 
     public bool CheckForBackupRestore(eMapStatus status)
@@ -144,31 +192,44 @@ public class GameBackUpRounds
             return false;
         }
 
-        // Detect from the backup files on disk (written by mp_backup_round_auto),
-        // not just the backend's recorded rounds — the files are the ground truth
-        // and exist even when the backend/offline match data has no rounds.
+        // The backup files on disk (written by mp_backup_round_auto) hold rounds
+        // the backend may not have recorded, as with offline match data. A server
+        // that came back on another node or a fresh pod has none, only the
+        // backups the backend kept.
         string csgoDir = BackupDirectory;
         string prefix = MatchUtility.GetSafeMatchPrefix(match);
 
-        int highestNumber = GetHighestBackupRoundOnDisk(
+        int highestOnDisk = GetHighestBackupRoundOnDisk(
             csgoDir,
             prefix,
             round => RoundRestoreGateUtility.IsUndone(matchMap.rounds, round)
         );
+        int highestNumber = RoundRestoreGateUtility.HighestRestorableRound(
+            matchMap.rounds,
+            highestOnDisk
+        );
         int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
 
         _logger.LogInformation(
-            $"Highest Backup Round (disk): {highestNumber}, and total rounds played is {totalRoundsPlayed}"
+            $"Highest Backup Round: {highestNumber} (disk {highestOnDisk}), and total rounds played is {totalRoundsPlayed}"
         );
 
-        // Nothing ahead of the current round — we are live where we should be.
+        // Nothing to restore ahead of the current round.
         if (highestNumber <= totalRoundsPlayed)
         {
+            if (
+                RoundRestoreGateUtility.HighestRecordedRound(matchMap.rounds, highestOnDisk)
+                > totalRoundsPlayed
+            )
+            {
+                return ReplayMapAfterRestart(status, csgoDir, prefix);
+            }
+
             return false;
         }
 
-        // A backup file exists ahead of the current round (server/match restarted).
-        // Load it so the restore flow has it, then prompt to restore.
+        // A backup ahead of the current round (the server or match restarted). One
+        // only on disk is loaded so the restore flow has it; then prompt to restore.
         string backupFilePath = Path.Join(
             csgoDir,
             $"{prefix}_round{highestNumber.ToString().PadLeft(2, '0')}.txt"
@@ -197,10 +258,18 @@ public class GameBackUpRounds
             return ReplayMapAfterRestart(status, csgoDir, prefix);
         }
 
+        if (!RoundRestoreGateUtility.IsInPlay(status))
+        {
+            return false;
+        }
+
         _logger.LogInformation(
-            $"Backup round {highestNumber} is ahead of current round {totalRoundsPlayed}, prompting restore"
+            $"Backup round {highestNumber} is ahead of current round {totalRoundsPlayed}, holding the match for a restore vote"
         );
-        RequestRestoreBackupRound(highestNumber, null, true);
+        _pendingRestore = highestNumber;
+        SetBackupWriting(false);
+        _gameServer.SendCommands(["mp_pause_match"]);
+        OfferPendingRestore();
 
         return false;
     }
@@ -221,9 +290,16 @@ public class GameBackUpRounds
         }
 
         _logger.LogInformation(
-            "Server restarted, round restores are disabled for this match type, replaying the map from warmup"
+            "Server restarted with no round it can restore, replaying the map from warmup"
         );
 
+        ReplayMap(csgoDir, prefix);
+
+        return true;
+    }
+
+    private void ReplayMap(string csgoDir, string prefix)
+    {
         try
         {
             foreach (string file in Directory.GetFiles(csgoDir, $"{prefix}_round*.txt"))
@@ -236,9 +312,8 @@ public class GameBackUpRounds
             _logger.LogError(ex, "Failed removing stale backup round files");
         }
 
+        SetBackupWriting(true);
         SendRestoreRoundToBackend(0);
-
-        return true;
     }
 
     // Scans the game dir for CS2 round backup files ({prefix}_round<NN>.txt) and
@@ -324,7 +399,8 @@ public class GameBackUpRounds
     public void RequestRestoreBackupRound(
         int round,
         IPlayer? player = null,
-        bool vote = false
+        bool vote = false,
+        bool recovering = false
     )
     {
         _logger.LogInformation($"Restoring Backup Round {round}");
@@ -386,6 +462,10 @@ public class GameBackUpRounds
                             $" Restore round blocked: {refusal}."
                         );
                         restoreRoundVote = null;
+                        if (recovering)
+                        {
+                            _pendingRestore = round;
+                        }
                         return;
                     }
 
@@ -397,6 +477,15 @@ public class GameBackUpRounds
 
                     restoreRoundVote = null;
                     _resetRound = null;
+
+                    // Declined after a restart: the map starts again from 0-0 and
+                    // the rounds the backend recorded are set aside.
+                    MatchData? declined = _matchService.GetCurrentMatch()?.GetMatchData();
+                    if (recovering && declined != null)
+                    {
+                        ReplayMap(BackupDirectory, MatchUtility.GetSafeMatchPrefix(declined));
+                        return;
+                    }
 
                     _matchService.GetCurrentMatch()?.ResumeMatch();
                 },
@@ -522,7 +611,7 @@ public class GameBackUpRounds
 
     public void RestoreRound(int round)
     {
-        if (IsResettingRound())
+        if (_resetRound != null)
         {
             _logger.LogWarning($"Restore already in progress, ignoring RestoreRound({round})");
             return;
@@ -558,6 +647,8 @@ public class GameBackUpRounds
             );
             return;
         }
+
+        _pendingRestore = null;
 
         string backupRoundFileName =
             $"restore-{MatchUtility.GetSafeMatchPrefix(match)}round{round.ToString().PadLeft(2, '0')}.txt";
@@ -601,6 +692,7 @@ public class GameBackUpRounds
                     () =>
                     {
                         _resetRound = null;
+                        SetBackupWriting(true);
 
                         _logger.LogInformation($"Sending Message for Round {round}");
 
@@ -629,7 +721,7 @@ public class GameBackUpRounds
 
         return RoundRestoreGateUtility.Refusal(
             match != null && !match.options.CanRestoreRounds(),
-            IsResettingRound(),
+            _resetRound != null,
             _matchService.GetCurrentMatch()?.GetCurrentMapStatus() ?? eMapStatus.Unknown,
             round,
             matchMap != null

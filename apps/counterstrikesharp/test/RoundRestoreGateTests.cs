@@ -195,6 +195,79 @@ public class RoundRestoreGateTests
     }
 
     [Fact]
+    public void OffersTheBackendsNewestBackupOnAServerWithNone()
+    {
+        var rounds = new[]
+        {
+            new BackupRound { round = 1, backup_file = "one" },
+            new BackupRound { round = 2, backup_file = "two" },
+            new BackupRound { round = 7, backup_file = "seven" },
+        };
+
+        Assert.Equal(7, RoundRestoreGateUtility.HighestRestorableRound(rounds, 0));
+    }
+
+    [Fact]
+    public void OffersTheDisksBackupWhenItIsNewer()
+    {
+        var rounds = new[] { new BackupRound { round = 7, backup_file = "seven" } };
+
+        Assert.Equal(9, RoundRestoreGateUtility.HighestRestorableRound(rounds, 9));
+    }
+
+    [Fact]
+    public void OffersNoRoundARestoreUndidOrOneWithNoBackup()
+    {
+        var rounds = new[]
+        {
+            new BackupRound { round = 5, backup_file = "kept" },
+            new BackupRound
+            {
+                round = 6,
+                backup_file = "undone",
+                deleted_at = "2026-10-19T09:00:00Z",
+            },
+            new BackupRound { round = 7 },
+        };
+
+        Assert.Equal(5, RoundRestoreGateUtility.HighestRestorableRound(rounds, 0));
+        Assert.Equal(0, RoundRestoreGateUtility.HighestRestorableRound([], 0));
+    }
+
+    [Fact]
+    public void CountsARecordedRoundWithNoBackupAsBehind()
+    {
+        var rounds = new[]
+        {
+            new BackupRound { round = 3, backup_file = "three" },
+            new BackupRound { round = 5 },
+            new BackupRound
+            {
+                round = 6,
+                backup_file = "undone",
+                deleted_at = "2026-10-19T09:00:00Z",
+            },
+        };
+
+        Assert.Equal(3, RoundRestoreGateUtility.HighestRestorableRound(rounds, 0));
+        Assert.Equal(5, RoundRestoreGateUtility.HighestRecordedRound(rounds, 0));
+        Assert.Equal(8, RoundRestoreGateUtility.HighestRecordedRound(rounds, 8));
+    }
+
+    [Theory]
+    [InlineData(eMapStatus.Live, true)]
+    [InlineData(eMapStatus.Overtime, true)]
+    [InlineData(eMapStatus.Paused, true)]
+    [InlineData(eMapStatus.Warmup, false)]
+    [InlineData(eMapStatus.Knife, false)]
+    [InlineData(eMapStatus.WaitingForTV, false)]
+    [InlineData(eMapStatus.Finished, false)]
+    public void HoldsOnlyAMapBeingPlayedForARestore(eMapStatus status, bool held)
+    {
+        Assert.Equal(held, RoundRestoreGateUtility.IsInPlay(status));
+    }
+
+    [Fact]
     public void RefusesWarmupWithoutAMatch()
     {
         Assert.Equal(

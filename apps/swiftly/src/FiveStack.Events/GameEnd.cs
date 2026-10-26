@@ -71,6 +71,14 @@ public partial class FiveStackPlugin
             winningLineupId
         );
 
+        // WaitingForTV replaces Surrendered, so the surrender is read and sent
+        // first, for the api to end the match on it rather than the round score.
+        bool surrendered = match.isSurrendered();
+        if (surrendered)
+        {
+            PublishSurrender();
+        }
+
         // Move the map off Live immediately so it reflects WaitingForTV during the
         // tv_delay window (HandleEndOfMap may be deferred by use_playcast). This is
         // deduped in UpdateMapStatus, so HandleEndOfMap re-setting it is a no-op.
@@ -92,19 +100,19 @@ public partial class FiveStackPlugin
                         "OnGameEnd: playcast tv_delay elapsed, running HandleEndOfMap"
                     );
                     match.StopPlaycastWindowHeartbeat();
-                    HandleEndOfMap(winningLineupId);
+                    HandleEndOfMap(winningLineupId, surrendered);
                 }
             );
 
             return HookResult.Continue;
         }
 
-        HandleEndOfMap(winningLineupId);
+        HandleEndOfMap(winningLineupId, surrendered);
 
         return HookResult.Continue;
     }
 
-    private void HandleEndOfMap(Guid? winningLineupId)
+    private void HandleEndOfMap(Guid? winningLineupId, bool surrenderSent)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null)
@@ -123,7 +131,7 @@ public partial class FiveStackPlugin
         int tvDelay = matchData.options.tv_delay;
         int recordingDelay = usePlaycast ? 5 : tvDelay;
         Guid expectedMatchId = matchData.id;
-        bool wasSurrendered = match.isSurrendered();
+        bool wasSurrendered = surrenderSent || match.isSurrendered();
         bool onGameNode = _environmentService.isOnGameServerNode();
 
         AnnounceMapConclusion(matchData, currentMap, winningLineupId);
@@ -175,7 +183,7 @@ public partial class FiveStackPlugin
 
                     if (isSurrendered)
                     {
-                        SendSurrender();
+                        SendSurrender(surrenderSent);
                     }
                     else
                     {
@@ -261,7 +269,7 @@ public partial class FiveStackPlugin
 
                             if (isSurrenderedNow)
                             {
-                                SendSurrender();
+                                SendSurrender(surrenderSent);
                             }
                             else
                             {
@@ -368,7 +376,7 @@ public partial class FiveStackPlugin
         match.ChangeMap(nextMap.map);
     }
 
-    private void SendSurrender()
+    private void SendSurrender(bool published)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null)
@@ -376,19 +384,29 @@ public partial class FiveStackPlugin
             return;
         }
 
-        Guid? winningLineupId = _surrenderSystem.GetWinningLineupId();
-        if (winningLineupId != null)
+        if (!published)
         {
-            _matchEvents.PublishGameEvent(
-                "surrender",
-                new Dictionary<string, object>
-                {
-                    { "time", DateTime.Now },
-                    { "winning_lineup_id", winningLineupId },
-                }
-            );
+            PublishSurrender();
         }
 
-        match.UpdateMapStatus(eMapStatus.Finished, winningLineupId);
+        match.UpdateMapStatus(eMapStatus.Finished, _surrenderSystem.GetWinningLineupId());
+    }
+
+    private void PublishSurrender()
+    {
+        Guid? winningLineupId = _surrenderSystem.GetWinningLineupId();
+        if (winningLineupId == null)
+        {
+            return;
+        }
+
+        _matchEvents.PublishGameEvent(
+            "surrender",
+            new Dictionary<string, object>
+            {
+                { "time", DateTime.Now },
+                { "winning_lineup_id", winningLineupId },
+            }
+        );
     }
 }
