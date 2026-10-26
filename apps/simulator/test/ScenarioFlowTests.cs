@@ -75,9 +75,14 @@ public class ScenarioFlowTests
         Assert.True(events.IndexOf(last) > surrendered);
         Assert.Equal(13, Convert.ToInt32(last.Data["lineup_1_score"]));
 
-        // GameEnd.cs moves the map to WaitingForTV before HandleEndOfMap asks
-        // whether it was surrendered, so the plugin never sends `surrender`
-        Assert.DoesNotContain(events, e => e.Name == "surrender");
+        // GameEnd.cs sends the surrender before WaitingForTV replaces it
+        Published surrender = Assert.Single(events, e => e.Name == "surrender");
+        Assert.Equal(match.lineup_1_id.ToString(), surrender.Data["winning_lineup_id"]);
+        Assert.True(events.IndexOf(surrender) < IndexOf(events, "mapStatus", "WaitingForTV"));
+        Assert.Equal(
+            match.lineup_1_id.ToString(),
+            events[IndexOf(events, "mapStatus", "Finished")].Data["winning_lineup_id"]
+        );
     }
 
     [Fact]

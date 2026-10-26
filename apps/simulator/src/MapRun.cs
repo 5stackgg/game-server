@@ -34,6 +34,7 @@ public sealed class MapRun
     private bool _overtime;
     private bool _waitingForReady;
     private readonly HashSet<string> _absent = new();
+    private Guid? _surrenderedTo;
 
     public MapRun(
         SimulatedServer server,
@@ -665,7 +666,8 @@ public sealed class MapRun
     // the lineup that gave up leaves.
     private void Surrender()
     {
-        UpdateMapStatus(eMapStatus.Surrendered, Opponent(_scenario.Subject));
+        _surrenderedTo = Opponent(_scenario.Subject);
+        UpdateMapStatus(eMapStatus.Surrendered, _surrenderedTo);
 
         foreach (SimPlayer player in _roster.Of(_scenario.Subject))
         {
@@ -739,14 +741,28 @@ public sealed class MapRun
         };
     }
 
-    // GameEnd.cs: the winner goes out with WaitingForTV, the map is Finished
-    // once the tv delay has passed, and the server asks for its next map.
-    // There is no demo: off a game node the upload finds nothing to send.
+    // GameEnd.cs: a surrender goes out first, the winner goes out with
+    // WaitingForTV, the map is Finished once the tv delay has passed, and the
+    // server asks for its next map. There is no demo: off a game node the
+    // upload finds nothing to send.
     private async Task EndMap(int lineup1Score, int lineup2Score, CancellationToken token)
     {
         Guid winner = lineup1Score > lineup2Score ? _match.lineup_1_id : _match.lineup_2_id;
 
         Log.Info($"map over {lineup1Score}-{lineup2Score}");
+        if (_surrenderedTo is Guid surrenderedTo)
+        {
+            _server.Emit(
+                _match.id,
+                _map.id,
+                "surrender",
+                new Dictionary<string, object>
+                {
+                    { "winning_lineup_id", surrenderedTo.ToString() },
+                },
+                stamped: true
+            );
+        }
         UpdateMapStatus(eMapStatus.WaitingForTV, winner);
 
         await _pacer.Wait(Options.use_playcast ? 5 : Options.tv_delay, token);
@@ -758,7 +774,7 @@ public sealed class MapRun
             Log.Info("no demo was recorded, nothing to upload");
         }
 
-        UpdateMapStatus(eMapStatus.Finished, winner);
+        UpdateMapStatus(eMapStatus.Finished, _surrenderedTo ?? winner);
 
         // delayChangeMap: nothing moves the server on until this has run out
         _server.HoldFetches = true;
