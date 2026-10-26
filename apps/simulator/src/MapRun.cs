@@ -35,6 +35,7 @@ public sealed class MapRun
     private bool _waitingForReady;
     private readonly HashSet<string> _absent = new();
     private Guid? _surrenderedTo;
+    private bool _holding;
     private readonly TaskCompletionSource<int> _restoreRound = new(
         TaskCreationOptions.RunContinuationsAsynchronously
     );
@@ -101,7 +102,7 @@ public sealed class MapRun
 
     public void Pause()
     {
-        if (Status is eMapStatus.Live or eMapStatus.Overtime)
+        if (!_holding && Status is eMapStatus.Live or eMapStatus.Overtime)
         {
             _resumed ??= Signal();
             UpdateMapStatus(eMapStatus.Paused);
@@ -110,7 +111,7 @@ public sealed class MapRun
 
     public void Resume()
     {
-        if (Status != eMapStatus.Paused)
+        if (_holding || Status != eMapStatus.Paused)
         {
             return;
         }
@@ -124,12 +125,18 @@ public sealed class MapRun
     {
         RoundState? start = null;
 
-        if (BackupAhead() is BackupRound backup)
+        if (MapInPlay && RestorableRound() > 0)
         {
-            start = await RestoreAfterRestart(backup, token);
+            start = await HoldForRestore(RestorableRound(), token);
         }
         else
         {
+            // rounds recorded but none to restore: played again from warmup
+            if (MapInPlay && RecordedRound() > 0)
+            {
+                SetRoundsAside();
+            }
+
             await StartMap(token);
         }
 
@@ -173,61 +180,84 @@ public sealed class MapRun
         );
     }
 
-    // GameBackUpRounds.CheckForBackupRestore: a server handed a map still in
-    // play, with a kept backup ahead of the round it is on (none, on a fresh
-    // server), offers to restore that round. A round whose last record the api
-    // marked deleted was undone by a restore.
-    private BackupRound? BackupAhead()
-    {
-        if (
-            !Enum.TryParse(_map.status, out eMapStatus status)
-            || status is not (eMapStatus.Live or eMapStatus.Overtime or eMapStatus.Paused)
-        )
-        {
-            return null;
-        }
+    // RoundRestoreGateUtility (game-server#272): a round the api marked
+    // deleted, as its last record, was undone by a restore.
+    private bool IsUndone(int round) =>
+        !string.IsNullOrEmpty(
+            _map.rounds.LastOrDefault(record => record.round == round)?.deleted_at
+        );
 
-        return _map
-            .rounds.GroupBy(round => round.round)
-            .Select(records => records.Last())
-            .Where(round =>
-                round.round > 0
-                && string.IsNullOrEmpty(round.deleted_at)
-                && !string.IsNullOrEmpty(round.backup_file)
+    private int RestorableRound() =>
+        _map
+            .rounds.Where(record =>
+                !string.IsNullOrEmpty(record.backup_file) && !IsUndone(record.round)
             )
-            .MaxBy(round => round.round);
-    }
+            .Select(record => record.round)
+            .DefaultIfEmpty(0)
+            .Max();
 
-    // The map goes live as the api has it, the restore vote passes once
-    // everyone is back, and api_restore_round loads that round's backup into a
-    // paused game the players then resume.
-    private async Task<RoundState> RestoreAfterRestart(BackupRound backup, CancellationToken token)
+    private int RecordedRound() =>
+        _map
+            .rounds.Where(record => !IsUndone(record.round))
+            .Select(record => record.round)
+            .DefaultIfEmpty(0)
+            .Max();
+
+    private bool MapInPlay =>
+        Enum.TryParse(_map.status, out eMapStatus status)
+        && status is eMapStatus.Live or eMapStatus.Overtime or eMapStatus.Paused;
+
+    // GameBackUpRounds (game-server#272): a server that comes back behind the
+    // api holds the match, playing and publishing nothing, until every player
+    // is back to vote on restoring the newest kept backup. A declined vote sets
+    // the recorded rounds aside and the map carries on from 0-0; an admin's
+    // restore during the hold ends it.
+    private async Task<RoundState?> HoldForRestore(int offered, CancellationToken token)
     {
+        _holding = true;
         UpdateMapStatus(eMapStatus.Live);
 
         await _live.Task.WaitAsync(token);
         await ConnectPlayers(token);
 
-        Log.Info($"round {backup.round} has a backup ahead of the game, voting to restore it");
-        await _pacer.Wait(VoteTime, token);
-        _server.Emit(
-            _match.id,
-            _map.id,
-            "restoreRound",
-            new Dictionary<string, object>
-            {
-                { "round", backup.round },
-                { "match_map_id", _map.id },
-            },
-            stamped: false
-        );
+        Log.Info($"holding for a vote on restoring round {offered}");
+        Task<int> admin = _restoreRound.Task;
+        int round;
 
-        int round = await _restoreRound.Task.WaitAsync(token);
-        BackupRound restored =
-            _map.rounds.LastOrDefault(record =>
-                record.round == round && !string.IsNullOrEmpty(record.backup_file)
-            ) ?? backup;
-        (int lineup1Score, int lineup2Score) = SimulatedBackup.Scores(restored.backup_file);
+        if (await Task.WhenAny(admin, _pacer.Wait(VoteTime, token)) == admin)
+        {
+            round = await admin;
+        }
+        else if (_scenario.DeclineRestore)
+        {
+            Log.Info($"the vote to restore round {offered} was declined");
+            _holding = false;
+            SetRoundsAside();
+            return null;
+        }
+        else
+        {
+            _server.Emit(
+                _match.id,
+                _map.id,
+                "restoreRound",
+                new Dictionary<string, object>
+                {
+                    { "round", offered },
+                    { "match_map_id", _map.id },
+                },
+                stamped: false
+            );
+            round = await _restoreRound.Task.WaitAsync(token);
+        }
+
+        _holding = false;
+
+        // RestoreRound loads the backup into a paused game the players resume
+        BackupRound? restored = _map.rounds.LastOrDefault(record =>
+            record.round == round && !string.IsNullOrEmpty(record.backup_file)
+        );
+        (int lineup1Score, int lineup2Score) = SimulatedBackup.Scores(restored?.backup_file ?? "");
         _overtime = round >= Options.MaxRounds();
 
         UpdateMapStatus(eMapStatus.Paused);
@@ -236,6 +266,19 @@ public sealed class MapRun
         Log.Info($"restored round {round} at {lineup1Score}-{lineup2Score}");
 
         return new RoundState(round, lineup1Score, lineup2Score);
+    }
+
+    // A restore to round 0, which the api answers by setting every recorded
+    // round aside.
+    private void SetRoundsAside()
+    {
+        _server.Emit(
+            _match.id,
+            _map.id,
+            "restoreRound",
+            new Dictionary<string, object> { { "round", 0 }, { "match_map_id", _map.id } },
+            stamped: false
+        );
     }
 
     public void UpdateMapStatus(eMapStatus status, Guid? winningLineupId = null)

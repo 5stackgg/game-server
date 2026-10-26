@@ -4,13 +4,19 @@ using FiveStack.Simulator;
 using Xunit;
 
 // A map that comes back to a server still in play, as after a crash or a
-// resumed match, and the backups the rounds carry for it.
+// resumed match, held for a restore vote as game-server#272 has the plugin do,
+// and the backups the rounds carry for it.
 public class ResumeTests
 {
     private static MatchData LiveMap(params BackupRound[] rounds)
     {
+        return LiveMap("Bravo sim:1-0", rounds);
+    }
+
+    private static MatchData LiveMap(string lineup2, params BackupRound[] rounds)
+    {
         MatchData match = Matches.Build();
-        match.lineup_2.name = "Bravo sim:1-0";
+        match.lineup_2.name = lineup2;
         match.match_maps[0].status = "Live";
         match.match_maps[0].rounds = rounds;
         return match;
@@ -33,7 +39,8 @@ public class ResumeTests
 
     private static async Task<(List<Published> Events, MatchData Match)> Play(
         MatchData match,
-        int? restoreTo = null
+        int? restoreTo = null,
+        Action<SimulatedServer, Published>? during = null
     )
     {
         var sink = new RecordingSink();
@@ -49,6 +56,7 @@ public class ResumeTests
             {
                 _ = Task.Run(() => server.Execute($"api_restore_round {round}"));
             }
+            during?.Invoke(server, published);
         };
 
         await server.RefreshMatch();
@@ -125,5 +133,62 @@ public class ResumeTests
 
         Assert.DoesNotContain(events, e => e.Name == "restoreRound");
         Assert.Equal("Warmup", events.First(e => e.Name == "mapStatus").Data["status"]);
+    }
+
+    [Fact]
+    public async Task ADeclinedVoteSetsTheRecordedRoundsAsideAndPlaysOnFromNothing()
+    {
+        (List<Published> events, _) = await Play(
+            LiveMap("Bravo sim:1-0 sim:decline", Backup(4, 3, 1))
+        );
+
+        Published restore = Assert.Single(events, e => e.Name == "restoreRound");
+        Assert.Equal(0, restore.Data["round"]);
+        Assert.Equal(1, Scores(events)[0].Data["round"]);
+        Assert.DoesNotContain(
+            events,
+            e => e.Name == "mapStatus" && (string)e.Data["status"] is "Warmup" or "Paused"
+        );
+    }
+
+    [Fact]
+    public async Task RoundsRecordedWithNoBackupAreSetAsideAndTheMapStartsFromWarmup()
+    {
+        (List<Published> events, _) = await Play(
+            LiveMap(new BackupRound { round = 3, backup_file = "" })
+        );
+
+        int restore = events.FindIndex(e => e.Name == "restoreRound");
+        Assert.Equal(0, events[restore].Data["round"]);
+        Assert.Equal(
+            "Warmup",
+            events.Skip(restore).First(e => e.Name == "mapStatus").Data["status"]
+        );
+        Assert.Equal(1, Scores(events)[0].Data["round"]);
+    }
+
+    [Fact]
+    public async Task AnAdminRestoreDuringTheHoldEndsItWithoutAVote()
+    {
+        (List<Published> events, _) = await Play(
+            LiveMap(Backup(2, 2, 0), Backup(4, 3, 1)),
+            during: (server, published) =>
+            {
+                if (published.Name == "player-connected")
+                {
+                    // refused while the match is held
+                    server.Execute("css_pause");
+                    server.Execute("css_resume");
+                    server.Execute("api_restore_round 2");
+                }
+            }
+        );
+
+        Assert.DoesNotContain(events, e => e.Name == "restoreRound");
+        Assert.Equal(
+            ["Live", "Paused", "Live"],
+            events.Where(e => e.Name == "mapStatus").Select(e => (string)e.Data["status"]).Take(3)
+        );
+        Assert.Equal(3, Scores(events)[0].Data["round"]);
     }
 }
