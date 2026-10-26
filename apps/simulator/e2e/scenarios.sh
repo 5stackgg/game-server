@@ -289,7 +289,7 @@ abandon() {
     create_match "$match" "$server" 1 "Alpha" "Bravo sim:abandon" live_match_timeout=3
     start_match "$match"
     wait_for 600 "$(map_reaches "$match" Surrendered)" || echo "  (timed out waiting for the surrender)"
-    wait_for 300 "$(ended "$match" "$server")" || true
+    wait_for 300 "$(settled "$match" "$server")" || true
 
     check -v match="$match" -v server="$(server_id "$server")" <<'SQL' || failed=1
 WITH m AS (SELECT * FROM matches WHERE id = :'match'),
