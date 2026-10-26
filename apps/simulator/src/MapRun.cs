@@ -35,6 +35,12 @@ public sealed class MapRun
     private bool _waitingForReady;
     private readonly HashSet<string> _absent = new();
     private Guid? _surrenderedTo;
+    private bool _holding;
+    private readonly TaskCompletionSource<int> _restoreRound = new(
+        TaskCreationOptions.RunContinuationsAsynchronously
+    );
+
+    private sealed record RoundState(int RoundsPlayed, int Lineup1Score, int Lineup2Score);
 
     public MapRun(
         SimulatedServer server,
@@ -92,9 +98,11 @@ public sealed class MapRun
 
     public void ConfirmKnifeSwitch() => _knifeSwitch.TrySetResult();
 
+    public void RestoreRound(int round) => _restoreRound.TrySetResult(round);
+
     public void Pause()
     {
-        if (Status is eMapStatus.Live or eMapStatus.Overtime)
+        if (!_holding && Status is eMapStatus.Live or eMapStatus.Overtime)
         {
             _resumed ??= Signal();
             UpdateMapStatus(eMapStatus.Paused);
@@ -103,7 +111,7 @@ public sealed class MapRun
 
     public void Resume()
     {
-        if (Status != eMapStatus.Paused)
+        if (_holding || Status != eMapStatus.Paused)
         {
             return;
         }
@@ -114,6 +122,33 @@ public sealed class MapRun
     }
 
     public async Task Play(CancellationToken token)
+    {
+        RoundState? start = null;
+
+        if (MapInPlay && RestorableRound() > 0)
+        {
+            start = await HoldForRestore(RestorableRound(), token);
+        }
+        else
+        {
+            // rounds recorded but none to restore: played again from warmup
+            if (MapInPlay && RecordedRound() > 0)
+            {
+                SetRoundsAside();
+            }
+
+            await StartMap(token);
+        }
+
+        (int lineup1Score, int lineup2Score, bool gameEnded) = await PlayRounds(token, start);
+
+        if (gameEnded)
+        {
+            await EndMap(lineup1Score, lineup2Score, token);
+        }
+    }
+
+    private async Task StartMap(CancellationToken token)
     {
         UpdateMapStatus(eMapStatus.Warmup);
 
@@ -143,13 +178,107 @@ public sealed class MapRun
             },
             stamped: false
         );
+    }
 
-        (int lineup1Score, int lineup2Score, bool gameEnded) = await PlayRounds(token);
+    // RoundRestoreGateUtility (game-server#272): a round the api marked
+    // deleted, as its last record, was undone by a restore.
+    private bool IsUndone(int round) =>
+        !string.IsNullOrEmpty(
+            _map.rounds.LastOrDefault(record => record.round == round)?.deleted_at
+        );
 
-        if (gameEnded)
+    private int RestorableRound() =>
+        _map
+            .rounds.Where(record =>
+                !string.IsNullOrEmpty(record.backup_file) && !IsUndone(record.round)
+            )
+            .Select(record => record.round)
+            .DefaultIfEmpty(0)
+            .Max();
+
+    private int RecordedRound() =>
+        _map
+            .rounds.Where(record => !IsUndone(record.round))
+            .Select(record => record.round)
+            .DefaultIfEmpty(0)
+            .Max();
+
+    private bool MapInPlay =>
+        Enum.TryParse(_map.status, out eMapStatus status)
+        && status is eMapStatus.Live or eMapStatus.Overtime or eMapStatus.Paused;
+
+    // GameBackUpRounds (game-server#272): a server that comes back behind the
+    // api holds the match, playing and publishing nothing, until every player
+    // is back to vote on restoring the newest kept backup. A declined vote sets
+    // the recorded rounds aside and the map carries on from 0-0; an admin's
+    // restore during the hold ends it.
+    private async Task<RoundState?> HoldForRestore(int offered, CancellationToken token)
+    {
+        _holding = true;
+        UpdateMapStatus(eMapStatus.Live);
+
+        await _live.Task.WaitAsync(token);
+        await ConnectPlayers(token);
+
+        Log.Info($"holding for a vote on restoring round {offered}");
+        Task<int> admin = _restoreRound.Task;
+        int round;
+
+        if (await Task.WhenAny(admin, _pacer.Wait(VoteTime, token)) == admin)
         {
-            await EndMap(lineup1Score, lineup2Score, token);
+            round = await admin;
         }
+        else if (_scenario.DeclineRestore)
+        {
+            Log.Info($"the vote to restore round {offered} was declined");
+            _holding = false;
+            SetRoundsAside();
+            return null;
+        }
+        else
+        {
+            _server.Emit(
+                _match.id,
+                _map.id,
+                "restoreRound",
+                new Dictionary<string, object>
+                {
+                    { "round", offered },
+                    { "match_map_id", _map.id },
+                },
+                stamped: false
+            );
+            round = await _restoreRound.Task.WaitAsync(token);
+        }
+
+        _holding = false;
+
+        // RestoreRound loads the backup into a paused game the players resume
+        BackupRound? restored = _map.rounds.LastOrDefault(record =>
+            record.round == round && !string.IsNullOrEmpty(record.backup_file)
+        );
+        (int lineup1Score, int lineup2Score) = SimulatedBackup.Scores(restored?.backup_file ?? "");
+        _overtime = round >= Options.MaxRounds();
+
+        UpdateMapStatus(eMapStatus.Paused);
+        await _pacer.Wait(FreezeTime, token);
+        UpdateMapStatus(_overtime ? eMapStatus.Overtime : eMapStatus.Live);
+        Log.Info($"restored round {round} at {lineup1Score}-{lineup2Score}");
+
+        return new RoundState(round, lineup1Score, lineup2Score);
+    }
+
+    // A restore to round 0, which the api answers by setting every recorded
+    // round aside.
+    private void SetRoundsAside()
+    {
+        _server.Emit(
+            _match.id,
+            _map.id,
+            "restoreRound",
+            new Dictionary<string, object> { { "round", 0 }, { "match_map_id", _map.id } },
+            stamped: false
+        );
     }
 
     public void UpdateMapStatus(eMapStatus status, Guid? winningLineupId = null)
@@ -384,12 +513,13 @@ public sealed class MapRun
     }
 
     private async Task<(int Lineup1, int Lineup2, bool GameEnded)> PlayRounds(
-        CancellationToken token
+        CancellationToken token,
+        RoundState? start
     )
     {
-        int lineup1Score = 0;
-        int lineup2Score = 0;
-        int roundsPlayed = 0;
+        int lineup1Score = start?.Lineup1Score ?? 0;
+        int lineup2Score = start?.Lineup2Score ?? 0;
+        int roundsPlayed = start?.RoundsPlayed ?? 0;
         int maxMoney = Economy.MaxMoney(Options);
         bool surrenders = _scenario.Surrender && ScenarioMap;
         bool leaves = (_scenario.Disconnect || _scenario.Abandon) && ScenarioMap;
@@ -397,6 +527,24 @@ public sealed class MapRun
         List<Guid>? script = surrenders
             ? MapScript.Won(Options, Opponent(_scenario.Subject), _scenario.Subject, _random)
             : RoundScript();
+        if (start != null && script != null && !(_scenario.Tie && ScenarioMap))
+        {
+            Guid winner = script[^1];
+            bool lineup1Wins = winner == _roster.Lineup1Id;
+            script = Enumerable
+                .Repeat(winner, start.RoundsPlayed)
+                .Concat(
+                    MapScript.Rest(
+                        Options,
+                        winner,
+                        Opponent(winner),
+                        lineup1Wins ? lineup1Score : lineup2Score,
+                        lineup1Wins ? lineup2Score : lineup1Score,
+                        _random
+                    )
+                )
+                .ToList();
+        }
         var lossStreak = new Dictionary<Guid, int>
         {
             [_roster.Lineup1Id] = 0,
@@ -481,19 +629,15 @@ public sealed class MapRun
                     roundsPlayed++;
                 }
 
-                _server.Emit(
-                    _match.id,
-                    _map.id,
-                    "score",
-                    Score(
-                        roundsPlayed,
-                        lineup1Score,
-                        lineup2Score,
-                        winnerSide,
-                        winnerSide == Side.T ? eWinReason.TerroristsWin : eWinReason.CTsWin
-                    ),
-                    stamped: true
+                Dictionary<string, object> last = Score(
+                    roundsPlayed,
+                    lineup1Score,
+                    lineup2Score,
+                    winnerSide,
+                    winnerSide == Side.T ? eWinReason.TerroristsWin : eWinReason.CTsWin
                 );
+                last["backup_file"] = "";
+                _server.Emit(_match.id, _map.id, "score", last, stamped: true);
                 return (lineup1Score, lineup2Score, true);
             }
 
@@ -590,6 +734,8 @@ public sealed class MapRun
 
             if (SideRules.IsMapOver(Options, lineup1Score, lineup2Score))
             {
+                // GameEnd.cs publishes the last round without a backup
+                score["backup_file"] = "";
                 _server.Emit(_match.id, _map.id, "score", score, stamped: true);
                 return (lineup1Score, lineup2Score, true);
             }
@@ -736,8 +882,10 @@ public sealed class MapRun
             { "lineup_2_side", SideRules.ToApi(SideRules.Opposite(lineup1Side)) },
             { "winning_side", SideRules.ToApi(winner) },
             { "winning_reason", reason.ToString() },
-            // CS2 writes the backup round file; there is none to send here
-            { "backup_file", "" },
+            {
+                "backup_file",
+                SimulatedBackup.Write(roundsPlayed, lineup1Score, lineup2Score, _roster)
+            },
         };
     }
 

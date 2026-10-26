@@ -5,7 +5,8 @@ namespace FiveStack.Simulator;
 
 // What a match asks the simulator to play, from a `sim:` word in either
 // lineup's name or tag: `sim:3-1` (that lineup takes the series 3-1),
-// `sim:tie`, `sim:surrender`, `sim:noshow`, `sim:disconnect`, `sim:abandon`.
+// `sim:tie`, `sim:surrender`, `sim:noshow`, `sim:disconnect`, `sim:abandon`,
+// `sim:decline` (votes against restoring a round after a restart).
 // The lineup carrying the word is the one the scenario happens to.
 public sealed partial record Scenario
 {
@@ -17,8 +18,10 @@ public sealed partial record Scenario
     public bool NoShow { get; init; }
     public bool Disconnect { get; init; }
     public bool Abandon { get; init; }
+    public bool DeclineRestore { get; init; }
 
-    public bool IsEmpty => Wins == null && !Tie && !Surrender && !NoShow && !Disconnect && !Abandon;
+    public bool IsEmpty =>
+        Wins == null && !Tie && !Surrender && !NoShow && !Disconnect && !Abandon && !DeclineRestore;
 
     [GeneratedRegex(@"\bsim:([a-z0-9-]+)", RegexOptions.IgnoreCase)]
     private static partial Regex Word();
@@ -53,6 +56,7 @@ public sealed partial record Scenario
                     NoShow = scenario.NoShow || value == "noshow",
                     Disconnect = scenario.Disconnect || value == "disconnect",
                     Abandon = scenario.Abandon || value == "abandon",
+                    DeclineRestore = scenario.DeclineRestore || value == "decline",
                 };
             }
         }
@@ -113,6 +117,30 @@ public static class MapScript
 
         List<Guid> rounds = Enumerable
             .Repeat(winner, toWin - 1)
+            .Concat(Enumerable.Repeat(loser, lost))
+            .OrderBy(_ => random.Next())
+            .ToList();
+        rounds.Add(winner);
+
+        return rounds;
+    }
+
+    // The rest of a map restored at winnerScore-loserScore, still won by the
+    // same lineup.
+    public static List<Guid> Rest(
+        MatchOptions options,
+        Guid winner,
+        Guid loser,
+        int winnerScore,
+        int loserScore,
+        Random random
+    )
+    {
+        int toWin = options.MaxRounds() / 2 + 1;
+        int lost = random.Next(0, Math.Max(0, toWin - 1 - loserScore) + 1);
+
+        List<Guid> rounds = Enumerable
+            .Repeat(winner, Math.Max(0, toWin - 1 - winnerScore))
             .Concat(Enumerable.Repeat(loser, lost))
             .OrderBy(_ => random.Next())
             .ToList();
