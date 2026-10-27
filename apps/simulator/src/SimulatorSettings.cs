@@ -13,6 +13,7 @@ public sealed record SimulatorSettings
     public string? ApiPassword { get; init; }
     public string ApiUrl { get; init; } = "";
     public string WsUrl { get; init; } = "";
+    public string DemosUrl { get; init; } = "";
     public int Port { get; init; } = 27015;
     public string RconPassword { get; init; } = "";
     public string StartMap { get; init; } = "de_inferno";
@@ -48,6 +49,7 @@ public sealed record SimulatorSettings
             ApiPassword = Get("SERVER_API_PASSWORD"),
             ApiUrl = Get("API_DOMAIN") ?? "",
             WsUrl = Get("WS_DOMAIN") ?? "",
+            DemosUrl = Get("DEMOS_DOMAIN") ?? Get("API_DOMAIN") ?? "",
             Port = int.TryParse(Get("SERVER_PORT"), out int port) ? port : 27015,
             RconPassword = Get("RCON_PASSWORD") ?? "",
             StartMap = StartMapFrom(Get("EXTRA_GAME_PARAMS")) ?? Get("DEFAULT_MAP") ?? "de_inferno",

@@ -16,6 +16,9 @@ public sealed class MapRun
     private const double ReconnectAfter = 60;
     private const double AbandonAfter = 3 * 60;
     private const double VoteTime = 15;
+    private const int TacticalTimeoutAfterRounds = 3;
+    private const int TechnicalPauseAfterRounds = 7;
+    private const double TimeoutLength = 30;
 
     private readonly SimulatedServer _server;
     private readonly MatchData _match;
@@ -36,6 +39,9 @@ public sealed class MapRun
     private readonly HashSet<string> _absent = new();
     private Guid? _surrenderedTo;
     private bool _holding;
+    private readonly Dictionary<Guid, int> _timeoutsLeft;
+    private readonly HashSet<string> _offlineCameras = new();
+    private TaskCompletionSource? _camerasBack;
     private readonly TaskCompletionSource<int> _restoreRound = new(
         TaskCreationOptions.RunContinuationsAsynchronously
     );
@@ -57,6 +63,11 @@ public sealed class MapRun
         _random = random;
         _roster = Roster.From(match, random);
         _scenario = Scenario.From(match);
+        _timeoutsLeft = new Dictionary<Guid, int>
+        {
+            [_roster.Lineup1Id] = Timeouts,
+            [_roster.Lineup2Id] = Timeouts,
+        };
 
         if (!_scenario.IsEmpty)
         {
@@ -100,6 +111,66 @@ public sealed class MapRun
 
     public void RestoreRound(int round) => _restoreRound.TrySetResult(round);
 
+    // CameraSystem.UpdateState: the api sends the full set of players without a
+    // working camera every time it changes.
+    public void UpdateCameras(string payload)
+    {
+        lock (_offlineCameras)
+        {
+            _offlineCameras.Clear();
+            foreach (
+                string steamId in payload.Split(
+                    [',', ' '],
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+                )
+            )
+            {
+                if (ulong.TryParse(steamId, out ulong parsed) && parsed > 0)
+                {
+                    _offlineCameras.Add(steamId);
+                }
+            }
+
+            Log.Info(
+                _offlineCameras.Count == 0
+                    ? "cameras: all clear"
+                    : $"cameras offline: {string.Join(", ", _offlineCameras)}"
+            );
+
+            if (_offlineCameras.Count == 0)
+            {
+                _camerasBack?.TrySetResult();
+                _camerasBack = null;
+            }
+        }
+    }
+
+    private bool CamerasOffline()
+    {
+        lock (_offlineCameras)
+        {
+            return Options.camera_required && _offlineCameras.Count > 0;
+        }
+    }
+
+    private async Task WaitForCameras(CancellationToken token)
+    {
+        while (true)
+        {
+            Task back;
+            lock (_offlineCameras)
+            {
+                if (!Options.camera_required || _offlineCameras.Count == 0)
+                {
+                    return;
+                }
+                _camerasBack ??= Signal();
+                back = _camerasBack.Task;
+            }
+            await back.WaitAsync(token);
+        }
+    }
+
     public void Pause()
     {
         if (!_holding && Status is eMapStatus.Live or eMapStatus.Overtime)
@@ -125,7 +196,14 @@ public sealed class MapRun
     {
         RoundState? start = null;
 
-        if (MapInPlay && RestorableRound() > 0)
+        // ReplayMapAfterRestart: Rush restores no rounds, so a map it comes
+        // back to is set aside and played again from warmup
+        if (MapInPlay && RecordedRound() > 0 && !Options.CanRestoreRounds())
+        {
+            SetRoundsAside();
+            await StartMap(token);
+        }
+        else if (MapInPlay && RestorableRound() > 0)
         {
             start = await HoldForRestore(RestorableRound(), token);
         }
@@ -374,17 +452,45 @@ public sealed class MapRun
                 stamped: false
             );
         }
+
+        // CoachSystem: a coach joins their side without being one of its
+        // players, so they ready nobody and play no round
+        if (!Options.coaches)
+        {
+            return;
+        }
+
+        foreach (MatchLineUp lineup in new[] { _match.lineup_1, _match.lineup_2 })
+        {
+            if (string.IsNullOrEmpty(lineup.coach_steam_id))
+            {
+                continue;
+            }
+
+            await _pacer.Wait(2, token);
+            _server.Emit(
+                _match.id,
+                _map.id,
+                "player-connected",
+                new Dictionary<string, object>
+                {
+                    { "player_name", $"{lineup.name} coach" },
+                    { "steam_id", lineup.coach_steam_id },
+                },
+                stamped: false
+            );
+        }
     }
 
     // Everyone readies up on their own once they are all in; a match that has
     // to be started by an admin or a coach waits for force_ready, as it would.
     private async Task WaitForReady(CancellationToken token)
     {
+        // ReadySystem: a player without a working camera can't ready up
+        await WaitForCameras(token);
+
         bool readiesItself =
-            (
-                Options.ready_setting == "Players"
-                && ConnectedPlayers >= Options.ExpectedPlayerCount()
-            )
+            (Options.ready_setting == "Players" && ConnectedPlayers >= _match.ExpectedPlayerCount())
             || (
                 Options.ready_setting == "Captains"
                 && _roster.Lineup1.Count > 0
@@ -394,7 +500,7 @@ public sealed class MapRun
         if (!readiesItself)
         {
             Log.Info(
-                $"waiting for force_ready ({Options.ready_setting} ready, {ConnectedPlayers} of {Options.ExpectedPlayerCount()} players)"
+                $"waiting for force_ready ({Options.ready_setting} ready, {ConnectedPlayers} of {_match.ExpectedPlayerCount()} players)"
             );
             _waitingForReady = true;
             await _ready.Task.WaitAsync(token);
@@ -522,6 +628,8 @@ public sealed class MapRun
         int roundsPlayed = start?.RoundsPlayed ?? 0;
         int maxMoney = Economy.MaxMoney(Options);
         bool surrenders = _scenario.Surrender && ScenarioMap;
+        bool timeouts = _scenario.Timeouts && ScenarioMap;
+        bool chats = _scenario.Chat && ScenarioMap;
         bool leaves = (_scenario.Disconnect || _scenario.Abandon) && ScenarioMap;
         SimPlayer? leaver = null;
         List<Guid>? script = surrenders
@@ -572,6 +680,57 @@ public sealed class MapRun
             if (resumed != null)
             {
                 await resumed.Task.WaitAsync(token);
+            }
+
+            // CameraSystem: a player who lost their camera stops play, and
+            // the players resume it once everyone is back on camera
+            if (CamerasOffline())
+            {
+                UpdateMapStatus(eMapStatus.Paused);
+                await WaitForCameras(token);
+                await _pacer.Wait(10, token);
+                UpdateMapStatus(_overtime ? eMapStatus.Overtime : eMapStatus.Live);
+            }
+
+            if (timeouts && roundsPlayed == TacticalTimeoutAfterRounds)
+            {
+                // TimeoutSystem.CallTacTimeout: the team spends a timeout and
+                // CS2 holds the freeze time for it
+                _timeoutsLeft[_scenario.Subject]--;
+                _server.Emit(
+                    _match.id,
+                    _map.id,
+                    "techTimeout",
+                    new Dictionary<string, object>
+                    {
+                        { "map_id", _map.id },
+                        { "lineup_1_timeouts_available", _timeoutsLeft[_roster.Lineup1Id] },
+                        { "lineup_2_timeouts_available", _timeoutsLeft[_roster.Lineup2Id] },
+                    },
+                    stamped: false
+                );
+                await _pacer.Wait(TimeoutLength, token);
+            }
+
+            if (timeouts && roundsPlayed == TechnicalPauseAfterRounds)
+            {
+                // a technical pause both teams have to resume, the one that
+                // called it first
+                UpdateMapStatus(eMapStatus.Paused);
+                await _pacer.Wait(20, token);
+                Log.Info("the team that paused resumed, waiting for the other team");
+                await _pacer.Wait(10, token);
+                UpdateMapStatus(_overtime ? eMapStatus.Overtime : eMapStatus.Live);
+            }
+
+            if (chats && roundsPlayed == 1)
+            {
+                Chat(_roster.Of(_scenario.Subject)[0], "glhf");
+            }
+
+            if (chats && roundsPlayed == 2)
+            {
+                TeamChat(_roster.Of(_scenario.Subject)[0], "save this one");
             }
 
             // RoundStart.cs: a round that starts short of players is paused
@@ -737,6 +896,11 @@ public sealed class MapRun
                 // GameEnd.cs publishes the last round without a backup
                 score["backup_file"] = "";
                 _server.Emit(_match.id, _map.id, "score", score, stamped: true);
+
+                if (chats)
+                {
+                    Chat(_roster.Of(Opponent(_scenario.Subject))[0], "gg");
+                }
                 return (lineup1Score, lineup2Score, true);
             }
 
@@ -775,6 +939,40 @@ public sealed class MapRun
                 await _pacer.Wait(HalftimeDuration, token);
             }
         }
+    }
+
+    // PlayerChat: all chat goes to the match, team chat to the player's own
+    // lineup, and only when the api says it takes it.
+    private void Chat(SimPlayer player, string message)
+    {
+        _server.Emit(
+            _match.id,
+            _map.id,
+            "chat",
+            new Dictionary<string, object> { { "player", player.SteamId }, { "message", message } },
+            stamped: false
+        );
+    }
+
+    private void TeamChat(SimPlayer player, string message)
+    {
+        if (!_match.relay_team_chat)
+        {
+            return;
+        }
+
+        _server.Emit(
+            _match.id,
+            _map.id,
+            "teamChat",
+            new Dictionary<string, object>
+            {
+                { "player", player.SteamId },
+                { "message", message },
+                { "lineupId", player.LineupId.ToString() },
+            },
+            stamped: false
+        );
     }
 
     private List<SimPlayer> Present(List<SimPlayer> lineup)
@@ -874,10 +1072,10 @@ public sealed class MapRun
             { "round", roundsPlayed },
             { "lineup_1_score", lineup1Score },
             { "lineup_1_money", _roster.Lineup1.Sum(player => player.Money).ToString() },
-            { "lineup_1_timeouts_available", $"{Timeouts}" },
+            { "lineup_1_timeouts_available", $"{_timeoutsLeft[_roster.Lineup1Id]}" },
             { "lineup_2_score", lineup2Score },
             { "lineup_2_money", _roster.Lineup2.Sum(player => player.Money).ToString() },
-            { "lineup_2_timeouts_available", $"{Timeouts}" },
+            { "lineup_2_timeouts_available", $"{_timeoutsLeft[_roster.Lineup2Id]}" },
             { "lineup_1_side", SideRules.ToApi(lineup1Side) },
             { "lineup_2_side", SideRules.ToApi(SideRules.Opposite(lineup1Side)) },
             { "winning_side", SideRules.ToApi(winner) },
@@ -919,7 +1117,7 @@ public sealed class MapRun
         {
             UpdateMapStatus(eMapStatus.UploadingDemo, winner);
             await _pacer.Wait(15, token);
-            Log.Info("no demo was recorded, nothing to upload");
+            await _server.UploadDemo(_match.id, _map.id, token);
         }
 
         UpdateMapStatus(eMapStatus.Finished, _surrenderedTo ?? winner);

@@ -1,0 +1,22 @@
+# The panel's mediamtx, with RTSP on for the stand-in webcams tools.mjs starts.
+logLevel: warn
+api: yes
+apiAddress: :9997
+authInternalUsers:
+  - user: any
+    pass:
+    ips: []
+    permissions:
+      - action: publish
+      - action: read
+      - action: api
+rtsp: yes
+rtspAddress: :8554
+hls: no
+webrtc: no
+srt: no
+rtmp: no
+pathDefaults:
+  source: publisher
+paths:
+  all_others:

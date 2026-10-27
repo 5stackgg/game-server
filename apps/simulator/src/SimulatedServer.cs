@@ -48,6 +48,7 @@ public sealed class SimulatedServer
     public string LoadedMap { get; private set; }
     public bool HoldFetches { get; set; }
     public Action? MapLoaded { get; set; }
+    public IDemoUploader? Demos { get; set; }
 
     public MatchData? Match => _match;
     public MapRun? Run => _run;
@@ -234,6 +235,24 @@ public sealed class SimulatedServer
 
     // Times are what the api orders and keys a map's rows by, and it keeps them
     // to the millisecond, so no two events may share one.
+    public async Task UploadDemo(Guid matchId, Guid mapId, CancellationToken token)
+    {
+        if (Demos == null)
+        {
+            Log.Info("no demo store, nothing to upload");
+            return;
+        }
+
+        try
+        {
+            await Demos.Upload(matchId, mapId, token);
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            Log.Warn($"unable to upload the demo: {error.Message}");
+        }
+    }
+
     public void Emit(
         Guid matchId,
         Guid mapId,
@@ -300,10 +319,17 @@ public sealed class SimulatedServer
             case "api_knife_switch":
                 run?.ConfirmKnifeSwitch();
                 return null;
-            case "css_pause" or "sw_pause" or "css_tech" or "sw_tech" or "mp_pause_match":
+            // bare pause and resume are what the panel sends a server whose
+            // runtime it has no commands for
+            case "css_pause"
+            or "sw_pause"
+            or "css_tech"
+            or "sw_tech"
+            or "mp_pause_match"
+            or "pause":
                 run?.Pause();
                 return null;
-            case "css_resume" or "sw_resume" or "mp_unpause_match":
+            case "css_resume" or "sw_resume" or "mp_unpause_match" or "resume":
                 run?.Resume();
                 return null;
             case "match_state":
@@ -315,7 +341,12 @@ public sealed class SimulatedServer
                 }
                 return null;
             case "restore_round":
-                return $"{RestoreRefused} the simulated server keeps no round backups";
+                return _match?.options.CanRestoreRounds() == false
+                    ? $"{RestoreRefused} round restores are disabled in {_match.options.type}"
+                    : $"{RestoreRefused} the simulated server keeps no round backups";
+            case "camera_state":
+                run?.UpdateCameras(args);
+                return null;
             case "fivestack_status":
                 return StatusReport();
             case "status":

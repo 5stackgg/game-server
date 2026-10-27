@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json;
 using FiveStack.Entities;
 using FiveStack.Enums;
@@ -18,7 +19,12 @@ public interface IMatchSource
     Task<MatchFetch> Fetch(CancellationToken token);
 }
 
-public sealed class ApiClient : IMatchSource
+public interface IDemoUploader
+{
+    Task Upload(Guid matchId, Guid mapId, CancellationToken token);
+}
+
+public sealed class ApiClient : IMatchSource, IDemoUploader
 {
     private readonly SimulatorSettings _settings;
     private readonly HttpClient _http;
@@ -52,6 +58,81 @@ public sealed class ApiClient : IMatchSource
         response.EnsureSuccessStatusCode();
 
         return Read(await response.Content.ReadAsStringAsync(token));
+    }
+
+    // GameDemos.UploadDemos: a presigned url from the api, the file PUT to it,
+    // then the api told it is there. There is no game to record, so a small
+    // stand-in goes up where the .dem would.
+    public async Task Upload(Guid matchId, Guid mapId, CancellationToken token)
+    {
+        string demo = $"{matchId}_{mapId}.dem";
+        byte[] file = StandInDemo();
+
+        using HttpResponseMessage presign = await PostDemos(
+            $"{matchId}/pre-signed",
+            new { demo, mapId },
+            token
+        );
+        if (presign.StatusCode == System.Net.HttpStatusCode.NotAcceptable)
+        {
+            Log.Info("demo is already uploaded");
+            return;
+        }
+        presign.EnsureSuccessStatusCode();
+
+        using JsonDocument body = JsonDocument.Parse(
+            await presign.Content.ReadAsStringAsync(token)
+        );
+        string url = body.RootElement.GetProperty("presignedUrl").GetString() ?? "";
+
+        using var put = new HttpRequestMessage(HttpMethod.Put, url)
+        {
+            Content = new ByteArrayContent(file),
+        };
+        put.Content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        using HttpResponseMessage stored = await _http.SendAsync(put, token);
+        stored.EnsureSuccessStatusCode();
+
+        using HttpResponseMessage uploaded = await PostDemos(
+            $"{matchId}/uploaded",
+            new
+            {
+                demo,
+                mapId,
+                size = file.Length,
+            },
+            token
+        );
+        uploaded.EnsureSuccessStatusCode();
+        Log.Info($"demo {demo} uploaded ({file.Length} bytes)");
+    }
+
+    public static byte[] StandInDemo()
+    {
+        byte[] file = new byte[1024];
+        "HL2DEMO\0"u8.CopyTo(file);
+        return file;
+    }
+
+    private async Task<HttpResponseMessage> PostDemos(
+        string path,
+        object body,
+        CancellationToken token
+    )
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"{_settings.DemosUrl}/demos/{path}"
+        )
+        {
+            Content = JsonContent.Create(body),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            _settings.ApiPassword
+        );
+
+        return await _http.SendAsync(request, token);
     }
 
     // CurrentMatchUtility.Read, without the plugin's logger.

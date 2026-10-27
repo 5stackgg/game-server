@@ -1,6 +1,6 @@
 \set ON_ERROR_STOP on
--- A region, a server row per simulator in compose.yml, and ten players for
--- each of them, so matches on different servers never share a player.
+-- A region, a server row per simulator in compose.yml, and ten players and a
+-- coach for each of them, so matches on different servers never share anyone.
 BEGIN;
 INSERT INTO server_regions (value, description, is_lan) VALUES ('Simulated', 'Simulated', false);
 
@@ -11,4 +11,7 @@ FROM generate_series(1, 3) n;
 
 INSERT INTO players (steam_id, name, role)
 SELECT 76561198000000000 + i, 'sim-' || i, 'user' FROM generate_series(1, 30) i;
+
+INSERT INTO players (steam_id, name, role)
+SELECT 76561198000000100 + n, 'sim-coach-' || n, 'user' FROM generate_series(1, 3) n;
 COMMIT;
