@@ -57,6 +57,13 @@ teardown() {
 trap teardown EXIT
 
 docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+# The demos domain's certificate, which the simulated servers trust.
+mkdir -p certs
+if [ ! -f certs/demos.crt ]; then
+    openssl req -x509 -newkey rsa:2048 -nodes -days 365 -subj /CN=demos \
+        -addext subjectAltName=DNS:demos -keyout certs/demos.key -out certs/demos.crt 2>/dev/null
+    chmod 644 certs/demos.key
+fi
 echo "starting the api"
 if ! docker compose up -d --wait api >/dev/null 2>&1; then
     docker compose logs --tail 50
