@@ -31,7 +31,16 @@ jobs:
       - name: The api's and the simulated servers' logs
         if: failure()
         working-directory: apps/simulator/e2e
-        run: docker compose logs --no-color --tail 300 api sim-1 sim-2 sim-3
+        run: |
+          docker compose logs --no-color --tail 300 api sim-1 sim-2 sim-3
+          docker compose logs --no-color --timestamps > e2e-logs.txt
+
+      - name: Every container's whole log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: simulator-e2e-logs
+          path: apps/simulator/e2e/e2e-logs.txt
 
       - name: Stop the stack
         if: always()

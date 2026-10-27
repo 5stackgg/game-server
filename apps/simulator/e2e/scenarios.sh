@@ -528,7 +528,7 @@ SQL
 # chat <server>: a player says glhf to the match after round one and talks to
 # their own lineup after round two, and the other lineup says gg at the end.
 chat() {
-    local server=$1 match failed=0 lineup_1 lineup_2 speaker all team other
+    local server=$1 match failed=0 lineup_1 lineup_2 speaker player all team other
     match=$(new_id)
     create_match "$match" "$server" 1 "Alpha" "Bravo sim:chat"
     start_match "$match"
@@ -536,14 +536,19 @@ chat() {
 
     lineup_1=$(sql -c "SELECT lineup_1_id FROM matches WHERE id = '$match'")
     lineup_2=$(sql -c "SELECT lineup_2_id FROM matches WHERE id = '$match'")
-    speaker=$((76561198000000000 + server * 10 - 9 + 5))
+    # Any of Bravo's players: the simulator picks the first of the roster the
+    # api sends, in no set order.
+    speaker=$(for ((player = 76561198000000000 + server * 10 - 4; player <= 76561198000000000 + server * 10; player++)); do
+        printf '%s|' "$player"
+    done)
+    speaker=${speaker%|}
     all=$(redis HVALS "chat_match_$match")
     team=$(redis HVALS "chat_match_team_$match:$lineup_2")
     other=$(redis HVALS "chat_match_team_$match:$lineup_1")
 
     check -v speaker="$speaker" \
         -v glhf="$(grep -c '"glhf"' <<<"$all" || true)" \
-        -v glhf_by="$(grep '"glhf"' <<<"$all" | grep -c "$speaker" || true)" \
+        -v glhf_by="$(grep '"glhf"' <<<"$all" | grep -cE "$speaker" || true)" \
         -v gg="$(grep -c '"gg"' <<<"$all" || true)" \
         -v team="$(grep -c '"save this one"' <<<"$team" || true)" \
         -v team_in_all="$(grep -c '"save this one"' <<<"$all" || true)" \
@@ -670,13 +675,15 @@ SQL
 # ready_3v3 <server> <ready setting>: a 3v3 Competitive readies with its
 # captains, or with an organizer's force_ready, and plays out unpaused.
 ready_3v3() {
-    local server=$1 ready=$2 match failed=0 forced=n/a
+    local server=$1 ready=$2 match failed=0 forced=n/a started
     match=$(new_id)
     create_match "$match" "$server" 1 "Alpha" "Bravo" per_side=3 ready="$ready"
+    # The no-show scenarios leave the same line in a server's log.
+    started=$(date -u +%FT%TZ)
     start_match "$match"
     if [ "$ready" = Admin ]; then
         forced=false
-        if until_true 300 sim_logged "$server" "waiting for force_ready"; then
+        if until_true 300 sim_logged "$server" "waiting for force_ready" "$started"; then
             tool rcon "sim-$server" e2e-rcon force_ready >/dev/null && forced=true
         fi
     fi
