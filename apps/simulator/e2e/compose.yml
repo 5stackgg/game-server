@@ -15,6 +15,9 @@ x-api-env: &api-env
   HASURA_GRAPHQL_ADMIN_SECRET: e2e
   TYPESENSE_API_KEY: e2e
   APP_KEY: sim-e2e-key
+  # A test stack is not a panel: 5stack.gg would count its matches in the
+  # fleet's.
+  TELEMETRY: "false"
   ENC_SECRET: sim-e2e-session
   WEB_DOMAIN: localhost
   API_DOMAIN: api
