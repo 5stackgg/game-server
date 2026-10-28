@@ -18,6 +18,18 @@ public class GapsTests
         }
     }
 
+    // What an HttpClient whose Timeout ran out throws.
+    private sealed class TimingOutDemos : IDemoUploader
+    {
+        public Task Upload(Guid matchId, Guid mapId, CancellationToken token)
+        {
+            throw new TaskCanceledException(
+                "The request was canceled due to the configured HttpClient.Timeout of 10 seconds elapsing.",
+                new TimeoutException()
+            );
+        }
+    }
+
     private static async Task<(List<Published> Events, SimulatedServer Server)> Play(
         MatchData match,
         Action<SimulatedServer, Published>? during = null,
@@ -174,6 +186,18 @@ public class GapsTests
         await Play(match, onGameNode: false, demos: demos);
 
         Assert.Equal([(match.id, match.match_maps[0].id)], demos.Uploads);
+    }
+
+    [Fact]
+    public async Task AMapWhoseDemoUploadTimesOutStillFinishes()
+    {
+        (List<Published> events, _) = await Play(
+            Matches.Build(),
+            onGameNode: false,
+            demos: new TimingOutDemos()
+        );
+
+        Assert.Equal(["UploadingDemo", "Finished"], Statuses(events)[^2..]);
     }
 
     [Fact]

@@ -167,7 +167,9 @@ public sealed class SimulatedServer
             {
                 await run.Play(cancel.Token);
             }
-            catch (OperationCanceledException) { }
+            // An HttpClient timeout is an OperationCanceledException too: only
+            // a run that was stopped ends quietly.
+            catch (OperationCanceledException) when (cancel.IsCancellationRequested) { }
             catch (Exception error)
             {
                 Log.Warn($"map run failed: {error}");
@@ -247,7 +249,9 @@ public sealed class SimulatedServer
         {
             await Demos.Upload(matchId, mapId, token);
         }
-        catch (Exception error) when (error is not OperationCanceledException)
+        // A timed out request throws TaskCanceledException, which ended the map
+        // run in UploadingDemo for good; only a stopped run is let through.
+        catch (Exception error) when (!token.IsCancellationRequested)
         {
             Log.Warn($"unable to upload the demo: {error.Message}");
         }
