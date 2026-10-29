@@ -744,6 +744,52 @@ public class PlayerRosterTests
         Assert.Equal("de_inferno", panel.Map(3));
     }
 
+    // A roster that changed over the map change differs from the report still
+    // waiting to be taken; that must not turn every poll into a sync.
+    [Fact]
+    public async Task ARefusedMapEndReportIsOnlyRetriedOnTheInterval()
+    {
+        var (loop, roster, _, panel) = Loop();
+        roster.MapIs("de_mirage");
+        loop.Observe([Human("1"), Human("2")], Start);
+        await loop.Tick(Start);
+
+        roster.MapEnded(At(5));
+        roster.MapStarted(At(6), "de_inferno");
+        panel.Answer = () => Task.FromResult(Panel.Ok(recorded: false));
+
+        DateTimeOffset now = At(6);
+
+        for (; now < At(80); now += TimeSpan.FromSeconds(0.5))
+        {
+            loop.Observe([Human("1")], now);
+            await loop.Tick(now);
+        }
+
+        // At 6, 36 and 66 seconds, though the hold settled at 52.
+        Assert.Equal(4, panel.Bodies.Count);
+
+        for (int sync = 1; sync < 4; sync++)
+        {
+            Assert.Equal("de_mirage", panel.Map(sync));
+            Assert.Equal(["1", "2"], panel.SteamIds(sync));
+        }
+
+        panel.Answer = () => Task.FromResult(Panel.Ok(recorded: true));
+
+        for (; now < At(100); now += TimeSpan.FromSeconds(0.5))
+        {
+            loop.Observe([Human("1")], now);
+            await loop.Tick(now);
+        }
+
+        Assert.Equal(6, panel.Bodies.Count);
+        Assert.Equal("de_mirage", panel.Map(4));
+        Assert.Equal("de_inferno", panel.Map(5));
+        Assert.Equal(["1"], panel.SteamIds(5));
+        Assert.Equal([("2", 0, 0)], panel.Departed(5));
+    }
+
     [Fact]
     public async Task AMapEndReportIsGivenUpAfterTheCap()
     {

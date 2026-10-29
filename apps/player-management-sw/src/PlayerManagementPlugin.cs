@@ -137,8 +137,7 @@ public partial class PlayerManagementPlugin : BasePlugin
         _mapUnloadHandler = _ => _roster.MapEnded(DateTimeOffset.UtcNow);
         Core.Event.OnMapUnload += _mapUnloadHandler;
 
-        _mapLoadHandler = _ =>
-            _roster.MapStarted(DateTimeOffset.UtcNow, Core.Engine.GlobalVars.MapName.ToString());
+        _mapLoadHandler = @event => _roster.MapStarted(DateTimeOffset.UtcNow, @event.MapName);
         Core.Event.OnMapLoad += _mapLoadHandler;
 
         _worldUpdateHandler = OnWorldUpdate;
@@ -169,11 +168,24 @@ public partial class PlayerManagementPlugin : BasePlugin
         try
         {
             _loop.Observe(Observed(Humans()), DateTimeOffset.UtcNow);
-            _roster.MapIs(Core.Engine.GlobalVars.MapName.ToString());
         }
         catch (Exception error)
         {
             _logger.LogDebug(error, "unable to read the players present on load");
+        }
+
+        // A hot reload has missed the map's load, and a cold boot has no map to
+        // ask about yet: it arrives with OnMapLoad.
+        if (hotReload)
+        {
+            try
+            {
+                _roster.MapIs(Core.Engine.GlobalVars.MapName.ToString());
+            }
+            catch (Exception error)
+            {
+                _logger.LogDebug(error, "unable to read the map on load");
+            }
         }
 
         _loop.Start();

@@ -134,7 +134,10 @@ public class PlayerRoster
     }
 
     // The roster as the map ended goes out on its own, before the hold, so the
-    // panel credits the map's last kills to it and not to the next map.
+    // panel credits the map's last kills to it and not to the next map. A map
+    // that ends before its own hold has settled has no roster to send, and a
+    // map change while the last map's report is still undelivered replaces
+    // it: either way those kills land on the next map.
     public void MapEnded(DateTimeOffset now)
     {
         lock (_lock)
@@ -394,7 +397,9 @@ public class PlayerRoster
             Reconcile(now);
         }
 
-        if (!Matches())
+        // A pending final report is what any sync would send, so a roster that
+        // differs from it waits for it to be delivered or given up.
+        if (_final == null && !Matches())
         {
             _dueAt ??= now + Debounce;
         }
