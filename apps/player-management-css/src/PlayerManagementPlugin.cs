@@ -100,7 +100,9 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         });
 
         RegisterListener<Listeners.OnMapEnd>(() => _roster.MapEnded(DateTimeOffset.UtcNow));
-        RegisterListener<Listeners.OnMapStart>(_ => _roster.MapStarted(DateTimeOffset.UtcNow));
+        RegisterListener<Listeners.OnMapStart>(map =>
+            _roster.MapStarted(DateTimeOffset.UtcNow, map)
+        );
 
         RegisterListener<Listeners.OnServerHibernationUpdate>(hibernating =>
         {
@@ -138,6 +140,7 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         try
         {
             _loop.Observe(Observed(Humans()), DateTimeOffset.UtcNow);
+            _roster.MapIs(Server.MapName);
         }
         catch (Exception error)
         {

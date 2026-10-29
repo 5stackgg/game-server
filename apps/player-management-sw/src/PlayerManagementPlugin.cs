@@ -137,7 +137,8 @@ public partial class PlayerManagementPlugin : BasePlugin
         _mapUnloadHandler = _ => _roster.MapEnded(DateTimeOffset.UtcNow);
         Core.Event.OnMapUnload += _mapUnloadHandler;
 
-        _mapLoadHandler = _ => _roster.MapStarted(DateTimeOffset.UtcNow);
+        _mapLoadHandler = _ =>
+            _roster.MapStarted(DateTimeOffset.UtcNow, Core.Engine.GlobalVars.MapName.ToString());
         Core.Event.OnMapLoad += _mapLoadHandler;
 
         _worldUpdateHandler = OnWorldUpdate;
@@ -168,6 +169,7 @@ public partial class PlayerManagementPlugin : BasePlugin
         try
         {
             _loop.Observe(Observed(Humans()), DateTimeOffset.UtcNow);
+            _roster.MapIs(Core.Engine.GlobalVars.MapName.ToString());
         }
         catch (Exception error)
         {

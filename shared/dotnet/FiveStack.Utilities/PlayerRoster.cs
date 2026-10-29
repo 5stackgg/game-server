@@ -5,7 +5,11 @@ namespace FiveStack.Utilities;
 
 public sealed record ObservedPlayer(string SteamId, string Name, string? Ip, bool Verified);
 
-public sealed record RosterReport(List<RosterPlayer>? Players, List<DepartedPlayer> Departed);
+public sealed record RosterReport(
+    List<RosterPlayer>? Players,
+    List<DepartedPlayer> Departed,
+    string? Map
+);
 
 // Who is on the server, as the game thread last saw it, never as the connect
 // and disconnect hooks tell it: a changelevel puts every client through a
@@ -62,6 +66,9 @@ public class PlayerRoster
     private DateTimeOffset _holdSince;
     private bool _mapStarted;
     private DateTimeOffset? _releaseAt;
+    private string? _map;
+    private RosterReport? _final;
+    private DateTimeOffset _finalAt;
 
     // Returns when a sync is due if this observation is what made one due.
     public virtual DateTimeOffset? Observe(IEnumerable<ObservedPlayer> players, DateTimeOffset now)
@@ -126,23 +133,42 @@ public class PlayerRoster
         }
     }
 
+    // The roster as the map ended goes out on its own, before the hold, so the
+    // panel credits the map's last kills to it and not to the next map.
     public void MapEnded(DateTimeOffset now)
     {
         lock (_lock)
         {
+            if (_state == eRosterState.Known)
+            {
+                _final = new RosterReport(Players(), Departures(), _map);
+                _finalAt = now;
+                _dueAt = now;
+            }
+
             Hold(now);
             _mapStarted = false;
             _releaseAt = null;
         }
     }
 
-    public void MapStarted(DateTimeOffset now)
+    public void MapStarted(DateTimeOffset now, string? map)
     {
         lock (_lock)
         {
+            _map = MapName(map);
             Hold(now);
             _mapStarted = true;
             _releaseAt = null;
+        }
+    }
+
+    // For a plugin loaded onto a map already running, which never sees it start.
+    public void MapIs(string? map)
+    {
+        lock (_lock)
+        {
+            _map = MapName(map);
         }
     }
 
@@ -193,36 +219,20 @@ public class PlayerRoster
         {
             Advance(now);
 
-            List<RosterPlayer>? players =
-                _state == eRosterState.Known
-                    ? _current
-                        .Select(entry => new RosterPlayer
-                        {
-                            steam_id = entry.Key,
-                            conn = entry.Value.Conn,
-                            name = entry.Value.Name,
-                            ip = entry.Value.Ip,
-                            kills = entry.Value.Kills,
-                            deaths = entry.Value.Deaths,
-                        })
-                        .ToList()
-                    : null;
-
-            _sent = players?.ToDictionary(player => player.conn, player => player.name);
             _dueAt = null;
 
-            List<DepartedPlayer> departed = _departed
-                .Take(MaxDepartures)
-                .Select(departure => new DepartedPlayer
-                {
-                    steam_id = departure.Player.steam_id,
-                    conn = departure.Player.conn,
-                    kills = departure.Player.kills,
-                    deaths = departure.Player.deaths,
-                })
-                .ToList();
+            if (_final != null)
+            {
+                _sent = _final.Players!.ToDictionary(player => player.conn, player => player.name);
 
-            return new RosterReport(players, departed);
+                return _final;
+            }
+
+            List<RosterPlayer>? players = _state == eRosterState.Known ? Players() : null;
+
+            _sent = players?.ToDictionary(player => player.conn, player => player.name);
+
+            return new RosterReport(players, Departures(), _map);
         }
     }
 
@@ -231,7 +241,7 @@ public class PlayerRoster
     // nothing predates the roster and has taken them.
     public void Delivered(RosterReport report, bool? recorded)
     {
-        if (report.Players == null || recorded == false || report.Departed.Count == 0)
+        if (report.Players == null || recorded == false)
         {
             return;
         }
@@ -240,6 +250,11 @@ public class PlayerRoster
 
         lock (_lock)
         {
+            if (ReferenceEquals(report, _final))
+            {
+                _final = null;
+            }
+
             _departed.RemoveAll(departure => conns.Contains(departure.Player.conn));
         }
     }
@@ -303,6 +318,44 @@ public class PlayerRoster
         return attackerSlot != victimSlot && (teammatesAreEnemies || attackerTeam != victimTeam);
     }
 
+    // The panel checks the name itself; this only keeps an empty one from
+    // reading as a map.
+    private static string? MapName(string? raw)
+    {
+        string map = (raw ?? "").Trim();
+
+        return map.Length == 0 ? null : map;
+    }
+
+    private List<RosterPlayer> Players()
+    {
+        return _current
+            .Select(entry => new RosterPlayer
+            {
+                steam_id = entry.Key,
+                conn = entry.Value.Conn,
+                name = entry.Value.Name,
+                ip = entry.Value.Ip,
+                kills = entry.Value.Kills,
+                deaths = entry.Value.Deaths,
+            })
+            .ToList();
+    }
+
+    private List<DepartedPlayer> Departures()
+    {
+        return _departed
+            .Take(MaxDepartures)
+            .Select(departure => new DepartedPlayer
+            {
+                steam_id = departure.Player.steam_id,
+                conn = departure.Player.conn,
+                kills = departure.Player.kills,
+                deaths = departure.Player.deaths,
+            })
+            .ToList();
+    }
+
     private void Hold(DateTimeOffset now)
     {
         if (_state != eRosterState.Hold)
@@ -316,6 +369,13 @@ public class PlayerRoster
     private void Advance(DateTimeOffset now)
     {
         _departed.RemoveAll(departure => now - departure.At > DepartedTtl);
+
+        // A panel that cannot take the final report for this long is not
+        // holding up every report after it.
+        if (_final != null && now - _finalAt >= HoldCap)
+        {
+            _final = null;
+        }
 
         if (_state == eRosterState.Hold && Settled(now))
         {

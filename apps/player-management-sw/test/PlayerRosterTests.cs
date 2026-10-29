@@ -102,6 +102,13 @@ public class PlayerRosterTests
                 .ToList();
         }
 
+        public string? Map(int sync)
+        {
+            return Bodies[sync].TryGetProperty("map", out JsonElement map)
+                ? map.GetString()
+                : null;
+        }
+
         public List<string> DepartedConns(int sync)
         {
             return Bodies[sync]
@@ -392,19 +399,21 @@ public class PlayerRosterTests
         Dictionary<string, string> conns = panel.Conns(0);
 
         roster.MapEnded(At(1));
-        await loop.Tick(Start + SanctionSyncLoop.Interval);
+        await loop.Tick(At(1));
+        await loop.Tick(At(1) + SanctionSyncLoop.Interval);
 
-        Assert.Null(panel.Players(1));
-        Assert.Empty(panel.Departed(1));
+        Assert.Equal(["1", "2"], panel.SteamIds(1));
+        Assert.Null(panel.Players(2));
+        Assert.Empty(panel.Departed(2));
 
-        roster.MapStarted(At(40));
+        roster.MapStarted(At(40), "de_inferno");
         loop.Observe([Human("1")], At(41));
         loop.Observe([Human("1"), Human("2")], At(50));
         await loop.Tick(At(50) + PlayerRoster.Debounce);
 
-        Assert.Equal(["1", "2"], panel.SteamIds(2));
-        Assert.Equal(conns, panel.Conns(2));
-        Assert.Empty(panel.Departed(2));
+        Assert.Equal(["1", "2"], panel.SteamIds(3));
+        Assert.Equal(conns, panel.Conns(3));
+        Assert.Empty(panel.Departed(3));
     }
 
     // The first tick of a new map routinely finds nobody back yet. Settling on
@@ -419,7 +428,7 @@ public class PlayerRosterTests
         Dictionary<string, string> conns = panel.Conns(0);
 
         roster.MapEnded(At(1));
-        roster.MapStarted(At(2));
+        roster.MapStarted(At(2), "de_inferno");
 
         for (int second = 3; second <= 20; second++)
         {
@@ -430,13 +439,15 @@ public class PlayerRosterTests
         loop.Observe([Human("1")], At(21));
         loop.Observe([Human("1"), Human("2")], At(25));
         await loop.Tick(At(25) + PlayerRoster.Debounce);
-        Assert.Single(panel.Bodies);
 
-        loop.Observe([Human("1"), Human("2")], Start + SanctionSyncLoop.Interval);
-        await loop.Tick(Start + SanctionSyncLoop.Interval);
+        // The map-end report, and nothing since.
+        Assert.Equal(2, panel.Bodies.Count);
 
-        Assert.Equal(conns, panel.Conns(1));
-        Assert.Empty(panel.Departed(1));
+        loop.Observe([Human("1"), Human("2")], At(3) + SanctionSyncLoop.Interval);
+        await loop.Tick(At(3) + SanctionSyncLoop.Interval);
+
+        Assert.Equal(conns, panel.Conns(2));
+        Assert.Empty(panel.Departed(2));
     }
 
     [Fact]
@@ -447,19 +458,20 @@ public class PlayerRosterTests
         await loop.Tick(Start);
 
         roster.MapEnded(At(1));
-        roster.MapStarted(At(5));
+        await loop.Tick(At(2));
+        roster.MapStarted(At(5), "de_inferno");
         loop.Observe([Human("1")], At(6));
 
         DateTimeOffset settled = At(6) + PlayerRoster.Settle;
         loop.Observe([Human("1")], settled - TimeSpan.FromSeconds(1));
         await loop.Tick(settled - TimeSpan.FromSeconds(1));
-        Assert.Null(panel.Players(1));
+        Assert.Null(panel.Players(2));
 
         loop.Observe([Human("1")], settled);
         await loop.Tick(settled + PlayerRoster.Debounce);
 
-        Assert.Equal(["1"], panel.SteamIds(2));
-        Assert.Equal([("2", 0, 0)], panel.Departed(2));
+        Assert.Equal(["1"], panel.SteamIds(3));
+        Assert.Equal([("2", 0, 0)], panel.Departed(3));
     }
 
     [Fact]
@@ -493,7 +505,7 @@ public class PlayerRosterTests
         await loop.Tick(Start);
 
         roster.MapEnded(At(1));
-        roster.MapStarted(At(2));
+        roster.MapStarted(At(2), "de_inferno");
 
         DateTimeOffset capped = At(1) + PlayerRoster.HoldCap;
         await loop.Tick(capped);
@@ -611,8 +623,23 @@ public class PlayerRosterTests
         Assert.Empty(panel.Departed(3));
     }
 
+    // A map change leaves no sync without a roster that has departures to
+    // carry, so this one is made by hand.
     [Fact]
-    public async Task ASyncWithoutARosterDoesNotSettleDepartures()
+    public void ASyncWithoutARosterDoesNotSettleDepartures()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+        roster.Observe([Human("1")], At(1));
+
+        RosterReport report = roster.Report(At(2));
+        roster.Delivered(report with { Players = null }, true);
+
+        Assert.Equal(["2"], roster.Report(At(3)).Departed.Select(player => player.steam_id));
+    }
+
+    [Fact]
+    public async Task TheMapEndReportCarriesAndSettlesTheDeparturesBeforeIt()
     {
         var (loop, roster, _, panel) = Loop();
         loop.Observe([Human("1"), Human("2")], Start);
@@ -620,22 +647,153 @@ public class PlayerRosterTests
 
         loop.Observe([Human("1")], At(1));
         roster.MapEnded(At(2));
-        await loop.Tick(At(1) + PlayerRoster.Debounce);
+        await loop.Tick(At(2));
 
-        Assert.Null(panel.Players(1));
+        Assert.Equal(["1"], panel.SteamIds(1));
         Assert.Equal([("2", 0, 0)], panel.Departed(1));
 
-        roster.MapStarted(At(3));
+        roster.MapStarted(At(3), "de_inferno");
         loop.Observe([Human("1")], At(4));
-        await loop.Tick(At(4) + PlayerRoster.Debounce);
+        loop.Observe([Human("1")], At(2) + SanctionSyncLoop.Interval);
+        await loop.Tick(At(2) + SanctionSyncLoop.Interval);
 
-        DateTimeOffset next = At(4) + PlayerRoster.Debounce + SanctionSyncLoop.Interval;
+        DateTimeOffset next = At(2) + SanctionSyncLoop.Interval * 2;
         loop.Observe([Human("1")], next);
         await loop.Tick(next);
 
+        // Everyone held is back, so the new map's roster is known at once.
         Assert.Equal(["1"], panel.SteamIds(2));
-        Assert.Equal([("2", 0, 0)], panel.Departed(2));
+        Assert.Equal(["1"], panel.SteamIds(3));
+        Assert.Empty(panel.Departed(2));
         Assert.Empty(panel.Departed(3));
+    }
+
+    // The panel splits a session's counts by the map each report names, so the
+    // kills between the last sync and the end of a map have to be reported as
+    // that map's before the next one starts.
+    [Fact]
+    public async Task AMapsLastKillsAreReportedOnThatMap()
+    {
+        var (loop, roster, _, panel) = Loop();
+        roster.MapIs("de_mirage");
+        loop.Observe([Human("1"), Human("2")], Start);
+        await loop.Tick(Start);
+
+        roster.Died("2", "1");
+        roster.Died("2", "1");
+        roster.MapEnded(At(5));
+        roster.MapStarted(At(6), "de_inferno");
+        await loop.Tick(At(6));
+
+        Assert.Equal("de_mirage", panel.Map(0));
+        Assert.Equal("de_mirage", panel.Map(1));
+        Assert.Equal(
+            [
+                new Reported("1", "player 1", "203.0.113.24", 2, 0),
+                new Reported("2", "player 2", "203.0.113.24", 0, 2),
+            ],
+            panel.Players(1)
+        );
+
+        await loop.Tick(At(6) + SanctionSyncLoop.Interval);
+        Assert.Null(panel.Players(2));
+        Assert.Equal("de_inferno", panel.Map(2));
+
+        loop.Observe([Human("1"), Human("2")], At(6) + SanctionSyncLoop.Interval * 2);
+        roster.Died("1", "2");
+        await loop.Tick(At(6) + SanctionSyncLoop.Interval * 2);
+
+        Assert.Equal("de_inferno", panel.Map(3));
+        Assert.Equal(
+            [
+                new Reported("1", "player 1", "203.0.113.24", 2, 1),
+                new Reported("2", "player 2", "203.0.113.24", 1, 2),
+            ],
+            panel.Players(3)
+        );
+    }
+
+    [Fact]
+    public async Task AMapEndReportThePanelMissedIsSentAgain()
+    {
+        var (loop, roster, _, panel) = Loop();
+        roster.MapIs("de_mirage");
+        loop.Observe([Human("1")], Start);
+        await loop.Tick(Start);
+
+        roster.Died(null, "1");
+        roster.MapEnded(At(5));
+        roster.MapStarted(At(6), "de_inferno");
+        panel.Answer = () => Task.FromResult(Panel.Down());
+        await loop.Tick(At(6));
+
+        panel.Answer = () => Task.FromResult(Panel.Ok(recorded: true));
+        await loop.Tick(At(6) + SanctionSyncLoop.Interval);
+        await loop.Tick(At(6) + SanctionSyncLoop.Interval * 2);
+
+        foreach (int sync in new[] { 1, 2 })
+        {
+            Assert.Equal("de_mirage", panel.Map(sync));
+            Assert.Equal(
+                [new Reported("1", "player 1", "203.0.113.24", 1, 0)],
+                panel.Players(sync)
+            );
+        }
+
+        Assert.Null(panel.Players(3));
+        Assert.Equal("de_inferno", panel.Map(3));
+    }
+
+    [Fact]
+    public async Task AMapEndReportIsGivenUpAfterTheCap()
+    {
+        var (loop, roster, _, panel) = Loop();
+        roster.MapIs("de_mirage");
+        loop.Observe([Human("1")], Start);
+        await loop.Tick(Start);
+
+        roster.MapEnded(At(5));
+        roster.MapStarted(At(6), "de_inferno");
+        panel.Answer = () => Task.FromResult(Panel.Down());
+
+        DateTimeOffset now = At(6);
+
+        for (; now < At(5) + PlayerRoster.HoldCap; now += SanctionSyncLoop.Interval)
+        {
+            await loop.Tick(now);
+            Assert.Equal("de_mirage", panel.Map(panel.Bodies.Count - 1));
+        }
+
+        panel.Answer = () => Task.FromResult(Panel.Ok(recorded: true));
+        loop.Observe([Human("1")], now);
+        await loop.Tick(now);
+
+        Assert.Equal("de_inferno", panel.Map(panel.Bodies.Count - 1));
+        Assert.Equal(["1"], panel.SteamIds(panel.Bodies.Count - 1));
+    }
+
+    [Fact]
+    public async Task AnUnknownRosterHasNoMapEndReport()
+    {
+        var (loop, roster, _, panel) = Loop();
+        roster.MapEnded(At(1));
+        roster.MapStarted(At(2), "de_inferno");
+        await loop.Tick(At(2));
+
+        Assert.Single(panel.Bodies);
+        Assert.Null(panel.Players(0));
+        Assert.Equal("de_inferno", panel.Map(0));
+    }
+
+    [Fact]
+    public async Task ABlankMapIsNoMap()
+    {
+        var (loop, roster, _, panel) = Loop();
+        roster.MapIs("  ");
+        loop.Observe([Human("1")], Start);
+        await loop.Tick(Start);
+
+        Assert.Equal(JsonValueKind.Null, panel.Bodies[0].GetProperty("map").ValueKind);
     }
 
     [Fact]
