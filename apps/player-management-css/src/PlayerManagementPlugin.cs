@@ -45,6 +45,10 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
     private readonly HashSet<ulong> _mutedByUs = new();
     private readonly HashSet<ulong> _kicked = new();
 
+    // Each player's health after the last hit they survived, by slot, so a
+    // lethal hit is credited only with what it took. Cleared when they spawn.
+    private readonly Dictionary<int, int> _health = new();
+
     private long _lastEnforceMs;
 
     private INetworkServerService? _networkServerService;
@@ -401,6 +405,8 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             }
 
             CCSPlayerController? attacker = @event.Attacker;
+            CCSPlayerController? assister = @event.Assister;
+            bool teammatesAreEnemies = TeammatesAreEnemies();
 
             bool kill =
                 attacker != null
@@ -410,14 +416,151 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
                     victim.Slot,
                     attacker.TeamNum,
                     victim.TeamNum,
-                    TeammatesAreEnemies()
+                    teammatesAreEnemies
                 );
 
-            _roster.Died(VerifiedSteamIdOf(victim), kill ? VerifiedSteamIdOf(attacker!) : null);
+            bool assist =
+                assister != null
+                && IsHuman(assister)
+                && PlayerRoster.CountsAsAssist(
+                    assister.Slot,
+                    victim.Slot,
+                    assister.TeamNum,
+                    victim.TeamNum,
+                    teammatesAreEnemies,
+                    @event.Assistedflash
+                );
+
+            _roster.Died(
+                VerifiedSteamIdOf(victim),
+                kill ? VerifiedSteamIdOf(attacker!) : null,
+                assist ? VerifiedSteamIdOf(assister!) : null,
+                @event.Headshot
+            );
         }
         catch (Exception error)
         {
             Logger.LogError(error, "unable to count a death");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnPlayerHurt(EventPlayerHurt @event, GameEventInfo info)
+    {
+        try
+        {
+            CCSPlayerController? victim = @event.Userid;
+
+            if (victim == null || !IsHuman(victim))
+            {
+                return HookResult.Continue;
+            }
+
+            int dealt = PlayerRoster.Dealt(
+                @event.DmgHealth,
+                @event.Health,
+                _health.TryGetValue(victim.Slot, out int before) ? before : null
+            );
+            _health[victim.Slot] = @event.Health;
+
+            CCSPlayerController? attacker = @event.Attacker;
+
+            if (
+                attacker == null
+                || !IsHuman(attacker)
+                || !PlayerRoster.CountsAsKill(
+                    attacker.Slot,
+                    victim.Slot,
+                    attacker.TeamNum,
+                    victim.TeamNum,
+                    TeammatesAreEnemies()
+                )
+            )
+            {
+                return HookResult.Continue;
+            }
+
+            _roster.Hurt(VerifiedSteamIdOf(attacker), VerifiedSteamIdOf(victim), dealt);
+        }
+        catch (Exception error)
+        {
+            Logger.LogError(error, "unable to count damage");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
+    {
+        try
+        {
+            CCSPlayerController? player = @event.Userid;
+
+            if (player != null)
+            {
+                _health.Remove(player.Slot);
+            }
+        }
+        catch (Exception error)
+        {
+            Logger.LogError(error, "unable to reset a player's health");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info)
+    {
+        try
+        {
+            // Fired when the game starts or restarts, not at the end of a
+            // round anybody played.
+            if (@event.Message == "#SFUI_Notice_Game_Commencing")
+            {
+                return HookResult.Continue;
+            }
+
+            Dictionary<string, int> teams = new();
+
+            foreach (CCSPlayerController player in Humans())
+            {
+                string? steamId = VerifiedSteamIdOf(player);
+
+                if (steamId != null)
+                {
+                    teams[steamId] = player.TeamNum;
+                }
+            }
+
+            _roster.RoundEnded(@event.Winner, teams, IsWarmup());
+        }
+        catch (Exception error)
+        {
+            Logger.LogError(error, "unable to count a round");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnRoundMvp(EventRoundMvp @event, GameEventInfo info)
+    {
+        try
+        {
+            CCSPlayerController? player = @event.Userid;
+
+            if (player != null && IsHuman(player))
+            {
+                _roster.Mvp(VerifiedSteamIdOf(player));
+            }
+        }
+        catch (Exception error)
+        {
+            Logger.LogError(error, "unable to count an MVP");
         }
 
         return HookResult.Continue;
@@ -443,6 +586,23 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         try
         {
             return ConVar.Find("mp_teammates_are_enemies")?.GetPrimitiveValue<bool>() ?? false;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    // Unreadable is taken as live, as a server without warmup is.
+    private static bool IsWarmup()
+    {
+        try
+        {
+            return Utilities
+                    .FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+                    .FirstOrDefault()
+                    ?.GameRules?.WarmupPeriod
+                ?? false;
         }
         catch (Exception)
         {
