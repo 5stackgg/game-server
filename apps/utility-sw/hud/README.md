@@ -125,12 +125,14 @@ way.
 
 Nuke, Train and Vertigo draw their lower floor on an image of its own,
 `<map>_lower_radar.psd`, in the same frame as the main one, and the overview's
-`verticalsections` say below which height it applies. The picker does what CS2's
-radar does: it shows the floor the player is standing on, the main one when they
-have no position, and only the spots that land on that floor. The rest appear
-when the player walks down or up to them. That the lower images load by that
-path is inferred from the VPK, which ships `de_nuke_lower_radar_psd.vtex_c`
-beside the main one; it has not yet been seen in game.
+`verticalsections` say below which height it applies. The picker swaps image the
+way CS2's radar does, by the floor the player is standing on (the main one when
+they have no position), and draws every spot on either: a detonation height says
+little about which floor a throw is for, and one floor's throws are often thrown
+from the other. That the lower images load by that path is inferred from the
+VPK, which ships `de_nuke_lower_radar_psd.vtex_c` beside the main one; it has not
+yet been seen in game. Check it after the Workshop publish, or with the item
+unmounted: a mounted item draws the published `nadehud2.css` over a local build.
 
 Icons are SVG. One of CS2's own draws from the stylesheet as
 `background-image: url("s2r://panorama/images/icons/equipment/molotov.vsvg")`

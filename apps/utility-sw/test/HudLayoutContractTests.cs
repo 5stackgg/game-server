@@ -699,9 +699,9 @@ public class HudLayoutContractTests
         }
     }
 
-    // Without a rule of its own a level's markers draw over the main image,
-    // which is the misplacement levels exist to prevent. A level RadarMaps.Levels
-    // does not list is never switched to at all.
+    // Without a rule of its own a level keeps showing the main image while the
+    // player stands below it. A level RadarMaps.Levels does not list is never
+    // switched to at all.
     [Fact]
     public void EveryRadarLevelHasItsOwnImage()
     {

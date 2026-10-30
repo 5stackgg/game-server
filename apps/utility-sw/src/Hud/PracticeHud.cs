@@ -63,25 +63,12 @@ public partial class UtilityPracticePlugin
             : null;
     }
 
-    // Only the spots on the floor the radar is showing: a marker for one on the
-    // other floor would point at whatever room is drawn above or below it.
-    private List<UtilityTarget> Targets(ulong steamId, RadarCalibration calibration, string? level)
+    private List<UtilityTarget> Targets(ulong steamId)
     {
         return UtilityTargetCluster.Top(
-            UtilityTargetCluster
-                .Build(_library.For(steamId))
-                .Where(target => RadarProjection.Level(target.Landing.z, calibration) == level),
+            UtilityTargetCluster.Build(_library.For(steamId)),
             HudSlots.MapMarkers
         );
-    }
-
-    // Any spot in the library rather than only those drawn: one picked on the
-    // lower floor keeps narrowing the list after the player walks upstairs.
-    private UtilityTarget? Target(ulong steamId, string id)
-    {
-        return UtilityTargetCluster
-            .Build(_library.For(steamId))
-            .FirstOrDefault(target => target.Id == id);
     }
 
     // Twice a second. Fast enough that the reachable ring keeps up with a
@@ -461,7 +448,7 @@ public partial class UtilityPracticePlugin
         // it, which is what makes a library of hundreds usable at all.
         if (_target.TryGetValue(steamId, out string? target))
         {
-            UtilityTarget? chosen = Target(steamId, target);
+            UtilityTarget? chosen = Targets(steamId).FirstOrDefault(t => t.Id == target);
 
             if (chosen != null)
             {
@@ -606,7 +593,7 @@ public partial class UtilityPracticePlugin
                 .Select(UtilityTargetCluster.Key)
                 .ToHashSet(StringComparer.Ordinal);
 
-        foreach (UtilityTarget target in Targets(steamId, calibration, level))
+        foreach (UtilityTarget target in Targets(steamId))
         {
             (int column, int row) = RadarProjection.Cell(
                 target.Landing,
@@ -644,7 +631,7 @@ public partial class UtilityPracticePlugin
     {
         if (_target.TryGetValue(steamId, out string? target))
         {
-            UtilityTarget? chosen = Target(steamId, target);
+            UtilityTarget? chosen = Targets(steamId).FirstOrDefault(t => t.Id == target);
 
             if (chosen != null)
             {
