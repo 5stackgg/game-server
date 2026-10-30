@@ -257,6 +257,11 @@ public class HudLayoutContractTests
             toggles.Add(("radar", map));
         }
 
+        foreach (string level in RadarMaps.Levels)
+        {
+            toggles.Add(("radar", level));
+        }
+
         for (int marker = 1; marker <= HudSlots.MapMarkers; marker++)
         {
             toggles.Add(($"m{marker}", "hidden"));
@@ -691,6 +696,30 @@ public class HudLayoutContractTests
                 metadata.RootElement.TryGetProperty(map, out _),
                 $"{map}: no calibration in metadata.json"
             );
+        }
+    }
+
+    // Without a rule of its own a level's markers draw over the main image,
+    // which is the misplacement levels exist to prevent. A level RadarMaps.Levels
+    // does not list is never switched to at all.
+    [Fact]
+    public void EveryRadarLevelHasItsOwnImage()
+    {
+        string styles = Styles();
+        Dictionary<string, RadarCalibration> loaded = RadarMaps.Load(
+            Path.Combine(HudRoot(), "radars", "metadata.json")
+        );
+
+        foreach ((string map, RadarCalibration calibration) in loaded)
+        {
+            foreach (RadarLevel level in calibration.Levels)
+            {
+                Assert.Contains(level.Name, RadarMaps.Levels);
+                Assert.Contains(
+                    $"#radar.{map}.{level.Name} {{ background-image: url(\"s2r://panorama/images/overheadmaps/{map}_{level.Name}_radar.psd\"); }}",
+                    styles
+                );
+            }
         }
     }
 

@@ -2,16 +2,14 @@ using FiveStack.Entities.Practice;
 
 namespace FiveStack.Utilities;
 
-// A straight port of web/composables/useRadarProjection.ts. The panel and the
-// in-game HUD draw the same lineups onto the same radar images, so they have to
-// agree to the pixel -- a lineup that lands on Window on the site and on Palace
-// in game is worse than no map at all. Any change here belongs in both.
-public class RadarSplit
+// Valve's overview frame, the one CS2's own radar images are drawn in: pos_x and
+// pos_y are the world point at the image's top left corner and scale is world
+// units per pixel of a 1024 square. metadata.json stores that as resolution =
+// scale and offset = (-pos_x, 1024 * scale - pos_y).
+public class RadarLevel
 {
-    public float BoundsTop { get; set; }
-    public float BoundsBottom { get; set; }
-    public float OffsetX { get; set; }
-    public float OffsetY { get; set; }
+    public string Name { get; set; } = "";
+    public float MaxZ { get; set; }
 }
 
 public class RadarCalibration
@@ -19,14 +17,11 @@ public class RadarCalibration
     public float Resolution { get; set; }
     public float OffsetX { get; set; }
     public float OffsetY { get; set; }
-    public List<RadarSplit> Splits { get; set; } = new List<RadarSplit>();
+    public List<RadarLevel> Levels { get; set; } = new List<RadarLevel>();
 }
 
 public static class RadarProjection
 {
-    // The web renders into a 1024 square regardless of the source image size,
-    // and the calibration is expressed against that, not against the png.
-    public const float Canvas = 1024f;
     public const float Pixels = 1024f;
 
     public static string NormalizeMapName(string? name)
@@ -38,38 +33,29 @@ public static class RadarProjection
             : trimmed;
     }
 
-    // Nuke and Vertigo stack two playable levels on one image; a point inside a
-    // split's height band shifts by a percentage of the image, which is what
-    // puts the lower level on its own half.
-    public static (float X, float Y) Split(float z, IReadOnlyList<RadarSplit>? splits)
+    // A level is a floor CS2 draws on an image of its own, in the same frame as
+    // the main one, for anything below its maxZ. Null is the main image.
+    public static string? Level(float z, RadarCalibration calibration)
     {
-        if (splits == null)
-        {
-            return (0f, 0f);
-        }
+        RadarLevel? below = null;
 
-        foreach (RadarSplit split in splits)
+        foreach (RadarLevel level in calibration.Levels)
         {
-            if (z > split.BoundsBottom && z < split.BoundsTop)
+            if (z < level.MaxZ && (below == null || level.MaxZ < below.MaxZ))
             {
-                return (split.OffsetX, split.OffsetY);
+                below = level;
             }
         }
 
-        return (0f, 0f);
+        return below?.Name;
     }
 
     public static (float X, float Y) Project(Vec3 point, RadarCalibration calibration)
     {
-        (float dx, float dy) = Split(point.z, calibration.Splits);
-
-        float gameX = point.x + calibration.OffsetX;
-        float gameY = point.y + calibration.OffsetY;
-
-        float pixelX = gameX / calibration.Resolution + dx / 100f * Pixels;
-        float pixelYFromBottom = gameY / calibration.Resolution + dy / 100f * Pixels;
-
-        return (pixelX * (Canvas / Pixels), Canvas - pixelYFromBottom * (Canvas / Pixels));
+        return (
+            (point.x + calibration.OffsetX) / calibration.Resolution,
+            Pixels - (point.y + calibration.OffsetY) / calibration.Resolution
+        );
     }
 
     // 0..1 across the image, which is what a one-of-N class grid needs. Points
@@ -79,7 +65,7 @@ public static class RadarProjection
     {
         (float x, float y) = Project(point, calibration);
 
-        return (Math.Clamp(x / Canvas, 0f, 1f), Math.Clamp(y / Canvas, 0f, 1f));
+        return (Math.Clamp(x / Pixels, 0f, 1f), Math.Clamp(y / Pixels, 0f, 1f));
     }
 
     public static (int Column, int Row) Cell(

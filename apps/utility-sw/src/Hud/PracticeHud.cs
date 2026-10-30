@@ -34,7 +34,7 @@ public partial class UtilityPracticePlugin
 
     private readonly Dictionary<ulong, MenuState> _menus = new();
 
-    // Loaded once from hud/radars/metadata.json, mirrored from the web panel.
+    // Loaded once from hud/radars/metadata.json, built from CS2's overviews.
     private Dictionary<string, RadarCalibration>? _radars;
 
     // The target a player picked off the map, so the list knows what to filter
@@ -63,12 +63,25 @@ public partial class UtilityPracticePlugin
             : null;
     }
 
-    private List<UtilityTarget> Targets(ulong steamId)
+    // Only the spots on the floor the radar is showing: a marker for one on the
+    // other floor would point at whatever room is drawn above or below it.
+    private List<UtilityTarget> Targets(ulong steamId, RadarCalibration calibration, string? level)
     {
         return UtilityTargetCluster.Top(
-            UtilityTargetCluster.Build(_library.For(steamId)),
+            UtilityTargetCluster
+                .Build(_library.For(steamId))
+                .Where(target => RadarProjection.Level(target.Landing.z, calibration) == level),
             HudSlots.MapMarkers
         );
+    }
+
+    // Any spot in the library rather than only those drawn: one picked on the
+    // lower floor keeps narrowing the list after the player walks upstairs.
+    private UtilityTarget? Target(ulong steamId, string id)
+    {
+        return UtilityTargetCluster
+            .Build(_library.For(steamId))
+            .FirstOrDefault(target => target.Id == id);
     }
 
     // Twice a second. Fast enough that the reachable ring keeps up with a
@@ -448,7 +461,7 @@ public partial class UtilityPracticePlugin
         // it, which is what makes a library of hundreds usable at all.
         if (_target.TryGetValue(steamId, out string? target))
         {
-            UtilityTarget? chosen = Targets(steamId).FirstOrDefault(t => t.Id == target);
+            UtilityTarget? chosen = Target(steamId, target);
 
             if (chosen != null)
             {
@@ -541,6 +554,12 @@ public partial class UtilityPracticePlugin
         LineupRecord? loaded = _system.StateFor(steamId).Loaded;
         Vec3? at = PracticeSystem.Where(player)?.feet_position;
 
+        // The floor the player is standing on, which is how CS2's own radar
+        // picks its image, and the main one while they have no position.
+        string? level = calibration == null || at == null
+            ? null
+            : RadarProjection.Level(at.Value.z, calibration);
+
         var template = new NadePickTemplate
         {
             Title = Narrowing(steamId) ?? "Pick a lineup",
@@ -555,6 +574,7 @@ public partial class UtilityPracticePlugin
             MapClass = calibration == null
                 ? null
                 : RadarProjection.NormalizeMapName(_library.Map),
+            Level = level,
             Focus = selected == null
                 ? "click a spot for the throws that land there"
                 : "click it again to let go of it",
@@ -586,7 +606,7 @@ public partial class UtilityPracticePlugin
                 .Select(UtilityTargetCluster.Key)
                 .ToHashSet(StringComparer.Ordinal);
 
-        foreach (UtilityTarget target in Targets(steamId))
+        foreach (UtilityTarget target in Targets(steamId, calibration, level))
         {
             (int column, int row) = RadarProjection.Cell(
                 target.Landing,
@@ -624,7 +644,7 @@ public partial class UtilityPracticePlugin
     {
         if (_target.TryGetValue(steamId, out string? target))
         {
-            UtilityTarget? chosen = Targets(steamId).FirstOrDefault(t => t.Id == target);
+            UtilityTarget? chosen = Target(steamId, target);
 
             if (chosen != null)
             {

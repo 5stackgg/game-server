@@ -1,140 +1,90 @@
 {
-  "_comment": "Mirrored from web/public/radars/metadata.json by scripts/sync-radars.sh. Do not edit here.",
+  "_comment": "Built from CS2's resource/overviews/<map>.txt by scripts/sync-radars.sh: resolution = scale, offset = (-pos_x, 1024 * scale - pos_y), levels from verticalsections. Do not edit here.",
   "de_ancient": {
-    "resolution": 4.26,
+    "resolution": 5,
     "offset": {
-      "x": 2590,
-      "y": 2520
-    },
-    "zRange": {
-      "min": -95,
-      "max": 220
+      "x": 2953,
+      "y": 2956
     }
   },
   "de_anubis": {
-    "resolution": 5.25,
+    "resolution": 5.22,
     "offset": {
-      "x": 2830,
-      "y": 2030
-    },
-    "zRange": {
-      "min": -85,
-      "max": 180
+      "x": 2796,
+      "y": 2017.28
     }
   },
   "de_cache": {
-    "resolution": 5.54,
+    "resolution": 5.5,
     "offset": {
-      "x": 2020,
-      "y": 2390
+      "x": 2000,
+      "y": 2382
     }
   },
   "de_dust2": {
     "resolution": 4.4,
     "offset": {
-      "x": 2470,
-      "y": 1255
-    },
-    "zRange": {
-      "min": -50,
-      "max": 185
+      "x": 2476,
+      "y": 1266.6
     }
   },
   "de_inferno": {
-    "resolution": 4.91,
+    "resolution": 4.9,
     "offset": {
-      "x": 2090,
-      "y": 1150
-    },
-    "zRange": {
-      "min": 73,
-      "max": 310
+      "x": 2087,
+      "y": 1147.6
     }
   },
   "de_mirage": {
-    "resolution": 5.02,
+    "resolution": 5,
     "offset": {
-      "x": 3240,
-      "y": 3410
-    },
-    "zRange": {
-      "min": -300,
-      "max": 20
+      "x": 3230,
+      "y": 3407
     }
   },
   "de_nuke": {
-    "resolution": 6.98,
+    "resolution": 7,
     "offset": {
-      "x": 3290,
-      "y": 5990
+      "x": 3453,
+      "y": 4281
     },
-    "zRange": {
-      "min": -480,
-      "max": -20
-    },
-    "splits": [
+    "levels": [
       {
-        "bounds": {
-          "top": -482,
-          "bottom": -2500
-        },
-        "offset": {
-          "x": 0,
-          "y": -46
-        },
-        "zRange": {
-          "min": -770,
-          "max": -480
-        }
+        "name": "lower",
+        "maxZ": -495
       }
     ]
   },
   "de_overpass": {
-    "resolution": 5.18,
+    "resolution": 5.2,
     "offset": {
-      "x": 4830,
-      "y": 3540
-    },
-    "zRange": {
-      "min": 10,
-      "max": 500
+      "x": 4831,
+      "y": 3543.8
     }
   },
   "de_train": {
-    "resolution": 4.74,
+    "resolution": 4.082077,
     "offset": {
-      "x": 2730,
-      "y": 2360
+      "x": 2308,
+      "y": 2102.046848
     },
-    "zRange": {
-      "min": -320,
-      "max": 15
-    }
+    "levels": [
+      {
+        "name": "lower",
+        "maxZ": -50
+      }
+    ]
   },
   "de_vertigo": {
-    "resolution": 4.96,
+    "resolution": 4,
     "offset": {
-      "x": 3890,
-      "y": 3800
+      "x": 3168,
+      "y": 2334
     },
-    "zRange": {
-      "min": 11680,
-      "max": 11920
-    },
-    "splits": [
+    "levels": [
       {
-        "bounds": {
-          "top": 11550,
-          "bottom": 11000
-        },
-        "offset": {
-          "x": 0.2,
-          "y": -42.6
-        },
-        "zRange": {
-          "min": 11550,
-          "max": 11680
-        }
+        "name": "lower",
+        "maxZ": 11700
       }
     ]
   }

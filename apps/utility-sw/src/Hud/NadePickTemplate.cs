@@ -40,6 +40,11 @@ public class NadePickTemplate : HudTemplate
 
     // Null on a map with no radar to draw: the list has the panel to itself.
     public string? MapClass { get; set; }
+
+    // One of RadarMaps.Levels while the player stands on that floor, null for
+    // the map's main image.
+    public string? Level { get; set; }
+
     public string Focus { get; set; } = "";
 
     public NadePickTemplate Add(Row row)
@@ -116,6 +121,11 @@ public class NadePickTemplate : HudTemplate
         foreach (string map in RadarMaps.All)
         {
             surface.Class("radar", map, map == MapClass);
+        }
+
+        foreach (string level in RadarMaps.Levels)
+        {
+            surface.Class("radar", level, level == Level);
         }
 
         for (int index = 0; index < HudSlots.MapMarkers; index++)
