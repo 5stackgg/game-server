@@ -195,11 +195,13 @@ public static class HudLayoutContract
 
             // Either scoping counts: a rule on the element's own id
             // (#radar.de_mirage) selects it just as surely as one on a class it
-            // carries (.nh-row.selected).
+            // carries (.nh-row.selected), and so does one that needs another
+            // class beside it (#radar.de_nuke.lower).
+            const string alongside = "(?:\\.[A-Za-z0-9_-]+)*";
             bool styled =
-                new Regex($"#{Regex.Escape(elementId)}\\.{Regex.Escape(name)}\\b").IsMatch(css)
+                new Regex($"#{Regex.Escape(elementId)}{alongside}\\.{Regex.Escape(name)}\\b").IsMatch(css)
                 || classes.Any(carried =>
-                    new Regex($"\\.{Regex.Escape(carried)}\\.{Regex.Escape(name)}\\b").IsMatch(css)
+                    new Regex($"\\.{Regex.Escape(carried)}{alongside}\\.{Regex.Escape(name)}\\b").IsMatch(css)
                 );
 
             if (!styled)

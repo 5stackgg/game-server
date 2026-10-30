@@ -4,17 +4,43 @@ using Xunit;
 
 namespace FiveStack.Tests;
 
-// Pinned against web/composables/useRadarProjection.ts. If these move, the panel
-// and the HUD have stopped agreeing about where a lineup lands.
+// Pinned against CS2's resource/overviews/<map>.txt. If these move, markers no
+// longer land where CS2's own radar image draws the place.
 public class RadarProjectionTests
 {
+    private static string ShippedCalibration()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (directory != null)
+        {
+            string candidate = Path.Combine(
+                directory.FullName, "apps", "utility-sw", "hud", "radars", "metadata.json"
+            );
+
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException("apps/utility-sw/hud/radars/metadata.json not found above the test output");
+    }
+
+    private static Dictionary<string, RadarCalibration> Shipped()
+    {
+        return RadarMaps.Load(ShippedCalibration());
+    }
+
     private static RadarCalibration Mirage()
     {
         return new RadarCalibration
         {
-            Resolution = 5.02f,
-            OffsetX = 3240f,
-            OffsetY = 3410f,
+            Resolution = 5f,
+            OffsetX = 3230f,
+            OffsetY = 1024f * 5f - 1713f,
         };
     }
 
@@ -22,19 +48,10 @@ public class RadarProjectionTests
     {
         return new RadarCalibration
         {
-            Resolution = 6.98f,
-            OffsetX = 3290f,
-            OffsetY = 5990f,
-            Splits = new List<RadarSplit>
-            {
-                new RadarSplit
-                {
-                    BoundsTop = -482f,
-                    BoundsBottom = -2500f,
-                    OffsetX = 0f,
-                    OffsetY = -46f,
-                },
-            },
+            Resolution = 7f,
+            OffsetX = 3453f,
+            OffsetY = 1024f * 7f - 2887f,
+            Levels = new List<RadarLevel> { new RadarLevel { Name = "lower", MaxZ = -495f } },
         };
     }
 
@@ -44,20 +61,39 @@ public class RadarProjectionTests
     [InlineData("  de_inferno  ", "de_inferno")]
     [InlineData("de_ancient_night", "de_ancient")]
     [InlineData(null, "")]
-    public void MapNamesNormaliseLikeTheWeb(string? input, string expected)
+    public void MapNamesNormalise(string? input, string expected)
     {
         Assert.Equal(expected, RadarProjection.NormalizeMapName(input));
     }
 
-    // x = (world.x + offsetX) / resolution
-    // y = 1024 - (world.y + offsetY) / resolution
-    [Fact]
-    public void ProjectsWithTheSameArithmeticAsTheWeb()
+    // pos_x, pos_y and scale exactly as each overview file states them. The
+    // overview's top left corner is pixel (0, 0), and anything else is
+    // ((x - pos_x) / scale, (pos_y - y) / scale) on the 1024 square image.
+    [Theory]
+    [InlineData("de_ancient", -2953f, 2164f, 5f)]
+    [InlineData("de_anubis", -2796f, 3328f, 5.22f)]
+    [InlineData("de_cache", -2000f, 3250f, 5.5f)]
+    [InlineData("de_dust2", -2476f, 3239f, 4.4f)]
+    [InlineData("de_inferno", -2087f, 3870f, 4.9f)]
+    [InlineData("de_mirage", -3230f, 1713f, 5f)]
+    [InlineData("de_nuke", -3453f, 2887f, 7f)]
+    [InlineData("de_overpass", -4831f, 1781f, 5.2f)]
+    [InlineData("de_train", -2308f, 2078f, 4.082077f)]
+    [InlineData("de_vertigo", -3168f, 1762f, 4f)]
+    public void ShippedCalibrationIsValvesOverview(string map, float posX, float posY, float scale)
     {
-        (float x, float y) = RadarProjection.Project(new Vec3(0f, 0f, 0f), Mirage());
+        RadarCalibration calibration = Shipped()[map];
 
-        Assert.Equal(3240f / 5.02f, x, 2);
-        Assert.Equal(1024f - 3410f / 5.02f, y, 2);
+        (float cornerX, float cornerY) = RadarProjection.Project(new Vec3(posX, posY, 0f), calibration);
+
+        Assert.Equal(0f, cornerX, 2);
+        Assert.Equal(0f, cornerY, 2);
+
+        var point = new Vec3(-512f, 768f, 0f);
+        (float x, float y) = RadarProjection.Project(point, calibration);
+
+        Assert.Equal((point.x - posX) / scale, x, 2);
+        Assert.Equal((posY - point.y) / scale, y, 2);
     }
 
     // The y flip is the easiest thing to get backwards, and getting it backwards
@@ -82,29 +118,52 @@ public class RadarProjectionTests
         Assert.True(right > left);
     }
 
-    [Fact]
-    public void NukeLowerLevelShiftsOntoItsOwnHalf()
+    [Theory]
+    [InlineData(-300f, null)]
+    [InlineData(-495f, null)]
+    [InlineData(-496f, "lower")]
+    [InlineData(-770f, "lower")]
+    public void NukeIsOnItsLowerLevelBelowValvesAltitude(float z, string? expected)
     {
-        RadarCalibration nuke = Nuke();
-        var upper = new Vec3(0f, 0f, -100f);
-        var lower = new Vec3(0f, 0f, -1000f);
-
-        (_, float upperY) = RadarProjection.Project(upper, nuke);
-        (_, float lowerY) = RadarProjection.Project(lower, nuke);
-
-        // -46% of the image on a y that is then flipped, so the lower level ends
-        // up BELOW the upper one on screen.
-        Assert.Equal(upperY + 0.46f * RadarProjection.Pixels, lowerY, 2);
+        Assert.Equal(expected, RadarProjection.Level(z, Nuke()));
     }
 
     [Fact]
-    public void HeightOutsideTheSplitBandIsUnshifted()
+    public void AMapWithoutLevelsIsAlwaysOnItsMainImage()
+    {
+        Assert.Null(RadarProjection.Level(-5000f, Mirage()));
+        Assert.Null(RadarProjection.Level(5000f, Mirage()));
+    }
+
+    [Fact]
+    public void APointIsOnTheNearestLevelAboveIt()
+    {
+        var calibration = new RadarCalibration
+        {
+            Resolution = 5f,
+            Levels = new List<RadarLevel>
+            {
+                new RadarLevel { Name = "lower", MaxZ = 0f },
+                new RadarLevel { Name = "basement", MaxZ = -500f },
+            },
+        };
+
+        Assert.Null(RadarProjection.Level(100f, calibration));
+        Assert.Equal("lower", RadarProjection.Level(-100f, calibration));
+        Assert.Equal("basement", RadarProjection.Level(-600f, calibration));
+    }
+
+    // Valve draws a lower floor on its own image in the same frame, so the
+    // height picks the image and never moves the point.
+    [Fact]
+    public void ALowerLevelProjectsInTheSameFrame()
     {
         RadarCalibration nuke = Nuke();
 
-        Assert.Equal((0f, 0f), RadarProjection.Split(-100f, nuke.Splits));
-        Assert.Equal((0f, -46f), RadarProjection.Split(-1000f, nuke.Splits));
-        Assert.Equal((0f, 0f), RadarProjection.Split(-3000f, nuke.Splits));
+        Assert.Equal(
+            RadarProjection.Project(new Vec3(600f, -900f, -400f), nuke),
+            RadarProjection.Project(new Vec3(600f, -900f, -760f), nuke)
+        );
     }
 
     [Fact]
@@ -126,26 +185,7 @@ public class RadarProjectionTests
     [Fact]
     public void TheShippedCalibrationParses()
     {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        string? path = null;
-
-        while (directory != null && path == null)
-        {
-            string candidate = Path.Combine(
-                directory.FullName, "apps", "utility-sw", "hud", "radars", "metadata.json"
-            );
-
-            if (File.Exists(candidate))
-            {
-                path = candidate;
-            }
-
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(path);
-
-        Dictionary<string, RadarCalibration> loaded = RadarMaps.Load(path!);
+        Dictionary<string, RadarCalibration> loaded = Shipped();
 
         foreach (string map in RadarMaps.All)
         {
@@ -153,7 +193,33 @@ public class RadarProjectionTests
             Assert.True(loaded[map].Resolution > 0f, $"{map}: resolution is zero");
         }
 
-        Assert.Equal(2, loaded["de_nuke"].Splits.Count + loaded["de_vertigo"].Splits.Count);
+        Assert.Equal(RadarMaps.All.Count, loaded.Count);
+    }
+
+    // verticalsections, as each overview file states it: the lower image is
+    // drawn below its AltitudeMax.
+    [Theory]
+    [InlineData("de_nuke", -495f)]
+    [InlineData("de_train", -50f)]
+    [InlineData("de_vertigo", 11700f)]
+    public void ShippedLowerLevelsAreValves(string map, float maxZ)
+    {
+        RadarLevel level = Assert.Single(Shipped()[map].Levels);
+
+        Assert.Equal("lower", level.Name);
+        Assert.Equal(maxZ, level.MaxZ);
+    }
+
+    [Fact]
+    public void OnlyNukeTrainAndVertigoHaveALowerLevel()
+    {
+        string[] levelled = Shipped()
+            .Where(entry => entry.Value.Levels.Count > 0)
+            .Select(entry => entry.Key)
+            .OrderBy(map => map, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(new[] { "de_nuke", "de_train", "de_vertigo" }, levelled);
     }
 
     [Fact]
