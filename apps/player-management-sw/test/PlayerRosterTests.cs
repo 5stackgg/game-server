@@ -289,7 +289,7 @@ public class PlayerRosterTests
     {
         var (loop, roster, _, panel) = Loop();
         loop.Observe([Human("1")], Start);
-        roster.Died(null, "1");
+        roster.Died(null, "1", warmup: false);
         await loop.Tick(Start);
 
         await loop.Tick(Start + PlayerRoster.Silence);
@@ -534,10 +534,10 @@ public class PlayerRosterTests
     {
         var (loop, roster, _, panel) = Loop();
         loop.Observe([Human("1"), Human("2")], Start);
-        roster.Died("2", "1");
-        roster.Died("2", "1");
-        roster.Died("1", null);
-        roster.Died(null, "bot");
+        roster.Died("2", "1", warmup: false);
+        roster.Died("2", "1", warmup: false);
+        roster.Died("1", null, warmup: false);
+        roster.Died(null, "bot", warmup: false);
         await loop.Tick(Start);
 
         Assert.Equal(
@@ -550,7 +550,7 @@ public class PlayerRosterTests
 
         loop.Observe([Human("2")], At(1));
         loop.Observe([Human("1"), Human("2")], At(2));
-        roster.Died("2", "1");
+        roster.Died("2", "1", warmup: false);
         await loop.Tick(At(1) + PlayerRoster.Debounce);
 
         Assert.Equal(1, panel.Players(1)![0].Kills);
@@ -585,7 +585,7 @@ public class PlayerRosterTests
         loop.Observe([Human("1")], Start);
         await loop.Tick(Start);
 
-        roster.Died(null, "1");
+        roster.Died(null, "1", warmup: false);
         loop.Observe([], At(1));
         panel.Answer = () => Task.FromResult(Panel.Down());
 
@@ -679,8 +679,8 @@ public class PlayerRosterTests
         loop.Observe([Human("1"), Human("2")], Start);
         await loop.Tick(Start);
 
-        roster.Died("2", "1");
-        roster.Died("2", "1");
+        roster.Died("2", "1", warmup: false);
+        roster.Died("2", "1", warmup: false);
         roster.MapEnded(At(5));
         roster.MapStarted(At(6), "de_inferno");
         await loop.Tick(At(6));
@@ -700,7 +700,7 @@ public class PlayerRosterTests
         Assert.Equal("de_inferno", panel.Map(2));
 
         loop.Observe([Human("1"), Human("2")], At(6) + SanctionSyncLoop.Interval * 2);
-        roster.Died("1", "2");
+        roster.Died("1", "2", warmup: false);
         await loop.Tick(At(6) + SanctionSyncLoop.Interval * 2);
 
         Assert.Equal("de_inferno", panel.Map(3));
@@ -721,7 +721,7 @@ public class PlayerRosterTests
         loop.Observe([Human("1")], Start);
         await loop.Tick(Start);
 
-        roster.Died(null, "1");
+        roster.Died(null, "1", warmup: false);
         roster.MapEnded(At(5));
         roster.MapStarted(At(6), "de_inferno");
         panel.Answer = () => Task.FromResult(Panel.Down());
@@ -873,12 +873,12 @@ public class PlayerRosterTests
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1")], Start);
-        roster.Died(null, "1");
+        roster.Died(null, "1", warmup: false);
         roster.Observe([], At(1));
         roster.Observe([Human("1")], At(2));
-        roster.Died(null, "1");
-        roster.Died(null, "1");
-        roster.Died("1", null);
+        roster.Died(null, "1", warmup: false);
+        roster.Died(null, "1", warmup: false);
+        roster.Died("1", null, warmup: false);
         roster.Observe([], At(3));
 
         RosterReport report = roster.Report(At(4));
@@ -888,6 +888,402 @@ public class PlayerRosterTests
             report.Departed.Select(departed => (departed.steam_id, departed.kills, departed.deaths))
         );
         Assert.NotEqual(report.Departed[0].conn, report.Departed[1].conn);
+    }
+
+    private sealed record Counters(
+        int Kills,
+        int Deaths,
+        int Assists,
+        int Headshots,
+        int Damage,
+        int RoundsPlayed,
+        int RoundsWon,
+        int Mvps
+    );
+
+    private static Counters CountersOf(RosterPlayer player)
+    {
+        return new Counters(
+            player.kills,
+            player.deaths,
+            player.assists,
+            player.headshots,
+            player.damage,
+            player.rounds_played,
+            player.rounds_won,
+            player.mvps
+        );
+    }
+
+    private static Counters CountersOf(DepartedPlayer player)
+    {
+        return new Counters(
+            player.kills,
+            player.deaths,
+            player.assists,
+            player.headshots,
+            player.damage,
+            player.rounds_played,
+            player.rounds_won,
+            player.mvps
+        );
+    }
+
+    private static Counters CountersOf(RosterReport report, string steamId)
+    {
+        return CountersOf(report.Players!.Single(player => player.steam_id == steamId));
+    }
+
+    private static (int Played, int Won) Rounds(RosterReport report, string steamId)
+    {
+        Counters counters = CountersOf(report, steamId);
+
+        return (counters.RoundsPlayed, counters.RoundsWon);
+    }
+
+    private static Dictionary<string, int> Teams(params (string SteamId, int Team)[] teams)
+    {
+        return teams.ToDictionary(team => team.SteamId, team => team.Team);
+    }
+
+    [Fact]
+    public void AssistsAndHeadshotsGoToRosterPlayersOnly()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2"), Human("3")], Start);
+
+        roster.Died("2", "1", warmup: false, assister: "3", headshot: true);
+        roster.Died("2", "1", warmup: false, assister: "bot", headshot: false);
+        roster.Died("3", "bot", warmup: false, assister: "1", headshot: true);
+        roster.Died("3", null, warmup: false, assister: null, headshot: true);
+
+        RosterReport report = roster.Report(At(1));
+
+        Assert.Equal(new Counters(2, 0, 1, 1, 0, 0, 0, 0), CountersOf(report, "1"));
+        Assert.Equal(new Counters(0, 2, 0, 0, 0, 0, 0, 0), CountersOf(report, "2"));
+        Assert.Equal(new Counters(0, 2, 1, 0, 0, 0, 0, 0), CountersOf(report, "3"));
+    }
+
+    // The hooks pass no killer for a kill that does not count, so a team kill's
+    // headshot is not one.
+    [Fact]
+    public void AHeadshotCountsOnlyWithACountedKill()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+        bool teamKill = PlayerRoster.CountsAsKill(
+            1,
+            2,
+            PlayerRoster.TeamT,
+            PlayerRoster.TeamT,
+            false
+        );
+
+        roster.Died("2", teamKill ? "1" : null, warmup: false, headshot: true);
+        roster.Died("2", "1", warmup: false, assister: null, headshot: true);
+
+        Assert.Equal(1, CountersOf(roster.Report(At(1)), "1").Headshots);
+    }
+
+    [Theory]
+    [InlineData(1, 2, 2, 3, false, false, true)]
+    [InlineData(1, 2, 2, 3, false, true, false)]
+    [InlineData(1, 2, 2, 2, false, false, false)]
+    [InlineData(1, 2, 2, 2, true, false, true)]
+    [InlineData(1, 1, 2, 2, true, false, false)]
+    public void AnAssistIsDamageToAnEnemyNotAFlash(
+        int assister,
+        int victim,
+        int assisterTeam,
+        int victimTeam,
+        bool teammatesAreEnemies,
+        bool flash,
+        bool expected
+    )
+    {
+        Assert.Equal(
+            expected,
+            PlayerRoster.CountsAsAssist(
+                assister,
+                victim,
+                assisterTeam,
+                victimTeam,
+                teammatesAreEnemies,
+                flash
+            )
+        );
+    }
+
+    [Fact]
+    public void AFlashAssistEarnsNothing()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2"), Human("3")], Start);
+        bool flash = PlayerRoster.CountsAsAssist(
+            3,
+            2,
+            PlayerRoster.TeamCT,
+            PlayerRoster.TeamT,
+            false,
+            true
+        );
+        bool damage = PlayerRoster.CountsAsAssist(
+            3,
+            2,
+            PlayerRoster.TeamCT,
+            PlayerRoster.TeamT,
+            false,
+            false
+        );
+
+        roster.Died("2", "1", warmup: false, assister: flash ? "3" : null);
+        roster.Died("2", "1", warmup: false, assister: damage ? "3" : null);
+
+        Assert.Equal(1, CountersOf(roster.Report(At(1)), "3").Assists);
+    }
+
+    [Fact]
+    public void DamageIsCountedForTheAttackerOnly()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+
+        roster.Hurt("1", "2", 27, warmup: false);
+        roster.Hurt("1", "2", 73, warmup: false);
+        roster.Hurt("1", "1", 50, warmup: false);
+        roster.Hurt("1", "2", 0, warmup: false);
+        roster.Hurt("1", "2", -5, warmup: false);
+        roster.Hurt("bot", "2", 40, warmup: false);
+        roster.Hurt(null, "2", 40, warmup: false);
+        roster.Hurt("1", null, 10, warmup: false);
+
+        RosterReport report = roster.Report(At(1));
+
+        Assert.Equal(110, CountersOf(report, "1").Damage);
+        Assert.Equal(0, CountersOf(report, "2").Damage);
+    }
+
+    // Damage goes by the kill rule: a teammate's or one's own health is no
+    // damage, unless teammates are enemies.
+    [Theory]
+    [InlineData(1, 2, 2, 3, false, 30)]
+    [InlineData(1, 2, 2, 2, false, 0)]
+    [InlineData(1, 1, 2, 2, false, 0)]
+    [InlineData(1, 2, 2, 2, true, 30)]
+    public void TeamDamageEarnsNothing(
+        int attacker,
+        int victim,
+        int attackerTeam,
+        int victimTeam,
+        bool teammatesAreEnemies,
+        int expected
+    )
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+        bool enemy = PlayerRoster.CountsAsKill(
+            attacker,
+            victim,
+            attackerTeam,
+            victimTeam,
+            teammatesAreEnemies
+        );
+
+        roster.Hurt(enemy ? "1" : null, attacker == victim ? "1" : "2", 30, warmup: false);
+
+        Assert.Equal(expected, CountersOf(roster.Report(At(1)), "1").Damage);
+    }
+
+    [Theory]
+    [InlineData(27, 73, null, 27)]
+    [InlineData(27, 73, 40, 27)]
+    [InlineData(448, 0, null, 100)]
+    [InlineData(448, 0, 31, 31)]
+    [InlineData(20, 0, 31, 20)]
+    [InlineData(448, 0, 0, 0)]
+    [InlineData(-3, 50, null, 0)]
+    public void ALethalHitIsCappedAtTheHealthThatWasLeft(
+        int damage,
+        int healthAfter,
+        int? healthBefore,
+        int expected
+    )
+    {
+        Assert.Equal(expected, PlayerRoster.Dealt(damage, healthAfter, healthBefore));
+    }
+
+    // Player 1 switches sides between the rounds and wins both: a round goes to
+    // the side a player ends it on.
+    [Fact]
+    public void ARoundIsPlayedByEveryoneOnASideAndWonByTheWinners()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2"), Human("3"), Human("4")], Start);
+
+        roster.RoundEnded(
+            PlayerRoster.TeamT,
+            Teams(
+                ("1", PlayerRoster.TeamT),
+                ("2", PlayerRoster.TeamCT),
+                ("3", 1),
+                ("4", 0),
+                ("bot", PlayerRoster.TeamT)
+            ),
+            warmup: false
+        );
+        roster.RoundEnded(
+            PlayerRoster.TeamCT,
+            Teams(
+                ("1", PlayerRoster.TeamCT),
+                ("2", PlayerRoster.TeamCT),
+                ("3", PlayerRoster.TeamT)
+            ),
+            warmup: false
+        );
+
+        RosterReport report = roster.Report(At(1));
+
+        Assert.Equal((2, 2), Rounds(report, "1"));
+        Assert.Equal((2, 1), Rounds(report, "2"));
+        Assert.Equal((1, 0), Rounds(report, "3"));
+        Assert.Equal((0, 0), Rounds(report, "4"));
+    }
+
+    // A draw has no winners, and is still a round everybody on a side played.
+    [Fact]
+    public void ADrawIsPlayedAndWonByNobody()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+
+        roster.RoundEnded(
+            1,
+            Teams(("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamCT)),
+            warmup: false
+        );
+
+        RosterReport report = roster.Report(At(1));
+
+        Assert.Equal((1, 0), Rounds(report, "1"));
+        Assert.Equal((1, 0), Rounds(report, "2"));
+    }
+
+    [Fact]
+    public void WarmupRoundsAreNotCounted()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1")], Start);
+
+        roster.RoundEnded(PlayerRoster.TeamT, Teams(("1", PlayerRoster.TeamT)), warmup: true);
+
+        Assert.Equal(new Counters(0, 0, 0, 0, 0, 0, 0, 0), CountersOf(roster.Report(At(1)), "1"));
+    }
+
+    // Warmup ends without a round of its own: what players do in it is
+    // dropped, and what they do after it counts.
+    [Fact]
+    public void NothingDoneInWarmupIsCounted()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2"), Human("3")], Start);
+
+        roster.Died("2", "1", warmup: true, assister: "3", headshot: true);
+        roster.Hurt("1", "2", 100, warmup: true);
+        roster.Mvp("1", warmup: true);
+        roster.RoundEnded(PlayerRoster.TeamT, Teams(("1", PlayerRoster.TeamT)), warmup: true);
+
+        roster.Died("2", "1", warmup: false, assister: "3", headshot: true);
+        roster.Hurt("1", "2", 100, warmup: false);
+        roster.Mvp("1", warmup: false);
+
+        RosterReport report = roster.Report(At(1));
+
+        Assert.Equal(new Counters(1, 0, 0, 1, 100, 0, 0, 1), CountersOf(report, "1"));
+        Assert.Equal(new Counters(0, 1, 0, 0, 0, 0, 0, 0), CountersOf(report, "2"));
+        Assert.Equal(new Counters(0, 0, 1, 0, 0, 0, 0, 0), CountersOf(report, "3"));
+    }
+
+    [Fact]
+    public void AnMvpGoesToARosterPlayerOnly()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1")], Start);
+
+        roster.Mvp("1", warmup: false);
+        roster.Mvp("1", warmup: false);
+        roster.Mvp("bot", warmup: false);
+        roster.Mvp(null, warmup: false);
+
+        Assert.Equal(2, CountersOf(roster.Report(At(1)), "1").Mvps);
+    }
+
+    private static void CountEverything(PlayerRoster roster, string steamId, string enemy)
+    {
+        roster.Died(enemy, steamId, warmup: false, assister: null, headshot: true);
+        roster.Died(steamId, enemy, warmup: false);
+        roster.Died(enemy, null, warmup: false, assister: steamId);
+        roster.Hurt(steamId, enemy, 64, warmup: false);
+        roster.RoundEnded(
+            PlayerRoster.TeamT,
+            Teams((steamId, PlayerRoster.TeamT), (enemy, PlayerRoster.TeamCT)),
+            warmup: false
+        );
+        roster.Mvp(steamId, warmup: false);
+    }
+
+    [Fact]
+    public async Task EveryCounterStartsOverWithANewConnectionAndDepartsWithItsFinalValue()
+    {
+        var (loop, roster, _, panel) = Loop();
+        loop.Observe([Human("1"), Human("2")], Start);
+        CountEverything(roster, "1", "2");
+        CountEverything(roster, "1", "2");
+        await loop.Tick(Start);
+
+        loop.Observe([Human("2")], At(1));
+        loop.Observe([Human("1"), Human("2")], At(2));
+        CountEverything(roster, "1", "2");
+        await loop.Tick(At(1) + PlayerRoster.Debounce);
+
+        JsonElement departed = Assert.Single(
+            panel.Bodies[1].GetProperty("departed").EnumerateArray()
+        );
+        JsonElement current = panel
+            .Bodies[1]
+            .GetProperty("players")
+            .EnumerateArray()
+            .Single(player => player.GetProperty("steam_id").GetString() == "1");
+
+        Assert.Equal(panel.Conns(0)["1"], departed.GetProperty("conn").GetString());
+        Assert.Equal(
+            new Counters(2, 2, 2, 2, 128, 2, 2, 2),
+            JsonSerializer.Deserialize<Counters>(departed.GetRawText(), Snake)
+        );
+        Assert.Equal(
+            new Counters(1, 1, 1, 1, 64, 1, 1, 1),
+            JsonSerializer.Deserialize<Counters>(current.GetRawText(), Snake)
+        );
+    }
+
+    private static readonly JsonSerializerOptions Snake = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+    };
+
+    // A departure is a snapshot: counting more for a player who has left
+    // changes nothing about the connection that ended.
+    [Fact]
+    public void ADepartureKeepsTheCountersItLeftWith()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+        CountEverything(roster, "1", "2");
+        roster.Observe([Human("2")], At(1));
+        CountEverything(roster, "1", "2");
+
+        DepartedPlayer departed = Assert.Single(roster.Report(At(2)).Departed);
+
+        Assert.Equal(new Counters(1, 1, 1, 1, 64, 1, 1, 1), CountersOf(departed));
     }
 
     [Fact]
@@ -992,6 +1388,12 @@ public class PlayerRosterTests
                     ip = null,
                     kills = 12,
                     deaths = 9,
+                    assists = 5,
+                    headshots = 7,
+                    damage = 1480,
+                    rounds_played = 16,
+                    rounds_won = 10,
+                    mvps = 3,
                 },
             ],
             departed =
@@ -1002,6 +1404,12 @@ public class PlayerRosterTests
                     conn = "c2",
                     kills = 3,
                     deaths = 4,
+                    assists = 1,
+                    headshots = 2,
+                    damage = 410,
+                    rounds_played = 6,
+                    rounds_won = 2,
+                    mvps = 1,
                 },
             ],
         };
@@ -1013,11 +1421,11 @@ public class PlayerRosterTests
         Assert.Contains("\"departed\":[]", JsonSerializer.Serialize(unknown, SanctionsClient.Json));
         Assert.Contains("\"players\":[]", JsonSerializer.Serialize(empty, SanctionsClient.Json));
         Assert.Contains(
-            "\"players\":[{\"steam_id\":\"76561198000000001\",\"conn\":\"c1\",\"name\":\"nyx\",\"ip\":null,\"kills\":12,\"deaths\":9}]",
+            "\"players\":[{\"steam_id\":\"76561198000000001\",\"conn\":\"c1\",\"name\":\"nyx\",\"ip\":null,\"kills\":12,\"deaths\":9,\"assists\":5,\"headshots\":7,\"damage\":1480,\"rounds_played\":16,\"rounds_won\":10,\"mvps\":3}]",
             JsonSerializer.Serialize(known, SanctionsClient.Json)
         );
         Assert.Contains(
-            "\"departed\":[{\"steam_id\":\"76561198000000002\",\"conn\":\"c2\",\"kills\":3,\"deaths\":4}]",
+            "\"departed\":[{\"steam_id\":\"76561198000000002\",\"conn\":\"c2\",\"kills\":3,\"deaths\":4,\"assists\":1,\"headshots\":2,\"damage\":410,\"rounds_played\":6,\"rounds_won\":2,\"mvps\":1}]",
             JsonSerializer.Serialize(known, SanctionsClient.Json)
         );
     }

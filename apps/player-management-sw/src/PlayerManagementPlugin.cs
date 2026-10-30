@@ -52,6 +52,10 @@ public partial class PlayerManagementPlugin : BasePlugin
     private readonly HashSet<ulong> _mutedByUs = new();
     private readonly HashSet<ulong> _kicked = new();
 
+    // Each player's health after the last hit they survived, by slot, so a
+    // lethal hit is credited only with what it took. Cleared when they spawn.
+    private readonly Dictionary<int, int> _health = new();
+
     private EventDelegates.OnTick? _tickHandler;
     private EventDelegates.OnClientPutInServer? _putInServerHandler;
     private EventDelegates.OnClientSteamAuthorize? _authorizeHandler;
@@ -453,6 +457,8 @@ public partial class PlayerManagementPlugin : BasePlugin
             }
 
             IPlayer? attacker = @event.AttackerPlayer;
+            IPlayer? assister = @event.AssisterPlayer;
+            bool teammatesAreEnemies = TeammatesAreEnemies();
 
             bool kill =
                 attacker != null
@@ -462,14 +468,157 @@ public partial class PlayerManagementPlugin : BasePlugin
                     victim.PlayerID,
                     attacker.Controller.TeamNum,
                     victim.Controller.TeamNum,
-                    TeammatesAreEnemies()
+                    teammatesAreEnemies
                 );
 
-            _roster.Died(VerifiedSteamIdOf(victim), kill ? VerifiedSteamIdOf(attacker!) : null);
+            bool assist =
+                assister != null
+                && IsHuman(assister)
+                && PlayerRoster.CountsAsAssist(
+                    assister.PlayerID,
+                    victim.PlayerID,
+                    assister.Controller.TeamNum,
+                    victim.Controller.TeamNum,
+                    teammatesAreEnemies,
+                    @event.AssistedFlash
+                );
+
+            _roster.Died(
+                VerifiedSteamIdOf(victim),
+                kill ? VerifiedSteamIdOf(attacker!) : null,
+                IsWarmup(),
+                assist ? VerifiedSteamIdOf(assister!) : null,
+                @event.Headshot
+            );
         }
         catch (Exception error)
         {
             _logger.LogError(error, "unable to count a death");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnPlayerHurt(EventPlayerHurt @event)
+    {
+        try
+        {
+            IPlayer? victim = @event.UserIdPlayer;
+
+            if (victim == null || !IsHuman(victim))
+            {
+                return HookResult.Continue;
+            }
+
+            int dealt = PlayerRoster.Dealt(
+                @event.ActualDmgHealth,
+                @event.ActualHealth,
+                _health.TryGetValue(victim.PlayerID, out int before) ? before : null
+            );
+            _health[victim.PlayerID] = @event.ActualHealth;
+
+            IPlayer? attacker = @event.AttackerPlayer;
+
+            if (
+                attacker == null
+                || !IsHuman(attacker)
+                || !PlayerRoster.CountsAsKill(
+                    attacker.PlayerID,
+                    victim.PlayerID,
+                    attacker.Controller.TeamNum,
+                    victim.Controller.TeamNum,
+                    TeammatesAreEnemies()
+                )
+            )
+            {
+                return HookResult.Continue;
+            }
+
+            _roster.Hurt(
+                VerifiedSteamIdOf(attacker),
+                VerifiedSteamIdOf(victim),
+                dealt,
+                IsWarmup()
+            );
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to count damage");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnPlayerSpawn(EventPlayerSpawn @event)
+    {
+        try
+        {
+            IPlayer? player = @event.UserIdPlayer;
+
+            if (player != null)
+            {
+                _health.Remove(player.PlayerID);
+            }
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to reset a player's health");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnRoundEnd(EventRoundEnd @event)
+    {
+        try
+        {
+            // Fired when the game starts or restarts, not at the end of a
+            // round anybody played.
+            if (@event.Message == "#SFUI_Notice_Game_Commencing")
+            {
+                return HookResult.Continue;
+            }
+
+            Dictionary<string, int> teams = new();
+
+            foreach (IPlayer player in Humans())
+            {
+                string? steamId = VerifiedSteamIdOf(player);
+
+                if (steamId != null)
+                {
+                    teams[steamId] = player.Controller.TeamNum;
+                }
+            }
+
+            _roster.RoundEnded(@event.Winner, teams, IsWarmup());
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to count a round");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnRoundMvp(EventRoundMvp @event)
+    {
+        try
+        {
+            IPlayer? player = @event.UserIdPlayer;
+
+            if (player != null && IsHuman(player))
+            {
+                _roster.Mvp(VerifiedSteamIdOf(player), IsWarmup());
+            }
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to count an MVP");
         }
 
         return HookResult.Continue;
@@ -495,6 +644,22 @@ public partial class PlayerManagementPlugin : BasePlugin
         try
         {
             return Core.ConVar.Find<bool>("mp_teammates_are_enemies")?.Value ?? false;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    // Unreadable is taken as live, as a server without warmup is.
+    private bool IsWarmup()
+    {
+        try
+        {
+            return Core.EntitySystem.GetAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+                    .FirstOrDefault()
+                    ?.GameRules?.WarmupPeriod
+                ?? false;
         }
         catch (Exception)
         {
