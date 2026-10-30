@@ -204,9 +204,22 @@ public class PlayerRoster
     // Only players on the roster are counted, which keeps out bots and any
     // claimed id Steam has not verified. The hooks pass a killer or assister
     // only when the kill or assist counts, so a headshot only ever goes with a
-    // counted kill.
-    public void Died(string? victim, string? killer, string? assister = null, bool headshot = false)
+    // counted kill. Nothing done in warmup counts: its kills, deaths, damage
+    // and MVPs no more than its rounds. The game rules' warmup flag says so at
+    // each event, however long the warmup runs or however it ends.
+    public void Died(
+        string? victim,
+        string? killer,
+        bool warmup,
+        string? assister = null,
+        bool headshot = false
+    )
     {
+        if (warmup)
+        {
+            return;
+        }
+
         lock (_lock)
         {
             if (victim != null && _current.TryGetValue(victim, out Entry? dead))
@@ -237,9 +250,9 @@ public class PlayerRoster
 
     // The hooks pass an attacker only for damage to an enemy, by the same rule
     // as a kill, and the damage already capped by Dealt.
-    public void Hurt(string? attacker, string? victim, int damage)
+    public void Hurt(string? attacker, string? victim, int damage, bool warmup)
     {
-        if (attacker == null || attacker == victim || damage <= 0)
+        if (warmup || attacker == null || attacker == victim || damage <= 0)
         {
             return;
         }
@@ -289,8 +302,13 @@ public class PlayerRoster
         }
     }
 
-    public void Mvp(string? steamId)
+    public void Mvp(string? steamId, bool warmup)
     {
+        if (warmup)
+        {
+            return;
+        }
+
         lock (_lock)
         {
             if (steamId != null && _current.TryGetValue(steamId, out Entry? entry))

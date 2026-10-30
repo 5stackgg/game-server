@@ -486,6 +486,7 @@ public partial class PlayerManagementPlugin : BasePlugin
             _roster.Died(
                 VerifiedSteamIdOf(victim),
                 kill ? VerifiedSteamIdOf(attacker!) : null,
+                IsWarmup(),
                 assist ? VerifiedSteamIdOf(assister!) : null,
                 @event.Headshot
             );
@@ -534,7 +535,12 @@ public partial class PlayerManagementPlugin : BasePlugin
                 return HookResult.Continue;
             }
 
-            _roster.Hurt(VerifiedSteamIdOf(attacker), VerifiedSteamIdOf(victim), dealt);
+            _roster.Hurt(
+                VerifiedSteamIdOf(attacker),
+                VerifiedSteamIdOf(victim),
+                dealt,
+                IsWarmup()
+            );
         }
         catch (Exception error)
         {
@@ -607,7 +613,7 @@ public partial class PlayerManagementPlugin : BasePlugin
 
             if (player != null && IsHuman(player))
             {
-                _roster.Mvp(VerifiedSteamIdOf(player));
+                _roster.Mvp(VerifiedSteamIdOf(player), IsWarmup());
             }
         }
         catch (Exception error)

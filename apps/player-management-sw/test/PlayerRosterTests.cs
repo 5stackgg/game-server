@@ -289,7 +289,7 @@ public class PlayerRosterTests
     {
         var (loop, roster, _, panel) = Loop();
         loop.Observe([Human("1")], Start);
-        roster.Died(null, "1");
+        roster.Died(null, "1", warmup: false);
         await loop.Tick(Start);
 
         await loop.Tick(Start + PlayerRoster.Silence);
@@ -534,10 +534,10 @@ public class PlayerRosterTests
     {
         var (loop, roster, _, panel) = Loop();
         loop.Observe([Human("1"), Human("2")], Start);
-        roster.Died("2", "1");
-        roster.Died("2", "1");
-        roster.Died("1", null);
-        roster.Died(null, "bot");
+        roster.Died("2", "1", warmup: false);
+        roster.Died("2", "1", warmup: false);
+        roster.Died("1", null, warmup: false);
+        roster.Died(null, "bot", warmup: false);
         await loop.Tick(Start);
 
         Assert.Equal(
@@ -550,7 +550,7 @@ public class PlayerRosterTests
 
         loop.Observe([Human("2")], At(1));
         loop.Observe([Human("1"), Human("2")], At(2));
-        roster.Died("2", "1");
+        roster.Died("2", "1", warmup: false);
         await loop.Tick(At(1) + PlayerRoster.Debounce);
 
         Assert.Equal(1, panel.Players(1)![0].Kills);
@@ -585,7 +585,7 @@ public class PlayerRosterTests
         loop.Observe([Human("1")], Start);
         await loop.Tick(Start);
 
-        roster.Died(null, "1");
+        roster.Died(null, "1", warmup: false);
         loop.Observe([], At(1));
         panel.Answer = () => Task.FromResult(Panel.Down());
 
@@ -679,8 +679,8 @@ public class PlayerRosterTests
         loop.Observe([Human("1"), Human("2")], Start);
         await loop.Tick(Start);
 
-        roster.Died("2", "1");
-        roster.Died("2", "1");
+        roster.Died("2", "1", warmup: false);
+        roster.Died("2", "1", warmup: false);
         roster.MapEnded(At(5));
         roster.MapStarted(At(6), "de_inferno");
         await loop.Tick(At(6));
@@ -700,7 +700,7 @@ public class PlayerRosterTests
         Assert.Equal("de_inferno", panel.Map(2));
 
         loop.Observe([Human("1"), Human("2")], At(6) + SanctionSyncLoop.Interval * 2);
-        roster.Died("1", "2");
+        roster.Died("1", "2", warmup: false);
         await loop.Tick(At(6) + SanctionSyncLoop.Interval * 2);
 
         Assert.Equal("de_inferno", panel.Map(3));
@@ -721,7 +721,7 @@ public class PlayerRosterTests
         loop.Observe([Human("1")], Start);
         await loop.Tick(Start);
 
-        roster.Died(null, "1");
+        roster.Died(null, "1", warmup: false);
         roster.MapEnded(At(5));
         roster.MapStarted(At(6), "de_inferno");
         panel.Answer = () => Task.FromResult(Panel.Down());
@@ -873,12 +873,12 @@ public class PlayerRosterTests
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1")], Start);
-        roster.Died(null, "1");
+        roster.Died(null, "1", warmup: false);
         roster.Observe([], At(1));
         roster.Observe([Human("1")], At(2));
-        roster.Died(null, "1");
-        roster.Died(null, "1");
-        roster.Died("1", null);
+        roster.Died(null, "1", warmup: false);
+        roster.Died(null, "1", warmup: false);
+        roster.Died("1", null, warmup: false);
         roster.Observe([], At(3));
 
         RosterReport report = roster.Report(At(4));
@@ -952,10 +952,10 @@ public class PlayerRosterTests
         PlayerRoster roster = new();
         roster.Observe([Human("1"), Human("2"), Human("3")], Start);
 
-        roster.Died("2", "1", "3", headshot: true);
-        roster.Died("2", "1", "bot", headshot: false);
-        roster.Died("3", "bot", "1", headshot: true);
-        roster.Died("3", null, null, headshot: true);
+        roster.Died("2", "1", warmup: false, assister: "3", headshot: true);
+        roster.Died("2", "1", warmup: false, assister: "bot", headshot: false);
+        roster.Died("3", "bot", warmup: false, assister: "1", headshot: true);
+        roster.Died("3", null, warmup: false, assister: null, headshot: true);
 
         RosterReport report = roster.Report(At(1));
 
@@ -979,8 +979,8 @@ public class PlayerRosterTests
             false
         );
 
-        roster.Died("2", teamKill ? "1" : null, null, headshot: true);
-        roster.Died("2", "1", null, headshot: true);
+        roster.Died("2", teamKill ? "1" : null, warmup: false, headshot: true);
+        roster.Died("2", "1", warmup: false, assister: null, headshot: true);
 
         Assert.Equal(1, CountersOf(roster.Report(At(1)), "1").Headshots);
     }
@@ -1036,8 +1036,8 @@ public class PlayerRosterTests
             false
         );
 
-        roster.Died("2", "1", flash ? "3" : null);
-        roster.Died("2", "1", damage ? "3" : null);
+        roster.Died("2", "1", warmup: false, assister: flash ? "3" : null);
+        roster.Died("2", "1", warmup: false, assister: damage ? "3" : null);
 
         Assert.Equal(1, CountersOf(roster.Report(At(1)), "3").Assists);
     }
@@ -1048,14 +1048,14 @@ public class PlayerRosterTests
         PlayerRoster roster = new();
         roster.Observe([Human("1"), Human("2")], Start);
 
-        roster.Hurt("1", "2", 27);
-        roster.Hurt("1", "2", 73);
-        roster.Hurt("1", "1", 50);
-        roster.Hurt("1", "2", 0);
-        roster.Hurt("1", "2", -5);
-        roster.Hurt("bot", "2", 40);
-        roster.Hurt(null, "2", 40);
-        roster.Hurt("1", null, 10);
+        roster.Hurt("1", "2", 27, warmup: false);
+        roster.Hurt("1", "2", 73, warmup: false);
+        roster.Hurt("1", "1", 50, warmup: false);
+        roster.Hurt("1", "2", 0, warmup: false);
+        roster.Hurt("1", "2", -5, warmup: false);
+        roster.Hurt("bot", "2", 40, warmup: false);
+        roster.Hurt(null, "2", 40, warmup: false);
+        roster.Hurt("1", null, 10, warmup: false);
 
         RosterReport report = roster.Report(At(1));
 
@@ -1089,7 +1089,7 @@ public class PlayerRosterTests
             teammatesAreEnemies
         );
 
-        roster.Hurt(enemy ? "1" : null, attacker == victim ? "1" : "2", 30);
+        roster.Hurt(enemy ? "1" : null, attacker == victim ? "1" : "2", 30, warmup: false);
 
         Assert.Equal(expected, CountersOf(roster.Report(At(1)), "1").Damage);
     }
@@ -1179,32 +1179,56 @@ public class PlayerRosterTests
         Assert.Equal(new Counters(0, 0, 0, 0, 0, 0, 0, 0), CountersOf(roster.Report(At(1)), "1"));
     }
 
+    // Warmup ends without a round of its own: what players do in it is
+    // dropped, and what they do after it counts.
+    [Fact]
+    public void NothingDoneInWarmupIsCounted()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2"), Human("3")], Start);
+
+        roster.Died("2", "1", warmup: true, assister: "3", headshot: true);
+        roster.Hurt("1", "2", 100, warmup: true);
+        roster.Mvp("1", warmup: true);
+        roster.RoundEnded(PlayerRoster.TeamT, Teams(("1", PlayerRoster.TeamT)), warmup: true);
+
+        roster.Died("2", "1", warmup: false, assister: "3", headshot: true);
+        roster.Hurt("1", "2", 100, warmup: false);
+        roster.Mvp("1", warmup: false);
+
+        RosterReport report = roster.Report(At(1));
+
+        Assert.Equal(new Counters(1, 0, 0, 1, 100, 0, 0, 1), CountersOf(report, "1"));
+        Assert.Equal(new Counters(0, 1, 0, 0, 0, 0, 0, 0), CountersOf(report, "2"));
+        Assert.Equal(new Counters(0, 0, 1, 0, 0, 0, 0, 0), CountersOf(report, "3"));
+    }
+
     [Fact]
     public void AnMvpGoesToARosterPlayerOnly()
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1")], Start);
 
-        roster.Mvp("1");
-        roster.Mvp("1");
-        roster.Mvp("bot");
-        roster.Mvp(null);
+        roster.Mvp("1", warmup: false);
+        roster.Mvp("1", warmup: false);
+        roster.Mvp("bot", warmup: false);
+        roster.Mvp(null, warmup: false);
 
         Assert.Equal(2, CountersOf(roster.Report(At(1)), "1").Mvps);
     }
 
     private static void CountEverything(PlayerRoster roster, string steamId, string enemy)
     {
-        roster.Died(enemy, steamId, null, headshot: true);
-        roster.Died(steamId, enemy, null);
-        roster.Died(enemy, null, steamId);
-        roster.Hurt(steamId, enemy, 64);
+        roster.Died(enemy, steamId, warmup: false, assister: null, headshot: true);
+        roster.Died(steamId, enemy, warmup: false);
+        roster.Died(enemy, null, warmup: false, assister: steamId);
+        roster.Hurt(steamId, enemy, 64, warmup: false);
         roster.RoundEnded(
             PlayerRoster.TeamT,
             Teams((steamId, PlayerRoster.TeamT), (enemy, PlayerRoster.TeamCT)),
             warmup: false
         );
-        roster.Mvp(steamId);
+        roster.Mvp(steamId, warmup: false);
     }
 
     [Fact]
