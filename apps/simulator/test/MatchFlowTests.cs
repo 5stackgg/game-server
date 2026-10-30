@@ -82,6 +82,24 @@ public class MatchFlowTests
         Assert.True(events.IndexOf(last) < events.IndexOf(waiting));
     }
 
+    // The api keeps only the newest status of a map, since a resent one can
+    // arrive after it.
+    [Fact]
+    public async Task EachMapStatusNamesItsMapAndComesAfterTheLast()
+    {
+        MatchData built = Matches.Build();
+        string mapId = built.current_match_map_id!.Value.ToString();
+
+        (RecordingSink sink, _) = await PlayMap(built);
+
+        List<Published> statuses = sink.Events.Where(e => e.Name == "mapStatus").ToList();
+        Assert.All(statuses, status => Assert.Equal(mapId, status.Data["match_map_id"]));
+        List<DateTimeOffset> times = statuses
+            .Select(status => (DateTimeOffset)status.Data["time"])
+            .ToList();
+        Assert.Equal(times.Distinct().Order(), times);
+    }
+
     [Fact]
     public async Task EachRoundsStatsComeBeforeItsScore()
     {
