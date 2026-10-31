@@ -27,4 +27,11 @@ public class SteamClanTracker
     {
         _clanIds.Remove(controller);
     }
+
+    // A map change rebuilds every controller without a disconnect, so an old
+    // address can come back holding someone else.
+    public void Clear()
+    {
+        _clanIds.Clear();
+    }
 }

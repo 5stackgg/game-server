@@ -46,4 +46,17 @@ public class SteamClanTrackerTests
         Assert.Equal(7u, tracker.Get(2));
         Assert.True(tracker.Record(1, 46317375));
     }
+
+    [Fact]
+    public void A_Map_Change_Forgets_Every_Slot()
+    {
+        SteamClanTracker tracker = new();
+        tracker.Record(1, 46317375);
+        tracker.Record(2, 7);
+
+        tracker.Clear();
+
+        Assert.Null(tracker.Get(1));
+        Assert.Null(tracker.Get(2));
+    }
 }

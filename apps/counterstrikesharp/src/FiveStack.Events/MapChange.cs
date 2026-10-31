@@ -13,6 +13,8 @@ public partial class FiveStackPlugin
         RegisterListener<Listeners.OnMapStart>(
             async (mapName) =>
             {
+                ClanTagUtility.SteamClans.Clear();
+
                 _logger.LogInformation("map changed: precaching models");
 
                 Server.PrecacheModel(ModelPathCtmSas);
