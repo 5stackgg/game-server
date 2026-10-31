@@ -170,6 +170,7 @@ public sealed class SanctionSyncLoop : IDisposable
                     hibernating = _hibernating(),
                     players = roster.Players,
                     departed = roster.Departed,
+                    map = roster.Map,
                 }
             );
 

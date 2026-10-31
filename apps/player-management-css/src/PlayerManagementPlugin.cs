@@ -100,7 +100,9 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         });
 
         RegisterListener<Listeners.OnMapEnd>(() => _roster.MapEnded(DateTimeOffset.UtcNow));
-        RegisterListener<Listeners.OnMapStart>(_ => _roster.MapStarted(DateTimeOffset.UtcNow));
+        RegisterListener<Listeners.OnMapStart>(map =>
+            _roster.MapStarted(DateTimeOffset.UtcNow, map)
+        );
 
         RegisterListener<Listeners.OnServerHibernationUpdate>(hibernating =>
         {
@@ -142,6 +144,20 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         catch (Exception error)
         {
             Logger.LogDebug(error, "unable to read the players present on load");
+        }
+
+        // A hot reload has missed the map's load, and a cold boot has no map to
+        // ask about yet: it arrives with OnMapStart.
+        if (hotReload)
+        {
+            try
+            {
+                _roster.MapIs(Server.MapName);
+            }
+            catch (Exception error)
+            {
+                Logger.LogDebug(error, "unable to read the map on load");
+            }
         }
 
         _loop.Start();
