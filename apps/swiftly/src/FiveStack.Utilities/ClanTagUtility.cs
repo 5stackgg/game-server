@@ -22,6 +22,10 @@ public static class ClanTagUtility
     private static IUnmanagedFunction<SetClanDelegate>? _setClan;
     private static Guid _hookId;
 
+    public static readonly SteamClanTracker SteamClans = new();
+
+    public static event Action<nint>? SteamClanChanged;
+
     public static void Hook(ISwiftlyCore core)
     {
         GamedataSignature? signature = GamedataUtility.Load(core.PluginPath, SetClanSignature);
@@ -37,7 +41,15 @@ public static class ClanTagUtility
         }
 
         _setClan = core.Memory.GetUnmanagedFunctionByAddress<SetClanDelegate>(address.Value);
-        _hookId = _setClan.AddHook(next => (controller, clanId, tag) => { });
+        _hookId = _setClan.AddHook(next =>
+            (controller, clanId, tag) =>
+            {
+                if (SteamClans.Record(controller, clanId))
+                {
+                    SteamClanChanged?.Invoke(controller);
+                }
+            }
+        );
     }
 
     public static void Unhook()

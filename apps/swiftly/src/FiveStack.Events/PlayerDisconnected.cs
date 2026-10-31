@@ -20,6 +20,7 @@ public partial class FiveStackPlugin
         }
 
         ConnectRoles.Leave(@event.UserIdPlayer.SteamID);
+        ClanTagUtility.SteamClans.Forget(@event.UserIdPlayer.Controller.Address);
 
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchMap? currentMap = match?.GetCurrentMap();

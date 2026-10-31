@@ -128,6 +128,8 @@ public partial class FiveStackPlugin
             }
         );
 
+        PublishSteamClan(player);
+
         return HookResult.Continue;
     }
 

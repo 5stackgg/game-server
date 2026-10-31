@@ -103,6 +103,7 @@ public partial class FiveStackPlugin : BasePlugin
         try
         {
             ClanTagUtility.Hook();
+            ClanTagUtility.SteamClanChanged += OnSteamClanChanged;
         }
         catch (Exception ex)
         {
@@ -135,6 +136,7 @@ public partial class FiveStackPlugin : BasePlugin
         _pingTimer?.Dispose();
         _idleMapReload.Stop();
         ConnectClientFunc.Unhook(ConnectClientHook, HookMode.Pre);
+        ClanTagUtility.SteamClanChanged -= OnSteamClanChanged;
         ClanTagUtility.Unhook();
 
         Marshal.FreeCoTaskMem(PasswordBuffer);

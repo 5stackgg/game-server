@@ -133,6 +133,7 @@ public partial class FiveStackPlugin : BasePlugin
         try
         {
             ClanTagUtility.Hook(Core);
+            ClanTagUtility.SteamClanChanged += OnSteamClanChanged;
         }
         catch (Exception ex)
         {
@@ -260,6 +261,7 @@ public partial class FiveStackPlugin : BasePlugin
         // this instance's timers and handlers running beside the new one.
         try
         {
+            ClanTagUtility.SteamClanChanged -= OnSteamClanChanged;
             ClanTagUtility.Unhook();
 
             _matchService.GetCurrentMatch()?.Reset();

@@ -23,6 +23,10 @@ public static class ClanTagUtility
     private static MemoryFunctionVoid<CCSPlayerController, uint, string>? _setClan;
     private static bool _settingClan;
 
+    public static readonly SteamClanTracker SteamClans = new();
+
+    public static event Action<CCSPlayerController>? SteamClanChanged;
+
     public static void Hook()
     {
         _setClan = new(SetClanSignature, Addresses.ServerPath);
@@ -37,7 +41,18 @@ public static class ClanTagUtility
 
     private static HookResult OnSetClan(DynamicHook hook)
     {
-        return _settingClan ? HookResult.Continue : HookResult.Handled;
+        if (_settingClan)
+        {
+            return HookResult.Continue;
+        }
+
+        CCSPlayerController controller = hook.GetParam<CCSPlayerController>(0);
+        if (SteamClans.Record(controller.Handle, hook.GetParam<uint>(1)))
+        {
+            SteamClanChanged?.Invoke(controller);
+        }
+
+        return HookResult.Handled;
     }
 
     public static void Set(CCSPlayerController player, string tag)
