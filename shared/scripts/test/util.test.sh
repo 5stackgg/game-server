@@ -99,13 +99,15 @@ assert_missing "$workdir/instance/game/csgo/addons/swiftlys2/plugins/Retakes/Ret
   "unselected plugin was linked anyway"
 teardown
 
-echo "link_plugins does not mistake one slug for the start of another"
-setup
-ENABLED_PLUGINS="inventory@3.1.0,simulator@3.1.0" \
-  link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
-assert_missing "$workdir/instance/game/csgo/addons/swiftlys2/plugins/InventorySimulator/InventorySimulator.dll" \
-  "a plugin was linked because another slug is part of its name"
-teardown
+echo "link_plugins does not link a plugin whose slug is only part of an enabled one"
+for enabled in "retakes-allocator@1.2.0" "pro-retakes@1.2.0"; do
+  setup
+  ENABLED_PLUGINS="$enabled" \
+    link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
+  assert_missing "$workdir/instance/game/csgo/addons/swiftlys2/plugins/Retakes/Retakes.dll" \
+    "retakes was linked because $enabled contains its slug"
+  teardown
+done
 
 echo "link_plugins links nothing managed when no mode is selected"
 setup
