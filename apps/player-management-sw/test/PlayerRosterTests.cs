@@ -1544,11 +1544,10 @@ public class PlayerRosterTests
         string weapon = "ak47",
         int hitGroup = 2,
         int tick = 100,
-        int victim = 2,
-        bool human = true
+        int victim = 2
     )
     {
-        return new HitFacts(weapon, hitGroup, tick, victim, human, Enemy: true);
+        return new HitFacts(weapon, hitGroup, tick, victim, Enemy: true);
     }
 
     [Fact]
@@ -1744,6 +1743,25 @@ public class PlayerRosterTests
         Assert.False(StatsOf(report, "2").ContainsKey(CommunityStatKeys.BestStreak));
     }
 
+    // A death at a bot's hands is no death, but the streak still ends there.
+    [Fact]
+    public void ADeathAtABotsHandsEndsTheStreakAndIsNoDeath()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+
+        roster.Died("2", "1", warmup: false);
+        roster.Died("2", "1", warmup: false);
+        roster.Died("1", null, warmup: false, facts: new KillFacts(Suicide: true, ByBot: true));
+        roster.Died("2", "1", warmup: false);
+
+        RosterReport report = roster.Report(At(1));
+
+        Assert.Equal(2, StatsOf(report, "1")[CommunityStatKeys.BestStreak]);
+        Assert.Equal(0, CountersOf(report, "1").Deaths);
+        Assert.False(StatsOf(report, "1").ContainsKey(CommunityStatKeys.Suicides));
+    }
+
     [Fact]
     public void ANewMapStartsTheStreakOver()
     {
@@ -1886,29 +1904,74 @@ public class PlayerRosterTests
         Assert.Equal(80, WeaponOf(report, "1", "nova")!.damage);
     }
 
-    // Shots and hits on bots count; damage to them does not.
+    // A shot that hits a bot is taken back, once however many pellets hit;
+    // a miss stays a shot, and a hit on a human beside a bot stays a hit.
     [Fact]
-    public void AHitOnABotIsAHitAndNoDamage()
+    public void AShotThatHitsABotIsTakenBack()
     {
         PlayerRoster roster = new();
-        roster.Observe([Human("1")], Start);
+        roster.Observe([Human("1"), Human("2")], Start);
 
-        roster.Hurt("1", null, 40, warmup: false, Hit(hitGroup: 1, victim: 5, human: false));
-        roster.Hurt("1", null, 40, warmup: false, Hit("hegrenade", victim: 5, human: false));
         roster.Fired("1", "weapon_ak47", warmup: false);
+        roster.Fired("1", "weapon_ak47", warmup: false);
+        roster.Fired("1", "weapon_ak47", warmup: false);
+        roster.HitABot("1", "ak47", 100, warmup: false);
+        roster.Hurt("1", "2", 27, warmup: false, Hit(tick: 101));
+
+        roster.Fired("1", "weapon_nova", warmup: false);
+        roster.HitABot("1", "nova", 200, warmup: false);
+        roster.HitABot("1", "nova", 200, warmup: false);
 
         RosterReport report = roster.Report(At(1));
         Dictionary<string, int> stats = StatsOf(report, "1");
 
-        Assert.Equal(1, stats[CommunityStatKeys.Shots]);
+        Assert.Equal(2, stats[CommunityStatKeys.Shots]);
         Assert.Equal(1, stats[CommunityStatKeys.Hits]);
-        Assert.Equal(1, stats[CommunityStatKeys.HitsHead]);
-        Assert.False(stats.ContainsKey(CommunityStatKeys.HeDamage));
-        Assert.Equal(0, CountersOf(report, "1").Damage);
-        Assert.Equal(1, WeaponOf(report, "1", "ak47")!.shots);
+        Assert.Equal(2, WeaponOf(report, "1", "ak47")!.shots);
         Assert.Equal(1, WeaponOf(report, "1", "ak47")!.hits);
-        Assert.Equal(0, WeaponOf(report, "1", "ak47")!.damage);
-        Assert.Null(WeaponOf(report, "1", "hegrenade"));
+        Assert.Equal(27, CountersOf(report, "1").Damage);
+        Assert.Null(WeaponOf(report, "1", "nova"));
+    }
+
+    // A shotgun's pellets that hit a bot and a human in one tick are a shot
+    // that hit, whichever the event names first.
+    [Fact]
+    public void AShotThatHitsABotAndAHumanStaysAShot()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+
+        roster.Fired("1", "weapon_nova", warmup: false);
+        roster.HitABot("1", "nova", 100, warmup: false);
+        roster.Hurt("1", "2", 20, warmup: false, Hit("nova", tick: 100));
+        roster.Fired("1", "weapon_nova", warmup: false);
+        roster.Hurt("1", "2", 20, warmup: false, Hit("nova", tick: 200));
+        roster.HitABot("1", "nova", 200, warmup: false);
+
+        RosterReport report = roster.Report(At(1));
+
+        Assert.Equal(2, StatsOf(report, "1")[CommunityStatKeys.Shots]);
+        Assert.Equal(2, WeaponOf(report, "1", "nova")!.shots);
+        Assert.Equal(2, WeaponOf(report, "1", "nova")!.hits);
+    }
+
+    // Nothing is taken back that was never counted, nor in warmup.
+    [Fact]
+    public void AHitOnABotNeverTakesBackMoreThanTheShots()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1")], Start);
+
+        roster.HitABot("1", "deagle", 100, warmup: false);
+        roster.Fired("1", "weapon_deagle", warmup: false);
+        roster.HitABot("1", "deagle", 101, warmup: true);
+        roster.HitABot("1", "knife", 102, warmup: false);
+        roster.HitABot(null, "deagle", 103, warmup: false);
+
+        RosterReport report = roster.Report(At(1));
+
+        Assert.Equal(1, StatsOf(report, "1")[CommunityStatKeys.Shots]);
+        Assert.Equal(1, WeaponOf(report, "1", "deagle")!.shots);
     }
 
     // Only bullets hit: a knife, a grenade or a fire does damage but is no hit.
@@ -1944,8 +2007,8 @@ public class PlayerRosterTests
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1"), Human("2")], Start);
-        HitFacts team = new("ak47", 2, 100, 2, true, Enemy: false, Team: true);
-        HitFacts self = new("hegrenade", 0, 101, 1, true, Enemy: false, Team: true);
+        HitFacts team = new("ak47", 2, 100, 2, Enemy: false, Team: true);
+        HitFacts self = new("hegrenade", 0, 101, 1, Enemy: false, Team: true);
 
         roster.Hurt("1", "2", 25, warmup: false, team);
         roster.Hurt("1", "1", 40, warmup: false, self);
@@ -1962,8 +2025,8 @@ public class PlayerRosterTests
         Assert.Null(report.Players!.Single(player => player.steam_id == "1").weapons);
     }
 
-    // A bot or an unverified enemy still hurts; the world and oneself do not
-    // count as damage taken.
+    // An unverified enemy still hurts; the world and oneself do not count as
+    // damage taken.
     [Fact]
     public void DamageTakenIsWhatAnyEnemyDealt()
     {
@@ -1975,24 +2038,23 @@ public class PlayerRosterTests
             "2",
             30,
             warmup: false,
-            new HitFacts("ak47", 2, 100, 2, true, Enemy: true)
+            new HitFacts("ak47", 2, 100, 2, Enemy: true)
         );
-        roster.Hurt(null, "2", 12, warmup: false, new HitFacts("", 0, 101, 2, true, Enemy: false));
+        roster.Hurt(null, "2", 12, warmup: false, new HitFacts("", 0, 101, 2, Enemy: false));
         roster.Hurt(
             "2",
             "2",
             40,
             warmup: false,
-            new HitFacts("hegrenade", 0, 102, 2, true, Enemy: false, Team: true)
+            new HitFacts("hegrenade", 0, 102, 2, Enemy: false, Team: true)
         );
 
         Assert.Equal(30, StatsOf(roster.Report(At(1)), "2")[CommunityStatKeys.DamageTaken]);
     }
 
-    // A hit on a teammate is a hit on nobody the player was aiming for, and a
-    // bot teammate's health is no team damage.
+    // A hit on a teammate is a hit on nobody the player was aiming for.
     [Fact]
-    public void AHitOnATeammateOrABotTeammateIsNoHit()
+    public void AHitOnATeammateIsNoHit()
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1")], Start);
@@ -2002,7 +2064,7 @@ public class PlayerRosterTests
             null,
             25,
             warmup: false,
-            new HitFacts("ak47", 2, 100, 5, false, Enemy: false)
+            new HitFacts("ak47", 2, 100, 5, Enemy: false)
         );
 
         Assert.Null(roster.Report(At(1)).Players!.Single().stats);
@@ -2143,7 +2205,7 @@ public class PlayerRosterTests
             "1",
             50,
             warmup: true,
-            new HitFacts("hegrenade", 0, 1, 1, true, Enemy: false, Team: true)
+            new HitFacts("hegrenade", 0, 1, 1, Enemy: false, Team: true)
         );
         roster.Fired("1", "weapon_ak47", warmup: true);
         roster.Blinded("1", "2", 3f, sameTeam: false, warmup: true);
@@ -2390,7 +2452,6 @@ public class PlayerRosterTests
                 0,
                 100,
                 1,
-                true,
                 Enemy: false,
                 Team: true,
                 TeammatesAreEnemies: true

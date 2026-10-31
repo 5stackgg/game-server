@@ -100,6 +100,33 @@ public static class CommunityWeapons
         return SharedClasses.Contains(Normalize(weapon));
     }
 
+    // The gun on the class of another, by the class's gun.
+    private static readonly Dictionary<string, string> OnAClass = new()
+    {
+        ["m4a1_silencer"] = "m4a1",
+        ["usp_silencer"] = "hkp2000",
+        ["cz75a"] = "p250",
+        ["revolver"] = "deagle",
+        ["mp5sd"] = "mp7",
+    };
+
+    // The event's gun by the item in hand, which is taken only when it is that
+    // gun or the one on its class: a player who switched guns since keeps the
+    // event's name.
+    public static string InHand(string weapon, int? definitionIndex)
+    {
+        if (!SharesAClass(weapon) || definitionIndex == null)
+        {
+            return weapon;
+        }
+
+        string? held = FirearmByDefinition(definitionIndex.Value);
+
+        return held != null && OnAClass.GetValueOrDefault(held, held) == Normalize(weapon)
+            ? held
+            : weapon;
+    }
+
     // A molotov and an incendiary both kill by their fire, the inferno.
     public static string? KillType(string? weapon)
     {

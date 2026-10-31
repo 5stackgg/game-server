@@ -137,4 +137,21 @@ public class CommunityWeaponsTests
     {
         Assert.Equal(expected, CommunityWeapons.SharesAClass(weapon));
     }
+
+    [Theory]
+    [InlineData("hkp2000", 61, "usp_silencer")]
+    [InlineData("hkp2000", 32, "hkp2000")]
+    [InlineData("weapon_m4a1", 60, "m4a1_silencer")]
+    [InlineData("p250", 63, "cz75a")]
+    [InlineData("deagle", 64, "revolver")]
+    [InlineData("mp7", 23, "mp5sd")]
+    [InlineData("hkp2000", 7, "hkp2000")]
+    [InlineData("hkp2000", 63, "hkp2000")]
+    [InlineData("hkp2000", 42, "hkp2000")]
+    [InlineData("hkp2000", null, "hkp2000")]
+    [InlineData("ak47", 61, "ak47")]
+    public void TheGunInHandNamesOnlyItsOwnClass(string weapon, int? index, string expected)
+    {
+        Assert.Equal(expected, CommunityWeapons.InHand(weapon, index));
+    }
 }

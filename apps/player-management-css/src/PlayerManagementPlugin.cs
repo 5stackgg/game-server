@@ -408,6 +408,10 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             CCSPlayerController? assister = @event.Assister;
             bool teammatesAreEnemies = TeammatesAreEnemies();
 
+            // Nothing a bot does counts, so a death at a bot's hands only
+            // ends a streak and helping a bot to a kill is no assist.
+            bool byBot = attacker != null && IsBot(attacker);
+
             bool kill =
                 attacker != null
                 && IsHuman(attacker)
@@ -420,7 +424,8 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
                 );
 
             bool assist =
-                assister != null
+                !byBot
+                && assister != null
                 && IsHuman(assister)
                 && PlayerRoster.CountsAsAssist(
                     assister.Slot,
@@ -434,6 +439,7 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             // A flash assist is counted apart, by the same rule as a kill.
             bool flashAssist =
                 @event.Assistedflash
+                && !byBot
                 && assister != null
                 && IsHuman(assister)
                 && PlayerRoster.CountsAsKill(
@@ -456,7 +462,7 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
                 );
 
             KillFacts facts = new(
-                Weapon: @event.Weapon,
+                Weapon: kill ? HeldWeapon(attacker!, @event.Weapon) : @event.Weapon,
                 Time: Server.CurrentTime,
                 KillerSlot: kill ? attacker!.Slot : -1,
                 KillerTeam: kill ? attacker!.TeamNum : 0,
@@ -474,7 +480,8 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
                     victim.Slot,
                     @event.Weapon
                 ),
-                TeamKiller: teamKill ? VerifiedSteamIdOf(attacker!) : null
+                TeamKiller: teamKill ? VerifiedSteamIdOf(attacker!) : null,
+                ByBot: byBot
             );
 
             _roster.Died(
@@ -513,22 +520,32 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             );
             _health[victim.Slot] = @event.Health;
 
-            // A hit on a bot counts, damage to one does not, and only a human
-            // hurting a human who is no enemy is team damage. Nothing counts
-            // without an attacker, between two bots, or for a bot hurt by
-            // anything but a gun, which spares those the lookups below.
+            // Nothing a bot does or has done to it counts, nor anything
+            // without an attacker. A human's bullet in a bot takes back the
+            // shot it was. Only a human hurting a human who is no enemy is
+            // team damage.
             CCSPlayerController? attacker = @event.Attacker;
 
-            if (attacker == null || !attacker.IsValid)
+            if (attacker == null || !attacker.IsValid || IsBot(attacker))
             {
                 return HookResult.Continue;
             }
 
             bool attackerIsHuman = IsHuman(attacker);
-            bool victimIsHuman = IsHuman(victim);
+            string weapon = attackerIsHuman ? HeldWeapon(attacker, @event.Weapon) : @event.Weapon;
 
-            if (!victimIsHuman && (!attackerIsHuman || !CommunityWeapons.IsFirearm(@event.Weapon)))
+            if (!IsHuman(victim))
             {
+                if (attackerIsHuman && IsBot(victim))
+                {
+                    _roster.HitABot(
+                        VerifiedSteamIdOf(attacker),
+                        weapon,
+                        Server.TickCount,
+                        IsWarmup()
+                    );
+                }
+
                 return HookResult.Continue;
             }
 
@@ -544,17 +561,16 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
 
             _roster.Hurt(
                 attackerIsHuman ? VerifiedSteamIdOf(attacker) : null,
-                victimIsHuman ? VerifiedSteamIdOf(victim) : null,
+                VerifiedSteamIdOf(victim),
                 dealt,
                 IsWarmup(),
                 new HitFacts(
-                    @event.Weapon,
+                    weapon,
                     @event.Hitgroup,
                     Server.TickCount,
                     victim.Slot,
-                    victimIsHuman,
                     enemy,
-                    attackerIsHuman && victimIsHuman && !enemy,
+                    attackerIsHuman && !enemy,
                     teammatesAreEnemies
                 )
             );
@@ -613,7 +629,7 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
                 return HookResult.Continue;
             }
 
-            _roster.Fired(steamId, FiredWeapon(player, @event.Weapon), IsWarmup());
+            _roster.Fired(steamId, HeldWeapon(player, @event.Weapon), IsWarmup());
         }
         catch (Exception error)
         {
@@ -798,11 +814,11 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         }
     }
 
-    // Some guns share another's class (see CommunityWeapons), and weapon_fire
-    // may then name the other gun, while player_hurt and player_death name
-    // the item. Only for those names is the gun in hand read by its item
-    // definition index; anything unreadable keeps the event's name.
-    private static string FiredWeapon(CCSPlayerController player, string weapon)
+    // Some guns share another's class (see CommunityWeapons), and an event
+    // may then name the other gun: player_hurt names a USP-S hkp2000. Only
+    // for those names is the gun in hand read, by its item definition index;
+    // anything unreadable keeps the event's name.
+    private static string HeldWeapon(CCSPlayerController player, string weapon)
     {
         if (!CommunityWeapons.SharesAClass(weapon))
         {
@@ -811,14 +827,12 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
 
         CBasePlayerWeapon? active = player.PlayerPawn.Value?.WeaponServices?.ActiveWeapon.Value;
 
-        if (active == null || !active.IsValid)
-        {
-            return weapon;
-        }
-
-        return CommunityWeapons.FirearmByDefinition(
-                active.AttributeManager.Item.ItemDefinitionIndex
-            ) ?? weapon;
+        return CommunityWeapons.InHand(
+            weapon,
+            active != null && active.IsValid
+                ? active.AttributeManager.Item.ItemDefinitionIndex
+                : null
+        );
     }
 
     // Unreadable is taken as teams as usual, where a team kill earns nothing.
@@ -912,6 +926,12 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
                 );
             })
             .ToList();
+    }
+
+    // CSTV is a fake client too, and no bot.
+    private static bool IsBot(CCSPlayerController player)
+    {
+        return player.IsValid && player.IsBot && !player.IsHLTV;
     }
 
     private static bool IsHuman(CCSPlayerController player)

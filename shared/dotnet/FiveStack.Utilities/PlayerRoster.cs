@@ -9,7 +9,8 @@ public sealed record ObservedPlayer(string SteamId, string Name, string? Ip, boo
 // and victim's slots and teams are there only for a counted kill (a slot of -1
 // otherwise), since a trade is told by slot. TeamKiller is the roster id of a
 // player who killed a teammate, and Suicide is a death by one's own hand or the
-// world's, as IsSuicide tells it.
+// world's, as IsSuicide tells it. ByBot is a death at a bot's hands, which ends
+// a streak and is no death.
 public sealed record KillFacts(
     string Weapon = "",
     float Time = 0,
@@ -25,19 +26,20 @@ public sealed record KillFacts(
     bool AttackerInAir = false,
     bool AssistedFlash = false,
     bool Suicide = false,
-    string? TeamKiller = null
+    string? TeamKiller = null,
+    bool ByBot = false
 );
 
-// What a hurt event says beyond the damage. Enemy is a hit by the rule a kill
-// counts by; Team is a human hurting a human, themselves included, who is no
-// enemy, which counts for nothing where teammates are enemies. The tick tells
-// a shotgun's pellets apart from separate shots.
+// What a hurt event says beyond the damage, which the hooks pass only for a
+// human victim and an attacker who is no bot. Enemy is a hit by the rule a
+// kill counts by; Team is a human hurting a human, themselves included, who is
+// no enemy, which counts for nothing where teammates are enemies. The tick
+// tells a shotgun's pellets apart from separate shots.
 public sealed record HitFacts(
     string Weapon,
     int HitGroup,
     int Tick,
     int VictimSlot,
-    bool VictimIsHuman,
     bool Enemy,
     bool Team = false,
     bool TeammatesAreEnemies = false
@@ -109,6 +111,7 @@ public class PlayerRoster
         public int Streak;
         public int BestStreak;
         public int HitTick = -1;
+        public int BotHitTick = -1;
         public readonly HashSet<int> HitSlots = new();
 
         public void Add(string key, int amount = 1)
@@ -313,12 +316,16 @@ public class PlayerRoster
         {
             if (victim != null && _current.TryGetValue(victim, out Entry? dead))
             {
-                dead.Deaths++;
                 dead.Streak = 0;
 
-                if (facts?.Suicide == true)
+                if (facts?.ByBot != true)
                 {
-                    dead.Add(CommunityStatKeys.Suicides);
+                    dead.Deaths++;
+
+                    if (facts?.Suicide == true)
+                    {
+                        dead.Add(CommunityStatKeys.Suicides);
+                    }
                 }
             }
 
@@ -390,10 +397,9 @@ public class PlayerRoster
 
     // The damage comes already capped by Dealt. Without facts the hooks pass
     // an attacker only for damage to an enemy, by the same rule as a kill.
-    // With them, a hit on any enemy counts, bots included, but only damage to
-    // a human does; a human's hurting a human who is no enemy, themselves
-    // included, is team damage, as the match stats count it, but not where
-    // teammates are enemies.
+    // With them, a hit on an enemy counts; a human's hurting a human who is no
+    // enemy, themselves included, is team damage, as the match stats count
+    // it, but not where teammates are enemies. Nothing to or by a bot counts.
     public void Hurt(
         string? attacker,
         string? victim,
@@ -512,6 +518,41 @@ public class PlayerRoster
                     totals.shots++;
                 }
             }
+        }
+    }
+
+    // Nothing aimed at a bot counts, so a shot that hits one is taken back; a
+    // miss names no target and stays a shot. A shotgun's pellets in one tick
+    // are one shot, and one that also hits a human stays a shot (see Hit).
+    public void HitABot(string? attacker, string? weapon, int tick, bool warmup)
+    {
+        if (warmup || attacker == null || !CommunityWeapons.IsFirearm(weapon))
+        {
+            return;
+        }
+
+        lock (_lock)
+        {
+            if (
+                !_current.TryGetValue(attacker, out Entry? entry)
+                || entry.HitTick == tick
+                || entry.BotHitTick == tick
+            )
+            {
+                return;
+            }
+
+            WeaponTotals? totals = entry.Weapon(weapon!);
+
+            // Never below nothing, for a shot fired before it could count.
+            if (totals == null || totals.shots == 0)
+            {
+                return;
+            }
+
+            totals.shots--;
+            entry.Add(CommunityStatKeys.Shots, -1);
+            entry.BotHitTick = tick;
         }
     }
 
@@ -823,6 +864,20 @@ public class PlayerRoster
             {
                 entry.HitTick = hit.Tick;
                 entry.HitSlots.Clear();
+
+                // The same pellets hit a bot first, which took the shot back.
+                if (entry.BotHitTick == hit.Tick)
+                {
+                    entry.BotHitTick = -1;
+                    entry.Add(CommunityStatKeys.Shots);
+
+                    WeaponTotals? shot = entry.Weapon(hit.Weapon);
+
+                    if (shot != null)
+                    {
+                        shot.shots++;
+                    }
+                }
             }
 
             if (entry.HitSlots.Add(hit.VictimSlot))
@@ -845,7 +900,7 @@ public class PlayerRoster
             }
         }
 
-        if (!hit.VictimIsHuman || damage <= 0)
+        if (damage <= 0)
         {
             return;
         }
