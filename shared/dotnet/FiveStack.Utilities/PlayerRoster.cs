@@ -5,6 +5,44 @@ namespace FiveStack.Utilities;
 
 public sealed record ObservedPlayer(string SteamId, string Name, string? Ip, bool Verified);
 
+// What a death event says beyond who died, for the detailed stats. The killer's
+// and victim's slots and teams are there only for a counted kill (a slot of -1
+// otherwise), since a trade is told by slot. TeamKiller is the roster id of a
+// player who killed a teammate, and Suicide is a death by one's own hand or the
+// world's, as IsSuicide tells it.
+public sealed record KillFacts(
+    string Weapon = "",
+    float Time = 0,
+    int KillerSlot = -1,
+    int KillerTeam = 0,
+    int VictimSlot = -1,
+    int VictimTeam = 0,
+    bool TeammatesAreEnemies = false,
+    bool NoScope = false,
+    bool ThruSmoke = false,
+    bool AttackerBlind = false,
+    int Penetrated = 0,
+    bool AttackerInAir = false,
+    bool AssistedFlash = false,
+    bool Suicide = false,
+    string? TeamKiller = null
+);
+
+// What a hurt event says beyond the damage. Enemy is a hit by the rule a kill
+// counts by; Team is a human hurting a human, themselves included, who is no
+// enemy, which counts for nothing where teammates are enemies. The tick tells
+// a shotgun's pellets apart from separate shots.
+public sealed record HitFacts(
+    string Weapon,
+    int HitGroup,
+    int Tick,
+    int VictimSlot,
+    bool VictimIsHuman,
+    bool Enemy,
+    bool Team = false,
+    bool TeammatesAreEnemies = false
+);
+
 public sealed record RosterReport(
     List<RosterPlayer>? Players,
     List<DepartedPlayer> Departed,
@@ -35,6 +73,10 @@ public class PlayerRoster
 
     public const int MaxNameLength = 64;
 
+    // More than any one connection can use, so a server that names its own
+    // weapons cannot grow a report without end.
+    public const int MaxWeapons = 48;
+
     public const int TeamT = 2;
 
     public const int TeamCT = 3;
@@ -62,6 +104,42 @@ public class PlayerRoster
         public int RoundsPlayed;
         public int RoundsWon;
         public int Mvps;
+        public readonly Dictionary<string, int> Stats = new();
+        public readonly Dictionary<string, WeaponTotals> Weapons = new();
+        public int Streak;
+        public int BestStreak;
+        public int HitTick = -1;
+        public readonly HashSet<int> HitSlots = new();
+
+        public void Add(string key, int amount = 1)
+        {
+            Stats[key] = Stats.GetValueOrDefault(key) + amount;
+        }
+
+        // Null once the cap is reached, for a weapon the connection has not
+        // used before.
+        public WeaponTotals? Weapon(string weapon)
+        {
+            string name = CommunityWeapons.Normalize(weapon);
+
+            if (name.Length == 0)
+            {
+                return null;
+            }
+
+            if (!Weapons.TryGetValue(name, out WeaponTotals? totals))
+            {
+                if (Weapons.Count >= MaxWeapons)
+                {
+                    return null;
+                }
+
+                totals = new WeaponTotals();
+                Weapons[name] = totals;
+            }
+
+            return totals;
+        }
     }
 
     private sealed record Departure(DepartedPlayer Player, DateTimeOffset At);
@@ -82,6 +160,7 @@ public class PlayerRoster
     private string? _map;
     private RosterReport? _final;
     private DateTimeOffset _finalAt;
+    private readonly CommunityTrades _trades = new();
 
     // Returns when a sync is due if this observation is what made one due.
     public virtual DateTimeOffset? Observe(IEnumerable<ObservedPlayer> players, DateTimeOffset now)
@@ -176,6 +255,14 @@ public class PlayerRoster
             Hold(now);
             _mapStarted = true;
             _releaseAt = null;
+            _trades.Clear();
+
+            // A killstreak is a map's, like the match stats' best streak.
+            foreach (Entry entry in _current.Values)
+            {
+                entry.Streak = 0;
+                entry.BestStreak = 0;
+            }
         }
     }
 
@@ -206,13 +293,15 @@ public class PlayerRoster
     // only when the kill or assist counts, so a headshot only ever goes with a
     // counted kill. Nothing done in warmup counts: its kills, deaths, damage
     // and MVPs no more than its rounds. The game rules' warmup flag says so at
-    // each event, however long the warmup runs or however it ends.
+    // each event, however long the warmup runs or however it ends. An assist
+    // whose facts say it was a flash's is a flash assist and not an assist.
     public void Died(
         string? victim,
         string? killer,
         bool warmup,
         string? assister = null,
-        bool headshot = false
+        bool headshot = false,
+        KillFacts? facts = null
     )
     {
         if (warmup)
@@ -225,16 +314,60 @@ public class PlayerRoster
             if (victim != null && _current.TryGetValue(victim, out Entry? dead))
             {
                 dead.Deaths++;
+                dead.Streak = 0;
+
+                if (facts?.Suicide == true)
+                {
+                    dead.Add(CommunityStatKeys.Suicides);
+                }
+            }
+
+            if (
+                facts?.TeamKiller != null
+                && _current.TryGetValue(facts.TeamKiller, out Entry? traitor)
+            )
+            {
+                traitor.Add(CommunityStatKeys.TeamKills);
             }
 
             if (killer != null && _current.TryGetValue(killer, out Entry? scorer))
             {
                 scorer.Kills++;
+                scorer.Streak++;
+                scorer.BestStreak = Math.Max(scorer.BestStreak, scorer.Streak);
 
                 if (headshot)
                 {
                     scorer.Headshots++;
                 }
+
+                if (facts != null)
+                {
+                    Scored(scorer, facts, headshot);
+                }
+            }
+
+            // Every counted kill is kept, whoever made it, since a kill by an
+            // unverified player can still be traded by one on the roster. Any
+            // other death still ends what the victim can be traded for.
+            if (facts != null && facts.KillerSlot >= 0 && !facts.TeammatesAreEnemies)
+            {
+                int traded = _trades.Killed(
+                    facts.KillerSlot,
+                    facts.KillerTeam,
+                    facts.VictimSlot,
+                    facts.VictimTeam,
+                    facts.Time
+                );
+
+                if (traded > 0 && killer != null && _current.TryGetValue(killer, out Entry? trader))
+                {
+                    trader.Add(CommunityStatKeys.TradeKills, traded);
+                }
+            }
+            else if (facts != null && facts.VictimSlot >= 0)
+            {
+                _trades.Died(facts.VictimSlot);
             }
 
             if (
@@ -243,26 +376,168 @@ public class PlayerRoster
                 && _current.TryGetValue(assister, out Entry? helper)
             )
             {
-                helper.Assists++;
+                if (facts?.AssistedFlash == true)
+                {
+                    helper.Add(CommunityStatKeys.FlashAssists);
+                }
+                else
+                {
+                    helper.Assists++;
+                }
             }
         }
     }
 
-    // The hooks pass an attacker only for damage to an enemy, by the same rule
-    // as a kill, and the damage already capped by Dealt.
-    public void Hurt(string? attacker, string? victim, int damage, bool warmup)
+    // The damage comes already capped by Dealt. Without facts the hooks pass
+    // an attacker only for damage to an enemy, by the same rule as a kill.
+    // With them, a hit on any enemy counts, bots included, but only damage to
+    // a human does; a human's hurting a human who is no enemy, themselves
+    // included, is team damage, as the match stats count it, but not where
+    // teammates are enemies.
+    public void Hurt(
+        string? attacker,
+        string? victim,
+        int damage,
+        bool warmup,
+        HitFacts? hit = null
+    )
     {
-        if (warmup || attacker == null || attacker == victim || damage <= 0)
+        if (warmup)
+        {
+            return;
+        }
+
+        if (hit == null)
+        {
+            if (attacker == null || attacker == victim || damage <= 0)
+            {
+                return;
+            }
+
+            lock (_lock)
+            {
+                if (_current.TryGetValue(attacker, out Entry? entry))
+                {
+                    entry.Damage += damage;
+                }
+            }
+
+            return;
+        }
+
+        lock (_lock)
+        {
+            if (attacker != null && _current.TryGetValue(attacker, out Entry? entry))
+            {
+                if (hit.Enemy)
+                {
+                    Hit(entry, hit, damage);
+                }
+                else if (hit.Team && !hit.TeammatesAreEnemies && damage > 0)
+                {
+                    entry.Add(CommunityStatKeys.TeamDamage, damage);
+                }
+            }
+
+            if (
+                hit.Enemy
+                && damage > 0
+                && victim != null
+                && _current.TryGetValue(victim, out Entry? hurt)
+            )
+            {
+                hurt.Add(CommunityStatKeys.DamageTaken, damage);
+            }
+        }
+    }
+
+    // Only a flash that blinds for more than a second counts, as the match
+    // stats count it, and blinding oneself is blinding a teammate, except where
+    // teammates are enemies and there are no team stats. The hooks pass only
+    // human victims.
+    public void Blinded(
+        string? attacker,
+        string? victim,
+        float seconds,
+        bool sameTeam,
+        bool warmup,
+        bool teammatesAreEnemies = false
+    )
+    {
+        if (warmup || attacker == null || seconds <= 1.0f)
         {
             return;
         }
 
         lock (_lock)
         {
-            if (_current.TryGetValue(attacker, out Entry? entry))
+            if (!_current.TryGetValue(attacker, out Entry? entry))
             {
-                entry.Damage += damage;
+                return;
             }
+
+            if (sameTeam || attacker == victim)
+            {
+                if (!teammatesAreEnemies)
+                {
+                    entry.Add(CommunityStatKeys.TeamFlashed);
+                }
+
+                return;
+            }
+
+            entry.Add(CommunityStatKeys.EnemiesFlashed);
+            entry.Add(CommunityStatKeys.FlashDurationMs, (int)Math.Round(seconds * 1000));
+        }
+    }
+
+    // A shot is a bullet weapon's: a knife's swing or a grenade's throw is not.
+    public void Fired(string? steamId, string? weapon, bool warmup)
+    {
+        if (warmup || steamId == null || !CommunityWeapons.IsFirearm(weapon))
+        {
+            return;
+        }
+
+        lock (_lock)
+        {
+            if (_current.TryGetValue(steamId, out Entry? entry))
+            {
+                entry.Add(CommunityStatKeys.Shots);
+
+                WeaponTotals? totals = entry.Weapon(weapon!);
+
+                if (totals != null)
+                {
+                    totals.shots++;
+                }
+            }
+        }
+    }
+
+    // A bomb planted or defused, or a hostage rescued, by the stat's key.
+    public void Objective(string? steamId, string key, bool warmup)
+    {
+        if (warmup || steamId == null)
+        {
+            return;
+        }
+
+        lock (_lock)
+        {
+            if (_current.TryGetValue(steamId, out Entry? entry))
+            {
+                entry.Add(key);
+            }
+        }
+    }
+
+    // A trade is a round's.
+    public void RoundStarted()
+    {
+        lock (_lock)
+        {
+            _trades.Clear();
         }
     }
 
@@ -433,6 +708,31 @@ public class PlayerRoster
         return attackerSlot != victimSlot && (teammatesAreEnemies || attackerTeam != victimTeam);
     }
 
+    // Killing oneself is a suicide, not a team kill, and where teammates are
+    // enemies nobody is a teammate.
+    public static bool IsTeamKill(
+        int attackerSlot,
+        int victimSlot,
+        int attackerTeam,
+        int victimTeam,
+        bool teammatesAreEnemies
+    )
+    {
+        return attackerSlot != victimSlot && !teammatesAreEnemies && attackerTeam == victimTeam;
+    }
+
+    // No attacker is the world's doing, but the bomb has no attacker either,
+    // and dying to it is no suicide.
+    public static bool IsSuicide(int? attackerSlot, int victimSlot, string? weapon)
+    {
+        if (attackerSlot == null)
+        {
+            return CommunityWeapons.Normalize(weapon) != "planted_c4";
+        }
+
+        return attackerSlot == victimSlot;
+    }
+
     // A flash assist only blinded the victim, which did nothing to their health.
     public static bool CountsAsAssist(
         int assisterSlot,
@@ -464,6 +764,157 @@ public class PlayerRoster
         return Math.Clamp(damage, 0, Math.Max(before, 0));
     }
 
+    private static void Scored(Entry scorer, KillFacts facts, bool headshot)
+    {
+        string? type = CommunityWeapons.KillType(facts.Weapon);
+
+        if (type != null)
+        {
+            scorer.Add(type);
+        }
+
+        if (facts.NoScope)
+        {
+            scorer.Add(CommunityStatKeys.NoScopeKills);
+        }
+
+        if (facts.ThruSmoke)
+        {
+            scorer.Add(CommunityStatKeys.ThruSmokeKills);
+        }
+
+        if (facts.Penetrated > 0)
+        {
+            scorer.Add(CommunityStatKeys.ThruWallKills);
+        }
+
+        if (facts.AttackerBlind)
+        {
+            scorer.Add(CommunityStatKeys.BlindedKills);
+        }
+
+        if (facts.AttackerInAir)
+        {
+            scorer.Add(CommunityStatKeys.InAirKills);
+        }
+
+        WeaponTotals? totals = scorer.Weapon(facts.Weapon);
+
+        if (totals != null)
+        {
+            totals.kills++;
+
+            if (headshot)
+            {
+                totals.headshots++;
+            }
+        }
+    }
+
+    // A shotgun's pellets all hit in the same tick, and each victim they hit
+    // is hit once, as the match stats' hits are shots that hit.
+    private static void Hit(Entry entry, HitFacts hit, int damage)
+    {
+        WeaponTotals? totals = null;
+
+        if (CommunityWeapons.IsFirearm(hit.Weapon))
+        {
+            if (entry.HitTick != hit.Tick)
+            {
+                entry.HitTick = hit.Tick;
+                entry.HitSlots.Clear();
+            }
+
+            if (entry.HitSlots.Add(hit.VictimSlot))
+            {
+                entry.Add(CommunityStatKeys.Hits);
+
+                string? group = CommunityStatKeys.HitGroup(hit.HitGroup);
+
+                if (group != null)
+                {
+                    entry.Add(group);
+                }
+
+                totals = entry.Weapon(hit.Weapon);
+
+                if (totals != null)
+                {
+                    totals.hits++;
+                }
+            }
+        }
+
+        if (!hit.VictimIsHuman || damage <= 0)
+        {
+            return;
+        }
+
+        entry.Damage += damage;
+
+        string? type = CommunityWeapons.DamageType(hit.Weapon);
+
+        if (type != null)
+        {
+            entry.Add(type, damage);
+        }
+
+        totals ??= entry.Weapon(hit.Weapon);
+
+        if (totals != null)
+        {
+            totals.damage += damage;
+        }
+    }
+
+    // Copies, since the report is serialized outside the lock, with zeros
+    // left out and nothing at all when nothing is left.
+    private static Dictionary<string, int>? StatsOf(Entry entry)
+    {
+        Dictionary<string, int> stats = entry
+            .Stats.Where(stat => stat.Value != 0)
+            .ToDictionary(stat => stat.Key, stat => stat.Value);
+
+        if (entry.BestStreak > 0)
+        {
+            stats[CommunityStatKeys.BestStreak] = entry.BestStreak;
+        }
+
+        return stats.Count == 0 ? null : stats;
+    }
+
+    private static Dictionary<string, WeaponTotals>? WeaponsOf(Entry entry)
+    {
+        Dictionary<string, WeaponTotals> weapons = entry
+            .Weapons.Where(weapon =>
+                weapon.Value.kills != 0
+                || weapon.Value.headshots != 0
+                || weapon.Value.shots != 0
+                || weapon.Value.hits != 0
+                || weapon.Value.damage != 0
+            )
+            .ToDictionary(weapon => weapon.Key, weapon => Copy(weapon.Value));
+
+        return weapons.Count == 0 ? null : weapons;
+    }
+
+    private static Dictionary<string, WeaponTotals>? Copy(Dictionary<string, WeaponTotals>? weapons)
+    {
+        return weapons?.ToDictionary(weapon => weapon.Key, weapon => Copy(weapon.Value));
+    }
+
+    private static WeaponTotals Copy(WeaponTotals totals)
+    {
+        return new WeaponTotals
+        {
+            kills = totals.kills,
+            headshots = totals.headshots,
+            shots = totals.shots,
+            hits = totals.hits,
+            damage = totals.damage,
+        };
+    }
+
     // The panel checks the name itself; this only keeps an empty one from
     // reading as a map.
     private static string? MapName(string? raw)
@@ -490,6 +941,8 @@ public class PlayerRoster
                 rounds_played = entry.Value.RoundsPlayed,
                 rounds_won = entry.Value.RoundsWon,
                 mvps = entry.Value.Mvps,
+                stats = StatsOf(entry.Value),
+                weapons = WeaponsOf(entry.Value),
             })
             .ToList();
     }
@@ -510,6 +963,8 @@ public class PlayerRoster
                 rounds_played = departure.Player.rounds_played,
                 rounds_won = departure.Player.rounds_won,
                 mvps = departure.Player.mvps,
+                stats = departure.Player.stats == null ? null : new(departure.Player.stats),
+                weapons = Copy(departure.Player.weapons),
             })
             .ToList();
     }
@@ -607,6 +1062,8 @@ public class PlayerRoster
                         rounds_played = entry.RoundsPlayed,
                         rounds_won = entry.RoundsWon,
                         mvps = entry.Mvps,
+                        stats = StatsOf(entry),
+                        weapons = WeaponsOf(entry),
                     },
                     now
                 )

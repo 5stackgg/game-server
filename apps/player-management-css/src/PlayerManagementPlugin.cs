@@ -431,12 +431,59 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
                     @event.Assistedflash
                 );
 
+            // A flash assist is counted apart, by the same rule as a kill.
+            bool flashAssist =
+                @event.Assistedflash
+                && assister != null
+                && IsHuman(assister)
+                && PlayerRoster.CountsAsKill(
+                    assister.Slot,
+                    victim.Slot,
+                    assister.TeamNum,
+                    victim.TeamNum,
+                    teammatesAreEnemies
+                );
+
+            bool teamKill =
+                attacker != null
+                && IsHuman(attacker)
+                && PlayerRoster.IsTeamKill(
+                    attacker.Slot,
+                    victim.Slot,
+                    attacker.TeamNum,
+                    victim.TeamNum,
+                    teammatesAreEnemies
+                );
+
+            KillFacts facts = new(
+                Weapon: @event.Weapon,
+                Time: Server.CurrentTime,
+                KillerSlot: kill ? attacker!.Slot : -1,
+                KillerTeam: kill ? attacker!.TeamNum : 0,
+                VictimSlot: victim.Slot,
+                VictimTeam: victim.TeamNum,
+                TeammatesAreEnemies: teammatesAreEnemies,
+                NoScope: @event.Noscope,
+                ThruSmoke: @event.Thrusmoke,
+                AttackerBlind: @event.Attackerblind,
+                Penetrated: @event.Penetrated,
+                AttackerInAir: @event.Attackerinair,
+                AssistedFlash: flashAssist,
+                Suicide: PlayerRoster.IsSuicide(
+                    attacker != null && attacker.IsValid ? attacker.Slot : null,
+                    victim.Slot,
+                    @event.Weapon
+                ),
+                TeamKiller: teamKill ? VerifiedSteamIdOf(attacker!) : null
+            );
+
             _roster.Died(
                 VerifiedSteamIdOf(victim),
                 kill ? VerifiedSteamIdOf(attacker!) : null,
                 IsWarmup(),
-                assist ? VerifiedSteamIdOf(assister!) : null,
-                @event.Headshot
+                assist || flashAssist ? VerifiedSteamIdOf(assister!) : null,
+                @event.Headshot,
+                facts
             );
         }
         catch (Exception error)
@@ -454,7 +501,7 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         {
             CCSPlayerController? victim = @event.Userid;
 
-            if (victim == null || !IsHuman(victim))
+            if (victim == null || !victim.IsValid)
             {
                 return HookResult.Continue;
             }
@@ -466,28 +513,50 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             );
             _health[victim.Slot] = @event.Health;
 
+            // A hit on a bot counts, damage to one does not, and only a human
+            // hurting a human who is no enemy is team damage. Nothing counts
+            // without an attacker, between two bots, or for a bot hurt by
+            // anything but a gun, which spares those the lookups below.
             CCSPlayerController? attacker = @event.Attacker;
 
-            if (
-                attacker == null
-                || !IsHuman(attacker)
-                || !PlayerRoster.CountsAsKill(
-                    attacker.Slot,
-                    victim.Slot,
-                    attacker.TeamNum,
-                    victim.TeamNum,
-                    TeammatesAreEnemies()
-                )
-            )
+            if (attacker == null || !attacker.IsValid)
             {
                 return HookResult.Continue;
             }
 
+            bool attackerIsHuman = IsHuman(attacker);
+            bool victimIsHuman = IsHuman(victim);
+
+            if (!victimIsHuman && (!attackerIsHuman || !CommunityWeapons.IsFirearm(@event.Weapon)))
+            {
+                return HookResult.Continue;
+            }
+
+            bool teammatesAreEnemies = TeammatesAreEnemies();
+
+            bool enemy = PlayerRoster.CountsAsKill(
+                attacker.Slot,
+                victim.Slot,
+                attacker.TeamNum,
+                victim.TeamNum,
+                teammatesAreEnemies
+            );
+
             _roster.Hurt(
-                VerifiedSteamIdOf(attacker),
-                VerifiedSteamIdOf(victim),
+                attackerIsHuman ? VerifiedSteamIdOf(attacker) : null,
+                victimIsHuman ? VerifiedSteamIdOf(victim) : null,
                 dealt,
-                IsWarmup()
+                IsWarmup(),
+                new HitFacts(
+                    @event.Weapon,
+                    @event.Hitgroup,
+                    Server.TickCount,
+                    victim.Slot,
+                    victimIsHuman,
+                    enemy,
+                    attackerIsHuman && victimIsHuman && !enemy,
+                    teammatesAreEnemies
+                )
             );
         }
         catch (Exception error)
@@ -513,6 +582,134 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         catch (Exception error)
         {
             Logger.LogError(error, "unable to reset a player's health");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnWeaponFire(EventWeaponFire @event, GameEventInfo info)
+    {
+        try
+        {
+            // This runs for every shot and every throw, so the cheap checks
+            // come before the lookups.
+            if (!CommunityWeapons.IsFirearm(@event.Weapon))
+            {
+                return HookResult.Continue;
+            }
+
+            CCSPlayerController? player = @event.Userid;
+
+            if (player == null || !IsHuman(player))
+            {
+                return HookResult.Continue;
+            }
+
+            string? steamId = VerifiedSteamIdOf(player);
+
+            if (steamId == null)
+            {
+                return HookResult.Continue;
+            }
+
+            _roster.Fired(steamId, FiredWeapon(player, @event.Weapon), IsWarmup());
+        }
+        catch (Exception error)
+        {
+            Logger.LogError(error, "unable to count a shot");
+        }
+
+        return HookResult.Continue;
+    }
+
+    // Blinding oneself is blinding a teammate, as it is on the match side.
+    [GameEventHandler]
+    public HookResult OnPlayerBlind(EventPlayerBlind @event, GameEventInfo info)
+    {
+        try
+        {
+            CCSPlayerController? victim = @event.Userid;
+            CCSPlayerController? attacker = @event.Attacker;
+
+            if (victim == null || !IsHuman(victim) || attacker == null || !IsHuman(attacker))
+            {
+                return HookResult.Continue;
+            }
+
+            // A spectator or a dead player can be blinded too, and counts for
+            // nothing.
+            int victimTeam = victim.TeamNum;
+
+            if (
+                (victimTeam != PlayerRoster.TeamT && victimTeam != PlayerRoster.TeamCT)
+                || !victim.PawnIsAlive
+            )
+            {
+                return HookResult.Continue;
+            }
+
+            bool teammatesAreEnemies = TeammatesAreEnemies();
+
+            bool sameTeam = !PlayerRoster.CountsAsKill(
+                attacker.Slot,
+                victim.Slot,
+                attacker.TeamNum,
+                victimTeam,
+                teammatesAreEnemies
+            );
+
+            _roster.Blinded(
+                VerifiedSteamIdOf(attacker),
+                VerifiedSteamIdOf(victim),
+                @event.BlindDuration,
+                sameTeam,
+                IsWarmup(),
+                teammatesAreEnemies
+            );
+        }
+        catch (Exception error)
+        {
+            Logger.LogError(error, "unable to count a flash");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnBombPlanted(EventBombPlanted @event, GameEventInfo info)
+    {
+        Objective(@event.Userid, CommunityStatKeys.BombPlants);
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnBombDefused(EventBombDefused @event, GameEventInfo info)
+    {
+        Objective(@event.Userid, CommunityStatKeys.BombDefuses);
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnHostageRescued(EventHostageRescued @event, GameEventInfo info)
+    {
+        Objective(@event.Userid, CommunityStatKeys.HostageRescues);
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
+    {
+        try
+        {
+            _roster.RoundStarted();
+        }
+        catch (Exception error)
+        {
+            Logger.LogError(error, "unable to start a round");
         }
 
         return HookResult.Continue;
@@ -572,6 +769,21 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         return HookResult.Continue;
     }
 
+    private void Objective(CCSPlayerController? player, string key)
+    {
+        try
+        {
+            if (player != null && IsHuman(player))
+            {
+                _roster.Objective(VerifiedSteamIdOf(player), key, IsWarmup());
+            }
+        }
+        catch (Exception error)
+        {
+            Logger.LogError(error, "unable to count an objective");
+        }
+    }
+
     // Kept apart from the enforcement that follows it on the tick, which must
     // run whatever happens to the roster.
     private void ObserveRoster(List<CCSPlayerController> humans)
@@ -584,6 +796,29 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         {
             Logger.LogError(error, "unable to observe the players present");
         }
+    }
+
+    // Some guns share another's class (see CommunityWeapons), and weapon_fire
+    // may then name the other gun, while player_hurt and player_death name
+    // the item. Only for those names is the gun in hand read by its item
+    // definition index; anything unreadable keeps the event's name.
+    private static string FiredWeapon(CCSPlayerController player, string weapon)
+    {
+        if (!CommunityWeapons.SharesAClass(weapon))
+        {
+            return weapon;
+        }
+
+        CBasePlayerWeapon? active = player.PlayerPawn.Value?.WeaponServices?.ActiveWeapon.Value;
+
+        if (active == null || !active.IsValid)
+        {
+            return weapon;
+        }
+
+        return CommunityWeapons.FirearmByDefinition(
+                active.AttributeManager.Item.ItemDefinitionIndex
+            ) ?? weapon;
     }
 
     // Unreadable is taken as teams as usual, where a team kill earns nothing.
