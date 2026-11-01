@@ -638,10 +638,12 @@ public partial class PlayerManagementPlugin : BasePlugin
         {
             IPlayer? player = @event.UserIdPlayer;
 
-            if (player != null && IsHuman(player))
-            {
-                _roster.Mvp(VerifiedSteamIdOf(player), IsWarmup());
-            }
+            // A bot's MVP, or one whose player has gone, is still the round's
+            // MVP, so it reaches the roster without a player to credit.
+            _roster.Mvp(
+                player != null && IsHuman(player) ? VerifiedSteamIdOf(player) : null,
+                IsWarmup()
+            );
         }
         catch (Exception error)
         {

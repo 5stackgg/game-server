@@ -1398,7 +1398,8 @@ public class PlayerRosterTests
     }
 
     // The MVP comes after the round end, and a round ended again has had its
-    // MVP, whichever order the two ends and the two MVPs come in.
+    // MVP, whether the second end comes before or after the first MVP and
+    // whether that MVP went to a bot.
     [Fact]
     public void ARoundEndedAgainGetsNoSecondMvp()
     {
@@ -1421,6 +1422,13 @@ public class PlayerRosterTests
         roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
         roster.Mvp("2", warmup: false);
         roster.Mvp("1", warmup: false);
+
+        roster.RoundStarted();
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
+        roster.Mvp(null, warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamCT, teams, warmup: false);
+        roster.Mvp("2", warmup: false);
 
         RosterReport report = roster.Report(At(1));
         Assert.Equal(1, CountersOf(report, "1").Mvps);
