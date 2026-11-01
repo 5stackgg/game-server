@@ -52,9 +52,7 @@ public partial class PlayerManagementPlugin : BasePlugin
     private readonly HashSet<ulong> _mutedByUs = new();
     private readonly HashSet<ulong> _kicked = new();
 
-    // Each player's health after the last hit they survived, by slot, so a
-    // lethal hit is credited only with what it took. Cleared when they spawn.
-    private readonly Dictionary<int, int> _health = new();
+    private readonly HealthBook _health = new();
 
     private EventDelegates.OnTick? _tickHandler;
     private EventDelegates.OnClientPutInServer? _putInServerHandler;
@@ -329,6 +327,7 @@ public partial class PlayerManagementPlugin : BasePlugin
             List<IPlayer> humans = Humans();
 
             ObserveRoster(humans);
+            ReadHealth(humans);
             Enforce(humans);
         }
         catch (Exception error)
@@ -511,12 +510,7 @@ public partial class PlayerManagementPlugin : BasePlugin
                 return HookResult.Continue;
             }
 
-            int dealt = PlayerRoster.Dealt(
-                @event.ActualDmgHealth,
-                @event.ActualHealth,
-                _health.TryGetValue(victim.PlayerID, out int before) ? before : null
-            );
-            _health[victim.PlayerID] = @event.ActualHealth;
+            int dealt = _health.Hit(victim.PlayerID, @event.ActualDmgHealth, @event.ActualHealth);
 
             IPlayer? attacker = @event.AttackerPlayer;
 
@@ -559,7 +553,7 @@ public partial class PlayerManagementPlugin : BasePlugin
 
             if (player != null)
             {
-                _health.Remove(player.PlayerID);
+                _health.Spawned(player.PlayerID);
             }
         }
         catch (Exception error)
@@ -635,6 +629,28 @@ public partial class PlayerManagementPlugin : BasePlugin
         catch (Exception error)
         {
             _logger.LogError(error, "unable to observe the players present");
+        }
+    }
+
+    // Also kept apart from the enforcement. A pawn that cannot be read keeps
+    // the health its last hit left.
+    private void ReadHealth(List<IPlayer> humans)
+    {
+        foreach (IPlayer player in humans)
+        {
+            try
+            {
+                CCSPlayerPawn? pawn = player.PlayerPawn;
+
+                if (pawn != null && pawn.IsValid)
+                {
+                    _health.Seen(player.PlayerID, pawn.Health);
+                }
+            }
+            catch (Exception error)
+            {
+                _logger.LogDebug(error, "unable to read a player's health");
+            }
         }
     }
 
