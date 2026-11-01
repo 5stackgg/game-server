@@ -1383,11 +1383,48 @@ public class PlayerRosterTests
         roster.FreezeTimeEnded(warmup: false);
 
         roster.MapEnded(At(1));
+        roster.Delivered(roster.Report(At(1)), true);
         roster.MapStarted(At(2), "de_inferno");
+        roster.Observe([Human("1")], At(3));
         roster.RoundEnded(PlayerRoster.TeamT, Teams(("1", PlayerRoster.TeamT)), warmup: false);
         roster.Mvp("1", warmup: false);
 
-        Assert.Equal(new Counters(0, 0, 0, 0, 0, 0, 0, 0), CountersOf(roster.Report(At(3)), "1"));
+        // The old map's report is delivered and everyone held is back, so this
+        // is the new map's roster and not the snapshot taken at the map's end.
+        RosterReport report = roster.Report(At(4));
+        Assert.NotNull(report.Players);
+        Assert.Equal("de_inferno", report.Map);
+        Assert.Equal(new Counters(0, 0, 0, 0, 0, 0, 0, 0), CountersOf(report, "1"));
+    }
+
+    // The MVP comes after the round end, and a round ended again has had its
+    // MVP, whichever order the two ends and the two MVPs come in.
+    [Fact]
+    public void ARoundEndedAgainGetsNoSecondMvp()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+        IReadOnlyDictionary<string, int> teams = Teams(
+            ("1", PlayerRoster.TeamT),
+            ("2", PlayerRoster.TeamCT)
+        );
+
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
+        roster.Mvp("1", warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamCT, teams, warmup: false);
+        roster.Mvp("2", warmup: false);
+
+        roster.RoundStarted();
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamCT, teams, warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
+        roster.Mvp("2", warmup: false);
+        roster.Mvp("1", warmup: false);
+
+        RosterReport report = roster.Report(At(1));
+        Assert.Equal(1, CountersOf(report, "1").Mvps);
+        Assert.Equal(1, CountersOf(report, "2").Mvps);
     }
 
     [Fact]

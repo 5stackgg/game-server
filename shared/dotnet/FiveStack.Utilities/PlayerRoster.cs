@@ -84,6 +84,7 @@ public class PlayerRoster
     private DateTimeOffset _finalAt;
     private bool _roundLive;
     private bool _roundEnded;
+    private bool _roundMvp;
 
     // Returns when a sync is due if this observation is what made one due.
     public virtual DateTimeOffset? Observe(IEnumerable<ObservedPlayer> players, DateTimeOffset now)
@@ -281,6 +282,7 @@ public class PlayerRoster
         {
             _roundLive = !warmup;
             _roundEnded = false;
+            _roundMvp = false;
         }
     }
 
@@ -294,6 +296,7 @@ public class PlayerRoster
         {
             _roundLive = false;
             _roundEnded = false;
+            _roundMvp = false;
         }
     }
 
@@ -340,7 +343,8 @@ public class PlayerRoster
         }
     }
 
-    // A round that never went live has no MVP either.
+    // A round that never went live has no MVP either, and a round ended again
+    // has had its MVP: the MVP after its first end is the only one it gets.
     public void Mvp(string? steamId, bool warmup)
     {
         if (warmup)
@@ -350,6 +354,13 @@ public class PlayerRoster
 
         lock (_lock)
         {
+            if (_roundEnded && _roundMvp)
+            {
+                return;
+            }
+
+            _roundMvp = _roundEnded;
+
             if (
                 _roundLive
                 && steamId != null
