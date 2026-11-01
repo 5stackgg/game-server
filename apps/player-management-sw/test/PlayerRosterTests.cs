@@ -744,6 +744,106 @@ public class PlayerRosterTests
         Assert.Equal("de_inferno", panel.Map(3));
     }
 
+    // The sync in flight carries the roster from before the last kills, so the
+    // panel taking it must not stand in for the map-end report.
+    [Fact]
+    public async Task ASyncInFlightAtTheMapChangeIsNotTheMapEndReport()
+    {
+        var (loop, roster, _, panel) = Loop();
+        roster.MapIs("de_mirage");
+        loop.Observe([Human("1"), Human("2")], Start);
+        await loop.Tick(Start);
+
+        roster.Died("2", "1");
+
+        TaskCompletionSource<HttpResponseMessage> answer = new();
+        panel.Answer = () => answer.Task;
+        loop.Observe([Human("1"), Human("2")], Start + SanctionSyncLoop.Interval);
+        Task inFlight = loop.Tick(Start + SanctionSyncLoop.Interval);
+
+        roster.Died("2", "1");
+        roster.MapEnded(At(31));
+        roster.MapStarted(At(32), "de_inferno");
+        answer.SetResult(Panel.Ok(recorded: true));
+        await inFlight;
+
+        panel.Answer = () => Task.FromResult(Panel.Ok(recorded: true));
+        await loop.Tick(At(32));
+
+        Assert.Equal("de_mirage", panel.Map(1));
+        Assert.Equal(
+            [
+                new Reported("1", "player 1", "203.0.113.24", 1, 0),
+                new Reported("2", "player 2", "203.0.113.24", 0, 1),
+            ],
+            panel.Players(1)
+        );
+
+        Assert.Equal("de_mirage", panel.Map(2));
+        Assert.Equal(
+            [
+                new Reported("1", "player 1", "203.0.113.24", 2, 0),
+                new Reported("2", "player 2", "203.0.113.24", 0, 2),
+            ],
+            panel.Players(2)
+        );
+
+        await loop.Tick(At(32) + SanctionSyncLoop.Interval);
+
+        Assert.Equal(4, panel.Bodies.Count);
+        Assert.Equal("de_inferno", panel.Map(3));
+        Assert.Null(panel.Players(3));
+    }
+
+    // A kill on the new map while its players are still loading in belongs to
+    // that map, even when the old map's report is sent after it.
+    [Fact]
+    public async Task AKillDuringTheHoldIsNotInTheMapEndReport()
+    {
+        var (loop, roster, _, panel) = Loop();
+        roster.MapIs("de_mirage");
+        loop.Observe([Human("1"), Human("2")], Start);
+        await loop.Tick(Start);
+
+        roster.Died("2", "1");
+        roster.MapEnded(At(5));
+        roster.MapStarted(At(6), "de_inferno");
+        roster.Died("2", "1");
+
+        panel.Answer = () => Task.FromResult(Panel.Down());
+        await loop.Tick(At(6));
+
+        roster.Died("2", "1");
+
+        panel.Answer = () => Task.FromResult(Panel.Ok(recorded: true));
+        await loop.Tick(At(6) + SanctionSyncLoop.Interval);
+
+        foreach (int sync in new[] { 1, 2 })
+        {
+            Assert.Equal("de_mirage", panel.Map(sync));
+            Assert.Equal(
+                [
+                    new Reported("1", "player 1", "203.0.113.24", 1, 0),
+                    new Reported("2", "player 2", "203.0.113.24", 0, 1),
+                ],
+                panel.Players(sync)
+            );
+        }
+
+        loop.Observe([Human("1"), Human("2")], At(6) + SanctionSyncLoop.Interval * 2);
+        await loop.Tick(At(6) + SanctionSyncLoop.Interval * 2);
+
+        Assert.Equal(4, panel.Bodies.Count);
+        Assert.Equal("de_inferno", panel.Map(3));
+        Assert.Equal(
+            [
+                new Reported("1", "player 1", "203.0.113.24", 3, 0),
+                new Reported("2", "player 2", "203.0.113.24", 0, 3),
+            ],
+            panel.Players(3)
+        );
+    }
+
     // A roster that changed over the map change differs from the report still
     // waiting to be taken; that must not turn every poll into a sync.
     [Fact]
