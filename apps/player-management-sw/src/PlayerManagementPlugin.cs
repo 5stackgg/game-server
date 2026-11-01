@@ -568,6 +568,21 @@ public partial class PlayerManagementPlugin : BasePlugin
     }
 
     [GameEventHandler(HookMode.Post)]
+    public HookResult OnRoundStart(EventRoundStart @event)
+    {
+        try
+        {
+            _roster.RoundStarted();
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to start a round");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler(HookMode.Post)]
     public HookResult OnRoundFreezeEnd(EventRoundFreezeEnd @event)
     {
         try

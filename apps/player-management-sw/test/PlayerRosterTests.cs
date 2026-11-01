@@ -1342,6 +1342,36 @@ public class PlayerRosterTests
         Assert.Equal((1, 0), Rounds(report, "2"));
     }
 
+    // An admin or a plugin can end a round again before the next one starts,
+    // and the next round only counts once its own freeze time has ended.
+    [Fact]
+    public void ARoundCountsOnceAndTheNextOneOnlyOnceItGoesLive()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+        IReadOnlyDictionary<string, int> teams = Teams(
+            ("1", PlayerRoster.TeamT),
+            ("2", PlayerRoster.TeamCT)
+        );
+
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
+        roster.Mvp("1", warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamCT, teams, warmup: false);
+
+        Assert.Equal((1, 1), Rounds(roster.Report(At(1)), "1"));
+        Assert.Equal((1, 0), Rounds(roster.Report(At(1)), "2"));
+
+        roster.RoundStarted();
+        roster.RoundEnded(PlayerRoster.TeamCT, teams, warmup: false);
+        roster.Mvp("2", warmup: false);
+
+        RosterReport report = roster.Report(At(2));
+        Assert.Equal((1, 0), Rounds(report, "2"));
+        Assert.Equal(0, CountersOf(report, "2").Mvps);
+        Assert.Equal(1, CountersOf(report, "1").Mvps);
+    }
+
     // A changelevel cuts the round under way short, and the new map's first
     // round has not gone live until its freeze time ends.
     [Fact]

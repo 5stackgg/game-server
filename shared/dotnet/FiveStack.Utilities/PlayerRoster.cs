@@ -83,6 +83,7 @@ public class PlayerRoster
     private RosterReport? _final;
     private DateTimeOffset _finalAt;
     private bool _roundLive;
+    private bool _roundEnded;
 
     // Returns when a sync is due if this observation is what made one due.
     public virtual DateTimeOffset? Observe(IEnumerable<ObservedPlayer> players, DateTimeOffset now)
@@ -279,6 +280,20 @@ public class PlayerRoster
         lock (_lock)
         {
             _roundLive = !warmup;
+            _roundEnded = false;
+        }
+    }
+
+    // A round counts once: another round end before the next round starts (an
+    // admin ending the round, a plugin terminating it) is not another round.
+    // The MVP can come after the round end, so the flag only goes at the
+    // next round's start.
+    public void RoundStarted()
+    {
+        lock (_lock)
+        {
+            _roundLive = false;
+            _roundEnded = false;
         }
     }
 
@@ -298,10 +313,12 @@ public class PlayerRoster
 
         lock (_lock)
         {
-            if (!_roundLive)
+            if (!_roundLive || _roundEnded)
             {
                 return;
             }
+
+            _roundEnded = true;
 
             foreach ((string steamId, int team) in teamsBySteamId)
             {

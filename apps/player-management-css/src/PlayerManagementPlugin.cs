@@ -516,6 +516,21 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
     }
 
     [GameEventHandler]
+    public HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
+    {
+        try
+        {
+            _roster.RoundStarted();
+        }
+        catch (Exception error)
+        {
+            Logger.LogError(error, "unable to start a round");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
     public HookResult OnRoundFreezeEnd(EventRoundFreezeEnd @event, GameEventInfo info)
     {
         try
