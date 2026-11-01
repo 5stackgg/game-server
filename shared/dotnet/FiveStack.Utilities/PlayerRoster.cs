@@ -82,6 +82,7 @@ public class PlayerRoster
     private string? _map;
     private RosterReport? _final;
     private DateTimeOffset _finalAt;
+    private bool _roundLive;
 
     // Returns when a sync is due if this observation is what made one due.
     public virtual DateTimeOffset? Observe(IEnumerable<ObservedPlayer> players, DateTimeOffset now)
@@ -176,6 +177,9 @@ public class PlayerRoster
             Hold(now);
             _mapStarted = true;
             _releaseAt = null;
+
+            // A round the map change cut short never ends.
+            _roundLive = false;
         }
     }
 
@@ -266,6 +270,18 @@ public class PlayerRoster
         }
     }
 
+    // Ending warmup ends its round as a win for whoever is alive, so the warmup
+    // flag at a round's end is not what decides it: a round only counts once
+    // its freeze time has ended outside warmup, as the match plugin's knife
+    // round does.
+    public void FreezeTimeEnded(bool warmup)
+    {
+        lock (_lock)
+        {
+            _roundLive = !warmup;
+        }
+    }
+
     // A round is played by whoever is on a side when it ends, so a player who
     // switches sides mid-round plays it for the side they ended it on, and a
     // spectator plays none. Warmup rounds are not rounds.
@@ -282,6 +298,11 @@ public class PlayerRoster
 
         lock (_lock)
         {
+            if (!_roundLive)
+            {
+                return;
+            }
+
             foreach ((string steamId, int team) in teamsBySteamId)
             {
                 if (
@@ -302,6 +323,7 @@ public class PlayerRoster
         }
     }
 
+    // A round that never went live has no MVP either.
     public void Mvp(string? steamId, bool warmup)
     {
         if (warmup)
@@ -311,7 +333,11 @@ public class PlayerRoster
 
         lock (_lock)
         {
-            if (steamId != null && _current.TryGetValue(steamId, out Entry? entry))
+            if (
+                _roundLive
+                && steamId != null
+                && _current.TryGetValue(steamId, out Entry? entry)
+            )
             {
                 entry.Mvps++;
             }

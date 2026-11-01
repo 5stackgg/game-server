@@ -160,6 +160,9 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             {
                 Logger.LogDebug(error, "unable to read the map on load");
             }
+
+            // Nor has it seen the round under way go live.
+            _roster.FreezeTimeEnded(IsWarmup());
         }
 
         _loop.Start();
@@ -507,6 +510,21 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         catch (Exception error)
         {
             Logger.LogError(error, "unable to reset a player's health");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnRoundFreezeEnd(EventRoundFreezeEnd @event, GameEventInfo info)
+    {
+        try
+        {
+            _roster.FreezeTimeEnded(IsWarmup());
+        }
+        catch (Exception error)
+        {
+            Logger.LogError(error, "unable to start counting a round");
         }
 
         return HookResult.Continue;

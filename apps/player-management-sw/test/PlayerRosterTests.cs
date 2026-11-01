@@ -1219,6 +1219,7 @@ public class PlayerRosterTests
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1"), Human("2"), Human("3"), Human("4")], Start);
+        roster.FreezeTimeEnded(warmup: false);
 
         roster.RoundEnded(
             PlayerRoster.TeamT,
@@ -1231,6 +1232,7 @@ public class PlayerRosterTests
             ),
             warmup: false
         );
+        roster.FreezeTimeEnded(warmup: false);
         roster.RoundEnded(
             PlayerRoster.TeamCT,
             Teams(
@@ -1255,6 +1257,7 @@ public class PlayerRosterTests
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1"), Human("2")], Start);
+        roster.FreezeTimeEnded(warmup: false);
 
         roster.RoundEnded(
             1,
@@ -1273,6 +1276,7 @@ public class PlayerRosterTests
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1")], Start);
+        roster.FreezeTimeEnded(warmup: true);
 
         roster.RoundEnded(PlayerRoster.TeamT, Teams(("1", PlayerRoster.TeamT)), warmup: true);
 
@@ -1286,12 +1290,14 @@ public class PlayerRosterTests
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1"), Human("2"), Human("3")], Start);
+        roster.FreezeTimeEnded(warmup: true);
 
         roster.Died("2", "1", warmup: true, assister: "3", headshot: true);
         roster.Hurt("1", "2", 100, warmup: true);
         roster.Mvp("1", warmup: true);
         roster.RoundEnded(PlayerRoster.TeamT, Teams(("1", PlayerRoster.TeamT)), warmup: true);
 
+        roster.FreezeTimeEnded(warmup: false);
         roster.Died("2", "1", warmup: false, assister: "3", headshot: true);
         roster.Hurt("1", "2", 100, warmup: false);
         roster.Mvp("1", warmup: false);
@@ -1303,11 +1309,63 @@ public class PlayerRosterTests
         Assert.Equal(new Counters(0, 0, 1, 0, 0, 0, 0, 0), CountersOf(report, "3"));
     }
 
+    // Ending warmup ends its round as a win for whoever is alive, and the warmup
+    // flag can already be off by then. Only the round after it counts.
+    [Fact]
+    public void EndingWarmupHandsOutNoRound()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+        roster.FreezeTimeEnded(warmup: true);
+
+        roster.RoundEnded(
+            PlayerRoster.TeamT,
+            Teams(("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamCT)),
+            warmup: false
+        );
+        roster.Mvp("1", warmup: false);
+
+        Assert.Equal(new Counters(0, 0, 0, 0, 0, 0, 0, 0), CountersOf(roster.Report(At(1)), "1"));
+
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(
+            PlayerRoster.TeamT,
+            Teams(("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamCT)),
+            warmup: false
+        );
+        roster.Mvp("1", warmup: false);
+
+        RosterReport report = roster.Report(At(2));
+
+        Assert.Equal((1, 1), Rounds(report, "1"));
+        Assert.Equal(1, CountersOf(report, "1").Mvps);
+        Assert.Equal((1, 0), Rounds(report, "2"));
+    }
+
+    // A changelevel cuts the round under way short, and the new map's first
+    // round has not gone live until its freeze time ends.
+    [Fact]
+    public void ARoundTheMapChangeCutShortIsNotCounted()
+    {
+        PlayerRoster roster = new();
+        roster.MapIs("de_mirage");
+        roster.Observe([Human("1")], Start);
+        roster.FreezeTimeEnded(warmup: false);
+
+        roster.MapEnded(At(1));
+        roster.MapStarted(At(2), "de_inferno");
+        roster.RoundEnded(PlayerRoster.TeamT, Teams(("1", PlayerRoster.TeamT)), warmup: false);
+        roster.Mvp("1", warmup: false);
+
+        Assert.Equal(new Counters(0, 0, 0, 0, 0, 0, 0, 0), CountersOf(roster.Report(At(3)), "1"));
+    }
+
     [Fact]
     public void AnMvpGoesToARosterPlayerOnly()
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1")], Start);
+        roster.FreezeTimeEnded(warmup: false);
 
         roster.Mvp("1", warmup: false);
         roster.Mvp("1", warmup: false);
@@ -1319,6 +1377,7 @@ public class PlayerRosterTests
 
     private static void CountEverything(PlayerRoster roster, string steamId, string enemy)
     {
+        roster.FreezeTimeEnded(warmup: false);
         roster.Died(enemy, steamId, warmup: false, assister: null, headshot: true);
         roster.Died(steamId, enemy, warmup: false);
         roster.Died(enemy, null, warmup: false, assister: steamId);
