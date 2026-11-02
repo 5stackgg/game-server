@@ -21,6 +21,7 @@ namespace FiveStack.Utilities
         public const int OwedSeconds = 300;
 
         private bool _voting;
+        private bool _recoveryVote;
         private int _owing;
         private int? _owedRound;
         private Guid? _owedMap;
@@ -38,7 +39,7 @@ namespace FiveStack.Utilities
 
         public bool Resetting => InProgress || HeldRound != null;
 
-        public bool HoldingRounds => HeldRound != null || _owedRound != null;
+        public bool HoldingRounds => HeldRound != null || _recoveryVote || _owedRound != null;
 
         // Taking a hold to vote on it while something else is running loses it:
         // the vote is refused, and nothing puts the hold back.
@@ -57,10 +58,14 @@ namespace FiveStack.Utilities
             return held;
         }
 
-        public void StartVote()
+        // A result waiting for the next round start is from the round this undoes.
+        public event Action? LoadStarted;
+
+        public void StartVote(bool recovering = false)
         {
             End();
             _voting = true;
+            _recoveryVote = recovering;
         }
 
         public int StartOwing(int round, Guid? map)
@@ -77,7 +82,9 @@ namespace FiveStack.Utilities
             _loadOwed = _owedRound;
             _owedRound = null;
             _voting = false;
+            _recoveryVote = false;
             LoadingBackup = true;
+            LoadStarted?.Invoke();
         }
 
         // The round to hold again, if a load was owed.
@@ -108,6 +115,7 @@ namespace FiveStack.Utilities
         public void End()
         {
             _voting = false;
+            _recoveryVote = false;
             _owedRound = null;
             _owedMap = null;
             _loadOwed = null;

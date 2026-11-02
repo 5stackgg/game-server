@@ -35,7 +35,7 @@ public partial class FiveStackPlugin
             match.UpdateMapStatus(eMapStatus.Overtime);
         }
 
-        if (_gameBackupRounds.IsResettingRound())
+        if (_gameBackupRounds.HoldsRoundResults())
         {
             _logger.LogInformation("OnRoundOfficiallyEnded skipping capture: restoring round");
             return HookResult.Continue;
@@ -55,7 +55,7 @@ public partial class FiveStackPlugin
     [GameEventHandler]
     public HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info)
     {
-        if (_gameBackupRounds.IsResettingRound())
+        if (_gameBackupRounds.HoldsRoundResults())
         {
             _logger.LogInformation(
                 $"OnRoundEnd ignored (restoring round): message={@event.Message}"

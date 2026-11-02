@@ -41,6 +41,7 @@ public class GameBackUpRounds
     )
     {
         _restore = restore;
+        _restore.LoadStarted += matchEvents.ClearPendingRoundResult;
         _core = core;
         _logger = logger;
         _matchEvents = matchEvents;
@@ -132,6 +133,15 @@ public class GameBackUpRounds
     public bool IsResettingRound()
     {
         return _restore.Resetting;
+    }
+
+    public bool HoldsRoundResults()
+    {
+        return RoundRestoreGateUtility.HoldsRoundResults(
+            IsResettingRound(),
+            restoreRoundVote?.IsVoteActive() == true,
+            _restore.HoldingRounds
+        );
     }
 
     public bool IsHoldingForRestore()
@@ -514,7 +524,7 @@ public class GameBackUpRounds
 
         if (player != null || vote == true)
         {
-            _restore.StartVote();
+            _restore.StartVote(recovering);
 
             restoreRoundVote =
                 _serviceProvider.GetRequiredService(typeof(VoteSystem)) as VoteSystem;
@@ -549,6 +559,10 @@ public class GameBackUpRounds
                         }
                         return;
                     }
+
+                    // A round that ended during the vote is the one being undone,
+                    // and the next round start can come before the load does.
+                    _matchEvents.ClearPendingRoundResult();
 
                     if (
                         RoundRestoreGateUtility.OwesLoad(

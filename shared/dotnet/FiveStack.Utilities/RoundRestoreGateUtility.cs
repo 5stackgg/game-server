@@ -12,6 +12,15 @@ namespace FiveStack.Utilities
         // Same for match_state, which the api sends to restart a map from warmup.
         public const string MatchStateRefusedPrefix = "match_state refused:";
 
+        // A restore vote leaves the round running, because mp_pause_match waits for
+        // the next freezetime, so a round ending during one is real and is lost if
+        // the vote fails. A recovery vote is not that: the server is behind the
+        // backend, and anything it reported would land over rounds already kept.
+        public static bool HoldsRoundResults(bool resetting, bool voteOpen, bool recovering)
+        {
+            return resetting && (!voteOpen || recovering);
+        }
+
         // Only a server behind the backend has anything to protect, and offline
         // nothing would ever answer.
         public static bool OwesLoad(bool recovering, bool offline)

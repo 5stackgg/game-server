@@ -36,7 +36,7 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
-        if (_gameBackupRounds.IsResettingRound())
+        if (_gameBackupRounds.HoldsRoundResults())
         {
             // A restart can unpause the round the hold paused.
             if (_gameBackupRounds.IsHoldingForRestore())

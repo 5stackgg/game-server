@@ -79,6 +79,22 @@ public class RestoreWiringTests
         Assert.True(sent > owes.Index, "the answer can beat the debt");
     }
 
+    // A result captured during the vote is from a round the restore is about to
+    // undo, and it would publish at the next round start, before the load begins.
+    // A refused restore undoes nothing, so its result is real and stays.
+    [Fact]
+    public void APassedVoteForgetsTheResultOfARoundItIsAboutToUndo()
+    {
+        string passed = PassedVote();
+        int refused = passed.IndexOf("return;", StringComparison.Ordinal);
+        int forgotten = passed.IndexOf("_matchEvents.ClearPendingRoundResult();", StringComparison.Ordinal);
+        int sent = passed.IndexOf("SendRestoreRoundToBackend(round);", StringComparison.Ordinal);
+
+        Assert.True(forgotten >= 0, "a passed vote leaves the result to publish");
+        Assert.True(forgotten > refused, "a refused restore throws away a real result");
+        Assert.True(forgotten < sent, "the result can publish after the restore is sent");
+    }
+
     [Fact]
     public void AnOfflineRecoveryTurnsBackupsBackOnAndDeletesNothing()
     {
