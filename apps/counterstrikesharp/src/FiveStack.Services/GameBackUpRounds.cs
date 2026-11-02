@@ -126,7 +126,7 @@ public class GameBackUpRounds
         // Refused for another reason: keep holding for the next player.
         if (!_restore.InProgress)
         {
-            _restore.Hold(round);
+            _restore.Hold(round, ActiveMapId());
         }
     }
 
@@ -177,7 +177,7 @@ public class GameBackUpRounds
 
     private void HoldForRestore(int round)
     {
-        _restore.Hold(round);
+        _restore.Hold(round, ActiveMapId());
         SetBackupWriting(false);
         _gameServer.SendCommands(["mp_pause_match"]);
         OfferPendingRestore();
@@ -245,13 +245,30 @@ public class GameBackUpRounds
             return;
         }
 
-        if (timeout.HoldRound is int round)
+        _matchEvents.WithdrawRestoreRequests();
+
+        BackupRound[] rounds =
+            _matchService.GetCurrentMatch()?.GetCurrentMap()?.rounds ?? Array.Empty<BackupRound>();
+
+        if (
+            timeout.HoldRound is int round
+            && RoundRestoreGateUtility.RoundToHoldAgain(rounds, round) is int held
+        )
         {
-            ReturnToHold(round);
+            ReturnToHold(held);
             return;
         }
 
         SetBackupWriting(!IsHoldingForRestore());
+    }
+
+    // A dedicated server keeps this state from one match to the next.
+    public void ForgetOtherMaps(Guid? map)
+    {
+        if (_restore.LeaveMap(map))
+        {
+            SetBackupWriting(!IsHoldingForRestore());
+        }
     }
 
     public void TellWhyResumeWaits()
@@ -371,7 +388,7 @@ public class GameBackUpRounds
                         );
                         if (recovering)
                         {
-                            _restore.Hold(round);
+                            _restore.Hold(round, ActiveMapId());
                         }
                         return;
                     }

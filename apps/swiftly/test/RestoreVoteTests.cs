@@ -19,6 +19,14 @@ public class RestoreVoteTests
             .SetValue(target, value);
     }
 
+    private static object? Get(object target, string field)
+    {
+        return target
+            .GetType()
+            .GetField(field, BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(target);
+    }
+
     private VoteSystem FinishedVote()
     {
         VoteSystem vote = (VoteSystem)RuntimeHelpers.GetUninitializedObject(typeof(VoteSystem));
@@ -41,9 +49,13 @@ public class RestoreVoteTests
     [Fact]
     public void AbandoningAFinishedVoteRunsNoCallback()
     {
-        FinishedVote().Abandon();
+        VoteSystem vote = FinishedVote();
+
+        vote.Abandon();
 
         Assert.Equal(0, _failures);
         Assert.Equal(0, _passes);
+        Assert.Null(Get(vote, "_voteFailedCallback"));
+        Assert.Null(Get(vote, "_voteSuccessCallback"));
     }
 }

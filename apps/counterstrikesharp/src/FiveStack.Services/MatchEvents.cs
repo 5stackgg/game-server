@@ -151,6 +151,23 @@ public class MatchEvents
         PublishGameEvent("mapStatus", data);
     }
 
+    // The api answers whatever reaches it, however late, and an unacknowledged
+    // event is resent. A request given up on has to stop going out, or it can land
+    // on top of what the players decided next.
+    public void WithdrawRestoreRequests()
+    {
+        foreach (var message in _pendingMessages)
+        {
+            if (
+                message.Value.Event.data?.TryGetValue("event", out object? name) == true
+                && name as string == "restoreRound"
+            )
+            {
+                _pendingMessages.TryRemove(message.Key, out _);
+            }
+        }
+    }
+
     public void PublishGameEvent(string Event, Dictionary<string, object> Data)
     {
         if (RoundRestoreGateUtility.DroppedDuringLoad(Event, _restore.LoadingBackup))

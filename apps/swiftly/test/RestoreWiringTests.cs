@@ -109,8 +109,13 @@ public class RestoreWiringTests
     {
         string passed = PassedVote();
 
-        Assert.Contains("SetBackupWriting(true);", passed);
+        Assert.Matches(
+            @"\{\s*OweLoad\(round\);\s*\}\s*else if \(recovering\)\s*\{\s*SetBackupWriting\(true\);\s*\}",
+            passed
+        );
         Assert.DoesNotContain("ReplayMap", passed);
+        Assert.DoesNotContain("File.Delete", passed);
+        Assert.DoesNotContain("Backups(", passed);
     }
 
     [Fact]
@@ -138,9 +143,12 @@ public class RestoreWiringTests
     public void TheAnswerIsNotGatedOnWhatWasAskedFor()
     {
         string restore = Method(Backups(), "public void RestoreRound(int round)");
+        string opening = restore[restore.IndexOf('{')..restore.IndexOf("if (!CanRestoreRound(round))", StringComparison.Ordinal)];
 
-        Assert.Contains("if (_restore.VotingOrLoading)", restore);
-        Assert.DoesNotContain("round == 0", restore);
+        Assert.Contains("if (_restore.VotingOrLoading)", opening);
+        Assert.Single(Regex.Matches(opening, @"\bif\s*\("));
+        Assert.DoesNotContain("OwedRound", restore);
+        Assert.DoesNotMatch(@"\bround\s*(==|!=|<|>)", restore);
     }
 
     [Fact]
@@ -172,6 +180,57 @@ public class RestoreWiringTests
             "SetBackupWriting(!IsHoldingForRestore());",
             Method(Backups(), "private void OwedLoadTimedOut(int owing)")
         );
+    }
+
+    [Fact]
+    public void AnOwedLoadThatTimedOutStopsBeingResentBeforeTheHoldReturns()
+    {
+        string timedOut = Method(Backups(), "private void OwedLoadTimedOut(int owing)");
+        int withdrawn = timedOut.IndexOf("_matchEvents.WithdrawRestoreRequests();", StringComparison.Ordinal);
+        int held = timedOut.IndexOf("ReturnToHold(", StringComparison.Ordinal);
+
+        Assert.True(withdrawn >= 0, "the request can land after a declined vote");
+        Assert.True(withdrawn < held, "the hold can be offered with the request still going out");
+    }
+
+    [Fact]
+    public void AnUnansweredHoldOnlyComesBackForARoundTheBackendCanLoad()
+    {
+        Assert.Contains(
+            "RoundRestoreGateUtility.RoundToHoldAgain(",
+            Method(Backups(), "private void OwedLoadTimedOut(int owing)")
+        );
+    }
+
+    [Fact]
+    public void TheNextMatchLeavesWhatTheLastOneHeldAndPutsBackupsRight()
+    {
+        string forget = Method(Backups(), "public void ForgetOtherMaps(Guid? map)");
+        int left = forget.IndexOf("_restore.LeaveMap(map)", StringComparison.Ordinal);
+        int writing = forget.IndexOf("SetBackupWriting(!IsHoldingForRestore());", StringComparison.Ordinal);
+
+        Assert.True(left >= 0 && writing > left, "backups stay off with nothing holding them");
+    }
+
+    [Fact]
+    public void AMatchIsSetUpBeforeAnythingElseLooksAtItsHold()
+    {
+        string setup = Method(Code("FiveStack.Services", "MatchManager.cs"), "public void SetupMatch(");
+        int active = setup.IndexOf("_activeMapId = _currentMap.id;", StringComparison.Ordinal);
+        int forgotten = setup.IndexOf("_backUpManagement.ForgetOtherMaps(_activeMapId);", StringComparison.Ordinal);
+        int waiting = setup.IndexOf("eMapStatus.WaitingForTV", active, StringComparison.Ordinal);
+
+        Assert.True(active >= 0 && forgotten > active, "a hold outlives its match");
+        Assert.True(forgotten < waiting, "an early return skips it");
+    }
+
+    [Fact]
+    public void AHoldRemembersItsMapEverywhereItIsSet()
+    {
+        MatchCollection holds = Regex.Matches(Backups(), @"_restore\.Hold\(([^;]*)\);");
+
+        Assert.Equal(3, holds.Count);
+        Assert.All(holds.Select(hold => hold.Groups[1].Value), hold => Assert.EndsWith("ActiveMapId()", hold));
     }
 
     [Fact]

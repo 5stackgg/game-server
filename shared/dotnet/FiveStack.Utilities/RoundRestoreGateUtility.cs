@@ -28,6 +28,24 @@ namespace FiveStack.Utilities
             return recovering && !offline;
         }
 
+        // The api refuses a round it never recorded and tells nobody, so a hold on
+        // one would come back for ever, and a refetch drops the row its vote needs.
+        // A hold that went unanswered moves to the newest round the backend can
+        // load. Null when it has none: there is nothing there to play over.
+        public static int? RoundToHoldAgain(IEnumerable<BackupRound> rounds, int round)
+        {
+            List<BackupRound> kept = rounds.Where(backup => !backup.from_disk).ToList();
+
+            if (LatestBackup(kept, round) != null)
+            {
+                return round;
+            }
+
+            int newest = HighestRestorableRound(kept, 0);
+
+            return newest > 0 ? newest : null;
+        }
+
         public static string? ResumeRefusal(int? owedRound)
         {
             return owedRound == null

@@ -26,6 +26,21 @@ public class RestoreParityTests
         return Regex.Replace(source[from..to], @"\s+", " ").Replace("HudDestination.", "MessageType.");
     }
 
+    // Only this plugin reads backups off disk, and the backend has never heard of
+    // a round it only found there.
+    [Fact]
+    public void ARoundFoundOnlyOnDiskIsMarked()
+    {
+        string source = File.ReadAllText(
+            Path.Combine(Apps(), "swiftly", "src", "FiveStack.Services", "GameBackUpRounds.cs")
+        );
+
+        Assert.Matches(
+            @"new BackupRound\s*\{[^}]*round = highestNumber[^}]*from_disk = true[^}]*\}",
+            source
+        );
+    }
+
     [Theory]
     [InlineData("private void HoldForRestore(int round)")]
     [InlineData("private void ReturnToHold(int round)")]
@@ -36,6 +51,7 @@ public class RestoreParityTests
     [InlineData("public void TellWhyResumeWaits()")]
     [InlineData("public void AbandonRestore()")]
     [InlineData("private Guid? ActiveMapId()")]
+    [InlineData("public void ForgetOtherMaps(Guid? map)")]
     [InlineData("public bool IsResettingRound()")]
     [InlineData("public bool IsHoldingForRestore()")]
     [InlineData("public bool HoldsRoundResults()")]

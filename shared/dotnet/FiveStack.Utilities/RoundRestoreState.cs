@@ -25,6 +25,7 @@ namespace FiveStack.Utilities
         private int _owing;
         private int? _owedRound;
         private Guid? _owedMap;
+        private Guid? _heldMap;
         private int? _loadOwed;
 
         public int? HeldRound { get; private set; }
@@ -45,9 +46,30 @@ namespace FiveStack.Utilities
         // the vote is refused, and nothing puts the hold back.
         public bool CanOfferVote => HeldRound != null && !InProgress;
 
-        public void Hold(int round)
+        public void Hold(int round, Guid? map = null)
         {
             HeldRound = round;
+            _heldMap = map;
+        }
+
+        // Says whether anything went, so the caller can put backups right.
+        public bool LeaveMap(Guid? map)
+        {
+            bool left = false;
+
+            if (_owedRound != null && _owedMap != map)
+            {
+                End();
+                left = true;
+            }
+
+            if (HeldRound != null && _heldMap != map)
+            {
+                HeldRound = null;
+                left = true;
+            }
+
+            return left;
         }
 
         public int? ReleaseHold()

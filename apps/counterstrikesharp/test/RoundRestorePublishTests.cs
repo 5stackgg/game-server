@@ -113,6 +113,17 @@ public class RoundRestorePublishTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ARequestThatTimedOutStopsBeingResent()
+    {
+        Assert.Contains("kill", await PublishThenSettle("kill"));
+
+        _events.WithdrawRestoreRequests();
+
+        Assert.DoesNotContain(Marker, Published());
+        Assert.Contains("kill", Published());
+    }
+
+    [Fact]
     public async Task AKillIsPublishedOnceTheLoadHasEnded()
     {
         _restore.StartLoad();

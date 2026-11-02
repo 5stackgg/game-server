@@ -234,11 +234,35 @@ public class RoundRestoreStateTests
     }
 
     [Fact]
-    public void ResetToRoundZeroStaysAsOnMain()
+    public void ResetToRoundZeroFindsItsBackupAsOnMain()
     {
-        BackupRound zero = new() { round = 0, backup_file = "round00" };
+        BackupRound first = new() { round = 0, backup_file = "round00" };
+        BackupRound newest = new() { round = 0, backup_file = "round00 again" };
+        BackupRound later = new() { round = Round, backup_file = "round08" };
 
-        Assert.Same(zero, RoundRestoreGateUtility.LatestBackup(new[] { zero }, 0));
+        Assert.Same(newest, RoundRestoreGateUtility.LatestBackup(new[] { first, later, newest }, 0));
+    }
+
+    [Fact]
+    public void ResetToRoundZeroIsRefusedOnlyForAMissingBackup()
+    {
+        Assert.Equal(
+            "the server has no backup of round 0",
+            RoundRestoreGateUtility.Refusal(false, false, eMapStatus.Live, 0, false, 10, 10, "Competitive")
+        );
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AnOwedLoadDoesNotStopRoundZeroLoading(bool owing)
+    {
+        if (owing)
+        {
+            _state.StartOwing(Round, Map);
+        }
+
+        Assert.False(_state.VotingOrLoading);
         Assert.Null(
             RoundRestoreGateUtility.Refusal(
                 false,
@@ -251,6 +275,80 @@ public class RoundRestoreStateTests
                 "Competitive"
             )
         );
+    }
+
+    [Fact]
+    public void TheNextMatchEndsALoadOwedOnTheLastOne()
+    {
+        _state.StartOwing(Round, Map);
+
+        Assert.True(_state.LeaveMap(OtherMap));
+        Assert.Null(_state.OwedRound);
+        Assert.False(_state.Resetting);
+    }
+
+    [Fact]
+    public void TheNextMatchEndsAHoldOnTheLastOne()
+    {
+        _state.Hold(Round, Map);
+
+        Assert.True(_state.LeaveMap(OtherMap));
+        Assert.Null(_state.HeldRound);
+        Assert.False(_state.HoldingRounds);
+    }
+
+    [Fact]
+    public void SetupOnTheSameMapKeepsAHoldAndAnOwedLoad()
+    {
+        _state.Hold(Round, Map);
+        _state.StartOwing(Round, Map);
+
+        Assert.False(_state.LeaveMap(Map));
+        Assert.Equal(Round, _state.HeldRound);
+        Assert.Equal(Round, _state.OwedRound);
+    }
+
+    [Fact]
+    public void ANewMatchWithNothingToLeaveChangesNothing()
+    {
+        Assert.False(_state.LeaveMap(OtherMap));
+    }
+
+    [Fact]
+    public void ARoundTheBackendKeptIsHeldAgain()
+    {
+        BackupRound[] rounds = { new() { round = Round, backup_file = "kept" } };
+
+        Assert.Equal(Round, RoundRestoreGateUtility.RoundToHoldAgain(rounds, Round));
+    }
+
+    [Fact]
+    public void ARoundOnlyOnDiskFallsBackToTheNewestTheBackendKept()
+    {
+        BackupRound[] rounds =
+        {
+            new() { round = 5, backup_file = "kept" },
+            new() { round = 6, backup_file = "kept" },
+            new() { round = Round, backup_file = "disk", from_disk = true },
+        };
+
+        Assert.Equal(6, RoundRestoreGateUtility.RoundToHoldAgain(rounds, Round));
+    }
+
+    [Fact]
+    public void ARoundARefetchDroppedFallsBackTheSameWay()
+    {
+        BackupRound[] rounds = { new() { round = 5, backup_file = "kept" } };
+
+        Assert.Equal(5, RoundRestoreGateUtility.RoundToHoldAgain(rounds, Round));
+    }
+
+    [Fact]
+    public void NothingTheBackendCanLoadMeansNothingToHold()
+    {
+        BackupRound[] rounds = { new() { round = Round, backup_file = "disk", from_disk = true } };
+
+        Assert.Null(RoundRestoreGateUtility.RoundToHoldAgain(rounds, Round));
     }
 
     [Fact]

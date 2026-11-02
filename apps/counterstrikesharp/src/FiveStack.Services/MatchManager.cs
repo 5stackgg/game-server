@@ -560,6 +560,7 @@ public class MatchManager
 
         bool wasAlreadySetup = _configuredMapId == _currentMap.id;
         _activeMapId = _currentMap.id;
+        _backUpManagement.ForgetOtherMaps(_activeMapId);
 
         if (_currentMapStatus == eMapStatus.WaitingForTV)
         {
