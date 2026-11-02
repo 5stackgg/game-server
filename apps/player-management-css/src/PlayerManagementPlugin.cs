@@ -35,6 +35,9 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
     private readonly SanctionBook _book = new();
     private readonly ServerAccessBook _access = new();
     private readonly PlayerRoster _roster = new();
+
+    // Looked up once a map rather than on every shot and hit.
+    private CCSGameRules? _gameRules;
     private SanctionSyncLoop? _loop;
     private volatile bool _hibernating;
 
@@ -101,10 +104,16 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             _kicked.Remove(steamId);
         });
 
-        RegisterListener<Listeners.OnMapEnd>(() => _roster.MapEnded(DateTimeOffset.UtcNow));
+        RegisterListener<Listeners.OnMapEnd>(() =>
+        {
+            _gameRules = null;
+            _roster.MapEnded(DateTimeOffset.UtcNow);
+        });
         RegisterListener<Listeners.OnMapStart>(map =>
-            _roster.MapStarted(DateTimeOffset.UtcNow, map)
-        );
+        {
+            _gameRules = null;
+            _roster.MapStarted(DateTimeOffset.UtcNow, map);
+        });
 
         RegisterListener<Listeners.OnServerHibernationUpdate>(hibernating =>
         {
@@ -270,6 +279,7 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             List<CCSPlayerController> humans = Humans();
 
             ObserveRoster(humans);
+            _roster.BotsPresent(Utilities.GetPlayers().Any(IsBot));
             ReadHealth(humans);
             Enforce(humans);
         }
@@ -523,9 +533,8 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             int dealt = _health.Hit(victim.Slot, @event.DmgHealth, @event.Health);
 
             // Nothing a bot does or has done to it counts, nor anything
-            // without an attacker. A human's bullet in a bot takes back the
-            // shot it was. Only a human hurting a human who is no enemy is
-            // team damage.
+            // without an attacker. Only a human hurting a human who is no
+            // enemy is team damage.
             CCSPlayerController? attacker = @event.Attacker;
 
             if (attacker == null || !attacker.IsValid || IsBot(attacker))
@@ -538,16 +547,6 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
 
             if (!IsHuman(victim))
             {
-                if (attackerIsHuman && IsBot(victim))
-                {
-                    _roster.HitABot(
-                        VerifiedSteamIdOf(attacker),
-                        weapon,
-                        Server.TickCount,
-                        IsWarmup()
-                    );
-                }
-
                 return HookResult.Continue;
             }
 
@@ -909,19 +908,24 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         }
     }
 
-    // Unreadable is taken as live, as a server without warmup is.
-    private static bool IsWarmup()
+    // Unreadable is taken as live, as a server without warmup is. The game
+    // rules last as long as the map, so only the lookup is kept, and the flag
+    // is read fresh each time.
+    private bool IsWarmup()
     {
         try
         {
-            return Utilities
-                    .FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
-                    .FirstOrDefault()
-                    ?.GameRules?.WarmupPeriod
-                ?? false;
+            _gameRules ??= Utilities
+                .FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+                .FirstOrDefault()
+                ?.GameRules;
+
+            return _gameRules?.WarmupPeriod ?? false;
         }
         catch (Exception)
         {
+            _gameRules = null;
+
             return false;
         }
     }

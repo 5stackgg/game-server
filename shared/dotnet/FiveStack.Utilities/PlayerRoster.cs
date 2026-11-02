@@ -111,7 +111,6 @@ public class PlayerRoster
         public int Streak;
         public int BestStreak;
         public int HitTick = -1;
-        public int BotHitTick = -1;
         public readonly HashSet<int> HitSlots = new();
 
         public void Add(string key, int amount = 1)
@@ -170,6 +169,8 @@ public class PlayerRoster
 
     // The side each player last spawned on since the last round ended.
     private readonly Dictionary<string, int> _spawned = new();
+
+    private bool _botsPresent;
 
     // Returns when a sync is due if this observation is what made one due.
     public virtual DateTimeOffset? Observe(IEnumerable<ObservedPlayer> players, DateTimeOffset now)
@@ -447,7 +448,7 @@ public class PlayerRoster
             {
                 if (hit.Enemy)
                 {
-                    Hit(entry, hit, damage);
+                    Hit(entry, hit, damage, _botsPresent);
                 }
                 else if (hit.Team && !hit.TeammatesAreEnemies && damage > 0)
                 {
@@ -517,7 +518,7 @@ public class PlayerRoster
 
         lock (_lock)
         {
-            if (_current.TryGetValue(steamId, out Entry? entry))
+            if (!_botsPresent && _current.TryGetValue(steamId, out Entry? entry))
             {
                 entry.Add(CommunityStatKeys.Shots);
 
@@ -531,38 +532,15 @@ public class PlayerRoster
         }
     }
 
-    // Nothing aimed at a bot counts, so a shot that hits one is taken back; a
-    // miss names no target and stays a shot. A shotgun's pellets in one tick
-    // are one shot, and one that also hits a human stays a shot (see Hit).
-    public void HitABot(string? attacker, string? weapon, int tick, bool warmup)
+    // A shot a human aims at a bot is no shot at all, but a miss names no
+    // target, so nothing tells it from a miss aimed at a human. While a bot is
+    // on the server no shot or hit counts, and accuracy is read off the rounds
+    // fought against humans alone. Damage and kills against humans still count.
+    public void BotsPresent(bool present)
     {
-        if (warmup || attacker == null || !CommunityWeapons.IsFirearm(weapon))
-        {
-            return;
-        }
-
         lock (_lock)
         {
-            if (
-                !_current.TryGetValue(attacker, out Entry? entry)
-                || entry.HitTick == tick
-                || entry.BotHitTick == tick
-            )
-            {
-                return;
-            }
-
-            WeaponTotals? totals = entry.Weapon(weapon!);
-
-            // Never below nothing, for a shot fired before it could count.
-            if (totals == null || totals.shots == 0)
-            {
-                return;
-            }
-
-            totals.shots--;
-            entry.Add(CommunityStatKeys.Shots, -1);
-            entry.BotHitTick = tick;
+            _botsPresent = present;
         }
     }
 
@@ -934,31 +912,18 @@ public class PlayerRoster
     }
 
     // A shotgun's pellets all hit in the same tick, and each victim they hit
-    // is hit once, as the match stats' hits are shots that hit.
-    private static void Hit(Entry entry, HitFacts hit, int damage)
+    // is hit once, as the match stats' hits are shots that hit. While a bot is
+    // on the server only the damage counts (see BotsPresent).
+    private static void Hit(Entry entry, HitFacts hit, int damage, bool botsPresent)
     {
         WeaponTotals? totals = null;
 
-        if (CommunityWeapons.IsFirearm(hit.Weapon))
+        if (!botsPresent && CommunityWeapons.IsFirearm(hit.Weapon))
         {
             if (entry.HitTick != hit.Tick)
             {
                 entry.HitTick = hit.Tick;
                 entry.HitSlots.Clear();
-
-                // The same pellets hit a bot first, which took the shot back.
-                if (entry.BotHitTick == hit.Tick)
-                {
-                    entry.BotHitTick = -1;
-                    entry.Add(CommunityStatKeys.Shots);
-
-                    WeaponTotals? shot = entry.Weapon(hit.Weapon);
-
-                    if (shot != null)
-                    {
-                        shot.shots++;
-                    }
-                }
             }
 
             if (entry.HitSlots.Add(hit.VictimSlot))

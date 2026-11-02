@@ -2236,74 +2236,44 @@ public class PlayerRosterTests
         Assert.Equal(80, WeaponOf(report, "1", "nova")!.damage);
     }
 
-    // A shot that hits a bot is taken back, once however many pellets hit;
-    // a miss stays a shot, and a hit on a human beside a bot stays a hit.
+    // A miss aimed at a bot cannot be told from one aimed at a human, so while
+    // a bot is on the server no shot or hit counts, damage and kills against
+    // humans still do, and once the bots have gone shots and hits count again.
     [Fact]
-    public void AShotThatHitsABotIsTakenBack()
+    public void NoShotOrHitCountsWhileABotIsOnTheServer()
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1"), Human("2")], Start);
 
+        roster.BotsPresent(true);
         roster.Fired("1", "weapon_ak47", warmup: false);
         roster.Fired("1", "weapon_ak47", warmup: false);
+        roster.Hurt("1", "2", 27, warmup: false, Hit(hitGroup: 1, tick: 100));
+        roster.Died("2", "1", warmup: false, headshot: true);
+
+        RosterReport withBots = roster.Report(At(1));
+        Dictionary<string, int> stats = StatsOf(withBots, "1");
+
+        Assert.False(stats.ContainsKey(CommunityStatKeys.Shots));
+        Assert.False(stats.ContainsKey(CommunityStatKeys.Hits));
+        Assert.False(stats.ContainsKey(CommunityStatKeys.HitsHead));
+        Assert.Equal(0, WeaponOf(withBots, "1", "ak47")!.shots);
+        Assert.Equal(0, WeaponOf(withBots, "1", "ak47")!.hits);
+        Assert.Equal(27, WeaponOf(withBots, "1", "ak47")!.damage);
+        Assert.Equal(27, CountersOf(withBots, "1").Damage);
+        Assert.Equal(1, CountersOf(withBots, "1").Kills);
+
+        roster.BotsPresent(false);
         roster.Fired("1", "weapon_ak47", warmup: false);
-        roster.HitABot("1", "ak47", 100, warmup: false);
-        roster.Hurt("1", "2", 27, warmup: false, Hit(tick: 101));
+        roster.Hurt("1", "2", 30, warmup: false, Hit(hitGroup: 1, tick: 200));
 
-        roster.Fired("1", "weapon_nova", warmup: false);
-        roster.HitABot("1", "nova", 200, warmup: false);
-        roster.HitABot("1", "nova", 200, warmup: false);
+        RosterReport withoutBots = roster.Report(At(2));
 
-        RosterReport report = roster.Report(At(1));
-        Dictionary<string, int> stats = StatsOf(report, "1");
-
-        Assert.Equal(2, stats[CommunityStatKeys.Shots]);
-        Assert.Equal(1, stats[CommunityStatKeys.Hits]);
-        Assert.Equal(2, WeaponOf(report, "1", "ak47")!.shots);
-        Assert.Equal(1, WeaponOf(report, "1", "ak47")!.hits);
-        Assert.Equal(27, CountersOf(report, "1").Damage);
-        Assert.Null(WeaponOf(report, "1", "nova"));
-    }
-
-    // A shotgun's pellets that hit a bot and a human in one tick are a shot
-    // that hit, whichever the event names first.
-    [Fact]
-    public void AShotThatHitsABotAndAHumanStaysAShot()
-    {
-        PlayerRoster roster = new();
-        roster.Observe([Human("1"), Human("2")], Start);
-
-        roster.Fired("1", "weapon_nova", warmup: false);
-        roster.HitABot("1", "nova", 100, warmup: false);
-        roster.Hurt("1", "2", 20, warmup: false, Hit("nova", tick: 100));
-        roster.Fired("1", "weapon_nova", warmup: false);
-        roster.Hurt("1", "2", 20, warmup: false, Hit("nova", tick: 200));
-        roster.HitABot("1", "nova", 200, warmup: false);
-
-        RosterReport report = roster.Report(At(1));
-
-        Assert.Equal(2, StatsOf(report, "1")[CommunityStatKeys.Shots]);
-        Assert.Equal(2, WeaponOf(report, "1", "nova")!.shots);
-        Assert.Equal(2, WeaponOf(report, "1", "nova")!.hits);
-    }
-
-    // Nothing is taken back that was never counted, nor in warmup.
-    [Fact]
-    public void AHitOnABotNeverTakesBackMoreThanTheShots()
-    {
-        PlayerRoster roster = new();
-        roster.Observe([Human("1")], Start);
-
-        roster.HitABot("1", "deagle", 100, warmup: false);
-        roster.Fired("1", "weapon_deagle", warmup: false);
-        roster.HitABot("1", "deagle", 101, warmup: true);
-        roster.HitABot("1", "knife", 102, warmup: false);
-        roster.HitABot(null, "deagle", 103, warmup: false);
-
-        RosterReport report = roster.Report(At(1));
-
-        Assert.Equal(1, StatsOf(report, "1")[CommunityStatKeys.Shots]);
-        Assert.Equal(1, WeaponOf(report, "1", "deagle")!.shots);
+        Assert.Equal(1, StatsOf(withoutBots, "1")[CommunityStatKeys.Shots]);
+        Assert.Equal(1, StatsOf(withoutBots, "1")[CommunityStatKeys.Hits]);
+        Assert.Equal(1, WeaponOf(withoutBots, "1", "ak47")!.shots);
+        Assert.Equal(1, WeaponOf(withoutBots, "1", "ak47")!.hits);
+        Assert.Equal(57, CountersOf(withoutBots, "1").Damage);
     }
 
     // Only bullets hit: a knife, a grenade or a fire does damage but is no hit.
