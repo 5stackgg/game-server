@@ -24,7 +24,7 @@ namespace FiveStack.Utilities
         private bool _recoveryVote;
         private int _owing;
         private int? _owedRound;
-        private Guid? _owedMap;
+        private Guid? _map;
         private Guid? _heldMap;
         private int? _loadOwed;
 
@@ -57,7 +57,7 @@ namespace FiveStack.Utilities
         {
             bool left = false;
 
-            if (_owedRound != null && _owedMap != map)
+            if ((_voting || _owedRound != null) && _map != map)
             {
                 End();
                 left = true;
@@ -83,18 +83,19 @@ namespace FiveStack.Utilities
         // A result waiting for the next round start is from the round this undoes.
         public event Action? LoadStarted;
 
-        public void StartVote(bool recovering = false)
+        public void StartVote(bool recovering = false, Guid? map = null)
         {
             End();
             _voting = true;
             _recoveryVote = recovering;
+            _map = map;
         }
 
         public int StartOwing(int round, Guid? map)
         {
             End();
             _owedRound = round;
-            _owedMap = map;
+            _map = map;
 
             return ++_owing;
         }
@@ -128,7 +129,7 @@ namespace FiveStack.Utilities
             }
 
             int round = _owedRound.Value;
-            bool sameMap = _owedMap == map;
+            bool sameMap = _map == map;
 
             End();
 
@@ -140,7 +141,7 @@ namespace FiveStack.Utilities
             _voting = false;
             _recoveryVote = false;
             _owedRound = null;
-            _owedMap = null;
+            _map = null;
             _loadOwed = null;
             LoadingBackup = false;
         }

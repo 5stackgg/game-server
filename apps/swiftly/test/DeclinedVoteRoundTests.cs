@@ -176,7 +176,7 @@ public class DeclinedVoteRoundTests
     public void AVoteSaysWhetherItIsARecoveryVote()
     {
         Assert.Contains(
-            "_restore.StartVote(recovering);",
+            "_restore.StartVote(recovering, ",
             Code("FiveStack.Services", "GameBackUpRounds.cs")
         );
     }

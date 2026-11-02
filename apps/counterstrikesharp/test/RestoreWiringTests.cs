@@ -164,13 +164,53 @@ public class RestoreWiringTests
     }
 
     [Fact]
-    public void AHoldOnlyComesBackOnAMapStillBeingPlayed()
+    public void AHoldOnlyComesBackForARoundThatCanStillLoad()
+    {
+        string check = Method(Backups(), "private bool CanHoldAgain(int round)");
+        int asked = check.IndexOf("RoundRestoreGateUtility.HoldsAgain(", StringComparison.Ordinal);
+        int told = check.IndexOf("RoundRestoreGateUtility.BackupGone(round)", StringComparison.Ordinal);
+        int writing = check.IndexOf("SetBackupWriting(!IsHoldingForRestore());", StringComparison.Ordinal);
+
+        Assert.Contains("RoundRestoreGateUtility.LatestBackup(", check);
+        Assert.True(asked >= 0 && told > asked, "players aren't told why the hold ended");
+        Assert.True(writing > told, "backups stay off with nothing holding them");
+    }
+
+    [Fact]
+    public void EveryHoldThatComesBackChecksItCanStillLoad()
     {
         string hold = Method(Backups(), "private void ReturnToHold(int round)");
-        int played = hold.IndexOf("RoundRestoreGateUtility.IsInPlay(", StringComparison.Ordinal);
-        int held = hold.IndexOf("HoldForRestore(round);", StringComparison.Ordinal);
+        string offer = Method(Backups(), "public void OfferPendingRestore()");
+        string vote = Method(Backups(), "public void RequestRestoreBackupRound(");
 
-        Assert.True(played >= 0 && held > played, "a hold can come back on a map that is over");
+        Assert.True(
+            hold.IndexOf("CanHoldAgain(round)", StringComparison.Ordinal) >= 0
+                && hold.IndexOf("CanHoldAgain(round)", StringComparison.Ordinal)
+                    < hold.IndexOf("HoldForRestore(round);", StringComparison.Ordinal),
+            "a hold comes back for a round that can't load"
+        );
+        Assert.Matches(@"CanHoldAgain\(round\)\s*\)\s*\{\s*_restore\.Hold\(", offer);
+        Assert.Matches(@"CanHoldAgain\(round\)\s*\)\s*\{\s*_restore\.Hold\(", vote);
+    }
+
+    [Fact]
+    public void AnOpenVoteIsAbandonedWithItsMap()
+    {
+        string forget = Method(Backups(), "public void ForgetOtherMaps(Guid? map)");
+        int left = forget.IndexOf("_restore.LeaveMap(map)", StringComparison.Ordinal);
+        int abandoned = forget.IndexOf("restoreRoundVote?.Abandon();", StringComparison.Ordinal);
+        int cleared = forget.IndexOf("restoreRoundVote = null;", StringComparison.Ordinal);
+        int writing = forget.IndexOf("SetBackupWriting(!IsHoldingForRestore());", StringComparison.Ordinal);
+
+        Assert.True(abandoned > left, "a vote outlives its map");
+        Assert.True(cleared > abandoned && writing > cleared, "backups are put right too early");
+        Assert.DoesNotContain("Withdraw", forget);
+    }
+
+    [Fact]
+    public void AVoteRemembersItsMap()
+    {
+        Assert.Contains("_restore.StartVote(recovering, ActiveMapId());", Backups());
     }
 
     [Fact]
@@ -191,15 +231,6 @@ public class RestoreWiringTests
 
         Assert.True(withdrawn >= 0, "the request can land after a declined vote");
         Assert.True(withdrawn < held, "the hold can be offered with the request still going out");
-    }
-
-    [Fact]
-    public void AnUnansweredHoldOnlyComesBackForARoundTheBackendCanLoad()
-    {
-        Assert.Contains(
-            "RoundRestoreGateUtility.RoundToHoldAgain(",
-            Method(Backups(), "private void OwedLoadTimedOut(int owing)")
-        );
     }
 
     [Fact]

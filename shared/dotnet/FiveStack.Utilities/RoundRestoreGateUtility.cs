@@ -28,22 +28,23 @@ namespace FiveStack.Utilities
             return recovering && !offline;
         }
 
-        // The api refuses a round it never recorded and tells nobody, so a hold on
-        // one would come back for ever, and a refetch drops the row its vote needs.
-        // A hold that went unanswered moves to the newest round the backend can
-        // load. Null when it has none: there is nothing there to play over.
-        public static int? RoundToHoldAgain(IEnumerable<BackupRound> rounds, int round)
+        // The api refuses a round it has no row for and tells nobody, so a backup
+        // file of one can never load. Offline there is no api to refuse it.
+        public static bool IsUsableOnDisk(IEnumerable<BackupRound> rounds, int round, bool offline)
         {
-            List<BackupRound> kept = rounds.Where(backup => !backup.from_disk).ToList();
+            return !IsUndone(rounds, round)
+                && (offline || rounds.Any(backup => backup.round == round));
+        }
 
-            if (LatestBackup(kept, round) != null)
-            {
-                return round;
-            }
+        // A hold on a round that can't load would come back for ever.
+        public static bool HoldsAgain(eMapStatus status, bool hasBackup)
+        {
+            return IsInPlay(status) && hasBackup;
+        }
 
-            int newest = HighestRestorableRound(kept, 0);
-
-            return newest > 0 ? newest : null;
+        public static string BackupGone(int round)
+        {
+            return $" Round {round} can't be restored, its backup is gone.";
         }
 
         public static string? ResumeRefusal(int? owedRound)

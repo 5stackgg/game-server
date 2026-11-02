@@ -26,23 +26,22 @@ public class RestoreParityTests
         return Regex.Replace(source[from..to], @"\s+", " ").Replace("HudDestination.", "MessageType.");
     }
 
-    // Only this plugin reads backups off disk, and the backend has never heard of
-    // a round it only found there.
+    // Only this plugin reads backups off disk. The api raises P0002 for a round it
+    // has no row for and answers nothing, so offering one could never load.
     [Fact]
-    public void ARoundFoundOnlyOnDiskIsMarked()
+    public void OnlyDiskRoundsTheBackendHasARowForAreOffered()
     {
         string source = File.ReadAllText(
             Path.Combine(Apps(), "swiftly", "src", "FiveStack.Services", "GameBackUpRounds.cs")
         );
 
-        Assert.Matches(
-            @"new BackupRound\s*\{[^}]*round = highestNumber[^}]*from_disk = true[^}]*\}",
-            source
-        );
+        Assert.Contains("RoundRestoreGateUtility.IsUsableOnDisk(", source);
+        Assert.DoesNotContain("from_disk", source);
     }
 
     [Theory]
     [InlineData("private void HoldForRestore(int round)")]
+    [InlineData("private bool CanHoldAgain(int round)")]
     [InlineData("private void ReturnToHold(int round)")]
     [InlineData("private void ReturnOwedToHold()")]
     [InlineData("private void FailLoad()")]

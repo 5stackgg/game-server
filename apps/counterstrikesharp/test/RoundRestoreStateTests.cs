@@ -314,41 +314,91 @@ public class RoundRestoreStateTests
         Assert.False(_state.LeaveMap(OtherMap));
     }
 
-    [Fact]
-    public void ARoundTheBackendKeptIsHeldAgain()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void AnOpenVoteEndsWithItsMap(bool recovering)
     {
-        BackupRound[] rounds = { new() { round = Round, backup_file = "kept" } };
+        _state.StartVote(recovering, Map);
 
-        Assert.Equal(Round, RoundRestoreGateUtility.RoundToHoldAgain(rounds, Round));
+        Assert.True(_state.LeaveMap(OtherMap));
+        Assert.False(_state.VotingOrLoading);
+        Assert.False(_state.HoldingRounds);
+        Assert.False(_state.Resetting);
     }
 
     [Fact]
-    public void ARoundOnlyOnDiskFallsBackToTheNewestTheBackendKept()
+    public void AnOpenVoteStaysOnItsOwnMap()
+    {
+        _state.StartVote(map: Map);
+
+        Assert.False(_state.LeaveMap(Map));
+        Assert.True(_state.VotingOrLoading);
+    }
+
+    [Theory]
+    [InlineData(5, true)]
+    [InlineData(4, true)]
+    [InlineData(6, false)]
+    [InlineData(Round, false)]
+    [InlineData(3, false)]
+    public void OnlyADiskRoundTheBackendHasARowForIsUsable(int round, bool usable)
     {
         BackupRound[] rounds =
         {
-            new() { round = 5, backup_file = "kept" },
-            new() { round = 6, backup_file = "kept" },
-            new() { round = Round, backup_file = "disk", from_disk = true },
+            new() { round = 4, backup_file = "kept" },
+            new() { round = 5 },
         };
 
-        Assert.Equal(6, RoundRestoreGateUtility.RoundToHoldAgain(rounds, Round));
+        Assert.Equal(usable, RoundRestoreGateUtility.IsUsableOnDisk(rounds, round, false));
     }
 
     [Fact]
-    public void ARoundARefetchDroppedFallsBackTheSameWay()
+    public void WithNoRowThereIsNothingOnDiskToUse()
     {
-        BackupRound[] rounds = { new() { round = 5, backup_file = "kept" } };
-
-        Assert.Equal(5, RoundRestoreGateUtility.RoundToHoldAgain(rounds, Round));
+        Assert.False(
+            RoundRestoreGateUtility.IsUsableOnDisk(Array.Empty<BackupRound>(), Round, false)
+        );
     }
 
     [Fact]
-    public void NothingTheBackendCanLoadMeansNothingToHold()
+    public void ARowARestoreUndidStaysUnusable()
     {
-        BackupRound[] rounds = { new() { round = Round, backup_file = "disk", from_disk = true } };
+        BackupRound[] rounds = { new() { round = Round, deleted_at = "2026-11-02" } };
 
-        Assert.Null(RoundRestoreGateUtility.RoundToHoldAgain(rounds, Round));
+        Assert.False(RoundRestoreGateUtility.IsUsableOnDisk(rounds, Round, false));
+    }
+
+    [Fact]
+    public void OfflineKeepsItsDiskRoundsAsOnMain()
+    {
+        BackupRound[] undone = { new() { round = 5, deleted_at = "2026-11-02" } };
+
+        Assert.True(
+            RoundRestoreGateUtility.IsUsableOnDisk(Array.Empty<BackupRound>(), Round, true)
+        );
+        Assert.False(RoundRestoreGateUtility.IsUsableOnDisk(undone, 5, true));
+    }
+
+    [Theory]
+    [InlineData(eMapStatus.Live, true, true)]
+    [InlineData(eMapStatus.Paused, true, true)]
+    [InlineData(eMapStatus.Live, false, false)]
+    [InlineData(eMapStatus.Warmup, true, false)]
+    [InlineData(eMapStatus.Finished, true, false)]
+    public void AHoldOnlyComesBackForARoundThatCanStillLoad(
+        eMapStatus status,
+        bool hasBackup,
+        bool holds
+    )
+    {
+        Assert.Equal(holds, RoundRestoreGateUtility.HoldsAgain(status, hasBackup));
+    }
+
+    [Fact]
+    public void PlayersAreToldWhenARoundCanNoLongerBeRestored()
+    {
+        Assert.Contains(Round.ToString(), RoundRestoreGateUtility.BackupGone(Round));
     }
 
     [Fact]
