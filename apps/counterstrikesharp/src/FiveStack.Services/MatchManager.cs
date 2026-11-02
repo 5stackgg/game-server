@@ -305,6 +305,7 @@ public class MatchManager
         if (_backUpManagement.IsResettingRound())
         {
             _logger.LogInformation("Resetting round, cannot resume match");
+            _backUpManagement.TellWhyResumeWaits();
             return;
         }
 
@@ -316,12 +317,6 @@ public class MatchManager
         {
             _timeoutSystem.resumeVote.CancelVote();
             _timeoutSystem.resumeVote = null;
-        }
-
-        if (_backUpManagement.restoreRoundVote != null)
-        {
-            _backUpManagement.restoreRoundVote.CancelVote();
-            _backUpManagement.restoreRoundVote = null;
         }
 
         _timeoutSystem.ClearPendingTeamResumes();

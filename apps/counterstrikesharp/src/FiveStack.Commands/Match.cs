@@ -35,6 +35,8 @@ public partial class FiveStackPlugin
                 );
                 return;
             }
+
+            _gameBackupRounds.AbandonRestore();
         }
 
         match?.UpdateMapStatus(status);

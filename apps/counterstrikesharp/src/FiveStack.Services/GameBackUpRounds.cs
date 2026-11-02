@@ -15,10 +15,6 @@ public class GameBackUpRounds
 {
     private readonly RoundRestoreState _restore;
 
-    // A server that came back behind the backend, holding the round it can
-    // restore until every player is back to vote on it. Meanwhile nothing is
-    // played, published or written over the backups being restored.
-    private int? _pendingRestore;
     private readonly MatchEvents _matchEvents;
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
@@ -79,12 +75,12 @@ public class GameBackUpRounds
 
     public bool IsResettingRound()
     {
-        return _restore.InProgress || _pendingRestore != null;
+        return _restore.Resetting;
     }
 
     public bool IsHoldingForRestore()
     {
-        return _pendingRestore != null;
+        return _restore.HoldingRounds;
     }
 
     public void SetBackupWriting(bool enabled)
@@ -96,12 +92,12 @@ public class GameBackUpRounds
     // player is back. Called when the match loads and as players connect.
     public void OfferPendingRestore()
     {
-        if (_pendingRestore == null || restoreRoundVote != null)
+        if (!_restore.CanOfferVote || restoreRoundVote != null)
         {
             return;
         }
 
-        int round = _pendingRestore.Value;
+        int round = _restore.HeldRound!.Value;
         int connectedPlayers = MatchUtility.Players().Count;
         int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
 
@@ -114,13 +110,13 @@ public class GameBackUpRounds
             return;
         }
 
-        _pendingRestore = null;
+        _restore.ReleaseHold();
         RequestRestoreBackupRound(round, null, true, recovering: true);
 
         // Refused for another reason: keep holding for the next player.
         if (!_restore.InProgress)
         {
-            _pendingRestore = round;
+            _restore.Hold(round);
         }
     }
 
@@ -164,12 +160,95 @@ public class GameBackUpRounds
         _logger.LogInformation(
             $"Backup round {highestNumber} is ahead of current round {totalRoundsPlayed}, holding the match for a restore vote"
         );
-        _pendingRestore = highestNumber;
+        HoldForRestore(highestNumber);
+
+        return false;
+    }
+
+    private void HoldForRestore(int round)
+    {
+        _restore.Hold(round);
         SetBackupWriting(false);
         _gameServer.SendCommands(["mp_pause_match"]);
         OfferPendingRestore();
+    }
 
-        return false;
+    // A load that is owed and not coming goes back to the hold, and never to a
+    // replay: only players deciding that gives up rounds the backend recorded.
+    private void ReturnToHold(int round)
+    {
+        eMapStatus status =
+            _matchService.GetCurrentMatch()?.GetCurrentMapStatus() ?? eMapStatus.Unknown;
+
+        if (!RoundRestoreGateUtility.IsInPlay(status))
+        {
+            SetBackupWriting(!IsHoldingForRestore());
+            return;
+        }
+
+        _logger.LogWarning($"Round {round} was not restored, holding the match for another vote");
+        HoldForRestore(round);
+    }
+
+    private void ReturnOwedToHold()
+    {
+        if (_restore.FailedLoad() is int round)
+        {
+            ReturnToHold(round);
+        }
+    }
+
+    private Guid? ActiveMapId()
+    {
+        MatchManager? matchManager = _matchService.GetCurrentMatch();
+
+        return matchManager?.GetActiveMapId()
+            ?? matchManager?.GetMatchData()?.current_match_map_id;
+    }
+
+    private void OweLoad(int round)
+    {
+        int owing = _restore.StartOwing(round, ActiveMapId());
+
+        TimerUtility.AddTimer(RoundRestoreState.OwedSeconds, () => OwedLoadTimedOut(owing));
+    }
+
+    private void OwedLoadTimedOut(int owing)
+    {
+        OwedLoadTimeout timeout = _restore.TimedOut(owing, ActiveMapId());
+
+        if (!timeout.Expired)
+        {
+            return;
+        }
+
+        if (timeout.HoldRound is int round)
+        {
+            ReturnToHold(round);
+            return;
+        }
+
+        SetBackupWriting(!IsHoldingForRestore());
+    }
+
+    public void TellWhyResumeWaits()
+    {
+        string? refusal = RoundRestoreGateUtility.ResumeRefusal(_restore.OwedRound);
+
+        if (refusal != null)
+        {
+            _gameServer.Message(HudDestination.Alert, refusal);
+        }
+    }
+
+    // Restart Map starts the map over, so whatever a restore was protecting is
+    // gone and the restore with it.
+    public void AbandonRestore()
+    {
+        restoreRoundVote?.Abandon();
+        restoreRoundVote = null;
+        _restore.Abandon();
+        SetBackupWriting(true);
     }
 
     // A match whose rounds can't be restored replays the map from warmup, but
@@ -255,6 +334,7 @@ public class GameBackUpRounds
                 {
                     _logger.LogInformation("restore round vote passed");
                     _restore.End();
+                    restoreRoundVote = null;
 
                     string? refusal = RestoreRefusal(round);
                     if (refusal != null)
@@ -266,12 +346,25 @@ public class GameBackUpRounds
                             HudDestination.Alert,
                             $" Restore round blocked: {refusal}."
                         );
-                        restoreRoundVote = null;
                         if (recovering)
                         {
-                            _pendingRestore = round;
+                            _restore.Hold(round);
                         }
                         return;
+                    }
+
+                    if (
+                        RoundRestoreGateUtility.OwesLoad(
+                            recovering,
+                            _environmentService.IsOfflineMode()
+                        )
+                    )
+                    {
+                        OweLoad(round);
+                    }
+                    else if (recovering)
+                    {
+                        SetBackupWriting(true);
                     }
 
                     SendRestoreRoundToBackend(round);
@@ -380,7 +473,7 @@ public class GameBackUpRounds
 
     public void RestoreRound(int round)
     {
-        if (_restore.InProgress)
+        if (_restore.VotingOrLoading)
         {
             _logger.LogWarning($"Restore already in progress, ignoring RestoreRound({round})");
             return;
@@ -388,6 +481,7 @@ public class GameBackUpRounds
 
         if (!CanRestoreRound(round))
         {
+            ReturnOwedToHold();
             return;
         }
 
@@ -396,6 +490,7 @@ public class GameBackUpRounds
 
         if (match == null || matchMap == null)
         {
+            ReturnOwedToHold();
             return;
         }
 
@@ -404,6 +499,7 @@ public class GameBackUpRounds
         if (backupRound == null)
         {
             _logger.LogWarning($"missing backup round: {round}");
+            ReturnOwedToHold();
             return;
         }
 
@@ -416,7 +512,7 @@ public class GameBackUpRounds
 
         File.WriteAllText(backupRoundFilePath, backupRound.backup_file);
 
-        _pendingRestore = null;
+        _restore.ReleaseHold();
         _restore.StartLoad();
 
         _logger.LogInformation($"Loading backup round file {backupRoundFileName}");
@@ -459,7 +555,7 @@ public class GameBackUpRounds
 
         return RoundRestoreGateUtility.Refusal(
             match != null && !match.options.CanRestoreRounds(),
-            _restore.InProgress,
+            _restore.VotingOrLoading,
             _matchService.GetCurrentMatch()?.GetCurrentMapStatus() ?? eMapStatus.Unknown,
             round,
             matchMap != null

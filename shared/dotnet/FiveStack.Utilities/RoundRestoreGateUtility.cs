@@ -12,6 +12,20 @@ namespace FiveStack.Utilities
         // Same for match_state, which the api sends to restart a map from warmup.
         public const string MatchStateRefusedPrefix = "match_state refused:";
 
+        // Only a server behind the backend has anything to protect, and offline
+        // nothing would ever answer.
+        public static bool OwesLoad(bool recovering, bool offline)
+        {
+            return recovering && !offline;
+        }
+
+        public static string? ResumeRefusal(int? owedRound)
+        {
+            return owedRound == null
+                ? null
+                : $" Round {owedRound} is still being restored, the match can't resume yet.";
+        }
+
         public static string? Refusal(
             bool restoresDisabled,
             bool alreadyRestoring,
