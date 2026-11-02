@@ -20,6 +20,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)../../counterstrikesharp/src/FiveStack.Services/SteamAPI.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../counterstrikesharp/src/FiveStack.Services/NetworkServices.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/PlayerRoster.cs" LinkBase="Shared" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/HealthBook.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/PlayerManagementReport.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/ChatUtility.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/HttpClientProvider.cs" LinkBase="Shared" />

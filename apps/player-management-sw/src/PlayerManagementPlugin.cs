@@ -52,6 +52,8 @@ public partial class PlayerManagementPlugin : BasePlugin
     private readonly HashSet<ulong> _mutedByUs = new();
     private readonly HashSet<ulong> _kicked = new();
 
+    private readonly HealthBook _health = new();
+
     private EventDelegates.OnTick? _tickHandler;
     private EventDelegates.OnClientPutInServer? _putInServerHandler;
     private EventDelegates.OnClientSteamAuthorize? _authorizeHandler;
@@ -185,6 +187,16 @@ public partial class PlayerManagementPlugin : BasePlugin
             catch (Exception error)
             {
                 _logger.LogDebug(error, "unable to read the map on load");
+            }
+
+            // Nor has it seen the round under way go live, or anyone in it spawn:
+            // whoever is alive now is in it, but whoever already died in it is
+            // not.
+            _roster.FreezeTimeEnded(IsWarmup());
+
+            foreach (IPlayer player in Humans())
+            {
+                CountSpawn(player);
             }
         }
 
@@ -325,6 +337,7 @@ public partial class PlayerManagementPlugin : BasePlugin
             List<IPlayer> humans = Humans();
 
             ObserveRoster(humans);
+            ReadHealth(humans);
             Enforce(humans);
         }
         catch (Exception error)
@@ -453,6 +466,8 @@ public partial class PlayerManagementPlugin : BasePlugin
             }
 
             IPlayer? attacker = @event.AttackerPlayer;
+            IPlayer? assister = @event.AssisterPlayer;
+            bool teammatesAreEnemies = TeammatesAreEnemies();
 
             bool kill =
                 attacker != null
@@ -462,14 +477,243 @@ public partial class PlayerManagementPlugin : BasePlugin
                     victim.PlayerID,
                     attacker.Controller.TeamNum,
                     victim.Controller.TeamNum,
-                    TeammatesAreEnemies()
+                    teammatesAreEnemies
                 );
 
-            _roster.Died(VerifiedSteamIdOf(victim), kill ? VerifiedSteamIdOf(attacker!) : null);
+            bool assist =
+                assister != null
+                && IsHuman(assister)
+                && PlayerRoster.CountsAsAssist(
+                    assister.PlayerID,
+                    victim.PlayerID,
+                    assister.Controller.TeamNum,
+                    victim.Controller.TeamNum,
+                    teammatesAreEnemies,
+                    @event.AssistedFlash
+                );
+
+            _roster.Died(
+                VerifiedSteamIdOf(victim),
+                kill ? VerifiedSteamIdOf(attacker!) : null,
+                IsWarmup(),
+                assist ? VerifiedSteamIdOf(assister!) : null,
+                @event.Headshot
+            );
         }
         catch (Exception error)
         {
             _logger.LogError(error, "unable to count a death");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnPlayerHurt(EventPlayerHurt @event)
+    {
+        try
+        {
+            IPlayer? victim = @event.UserIdPlayer;
+
+            if (victim == null || !IsHuman(victim))
+            {
+                return HookResult.Continue;
+            }
+
+            int dealt = _health.Hit(victim.PlayerID, @event.ActualDmgHealth, @event.ActualHealth);
+
+            IPlayer? attacker = @event.AttackerPlayer;
+
+            if (
+                attacker == null
+                || !IsHuman(attacker)
+                || !PlayerRoster.CountsAsKill(
+                    attacker.PlayerID,
+                    victim.PlayerID,
+                    attacker.Controller.TeamNum,
+                    victim.Controller.TeamNum,
+                    TeammatesAreEnemies()
+                )
+            )
+            {
+                return HookResult.Continue;
+            }
+
+            _roster.Hurt(
+                VerifiedSteamIdOf(attacker),
+                VerifiedSteamIdOf(victim),
+                dealt,
+                IsWarmup()
+            );
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to count damage");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnPlayerSpawn(EventPlayerSpawn @event)
+    {
+        try
+        {
+            IPlayer? player = @event.UserIdPlayer;
+
+            if (player != null)
+            {
+                _health.Spawned(player.PlayerID);
+
+                // Joining a side fires a spawn too, for a player who stays dead
+                // until the next round, so whether they are alive is only read
+                // once the spawn is over. A spawn in the tick the round ends
+                // is read after it, and so goes to the next round.
+                Core.Scheduler.NextTick(() => CountSpawn(player));
+            }
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to reset a player's health or count their spawn");
+        }
+
+        return HookResult.Continue;
+    }
+
+    // Read off the player's own pawn: a dead player's current pawn is the one
+    // they watch the round through. A spawn is kept under the id the player
+    // claims, so one who spawns before Steam verifies them is in the round;
+    // only a verified id is credited for it at the round's end.
+    private void CountSpawn(IPlayer player)
+    {
+        try
+        {
+            if (
+                player.IsValid
+                && IsHuman(player)
+                && player.PlayerPawn is { IsValid: true } pawn
+                && pawn.LifeState == (byte)LifeState_t.LIFE_ALIVE
+            )
+            {
+                _roster.Spawned(SteamIdOf(player).ToString(), player.Controller.TeamNum);
+            }
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to count a spawn");
+        }
+    }
+
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnPlayerTeam(EventPlayerTeam @event)
+    {
+        try
+        {
+            IPlayer? player = @event.UserIdPlayer;
+
+            // Not IsHuman: a player leaving the server is already no longer
+            // connected when their team goes, and leaving it leaves the side.
+            if (
+                player != null
+                && player.IsValid
+                && !player.IsFakeClient
+                && SteamIdOf(player) != 0
+                && @event.Team != @event.OldTeam
+            )
+            {
+                _roster.LeftSide(SteamIdOf(player).ToString());
+            }
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to forget a spawn on a team change");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnRoundStart(EventRoundStart @event)
+    {
+        try
+        {
+            _roster.RoundStarted();
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to start a round");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnRoundFreezeEnd(EventRoundFreezeEnd @event)
+    {
+        try
+        {
+            _roster.FreezeTimeEnded(IsWarmup());
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to start counting a round");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnRoundEnd(EventRoundEnd @event)
+    {
+        try
+        {
+            // Fired when the game starts or restarts, not at the end of a
+            // round anybody played.
+            if (@event.Message == "#SFUI_Notice_Game_Commencing")
+            {
+                _roster.GameCommencing();
+                return HookResult.Continue;
+            }
+
+            Dictionary<string, int> teams = new();
+
+            foreach (IPlayer player in Humans())
+            {
+                string? steamId = VerifiedSteamIdOf(player);
+
+                if (steamId != null)
+                {
+                    teams[steamId] = player.Controller.TeamNum;
+                }
+            }
+
+            _roster.RoundEnded(@event.Winner, teams, IsWarmup());
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to count a round");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnRoundMvp(EventRoundMvp @event)
+    {
+        try
+        {
+            IPlayer? player = @event.UserIdPlayer;
+
+            // A bot's MVP, or one whose player has gone, is still the round's
+            // MVP, so it reaches the roster without a player to credit.
+            _roster.Mvp(
+                player != null && IsHuman(player) ? VerifiedSteamIdOf(player) : null,
+                IsWarmup()
+            );
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to count an MVP");
         }
 
         return HookResult.Continue;
@@ -489,12 +733,50 @@ public partial class PlayerManagementPlugin : BasePlugin
         }
     }
 
+    // Also kept apart from the enforcement. A pawn that cannot be read keeps
+    // the health its last hit left.
+    private void ReadHealth(List<IPlayer> humans)
+    {
+        foreach (IPlayer player in humans)
+        {
+            try
+            {
+                CCSPlayerPawn? pawn = player.PlayerPawn;
+
+                if (pawn != null && pawn.IsValid)
+                {
+                    _health.Seen(player.PlayerID, pawn.Health);
+                }
+            }
+            catch (Exception error)
+            {
+                _logger.LogDebug(error, "unable to read a player's health");
+            }
+        }
+    }
+
     // Unreadable is taken as teams as usual, where a team kill earns nothing.
     private bool TeammatesAreEnemies()
     {
         try
         {
             return Core.ConVar.Find<bool>("mp_teammates_are_enemies")?.Value ?? false;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    // Unreadable is taken as live, as a server without warmup is.
+    private bool IsWarmup()
+    {
+        try
+        {
+            return Core.EntitySystem.GetAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+                    .FirstOrDefault()
+                    ?.GameRules?.WarmupPeriod
+                ?? false;
         }
         catch (Exception)
         {

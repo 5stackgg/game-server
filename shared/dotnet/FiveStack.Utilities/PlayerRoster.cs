@@ -35,6 +35,13 @@ public class PlayerRoster
 
     public const int MaxNameLength = 64;
 
+    public const int TeamT = 2;
+
+    public const int TeamCT = 3;
+
+    // A player who has not been hit since they spawned.
+    public const int FullHealth = 100;
+
     private enum eRosterState
     {
         Unknown,
@@ -49,6 +56,12 @@ public class PlayerRoster
         public string? Ip;
         public int Kills;
         public int Deaths;
+        public int Assists;
+        public int Headshots;
+        public int Damage;
+        public int RoundsPlayed;
+        public int RoundsWon;
+        public int Mvps;
     }
 
     private sealed record Departure(DepartedPlayer Player, DateTimeOffset At);
@@ -69,6 +82,12 @@ public class PlayerRoster
     private string? _map;
     private RosterReport? _final;
     private DateTimeOffset _finalAt;
+    private bool _roundLive;
+    private bool _roundEnded;
+    private bool _roundMvp;
+
+    // The side each player last spawned on since the last round ended.
+    private readonly Dictionary<string, int> _spawned = new();
 
     // Returns when a sync is due if this observation is what made one due.
     public virtual DateTimeOffset? Observe(IEnumerable<ObservedPlayer> players, DateTimeOffset now)
@@ -163,6 +182,10 @@ public class PlayerRoster
             Hold(now);
             _mapStarted = true;
             _releaseAt = null;
+
+            // A round the map change cut short never ends.
+            _roundLive = false;
+            _spawned.Clear();
         }
     }
 
@@ -189,9 +212,24 @@ public class PlayerRoster
     }
 
     // Only players on the roster are counted, which keeps out bots and any
-    // claimed id Steam has not verified.
-    public void Died(string? victim, string? killer)
+    // claimed id Steam has not verified. The hooks pass a killer or assister
+    // only when the kill or assist counts, so a headshot only ever goes with a
+    // counted kill. Nothing done in warmup counts: its kills, deaths, damage
+    // and MVPs no more than its rounds. The game rules' warmup flag says so at
+    // each event, however long the warmup runs or however it ends.
+    public void Died(
+        string? victim,
+        string? killer,
+        bool warmup,
+        string? assister = null,
+        bool headshot = false
+    )
     {
+        if (warmup)
+        {
+            return;
+        }
+
         lock (_lock)
         {
             if (victim != null && _current.TryGetValue(victim, out Entry? dead))
@@ -202,6 +240,196 @@ public class PlayerRoster
             if (killer != null && _current.TryGetValue(killer, out Entry? scorer))
             {
                 scorer.Kills++;
+
+                if (headshot)
+                {
+                    scorer.Headshots++;
+                }
+            }
+
+            if (
+                assister != null
+                && assister != killer
+                && _current.TryGetValue(assister, out Entry? helper)
+            )
+            {
+                helper.Assists++;
+            }
+        }
+    }
+
+    // The hooks pass an attacker only for damage to an enemy, by the same rule
+    // as a kill, and the damage already capped by Dealt.
+    public void Hurt(string? attacker, string? victim, int damage, bool warmup)
+    {
+        if (warmup || attacker == null || attacker == victim || damage <= 0)
+        {
+            return;
+        }
+
+        lock (_lock)
+        {
+            if (_current.TryGetValue(attacker, out Entry? entry))
+            {
+                entry.Damage += damage;
+            }
+        }
+    }
+
+    // Ending warmup ends its round as a win for whoever is alive, so the warmup
+    // flag at a round's end is not what decides it: a round only counts once
+    // its freeze time has ended outside warmup, as the match plugin's knife
+    // round does.
+    public void FreezeTimeEnded(bool warmup)
+    {
+        lock (_lock)
+        {
+            _roundLive = !warmup;
+            _roundEnded = false;
+            _roundMvp = false;
+        }
+    }
+
+    // A round counts once: another round end before the next round starts (an
+    // admin ending the round, a plugin terminating it) is not another round.
+    // The MVP can come after the round end, so the flag only goes at the
+    // next round's start.
+    public void RoundStarted()
+    {
+        lock (_lock)
+        {
+            _roundLive = false;
+            _roundEnded = false;
+            _roundMvp = false;
+        }
+    }
+
+    // Spawns are kept from one round's end to the next rather than from the
+    // round's start, so they hold whichever of round_start and the players'
+    // spawns comes first, and a player who spawns late in the round (joining
+    // in buy time) is in it too.
+    public void Spawned(string? steamId, int team)
+    {
+        if (steamId == null)
+        {
+            return;
+        }
+
+        lock (_lock)
+        {
+            _spawned[steamId] = team;
+        }
+    }
+
+    // A spawn only holds for the side it was on: a player who leaves it, for
+    // the other side or for spectators, has to spawn again to play the round,
+    // so going spectator and coming back dead after a restart that ended no
+    // round plays none.
+    public void LeftSide(string? steamId)
+    {
+        if (steamId == null)
+        {
+            return;
+        }
+
+        lock (_lock)
+        {
+            _spawned.Remove(steamId);
+        }
+    }
+
+    // The game starting or restarting ends no round anybody played, but the
+    // spawns before it are not in the round after it either.
+    public void GameCommencing()
+    {
+        lock (_lock)
+        {
+            _spawned.Clear();
+        }
+    }
+
+    // A round is played by whoever spawned in it and ends it on the side they
+    // last spawned on. Sitting on a side without spawning, or switching to the
+    // side about to win, plays no round, and a spectator plays none. Warmup
+    // rounds are not rounds.
+    public void RoundEnded(
+        int winnerTeam,
+        IReadOnlyDictionary<string, int> teamsBySteamId,
+        bool warmup
+    )
+    {
+        lock (_lock)
+        {
+            try
+            {
+                Credit(winnerTeam, teamsBySteamId, warmup);
+            }
+            finally
+            {
+                _spawned.Clear();
+            }
+        }
+    }
+
+    private void Credit(
+        int winnerTeam,
+        IReadOnlyDictionary<string, int> teamsBySteamId,
+        bool warmup
+    )
+    {
+        if (warmup || !_roundLive || _roundEnded)
+        {
+            return;
+        }
+
+        _roundEnded = true;
+
+        foreach ((string steamId, int team) in teamsBySteamId)
+        {
+            if (
+                (team != TeamT && team != TeamCT)
+                || !_spawned.TryGetValue(steamId, out int spawnedOn)
+                || spawnedOn != team
+                || !_current.TryGetValue(steamId, out Entry? entry)
+            )
+            {
+                continue;
+            }
+
+            entry.RoundsPlayed++;
+
+            if (team == winnerTeam)
+            {
+                entry.RoundsWon++;
+            }
+        }
+    }
+
+    // A round that never went live has no MVP either, and a round ended again
+    // has had its MVP: the MVP after its first end is the only one it gets.
+    public void Mvp(string? steamId, bool warmup)
+    {
+        if (warmup)
+        {
+            return;
+        }
+
+        lock (_lock)
+        {
+            if (_roundEnded && _roundMvp)
+            {
+                return;
+            }
+
+            _roundMvp = _roundEnded;
+
+            if (
+                _roundLive
+                && steamId != null
+                && _current.TryGetValue(steamId, out Entry? entry)
+            )
+            {
+                entry.Mvps++;
             }
         }
     }
@@ -321,6 +549,37 @@ public class PlayerRoster
         return attackerSlot != victimSlot && (teammatesAreEnemies || attackerTeam != victimTeam);
     }
 
+    // A flash assist only blinded the victim, which did nothing to their health.
+    public static bool CountsAsAssist(
+        int assisterSlot,
+        int victimSlot,
+        int assisterTeam,
+        int victimTeam,
+        bool teammatesAreEnemies,
+        bool flash
+    )
+    {
+        return !flash
+            && CountsAsKill(
+                assisterSlot,
+                victimSlot,
+                assisterTeam,
+                victimTeam,
+                teammatesAreEnemies
+            );
+    }
+
+    // A hit reports its full damage even when it kills, so a lethal one is
+    // capped at the health the victim had before it: what the last hit they
+    // survived left them, or full health when they have not been hit since
+    // spawning.
+    public static int Dealt(int damage, int healthAfter, int? healthBefore)
+    {
+        int before = healthAfter > 0 ? healthAfter + damage : healthBefore ?? FullHealth;
+
+        return Math.Clamp(damage, 0, Math.Max(before, 0));
+    }
+
     // The panel checks the name itself; this only keeps an empty one from
     // reading as a map.
     private static string? MapName(string? raw)
@@ -341,6 +600,12 @@ public class PlayerRoster
                 ip = entry.Value.Ip,
                 kills = entry.Value.Kills,
                 deaths = entry.Value.Deaths,
+                assists = entry.Value.Assists,
+                headshots = entry.Value.Headshots,
+                damage = entry.Value.Damage,
+                rounds_played = entry.Value.RoundsPlayed,
+                rounds_won = entry.Value.RoundsWon,
+                mvps = entry.Value.Mvps,
             })
             .ToList();
     }
@@ -355,6 +620,12 @@ public class PlayerRoster
                 conn = departure.Player.conn,
                 kills = departure.Player.kills,
                 deaths = departure.Player.deaths,
+                assists = departure.Player.assists,
+                headshots = departure.Player.headshots,
+                damage = departure.Player.damage,
+                rounds_played = departure.Player.rounds_played,
+                rounds_won = departure.Player.rounds_won,
+                mvps = departure.Player.mvps,
             })
             .ToList();
     }
@@ -446,6 +717,12 @@ public class PlayerRoster
                         conn = entry.Conn,
                         kills = entry.Kills,
                         deaths = entry.Deaths,
+                        assists = entry.Assists,
+                        headshots = entry.Headshots,
+                        damage = entry.Damage,
+                        rounds_played = entry.RoundsPlayed,
+                        rounds_won = entry.RoundsWon,
+                        mvps = entry.Mvps,
                     },
                     now
                 )

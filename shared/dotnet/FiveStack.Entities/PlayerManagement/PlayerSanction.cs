@@ -33,8 +33,9 @@ public class PlayerSanctionsRequest
     public string? map { get; set; }
 }
 
-// Kills and deaths are running totals for the connection named by conn, which
-// is new each time a player joins, so the panel never has to guess at one.
+// Kills, deaths and the counters after them are running totals for the
+// connection named by conn, which is new each time a player joins, so the
+// panel never has to guess at one.
 public class RosterPlayer
 {
     public string steam_id { get; set; } = "";
@@ -43,6 +44,14 @@ public class RosterPlayer
     public string? ip { get; set; }
     public int kills { get; set; }
     public int deaths { get; set; }
+
+    // Ignored by panels that predate the community counters.
+    public int assists { get; set; }
+    public int headshots { get; set; }
+    public int damage { get; set; }
+    public int rounds_played { get; set; }
+    public int rounds_won { get; set; }
+    public int mvps { get; set; }
 }
 
 public class DepartedPlayer
@@ -51,6 +60,14 @@ public class DepartedPlayer
     public string conn { get; set; } = "";
     public int kills { get; set; }
     public int deaths { get; set; }
+
+    // Ignored by panels that predate the community counters.
+    public int assists { get; set; }
+    public int headshots { get; set; }
+    public int damage { get; set; }
+    public int rounds_played { get; set; }
+    public int rounds_won { get; set; }
+    public int mvps { get; set; }
 }
 
 public class PlayerSanctionsResponse
