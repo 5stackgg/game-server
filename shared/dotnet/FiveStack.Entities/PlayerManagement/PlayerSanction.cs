@@ -27,6 +27,10 @@ public class PlayerSanctionsRequest
     // way: the panel leaves its sessions alone for null and closes them for [].
     public List<RosterPlayer>? players { get; set; }
     public List<DepartedPlayer> departed { get; set; } = new();
+
+    // The map the players' counts were made on. Ignored by panels that predate
+    // per-map sessions.
+    public string? map { get; set; }
 }
 
 // Kills and deaths are running totals for the connection named by conn, which
