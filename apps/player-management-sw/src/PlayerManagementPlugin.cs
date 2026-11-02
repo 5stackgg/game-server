@@ -611,10 +611,13 @@ public partial class PlayerManagementPlugin : BasePlugin
         {
             IPlayer? player = @event.UserIdPlayer;
 
+            // Not IsHuman: a player leaving the server is already no longer
+            // connected when their team goes, and leaving it leaves the side.
             if (
                 player != null
                 && player.IsValid
-                && IsHuman(player)
+                && !player.IsFakeClient
+                && SteamIdOf(player) != 0
                 && @event.Team != @event.OldTeam
             )
             {
