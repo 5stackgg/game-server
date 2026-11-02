@@ -45,6 +45,9 @@ public partial class PlayerManagementPlugin : BasePlugin
     private readonly ServerAccessBook _access = new();
     private readonly PlayerRoster _roster = new();
 
+    // Looked up once a map rather than on every shot and hit.
+    private CCSGameRules? _gameRules;
+
     // What was last applied to each player present, so changes are announced
     // once, and whose mute bit this plugin set, so it only ever lifts its own
     // and never one an admin plugin on the same server set.
@@ -136,10 +139,18 @@ public partial class PlayerManagementPlugin : BasePlugin
         };
         Core.Event.OnClientDisconnected += _disconnectHandler;
 
-        _mapUnloadHandler = _ => _roster.MapEnded(DateTimeOffset.UtcNow);
+        _mapUnloadHandler = _ =>
+        {
+            _gameRules = null;
+            _roster.MapEnded(DateTimeOffset.UtcNow);
+        };
         Core.Event.OnMapUnload += _mapUnloadHandler;
 
-        _mapLoadHandler = @event => _roster.MapStarted(DateTimeOffset.UtcNow, @event.MapName);
+        _mapLoadHandler = @event =>
+        {
+            _gameRules = null;
+            _roster.MapStarted(DateTimeOffset.UtcNow, @event.MapName);
+        };
         Core.Event.OnMapLoad += _mapLoadHandler;
 
         _worldUpdateHandler = OnWorldUpdate;
@@ -334,6 +345,9 @@ public partial class PlayerManagementPlugin : BasePlugin
 
         try
         {
+            // First, so nothing below that fails leaves it stale.
+            _roster.BotsPresent(Core.PlayerManager.GetAllPlayers().Any(IsBot));
+
             List<IPlayer> humans = Humans();
 
             ObserveRoster(humans);
@@ -469,6 +483,10 @@ public partial class PlayerManagementPlugin : BasePlugin
             IPlayer? assister = @event.AssisterPlayer;
             bool teammatesAreEnemies = TeammatesAreEnemies();
 
+            // Nothing a bot does counts, so a death at a bot's hands only
+            // ends a streak and helping a bot to a kill is no assist.
+            bool byBot = attacker != null && IsBot(attacker);
+
             bool kill =
                 attacker != null
                 && IsHuman(attacker)
@@ -481,7 +499,8 @@ public partial class PlayerManagementPlugin : BasePlugin
                 );
 
             bool assist =
-                assister != null
+                !byBot
+                && assister != null
                 && IsHuman(assister)
                 && PlayerRoster.CountsAsAssist(
                     assister.PlayerID,
@@ -492,12 +511,61 @@ public partial class PlayerManagementPlugin : BasePlugin
                     @event.AssistedFlash
                 );
 
+            // A flash assist is counted apart, by the same rule as a kill.
+            bool flashAssist =
+                @event.AssistedFlash
+                && !byBot
+                && assister != null
+                && IsHuman(assister)
+                && PlayerRoster.CountsAsKill(
+                    assister.PlayerID,
+                    victim.PlayerID,
+                    assister.Controller.TeamNum,
+                    victim.Controller.TeamNum,
+                    teammatesAreEnemies
+                );
+
+            bool teamKill =
+                attacker != null
+                && IsHuman(attacker)
+                && PlayerRoster.IsTeamKill(
+                    attacker.PlayerID,
+                    victim.PlayerID,
+                    attacker.Controller.TeamNum,
+                    victim.Controller.TeamNum,
+                    teammatesAreEnemies
+                );
+
+            KillFacts facts = new(
+                Weapon: kill ? HeldWeapon(attacker!, @event.Weapon) : @event.Weapon,
+                Time: Core.Engine.GlobalVars.CurrentTime,
+                KillerSlot: kill ? attacker!.PlayerID : -1,
+                KillerTeam: kill ? attacker!.Controller.TeamNum : 0,
+                VictimSlot: victim.PlayerID,
+                VictimTeam: victim.Controller.TeamNum,
+                TeammatesAreEnemies: teammatesAreEnemies,
+                NoScope: @event.NoScope,
+                ThruSmoke: @event.ThruSmoke,
+                AttackerBlind: @event.AttackerBlind,
+                Penetrated: @event.Penetrated,
+                AttackerInAir: @event.AttackerInAir,
+                AssistedFlash: flashAssist,
+                Suicide: PlayerRoster.IsSuicide(
+                    attacker != null && attacker.IsValid ? attacker.PlayerID : null,
+                    victim.PlayerID,
+                    @event.Weapon
+                ),
+                TeamKiller: teamKill ? VerifiedSteamIdOf(attacker!) : null,
+                ByBot: byBot
+            );
+
             _roster.Died(
                 VerifiedSteamIdOf(victim),
                 kill ? VerifiedSteamIdOf(attacker!) : null,
                 IsWarmup(),
-                assist ? VerifiedSteamIdOf(assister!) : null,
-                @event.Headshot
+                assist || flashAssist ? VerifiedSteamIdOf(assister!) : null,
+                @event.Headshot,
+                facts
             );
         }
         catch (Exception error)
@@ -515,35 +583,55 @@ public partial class PlayerManagementPlugin : BasePlugin
         {
             IPlayer? victim = @event.UserIdPlayer;
 
-            if (victim == null || !IsHuman(victim))
+            if (victim == null || !victim.IsValid)
             {
                 return HookResult.Continue;
             }
 
             int dealt = _health.Hit(victim.PlayerID, @event.ActualDmgHealth, @event.ActualHealth);
 
+            // Nothing a bot does or has done to it counts, nor anything
+            // without an attacker. Only a human hurting a human who is no
+            // enemy is team damage.
             IPlayer? attacker = @event.AttackerPlayer;
 
-            if (
-                attacker == null
-                || !IsHuman(attacker)
-                || !PlayerRoster.CountsAsKill(
-                    attacker.PlayerID,
-                    victim.PlayerID,
-                    attacker.Controller.TeamNum,
-                    victim.Controller.TeamNum,
-                    TeammatesAreEnemies()
-                )
-            )
+            if (attacker == null || !attacker.IsValid || IsBot(attacker))
             {
                 return HookResult.Continue;
             }
 
+            bool attackerIsHuman = IsHuman(attacker);
+            string weapon = attackerIsHuman ? HeldWeapon(attacker, @event.Weapon) : @event.Weapon;
+
+            if (!IsHuman(victim))
+            {
+                return HookResult.Continue;
+            }
+
+            bool teammatesAreEnemies = TeammatesAreEnemies();
+
+            bool enemy = PlayerRoster.CountsAsKill(
+                attacker.PlayerID,
+                victim.PlayerID,
+                attacker.Controller.TeamNum,
+                victim.Controller.TeamNum,
+                teammatesAreEnemies
+            );
+
             _roster.Hurt(
-                VerifiedSteamIdOf(attacker),
+                attackerIsHuman ? VerifiedSteamIdOf(attacker) : null,
                 VerifiedSteamIdOf(victim),
                 dealt,
-                IsWarmup()
+                IsWarmup(),
+                new HitFacts(
+                    weapon,
+                    (int)@event.ActualHitGroup,
+                    Core.Engine.GlobalVars.TickCount,
+                    victim.PlayerID,
+                    enemy,
+                    attackerIsHuman && !enemy,
+                    teammatesAreEnemies
+                )
             );
         }
         catch (Exception error)
@@ -628,6 +716,119 @@ public partial class PlayerManagementPlugin : BasePlugin
         {
             _logger.LogError(error, "unable to forget a spawn on a team change");
         }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnWeaponFire(EventWeaponFire @event)
+    {
+        try
+        {
+            // This runs for every shot and every throw, so the cheap checks
+            // come before the lookups.
+            if (!CommunityWeapons.IsFirearm(@event.Weapon))
+            {
+                return HookResult.Continue;
+            }
+
+            IPlayer? player = @event.UserIdPlayer;
+
+            if (player == null || !IsHuman(player))
+            {
+                return HookResult.Continue;
+            }
+
+            string? steamId = VerifiedSteamIdOf(player);
+
+            if (steamId == null)
+            {
+                return HookResult.Continue;
+            }
+
+            _roster.Fired(steamId, HeldWeapon(player, @event.Weapon), IsWarmup());
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to count a shot");
+        }
+
+        return HookResult.Continue;
+    }
+
+    // Blinding oneself is blinding a teammate, as it is on the match side.
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnPlayerBlind(EventPlayerBlind @event)
+    {
+        try
+        {
+            IPlayer? victim = @event.UserIdPlayer;
+            IPlayer? attacker = @event.AttackerPlayer;
+
+            if (victim == null || !IsHuman(victim) || attacker == null || !IsHuman(attacker))
+            {
+                return HookResult.Continue;
+            }
+
+            // A spectator or a dead player can be blinded too, and counts for
+            // nothing.
+            int victimTeam = victim.Controller.TeamNum;
+
+            if (
+                (victimTeam != PlayerRoster.TeamT && victimTeam != PlayerRoster.TeamCT)
+                || !victim.IsAlive
+            )
+            {
+                return HookResult.Continue;
+            }
+
+            bool teammatesAreEnemies = TeammatesAreEnemies();
+
+            bool sameTeam = !PlayerRoster.CountsAsKill(
+                attacker.PlayerID,
+                victim.PlayerID,
+                attacker.Controller.TeamNum,
+                victimTeam,
+                teammatesAreEnemies
+            );
+
+            _roster.Blinded(
+                VerifiedSteamIdOf(attacker),
+                VerifiedSteamIdOf(victim),
+                @event.BlindDuration,
+                sameTeam,
+                IsWarmup(),
+                teammatesAreEnemies
+            );
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to count a flash");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnBombPlanted(EventBombPlanted @event)
+    {
+        Objective(@event.UserIdPlayer, CommunityStatKeys.BombPlants);
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnBombDefused(EventBombDefused @event)
+    {
+        Objective(@event.UserIdPlayer, CommunityStatKeys.BombDefuses);
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnHostageRescued(EventHostageRescued @event)
+    {
+        Objective(@event.UserIdPlayer, CommunityStatKeys.HostageRescues);
 
         return HookResult.Continue;
     }
@@ -719,6 +920,21 @@ public partial class PlayerManagementPlugin : BasePlugin
         return HookResult.Continue;
     }
 
+    private void Objective(IPlayer? player, string key)
+    {
+        try
+        {
+            if (player != null && IsHuman(player))
+            {
+                _roster.Objective(VerifiedSteamIdOf(player), key, IsWarmup());
+            }
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to count an objective");
+        }
+    }
+
     // Kept apart from the enforcement that follows it on the tick, which must
     // run whatever happens to the roster.
     private void ObserveRoster(List<IPlayer> humans)
@@ -731,6 +947,27 @@ public partial class PlayerManagementPlugin : BasePlugin
         {
             _logger.LogError(error, "unable to observe the players present");
         }
+    }
+
+    // Some guns share another's class (see CommunityWeapons), and an event
+    // may then name the other gun: player_hurt names a USP-S hkp2000. Only
+    // for those names is the gun in hand read, by its item definition index;
+    // anything unreadable keeps the event's name.
+    private static string HeldWeapon(IPlayer player, string weapon)
+    {
+        if (!CommunityWeapons.SharesAClass(weapon))
+        {
+            return weapon;
+        }
+
+        CBasePlayerWeapon? active = player.PlayerPawn?.WeaponServices?.ActiveWeapon.Value;
+
+        return CommunityWeapons.InHand(
+            weapon,
+            active != null && active.IsValid
+                ? active.AttributeManager.Item.ItemDefinitionIndex
+                : null
+        );
     }
 
     // Also kept apart from the enforcement. A pawn that cannot be read keeps
@@ -768,18 +1005,24 @@ public partial class PlayerManagementPlugin : BasePlugin
         }
     }
 
-    // Unreadable is taken as live, as a server without warmup is.
+    // Unreadable is taken as live, as a server without warmup is. The game
+    // rules last as long as the map, so only the lookup is kept, and the flag
+    // is read fresh each time.
     private bool IsWarmup()
     {
         try
         {
-            return Core.EntitySystem.GetAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
-                    .FirstOrDefault()
-                    ?.GameRules?.WarmupPeriod
-                ?? false;
+            _gameRules ??= Core
+                .EntitySystem.GetAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+                .FirstOrDefault()
+                ?.GameRules;
+
+            return _gameRules?.WarmupPeriod ?? false;
         }
         catch (Exception)
         {
+            _gameRules = null;
+
             return false;
         }
     }
@@ -892,6 +1135,14 @@ public partial class PlayerManagementPlugin : BasePlugin
                 player.IsAuthorized
             ))
             .ToList();
+    }
+
+    // CSTV is a fake client too, and no bot.
+    private static bool IsBot(IPlayer player)
+    {
+        CCSPlayerController controller = player.Controller;
+
+        return controller.IsValid && player.IsFakeClient && !controller.IsHLTV;
     }
 
     // Not IPlayer.IsValid: that also wants a pawn, and a player without one

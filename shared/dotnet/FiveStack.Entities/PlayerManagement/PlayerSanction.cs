@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace FiveStack.Entities.PlayerManagement;
 
 public class PlayerSanction
@@ -52,6 +54,14 @@ public class RosterPlayer
     public int rounds_played { get; set; }
     public int rounds_won { get; set; }
     public int mvps { get; set; }
+
+    // Ignored by panels that predate the detailed community stats. Both leave
+    // out what is zero and are left out themselves when nothing is left.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, int>? stats { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, WeaponTotals>? weapons { get; set; }
 }
 
 public class DepartedPlayer
@@ -68,6 +78,33 @@ public class DepartedPlayer
     public int rounds_played { get; set; }
     public int rounds_won { get; set; }
     public int mvps { get; set; }
+
+    // Ignored by panels that predate the detailed community stats. Both leave
+    // out what is zero and are left out themselves when nothing is left.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, int>? stats { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, WeaponTotals>? weapons { get; set; }
+}
+
+// One weapon's totals for a connection, by the name the match stats give it.
+public class WeaponTotals
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int kills { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int headshots { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int shots { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int hits { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int damage { get; set; }
 }
 
 public class PlayerSanctionsResponse
