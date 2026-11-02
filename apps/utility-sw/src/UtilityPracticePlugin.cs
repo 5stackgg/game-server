@@ -87,6 +87,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     private EventDelegates.OnClientDisconnected? _disconnectHandler;
     private EventDelegates.OnPrecacheResource? _precacheHandler;
     private EventDelegates.OnClientSteamAuthorize? _authorizeHandler;
+    private EventDelegates.OnClientPutInServer? _putInServerHandler;
     private EventDelegates.OnCustomHudClicked? _hudClickHandler;
 
     public UtilityPracticePlugin(ISwiftlyCore core)
@@ -265,6 +266,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             _occupancyDirty = true;
             _prompt?.Cancel(@event.PlayerId);
             _replay.ForgetViewer(@event.PlayerId);
+            _hud?.Forget(@event.PlayerId);
 
             ForPlayer(
                 @event.PlayerId,
@@ -275,7 +277,7 @@ public partial class UtilityPracticePlugin : BasePlugin
                     // invalidated never reaches this at all, which is why the
                     // drain prunes off the roster as well.
                     _libraryLoads.Remove(steamId);
-                    ForgetHud(steamId, @event.PlayerId);
+                    ForgetHud(steamId);
                     OnPlayerGone(steamId);
                 }
             );
@@ -291,6 +293,13 @@ public partial class UtilityPracticePlugin : BasePlugin
             _occupancyDirty = true;
         };
         Core.Event.OnClientSteamAuthorize += _authorizeHandler;
+
+        // Only the slot: ForgetHud also clears settings that outlive a map change.
+        _putInServerHandler = @event =>
+        {
+            _hud?.Forget(@event.PlayerId);
+        };
+        Core.Event.OnClientPutInServer += _putInServerHandler;
 
         InitializeConnectClientHook();
         InitializeTerminateRoundHook();
@@ -499,6 +508,11 @@ public partial class UtilityPracticePlugin : BasePlugin
         if (_authorizeHandler != null)
         {
             Core.Event.OnClientSteamAuthorize -= _authorizeHandler;
+        }
+
+        if (_putInServerHandler != null)
+        {
+            Core.Event.OnClientPutInServer -= _putInServerHandler;
         }
 
         UninstallConnectClientHook();

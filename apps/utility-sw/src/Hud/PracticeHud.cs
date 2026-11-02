@@ -690,7 +690,7 @@ public partial class UtilityPracticePlugin
         return from.Length > 0 ? $"{from} · {distance}" : distance;
     }
 
-    private void ForgetHud(ulong steamId, int playerId)
+    private void ForgetHud(ulong steamId)
     {
         _hudOff.Remove(steamId);
         _menus.Remove(steamId);
@@ -702,7 +702,6 @@ public partial class UtilityPracticePlugin
         _mapChoices.Remove(steamId);
         ForgetVerdicts(steamId);
         ClearFilters(steamId);
-        _hud?.Forget(playerId);
     }
 
     [Command("menu", registerRaw: false, permission: "")]
