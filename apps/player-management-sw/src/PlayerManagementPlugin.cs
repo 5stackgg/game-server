@@ -189,7 +189,9 @@ public partial class PlayerManagementPlugin : BasePlugin
                 _logger.LogDebug(error, "unable to read the map on load");
             }
 
-            // Nor has it seen the round under way go live, or anyone in it spawn.
+            // Nor has it seen the round under way go live, or anyone in it spawn:
+            // whoever is alive now is in it, but whoever already died in it is
+            // not.
             _roster.FreezeTimeEnded(IsWarmup());
 
             foreach (IPlayer player in Humans())
@@ -565,31 +567,66 @@ public partial class PlayerManagementPlugin : BasePlugin
 
                 // Joining a side fires a spawn too, for a player who stays dead
                 // until the next round, so whether they are alive is only read
-                // once the spawn is over.
+                // once the spawn is over. A spawn in the tick the round ends
+                // is read after it, and so goes to the next round.
                 Core.Scheduler.NextTick(() => CountSpawn(player));
             }
         }
         catch (Exception error)
         {
-            _logger.LogError(error, "unable to reset a player's health");
+            _logger.LogError(error, "unable to reset a player's health or count their spawn");
         }
 
         return HookResult.Continue;
     }
 
+    // Read off the player's own pawn: a dead player's current pawn is the one
+    // they watch the round through. A spawn is kept under the id the player
+    // claims, so one who spawns before Steam verifies them is in the round;
+    // only a verified id is credited for it at the round's end.
     private void CountSpawn(IPlayer player)
     {
         try
         {
-            if (IsHuman(player) && player.IsAlive)
+            if (
+                player.IsValid
+                && IsHuman(player)
+                && player.PlayerPawn is { IsValid: true } pawn
+                && pawn.LifeState == (byte)LifeState_t.LIFE_ALIVE
+            )
             {
-                _roster.Spawned(VerifiedSteamIdOf(player), player.Controller.TeamNum);
+                _roster.Spawned(SteamIdOf(player).ToString(), player.Controller.TeamNum);
             }
         }
         catch (Exception error)
         {
             _logger.LogError(error, "unable to count a spawn");
         }
+    }
+
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnPlayerTeam(EventPlayerTeam @event)
+    {
+        try
+        {
+            IPlayer? player = @event.UserIdPlayer;
+
+            if (
+                player != null
+                && player.IsValid
+                && IsHuman(player)
+                && @event.Team != @event.OldTeam
+            )
+            {
+                _roster.LeftSide(SteamIdOf(player).ToString());
+            }
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "unable to forget a spawn on a team change");
+        }
+
+        return HookResult.Continue;
     }
 
     [GameEventHandler(HookMode.Post)]
@@ -631,6 +668,7 @@ public partial class PlayerManagementPlugin : BasePlugin
             // round anybody played.
             if (@event.Message == "#SFUI_Notice_Game_Commencing")
             {
+                _roster.GameCommencing();
                 return HookResult.Continue;
             }
 

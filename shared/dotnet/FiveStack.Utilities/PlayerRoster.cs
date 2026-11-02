@@ -321,6 +321,33 @@ public class PlayerRoster
         }
     }
 
+    // A spawn only holds for the side it was on: a player who leaves it, for
+    // the other side or for spectators, has to spawn again to play the round,
+    // so going spectator and coming back dead after a restart that ended no
+    // round plays none.
+    public void LeftSide(string? steamId)
+    {
+        if (steamId == null)
+        {
+            return;
+        }
+
+        lock (_lock)
+        {
+            _spawned.Remove(steamId);
+        }
+    }
+
+    // The game starting or restarting ends no round anybody played, but the
+    // spawns before it are not in the round after it either.
+    public void GameCommencing()
+    {
+        lock (_lock)
+        {
+            _spawned.Clear();
+        }
+    }
+
     // A round is played by whoever spawned in it and ends it on the side they
     // last spawned on. Sitting on a side without spawning, or switching to the
     // side about to win, plays no round, and a spectator plays none. Warmup
