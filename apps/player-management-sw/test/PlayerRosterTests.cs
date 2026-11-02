@@ -1539,6 +1539,80 @@ public class PlayerRosterTests
         Assert.Equal((1, 1), Rounds(roster.Report(At(5)), "1"));
     }
 
+    // Leaving a side forgets the spawn on it, so going spectator and coming
+    // back to the same side dead plays no round, nor does a spawn from before
+    // the game restarted. Spawning again does.
+    [Fact]
+    public void LeavingASideOrARestartForgetsTheSpawnsBeforeIt()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+        IReadOnlyDictionary<string, int> teams = Teams(
+            ("1", PlayerRoster.TeamT),
+            ("2", PlayerRoster.TeamT)
+        );
+
+        Spawn(roster, ("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamT));
+        roster.LeftSide("1");
+        roster.LeftSide(null);
+        roster.RoundStarted();
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
+
+        RosterReport first = roster.Report(At(1));
+        Assert.Equal((0, 0), Rounds(first, "1"));
+        Assert.Equal((1, 1), Rounds(first, "2"));
+
+        Spawn(roster, ("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamT));
+        roster.GameCommencing();
+        roster.RoundStarted();
+        roster.FreezeTimeEnded(warmup: false);
+        Spawn(roster, ("2", PlayerRoster.TeamT));
+        roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
+
+        RosterReport second = roster.Report(At(2));
+        Assert.Equal((0, 0), Rounds(second, "1"));
+        Assert.Equal((2, 2), Rounds(second, "2"));
+    }
+
+    // Only the side a player last spawned on counts, so a side swap at the
+    // half plays the next round on the new side, and a spawn under no id is
+    // nobody's.
+    [Fact]
+    public void ARoundGoesToTheSideAPlayerLastSpawnedOn()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+
+        Spawn(
+            roster,
+            ("1", PlayerRoster.TeamCT),
+            ("1", PlayerRoster.TeamT),
+            ("2", PlayerRoster.TeamT)
+        );
+        roster.Spawned(null, PlayerRoster.TeamCT);
+        roster.RoundStarted();
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(
+            PlayerRoster.TeamT,
+            Teams(("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamT)),
+            warmup: false
+        );
+
+        Spawn(roster, ("1", PlayerRoster.TeamCT), ("2", PlayerRoster.TeamCT));
+        roster.RoundStarted();
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(
+            PlayerRoster.TeamCT,
+            Teams(("1", PlayerRoster.TeamCT), ("2", PlayerRoster.TeamT)),
+            warmup: false
+        );
+
+        RosterReport report = roster.Report(At(1));
+        Assert.Equal((2, 2), Rounds(report, "1"));
+        Assert.Equal((1, 1), Rounds(report, "2"));
+    }
+
     private static void Spawn(PlayerRoster roster, params (string SteamId, int Team)[] spawns)
     {
         foreach ((string steamId, int team) in spawns)
