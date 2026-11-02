@@ -58,6 +58,15 @@ public class RestoreWiringTests
     }
 
     [Fact]
+    public void AnOrganizerRestoreIsOnlyRefusedForAVoteOrALoadAsOnMain()
+    {
+        string refusal = Method(Backups(), "public string? RestoreRefusal(int round)");
+
+        Assert.Contains("_restore.VotingOrLoading,", refusal);
+        Assert.DoesNotContain("_restore.InProgress", refusal);
+    }
+
+    [Fact]
     public void AVoteIsLetGoAsSoonAsItPasses()
     {
         string passed = PassedVote();

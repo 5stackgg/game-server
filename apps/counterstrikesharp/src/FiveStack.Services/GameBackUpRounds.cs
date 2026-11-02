@@ -208,6 +208,19 @@ public class GameBackUpRounds
         }
     }
 
+    // A hold turns backups off itself and offers its vote straight away, so
+    // nothing here may read the hold after that.
+    private void FailLoad()
+    {
+        if (_restore.FailedLoad() is int round)
+        {
+            ReturnToHold(round);
+            return;
+        }
+
+        SetBackupWriting(!IsHoldingForRestore());
+    }
+
     private Guid? ActiveMapId()
     {
         MatchManager? matchManager = _matchService.GetCurrentMatch();
@@ -524,10 +537,24 @@ public class GameBackUpRounds
             backupRoundFileName
         );
 
-        File.WriteAllText(backupRoundFilePath, backupRound.backup_file);
+        int? held = _restore.ReleaseHold();
 
-        _restore.ReleaseHold();
-        _restore.StartLoad();
+        _restore.StartLoad(held);
+
+        try
+        {
+            File.WriteAllText(backupRoundFilePath, backupRound.backup_file);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed writing restore backup round file {File}",
+                backupRoundFileName
+            );
+            FailLoad();
+            return;
+        }
 
         _logger.LogInformation($"Loading backup round file {backupRoundFileName}");
 

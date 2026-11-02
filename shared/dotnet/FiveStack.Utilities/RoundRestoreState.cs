@@ -77,9 +77,10 @@ namespace FiveStack.Utilities
             return ++_owing;
         }
 
-        public void StartLoad()
+        // heldRound is a hold this load took over, which a failed load puts back.
+        public void StartLoad(int? heldRound = null)
         {
-            _loadOwed = _owedRound;
+            _loadOwed = _owedRound ?? heldRound;
             _owedRound = null;
             _voting = false;
             _recoveryVote = false;
