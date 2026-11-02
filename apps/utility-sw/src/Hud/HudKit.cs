@@ -254,7 +254,7 @@ public class HudKit
 
         if (layouts.TryGetValue(slots.Layout, out Open? open))
         {
-            if (open.EntityIndex == entity.Index)
+            if (HudLayoutIdentity.Same(open.Surface.Layout, open.EntityIndex, entity, entity.Index))
             {
                 return open;
             }
