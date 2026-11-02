@@ -2631,6 +2631,9 @@
 #radar.de_overpass { background-image: url("s2r://panorama/images/overheadmaps/de_overpass_radar.psd"); }
 #radar.de_train { background-image: url("s2r://panorama/images/overheadmaps/de_train_radar.psd"); }
 #radar.de_vertigo { background-image: url("s2r://panorama/images/overheadmaps/de_vertigo_radar.psd"); }
+#radar.de_nuke.lower { background-image: url("s2r://panorama/images/overheadmaps/de_nuke_lower_radar.psd"); }
+#radar.de_train.lower { background-image: url("s2r://panorama/images/overheadmaps/de_train_lower_radar.psd"); }
+#radar.de_vertigo.lower { background-image: url("s2r://panorama/images/overheadmaps/de_vertigo_lower_radar.psd"); }
 
 /* The last five throws at this lineup, oldest on the left: a streak building
    is easier to see than a number counting up. */

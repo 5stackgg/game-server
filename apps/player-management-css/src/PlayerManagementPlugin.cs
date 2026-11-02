@@ -161,8 +161,13 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
                 Logger.LogDebug(error, "unable to read the map on load");
             }
 
-            // Nor has it seen the round under way go live.
+            // Nor has it seen the round under way go live, or anyone in it spawn.
             _roster.FreezeTimeEnded(IsWarmup());
+
+            foreach (CCSPlayerController player in Humans())
+            {
+                CountSpawn(player);
+            }
         }
 
         _loop.Start();
@@ -590,6 +595,11 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             if (player != null)
             {
                 _health.Spawned(player.Slot);
+
+                // Joining a side fires a spawn too, for a player who stays dead
+                // until the next round, so whether they are alive is only read
+                // once the spawn is over.
+                Server.NextFrame(() => CountSpawn(player));
             }
         }
         catch (Exception error)
@@ -598,6 +608,21 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         }
 
         return HookResult.Continue;
+    }
+
+    private void CountSpawn(CCSPlayerController player)
+    {
+        try
+        {
+            if (IsHuman(player) && player.PawnIsAlive)
+            {
+                _roster.Spawned(VerifiedSteamIdOf(player), player.TeamNum);
+            }
+        }
+        catch (Exception error)
+        {
+            Logger.LogError(error, "unable to count a spawn");
+        }
     }
 
     [GameEventHandler]

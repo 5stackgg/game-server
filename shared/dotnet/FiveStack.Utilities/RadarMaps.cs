@@ -3,13 +3,13 @@ using FiveStack.Enums;
 
 namespace FiveStack.Utilities;
 
-// The radar calibration the HUD projects with, mirrored from the web panel by
-// scripts/sync-radars.sh. Only maps listed here can draw a minimap; everything
-// else falls back to the list.
+// The radar calibration the HUD projects with, built from CS2's own overview
+// files by scripts/sync-radars.sh. Only maps listed here can draw a minimap;
+// everything else falls back to the list.
 public static class RadarMaps
 {
-    // Kept in step with the stylesheet's #radar.<map> rules and the images in
-    // panorama/images/nadehud. HudLayoutContractTests asserts all three agree.
+    // Kept in step with the stylesheet's #radar.<map> rules and metadata.json.
+    // HudLayoutContractTests asserts all three agree.
     public static readonly IReadOnlyList<string> All = new[]
     {
         "de_ancient",
@@ -23,6 +23,10 @@ public static class RadarMaps
         "de_train",
         "de_vertigo",
     };
+
+    // The levels CS2 draws from an image of their own, as a class on #radar
+    // beside the map's: #radar.de_nuke.lower is de_nuke_lower_radar.psd.
+    public static readonly IReadOnlyList<string> Levels = new[] { "lower" };
 
     // Marker colour classes. The engine's spelling for a molotov is Molotov and
     // for an HE is HighExplosive; the stylesheet uses short names.
@@ -103,26 +107,20 @@ public static class RadarMaps
             OffsetY = offsetY.GetSingle(),
         };
 
-        if (element.TryGetProperty("splits", out JsonElement splits))
+        if (element.TryGetProperty("levels", out JsonElement levels))
         {
-            foreach (JsonElement split in splits.EnumerateArray())
+            foreach (JsonElement level in levels.EnumerateArray())
             {
                 if (
-                    !split.TryGetProperty("bounds", out JsonElement bounds)
-                    || !split.TryGetProperty("offset", out JsonElement splitOffset)
+                    !level.TryGetProperty("name", out JsonElement name)
+                    || !level.TryGetProperty("maxZ", out JsonElement maxZ)
                 )
                 {
                     continue;
                 }
 
-                calibration.Splits.Add(
-                    new RadarSplit
-                    {
-                        BoundsTop = bounds.GetProperty("top").GetSingle(),
-                        BoundsBottom = bounds.GetProperty("bottom").GetSingle(),
-                        OffsetX = splitOffset.GetProperty("x").GetSingle(),
-                        OffsetY = splitOffset.GetProperty("y").GetSingle(),
-                    }
+                calibration.Levels.Add(
+                    new RadarLevel { Name = name.GetString() ?? "", MaxZ = maxZ.GetSingle() }
                 );
             }
         }

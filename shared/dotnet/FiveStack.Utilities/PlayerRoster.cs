@@ -168,6 +168,9 @@ public class PlayerRoster
     private bool _roundEnded;
     private bool _roundMvp;
 
+    // The side each player last spawned on since the last round ended.
+    private readonly Dictionary<string, int> _spawned = new();
+
     // Returns when a sync is due if this observation is what made one due.
     public virtual DateTimeOffset? Observe(IEnumerable<ObservedPlayer> players, DateTimeOffset now)
     {
@@ -272,6 +275,7 @@ public class PlayerRoster
 
             // A round the map change cut short never ends.
             _roundLive = false;
+            _spawned.Clear();
         }
     }
 
@@ -608,45 +612,76 @@ public class PlayerRoster
         }
     }
 
-    // A round is played by whoever is on a side when it ends, so a player who
-    // switches sides mid-round plays it for the side they ended it on, and a
-    // spectator plays none. Warmup rounds are not rounds.
-    public void RoundEnded(
-        int winnerTeam,
-        IReadOnlyDictionary<string, int> teamsBySteamId,
-        bool warmup
-    )
+    // Spawns are kept from one round's end to the next rather than from the
+    // round's start, so they hold whichever of round_start and the players'
+    // spawns comes first, and a player who spawns late in the round (joining
+    // in buy time) is in it too.
+    public void Spawned(string? steamId, int team)
     {
-        if (warmup)
+        if (steamId == null)
         {
             return;
         }
 
         lock (_lock)
         {
-            if (!_roundLive || _roundEnded)
+            _spawned[steamId] = team;
+        }
+    }
+
+    // A round is played by whoever spawned in it and ends it on the side they
+    // last spawned on. Sitting on a side without spawning, or switching to the
+    // side about to win, plays no round, and a spectator plays none. Warmup
+    // rounds are not rounds.
+    public void RoundEnded(
+        int winnerTeam,
+        IReadOnlyDictionary<string, int> teamsBySteamId,
+        bool warmup
+    )
+    {
+        lock (_lock)
+        {
+            try
             {
-                return;
+                Credit(winnerTeam, teamsBySteamId, warmup);
+            }
+            finally
+            {
+                _spawned.Clear();
+            }
+        }
+    }
+
+    private void Credit(
+        int winnerTeam,
+        IReadOnlyDictionary<string, int> teamsBySteamId,
+        bool warmup
+    )
+    {
+        if (warmup || !_roundLive || _roundEnded)
+        {
+            return;
+        }
+
+        _roundEnded = true;
+
+        foreach ((string steamId, int team) in teamsBySteamId)
+        {
+            if (
+                (team != TeamT && team != TeamCT)
+                || !_spawned.TryGetValue(steamId, out int spawnedOn)
+                || spawnedOn != team
+                || !_current.TryGetValue(steamId, out Entry? entry)
+            )
+            {
+                continue;
             }
 
-            _roundEnded = true;
+            entry.RoundsPlayed++;
 
-            foreach ((string steamId, int team) in teamsBySteamId)
+            if (team == winnerTeam)
             {
-                if (
-                    (team != TeamT && team != TeamCT)
-                    || !_current.TryGetValue(steamId, out Entry? entry)
-                )
-                {
-                    continue;
-                }
-
-                entry.RoundsPlayed++;
-
-                if (team == winnerTeam)
-                {
-                    entry.RoundsWon++;
-                }
+                entry.RoundsWon++;
             }
         }
     }

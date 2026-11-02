@@ -34,7 +34,7 @@ public partial class UtilityPracticePlugin
 
     private readonly Dictionary<ulong, MenuState> _menus = new();
 
-    // Loaded once from hud/radars/metadata.json, mirrored from the web panel.
+    // Loaded once from hud/radars/metadata.json, built from CS2's overviews.
     private Dictionary<string, RadarCalibration>? _radars;
 
     // The target a player picked off the map, so the list knows what to filter
@@ -541,6 +541,12 @@ public partial class UtilityPracticePlugin
         LineupRecord? loaded = _system.StateFor(steamId).Loaded;
         Vec3? at = PracticeSystem.Where(player)?.feet_position;
 
+        // The floor the player is standing on, which is how CS2's own radar
+        // picks its image, and the main one while they have no position.
+        string? level = calibration == null || at == null
+            ? null
+            : RadarProjection.Level(at.Value.z, calibration);
+
         var template = new NadePickTemplate
         {
             Title = Narrowing(steamId) ?? "Pick a lineup",
@@ -555,6 +561,7 @@ public partial class UtilityPracticePlugin
             MapClass = calibration == null
                 ? null
                 : RadarProjection.NormalizeMapName(_library.Map),
+            Level = level,
             Focus = selected == null
                 ? "click a spot for the throws that land there"
                 : "click it again to let go of it",

@@ -99,10 +99,6 @@ include, the following software:
 - The .NET runtime and Microsoft.Extensions packages
   (https://github.com/dotnet), MIT License.
 
-apps/utility-sw/hud/radars/metadata.json, the map radar calibration, is
-vendored from boltobserv by boltgolt
-(https://github.com/boltgolt/boltobserv), GNU GPL version 3.
-
 The gamedata validator (apps/gamedata-validator) is adapted from
 swiftly-solution/gamedata-validator
 (https://github.com/swiftly-solution/gamedata-validator), whose repository

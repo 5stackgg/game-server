@@ -1213,12 +1213,18 @@ public class PlayerRosterTests
     }
 
     // Player 1 switches sides between the rounds and wins both: a round goes to
-    // the side a player ends it on.
+    // the side a player spawned on and ends it on.
     [Fact]
-    public void ARoundIsPlayedByEveryoneOnASideAndWonByTheWinners()
+    public void ARoundIsPlayedByEveryoneWhoSpawnedOnASideAndWonByTheWinners()
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1"), Human("2"), Human("3"), Human("4")], Start);
+        Spawn(
+            roster,
+            ("1", PlayerRoster.TeamT),
+            ("2", PlayerRoster.TeamCT),
+            ("bot", PlayerRoster.TeamT)
+        );
         roster.FreezeTimeEnded(warmup: false);
 
         roster.RoundEnded(
@@ -1231,6 +1237,12 @@ public class PlayerRosterTests
                 ("bot", PlayerRoster.TeamT)
             ),
             warmup: false
+        );
+        Spawn(
+            roster,
+            ("1", PlayerRoster.TeamCT),
+            ("2", PlayerRoster.TeamCT),
+            ("3", PlayerRoster.TeamT)
         );
         roster.FreezeTimeEnded(warmup: false);
         roster.RoundEnded(
@@ -1257,6 +1269,7 @@ public class PlayerRosterTests
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1"), Human("2")], Start);
+        Spawn(roster, ("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamCT));
         roster.FreezeTimeEnded(warmup: false);
 
         roster.RoundEnded(
@@ -1276,6 +1289,7 @@ public class PlayerRosterTests
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1")], Start);
+        Spawn(roster, ("1", PlayerRoster.TeamT));
         roster.FreezeTimeEnded(warmup: true);
 
         roster.RoundEnded(PlayerRoster.TeamT, Teams(("1", PlayerRoster.TeamT)), warmup: true);
@@ -1316,6 +1330,7 @@ public class PlayerRosterTests
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1"), Human("2")], Start);
+        Spawn(roster, ("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamCT));
         roster.FreezeTimeEnded(warmup: true);
 
         roster.RoundEnded(
@@ -1327,6 +1342,7 @@ public class PlayerRosterTests
 
         Assert.Equal(new Counters(0, 0, 0, 0, 0, 0, 0, 0), CountersOf(roster.Report(At(1)), "1"));
 
+        Spawn(roster, ("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamCT));
         roster.FreezeTimeEnded(warmup: false);
         roster.RoundEnded(
             PlayerRoster.TeamT,
@@ -1354,6 +1370,7 @@ public class PlayerRosterTests
             ("2", PlayerRoster.TeamCT)
         );
 
+        Spawn(roster, ("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamCT));
         roster.FreezeTimeEnded(warmup: false);
         roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
         roster.Mvp("1", warmup: false);
@@ -1363,6 +1380,7 @@ public class PlayerRosterTests
         Assert.Equal((1, 0), Rounds(roster.Report(At(1)), "2"));
 
         roster.RoundStarted();
+        Spawn(roster, ("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamCT));
         roster.RoundEnded(PlayerRoster.TeamCT, teams, warmup: false);
         roster.Mvp("2", warmup: false);
 
@@ -1386,6 +1404,7 @@ public class PlayerRosterTests
         roster.Delivered(roster.Report(At(1)), true);
         roster.MapStarted(At(2), "de_inferno");
         roster.Observe([Human("1")], At(3));
+        Spawn(roster, ("1", PlayerRoster.TeamT));
         roster.RoundEnded(PlayerRoster.TeamT, Teams(("1", PlayerRoster.TeamT)), warmup: false);
         roster.Mvp("1", warmup: false);
 
@@ -1450,8 +1469,87 @@ public class PlayerRosterTests
         Assert.Equal(2, CountersOf(roster.Report(At(1)), "1").Mvps);
     }
 
+    // Sitting on a side without spawning, or joining the side about to win
+    // after spawning on the other, plays no round. A spawn before the round
+    // starts counts, as does a late one, and a spawn is only good for the
+    // round it was in.
+    [Fact]
+    public void ARoundIsOnlyPlayedByWhoeverSpawnedInItOnTheSideTheyEndedOn()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2"), Human("3"), Human("4")], Start);
+        IReadOnlyDictionary<string, int> teams = Teams(
+            ("1", PlayerRoster.TeamT),
+            ("2", PlayerRoster.TeamT),
+            ("3", PlayerRoster.TeamT),
+            ("4", PlayerRoster.TeamCT)
+        );
+
+        Spawn(roster, ("1", PlayerRoster.TeamT), ("3", PlayerRoster.TeamCT));
+        roster.RoundStarted();
+        roster.FreezeTimeEnded(warmup: false);
+        Spawn(roster, ("4", PlayerRoster.TeamCT));
+        roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
+
+        RosterReport first = roster.Report(At(1));
+        Assert.Equal((1, 1), Rounds(first, "1"));
+        Assert.Equal((0, 0), Rounds(first, "2"));
+        Assert.Equal((0, 0), Rounds(first, "3"));
+        Assert.Equal((1, 0), Rounds(first, "4"));
+
+        roster.RoundStarted();
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
+
+        RosterReport second = roster.Report(At(2));
+        Assert.Equal((1, 1), Rounds(second, "1"));
+        Assert.Equal((1, 0), Rounds(second, "4"));
+    }
+
+    // The spawns of a round the map change cut short, or of warmup, are not
+    // carried into the next round.
+    [Fact]
+    public void SpawnsAreNotCarriedPastAMapChangeOrAWarmupRound()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1")], Start);
+        IReadOnlyDictionary<string, int> teams = Teams(("1", PlayerRoster.TeamT));
+
+        Spawn(roster, ("1", PlayerRoster.TeamT));
+        roster.MapEnded(At(1));
+        roster.Delivered(roster.Report(At(1)), true);
+        roster.MapStarted(At(2), "de_inferno");
+        roster.Observe([Human("1")], At(3));
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
+
+        Spawn(roster, ("1", PlayerRoster.TeamT));
+        roster.FreezeTimeEnded(warmup: true);
+        roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: true);
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
+
+        Assert.Equal((0, 0), Rounds(roster.Report(At(4)), "1"));
+
+        Spawn(roster, ("1", PlayerRoster.TeamT));
+        roster.RoundStarted();
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
+
+        Assert.Equal((1, 1), Rounds(roster.Report(At(5)), "1"));
+    }
+
+    private static void Spawn(PlayerRoster roster, params (string SteamId, int Team)[] spawns)
+    {
+        foreach ((string steamId, int team) in spawns)
+        {
+            roster.Spawned(steamId, team);
+        }
+    }
+
     private static void CountEverything(PlayerRoster roster, string steamId, string enemy)
     {
+        Spawn(roster, (steamId, PlayerRoster.TeamT), (enemy, PlayerRoster.TeamCT));
         roster.FreezeTimeEnded(warmup: false);
         roster.Died(enemy, steamId, warmup: false, assister: null, headshot: true);
         roster.Died(steamId, enemy, warmup: false);
