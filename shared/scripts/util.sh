@@ -426,7 +426,11 @@ plugin_skip_list() {
     return 0
   fi
 
-  local enabled=",${ENABLED_PLUGINS},"
+  # Matched on the slug alone. A dedicated server keeps the list it was built
+  # with while its node auto-updates plugins underneath it, and the node only
+  # ever holds one version of each, so a version mismatch only ever meant the
+  # plugin silently stopped loading on the next restart.
+  local enabled=",$(printf '%s' "$ENABLED_PLUGINS" | sed 's/@[^,]*//g'),"
   local slug version file
   while IFS="$(printf '\t')" read -r slug version file; do
     if [ -z "$file" ]; then
@@ -434,7 +438,7 @@ plugin_skip_list() {
     fi
 
     case "$enabled" in
-      *",$slug@$version,"*) continue ;;
+      *",$slug,"*) continue ;;
     esac
 
     printf '%s\n' "$file"

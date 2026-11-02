@@ -402,8 +402,9 @@ public sealed class MapRun
             {
                 { "status", status.ToString() },
                 { "winning_lineup_id", winningLineupId?.ToString() ?? "" },
+                { "match_map_id", _map.id.ToString() },
             },
-            stamped: false
+            stamped: true
         );
 
         Status = status;

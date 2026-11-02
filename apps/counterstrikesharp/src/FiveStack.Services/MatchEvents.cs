@@ -40,6 +40,8 @@ public class MatchEvents
         EventData<Dictionary<string, object>>
     )>(new UnboundedChannelOptions { SingleReader = true });
 
+    private readonly MapStatusClock _mapStatusClock = new();
+
     private readonly ILogger<MatchEvents> _logger;
     private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
@@ -130,14 +132,20 @@ public class MatchEvents
         _logger.LogInformation(
             $"PublishMapStatus status={status} winning_lineup_id={winningLineupId?.ToString() ?? "<null>"}"
         );
-        PublishGameEvent(
-            "mapStatus",
-            new Dictionary<string, object>
-            {
-                { "status", status.ToString() },
-                { "winning_lineup_id", winningLineupId?.ToString() ?? "" },
-            }
-        );
+        var data = new Dictionary<string, object>
+        {
+            { "status", status.ToString() },
+            { "winning_lineup_id", winningLineupId?.ToString() ?? "" },
+            { "time", _mapStatusClock.Next(DateTime.UtcNow) },
+        };
+
+        Guid? mapId = _matchService.GetCurrentMatch()?.GetActiveMapId();
+        if (mapId != null)
+        {
+            data["match_map_id"] = mapId.Value.ToString();
+        }
+
+        PublishGameEvent("mapStatus", data);
     }
 
     public void PublishGameEvent(string Event, Dictionary<string, object> Data)

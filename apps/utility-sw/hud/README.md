@@ -43,7 +43,8 @@ asserts against the files in this directory that:
   stylesheet;
 - the one-of-N class groups (`x0…x63`, `y0…y63`, `p0…p10`) are declared for
   exactly the counts `HudSlots` will pick between;
-- every map with a `#radar.<map>` rule also has calibration in `radars/`;
+- every map with a `#radar.<map>` rule also has calibration in `radars/`, and
+  every level that calibration names has a `#radar.<map>.<level>` image rule;
 - every `PracticeStepColors` name has a chip and a swatch rule, and none of them
   is ever green or red — those two belong to the aim ramp;
 - `nade3_edit` contains no geometry field, so editing where a smoke lands can
@@ -116,14 +117,22 @@ clone is ~570 MB and would otherwise be copied into the pod on every `up`.
 The addon ships **no raster images**. The minimap draws on CS2's own
 `s2r://panorama/images/overheadmaps/<map>_radar.psd`, because a texture compiled
 by PanoramaCompiler's experimental image path spawned an entity that rendered
-nothing. The web panel's radars are SimpleRadar — a drop-in replacement for
-Valve's, same framing — so `radars/metadata.json` projects correctly onto either
-and the two UIs still agree to the pixel. That is why the swap cost nothing, and
-why `scripts/sync-radars.sh` mirrors the calibration only.
+nothing. `radars/metadata.json` is built from the files that frame those
+images, CS2's `game/csgo/resource/overviews/<map>.txt`, by
+`scripts/sync-radars.sh <overviews directory>`; run it again when Valve redraws a
+radar. It is not mirrored from the web panel, which frames its radars its own
+way.
 
-Known limit: SimpleRadar puts Nuke's and Vertigo's two levels on one image and
-Valve ships them as separate `_lower_radar` files, so lower-level markers on
-those two maps are offset. The other eight are exact.
+Nuke, Train and Vertigo draw their lower floor on an image of its own,
+`<map>_lower_radar.psd`, in the same frame as the main one, and the overview's
+`verticalsections` say below which height it applies. The picker swaps image the
+way CS2's radar does, by the floor the player is standing on (the main one when
+they have no position), and draws every spot on either: a detonation height says
+little about which floor a throw is for, and one floor's throws are often thrown
+from the other. That the lower images load by that path is inferred from the
+VPK, which ships `de_nuke_lower_radar_psd.vtex_c` beside the main one; it has not
+yet been seen in game. Check it after the Workshop publish, or with the item
+unmounted: a mounted item draws the published `nadehud2.css` over a local build.
 
 Icons are SVG. One of CS2's own draws from the stylesheet as
 `background-image: url("s2r://panorama/images/icons/equipment/molotov.vsvg")`
