@@ -84,11 +84,11 @@ public class PracticeLibrary
         lineups.Add(lineup);
     }
 
-    public void Remove(ulong steamId, LineupRecord lineup)
+    public void Remove(ulong steamId, Predicate<LineupRecord> gone)
     {
         if (_lineups.TryGetValue(steamId, out List<LineupRecord>? lineups))
         {
-            lineups.RemoveAll(existing => existing.client_id == lineup.client_id);
+            lineups.RemoveAll(gone);
         }
     }
 

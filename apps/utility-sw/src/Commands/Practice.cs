@@ -1180,12 +1180,10 @@ public partial class UtilityPracticePlugin
             return;
         }
 
-        _library.Remove(player.SteamID, loaded);
-        state.Index = PracticeSaveUtility.PruneResults(
-            state.Results,
-            state.Index,
-            match => match.client_id == loaded.client_id
-        );
+        Predicate<LineupRecord> isLoaded = PracticeSaveUtility.SameLineup(loaded);
+
+        _library.Remove(player.SteamID, isLoaded);
+        state.Index = PracticeSaveUtility.PruneResults(state.Results, state.Index, isLoaded);
         state.Loaded = null;
         _replay.ClearGhosts(player.SteamID);
 
@@ -1197,7 +1195,7 @@ public partial class UtilityPracticePlugin
             _api.Withdraw
         );
 
-        _drill.LineupDeleted(player.SteamID, loaded.client_id);
+        _drill.LineupsRemoved(player.SteamID, isLoaded);
 
         if (id == null)
         {

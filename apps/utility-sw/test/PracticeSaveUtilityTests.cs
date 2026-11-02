@@ -48,6 +48,66 @@ public class PracticeSaveUtilityTests
         Assert.Null(lineup.id);
     }
 
+    private static LineupRecord PanelRow(string id = PanelId)
+    {
+        return new LineupRecord { client_id = id, id = id, map = Mirage };
+    }
+
+    [Fact]
+    public void ADeleteFindsTheRowAPushSwappedIntoTheWalk()
+    {
+        LineupRecord save = Saved();
+        LineupRecord swapped = PanelRow();
+        List<LineupRecord> results = new() { Saved("kept"), swapped };
+
+        int index = PracticeSaveUtility.PruneResults(
+            results,
+            1,
+            PracticeSaveUtility.SameLineup(save)
+        );
+
+        Assert.DoesNotContain(swapped, results);
+        Assert.Equal(-1, index);
+    }
+
+    [Fact]
+    public void APanelRowFindsTheSaveItStandsFor()
+    {
+        Assert.True(PracticeSaveUtility.SameLineup(PanelRow())(Saved()));
+    }
+
+    [Fact]
+    public void TheMatchOutlivesTheIdForgetSavesGivesUp()
+    {
+        LineupRecord save = Saved();
+        Predicate<LineupRecord> sameLineup = PracticeSaveUtility.SameLineup(save);
+
+        PracticeSaveUtility.ForgetSaves(save, _ => { }, _ => { });
+
+        Assert.Null(save.id);
+        Assert.True(sameLineup(PanelRow()));
+    }
+
+    [Fact]
+    public void AnotherPanelRowIsNotTheSameLineup()
+    {
+        LineupRecord other = PanelRow("7a2e3d4c-5b6a-4f79-8e8d-2b3c4d5e6f70");
+
+        Assert.False(PracticeSaveUtility.SameLineup(Saved())(other));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("local")]
+    public void ASaveWithNoPanelIdIsOnlyItself(string? id)
+    {
+        LineupRecord save = Saved(id);
+
+        Assert.True(PracticeSaveUtility.SameLineup(save)(save));
+        Assert.False(PracticeSaveUtility.SameLineup(save)(Saved(id)));
+    }
+
     [Fact]
     public void PruningAWalkKeepsThePlayerOnTheLineupTheyWereOn()
     {

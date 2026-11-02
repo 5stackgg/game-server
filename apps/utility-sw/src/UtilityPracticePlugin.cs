@@ -336,8 +336,8 @@ public partial class UtilityPracticePlugin : BasePlugin
             string current = Core.Engine.GlobalVars.MapName.ToString();
             _api.Map = current;
             _library.SetMap(current);
-            _session.Map = current;
             _session.WorkshopId = Core.Engine.WorkshopId;
+            _session.Map = current;
             ApplyPracticeCfg();
             RefreshEverything();
             // Not left to the timer: an empty server may be hibernating, and
@@ -1666,7 +1666,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             return name;
         }
 
-        if (state.Results[state.Index].client_id != lineup.client_id)
+        if (!PracticeSaveUtility.SameLineup(lineup)(state.Results[state.Index]))
         {
             return name;
         }
@@ -2250,8 +2250,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         _replay.SweepMarkers();
 
         _library.SetMap(mapName);
-        _session.Map = mapName;
         _session.WorkshopId = Core.Engine.WorkshopId;
+        _session.Map = mapName;
         _callouts.MapLoaded();
 
         ApplyPracticeCfg();

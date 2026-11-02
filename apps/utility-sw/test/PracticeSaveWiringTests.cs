@@ -99,7 +99,29 @@ public class PracticeSaveWiringTests
         string delete = Method("private void DeleteLoaded(IPlayer player)", "Commands", "Practice.cs");
 
         Assert.Contains("PracticeSaveUtility.ForgetSaves(", delete);
-        Assert.Contains("_drill.LineupDeleted(player.SteamID, loaded.client_id);", delete);
+        Assert.Contains("_drill.LineupsRemoved(player.SteamID, isLoaded);", delete);
+    }
+
+    [Fact]
+    public void ADeleteMatchesTheLineupEverywhereBeforeItsIdIsGivenUp()
+    {
+        string delete = Method("private void DeleteLoaded(IPlayer player)", "Commands", "Practice.cs");
+        int matched = delete.IndexOf("isLoaded = PracticeSaveUtility.SameLineup(loaded);", StringComparison.Ordinal);
+        int library = delete.IndexOf("_library.Remove(player.SteamID, isLoaded);", StringComparison.Ordinal);
+        int forgotten = delete.IndexOf("PracticeSaveUtility.ForgetSaves(", StringComparison.Ordinal);
+
+        Assert.True(matched >= 0 && matched < forgotten, "the panel id is gone before it's read");
+        Assert.True(library > matched, "the library keeps the row a push swapped in");
+        Assert.Matches(@"PruneResults\(\s*state\.Results,\s*state\.Index,\s*isLoaded\s*\)", delete);
+    }
+
+    [Fact]
+    public void TheWalkLabelFindsARowAPushSwappedIn()
+    {
+        Assert.Contains(
+            "PracticeSaveUtility.SameLineup(lineup)(state.Results[state.Index])",
+            Method("private string Title(IPlayer player, LineupRecord lineup)")
+        );
     }
 
     [Fact]
@@ -186,6 +208,20 @@ public class PracticeSaveWiringTests
         Assert.Contains(
             "_session.WorkshopId = Core.Engine.WorkshopId;",
             Method("public override void Load(bool hotReload)")
+        );
+    }
+
+    [Theory]
+    [InlineData("private void OnMapLoad(string mapName)", "_session.Map = mapName;")]
+    [InlineData("public override void Load(bool hotReload)", "_session.Map = current;")]
+    public void TheSessionLearnsItsWorkshopIdBeforeItsMap(string signature, string map)
+    {
+        string load = Method(signature);
+        int workshop = load.IndexOf("_session.WorkshopId = Core.Engine.WorkshopId;", StringComparison.Ordinal);
+
+        Assert.True(
+            workshop >= 0 && workshop < load.IndexOf(map, StringComparison.Ordinal),
+            "a fetch can pair the new map with the old workshop id"
         );
     }
 

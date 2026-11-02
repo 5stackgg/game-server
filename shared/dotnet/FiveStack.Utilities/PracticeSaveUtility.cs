@@ -18,6 +18,18 @@ public static class PracticeSaveUtility
         return GiveUpPanelId(lineup);
     }
 
+    // A panel row's client id is its panel id and a session save keeps its own,
+    // so after a push the same lineup can be either. Holds the id as it is now,
+    // because ForgetSaves gives it up.
+    public static Predicate<LineupRecord> SameLineup(LineupRecord lineup)
+    {
+        string clientId = lineup.client_id;
+        string? id = lineup.id;
+
+        return row =>
+            row.client_id == clientId || (PracticeLineupUtility.IsPanelId(id) && row.id == id);
+    }
+
     // Where the walk stands once the removed rows are gone: on the same lineup,
     // or back at the start if that was one of them.
     public static int PruneResults(
