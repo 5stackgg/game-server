@@ -79,6 +79,7 @@ public partial class FiveStackPlugin : BasePlugin
             .AddSingleton<SteamService>()
             .AddSingleton<GameServer>()
             .AddSingleton<MatchService>()
+            .AddSingleton<RoundRestoreState>()
             .AddSingleton<MatchEvents>()
             .AddSingleton<GameDemos>()
             .AddSingleton<GameBackUpRounds>()

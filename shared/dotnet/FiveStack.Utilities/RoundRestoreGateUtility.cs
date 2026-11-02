@@ -58,6 +58,24 @@ namespace FiveStack.Utilities
             return null;
         }
 
+        // Every stat row the api keeps for a round comes from one of these. A
+        // backup load outlasts what the api clears when it restores a round, so
+        // whatever the engine reports while it runs would stay in the stats.
+        private static readonly HashSet<string> RoundStatEvents = new()
+        {
+            "kill",
+            "assist",
+            "damage",
+            "utility",
+            "flash",
+            "objective",
+        };
+
+        public static bool DroppedDuringLoad(string gameEvent, bool loadingBackup)
+        {
+            return loadingBackup && RoundStatEvents.Contains(gameEvent);
+        }
+
         // A map's backups are appended as rounds are played, so a round played
         // again after a restore is listed twice and the newer backup is the one
         // that matches what was replayed. A round the api marked deleted was

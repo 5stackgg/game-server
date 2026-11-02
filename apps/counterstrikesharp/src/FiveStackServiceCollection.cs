@@ -1,4 +1,5 @@
 using CounterStrikeSharp.API.Core;
+using FiveStack.Utilities;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FiveStack;
@@ -9,6 +10,7 @@ public class FiveStackServiceCollection : IPluginServiceCollection<FiveStackPlug
     {
         serviceCollection.AddSingleton<MatchService>();
 
+        serviceCollection.AddSingleton<RoundRestoreState>();
         serviceCollection.AddSingleton<MatchEvents>();
         serviceCollection.AddSingleton<GameServer>();
         serviceCollection.AddSingleton<GameDemos>();

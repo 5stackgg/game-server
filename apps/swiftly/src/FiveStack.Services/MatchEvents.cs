@@ -46,14 +46,17 @@ public class MatchEvents
     private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
     private readonly GameServer _gameServer;
+    private readonly RoundRestoreState _restore;
 
     public MatchEvents(
         ILogger<MatchEvents> logger,
         EnvironmentService environmentService,
         MatchService matchService,
-        GameServer gameServer
+        GameServer gameServer,
+        RoundRestoreState restore
     )
     {
+        _restore = restore;
         _logger = logger;
         _matchService = matchService;
         _environmentService = environmentService;
@@ -156,6 +159,12 @@ public class MatchEvents
 
     public void PublishGameEvent(string Event, Dictionary<string, object> Data)
     {
+        if (RoundRestoreGateUtility.DroppedDuringLoad(Event, _restore.LoadingBackup))
+        {
+            _logger.LogInformation($"Game event '{Event}' dropped: a backup round is loading");
+            return;
+        }
+
         if (_environmentService.IsOfflineMode())
         {
             _logger.LogWarning($"Game event '{Event}' dropped: offline mode");

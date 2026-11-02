@@ -13,7 +13,7 @@ namespace FiveStack;
 
 public class GameBackUpRounds
 {
-    private int? _resetRound;
+    private readonly RoundRestoreState _restore;
 
     // A server that came back behind the backend, holding the round it can
     // restore until every player is back to vote on it. Meanwhile nothing is
@@ -40,9 +40,11 @@ public class GameBackUpRounds
         MatchService matchService,
         IServiceProvider serviceProvider,
         EnvironmentService environmentService,
-        ILocalizer localizer
+        ILocalizer localizer,
+        RoundRestoreState restore
     )
     {
+        _restore = restore;
         _core = core;
         _logger = logger;
         _matchEvents = matchEvents;
@@ -133,7 +135,7 @@ public class GameBackUpRounds
 
     public bool IsResettingRound()
     {
-        return _resetRound != null || _pendingRestore != null;
+        return _restore.InProgress || _pendingRestore != null;
     }
 
     public bool IsHoldingForRestore()
@@ -175,7 +177,7 @@ public class GameBackUpRounds
         RequestRestoreBackupRound(round, null, true, recovering: true);
 
         // Refused for another reason: keep holding for the next player.
-        if (_resetRound == null)
+        if (!_restore.InProgress)
         {
             _pendingRestore = round;
         }
@@ -433,7 +435,7 @@ public class GameBackUpRounds
 
         if (player != null || vote == true)
         {
-            _resetRound = round;
+            _restore.StartVote();
 
             restoreRoundVote =
                 _serviceProvider.GetRequiredService(typeof(VoteSystem)) as VoteSystem;
@@ -449,7 +451,7 @@ public class GameBackUpRounds
                 () =>
                 {
                     _logger.LogInformation("restore round vote passed");
-                    _resetRound = null;
+                    _restore.End();
 
                     string? refusal = RestoreRefusal(round);
                     if (refusal != null)
@@ -476,7 +478,7 @@ public class GameBackUpRounds
                     _logger.LogInformation("restore round vote failed");
 
                     restoreRoundVote = null;
-                    _resetRound = null;
+                    _restore.End();
 
                     // Declined after a restart: the map starts again from 0-0 and
                     // the rounds the backend recorded are set aside.
@@ -611,7 +613,7 @@ public class GameBackUpRounds
 
     public void RestoreRound(int round)
     {
-        if (_resetRound != null)
+        if (_restore.InProgress)
         {
             _logger.LogWarning($"Restore already in progress, ignoring RestoreRound({round})");
             return;
@@ -657,7 +659,7 @@ public class GameBackUpRounds
             backupRoundFileName
         );
 
-        _resetRound = round;
+        _restore.StartLoad();
 
         _logger.LogInformation($"Loading backup round file {backupRoundFileName}");
 
@@ -676,22 +678,17 @@ public class GameBackUpRounds
                     "Failed writing restore backup round file {File}",
                     backupRoundFileName
                 );
-                _core.Scheduler.NextTick(() => _resetRound = null);
+                _core.Scheduler.NextTick(() => _restore.End());
                 return;
             }
 
             _core.Scheduler.NextTick(() =>
             {
-                _gameServer.SendCommands(
-                    [$"mp_backup_restore_load_file {backupRoundFileName}"]
-                );
-                _matchService.GetCurrentMatch()?.PauseMatch();
-
                 TimerUtility.AddTimer(
                     5,
                     () =>
                     {
-                        _resetRound = null;
+                        _restore.End();
                         SetBackupWriting(true);
 
                         _logger.LogInformation($"Sending Message for Round {round}");
@@ -707,6 +704,11 @@ public class GameBackUpRounds
                         );
                     }
                 );
+
+                _gameServer.SendCommands(
+                    [$"mp_backup_restore_load_file {backupRoundFileName}"]
+                );
+                _matchService.GetCurrentMatch()?.PauseMatch();
             });
         });
     }
@@ -721,7 +723,7 @@ public class GameBackUpRounds
 
         return RoundRestoreGateUtility.Refusal(
             match != null && !match.options.CanRestoreRounds(),
-            _resetRound != null,
+            _restore.InProgress,
             _matchService.GetCurrentMatch()?.GetCurrentMapStatus() ?? eMapStatus.Unknown,
             round,
             matchMap != null
