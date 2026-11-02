@@ -276,10 +276,12 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
 
         try
         {
+            // First, so nothing below that fails leaves it stale.
+            _roster.BotsPresent(Utilities.GetPlayers().Any(IsBot));
+
             List<CCSPlayerController> humans = Humans();
 
             ObserveRoster(humans);
-            _roster.BotsPresent(Utilities.GetPlayers().Any(IsBot));
             ReadHealth(humans);
             Enforce(humans);
         }

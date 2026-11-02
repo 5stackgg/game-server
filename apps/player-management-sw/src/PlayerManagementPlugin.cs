@@ -343,10 +343,12 @@ public partial class PlayerManagementPlugin : BasePlugin
 
         try
         {
+            // First, so nothing below that fails leaves it stale.
+            _roster.BotsPresent(Core.PlayerManager.GetAllPlayers().Any(IsBot));
+
             List<IPlayer> humans = Humans();
 
             ObserveRoster(humans);
-            _roster.BotsPresent(Core.PlayerManager.GetAllPlayers().Any(IsBot));
             ReadHealth(humans);
             Enforce(humans);
         }
