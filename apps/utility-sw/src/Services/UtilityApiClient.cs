@@ -21,22 +21,57 @@ public class UtilityApiClient
     // an offline practice server left running overnight must not grow forever.
     private const int MaxQueued = 64;
 
+    private const int RetrySeconds = 10;
+
+    // About half an hour of retries on a server that is ticking. Counted in
+    // attempts so a hibernating server does not use them up, and a head that is
+    // still refused by then is holding up everything behind it.
+    public const int MaxAttempts = 180;
+
+
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(10);
 
     private readonly UtilityConfig _config;
     private readonly ILogger<UtilityApiClient> _logger;
 
     private readonly object _queueLock = new object();
-    private readonly Queue<LineupRecord> _retryQueue = new Queue<LineupRecord>();
-    private readonly Queue<UtilityPracticeResultPayload> _resultQueue =
-        new Queue<UtilityPracticeResultPayload>();
+    private readonly Queue<QueuedSave> _retryQueue = new Queue<QueuedSave>();
+    private readonly Queue<QueuedResult> _resultQueue = new Queue<QueuedResult>();
+    private readonly List<QueuedSave> _firstSends = new List<QueuedSave>();
     private readonly SemaphoreSlim _draining = new SemaphoreSlim(1, 1);
+    private int _secondsHeld;
 
     public UtilityApiClient(UtilityConfig config, ILogger<UtilityApiClient> logger)
     {
         _config = config;
         _logger = logger;
     }
+
+    // One save as it stood when it was made. A throw saved twice is two lineups
+    // sharing one record, so nothing a retry sends can be read back off that
+    // record, and client_id is minted here: per save, and kept by its retries.
+    private sealed class QueuedSave
+    {
+        public required LineupRecord Record { get; init; }
+        public required string Body { get; init; }
+        public required string Map { get; init; }
+        public required string Name { get; init; }
+        public required string Author { get; init; }
+        public int Attempts { get; set; }
+        public bool Withdrawn { get; set; }
+
+        // Left this server at least once, so it may be on the panel.
+        public bool Sent { get; set; }
+    }
+
+    private sealed class QueuedResult
+    {
+        public required UtilityPracticeResultPayload Payload { get; init; }
+        public int Attempts { get; set; }
+    }
+
+    // A save from another map stops here. Until this is known nothing is sent.
+    public string Map { get; set; } = "";
 
     private class IngestResponse
     {
@@ -54,20 +89,103 @@ public class UtilityApiClient
         }
     }
 
-    public async Task<string?> Ingest(LineupRecord record)
+    public enum eIngestOutcome
     {
-        string? id = await Post(record);
+        Delivered,
+        Held,
+        Refused,
+        Withdrawn,
+    }
 
-        if (id == null)
+    public sealed class IngestResult
+    {
+        public eIngestOutcome Outcome { get; init; }
+        public string? Id { get; init; }
+        public string Name { get; init; } = "";
+
+        // The panel said no, which it only does to a save it does not have.
+        public bool PanelRefused { get; init; }
+    }
+
+    // Raised off the game thread with the author and the name, for a save the
+    // player deleted that the panel kept all the same.
+    public event Action<string, string>? WithdrawnDeleteFailed;
+
+    // Raised off the game thread, for a held save that got its answer on a
+    // retry: whoever saved it has stopped waiting, and its panel id is only
+    // here.
+    public event Action<LineupRecord, IngestResult>? SaveRetried;
+
+    // Called once a second from the game thread. A player told a save will
+    // retry is owed one, and no later save or map load is sure to come along.
+    public Task Second()
+    {
+        if (QueuedCount == 0)
         {
-            Enqueue(record);
-            return null;
+            _secondsHeld = 0;
+            return Task.CompletedTask;
         }
 
-        // The panel is reachable again, so anything held back can go now.
-        _ = Drain();
+        if (++_secondsHeld < RetrySeconds)
+        {
+            return Task.CompletedTask;
+        }
 
-        return id;
+        _secondsHeld = 0;
+
+        return Task.Run(Drain);
+    }
+
+    public async Task<IngestResult> Ingest(LineupRecord record, string? workshopId = null)
+    {
+        QueuedSave? sending = Snapshot(record, workshopId);
+
+        if (sending == null)
+        {
+            return new IngestResult { Outcome = eIngestOutcome.Refused, Name = record.name };
+        }
+
+        lock (_queueLock)
+        {
+            _firstSends.Add(sending);
+        }
+
+        IngestResult result = await Post(sending);
+        QueuedSave? evicted = null;
+
+        lock (_queueLock)
+        {
+            _firstSends.Remove(sending);
+
+            if (result.Outcome == eIngestOutcome.Held)
+            {
+                evicted = Enqueue(sending);
+            }
+        }
+
+        if (evicted != null)
+        {
+            ReportEvicted(evicted);
+        }
+
+        if (sending.Withdrawn)
+        {
+            // Held, it is on the queue now, and that is where it gets settled.
+            if (result.Outcome != eIngestOutcome.Held)
+            {
+                await DeleteWithdrawn(sending, result);
+            }
+
+            return Answer(sending, eIngestOutcome.Withdrawn);
+        }
+
+        if (result.Outcome == eIngestOutcome.Delivered)
+        {
+            // The panel is reachable again, so anything held back can go now.
+            _ = Drain();
+        }
+
+        return result;
     }
 
     // The executes a player can load from the menu: theirs and their team's,
@@ -275,7 +393,11 @@ public class UtilityApiClient
     // The panel calls this server up the moment it asks for its session, and
     // hands out a connect string straight after. So where it can be reached
     // goes with the question, not on the next occupancy report.
-    public async Task<PracticeSessionData?> Session(string? map, SteamRelayReport relay)
+    public async Task<PracticeSessionData?> Session(
+        string? map,
+        string? workshopId,
+        SteamRelayReport relay
+    )
     {
         // Send answers null without a word when it is not configured, which
         // would read as a failed fetch with no reason given.
@@ -286,6 +408,10 @@ public class UtilityApiClient
         }
 
         var query = new List<string>();
+
+        // Always, and empty on an official map: a plugin that sends no key at all
+        // is one the panel leaves alone, because it cannot say which level it is on.
+        query.Add($"workshop_id={Uri.EscapeDataString(workshopId ?? "")}");
 
         if (!string.IsNullOrEmpty(map))
         {
@@ -398,10 +524,60 @@ public class UtilityApiClient
             != null;
     }
 
-    public async Task<bool> Delete(string id)
+    public async Task<bool> Delete(string id, string steamId)
     {
-        return await SendText(HttpMethod.Delete, $"/utility/{Uri.EscapeDataString(id)}", null)
-            != null;
+        string route =
+            $"/utility/{Uri.EscapeDataString(id)}?steam_id={Uri.EscapeDataString(steamId)}";
+
+        return await SendText(HttpMethod.Delete, route, null) != null;
+    }
+
+    // A send that lost its answer may have landed, so a withdrawn save that
+    // leaves without a word from the panel may still be there. Only the panel
+    // turning it down says it is not.
+    private async Task DeleteWithdrawn(QueuedSave save, IngestResult sent)
+    {
+        if (sent.PanelRefused || !save.Sent)
+        {
+            return;
+        }
+
+        if (sent.Id == null || !await Delete(sent.Id, save.Author))
+        {
+            WithdrawnDeleteFailed?.Invoke(save.Author, save.Name);
+        }
+    }
+
+    private void ReportEvicted(QueuedSave evicted)
+    {
+        if (evicted.Withdrawn)
+        {
+            if (evicted.Sent)
+            {
+                WithdrawnDeleteFailed?.Invoke(evicted.Author, evicted.Name);
+            }
+
+            return;
+        }
+
+        SaveRetried?.Invoke(evicted.Record, Answer(evicted, eIngestOutcome.Refused));
+    }
+
+    // A player deleted a save the panel has not answered for. It still goes
+    // out: a send that lost its answer may have landed, and sending it again is
+    // how to learn the id that has to be deleted.
+    public void Withdraw(string clientId)
+    {
+        lock (_queueLock)
+        {
+            foreach (QueuedSave queued in _firstSends.Concat(_retryQueue))
+            {
+                if (queued.Record.client_id == clientId)
+                {
+                    queued.Withdrawn = true;
+                }
+            }
+        }
     }
 
     // Retries oldest first: a player's saves replay in the order they threw
@@ -417,32 +593,47 @@ public class UtilityApiClient
         {
             while (true)
             {
-                LineupRecord? record;
+                QueuedSave? queued;
                 lock (_queueLock)
                 {
-                    if (!_retryQueue.TryPeek(out record))
+                    if (!_retryQueue.TryPeek(out queued))
                     {
                         break;
                     }
                 }
 
-                if (await Post(record) == null)
+                IngestResult sent = await Post(queued);
+
+                if (sent.Outcome == eIngestOutcome.Held && ++queued.Attempts < MaxAttempts)
                 {
                     return;
                 }
 
-                lock (_queueLock)
+                // Delivered, refused outright or given up on -- either way it
+                // leaves the queue, so one bad save cannot hold up the ones
+                // behind it.
+                Settle(_retryQueue, queued);
+
+                if (queued.Withdrawn)
                 {
-                    _retryQueue.TryDequeue(out _);
+                    await DeleteWithdrawn(queued, sent);
+                    continue;
                 }
+
+                SaveRetried?.Invoke(
+                    queued.Record,
+                    sent.Outcome == eIngestOutcome.Held
+                        ? Answer(queued, eIngestOutcome.Refused)
+                        : sent
+                );
             }
 
             while (true)
             {
-                UtilityPracticeResultPayload? result;
+                QueuedResult? queued;
                 lock (_queueLock)
                 {
-                    if (!_resultQueue.TryPeek(out result))
+                    if (!_resultQueue.TryPeek(out queued))
                     {
                         return;
                     }
@@ -450,17 +641,19 @@ public class UtilityApiClient
 
                 var outcome = new SendOutcome();
 
-                if (await PostResult(result, outcome) == null && !outcome.Rejected)
+                if (
+                    await PostResult(queued.Payload, outcome) == null
+                    && !outcome.Rejected
+                    && ++queued.Attempts < MaxAttempts
+                )
                 {
                     return;
                 }
 
-                // Delivered, or refused outright -- either way it leaves the
-                // queue, so one bad payload cannot hold up the ones behind it.
-                lock (_queueLock)
-                {
-                    _resultQueue.TryDequeue(out _);
-                }
+                // Delivered, refused outright or given up on -- either way it
+                // leaves the queue, so one bad payload cannot hold up the ones
+                // behind it.
+                Settle(_resultQueue, queued);
             }
         }
         finally
@@ -469,16 +662,36 @@ public class UtilityApiClient
         }
     }
 
-    private void Enqueue(LineupRecord record)
+    // By reference: Enqueue may have evicted this one while it was being sent,
+    // and the head now is something that has not been.
+    private void Settle<T>(Queue<T> queue, T queued)
+        where T : class
     {
         lock (_queueLock)
         {
-            while (_retryQueue.Count >= MaxQueued)
+            if (queue.TryPeek(out T? head) && ReferenceEquals(head, queued))
             {
-                _retryQueue.TryDequeue(out _);
+                queue.Dequeue();
+            }
+        }
+    }
+
+    // Hands back what had to go to make room. The player was told that one
+    // would retry, and the caller tells them otherwise outside the lock.
+    private QueuedSave? Enqueue(QueuedSave queued)
+    {
+        lock (_queueLock)
+        {
+            QueuedSave? evicted = null;
+
+            if (_retryQueue.Count >= MaxQueued)
+            {
+                _retryQueue.TryDequeue(out evicted);
             }
 
-            _retryQueue.Enqueue(record);
+            _retryQueue.Enqueue(queued);
+
+            return evicted;
         }
     }
 
@@ -491,7 +704,7 @@ public class UtilityApiClient
                 _resultQueue.TryDequeue(out _);
             }
 
-            _resultQueue.Enqueue(payload);
+            _resultQueue.Enqueue(new QueuedResult { Payload = payload });
         }
     }
 
@@ -610,16 +823,23 @@ public class UtilityApiClient
         }
     }
 
-    private async Task<string?> Post(LineupRecord record)
+    private QueuedSave? Snapshot(LineupRecord record, string? workshopId)
     {
-        string? body;
-
         try
         {
-            body = JsonSerializer.Serialize(
-                UtilityIngestPayload.From(record),
-                PracticeJson.Options
-            );
+            UtilityIngestPayload payload = UtilityIngestPayload.From(record);
+            payload.client_id = Guid.NewGuid().ToString();
+            payload.map = record.map;
+            payload.workshop_id = string.IsNullOrEmpty(workshopId) ? null : workshopId;
+
+            return new QueuedSave
+            {
+                Record = record,
+                Body = JsonSerializer.Serialize(payload, PracticeJson.Options),
+                Map = record.map,
+                Name = record.name,
+                Author = record.author_steam_id,
+            };
         }
         catch (Exception error)
         {
@@ -628,22 +848,66 @@ public class UtilityApiClient
             _logger.LogError(error, "unable to serialize lineup {client_id}", record.client_id);
             return null;
         }
+    }
 
-        string? response = await SendText(HttpMethod.Post, "/utility/ingest", body);
+    private static IngestResult Answer(QueuedSave save, eIngestOutcome outcome, string? id = null)
+    {
+        return new IngestResult { Outcome = outcome, Id = id, Name = save.Name };
+    }
+
+    private async Task<IngestResult> Post(QueuedSave save)
+    {
+        if (string.IsNullOrEmpty(Map))
+        {
+            return Answer(save, eIngestOutcome.Held);
+        }
+
+        // One already sent may have landed, and only the panel can say: it answers
+        // a save it has before it looks at the map. Refusing here would tell a
+        // player a saved lineup was not saved.
+        if (!save.Sent && save.Map != Map)
+        {
+            _logger.LogWarning(
+                "not sending lineup {client_id}: saved on {saved}, the server is on {map}",
+                save.Record.client_id,
+                save.Map,
+                Map
+            );
+            return Answer(save, eIngestOutcome.Refused);
+        }
+
+        save.Sent = true;
+
+        var outcome = new SendOutcome();
+        string? response = await SendText(HttpMethod.Post, "/utility/ingest", save.Body, outcome);
 
         if (response == null)
         {
-            return null;
+            return outcome.Rejected
+                ? new IngestResult
+                {
+                    Outcome = eIngestOutcome.Refused,
+                    Name = save.Name,
+                    PanelRefused = true,
+                }
+                : Answer(save, eIngestOutcome.Held);
         }
 
         try
         {
-            return JsonSerializer.Deserialize<IngestResponse>(response, PracticeJson.Options)?.id;
+            return Answer(
+                save,
+                eIngestOutcome.Delivered,
+                JsonSerializer.Deserialize<IngestResponse>(response, PracticeJson.Options)?.id
+            );
         }
         catch (Exception error)
         {
+            // The panel answered, so it has the lineup. Only the id is missing,
+            // which is not worth a send that a panel without client_id would
+            // save a second time.
             _logger.LogError(error, "unable to read the ingest response");
-            return null;
+            return Answer(save, eIngestOutcome.Delivered);
         }
     }
 
@@ -663,6 +927,12 @@ public class UtilityApiClient
         catch (Exception error)
         {
             _logger.LogError(error, "unable to serialize a practice result");
+
+            if (outcome != null)
+            {
+                outcome.Rejected = true;
+            }
+
             return null;
         }
 

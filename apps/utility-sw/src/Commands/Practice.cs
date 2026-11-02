@@ -134,6 +134,7 @@ public partial class UtilityPracticePlugin
 
         thrown.name = name;
         thrown.map = _library.Map;
+        thrown.workshop_map_id = Core.Engine.WorkshopId;
         thrown.side = player.Controller.Team == Team.CT ? "CT" : "TERRORIST";
         thrown.visibility = nameof(eLineupVisibility.Private);
         thrown.plugin_version = ModuleVersion;
@@ -177,24 +178,83 @@ public partial class UtilityPracticePlugin
 
     private void IngestSave(ulong steamId, LineupRecord thrown)
     {
+        string workshopId = thrown.workshop_map_id ?? Core.Engine.WorkshopId ?? "";
+
         _ = Task.Run(async () =>
         {
-            string? id = await _api.Ingest(thrown);
+            UtilityApiClient.IngestResult result = await _api.Ingest(thrown, workshopId);
 
             Core.Scheduler.NextTick(() =>
             {
-                if (id != null)
-                {
-                    thrown.id = id;
-                    return;
-                }
+                PracticeSaveUtility.GivePanelId(thrown, result.Id);
 
-                Tell(
-                    steamId,
-                    $" {ChatColors.Red}{thrown.name} could not reach the panel; it will retry"
-                );
+                if (result.Outcome == UtilityApiClient.eIngestOutcome.Held)
+                {
+                    Tell(
+                        steamId,
+                        $" {ChatColors.Red}{thrown.name} could not reach the panel; it will retry"
+                    );
+                }
+                else if (result.Outcome == UtilityApiClient.eIngestOutcome.Refused)
+                {
+                    Tell(steamId, $" {ChatColors.Red}{thrown.name} was not saved");
+                }
+                else if (
+                    result.Outcome == UtilityApiClient.eIngestOutcome.Delivered
+                    && PracticeSaveUtility.BelongsBackInLibrary(
+                        thrown,
+                        _library.Map,
+                        _library.For(steamId)
+                    )
+                )
+                {
+                    _library.Add(steamId, thrown);
+                }
             });
         });
+    }
+
+    private void OnSaveRetried(LineupRecord saved, UtilityApiClient.IngestResult result)
+    {
+        Core.Scheduler.NextTick(() =>
+        {
+            PracticeSaveUtility.GivePanelId(saved, result.Id);
+
+            if (!ulong.TryParse(saved.author_steam_id, out ulong steamId))
+            {
+                return;
+            }
+
+            if (result.Outcome == UtilityApiClient.eIngestOutcome.Refused)
+            {
+                Tell(steamId, $" {ChatColors.Red}{result.Name} was not saved");
+                return;
+            }
+
+            if (PracticeSaveUtility.BelongsBackInLibrary(saved, _library.Map, _library.For(steamId)))
+            {
+                _library.Add(steamId, saved);
+            }
+
+            Tell(steamId, $" {ChatColors.Green}{result.Name} reached the panel");
+        });
+    }
+
+    private void OnWithdrawnDeleteFailed(string author, string name)
+    {
+        if (ulong.TryParse(author, out ulong steamId))
+        {
+            Core.Scheduler.NextTick(() => TellStillOnPanel(steamId, name));
+        }
+    }
+
+    private void TellStillOnPanel(ulong steamId, string name)
+    {
+        Tell(
+            steamId,
+            $" {ChatColors.Red}{name} is still on the panel; "
+                + $"try {ChatColors.Default}TAB ▸ Settings ▸ Reload Library"
+        );
     }
 
     // Leaving does not take a save with it. What was saved goes now, without
@@ -1121,36 +1181,41 @@ public partial class UtilityPracticePlugin
         }
 
         _library.Remove(player.SteamID, loaded);
-        state.Results.RemoveAll(match => match.client_id == loaded.client_id);
+        state.Index = PracticeSaveUtility.PruneResults(
+            state.Results,
+            state.Index,
+            match => match.client_id == loaded.client_id
+        );
         state.Loaded = null;
         _replay.ClearGhosts(player.SteamID);
 
         Toast(player, $"Deleted · {DrillUtility.Name(loaded)}");
 
-        if (loaded.id == null)
+        string? id = PracticeSaveUtility.ForgetSaves(
+            loaded,
+            save => _heldSaves.Remove(save),
+            _api.Withdraw
+        );
+
+        _drill.LineupDeleted(player.SteamID, loaded.client_id);
+
+        if (id == null)
         {
             return;
         }
 
-        string id = loaded.id;
         ulong steamId = player.SteamID;
 
         _ = Task.Run(async () =>
         {
-            bool deleted = await _api.Delete(id);
+            bool deleted = await _api.Delete(id, steamId.ToString());
 
             if (deleted)
             {
                 return;
             }
 
-            Core.Scheduler.NextTick(() =>
-                Tell(
-                    steamId,
-                    $" {ChatColors.Red}{loaded.name} is still on the panel; "
-                        + $"try {ChatColors.Default}TAB ▸ Settings ▸ Reload Library"
-                )
-            );
+            Core.Scheduler.NextTick(() => TellStillOnPanel(steamId, loaded.name));
         });
     }
 

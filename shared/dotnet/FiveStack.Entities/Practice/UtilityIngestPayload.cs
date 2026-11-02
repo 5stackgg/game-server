@@ -6,11 +6,18 @@ namespace FiveStack.Entities.Practice;
 //
 // LineupRecord stays the plugin's own model; this flat shape is the only thing
 // that crosses the wire, because it maps one to one onto the columns the panel
-// writes. Anything the payload does not name is dropped rather than sent: the
-// map in particular is derived from the authenticated server's own match row,
-// and sending our own would be rejected as a mismatch.
+// writes. Anything the payload does not name is dropped rather than sent.
 public class UtilityIngestPayload
 {
+    // Not LineupRecord.client_id: that names the throw, this names one save of
+    // it. UtilityApiClient sets it.
+    public string? client_id { get; set; }
+
+    // The panel files a save under its own map for this server and moves that
+    // before the server does. These say where the throw was made, so it can
+    // refuse one it would misfile. UtilityApiClient sets them.
+    public string? map { get; set; }
+    public string? workshop_id { get; set; }
     public string? match_id { get; set; }
     public string? author_steam_id { get; set; }
     public string? utility_type { get; set; }

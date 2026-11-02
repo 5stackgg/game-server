@@ -280,6 +280,38 @@ public class PracticeDrillRun
         return true;
     }
 
+    // A lineup deleted during a run can no longer be scored, so it leaves the
+    // queue for good. Skipping it would only bring it back on the next rep, or on
+    // the next lap of an endless run. Says whether it was the step being thrown.
+    public bool Remove(string clientId)
+    {
+        bool current = Current?.client_id == clientId;
+
+        if (current)
+        {
+            Skip();
+            Current = null;
+            _rep = 0;
+        }
+
+        for (int step = _queue.Count - 1; step >= 0; step--)
+        {
+            if (_queue[step].client_id != clientId)
+            {
+                continue;
+            }
+
+            _queue.RemoveAt(step);
+
+            if (step <= _index)
+            {
+                _index--;
+            }
+        }
+
+        return current;
+    }
+
     public void End(eDrillEnd ending)
     {
         if (!Finished)

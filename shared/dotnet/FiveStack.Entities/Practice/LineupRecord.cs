@@ -8,7 +8,8 @@ public class LineupRecord
 {
     public string? id { get; set; }
 
-    // Plugin-generated, so a retry after a timeout cannot create a duplicate.
+    // Plugin-generated, and how this session tells its lineups apart. A throw
+    // saved twice keeps one, so it is not what the panel dedupes a retry on.
     public string client_id { get; set; } = "";
 
     public string map { get; set; } = "";
