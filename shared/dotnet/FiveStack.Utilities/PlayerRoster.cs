@@ -164,6 +164,9 @@ public class PlayerRoster
     private RosterReport? _final;
     private DateTimeOffset _finalAt;
     private readonly CommunityTrades _trades = new();
+    private bool _roundLive;
+    private bool _roundEnded;
+    private bool _roundMvp;
 
     // Returns when a sync is due if this observation is what made one due.
     public virtual DateTimeOffset? Observe(IEnumerable<ObservedPlayer> players, DateTimeOffset now)
@@ -266,6 +269,9 @@ public class PlayerRoster
                 entry.Streak = 0;
                 entry.BestStreak = 0;
             }
+
+            // A round the map change cut short never ends.
+            _roundLive = false;
         }
     }
 
@@ -573,12 +579,32 @@ public class PlayerRoster
         }
     }
 
-    // A trade is a round's.
+    // Ending warmup ends its round as a win for whoever is alive, so the warmup
+    // flag at a round's end is not what decides it: a round only counts once
+    // its freeze time has ended outside warmup, as the match plugin's knife
+    // round does.
+    public void FreezeTimeEnded(bool warmup)
+    {
+        lock (_lock)
+        {
+            _roundLive = !warmup;
+            _roundEnded = false;
+            _roundMvp = false;
+        }
+    }
+
+    // A trade is a round's. A round counts once: another round end before the
+    // next round starts (an admin ending the round, a plugin terminating it)
+    // is not another round. The MVP can come after the round end, so the flag
+    // only goes at the next round's start.
     public void RoundStarted()
     {
         lock (_lock)
         {
             _trades.Clear();
+            _roundLive = false;
+            _roundEnded = false;
+            _roundMvp = false;
         }
     }
 
@@ -598,6 +624,13 @@ public class PlayerRoster
 
         lock (_lock)
         {
+            if (!_roundLive || _roundEnded)
+            {
+                return;
+            }
+
+            _roundEnded = true;
+
             foreach ((string steamId, int team) in teamsBySteamId)
             {
                 if (
@@ -618,6 +651,8 @@ public class PlayerRoster
         }
     }
 
+    // A round that never went live has no MVP either, and a round ended again
+    // has had its MVP: the MVP after its first end is the only one it gets.
     public void Mvp(string? steamId, bool warmup)
     {
         if (warmup)
@@ -627,7 +662,18 @@ public class PlayerRoster
 
         lock (_lock)
         {
-            if (steamId != null && _current.TryGetValue(steamId, out Entry? entry))
+            if (_roundEnded && _roundMvp)
+            {
+                return;
+            }
+
+            _roundMvp = _roundEnded;
+
+            if (
+                _roundLive
+                && steamId != null
+                && _current.TryGetValue(steamId, out Entry? entry)
+            )
             {
                 entry.Mvps++;
             }

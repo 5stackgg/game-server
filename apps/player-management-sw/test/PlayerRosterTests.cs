@@ -744,6 +744,106 @@ public class PlayerRosterTests
         Assert.Equal("de_inferno", panel.Map(3));
     }
 
+    // The sync in flight carries the roster from before the last kills, so the
+    // panel taking it must not stand in for the map-end report.
+    [Fact]
+    public async Task ASyncInFlightAtTheMapChangeIsNotTheMapEndReport()
+    {
+        var (loop, roster, _, panel) = Loop();
+        roster.MapIs("de_mirage");
+        loop.Observe([Human("1"), Human("2")], Start);
+        await loop.Tick(Start);
+
+        roster.Died("2", "1", warmup: false);
+
+        TaskCompletionSource<HttpResponseMessage> answer = new();
+        panel.Answer = () => answer.Task;
+        loop.Observe([Human("1"), Human("2")], Start + SanctionSyncLoop.Interval);
+        Task inFlight = loop.Tick(Start + SanctionSyncLoop.Interval);
+
+        roster.Died("2", "1", warmup: false);
+        roster.MapEnded(At(31));
+        roster.MapStarted(At(32), "de_inferno");
+        answer.SetResult(Panel.Ok(recorded: true));
+        await inFlight;
+
+        panel.Answer = () => Task.FromResult(Panel.Ok(recorded: true));
+        await loop.Tick(At(32));
+
+        Assert.Equal("de_mirage", panel.Map(1));
+        Assert.Equal(
+            [
+                new Reported("1", "player 1", "203.0.113.24", 1, 0),
+                new Reported("2", "player 2", "203.0.113.24", 0, 1),
+            ],
+            panel.Players(1)
+        );
+
+        Assert.Equal("de_mirage", panel.Map(2));
+        Assert.Equal(
+            [
+                new Reported("1", "player 1", "203.0.113.24", 2, 0),
+                new Reported("2", "player 2", "203.0.113.24", 0, 2),
+            ],
+            panel.Players(2)
+        );
+
+        await loop.Tick(At(32) + SanctionSyncLoop.Interval);
+
+        Assert.Equal(4, panel.Bodies.Count);
+        Assert.Equal("de_inferno", panel.Map(3));
+        Assert.Null(panel.Players(3));
+    }
+
+    // A kill on the new map while its players are still loading in belongs to
+    // that map, even when the old map's report is sent after it.
+    [Fact]
+    public async Task AKillDuringTheHoldIsNotInTheMapEndReport()
+    {
+        var (loop, roster, _, panel) = Loop();
+        roster.MapIs("de_mirage");
+        loop.Observe([Human("1"), Human("2")], Start);
+        await loop.Tick(Start);
+
+        roster.Died("2", "1", warmup: false);
+        roster.MapEnded(At(5));
+        roster.MapStarted(At(6), "de_inferno");
+        roster.Died("2", "1", warmup: false);
+
+        panel.Answer = () => Task.FromResult(Panel.Down());
+        await loop.Tick(At(6));
+
+        roster.Died("2", "1", warmup: false);
+
+        panel.Answer = () => Task.FromResult(Panel.Ok(recorded: true));
+        await loop.Tick(At(6) + SanctionSyncLoop.Interval);
+
+        foreach (int sync in new[] { 1, 2 })
+        {
+            Assert.Equal("de_mirage", panel.Map(sync));
+            Assert.Equal(
+                [
+                    new Reported("1", "player 1", "203.0.113.24", 1, 0),
+                    new Reported("2", "player 2", "203.0.113.24", 0, 1),
+                ],
+                panel.Players(sync)
+            );
+        }
+
+        loop.Observe([Human("1"), Human("2")], At(6) + SanctionSyncLoop.Interval * 2);
+        await loop.Tick(At(6) + SanctionSyncLoop.Interval * 2);
+
+        Assert.Equal(4, panel.Bodies.Count);
+        Assert.Equal("de_inferno", panel.Map(3));
+        Assert.Equal(
+            [
+                new Reported("1", "player 1", "203.0.113.24", 3, 0),
+                new Reported("2", "player 2", "203.0.113.24", 0, 3),
+            ],
+            panel.Players(3)
+        );
+    }
+
     // A roster that changed over the map change differs from the report still
     // waiting to be taken; that must not turn every poll into a sync.
     [Fact]
@@ -1119,6 +1219,7 @@ public class PlayerRosterTests
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1"), Human("2"), Human("3"), Human("4")], Start);
+        roster.FreezeTimeEnded(warmup: false);
 
         roster.RoundEnded(
             PlayerRoster.TeamT,
@@ -1131,6 +1232,7 @@ public class PlayerRosterTests
             ),
             warmup: false
         );
+        roster.FreezeTimeEnded(warmup: false);
         roster.RoundEnded(
             PlayerRoster.TeamCT,
             Teams(
@@ -1155,6 +1257,7 @@ public class PlayerRosterTests
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1"), Human("2")], Start);
+        roster.FreezeTimeEnded(warmup: false);
 
         roster.RoundEnded(
             1,
@@ -1173,6 +1276,7 @@ public class PlayerRosterTests
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1")], Start);
+        roster.FreezeTimeEnded(warmup: true);
 
         roster.RoundEnded(PlayerRoster.TeamT, Teams(("1", PlayerRoster.TeamT)), warmup: true);
 
@@ -1186,12 +1290,14 @@ public class PlayerRosterTests
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1"), Human("2"), Human("3")], Start);
+        roster.FreezeTimeEnded(warmup: true);
 
         roster.Died("2", "1", warmup: true, assister: "3", headshot: true);
         roster.Hurt("1", "2", 100, warmup: true);
         roster.Mvp("1", warmup: true);
         roster.RoundEnded(PlayerRoster.TeamT, Teams(("1", PlayerRoster.TeamT)), warmup: true);
 
+        roster.FreezeTimeEnded(warmup: false);
         roster.Died("2", "1", warmup: false, assister: "3", headshot: true);
         roster.Hurt("1", "2", 100, warmup: false);
         roster.Mvp("1", warmup: false);
@@ -1203,11 +1309,138 @@ public class PlayerRosterTests
         Assert.Equal(new Counters(0, 0, 1, 0, 0, 0, 0, 0), CountersOf(report, "3"));
     }
 
+    // Ending warmup ends its round as a win for whoever is alive, and the warmup
+    // flag can already be off by then. Only the round after it counts.
+    [Fact]
+    public void EndingWarmupHandsOutNoRound()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+        roster.FreezeTimeEnded(warmup: true);
+
+        roster.RoundEnded(
+            PlayerRoster.TeamT,
+            Teams(("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamCT)),
+            warmup: false
+        );
+        roster.Mvp("1", warmup: false);
+
+        Assert.Equal(new Counters(0, 0, 0, 0, 0, 0, 0, 0), CountersOf(roster.Report(At(1)), "1"));
+
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(
+            PlayerRoster.TeamT,
+            Teams(("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamCT)),
+            warmup: false
+        );
+        roster.Mvp("1", warmup: false);
+
+        RosterReport report = roster.Report(At(2));
+
+        Assert.Equal((1, 1), Rounds(report, "1"));
+        Assert.Equal(1, CountersOf(report, "1").Mvps);
+        Assert.Equal((1, 0), Rounds(report, "2"));
+    }
+
+    // An admin or a plugin can end a round again before the next one starts,
+    // and the next round only counts once its own freeze time has ended.
+    [Fact]
+    public void ARoundCountsOnceAndTheNextOneOnlyOnceItGoesLive()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+        IReadOnlyDictionary<string, int> teams = Teams(
+            ("1", PlayerRoster.TeamT),
+            ("2", PlayerRoster.TeamCT)
+        );
+
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
+        roster.Mvp("1", warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamCT, teams, warmup: false);
+
+        Assert.Equal((1, 1), Rounds(roster.Report(At(1)), "1"));
+        Assert.Equal((1, 0), Rounds(roster.Report(At(1)), "2"));
+
+        roster.RoundStarted();
+        roster.RoundEnded(PlayerRoster.TeamCT, teams, warmup: false);
+        roster.Mvp("2", warmup: false);
+
+        RosterReport report = roster.Report(At(2));
+        Assert.Equal((1, 0), Rounds(report, "2"));
+        Assert.Equal(0, CountersOf(report, "2").Mvps);
+        Assert.Equal(1, CountersOf(report, "1").Mvps);
+    }
+
+    // A changelevel cuts the round under way short, and the new map's first
+    // round has not gone live until its freeze time ends.
+    [Fact]
+    public void ARoundTheMapChangeCutShortIsNotCounted()
+    {
+        PlayerRoster roster = new();
+        roster.MapIs("de_mirage");
+        roster.Observe([Human("1")], Start);
+        roster.FreezeTimeEnded(warmup: false);
+
+        roster.MapEnded(At(1));
+        roster.Delivered(roster.Report(At(1)), true);
+        roster.MapStarted(At(2), "de_inferno");
+        roster.Observe([Human("1")], At(3));
+        roster.RoundEnded(PlayerRoster.TeamT, Teams(("1", PlayerRoster.TeamT)), warmup: false);
+        roster.Mvp("1", warmup: false);
+
+        // The old map's report is delivered and everyone held is back, so this
+        // is the new map's roster and not the snapshot taken at the map's end.
+        RosterReport report = roster.Report(At(4));
+        Assert.NotNull(report.Players);
+        Assert.Equal("de_inferno", report.Map);
+        Assert.Equal(new Counters(0, 0, 0, 0, 0, 0, 0, 0), CountersOf(report, "1"));
+    }
+
+    // The MVP comes after the round end, and a round ended again has had its
+    // MVP, whether the second end comes before or after the first MVP and
+    // whether that MVP went to a bot.
+    [Fact]
+    public void ARoundEndedAgainGetsNoSecondMvp()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+        IReadOnlyDictionary<string, int> teams = Teams(
+            ("1", PlayerRoster.TeamT),
+            ("2", PlayerRoster.TeamCT)
+        );
+
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
+        roster.Mvp("1", warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamCT, teams, warmup: false);
+        roster.Mvp("2", warmup: false);
+
+        roster.RoundStarted();
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamCT, teams, warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
+        roster.Mvp("2", warmup: false);
+        roster.Mvp("1", warmup: false);
+
+        roster.RoundStarted();
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
+        roster.Mvp(null, warmup: false);
+        roster.RoundEnded(PlayerRoster.TeamCT, teams, warmup: false);
+        roster.Mvp("2", warmup: false);
+
+        RosterReport report = roster.Report(At(1));
+        Assert.Equal(1, CountersOf(report, "1").Mvps);
+        Assert.Equal(1, CountersOf(report, "2").Mvps);
+    }
+
     [Fact]
     public void AnMvpGoesToARosterPlayerOnly()
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1")], Start);
+        roster.FreezeTimeEnded(warmup: false);
 
         roster.Mvp("1", warmup: false);
         roster.Mvp("1", warmup: false);
@@ -1219,6 +1452,7 @@ public class PlayerRosterTests
 
     private static void CountEverything(PlayerRoster roster, string steamId, string enemy)
     {
+        roster.FreezeTimeEnded(warmup: false);
         roster.Died(enemy, steamId, warmup: false, assister: null, headshot: true);
         roster.Died(steamId, enemy, warmup: false);
         roster.Died(enemy, null, warmup: false, assister: steamId);

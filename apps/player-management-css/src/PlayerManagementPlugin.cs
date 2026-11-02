@@ -45,9 +45,7 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
     private readonly HashSet<ulong> _mutedByUs = new();
     private readonly HashSet<ulong> _kicked = new();
 
-    // Each player's health after the last hit they survived, by slot, so a
-    // lethal hit is credited only with what it took. Cleared when they spawn.
-    private readonly Dictionary<int, int> _health = new();
+    private readonly HealthBook _health = new();
 
     private long _lastEnforceMs;
 
@@ -162,6 +160,9 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             {
                 Logger.LogDebug(error, "unable to read the map on load");
             }
+
+            // Nor has it seen the round under way go live.
+            _roster.FreezeTimeEnded(IsWarmup());
         }
 
         _loop.Start();
@@ -264,6 +265,7 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             List<CCSPlayerController> humans = Humans();
 
             ObserveRoster(humans);
+            ReadHealth(humans);
             Enforce(humans);
         }
         catch (Exception error)
@@ -513,12 +515,7 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
                 return HookResult.Continue;
             }
 
-            int dealt = PlayerRoster.Dealt(
-                @event.DmgHealth,
-                @event.Health,
-                _health.TryGetValue(victim.Slot, out int before) ? before : null
-            );
-            _health[victim.Slot] = @event.Health;
+            int dealt = _health.Hit(victim.Slot, @event.DmgHealth, @event.Health);
 
             // Nothing a bot does or has done to it counts, nor anything
             // without an attacker. A human's bullet in a bot takes back the
@@ -592,7 +589,7 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
 
             if (player != null)
             {
-                _health.Remove(player.Slot);
+                _health.Spawned(player.Slot);
             }
         }
         catch (Exception error)
@@ -732,6 +729,21 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
     }
 
     [GameEventHandler]
+    public HookResult OnRoundFreezeEnd(EventRoundFreezeEnd @event, GameEventInfo info)
+    {
+        try
+        {
+            _roster.FreezeTimeEnded(IsWarmup());
+        }
+        catch (Exception error)
+        {
+            Logger.LogError(error, "unable to start counting a round");
+        }
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
     public HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info)
     {
         try
@@ -772,10 +784,12 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         {
             CCSPlayerController? player = @event.Userid;
 
-            if (player != null && IsHuman(player))
-            {
-                _roster.Mvp(VerifiedSteamIdOf(player), IsWarmup());
-            }
+            // A bot's MVP, or one whose player has gone, is still the round's
+            // MVP, so it reaches the roster without a player to credit.
+            _roster.Mvp(
+                player != null && IsHuman(player) ? VerifiedSteamIdOf(player) : null,
+                IsWarmup()
+            );
         }
         catch (Exception error)
         {
@@ -833,6 +847,28 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
                 ? active.AttributeManager.Item.ItemDefinitionIndex
                 : null
         );
+    }
+
+    // Also kept apart from the enforcement. A pawn that cannot be read keeps
+    // the health its last hit left.
+    private void ReadHealth(List<CCSPlayerController> humans)
+    {
+        foreach (CCSPlayerController player in humans)
+        {
+            try
+            {
+                CCSPlayerPawn? pawn = player.PlayerPawn.Value;
+
+                if (pawn != null && pawn.IsValid)
+                {
+                    _health.Seen(player.Slot, pawn.Health);
+                }
+            }
+            catch (Exception error)
+            {
+                Logger.LogDebug(error, "unable to read a player's health");
+            }
+        }
     }
 
     // Unreadable is taken as teams as usual, where a team kill earns nothing.
