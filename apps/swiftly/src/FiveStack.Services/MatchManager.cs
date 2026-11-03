@@ -1433,6 +1433,8 @@ public class MatchManager
             return;
         }
 
+        name = PlayerNameUtility.Fit(name);
+
         // player.Name is the engine's client name, which never reflects our rename
         if (player.Controller.PlayerName != name)
         {
@@ -1471,21 +1473,24 @@ public class MatchManager
             player.Name
         );
 
-        if (
-            member == null
-            || string.IsNullOrEmpty(member.name)
-            || player.Controller.PlayerName == member.name
-        )
+        if (member == null || string.IsNullOrEmpty(member.name))
+        {
+            return;
+        }
+
+        string name = PlayerNameUtility.Fit(member.name);
+
+        if (player.Controller.PlayerName == name)
         {
             return;
         }
 
         _logger.LogInformation(
-            $"Restoring lineup name for {player.SteamID}: {player.Controller.PlayerName} -> {member.name}"
+            $"Restoring lineup name for {player.SteamID}: {player.Controller.PlayerName} -> {name}"
         );
 
         // keep the current tag so ready, camera and role tags survive
-        UpdatePlayerName(player, member.name, player.Controller.Clan);
+        UpdatePlayerName(player, name, player.Controller.Clan);
     }
 
     public void RestorePlayerNames()

@@ -50,11 +50,24 @@ public class PlayerNameWiringTests
     [Fact]
     public void NamesAreCheckedForAsLongAsTheMatchIsSetUp()
     {
-        Assert.Contains("StartPlayerNameCheck();", Method("public void SetupMatch(MatchData match)"));
+        string setup = Method("public void SetupMatch(MatchData match)");
+        int start = setup.IndexOf("StartPlayerNameCheck();", StringComparison.Ordinal);
+
+        Assert.True(start >= 0, "SetupMatch never starts the name check");
+        Assert.True(start < setup.IndexOf("ChangeMap(", StringComparison.Ordinal));
+        Assert.True(start < setup.IndexOf("_currentMap == null", StringComparison.Ordinal));
         Assert.Contains("StopPlayerNameCheck();", Method("public void Reset()"));
+        Assert.Contains("_playerNameCheckTimer = null;", Method("private void StopPlayerNameCheck()"));
         Assert.Contains(
             "TimerUtility.Repeat(PlayerNameCheckSeconds, RestorePlayerNames)",
             Method("private void StartPlayerNameCheck()")
         );
+    }
+
+    [Fact]
+    public void ATooLongNameIsFittedBeforeItIsWrittenOrCompared()
+    {
+        Assert.Contains("PlayerNameUtility.Fit(name)", Method("public void UpdatePlayerName("));
+        Assert.Contains("PlayerNameUtility.Fit(member.name)", Method("public void RestorePlayerName("));
     }
 }

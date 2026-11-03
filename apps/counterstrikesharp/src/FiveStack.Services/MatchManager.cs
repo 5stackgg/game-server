@@ -172,6 +172,7 @@ public class MatchManager
         }
 
         _resumeMessageTimer?.Kill();
+        _resumeMessageTimer = null;
 
         return false;
     }
@@ -313,6 +314,7 @@ public class MatchManager
         _gameServer.SendCommands(["mp_unpause_match"]);
 
         _resumeMessageTimer?.Kill();
+        _resumeMessageTimer = null;
         if (_timeoutSystem.resumeVote != null)
         {
             _timeoutSystem.resumeVote.CancelVote();
@@ -1435,6 +1437,8 @@ public class MatchManager
             return;
         }
 
+        name = PlayerNameUtility.Fit(name);
+
         if (player.PlayerName != name)
         {
             player.PlayerName = name;
@@ -1476,21 +1480,24 @@ public class MatchManager
             player.PlayerName
         );
 
-        if (
-            member == null
-            || string.IsNullOrEmpty(member.name)
-            || player.PlayerName == member.name
-        )
+        if (member == null || string.IsNullOrEmpty(member.name))
+        {
+            return;
+        }
+
+        string name = PlayerNameUtility.Fit(member.name);
+
+        if (player.PlayerName == name)
         {
             return;
         }
 
         _logger.LogInformation(
-            $"Restoring lineup name for {player.SteamID}: {player.PlayerName} -> {member.name}"
+            $"Restoring lineup name for {player.SteamID}: {player.PlayerName} -> {name}"
         );
 
         // keep the current tag so ready, camera and role tags survive
-        UpdatePlayerName(player, member.name, player.Clan);
+        UpdatePlayerName(player, name, player.Clan);
     }
 
     public void RestorePlayerNames()
@@ -1617,7 +1624,9 @@ public class MatchManager
     {
         _logger.LogInformation("resetting match state");
         _resumeMessageTimer?.Kill();
+        _resumeMessageTimer = null;
         _mapChangeCountdownTimer?.Kill();
+        _mapChangeCountdownTimer = null;
         StopPlaycastWindowHeartbeat();
         StopPlayerNameCheck();
 
