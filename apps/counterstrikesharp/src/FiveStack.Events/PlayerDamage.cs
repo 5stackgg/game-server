@@ -67,7 +67,12 @@ public partial class FiveStackPlugin
                         ? $"{Convert.ToInt32(attackerLocation.X)} {Convert.ToInt32(attackerLocation.Y)} {Convert.ToInt32(attackerLocation.Z)}"
                         : ""
                 },
-                { "weapon", $"{(@event.Weapon.Length == 0 ? "worldent" : @event.Weapon)}" },
+                {
+                    "weapon",
+                    @event.Weapon.Length == 0
+                        ? "worldent"
+                        : CommunityWeapons.InHand(@event.Weapon, ActiveItemDefinitionIndex(attacker))
+                },
                 { "damage", damageDealt },
                 { "damage_armor", @event.DmgArmor },
                 { "hitgroup", $"{DamageUtility.HitGroupToString(@event.Hitgroup)}" },
@@ -86,5 +91,17 @@ public partial class FiveStackPlugin
         );
 
         return HookResult.Continue;
+    }
+
+    private static int? ActiveItemDefinitionIndex(CCSPlayerController? player)
+    {
+        CBasePlayerWeapon? weapon = player?.PlayerPawn.Value?.WeaponServices?.ActiveWeapon.Value;
+
+        if (weapon == null || !weapon.IsValid)
+        {
+            return null;
+        }
+
+        return weapon.AttributeManager.Item.ItemDefinitionIndex;
     }
 }
