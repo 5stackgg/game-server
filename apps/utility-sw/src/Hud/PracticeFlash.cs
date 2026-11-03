@@ -123,18 +123,17 @@ public partial class UtilityPracticePlugin
 
         int steps = HudSlots.FlashBarSteps - 1;
         var rows = new List<NadeBarTemplate.FlashRow>();
+        List<PracticeCardGroups.FlashHit> hits = report
+            .Hits.Select(hit => new PracticeCardGroups.FlashHit(
+                hit.Seconds,
+                MathF.Max(0f, hit.Seconds - FlashFadeSeconds),
+                hit.Target,
+                hit.Bad
+            ))
+            .ToList();
 
         if (report.Hits.Count > HudSlots.FlashRows)
         {
-            List<PracticeCardGroups.FlashHit> hits = report
-                .Hits.Select(hit => new PracticeCardGroups.FlashHit(
-                    hit.Seconds,
-                    MathF.Max(0f, hit.Seconds - FlashFadeSeconds),
-                    hit.Target,
-                    hit.Bad
-                ))
-                .ToList();
-
             foreach (PracticeCardGroups.Group group in PracticeCardGroups.Flash(hits))
             {
                 rows.Add(
@@ -174,10 +173,8 @@ public partial class UtilityPracticePlugin
         }
 
         int targets = report.Hits.Count(hit => hit.Target);
-        int worked = report.Hits.Count(hit =>
-            hit.Target && hit.Seconds - FlashFadeSeconds >= PracticeCardGroups.WorkedWhiteSeconds
-        );
-        string foot = targets == 0 ? "No targets caught" : $"{worked} of {targets} fully blind 1s+";
+        int worked = PracticeCardGroups.Worked(hits);
+        string foot = targets == 0 ? "No targets caught" : $"{worked} of {targets} blind 1s+";
 
         if (report.Hits.Any(hit => hit.Bad))
         {
