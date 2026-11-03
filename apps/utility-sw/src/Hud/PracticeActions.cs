@@ -183,8 +183,8 @@ public partial class UtilityPracticePlugin
                             {
                                 new WheelItem(
                                     "keepbots",
-                                    _bots.Count == 0 ? "Clear Lineup Bots" : "Keep On Lineup",
-                                    Disabled: KeepTarget(player) == null
+                                    "Keep On Lineup",
+                                    Disabled: _bots.Count == 0 || KeepTarget(player) == null
                                 ),
                             },
                         },

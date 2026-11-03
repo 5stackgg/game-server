@@ -638,8 +638,8 @@ public partial class UtilityPracticePlugin : BasePlugin
     private readonly HashSet<ulong> _useHeld = new();
 
     // Bots that have been placed, and where they were asked to stand. Kept so
-    // a map change or a cfg re-run can put them back rather than leaving the
-    // player with a bot standing in a spawn.
+    // a reload of the map or a cfg re-run can put them back rather than leaving
+    // the player with a bot standing in a spawn.
     private readonly List<ThrowSnapshot> _bots = new();
 
     /// <summary>
@@ -2241,6 +2241,11 @@ public partial class UtilityPracticePlugin : BasePlugin
         // the handles are dropped either way -- a stale handle can be recycled
         // into a NEW entity, which makes despawning it later actively harmful.
         _replay.SweepMarkers();
+
+        if (!LineupBots.SpotsSurviveLoad(_library.Map, mapName))
+        {
+            _bots.Clear();
+        }
 
         _library.SetMap(mapName);
         _session.Map = mapName;

@@ -22,6 +22,11 @@ public static class LineupBots
         return withBots.Count == 1 ? new Choice(withBots[0], 0) : new Choice(null, withBots.Count);
     }
 
+    public static bool SpotsSurviveLoad(string fromMap, string toMap)
+    {
+        return fromMap == toMap;
+    }
+
     public static List<LineupBot> Missing(
         IReadOnlyList<LineupBot> saved,
         IReadOnlyList<ThrowSnapshot> standing

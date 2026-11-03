@@ -93,6 +93,15 @@ public class LineupBotsTests
         Assert.Single(LineupBots.Missing(saved, new[] { Standing(900f), Standing(0f, 0f, 500f) }));
     }
 
+    [Theory]
+    [InlineData("de_mirage", "de_mirage", true)]
+    [InlineData("de_mirage", "de_dust2", false)]
+    [InlineData("", "de_dust2", false)]
+    public void SpotsOnlyMeanSomethingOnTheMapTheyWerePlacedOn(string from, string to, bool kept)
+    {
+        Assert.Equal(kept, LineupBots.SpotsSurviveLoad(from, to));
+    }
+
     [Fact]
     public void ASnapshotKeepsWhereTheyStandAndWhichWayTheyFace()
     {

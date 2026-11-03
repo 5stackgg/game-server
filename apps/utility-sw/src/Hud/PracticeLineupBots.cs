@@ -13,18 +13,23 @@ public partial class UtilityPracticePlugin
         return bots == 1 ? "1 bot" : $"{bots} bots";
     }
 
+    // Only lineups with bots are looked through, and nothing is loaded: a drill
+    // or a loaded throw holds the panels still, and must not stop the player
+    // pointing at the lineup they mean here.
     private LineupBots.Choice BotChoice(IPlayer player, CCSPlayerPawn pawn, Vec3 at)
     {
-        IReadOnlyList<LineupRecord> shown = Shown(player.SteamID);
+        List<LineupRecord> withBots = Shown(player.SteamID)
+            .Where(lineup => lineup.bots.Count > 0)
+            .ToList();
 
-        if (!shown.Any(lineup => lineup.bots.Count > 0))
+        if (withBots.Count == 0)
         {
             return default;
         }
 
-        (LineupRecord? focused, _, _) = Focused(player, pawn);
+        List<LineupRecord> here = PracticeReplay.SpotAt(withBots, at);
 
-        return LineupBots.Pick(focused, PracticeReplay.SpotAt(shown, at));
+        return LineupBots.Pick(LookingAt(pawn, at, withBots, here, null), here);
     }
 
     private NadeBarTemplate.Key BotKey(IPlayer player, CCSPlayerPawn pawn, Vec3 at)
@@ -45,7 +50,9 @@ public partial class UtilityPracticePlugin
 
         return missing == 0
             ? new NadeBarTemplate.Key("Its bots are up", On: true)
-            : new NadeBarTemplate.Key($"Spawn {BotCount(missing)} · {LineupName(choice.Lineup)}");
+            : new NadeBarTemplate.Key(
+                $"Spawn {BotCount(missing)} · {Clip(LineupName(choice.Lineup), LegendNameLength)}"
+            );
     }
 
     private static string LineupName(LineupRecord lineup)
@@ -105,13 +112,22 @@ public partial class UtilityPracticePlugin
         );
     }
 
+    // What the player is on or pointing at: a lineup loaded and walked away
+    // from is not one they are looking at to change.
     private LineupRecord? KeepTarget(IPlayer player)
     {
-        LineupRecord? lineup = DrillTarget(player);
+        CCSPlayerPawn? pawn = player.PlayerPawn;
+
+        if (pawn == null || !pawn.IsValid)
+        {
+            return null;
+        }
+
+        (LineupRecord? lineup, _, _) = Focused(player, pawn);
 
         return
             lineup != null
-            && !string.IsNullOrEmpty(lineup.id)
+            && PracticeLineupUtility.IsPanelId(lineup.id)
             && lineup.author_steam_id == player.SteamID.ToString()
             ? lineup
             : null;
@@ -124,6 +140,13 @@ public partial class UtilityPracticePlugin
         if (lineup == null)
         {
             Toast(player, "Point at a lineup of yours");
+
+            return;
+        }
+
+        if (_bots.Count == 0)
+        {
+            Toast(player, "Place a bot first");
 
             return;
         }
@@ -154,9 +177,9 @@ public partial class UtilityPracticePlugin
 
                 Toast(
                     asker,
-                    !saved ? "The panel did not save that"
-                        : bots.Count == 0 ? $"Bots cleared from {LineupName(lineup)}"
-                        : $"{BotCount(bots.Count)} saved to {LineupName(lineup)}"
+                    saved
+                        ? $"{BotCount(bots.Count)} saved to {Clip(LineupName(lineup), LegendNameLength)}"
+                        : "The panel did not save that"
                 );
             });
         });
