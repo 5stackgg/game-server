@@ -638,8 +638,8 @@ public partial class UtilityPracticePlugin : BasePlugin
     private readonly HashSet<ulong> _useHeld = new();
 
     // Bots that have been placed, and where they were asked to stand. Kept so
-    // a map change or a cfg re-run can put them back rather than leaving the
-    // player with a bot standing in a spawn.
+    // a reload of the map or a cfg re-run can put them back rather than leaving
+    // the player with a bot standing in a spawn.
     private readonly List<ThrowSnapshot> _bots = new();
 
     /// <summary>
@@ -670,7 +670,14 @@ public partial class UtilityPracticePlugin : BasePlugin
             yaw = angles.Y,
         };
 
-        _bots.Add(spot);
+        AskForBots(player, pawn, new[] { spot });
+
+        return true;
+    }
+
+    private void AskForBots(IPlayer player, CCSPlayerPawn pawn, IReadOnlyList<ThrowSnapshot> spots)
+    {
+        _bots.AddRange(spots);
         _botsAskedBy = player.SteamID;
 
         // The other side, which is what utility is thrown at.
@@ -678,7 +685,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         Core.Engine.ExecuteCommand("sv_cheats 1;" + string.Join(";", BotsCfg));
         MakeRoomOn(side == "ct" ? Team.CT : Team.T);
-        Core.Engine.ExecuteCommand($"bot_add_{side}");
+        Core.Engine.ExecuteCommand(string.Join(";", spots.Select(_ => $"bot_add_{side}")));
 
         _logger.LogInformation(
             "asked for a bot on {side}: {placed} placed, {joined} in game",
@@ -691,8 +698,6 @@ public partial class UtilityPracticePlugin : BasePlugin
         // wherever the map puts it. Placing it is a second step, taken on the
         // first tick there is a bot to place.
         _botsDueBy = _aimTick + BotHurryTicks;
-
-        return true;
     }
 
     // Five is a site's worth of defenders; past that a team is full before the
@@ -2236,6 +2241,11 @@ public partial class UtilityPracticePlugin : BasePlugin
         // the handles are dropped either way -- a stale handle can be recycled
         // into a NEW entity, which makes despawning it later actively harmful.
         _replay.SweepMarkers();
+
+        if (!LineupBots.SpotsSurviveLoad(_library.Map, mapName))
+        {
+            _bots.Clear();
+        }
 
         _library.SetMap(mapName);
         _session.Map = mapName;

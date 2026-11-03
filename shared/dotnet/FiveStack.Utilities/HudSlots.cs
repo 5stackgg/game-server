@@ -70,7 +70,7 @@ public static class HudSlots
     public const string NadePick = "nade2_pick";
     public const string NadeRun = "nade2_run";
     public const string NadeEdit = "nade3_edit";
-    public const string NadeBar = "nade3_bar";
+    public const string NadeBar = "nade4_bar";
     public const string NadeWheel = "nade2_wheel";
 
     // Class toggled on a layout's root to show it for one player. The layouts
@@ -127,9 +127,9 @@ public static class HudSlots
     public const int CompassColumns = 256;
     public const float CompassHalfSpanDegrees = 60f;
 
-    // TAB, E, R, then the three double taps and the clear key -- one row each,
-    // in that order.
-    public const int LegendKeys = 7;
+    // TAB, E, R, crouch twice, drop, then the other two double taps and the
+    // clear key -- one row each, in that order.
+    public const int LegendKeys = 8;
 
     // The command behind each keycap, in the form CS2's csgo_key formatter
     // reads: it draws whatever key the player has bound to it.
@@ -139,6 +139,7 @@ public static class HudSlots
         "%use%",
         "%reload%",
         "%duck%",
+        "%drop%",
         "%sprint%",
         "%lookatweapon%",
         "%sellbackall%",

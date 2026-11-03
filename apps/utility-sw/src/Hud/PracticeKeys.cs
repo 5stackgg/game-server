@@ -22,6 +22,10 @@ namespace UtilityPractice;
 // behind it. That one needs no rule either -- there is nothing to throw again
 // until the first has landed.
 //
+// Drop is taken outright: a server where nothing runs out has no use for it, so
+// it stands up the bots saved on a lineup instead, on whatever key it is bound
+// to.
+//
 // Crouch and walk keep their jobs and gain one each on a double tap, which is
 // a thing nobody does to either by accident: a bot where you stand, and
 // noclip.
@@ -39,6 +43,8 @@ public partial class UtilityPracticePlugin
 
     // What the default bind for delete sends.
     private const string SellBackCommand = "sellbackall";
+
+    private const string DropCommand = "drop";
 
     // Two presses of one key inside a third of a second are one gesture.
     private const int DoubleTapTicks = 21;
@@ -87,7 +93,7 @@ public partial class UtilityPracticePlugin
 
         string command = commandLine.Trim().Split(' ')[0];
 
-        if (command != SellBackCommand)
+        if (command != SellBackCommand && command != DropCommand)
         {
             return HookResult.Continue;
         }
@@ -103,7 +109,14 @@ public partial class UtilityPracticePlugin
 
             try
             {
-                ClearPressed(player);
+                if (command == SellBackCommand)
+                {
+                    ClearPressed(player);
+                }
+                else if (!CursorOpen(player))
+                {
+                    Do(player, "lineupbots");
+                }
             }
             catch (Exception error)
             {

@@ -402,6 +402,7 @@ public partial class UtilityPracticePlugin
             UseKey(steamId, at, cleared),
             new NadeBarTemplate.Key(reload, zoomed || following),
             new NadeBarTemplate.Key("Add a bot here"),
+            BotKey(player, pawn, at),
             new NadeBarTemplate.Key(noclip ? "Noclip · on" : "Noclip", noclip),
             AimRingKey(steamId),
             new NadeBarTemplate.Key("Clear smoke and fire · twice for bots"),

@@ -52,6 +52,8 @@ public class UtilityLibraryRow
 
     public List<UtilityApproachPoint>? approach { get; set; }
 
+    public List<LineupBot>? bots { get; set; }
+
     // Where the player the library was asked for stands on this lineup, in
     // the panel's own totals. Null for one they have never thrown at, and
     // from a panel too old to send it.
@@ -93,6 +95,7 @@ public class UtilityLibraryRow
             detonation_position = new Vec3(land_x ?? 0f, land_y ?? 0f, land_z ?? 0f),
             flight_time = (flight_time_ms ?? 0) / 1000f,
             approach = UtilityApproachPoint.ToSamples(approach),
+            bots = bots ?? new List<LineupBot>(),
         };
 
         // A seed is one thing, not six numbers, so it is taken whole or not at

@@ -137,6 +137,7 @@ public partial class UtilityPracticePlugin
         thrown.side = player.Controller.Team == Team.CT ? "CT" : "TERRORIST";
         thrown.visibility = nameof(eLineupVisibility.Private);
         thrown.plugin_version = ModuleVersion;
+        thrown.bots = LineupBots.Snapshot(_bots, MaxBots);
 
         _library.Add(steamId, thrown);
 
@@ -156,6 +157,11 @@ public partial class UtilityPracticePlugin
         _replay.ShowMarkersFor(player, thrown);
 
         Tell(steamId, $" {ChatColors.Green}saved {ChatColors.Default}{name}");
+
+        if (thrown.bots.Count > 0)
+        {
+            Toast(player, $"Saved · {BotCount(thrown.bots.Count)} kept with it");
+        }
 
         // A smoke saved straight after it went off is still spreading, and the
         // panel keeps the first cloud a lineup gets. The save waits the few
