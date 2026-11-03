@@ -512,6 +512,8 @@ public class MatchManager
 
         _logger.LogInformation($"Setup Match {_matchData.id}");
 
+        StartPlayerNameCheck();
+
         _rankSystem.OnMatchSetup(_matchData);
 
         _surrenderSystem.OnMatchSetup(_matchData);
@@ -1431,15 +1433,14 @@ public class MatchManager
             return;
         }
 
+        name = PlayerNameUtility.Fit(name);
+
         // player.Name is the engine's client name, which never reflects our rename
         if (player.Controller.PlayerName != name)
         {
             player.Controller.PlayerName = name;
             player.Controller.PlayerNameUpdated();
-
-            // force the client to update the player name; firing this unconditionally
-            // rebuilds every scoreboard on each call, which strobes under repeating timers
-            _core.GameEvent.FireToPlayer<EventNextlevelChanged>(player.Slot);
+            RedrawScoreboards();
         }
 
         if (tag != null)
@@ -1472,21 +1473,24 @@ public class MatchManager
             player.Name
         );
 
-        if (
-            member == null
-            || string.IsNullOrEmpty(member.name)
-            || player.Controller.PlayerName == member.name
-        )
+        if (member == null || string.IsNullOrEmpty(member.name))
+        {
+            return;
+        }
+
+        string name = PlayerNameUtility.Fit(member.name);
+
+        if (player.Controller.PlayerName == name)
         {
             return;
         }
 
         _logger.LogInformation(
-            $"Restoring lineup name for {player.SteamID}: {player.Controller.PlayerName} -> {member.name}"
+            $"Restoring lineup name for {player.SteamID}: {player.Controller.PlayerName} -> {name}"
         );
 
         // keep the current tag so ready, camera and role tags survive
-        UpdatePlayerName(player, member.name, player.Controller.Clan);
+        UpdatePlayerName(player, name, player.Controller.Clan);
     }
 
     public void RestorePlayerNames()
@@ -1530,6 +1534,46 @@ public class MatchManager
         RestorePlayerNames();
     }
 
+    private const float PlayerNameCheckSeconds = 1.0f;
+
+    private CancellationTokenSource? _playerNameCheckTimer;
+
+    // CS2 also puts one player's Steam name back mid-match, with no event to catch it
+    private void StartPlayerNameCheck()
+    {
+        if (_playerNameCheckTimer != null)
+        {
+            return;
+        }
+
+        _playerNameCheckTimer = TimerUtility.Repeat(PlayerNameCheckSeconds, RestorePlayerNames);
+    }
+
+    private void StopPlayerNameCheck()
+    {
+        TimerUtility.Kill(_playerNameCheckTimer);
+        _playerNameCheckTimer = null;
+    }
+
+    private bool _scoreboardRedrawQueued;
+
+    // a client only redraws another player's name on nextlevel_changed, and each one
+    // rebuilds every open scoreboard, so send it to everyone at most once a tick
+    private void RedrawScoreboards()
+    {
+        if (_scoreboardRedrawQueued)
+        {
+            return;
+        }
+
+        _scoreboardRedrawQueued = true;
+        _core.Scheduler.NextTick(() =>
+        {
+            _scoreboardRedrawQueued = false;
+            _core.GameEvent.Fire<EventNextlevelChanged>();
+        });
+    }
+
     public void SetupBroadcast()
     {
         if (_matchData == null || IsMapFinished())
@@ -1567,6 +1611,7 @@ public class MatchManager
         TimerUtility.Kill(_resumeMessageTimer);
         TimerUtility.Kill(_mapChangeCountdownTimer);
         StopPlaycastWindowHeartbeat();
+        StopPlayerNameCheck();
 
         _currentMapStatus = eMapStatus.Unknown;
         _configuredMapId = null;
