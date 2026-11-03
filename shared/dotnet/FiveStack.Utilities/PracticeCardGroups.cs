@@ -5,12 +5,23 @@ namespace FiveStack.Utilities;
 // them rather than listed by name.
 public static class PracticeCardGroups
 {
-    // Blind for at least this long with nothing to see is a flash that worked.
-    public const float WorkedWhiteSeconds = 1f;
+    // Judged on the same seconds the card shows, or a row reading 3.0s sits
+    // above a foot saying nobody was blind for one.
+    public const float WorkedSeconds = 1f;
 
     public record FlashHit(float Seconds, float White, bool Target, bool Bad);
 
     public record Group(string Label, int Count, float Seconds, float White, bool Bad);
+
+    public static int Worked(IReadOnlyList<FlashHit> hits)
+    {
+        return hits.Count(hit => hit.Target && Blinded(hit));
+    }
+
+    private static bool Blinded(FlashHit hit)
+    {
+        return MathF.Round(hit.Seconds, 1, MidpointRounding.AwayFromZero) >= WorkedSeconds;
+    }
 
     public static IReadOnlyList<Group> Flash(IReadOnlyList<FlashHit> hits)
     {
@@ -28,8 +39,8 @@ public static class PracticeCardGroups
             }
         }
 
-        Add("fully blind", hits.Where(hit => hit.Target && hit.White >= WorkedWhiteSeconds), false);
-        Add("dazzled", hits.Where(hit => hit.Target && hit.White < WorkedWhiteSeconds), false);
+        Add("blinded", hits.Where(hit => hit.Target && Blinded(hit)), false);
+        Add("dazzled", hits.Where(hit => hit.Target && !Blinded(hit)), false);
         Add("your side", hits.Where(hit => hit.Bad), true);
 
         return groups;
