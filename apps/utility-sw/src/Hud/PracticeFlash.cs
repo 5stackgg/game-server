@@ -6,7 +6,7 @@ namespace UtilityPractice;
 
 // What a flash did: everybody it caught, for how long, and how much of that
 // was seeing nothing at all. One number in chat said a flash had landed; it
-// did not say on whom, or whether "2.1 seconds" meant blind or merely dazzled.
+// did not say on whom.
 public partial class UtilityPracticePlugin
 {
     private class FlashHit

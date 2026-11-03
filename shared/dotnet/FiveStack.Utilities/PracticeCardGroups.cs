@@ -15,7 +15,12 @@ public static class PracticeCardGroups
 
     public static int Worked(IReadOnlyList<FlashHit> hits)
     {
-        return hits.Count(hit => hit.Target && hit.Seconds >= WorkedSeconds);
+        return hits.Count(hit => hit.Target && Blinded(hit));
+    }
+
+    private static bool Blinded(FlashHit hit)
+    {
+        return MathF.Round(hit.Seconds, 1, MidpointRounding.AwayFromZero) >= WorkedSeconds;
     }
 
     public static IReadOnlyList<Group> Flash(IReadOnlyList<FlashHit> hits)
@@ -34,8 +39,8 @@ public static class PracticeCardGroups
             }
         }
 
-        Add("blinded", hits.Where(hit => hit.Target && hit.Seconds >= WorkedSeconds), false);
-        Add("dazzled", hits.Where(hit => hit.Target && hit.Seconds < WorkedSeconds), false);
+        Add("blinded", hits.Where(hit => hit.Target && Blinded(hit)), false);
+        Add("dazzled", hits.Where(hit => hit.Target && !Blinded(hit)), false);
         Add("your side", hits.Where(hit => hit.Bad), true);
 
         return groups;

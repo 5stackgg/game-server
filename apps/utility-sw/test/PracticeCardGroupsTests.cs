@@ -51,6 +51,27 @@ public class PracticeCardGroupsTests
     }
 
     [Fact]
+    public void ARowThatReadsASecondCountsAsASecond()
+    {
+        Assert.Equal(1, PracticeCardGroups.Worked(new List<PracticeCardGroups.FlashHit> { new(0.96f, 0f, Target: true, Bad: false) }));
+        Assert.Equal(1, PracticeCardGroups.Worked(new List<PracticeCardGroups.FlashHit> { new(1f, 0f, Target: true, Bad: false) }));
+        Assert.Equal(0, PracticeCardGroups.Worked(new List<PracticeCardGroups.FlashHit> { new(0.94f, 0f, Target: true, Bad: false) }));
+    }
+
+    [Fact]
+    public void UnderASecondIsDazzledAndStillOnTheCard()
+    {
+        var hits = new List<PracticeCardGroups.FlashHit>
+        {
+            new(3.0f, 0f, Target: true, Bad: false),
+            new(0.8f, 0f, Target: true, Bad: false),
+            new(0.6f, 0f, Target: true, Bad: false),
+        };
+
+        Assert.Equal(new[] { ("blinded", 1), ("dazzled", 2) }, PracticeCardGroups.Flash(hits).Select(group => (group.Label, group.Count)));
+    }
+
+    [Fact]
     public void AFireCountsWhoItReachedNotHowMuch()
     {
         var burns = Enumerable
