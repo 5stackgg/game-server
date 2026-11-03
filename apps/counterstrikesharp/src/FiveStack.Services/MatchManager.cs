@@ -525,6 +525,8 @@ public class MatchManager
 
         _logger.LogInformation($"Setup Match {_matchData.id}");
 
+        StartPlayerNameCheck();
+
         _rankSystem.OnMatchSetup(_matchData);
 
         _surrenderSystem.OnMatchSetup(_matchData);
@@ -1441,10 +1443,7 @@ public class MatchManager
                 "CBasePlayerController",
                 "m_iszPlayerName"
             );
-
-            // force the client to update the player name; firing this unconditionally
-            // rebuilds every scoreboard on each call, which strobes under repeating timers
-            new EventNextlevelChanged(false).FireEventToClient(player);
+            RedrawScoreboards();
         }
 
         if (tag != null)
@@ -1535,6 +1534,50 @@ public class MatchManager
         RestorePlayerNames();
     }
 
+    private const float PlayerNameCheckSeconds = 1.0f;
+
+    private Timer? _playerNameCheckTimer;
+
+    // CS2 also puts one player's Steam name back mid-match, with no event to catch it
+    private void StartPlayerNameCheck()
+    {
+        if (_playerNameCheckTimer != null)
+        {
+            return;
+        }
+
+        _playerNameCheckTimer = TimerUtility.AddTimer(
+            PlayerNameCheckSeconds,
+            RestorePlayerNames,
+            TimerFlags.REPEAT
+        );
+    }
+
+    private void StopPlayerNameCheck()
+    {
+        _playerNameCheckTimer?.Kill();
+        _playerNameCheckTimer = null;
+    }
+
+    private bool _scoreboardRedrawQueued;
+
+    // a client only redraws another player's name on nextlevel_changed, and each one
+    // rebuilds every open scoreboard, so send it to everyone at most once a tick
+    private void RedrawScoreboards()
+    {
+        if (_scoreboardRedrawQueued)
+        {
+            return;
+        }
+
+        _scoreboardRedrawQueued = true;
+        Server.NextFrame(() =>
+        {
+            _scoreboardRedrawQueued = false;
+            new EventNextlevelChanged(false).FireEvent(false);
+        });
+    }
+
     public void SetupBroadcast()
     {
         if (_matchData == null || IsMapFinished())
@@ -1576,6 +1619,7 @@ public class MatchManager
         _resumeMessageTimer?.Kill();
         _mapChangeCountdownTimer?.Kill();
         StopPlaycastWindowHeartbeat();
+        StopPlayerNameCheck();
 
         _currentMapStatus = eMapStatus.Unknown;
         _configuredMapId = null;
