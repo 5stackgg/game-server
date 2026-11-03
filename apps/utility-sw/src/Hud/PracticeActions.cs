@@ -177,7 +177,17 @@ public partial class UtilityPracticePlugin
                             "Place A Bot",
                             _bots.Count == 0 ? "where I stand" : $"{_bots.Count} of {MaxBots}",
                             Disabled: BotSlotsLeft() == 0
-                        ),
+                        )
+                        {
+                            Quick = new WheelItem?[]
+                            {
+                                new WheelItem(
+                                    "keepbots",
+                                    _bots.Count == 0 ? "Clear Lineup Bots" : "Keep On Lineup",
+                                    Disabled: KeepTarget(player) == null
+                                ),
+                            },
+                        },
                         new WheelItem(
                             "nobots",
                             "Remove Bots",
@@ -905,6 +915,14 @@ public partial class UtilityPracticePlugin
             case "nobots":
                 ClearBots();
                 Toast(player, "Bots removed");
+
+                break;
+            case "lineupbots":
+                SpawnLineupBots(player);
+
+                break;
+            case "keepbots":
+                KeepBotsOnLineup(player);
 
                 break;
             case "spawns":

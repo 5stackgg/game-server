@@ -56,6 +56,9 @@ public class LineupRecord
     // for a throw made standing still.
     public List<ApproachSample> approach { get; set; } = new List<ApproachSample>();
 
+    // The bots that stand for this throw, as the player left them.
+    public List<LineupBot> bots { get; set; } = new List<LineupBot>();
+
     // The measured bloom, when the panel has one. Arrives with the trajectory
     // artifact rather than with the library row, and is absent for everything
     // that is not a smoke.

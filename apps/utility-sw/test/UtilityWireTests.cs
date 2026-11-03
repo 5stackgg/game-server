@@ -204,6 +204,63 @@ public class UtilityWireTests
     }
 
     [Fact]
+    public void BotsAreSentInTheApisSpelling()
+    {
+        LineupRecord lineup = Lineup();
+        lineup.bots = new List<LineupBot>
+        {
+            new() { x = 1032.5f, y = 1879f, z = 549f, yaw = 90f },
+            new() { x = -20f, y = 40.25f, z = -5f, yaw = -179.5f },
+        };
+
+        string json = JsonSerializer.Serialize(
+            UtilityIngestPayload.From(lineup),
+            PracticeJson.Options
+        );
+
+        Assert.Contains(
+            "\"bots\":[{\"x\":1032.5,\"y\":1879,\"z\":549,\"yaw\":90},"
+                + "{\"x\":-20,\"y\":40.25,\"z\":-5,\"yaw\":-179.5}]",
+            json
+        );
+    }
+
+    [Fact]
+    public void AThrowWithNoBotsSendsNone()
+    {
+        string json = JsonSerializer.Serialize(
+            UtilityIngestPayload.From(Lineup()),
+            PracticeJson.Options
+        );
+
+        Assert.DoesNotContain("\"bots\"", json);
+    }
+
+    [Fact]
+    public void BotsComeBackOutOfTheLibrary()
+    {
+        UtilityLibraryRow? row = JsonSerializer.Deserialize<UtilityLibraryRow>(
+            "{\"id\":\"panel-id\",\"bots\":[{\"x\":1,\"y\":2,\"z\":3,\"yaw\":4}]}",
+            PracticeJson.Options
+        );
+
+        LineupBot bot = Assert.Single(row!.ToLineup().bots);
+
+        Assert.Equal((1f, 2f, 3f, 4f), (bot.x, bot.y, bot.z, bot.yaw));
+    }
+
+    [Fact]
+    public void ALibraryRowWithNoBotsHasAnEmptyList()
+    {
+        UtilityLibraryRow? row = JsonSerializer.Deserialize<UtilityLibraryRow>(
+            "{\"id\":\"panel-id\"}",
+            PracticeJson.Options
+        );
+
+        Assert.Empty(row!.ToLineup().bots);
+    }
+
+    [Fact]
     public void AThrowWithNoRunUpSendsNoApproach()
     {
         LineupRecord lineup = Lineup();

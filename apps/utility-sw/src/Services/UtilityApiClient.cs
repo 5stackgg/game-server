@@ -524,14 +524,32 @@ public class UtilityApiClient
         string visibility
     )
     {
-        var payload = new Dictionary<string, object?>
-        {
-            ["steam_id"] = steamId.ToString(),
-            ["name"] = name,
-            ["description"] = description,
-            ["visibility"] = visibility,
-        };
+        return await Patch(
+            lineupId,
+            new Dictionary<string, object?>
+            {
+                ["steam_id"] = steamId.ToString(),
+                ["name"] = name,
+                ["description"] = description,
+                ["visibility"] = visibility,
+            }
+        );
+    }
 
+    public async Task<EditResult> UpdateBots(
+        string lineupId,
+        ulong steamId,
+        IReadOnlyList<LineupBot> bots
+    )
+    {
+        return await Patch(
+            lineupId,
+            new Dictionary<string, object?> { ["steam_id"] = steamId.ToString(), ["bots"] = bots }
+        );
+    }
+
+    private async Task<EditResult> Patch(string lineupId, Dictionary<string, object?> payload)
+    {
         string body;
 
         try
