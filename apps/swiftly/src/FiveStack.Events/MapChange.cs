@@ -17,12 +17,12 @@ public partial class FiveStackPlugin
         await Task.Delay(1000 * 5);
         FiveStack.Utilities.HibernationUtility.NextTick(() =>
         {
-            PublishServerWebsite();
             MatchManager? match = _matchService.GetCurrentMatch();
             match?.SyncActiveMapAfterMapStart();
             match?.Reset();
             _matchEvents.ClearPendingRoundResult();
             _matchService.GetMatchFromApi();
+            PublishServerWebsite();
         });
     }
 
