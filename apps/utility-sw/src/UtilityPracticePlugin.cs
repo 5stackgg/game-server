@@ -194,6 +194,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         _drill.Finished = OnDrillFinished;
         _drill.Shown = UseHud;
         _api.LibraryProgress += OnLibraryProgress;
+        _api.SaveRetried += OnSaveRetried;
+        _api.WithdrawnDeleteFailed += OnWithdrawnDeleteFailed;
 
         WirePlaybook();
         WireDrill();
@@ -332,7 +334,9 @@ public partial class UtilityPracticePlugin : BasePlugin
         if (hotReload)
         {
             string current = Core.Engine.GlobalVars.MapName.ToString();
+            _api.Map = current;
             _library.SetMap(current);
+            _session.WorkshopId = Core.Engine.WorkshopId;
             _session.Map = current;
             ApplyPracticeCfg();
             RefreshEverything();
@@ -461,6 +465,8 @@ public partial class UtilityPracticePlugin : BasePlugin
         _drill.Finished = null;
         _drill.Shown = null;
         _api.LibraryProgress -= OnLibraryProgress;
+        _api.SaveRetried -= OnSaveRetried;
+        _api.WithdrawnDeleteFailed -= OnWithdrawnDeleteFailed;
         if (_hud != null)
         {
             _hud.Clicked -= OnHudClicked;
@@ -1665,7 +1671,7 @@ public partial class UtilityPracticePlugin : BasePlugin
             return name;
         }
 
-        if (state.Results[state.Index].client_id != lineup.client_id)
+        if (!PracticeSaveUtility.SameLineup(lineup)(state.Results[state.Index]))
         {
             return name;
         }
@@ -1926,6 +1932,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         DrainLibraryLoads();
         DrainPendingMapLoad();
         KeepWorldsCurrent();
+        _ = _api.Second();
     }
 
     // Nobody stays dead on a practice server. Rejoining while dead, falling off
@@ -2209,6 +2216,9 @@ public partial class UtilityPracticePlugin : BasePlugin
 
     private void OnMapLoad(string mapName)
     {
+        // First: settling the old map's saves below must see the new one.
+        _api.Map = mapName;
+
         // A take does not survive the level it was staged on: its camera and
         // its thrower's pawn went with the map.
         _director.Reset(null);
@@ -2224,8 +2234,10 @@ public partial class UtilityPracticePlugin : BasePlugin
         ForgetStacks();
         ForgetEveryVerdict();
         _mapChoices.Clear();
+        _earlier.Clear();
         _flashes.Clear();
-        // A save held for a smoke on the old map goes now, without it.
+        // A save held for a smoke on the old map stops now: the panel has moved
+        // on, and would file it under this one.
         _voxels.Reset();
         _recorder.Reset();
         _playbook.Reset();
@@ -2248,6 +2260,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         }
 
         _library.SetMap(mapName);
+        _session.WorkshopId = Core.Engine.WorkshopId;
         _session.Map = mapName;
         _callouts.MapLoaded();
 
@@ -2346,13 +2359,13 @@ public partial class UtilityPracticePlugin : BasePlugin
             // stepped through until the player ran a search. If they can SEE
             // them, they can walk them.
             //
-            // Only when the panel pushed, or when there is nothing to lose: the
-            // drain retries at a moment nobody chose, and replacing the results
-            // of a .load or a target picked off the minimap turns somebody's
-            // walk into the whole map halfway through it.
+            // Only when there is nothing to lose: a refresh comes at a moment
+            // nobody chose, a panel push for somebody else's delete included, and
+            // replacing the results of a .load or a target picked off the minimap
+            // turns somebody's walk into the whole map halfway through it.
             PracticeState state = _system.StateFor(steamId);
 
-            if (pushed || state.Results.Count == 0)
+            if (state.Results.Count == 0)
             {
                 state.Results.Clear();
                 state.Results.AddRange(library);
@@ -2393,25 +2406,27 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         PracticeState state = _system.StateFor(steamId);
 
-        state.Results.RemoveAll(Gone);
+        state.Index = PracticeSaveUtility.PruneResults(state.Results, state.Index, Gone);
+        PracticeSaveUtility.RefreshResults(state.Results, library);
 
-        if (state.Loaded == null || !Gone(state.Loaded))
+        if (state.Loaded != null && Gone(state.Loaded))
         {
-            return;
+            LineupRecord gone = state.Loaded;
+
+            state.Loaded = null;
+            state.Index = -1;
+            _replay.ClearGhosts(steamId);
+
+            IPlayer? player = _system.Find(steamId);
+
+            if (player != null && player.IsValid)
+            {
+                Toast(player, $"{PracticeLineupUtility.TitleCase(DrillUtility.Name(gone))} was removed on the panel");
+            }
         }
 
-        LineupRecord gone = state.Loaded;
-
-        state.Loaded = null;
-        state.Index = -1;
-        _replay.ClearGhosts(steamId);
-
-        IPlayer? player = _system.Find(steamId);
-
-        if (player != null && player.IsValid)
-        {
-            Toast(player, $"{PracticeLineupUtility.TitleCase(DrillUtility.Name(gone))} was removed on the panel");
-        }
+        // Last: moving a drill on loads its next step.
+        _drill.LineupsRemoved(steamId, Gone);
     }
 
     // A player's markers are their own, drawn from their library after their

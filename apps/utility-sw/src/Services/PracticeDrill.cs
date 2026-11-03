@@ -144,6 +144,49 @@ public class PracticeDrill
         return true;
     }
 
+    // A step that cannot be scored ignores every throw, so a lineup the player
+    // deleted has to leave the run or the run stalls with no word why.
+    public void LineupDeleted(ulong steamId, string clientId)
+    {
+        if (!_runs.TryGetValue(steamId, out PracticeDrillRun? run))
+        {
+            return;
+        }
+
+        bool wasCurrent = run.Remove(clientId);
+
+        if (run.Length == 0)
+        {
+            run.End(eDrillEnd.Stopped);
+            Finish(steamId, run);
+            return;
+        }
+
+        if (wasCurrent)
+        {
+            Advance(steamId, run);
+        }
+    }
+
+    public void LineupsRemoved(ulong steamId, Predicate<LineupRecord> gone)
+    {
+        if (!_runs.TryGetValue(steamId, out PracticeDrillRun? run))
+        {
+            return;
+        }
+
+        List<string> removed = run
+            .Queue.Where(row => gone(row))
+            .Select(row => row.client_id)
+            .Distinct()
+            .ToList();
+
+        foreach (string clientId in removed)
+        {
+            LineupDeleted(steamId, clientId);
+        }
+    }
+
     public bool Skip(ulong steamId)
     {
         if (!_runs.TryGetValue(steamId, out PracticeDrillRun? run) || !run.Skip())

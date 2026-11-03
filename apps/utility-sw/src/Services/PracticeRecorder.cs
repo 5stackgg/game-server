@@ -163,6 +163,9 @@ public class PracticeRecorder
 
     public void Reset()
     {
+        // A throw belongs to the map it was thrown on, and .save stamps whatever
+        // map the server is on now.
+        _history.Clear();
         _armed.Clear();
         _stationary.Clear();
         _settling.Clear();

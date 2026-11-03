@@ -157,11 +157,7 @@ public class UtilityWireTests
         Assert.DoesNotContain("[[", json);
     }
 
-    // Sending a field the payload does not name is not harmless: the API
-    // derives the map from the server's own match row and rejects a mismatch.
     [Theory]
-    [InlineData("\"map\"")]
-    [InlineData("\"client_id\"")]
     [InlineData("\"initial_position\"")]
     [InlineData("\"initial_velocity\"")]
     [InlineData("\"bounces\"")]
@@ -183,6 +179,25 @@ public class UtilityWireTests
         );
 
         Assert.DoesNotContain(absent, json);
+    }
+
+    [Fact]
+    public void AResultKeepsOneThrowIdSoARetryCannotCountItTwice()
+    {
+        UtilityPracticeResultPayload payload = UtilityPracticeResultPayload.For(
+            null,
+            Guid.Empty,
+            "lineup",
+            76561198000000001,
+            new Vec3(1f, 2f, 3f),
+            null
+        );
+
+        string first = JsonSerializer.Serialize(payload, PracticeJson.Options);
+        string again = JsonSerializer.Serialize(payload, PracticeJson.Options);
+
+        Assert.Equal(first, again);
+        Assert.True(Guid.TryParse(JsonDocument.Parse(first).RootElement.GetProperty("throw_id").GetString(), out _));
     }
 
     [Fact]

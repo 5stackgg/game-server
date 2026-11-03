@@ -496,6 +496,108 @@ public class PracticeDrillRunTests
         Assert.Equal(0, theirs.Hits);
         Assert.Equal(1, theirs.Misses);
     }
+
+    private static void Step(PracticeDrillRun run)
+    {
+        Assert.NotNull(run.Next());
+    }
+
+    [Fact]
+    public void ADeletedStepLeavesTheRunSoTheNextOneCanBeThrown()
+    {
+        PracticeDrillRun run = Run("a", "b");
+        Step(run);
+
+        Assert.True(run.Remove("a"));
+
+        Assert.Null(run.Current);
+        Assert.Equal(1, run.Length);
+        Assert.Equal("b", run.Next()?.client_id);
+        Assert.True(run.Thrown("Smoke", Now));
+    }
+
+    [Fact]
+    public void ADeletedStepWithRepsLeftDoesNotComeBack()
+    {
+        PracticeDrillRun run = new(new[] { Lineup("a"), Lineup("b") }, reps: 3);
+        Step(run);
+
+        run.Remove("a");
+
+        Assert.Equal("b", run.Next()?.client_id);
+    }
+
+    [Fact]
+    public void ADeletedStepDoesNotComeRoundAgainInAnEndlessRun()
+    {
+        PracticeDrillRun run = new(new[] { Lineup("a"), Lineup("b") }, endless: true);
+        Step(run);
+
+        run.Remove("a");
+
+        Assert.Equal("b", run.Next()?.client_id);
+        Assert.Equal("b", run.Next()?.client_id);
+    }
+
+    [Fact]
+    public void DeletingAnEarlierStepKeepsThePlayerWhereTheyAre()
+    {
+        PracticeDrillRun run = Run("a", "b", "c");
+        Step(run);
+        Step(run);
+
+        Assert.False(run.Remove("a"));
+
+        Assert.Equal("b", run.Current?.client_id);
+        Assert.Equal("c", run.Next()?.client_id);
+    }
+
+    [Fact]
+    public void DeletingALaterStepLeavesTheCurrentOneAlone()
+    {
+        PracticeDrillRun run = Run("a", "b");
+        Step(run);
+
+        Assert.False(run.Remove("b"));
+
+        Assert.Equal("a", run.Current?.client_id);
+        Assert.Equal(1, run.Length);
+    }
+
+    [Fact]
+    public void DeletingTheOnlyLineupLeavesNothingToRun()
+    {
+        PracticeDrillRun run = Run("a");
+        Step(run);
+
+        Assert.True(run.Remove("a"));
+
+        Assert.Equal(0, run.Length);
+    }
+
+    [Fact]
+    public void ADeletedStepIsCountedAsSkipped()
+    {
+        PracticeDrillRun run = Run("a", "b");
+        Step(run);
+
+        run.Remove("a");
+
+        Assert.Equal(1, run.Skipped);
+        Assert.Equal(0, run.Streak);
+    }
+
+    [Fact]
+    public void AnAnswerOwedOnADeletedStepIsDropped()
+    {
+        PracticeDrillRun run = Run("a", "b");
+        Step(run);
+        run.Thrown("Smoke", Now);
+
+        run.Remove("a");
+
+        Assert.False(run.Waiting);
+    }
 }
 
 // Fading the crosshair across a run is what makes the last rep worth

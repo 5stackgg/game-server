@@ -13,6 +13,10 @@ public class UtilityPracticeResultPayload
     public string? utility_lineup_id { get; set; }
     public string? steam_id { get; set; }
 
+    // Set once here. A queued payload replays as it is, so a retry of a throw
+    // the panel already counted is not counted again.
+    public string? throw_id { get; set; }
+
     public float? land_x { get; set; }
     public float? land_y { get; set; }
     public float? land_z { get; set; }
@@ -34,6 +38,7 @@ public class UtilityPracticeResultPayload
             session_id = sessionId == Guid.Empty ? null : sessionId.ToString(),
             utility_lineup_id = lineupId,
             steam_id = steamId.ToString(),
+            throw_id = Guid.NewGuid().ToString(),
             land_x = landing.x,
             land_y = landing.y,
             land_z = landing.z,

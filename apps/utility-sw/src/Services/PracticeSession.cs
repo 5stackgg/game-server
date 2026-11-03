@@ -36,6 +36,9 @@ public class PracticeSession
     // a changelevel takes.
     public string? Map { get; set; }
 
+    // Read on the game thread with Map: this class fetches off it.
+    public string? WorkshopId { get; set; }
+
     private int _refreshing;
     private DateTime _lastAttempt = DateTime.MinValue;
 
@@ -92,7 +95,7 @@ public class PracticeSession
             return;
         }
 
-        PracticeSessionData? session = await _api.Session(Map, relay);
+        PracticeSessionData? session = await _api.Session(Map, WorkshopId, relay);
 
         // A failed fetch must not empty the roster: everyone already connected
         // stays connected, and the door keeps the policy it had.

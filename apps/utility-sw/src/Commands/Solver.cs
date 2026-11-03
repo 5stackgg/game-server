@@ -297,24 +297,7 @@ public partial class UtilityPracticePlugin
 
         // The same hand-off .save makes, so a solved lineup reaches the panel by
         // the one path that already retries.
-        _ = Task.Run(async () =>
-        {
-            string? id = await _api.Ingest(lineup);
-
-            Core.Scheduler.NextTick(() =>
-            {
-                if (id != null)
-                {
-                    lineup.id = id;
-                    return;
-                }
-
-                Tell(
-                    steamId,
-                    $" {ChatColors.Red}{lineup.name} could not reach the panel; it will retry"
-                );
-            });
-        });
+        IngestSave(steamId, lineup);
     }
 
     private void Refuse(ICommandContext context, CalibrationReport report)
