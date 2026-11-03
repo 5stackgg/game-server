@@ -18,6 +18,7 @@ public class UtilitySessionRow
     public List<string>? steam_ids { get; set; }
     public List<string>? allowed_steam_ids { get; set; }
     public UtilityPlaybook? playbook { get; set; }
+    public double? afk_kick_minutes { get; set; }
 
     public PracticeSessionData ToSession()
     {
@@ -29,6 +30,7 @@ public class UtilitySessionRow
             map = map_name ?? map ?? "",
             allowed_steam_ids = steam_ids ?? allowed_steam_ids ?? new List<string>(),
             playbook = playbook,
+            afk_kick_minutes = FiveStack.Utilities.PracticeAfk.ClampMinutes(afk_kick_minutes),
         };
     }
 

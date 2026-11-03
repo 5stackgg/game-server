@@ -179,6 +179,8 @@ public partial class UtilityPracticePlugin
 
     private void OnKey(IOnClientKeyStateChangedEvent @event)
     {
+        Stir(@event.PlayerId);
+
         KeyKind key = @event.Key;
 
         if (key is not (KeyKind.Tab or KeyKind.R or KeyKind.Ctrl or KeyKind.Shift or KeyKind.F))

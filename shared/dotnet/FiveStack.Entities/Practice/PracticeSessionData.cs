@@ -13,4 +13,7 @@ public class PracticeSessionData
 
     // Null unless the panel has loaded an execute onto this session.
     public UtilityPlaybook? playbook { get; set; }
+
+    // 0 is off, and is what an api from before the setting sends.
+    public int afk_kick_minutes { get; set; }
 }

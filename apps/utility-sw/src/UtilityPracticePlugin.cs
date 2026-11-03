@@ -203,6 +203,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         _tickHandler = OnGameTick;
         Core.Event.OnTick += _tickHandler;
         WireKeys();
+        WireAfk();
 
         if (_hud != null)
         {
@@ -480,6 +481,7 @@ public partial class UtilityPracticePlugin : BasePlugin
 
         _prompt?.Stop();
         UnwireKeys();
+        UnwireAfk();
 
         if (_tickHandler != null)
         {
@@ -1038,6 +1040,11 @@ public partial class UtilityPracticePlugin : BasePlugin
             catch
             {
                 continue;
+            }
+
+            if (buttons != 0 && player.IsAlive)
+            {
+                Stir(player.PlayerID);
             }
 
             bool down = (buttons & InUse) != 0;
@@ -1932,6 +1939,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         DrainLibraryLoads();
         DrainPendingMapLoad();
         KeepWorldsCurrent();
+        AfkWatch();
         _ = _api.Second();
     }
 
@@ -2144,6 +2152,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         SendHeldSaves(steamId);
         _drill.Forget(steamId);
         _system.Forget(steamId);
+        _afk.Forget(steamId);
 
         _replay.ForgetPlayer(steamId);
         _shown.Remove(steamId);
@@ -2223,6 +2232,7 @@ public partial class UtilityPracticePlugin : BasePlugin
         // its thrower's pawn went with the map.
         _director.Reset(null);
         _hud?.Reset();
+        _afk.Reset();
         _menus.Clear();
         _shown.Clear();
         _standingIn.Clear();
