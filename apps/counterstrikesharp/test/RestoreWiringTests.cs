@@ -164,33 +164,47 @@ public class RestoreWiringTests
     }
 
     [Fact]
-    public void AHoldOnlyComesBackForARoundThatCanStillLoad()
+    public void AHoldAsksWhereToGoAndOnlySpeaksWhenItMoves()
     {
-        string check = Method(Backups(), "private bool CanHoldAgain(int round)");
-        int asked = check.IndexOf("RoundRestoreGateUtility.HoldsAgain(", StringComparison.Ordinal);
-        int told = check.IndexOf("RoundRestoreGateUtility.BackupGone(round)", StringComparison.Ordinal);
+        string check = Method(Backups(), "private bool HoldStaysOn(int round)");
+        int asked = check.IndexOf("RoundRestoreGateUtility.RoundToHold(", StringComparison.Ordinal);
+        int stays = check.IndexOf("if (next == round)", StringComparison.Ordinal);
+        int told = check.IndexOf("RoundRestoreGateUtility.WhyTheHoldMoved(round, next)", StringComparison.Ordinal);
+        int moved = check.IndexOf("HoldForRestore(moved);", StringComparison.Ordinal);
         int writing = check.IndexOf("SetBackupWriting(!IsHoldingForRestore());", StringComparison.Ordinal);
 
-        Assert.Contains("RoundRestoreGateUtility.LatestBackup(", check);
-        Assert.True(asked >= 0 && told > asked, "players aren't told why the hold ended");
-        Assert.True(writing > told, "backups stay off with nothing holding them");
+        Assert.Contains("_gameServer.GetTotalRoundsPlayed()", check);
+        Assert.True(asked >= 0 && stays > asked, "a hold stays on a round that can't load");
+        Assert.True(told > stays, "players are told again by a hold that didn't move");
+        Assert.True(moved > told, "a new hold is offered before players hear why");
+        Assert.True(writing > moved, "backups come on with a hold still in place");
+        Assert.DoesNotContain("ReplayMap", check);
     }
 
     [Fact]
-    public void EveryHoldThatComesBackChecksItCanStillLoad()
+    public void EveryHoldThatComesBackAsksWhereItBelongs()
     {
         string hold = Method(Backups(), "private void ReturnToHold(int round)");
         string offer = Method(Backups(), "public void OfferPendingRestore()");
         string vote = Method(Backups(), "public void RequestRestoreBackupRound(");
 
         Assert.True(
-            hold.IndexOf("CanHoldAgain(round)", StringComparison.Ordinal) >= 0
-                && hold.IndexOf("CanHoldAgain(round)", StringComparison.Ordinal)
+            hold.IndexOf("HoldStaysOn(round)", StringComparison.Ordinal) >= 0
+                && hold.IndexOf("HoldStaysOn(round)", StringComparison.Ordinal)
                     < hold.IndexOf("HoldForRestore(round);", StringComparison.Ordinal),
             "a hold comes back for a round that can't load"
         );
-        Assert.Matches(@"CanHoldAgain\(round\)\s*\)\s*\{\s*_restore\.Hold\(", offer);
-        Assert.Matches(@"CanHoldAgain\(round\)\s*\)\s*\{\s*_restore\.Hold\(", vote);
+        Assert.Matches(@"HoldStaysOn\(round\)\s*\)\s*\{\s*_restore\.Hold\(", offer);
+        Assert.Matches(@"HoldStaysOn\(round\)\s*\)\s*\{\s*_restore\.Hold\(", vote);
+    }
+
+    [Fact]
+    public void AResumeOnNothingToLoadSaysWhy()
+    {
+        Assert.Matches(
+            @"ResumeRefusal\(\s*_restore\.OwedRound,\s*_restore\.NeedsRestartMap\s*\)",
+            Method(Backups(), "public void TellWhyResumeWaits()")
+        );
     }
 
     [Fact]

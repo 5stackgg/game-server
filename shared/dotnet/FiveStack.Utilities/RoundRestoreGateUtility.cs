@@ -36,19 +36,52 @@ namespace FiveStack.Utilities
                 && (offline || rounds.Any(backup => backup.round == round));
         }
 
-        // A hold on a round that can't load would come back for ever.
-        public static bool HoldsAgain(eMapStatus status, bool hasBackup)
+        public const string RestartMapNeeded =
+            " No round can be restored, an admin needs to use Restart Map.";
+
+        // Where a hold goes when it comes back, as a hold on a round that can't
+        // load would come back for ever. The newest round the backend can load, or
+        // NothingToLoad if it has none. Null when no recorded round is ahead of the
+        // server: there is nothing left to play over.
+        public static int? RoundToHold(
+            eMapStatus status,
+            IEnumerable<BackupRound> rounds,
+            int round,
+            int totalRoundsPlayed
+        )
         {
-            return IsInPlay(status) && hasBackup;
+            if (!IsInPlay(status))
+            {
+                return null;
+            }
+
+            if (LatestBackup(rounds, round) != null)
+            {
+                return round;
+            }
+
+            if (HighestRecordedRound(rounds, 0) <= totalRoundsPlayed)
+            {
+                return null;
+            }
+
+            return HighestRestorableRound(rounds, 0);
         }
 
-        public static string BackupGone(int round)
+        public static string WhyTheHoldMoved(int round, int? next)
         {
-            return $" Round {round} can't be restored, its backup is gone.";
+            return next == RoundRestoreState.NothingToLoad
+                ? RestartMapNeeded
+                : $" Round {round} can't be restored, its backup is gone.";
         }
 
-        public static string? ResumeRefusal(int? owedRound)
+        public static string? ResumeRefusal(int? owedRound, bool needsRestartMap = false)
         {
+            if (needsRestartMap)
+            {
+                return RestartMapNeeded;
+            }
+
             return owedRound == null
                 ? null
                 : $" Round {owedRound} is still being restored, the match can't resume yet.";

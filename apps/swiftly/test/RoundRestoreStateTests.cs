@@ -380,25 +380,164 @@ public class RoundRestoreStateTests
         Assert.False(RoundRestoreGateUtility.IsUsableOnDisk(undone, 5, true));
     }
 
-    [Theory]
-    [InlineData(eMapStatus.Live, true, true)]
-    [InlineData(eMapStatus.Paused, true, true)]
-    [InlineData(eMapStatus.Live, false, false)]
-    [InlineData(eMapStatus.Warmup, true, false)]
-    [InlineData(eMapStatus.Finished, true, false)]
-    public void AHoldOnlyComesBackForARoundThatCanStillLoad(
-        eMapStatus status,
-        bool hasBackup,
-        bool holds
-    )
+    private static BackupRound Row(int round, string file = "", string deleted = "")
     {
-        Assert.Equal(holds, RoundRestoreGateUtility.HoldsAgain(status, hasBackup));
+        return new BackupRound
+        {
+            round = round,
+            backup_file = file,
+            deleted_at = deleted,
+        };
+    }
+
+    private static int? RoundToHold(BackupRound[] rounds, int round = Round, int played = 0)
+    {
+        return RoundRestoreGateUtility.RoundToHold(eMapStatus.Paused, rounds, round, played);
     }
 
     [Fact]
-    public void PlayersAreToldWhenARoundCanNoLongerBeRestored()
+    public void AHoldStaysOnARoundThatCanStillLoad()
     {
-        Assert.Contains(Round.ToString(), RoundRestoreGateUtility.BackupGone(Round));
+        Assert.Equal(Round, RoundToHold(new[] { Row(5, "kept"), Row(Round, "kept") }));
+    }
+
+    [Fact]
+    public void AGoneBackupFallsBackToTheNewestTheBackendKept()
+    {
+        Assert.Equal(5, RoundToHold(new[] { Row(4, "kept"), Row(5, "kept"), Row(Round) }));
+    }
+
+    [Fact]
+    public void AGoneBackupDoesNotFallBackToARoundARestoreUndid()
+    {
+        BackupRound[] rounds = { Row(4, "kept"), Row(5, "undone", "2026-11-02"), Row(Round) };
+
+        Assert.Equal(4, RoundToHold(rounds));
+    }
+
+    [Fact]
+    public void NoBackupWithRoundsRecordedAheadNeedsRestartMap()
+    {
+        Assert.Equal(RoundRestoreState.NothingToLoad, RoundToHold(new[] { Row(5), Row(Round) }));
+    }
+
+    [Fact]
+    public void NoRowLeftForTheHeldRoundStillProtectsTheOnesAhead()
+    {
+        Assert.Equal(RoundRestoreState.NothingToLoad, RoundToHold(new[] { Row(5) }, played: 2));
+    }
+
+    [Theory]
+    [InlineData(5)]
+    [InlineData(6)]
+    public void NothingRecordedAheadEndsTheHold(int played)
+    {
+        Assert.Null(RoundToHold(new[] { Row(5) }, played: played));
+    }
+
+    [Fact]
+    public void NoRowsAtAllEndsTheHold()
+    {
+        Assert.Null(RoundToHold(Array.Empty<BackupRound>()));
+    }
+
+    [Fact]
+    public void AnOldBackupIsNoReasonToHoldWithNothingAhead()
+    {
+        Assert.Null(RoundToHold(new[] { Row(5, "kept") }, played: 5));
+    }
+
+    [Fact]
+    public void AnOlderBackupStillRecoversRoundsRecordedAhead()
+    {
+        Assert.Equal(3, RoundToHold(new[] { Row(3, "kept"), Row(5) }, played: 4));
+    }
+
+    [Theory]
+    [InlineData(eMapStatus.Warmup)]
+    [InlineData(eMapStatus.Finished)]
+    public void AMapNotInPlayEndsTheHold(eMapStatus status)
+    {
+        BackupRound[] rounds = { Row(5, "kept"), Row(Round, "kept") };
+
+        Assert.Null(RoundRestoreGateUtility.RoundToHold(status, rounds, Round, 0));
+    }
+
+    [Fact]
+    public void AHoldOnNothingToLoadStaysPutSoPlayersAreOnlyToldOnce()
+    {
+        Assert.Equal(
+            RoundRestoreState.NothingToLoad,
+            RoundToHold(new[] { Row(Round) }, RoundRestoreState.NothingToLoad)
+        );
+    }
+
+    [Fact]
+    public void AHoldOnNothingToLoadKeepsTheMatchHeldWithNoVote()
+    {
+        _state.Hold(RoundRestoreState.NothingToLoad, Map);
+
+        Assert.True(_state.NeedsRestartMap);
+        Assert.False(_state.CanOfferVote);
+        Assert.True(_state.HoldingRounds);
+        Assert.True(_state.Resetting);
+    }
+
+    [Fact]
+    public void AnOrdinaryHoldDoesNotNeedRestartMap()
+    {
+        _state.Hold(Round, Map);
+
+        Assert.False(_state.NeedsRestartMap);
+        Assert.True(_state.CanOfferVote);
+    }
+
+    [Fact]
+    public void RestartMapEndsAHoldOnNothingToLoad()
+    {
+        _state.Hold(RoundRestoreState.NothingToLoad, Map);
+        _state.Abandon();
+
+        Assert.False(_state.NeedsRestartMap);
+        Assert.False(_state.HoldingRounds);
+    }
+
+    [Fact]
+    public void AHoldOnNothingToLoadEndsWithItsMap()
+    {
+        _state.Hold(RoundRestoreState.NothingToLoad, Map);
+
+        Assert.True(_state.LeaveMap(OtherMap));
+        Assert.False(_state.HoldingRounds);
+    }
+
+    [Fact]
+    public void PlayersAreToldAnAdminNeedsRestartMap()
+    {
+        Assert.Contains(
+            "Restart Map",
+            RoundRestoreGateUtility.WhyTheHoldMoved(Round, RoundRestoreState.NothingToLoad)
+        );
+    }
+
+    [Theory]
+    [InlineData(5)]
+    [InlineData(null)]
+    public void PlayersAreToldWhichRoundCanNoLongerBeRestored(int? next)
+    {
+        string told = RoundRestoreGateUtility.WhyTheHoldMoved(Round, next);
+
+        Assert.Contains(Round.ToString(), told);
+        Assert.DoesNotContain("Restart Map", told);
+    }
+
+    [Fact]
+    public void AResumeSaysWhyItWaitsForRestartMap()
+    {
+        Assert.Equal(
+            RoundRestoreGateUtility.RestartMapNeeded,
+            RoundRestoreGateUtility.ResumeRefusal(null, needsRestartMap: true)
+        );
     }
 
     [Fact]

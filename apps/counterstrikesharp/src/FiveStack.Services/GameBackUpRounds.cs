@@ -124,7 +124,7 @@ public class GameBackUpRounds
         RequestRestoreBackupRound(round, null, true, recovering: true);
 
         // Refused for another reason: keep holding for the next player.
-        if (!_restore.InProgress && CanHoldAgain(round))
+        if (!_restore.InProgress && HoldStaysOn(round))
         {
             _restore.Hold(round, ActiveMapId());
         }
@@ -187,7 +187,7 @@ public class GameBackUpRounds
     // replay: only players deciding that gives up rounds the backend recorded.
     private void ReturnToHold(int round)
     {
-        if (!CanHoldAgain(round))
+        if (!HoldStaysOn(round))
         {
             return;
         }
@@ -196,25 +196,35 @@ public class GameBackUpRounds
         HoldForRestore(round);
     }
 
-    private bool CanHoldAgain(int round)
+    // False once the hold has moved to another round or ended.
+    private bool HoldStaysOn(int round)
     {
         MatchManager? matchManager = _matchService.GetCurrentMatch();
         eMapStatus status = matchManager?.GetCurrentMapStatus() ?? eMapStatus.Unknown;
-        BackupRound[] rounds = matchManager?.GetCurrentMap()?.rounds ?? Array.Empty<BackupRound>();
+        int? next = RoundRestoreGateUtility.RoundToHold(
+            status,
+            matchManager?.GetCurrentMap()?.rounds ?? Array.Empty<BackupRound>(),
+            round,
+            _gameServer.GetTotalRoundsPlayed()
+        );
 
-        if (
-            RoundRestoreGateUtility.HoldsAgain(
-                status,
-                RoundRestoreGateUtility.LatestBackup(rounds, round) != null
-            )
-        )
+        if (next == round)
         {
             return true;
         }
 
         if (RoundRestoreGateUtility.IsInPlay(status))
         {
-            _gameServer.Message(HudDestination.Alert, RoundRestoreGateUtility.BackupGone(round));
+            _gameServer.Message(
+                HudDestination.Alert,
+                RoundRestoreGateUtility.WhyTheHoldMoved(round, next)
+            );
+        }
+
+        if (next is int moved)
+        {
+            HoldForRestore(moved);
+            return false;
         }
 
         SetBackupWriting(!IsHoldingForRestore());
@@ -291,7 +301,10 @@ public class GameBackUpRounds
 
     public void TellWhyResumeWaits()
     {
-        string? refusal = RoundRestoreGateUtility.ResumeRefusal(_restore.OwedRound);
+        string? refusal = RoundRestoreGateUtility.ResumeRefusal(
+            _restore.OwedRound,
+            _restore.NeedsRestartMap
+        );
 
         if (refusal != null)
         {
@@ -404,7 +417,7 @@ public class GameBackUpRounds
                             HudDestination.Alert,
                             $" Restore round blocked: {refusal}."
                         );
-                        if (recovering && CanHoldAgain(round))
+                        if (recovering && HoldStaysOn(round))
                         {
                             _restore.Hold(round, ActiveMapId());
                         }

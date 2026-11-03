@@ -41,7 +41,7 @@ public class RestoreParityTests
 
     [Theory]
     [InlineData("private void HoldForRestore(int round)")]
-    [InlineData("private bool CanHoldAgain(int round)")]
+    [InlineData("private bool HoldStaysOn(int round)")]
     [InlineData("private void ReturnToHold(int round)")]
     [InlineData("private void ReturnOwedToHold()")]
     [InlineData("private void FailLoad()")]

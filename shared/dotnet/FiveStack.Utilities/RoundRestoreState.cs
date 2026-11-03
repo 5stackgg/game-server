@@ -20,6 +20,11 @@ namespace FiveStack.Utilities
         // the hold early costs a second vote. Waiting costs a few paused minutes.
         public const int OwedSeconds = 300;
 
+        // A hold on this has rounds recorded ahead of it and no backup of any of
+        // them. There is nothing to vote on, and playing would go over them, so it
+        // stays held until Restart Map.
+        public const int NothingToLoad = 0;
+
         private bool _voting;
         private bool _recoveryVote;
         private int _owing;
@@ -44,7 +49,9 @@ namespace FiveStack.Utilities
 
         // Taking a hold to vote on it while something else is running loses it:
         // the vote is refused, and nothing puts the hold back.
-        public bool CanOfferVote => HeldRound != null && !InProgress;
+        public bool CanOfferVote => HeldRound > NothingToLoad && !InProgress;
+
+        public bool NeedsRestartMap => HeldRound == NothingToLoad;
 
         public void Hold(int round, Guid? map = null)
         {
