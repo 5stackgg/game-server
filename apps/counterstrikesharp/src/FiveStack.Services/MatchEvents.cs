@@ -46,14 +46,17 @@ public class MatchEvents
     private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
     private readonly GameServer _gameServer;
+    private readonly RoundRestoreState _restore;
 
     public MatchEvents(
         ILogger<MatchEvents> logger,
         EnvironmentService environmentService,
         MatchService matchService,
-        GameServer gameServer
+        GameServer gameServer,
+        RoundRestoreState restore
     )
     {
+        _restore = restore;
         _logger = logger;
         _matchService = matchService;
         _environmentService = environmentService;
@@ -148,8 +151,31 @@ public class MatchEvents
         PublishGameEvent("mapStatus", data);
     }
 
+    // The api answers whatever reaches it, however late, and an unacknowledged
+    // event is resent. A request given up on has to stop going out, or it can land
+    // on top of what the players decided next.
+    public void WithdrawRestoreRequests()
+    {
+        foreach (var message in _pendingMessages)
+        {
+            if (
+                message.Value.Event.data?.TryGetValue("event", out object? name) == true
+                && name as string == "restoreRound"
+            )
+            {
+                _pendingMessages.TryRemove(message.Key, out _);
+            }
+        }
+    }
+
     public void PublishGameEvent(string Event, Dictionary<string, object> Data)
     {
+        if (RoundRestoreGateUtility.DroppedDuringLoad(Event, _restore.LoadingBackup))
+        {
+            _logger.LogInformation($"Game event '{Event}' dropped: a backup round is loading");
+            return;
+        }
+
         if (_environmentService.IsOfflineMode())
         {
             return;

@@ -12,6 +12,81 @@ namespace FiveStack.Utilities
         // Same for match_state, which the api sends to restart a map from warmup.
         public const string MatchStateRefusedPrefix = "match_state refused:";
 
+        // A restore vote leaves the round running, because mp_pause_match waits for
+        // the next freezetime, so a round ending during one is real and is lost if
+        // the vote fails. A recovery vote is not that: the server is behind the
+        // backend, and anything it reported would land over rounds already kept.
+        public static bool HoldsRoundResults(bool resetting, bool voteOpen, bool recovering)
+        {
+            return resetting && (!voteOpen || recovering);
+        }
+
+        // Only a server behind the backend has anything to protect, and offline
+        // nothing would ever answer.
+        public static bool OwesLoad(bool recovering, bool offline)
+        {
+            return recovering && !offline;
+        }
+
+        // The api refuses a round it has no row for and tells nobody, so a backup
+        // file of one can never load. Offline there is no api to refuse it.
+        public static bool IsUsableOnDisk(IEnumerable<BackupRound> rounds, int round, bool offline)
+        {
+            return !IsUndone(rounds, round)
+                && (offline || rounds.Any(backup => backup.round == round));
+        }
+
+        public const string RestartMapNeeded =
+            " No round can be restored, an admin needs to use Restart Map.";
+
+        // Where a hold goes when it comes back, as a hold on a round that can't
+        // load would come back for ever. The newest round the backend can load, or
+        // NothingToLoad if it has none. Null when no recorded round is ahead of the
+        // server: there is nothing left to play over.
+        public static int? RoundToHold(
+            eMapStatus status,
+            IEnumerable<BackupRound> rounds,
+            int round,
+            int totalRoundsPlayed
+        )
+        {
+            if (!IsInPlay(status))
+            {
+                return null;
+            }
+
+            if (LatestBackup(rounds, round) != null)
+            {
+                return round;
+            }
+
+            if (HighestRecordedRound(rounds, 0) <= totalRoundsPlayed)
+            {
+                return null;
+            }
+
+            return HighestRestorableRound(rounds, 0);
+        }
+
+        public static string WhyTheHoldMoved(int round, int? next)
+        {
+            return next == RoundRestoreState.NothingToLoad
+                ? RestartMapNeeded
+                : $" Round {round} can't be restored, its backup is gone.";
+        }
+
+        public static string? ResumeRefusal(int? owedRound, bool needsRestartMap = false)
+        {
+            if (needsRestartMap)
+            {
+                return RestartMapNeeded;
+            }
+
+            return owedRound == null
+                ? null
+                : $" Round {owedRound} is still being restored, the match can't resume yet.";
+        }
+
         public static string? Refusal(
             bool restoresDisabled,
             bool alreadyRestoring,
@@ -56,6 +131,24 @@ namespace FiveStack.Utilities
             }
 
             return null;
+        }
+
+        // Every stat row the api keeps for a round comes from one of these. A
+        // backup load outlasts what the api clears when it restores a round, so
+        // whatever the engine reports while it runs would stay in the stats.
+        private static readonly HashSet<string> RoundStatEvents = new()
+        {
+            "kill",
+            "assist",
+            "damage",
+            "utility",
+            "flash",
+            "objective",
+        };
+
+        public static bool DroppedDuringLoad(string gameEvent, bool loadingBackup)
+        {
+            return loadingBackup && RoundStatEvents.Contains(gameEvent);
         }
 
         // A map's backups are appended as rounds are played, so a round played

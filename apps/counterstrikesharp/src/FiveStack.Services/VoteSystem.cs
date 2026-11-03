@@ -90,8 +90,23 @@ public class VoteSystem
         SendVoteMessage();
     }
 
+    // Over with no outcome: neither callback runs.
+    public void Abandon()
+    {
+        _voteFailedCallback = null;
+        _voteSuccessCallback = null;
+        CancelVote();
+    }
+
     public void CancelVote()
     {
+        // The failure callback can replay a map from 0-0, so a vote that has
+        // already passed must not reach it.
+        if (!IsVoteActive())
+        {
+            return;
+        }
+
         _voteStartTime = null;
         _voteTimeout = null;
         KillTimers();

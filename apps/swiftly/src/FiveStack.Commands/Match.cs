@@ -39,6 +39,8 @@ public partial class FiveStackPlugin
                 context.Reply($"{RoundRestoreGateUtility.MatchStateRefusedPrefix} {refusal}");
                 return;
             }
+
+            _gameBackupRounds.AbandonRestore();
         }
 
         match?.UpdateMapStatus(status);

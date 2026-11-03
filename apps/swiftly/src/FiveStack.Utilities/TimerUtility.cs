@@ -6,7 +6,7 @@ namespace FiveStack.Utilities
 {
     public static class TimerUtility
     {
-        private static ISwiftlyCore _core = null!;
+        private static ISwiftlyCore? _core;
 
         public static readonly List<CancellationTokenSource> Timers =
             new List<CancellationTokenSource>();
@@ -18,7 +18,7 @@ namespace FiveStack.Utilities
 
         public static CancellationTokenSource AddTimer(float interval, Action callback)
         {
-            CancellationTokenSource timer = _core.Scheduler.DelayBySeconds(interval, callback);
+            CancellationTokenSource timer = _core!.Scheduler.DelayBySeconds(interval, callback);
             Timers.Add(timer);
             return timer;
         }
@@ -29,7 +29,7 @@ namespace FiveStack.Utilities
 
             // SwiftlyS2 never reschedules a repeating timer whose callback throws,
             // and still runs a timer's first pass if it was cancelled before then
-            timer = _core.Scheduler.RepeatBySeconds(
+            timer = _core!.Scheduler.RepeatBySeconds(
                 interval,
                 () =>
                 {
@@ -44,7 +44,7 @@ namespace FiveStack.Utilities
                     }
                     catch (Exception ex)
                     {
-                        _core.Logger.LogError(ex, "repeating timer callback failed");
+                        _core!.Logger.LogError(ex, "repeating timer callback failed");
                     }
                 }
             );
