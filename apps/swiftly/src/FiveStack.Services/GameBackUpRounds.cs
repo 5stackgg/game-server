@@ -811,7 +811,7 @@ public class GameBackUpRounds
             return;
         }
 
-        BackupRound? backupRound = RoundRestoreGateUtility.LatestBackup(matchMap.rounds, round);
+        BackupRound? backupRound = BackupOf(match, matchMap, round);
 
         if (backupRound == null)
         {
@@ -900,12 +900,41 @@ public class GameBackUpRounds
             _restore.VotingOrLoading,
             _matchService.GetCurrentMatch()?.GetCurrentMapStatus() ?? eMapStatus.Unknown,
             round,
-            matchMap != null
-                && RoundRestoreGateUtility.LatestBackup(matchMap.rounds, round) != null,
+            match != null && matchMap != null && BackupOf(match, matchMap, round) != null,
             MatchUtility.PlayerCount(),
             _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10,
             match?.options.type ?? ""
         );
+    }
+
+    private BackupRound? BackupOf(MatchData match, MatchMap matchMap, int round)
+    {
+        BackupRound? kept = RoundRestoreGateUtility.LatestBackup(matchMap.rounds, round);
+        eMapStatus status = _matchService.GetCurrentMatch()?.GetCurrentMapStatus() ?? eMapStatus.Unknown;
+
+        if (kept != null || !RoundRestoreGateUtility.ReadsBackupFromDisk(round, status))
+        {
+            return kept;
+        }
+
+        string path = Path.Join(
+            BackupDirectory,
+            $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.ToString().PadLeft(2, '0')}.txt"
+        );
+
+        try
+        {
+            string content = File.Exists(path) ? File.ReadAllText(path) : "";
+
+            return string.IsNullOrEmpty(content)
+                ? null
+                : new BackupRound { round = round, backup_file = content };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to read backup round file {path}");
+            return null;
+        }
     }
 
     public bool RoundRestoresDisabled()

@@ -105,6 +105,12 @@ public class GameServer
         return MatchUtility.Rules()?.TotalRoundsPlayed ?? 0;
     }
 
+    // A round's winner is set when it ends and cleared when the next one starts.
+    public bool IsRoundOver()
+    {
+        return (MatchUtility.Rules()?.RoundWinStatus ?? 0) != 0;
+    }
+
     public void Ping(string pluginVersion)
     {
         if (_environmentService.IsOfflineMode())

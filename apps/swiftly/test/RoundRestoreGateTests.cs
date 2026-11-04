@@ -299,4 +299,44 @@ public class RoundRestoreGateTests
     {
         Assert.Null(RoundRestoreGateUtility.WarmupRefusal(true, current));
     }
+
+    [Theory]
+    [InlineData(0, false, 0)]
+    [InlineData(7, false, 7)]
+    [InlineData(8, true, 7)]
+    [InlineData(1, true, 0)]
+    [InlineData(0, true, 0)]
+    public void StopGoesBackToTheStartOfTheRoundBeingPlayed(
+        int totalRoundsPlayed,
+        bool roundOver,
+        int expected
+    )
+    {
+        Assert.Equal(expected, RoundRestoreGateUtility.StopRound(totalRoundsPlayed, roundOver));
+    }
+
+    [Theory]
+    [InlineData(eMapStatus.Live)]
+    [InlineData(eMapStatus.Overtime)]
+    [InlineData(eMapStatus.Paused)]
+    public void TheFirstRoundsBackupIsReadOffDiskInPlay(eMapStatus status)
+    {
+        Assert.True(RoundRestoreGateUtility.ReadsBackupFromDisk(0, status));
+    }
+
+    [Theory]
+    [InlineData(eMapStatus.Warmup)]
+    [InlineData(eMapStatus.Knife)]
+    [InlineData(eMapStatus.Finished)]
+    [InlineData(eMapStatus.Unknown)]
+    public void TheFirstRoundsBackupIsNotReadOffDiskOutOfPlay(eMapStatus status)
+    {
+        Assert.False(RoundRestoreGateUtility.ReadsBackupFromDisk(0, status));
+    }
+
+    [Fact]
+    public void OnlyTheFirstRoundsBackupIsReadOffDisk()
+    {
+        Assert.False(RoundRestoreGateUtility.ReadsBackupFromDisk(1, eMapStatus.Live));
+    }
 }

@@ -8,6 +8,7 @@
   "help.tech_pause": " {0}tech, {1}resume - Technical pause",
   "help.rules": " {0}rules - Rules",
   "help.restore_round": " {0}reset <round> - Restore round",
+  "help.stop": " {0}stop - Replay the current round",
 
   "rules.title": "  Rules:",
   "rules.with_overtime": "with Overtime",

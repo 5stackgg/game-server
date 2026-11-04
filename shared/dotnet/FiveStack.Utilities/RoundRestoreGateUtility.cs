@@ -36,6 +36,22 @@ namespace FiveStack.Utilities
                 && (offline || rounds.Any(backup => backup.round == round));
         }
 
+        // No round has ended to carry round 0's backup to the api, so only the
+        // server playing the map has it, on disk. Out of play that file can be
+        // warmup's, or gone with a map being played again.
+        public static bool ReadsBackupFromDisk(int round, eMapStatus status)
+        {
+            return round == 0 && IsInPlay(status);
+        }
+
+        // .stop goes back to the start of the round being played. Once a round is
+        // over that is the round that just ended, as the next one's backup is not
+        // written until it starts.
+        public static int StopRound(int totalRoundsPlayed, bool roundOver)
+        {
+            return Math.Max(0, roundOver ? totalRoundsPlayed - 1 : totalRoundsPlayed);
+        }
+
         public const string RestartMapNeeded =
             " No round can be restored, an admin needs to use Restart Map.";
 
