@@ -295,7 +295,7 @@ public partial class UtilityPracticePlugin
         {
             Reply(
                 context,
-                $" {ChatColors.Red}editing needs the 5stack HUD addon"
+                $" {ChatColors.Red}editing needs the 5Stack HUD addon"
             );
         }
     }

@@ -689,7 +689,7 @@ public partial class UtilityPracticePlugin
         {
             if (!OpenPicker(player))
             {
-                Toast(player, "The lineup picker needs the 5stack HUD addon");
+                Toast(player, "The lineup picker needs the 5Stack HUD addon");
             }
 
             return;
@@ -1125,7 +1125,7 @@ public partial class UtilityPracticePlugin
 
         if (!OpenEdit(player, loaded))
         {
-            Toast(player, "Editing needs the 5stack HUD");
+            Toast(player, "Editing needs the 5Stack HUD");
         }
     }
 

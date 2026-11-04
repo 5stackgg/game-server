@@ -753,7 +753,7 @@ public partial class UtilityPracticePlugin
 
         Reply(
             context,
-            $" {ChatColors.Red}the lineup picker needs the 5stack HUD addon. "
+            $" {ChatColors.Red}the lineup picker needs the 5Stack HUD addon. "
                 + $"{ChatColors.Grey}use {ChatColors.Default}.list{ChatColors.Grey} instead"
         );
     }
