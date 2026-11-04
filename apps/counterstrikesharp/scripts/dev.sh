@@ -28,7 +28,6 @@ DEV_DIR="/opt/dev/css"
 mkdir -p "$DEV_DIR"
 
 while true; do
-  rm -f "$directory_to_watch/CounterStrikeSharp.API.dll"
   inotifywait -r -e modify,create,delete,move "$directory_to_watch"
   cp -r "$directory_to_watch"/* "$DEV_DIR"
 done

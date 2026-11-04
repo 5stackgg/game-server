@@ -38,11 +38,7 @@ ENV RELEASE_VERSION=${RELEASE_VERSION}
 
 RUN sed -i "s/__RELEASE_VERSION__/${RELEASE_VERSION}/" apps/counterstrikesharp/src/FiveStackPlugin.cs
 
-RUN dotnet build -c Release apps/counterstrikesharp/src/FiveStack.csproj -o release
-
-RUN rm /mod/release/CounterStrikeSharp.API.dll
-
-COPY apps/counterstrikesharp/src/lang /mod/release/lang
+RUN dotnet publish -c Release apps/counterstrikesharp/src/FiveStack.csproj -o /mod/release
 
 # Community servers load this in place of the match plugin; its zip is also
 # published beside the match plugin's for servers run outside a 5stack node.
@@ -66,9 +62,7 @@ ENV RELEASE_VERSION=${RELEASE_VERSION}
 
 RUN sed -i "s/__RELEASE_VERSION__/${RELEASE_VERSION}/" apps/player-management-css/src/PlayerManagementPlugin.cs
 
-RUN dotnet build -c Release apps/player-management-css/src/PlayerManagement.csproj -o release
-
-RUN rm -f /mod/release/CounterStrikeSharp.API.dll
+RUN dotnet publish -c Release apps/player-management-css/src/PlayerManagement.csproj -o /mod/release
 
 # New stage for creating the zip file
 FROM debian:bookworm-slim AS zip-creator
