@@ -91,4 +91,16 @@ public partial class FiveStackPlugin
 
         _gameBackupRounds.RequestRestoreBackupRound(round, context.Sender);
     }
+
+    [Command("stop", registerRaw: false, permission: "")]
+    public void OnStopRound(ICommandContext context)
+    {
+        _gameBackupRounds.RequestRestoreBackupRound(
+            RoundRestoreGateUtility.StopRound(
+                _gameServer.GetTotalRoundsPlayed(),
+                _gameServer.IsRoundOver()
+            ),
+            context.Sender
+        );
+    }
 }
