@@ -554,6 +554,8 @@ public class MatchManager
                         : eMapStatus.Finished;
             }
 
+            // Nothing is left to conclude, or a surrender would be concluded again.
+            gameEnded = true;
             _logger.LogInformation($"Offline match {_matchData.id} is over, leaving the server idle");
             AnnounceOfflineMatchOver();
             return;

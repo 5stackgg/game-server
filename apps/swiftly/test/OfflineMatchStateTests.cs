@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
@@ -185,7 +186,7 @@ public class OfflineMatchStateTests : IDisposable
             new OfflineMatchResult(eMapStatus.Surrendered, Lineup2),
             OfflineMatchState.Result(match)
         );
-        Assert.Equal("Surrendered", OfflineMatchState.Capture(match, "hash").match_status);
+        Assert.Equal("Surrendered", OfflineMatchState.Capture(match).match_status);
     }
 
     [Fact]
@@ -204,13 +205,12 @@ public class OfflineMatchStateTests : IDisposable
         Finish(match, Map1, null);
 
         Assert.Equal(new OfflineMatchResult(eMapStatus.Finished, null), OfflineMatchState.Result(match));
-        Assert.Equal("Tie", OfflineMatchState.Capture(match, "hash").match_status);
+        Assert.Equal("Tie", OfflineMatchState.Capture(match).match_status);
     }
 
     [Fact]
     public void WhatWasPlayedSurvivesARestart()
     {
-        string hash = OfflineMatchState.Hash(MatchJson);
         MatchData played = BestOf(3);
         Finish(played, Map1, Lineup1);
         OfflineMatchState.Advance(played, MapOf(played, Map1));
@@ -218,13 +218,13 @@ public class OfflineMatchStateTests : IDisposable
         MapOf(played, Map2).lineup_2_side = "CT";
         OfflineMatchState.Record(MapOf(played, Map2), eMapStatus.Live, null);
 
-        OfflineMatchState.Save(Folder, OfflineMatchState.Capture(played, hash));
+        OfflineMatchState.Save(Folder, OfflineMatchState.Capture(played));
 
         MatchData restarted = BestOf(3);
         OfflineMatchProgress? progress = OfflineMatchState.Load(Folder);
 
         Assert.NotNull(progress);
-        Assert.True(OfflineMatchState.Restore(restarted, progress!, hash));
+        Assert.True(OfflineMatchState.Restore(restarted, progress!));
         Assert.Equal(Map2, restarted.current_match_map_id);
         Assert.Equal("Live", MapOf(restarted, Map2).status);
         Assert.Equal("TERRORIST", MapOf(restarted, Map2).lineup_1_side);
@@ -234,23 +234,44 @@ public class OfflineMatchStateTests : IDisposable
     }
 
     [Fact]
-    public void AnEditedMatchStartsFromTheBeginning()
+    public void AnEditThatKeepsTheMapsKeepsTheSeries()
     {
         MatchData played = BestOf(3);
         Finish(played, Map1, Lineup1);
         OfflineMatchState.Advance(played, MapOf(played, Map1));
 
         MatchData edited = BestOf(3);
+        edited.lineup_1 = new MatchLineUp { name = "Renamed" };
+        MapOf(edited, Map1).lineup_1_side = "TERRORIST";
+        MapOf(edited, Map1).lineup_2_side = "CT";
+        MapOf(edited, Map3).lineup_1_side = "TERRORIST";
+        MapOf(edited, Map3).lineup_2_side = "CT";
 
-        Assert.False(
-            OfflineMatchState.Restore(
-                edited,
-                OfflineMatchState.Capture(played, OfflineMatchState.Hash(MatchJson)),
-                OfflineMatchState.Hash(MatchJson + "edited")
-            )
-        );
-        Assert.Equal(Map1, edited.current_match_map_id);
-        Assert.Equal("Warmup", MapOf(edited, Map1).status);
+        Assert.True(OfflineMatchState.Restore(edited, OfflineMatchState.Capture(played)));
+        Assert.Equal(Map2, edited.current_match_map_id);
+        Assert.Equal("Finished", MapOf(edited, Map1).status);
+        Assert.Equal(Lineup1, MapOf(edited, Map1).winning_lineup_id);
+        Assert.Equal("CT", MapOf(edited, Map1).lineup_1_side);
+        Assert.Equal("TERRORIST", MapOf(edited, Map3).lineup_1_side);
+        Assert.Equal("CT", MapOf(edited, Map3).lineup_2_side);
+    }
+
+    [Fact]
+    public void ChangingTheMapsStartsTheSeriesOver()
+    {
+        MatchData played = BestOf(3);
+        Finish(played, Map1, Lineup1);
+        OfflineMatchState.Advance(played, MapOf(played, Map1));
+        OfflineMatchProgress progress = OfflineMatchState.Capture(played);
+
+        MatchData renamed = BestOf(3);
+        MapOf(renamed, Map2).map = new Map { name = "de_other" };
+        MatchData shorter = BestOf(1);
+
+        Assert.False(OfflineMatchState.Restore(renamed, progress));
+        Assert.Equal(Map1, renamed.current_match_map_id);
+        Assert.Equal("Warmup", MapOf(renamed, Map1).status);
+        Assert.False(OfflineMatchState.Restore(shorter, progress));
     }
 
     [Fact]
@@ -262,7 +283,7 @@ public class OfflineMatchStateTests : IDisposable
         MatchData restarted = BestOf(3);
 
         Assert.True(
-            OfflineMatchState.Restore(restarted, OfflineMatchState.Capture(played, "hash"), "hash")
+            OfflineMatchState.Restore(restarted, OfflineMatchState.Capture(played))
         );
         Assert.Equal("Finished", MapOf(restarted, Map1).status);
         Assert.Equal(Map2, restarted.current_match_map_id);
@@ -278,21 +299,34 @@ public class OfflineMatchStateTests : IDisposable
         Finish(played, Map2, Lineup1);
 
         MatchData restarted = BestOf(3);
-        OfflineMatchState.Restore(restarted, OfflineMatchState.Capture(played, "hash"), "hash");
+        OfflineMatchState.Restore(restarted, OfflineMatchState.Capture(played));
 
         Assert.Equal(Map2, restarted.current_match_map_id);
         Assert.True(OfflineMatchState.IsMatchOver(restarted));
         Assert.Equal("Scheduled", MapOf(restarted, Map3).status);
     }
 
-    [Fact]
-    public void AnUnreadableStateFileIsIgnored()
+    [Theory]
+    [InlineData("{not json")]
+    [InlineData("{\"maps\":null}")]
+    [InlineData("{\"maps\":[{\"rounds\":null}]}")]
+    [InlineData("null")]
+    public void AnUnreadableStateFileIsSetAsideWithItsBackups(string contents)
     {
         Directory.CreateDirectory(Folder);
-        File.WriteAllText(Path.Join(Folder, OfflineMatchState.FileName), "{not json");
+        string backup = OfflineMatchState.BackupFileName(MatchId, Map1, 4);
+        File.WriteAllText(Path.Join(Folder, OfflineMatchState.FileName), contents);
+        File.WriteAllText(Path.Join(Folder, backup), "backup 4");
 
-        Assert.Null(OfflineMatchState.Load(Folder));
+        Assert.Throws<JsonException>(() => OfflineMatchState.Load(Folder));
         Assert.Null(OfflineMatchState.Load(Path.Join(_demos, "missing")));
+
+        string aside = OfflineMatchState.SetAside(Folder, MatchId);
+
+        Assert.Equal(Path.Join(Folder, OfflineMatchState.Unreadable), aside);
+        Assert.Empty(Directory.GetFiles(Folder));
+        Assert.Equal(contents, File.ReadAllText(Path.Join(aside, OfflineMatchState.FileName)));
+        Assert.Equal("backup 4", File.ReadAllText(Path.Join(aside, backup)));
     }
 
     [Fact]
@@ -357,12 +391,12 @@ public class OfflineMatchStateTests : IDisposable
             );
         }
 
-        OfflineMatchState.Save(Folder, OfflineMatchState.Capture(played, "hash"));
+        OfflineMatchState.Save(Folder, OfflineMatchState.Capture(played));
         OfflineMatchState.SaveBackups(_game, Folder, OfflineMatchState.BackupPrefix(MatchId, Map1));
 
         MatchData restarted = BestOf(1);
         OfflineMatchProgress progress = OfflineMatchState.Load(Folder)!;
-        OfflineMatchState.Restore(restarted, progress, "hash");
+        OfflineMatchState.Restore(restarted, progress);
         OfflineMatchState.LoadBackups(restarted, progress, Folder);
 
         BackupRound[] rounds = MapOf(restarted, Map1).rounds;
@@ -374,13 +408,13 @@ public class OfflineMatchStateTests : IDisposable
     }
 
     [Fact]
-    public void AnEditedMatchForgetsItsOldBackupsButNotItsDemos()
+    public void AMatchWithNewMapsForgetsItsOldBackupsButNotItsDemos()
     {
         string demos = Path.Join(Folder, Map1.ToString());
         Directory.CreateDirectory(demos);
         File.WriteAllText(Path.Join(demos, "map1.dem"), "demo");
         File.WriteAllText(Path.Join(Folder, OfflineMatchState.BackupFileName(MatchId, Map1, 9)), "9");
-        OfflineMatchState.Save(Folder, OfflineMatchState.Capture(BestOf(1), "hash"));
+        OfflineMatchState.Save(Folder, OfflineMatchState.Capture(BestOf(1)));
 
         OfflineMatchState.Forget(Folder, MatchId);
 

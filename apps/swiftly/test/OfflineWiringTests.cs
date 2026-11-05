@@ -68,15 +68,22 @@ public class OfflineWiringTests
     public void AnOfflineServerPicksUpWhereItLeftOffBeforeSettingTheMatchUp()
     {
         string offline = Method(Service("MatchService"), "public void GetMatchFromOffline()");
-        int restored = At(offline, "RestoreOfflineProgress(matchData, sourceHash);");
+        int restored = At(offline, "RestoreOfflineProgress(matchData);");
 
         Assert.True(restored < At(offline, ".SetupMatch(matchData)"));
         Assert.True(restored < At(offline, "_offlineSourceHash = sourceHash;"));
 
         string restore = Method(Service("MatchService"), "private void RestoreOfflineProgress(");
 
-        Assert.Contains("OfflineMatchState.Restore(matchData, progress, sourceHash)", restore);
+        Assert.Contains("OfflineMatchState.Restore(matchData, progress)", restore);
         Assert.Contains("OfflineMatchState.Forget(folder, matchData.id);", restore);
+
+        string unreadable = restore[
+            At(restore, "catch (JsonException ex)")..At(restore, "OfflineMatchState.Restore(")
+        ];
+
+        Assert.Contains("OfflineMatchState.SetAside(folder, matchData.id);", unreadable);
+        Assert.DoesNotContain("Forget", unreadable);
         Assert.Contains("OfflineMatchState.LoadBackups(matchData, progress, folder);", restore);
         Assert.Contains("OfflineMatchState.RestoreBackups(folder, BackupDirectory, matchData.id)", restore);
     }
@@ -146,7 +153,8 @@ public class OfflineWiringTests
 
         Assert.Contains("RoundEndReason.TerroristsSurrender", end);
         Assert.Contains("RoundEndReason.CTsSurrender", end);
-        Assert.Contains("rules.TerminateRound(", end);
+        Assert.True(At(end, "        try") < At(end, "rules.TerminateRound("));
+        Assert.True(At(end, "rules.TerminateRound(") < At(end, "catch (Exception ex)"));
     }
 
     [Fact]
@@ -234,6 +242,7 @@ public class OfflineWiringTests
         Assert.Contains("AnnounceOfflineMatchOver();", idle);
         Assert.Matches(@"_currentMapStatus =\s*OfflineMatchState\.StatusOf\(_currentMap\)", idle);
         Assert.Contains("eMapStatus.Finished;", idle);
+        Assert.True(At(idle, "gameEnded = true;") < At(idle, "return;"));
     }
 
     [Fact]

@@ -25,7 +25,7 @@ public class OfflineMapProgress
 public class OfflineMatchProgress
 {
     public Guid match_id { get; set; }
-    public string source_hash { get; set; } = "";
+    public string maps_key { get; set; } = "";
     public Guid? current_match_map_id { get; set; }
     public string match_status { get; set; } = "";
     public Guid? winning_lineup_id { get; set; }
@@ -44,9 +44,25 @@ public static class OfflineMatchState
 
     public const string Tie = "Tie";
 
+    public const string Unreadable = "unreadable";
+
     public static string Hash(string matchJson)
     {
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(matchJson)));
+    }
+
+    // An edit in the offline tool keeps each map's id, so a fixed Steam ID or a
+    // swapped player keeps the series. Changing the maps starts it over.
+    public static string MapsKey(MatchData match)
+    {
+        return Hash(
+            string.Join(
+                "|",
+                match
+                    .match_maps.OrderBy(map => map.order)
+                    .Select(map => $"{map.id}:{map.map.name}:{map.map.workshop_map_id}")
+            )
+        );
     }
 
     public static string Folder(string demosRoot, Guid matchId)
@@ -72,6 +88,14 @@ public static class OfflineMatchState
     public static eMapStatus StatusOf(MatchMap map)
     {
         return Enum.TryParse(map.status, out eMapStatus status) ? status : eMapStatus.Unknown;
+    }
+
+    private static bool HasGoneLive(eMapStatus status)
+    {
+        return status == eMapStatus.Live
+            || status == eMapStatus.Overtime
+            || status == eMapStatus.Paused
+            || IsOver(status);
     }
 
     // What the api records for a map status. A surrender stands: it ends the
@@ -228,14 +252,14 @@ public static class OfflineMatchState
         return null;
     }
 
-    public static OfflineMatchProgress Capture(MatchData match, string sourceHash)
+    public static OfflineMatchProgress Capture(MatchData match)
     {
         OfflineMatchResult? result = Result(match);
 
         return new OfflineMatchProgress
         {
             match_id = match.id,
-            source_hash = sourceHash,
+            maps_key = MapsKey(match),
             current_match_map_id = match.current_match_map_id,
             match_status = result == null
                 ? ""
@@ -266,10 +290,11 @@ public static class OfflineMatchState
     }
 
     // A map whose end was cut short by the restart is finished here, as its
-    // result is already recorded and nothing else would finish it.
-    public static bool Restore(MatchData match, OfflineMatchProgress progress, string sourceHash)
+    // result is already recorded and nothing else would finish it. Sides are
+    // only kept once a map has gone live: before that an edit may change them.
+    public static bool Restore(MatchData match, OfflineMatchProgress progress)
     {
-        if (progress.match_id != match.id || progress.source_hash != sourceHash)
+        if (progress.match_id != match.id || progress.maps_key != MapsKey(match))
         {
             return false;
         }
@@ -285,6 +310,11 @@ public static class OfflineMatchState
 
             map.status = saved.status;
             map.winning_lineup_id = saved.winning_lineup_id;
+
+            if (!HasGoneLive(StatusOf(map)))
+            {
+                continue;
+            }
 
             if (!string.IsNullOrEmpty(saved.lineup_1_side))
             {
@@ -339,7 +369,12 @@ public static class OfflineMatchState
         string path = Path.Join(folder, FileName);
         string temp = path + ".tmp";
 
-        File.WriteAllText(temp, JsonSerializer.Serialize(progress));
+        using (FileStream stream = new(temp, FileMode.Create, FileAccess.Write))
+        {
+            JsonSerializer.Serialize(stream, progress);
+            stream.Flush(true);
+        }
+
         File.Move(temp, path, true);
     }
 
@@ -352,14 +387,34 @@ public static class OfflineMatchState
             return null;
         }
 
-        try
+        OfflineMatchProgress? progress = JsonSerializer.Deserialize<OfflineMatchProgress>(
+            File.ReadAllText(path)
+        );
+
+        if (progress?.maps == null || progress.maps.Any(map => map?.rounds == null))
         {
-            return JsonSerializer.Deserialize<OfflineMatchProgress>(File.ReadAllText(path));
+            throw new JsonException($"{path} has no maps");
         }
-        catch (JsonException)
+
+        return progress;
+    }
+
+    // Nothing is deleted for a file that can't be read: it and the round
+    // backups are moved where an admin can get them back.
+    public static string SetAside(string folder, Guid matchId)
+    {
+        string aside = Path.Join(folder, Unreadable);
+        Directory.CreateDirectory(aside);
+
+        foreach (string file in BackupFiles(folder, matchId).Append(Path.Join(folder, FileName)))
         {
-            return null;
+            if (File.Exists(file))
+            {
+                File.Move(file, Path.Join(aside, Path.GetFileName(file)), true);
+            }
         }
+
+        return aside;
     }
 
     public static int SaveBackups(string gameDirectory, string folder, string prefix)

@@ -337,7 +337,15 @@ public class SurrenderSystem
 
         _logger.LogInformation($"Ending the game for the surrender: {reason}");
 
-        rules.TerminateRound(reason, SurrenderRoundRestartDelay);
+        // A stale gamedata signature throws here. The next round start ends the map.
+        try
+        {
+            rules.TerminateRound(reason, SurrenderRoundRestartDelay);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to end the game for the surrender");
+        }
     }
 
     public Guid? GetWinningLineupId()

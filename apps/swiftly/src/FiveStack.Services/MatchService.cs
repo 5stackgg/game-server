@@ -242,7 +242,7 @@ public class MatchService
 
             _logger.LogInformation($"Loaded match data from offline mode: {matchData.id}");
 
-            RestoreOfflineProgress(matchData, sourceHash);
+            RestoreOfflineProgress(matchData);
             _offlineSourceHash = sourceHash;
 
             if (_currentMatch?.GetMatchData()?.id == matchData.id)
@@ -278,20 +278,34 @@ public class MatchService
             ? OfflineMatchState.DemosRoot
             : Path.Join(_core.GameDirectory, "demos");
 
-    private void RestoreOfflineProgress(MatchData matchData, string sourceHash)
+    private void RestoreOfflineProgress(MatchData matchData)
     {
         string folder = OfflineMatchState.Folder(OfflineRoot, matchData.id);
 
         try
         {
-            OfflineMatchProgress? progress = OfflineMatchState.Load(folder);
+            OfflineMatchProgress? progress;
 
-            if (progress == null || !OfflineMatchState.Restore(matchData, progress, sourceHash))
+            try
+            {
+                progress = OfflineMatchState.Load(folder);
+            }
+            catch (JsonException ex)
+            {
+                string aside = OfflineMatchState.SetAside(folder, matchData.id);
+                _logger.LogError(
+                    ex,
+                    $"Offline match {matchData.id} progress can't be read, starting it from the beginning. The file and its round backups were moved to {aside}"
+                );
+                return;
+            }
+
+            if (progress == null || !OfflineMatchState.Restore(matchData, progress))
             {
                 if (progress != null)
                 {
                     _logger.LogInformation(
-                        $"Offline match {matchData.id} was edited, starting it from the beginning"
+                        $"Offline match {matchData.id} has different maps now, starting it from the beginning"
                     );
                 }
 
@@ -325,7 +339,7 @@ public class MatchService
 
         try
         {
-            OfflineMatchState.Save(folder, OfflineMatchState.Capture(matchData, _offlineSourceHash));
+            OfflineMatchState.Save(folder, OfflineMatchState.Capture(matchData));
             OfflineMatchState.SaveBackups(
                 BackupDirectory,
                 folder,
