@@ -754,6 +754,13 @@ public class GameBackUpRounds
     public void SendRestoreRoundToBackend(int round)
     {
         _logger.LogInformation($"Restoring Round {round}");
+
+        if (_environmentService.IsOfflineMode())
+        {
+            RestoreRoundOffline(round);
+            return;
+        }
+
         MatchManager? matchManager = _matchService.GetCurrentMatch();
         MatchData? match = matchManager?.GetMatchData();
         if (matchManager == null || match?.current_match_map_id == null)
@@ -780,6 +787,37 @@ public class GameBackUpRounds
             "restoreRound",
             new Dictionary<string, object> { { "round", round }, { "match_map_id", mapId } }
         );
+    }
+
+    // Offline there is no api to reset the map and answer with api_restore_round,
+    // so this does both.
+    private void RestoreRoundOffline(int round)
+    {
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchMap? matchMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
+
+        if (match == null || matchMap == null)
+        {
+            _logger.LogWarning($"Restore round {round} dropped: no current match or match map");
+            return;
+        }
+
+        string? refusal = OfflineMatchState.ResetToRound(
+            matchMap,
+            match.options.IsRush(),
+            round,
+            DateTime.UtcNow.ToString("o")
+        );
+
+        if (refusal != null)
+        {
+            _logger.LogWarning($"Restore round {round} ignored offline: {refusal}");
+            _gameServer.Message(MessageType.Alert, $" Restore round blocked: {refusal}.");
+            return;
+        }
+
+        RestoreRound(round);
+        _matchService.SaveOfflineProgress();
     }
 
     public void RestoreRound(int round)

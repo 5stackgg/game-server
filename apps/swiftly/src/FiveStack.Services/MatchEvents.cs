@@ -184,7 +184,7 @@ public class MatchEvents
 
         if (_environmentService.IsOfflineMode())
         {
-            _logger.LogWarning($"Game event '{Event}' dropped: offline mode");
+            _logger.LogDebug($"Game event '{Event}' dropped: offline mode");
             return;
         }
 

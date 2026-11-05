@@ -17,10 +17,25 @@ public partial class FiveStackPlugin
     {
         _logger.LogInformation("Game ended");
 
+        ConcludeMap();
+
+        return HookResult.Continue;
+    }
+
+    // Offline, a surrender ends the map from here when CS2 played on after it,
+    // and its win panel can still follow.
+    private void ConcludeMap()
+    {
         MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null)
         {
-            return HookResult.Continue;
+            return;
+        }
+
+        if (_environmentService.IsOfflineMode() && match.gameEnded)
+        {
+            _logger.LogInformation("Map already concluded, ignoring the game end");
+            return;
         }
 
         {
@@ -58,10 +73,12 @@ public partial class FiveStackPlugin
             _logger.LogWarning(
                 $"OnGameEnd: matchData or currentMap became null after PublishPendingRound (matchData={matchData == null}, currentMap={currentMap == null})"
             );
-            return HookResult.Continue;
+            return;
         }
 
-        Guid? winningLineupId = _matchEvents.GetWinningLineupId();
+        Guid? winningLineupId = _environmentService.IsOfflineMode()
+            ? OfflineMapWinner(match, matchData)
+            : _matchEvents.GetWinningLineupId();
 
         _logger.LogInformation(
             "OnGameEnd: dispatching end-of-map (use_playcast={UsePlaycast} tv_delay={TvDelay} onGameNode={OnGameNode} winningLineupId={WinningLineupId})",
@@ -104,12 +121,22 @@ public partial class FiveStackPlugin
                 }
             );
 
-            return HookResult.Continue;
+            return;
         }
 
         HandleEndOfMap(winningLineupId, surrendered);
+    }
 
-        return HookResult.Continue;
+    private Guid? OfflineMapWinner(MatchManager match, MatchData matchData)
+    {
+        if (match.isSurrendered())
+        {
+            return _surrenderSystem.GetWinningLineupId();
+        }
+
+        (int lineup1Score, int lineup2Score, _, _, _) = _matchEvents.GetRoundInformation();
+
+        return OfflineMatchState.MapWinner(matchData, lineup1Score, lineup2Score);
     }
 
     private void HandleEndOfMap(Guid? winningLineupId, bool surrenderSent)
@@ -302,6 +329,17 @@ public partial class FiveStackPlugin
     {
         try
         {
+            if (_environmentService.IsOfflineMode())
+            {
+                _gameServer.Message(
+                    MessageType.Chat,
+                    OfflineMatchState.NextMap(matchData, currentMap) != null
+                        ? _localizer["match.map_over_next_map"]
+                        : _localizer["match.offline_over"]
+                );
+                return;
+            }
+
             bool hasNextMap = matchData
                 .match_maps.Where(m => m.order == currentMap.order + 1)
                 .Any();
@@ -356,22 +394,25 @@ public partial class FiveStackPlugin
 
         match.UpdateMapStatus(eMapStatus.Finished);
 
-        MatchMap? nextMap = matchData
-            .match_maps.Where(m => m.order == currentMap.order + 1)
-            .FirstOrDefault();
+        MatchMap? nextMap = OfflineMatchState.Advance(matchData, currentMap);
+
+        _matchService.SaveOfflineProgress();
 
         if (nextMap == null)
         {
+            OfflineMatchResult? result = OfflineMatchState.Result(matchData);
+
+            _logger.LogInformation(
+                $"Offline match {matchData.id} is over: {result?.Status} winner={result?.WinningLineupId?.ToString() ?? "none"}"
+            );
+
+            match.AnnounceOfflineMatchOver();
             return;
         }
 
         _logger.LogInformation(
             $"Advancing to next map: {nextMap.map.name} (order: {nextMap.order})"
         );
-
-        matchData.current_match_map_id = nextMap.id;
-
-        nextMap.status = eMapStatus.Warmup.ToString();
 
         match.ChangeMap(nextMap.map);
     }

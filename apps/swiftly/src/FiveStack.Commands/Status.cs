@@ -34,6 +34,13 @@ public partial class FiveStackPlugin
             $"API Socket: {(_environmentService.IsOfflineMode() ? "offline mode" : _matchEvents.IsConnected() ? "connected" : "disconnected")}",
         ];
 
+        // The offline tool only offers round restores and server restarts when
+        // the plugin keeps the match's progress itself.
+        if (_environmentService.IsOfflineMode())
+        {
+            lines.Add("Offline Progress: kept");
+        }
+
         if (matchData == null)
         {
             lines.Add("Match: none");

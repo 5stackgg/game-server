@@ -30,6 +30,18 @@ public partial class FiveStackPlugin
             $"OnRoundStart totalRoundsPlayed={totalRoundsPlayed} isInPlay={isInPlay} isWarmup={isWarmup} isKnife={isKnife}"
         );
 
+        if (
+            _environmentService.IsOfflineMode()
+            && matchManager.isSurrendered()
+            && !matchManager.gameEnded
+        )
+        {
+            _logger.LogWarning("The surrender did not end the game, ending the map from here");
+            _gameServer.SendCommands(["mp_pause_match"]);
+            ConcludeMap();
+            return HookResult.Continue;
+        }
+
         if (!isInPlay)
         {
             return HookResult.Continue;
@@ -48,6 +60,8 @@ public partial class FiveStackPlugin
         }
 
         PublishPendingRound(SendBackupRound: true);
+
+        _matchService.SaveOfflineProgress();
 
         _logger.LogInformation($"OnRoundStart {matchManager.TeamSwitchState()}");
 

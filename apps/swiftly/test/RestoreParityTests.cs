@@ -54,6 +54,7 @@ public class RestoreParityTests
     [InlineData("public bool IsResettingRound()")]
     [InlineData("public bool IsHoldingForRestore()")]
     [InlineData("public bool HoldsRoundResults()")]
+    [InlineData("private void RestoreRoundOffline(int round)")]
     public void BothPluginsActTheSame(string signature)
     {
         Assert.Equal(Method("swiftly", signature), Method("counterstrikesharp", signature));
