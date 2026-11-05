@@ -1,3 +1,4 @@
+using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared.Events;
 using SwiftlyS2.Shared.StringTable;
@@ -6,8 +7,6 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    private const string ServerWebsite = "https://5stack.gg";
-
     public async void OnMapLoad(IOnMapLoadEvent @event)
     {
         FiveStack.Utilities.MatchUtility.InvalidateCache();
@@ -37,6 +36,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        infoPanel.SetOrAddStringUserData("motd", StringTableUserData.FromString(ServerWebsite));
+        string website = ServerWebsiteUtility.FromApiDomain(_environmentService.GetApiUrl());
+        infoPanel.SetOrAddStringUserData("motd", StringTableUserData.FromString(website));
     }
 }
