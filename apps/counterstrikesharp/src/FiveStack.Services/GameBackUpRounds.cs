@@ -598,6 +598,7 @@ public class GameBackUpRounds
         if (refusal != null)
         {
             _logger.LogWarning($"Restore round {round} ignored offline: {refusal}");
+            _gameServer.Message(HudDestination.Alert, $" Restore round blocked: {refusal}.");
             return;
         }
 

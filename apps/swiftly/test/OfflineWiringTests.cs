@@ -228,7 +228,33 @@ public class OfflineWiringTests
 
         Assert.Contains("_environmentService.IsOfflineMode()", setup[..over]);
         Assert.True(over < At(setup, "ChangeMap(_currentMap.map);"));
-        Assert.Contains("AnnounceOfflineMatchOver();", setup[over..At(setup, "ChangeMap(_currentMap.map);")]);
+
+        string idle = setup[over..At(setup, "ChangeMap(_currentMap.map);")];
+
+        Assert.Contains("AnnounceOfflineMatchOver();", idle);
+        Assert.Matches(@"_currentMapStatus =\s*OfflineMatchState\.StatusOf\(_currentMap\)", idle);
+        Assert.Contains("eMapStatus.Finished;", idle);
+    }
+
+    [Fact]
+    public void ReadyingUpOnAnOverMatchCannotTakeItLiveAgain()
+    {
+        string update = Method(Service("MatchManager"), "public void UpdateMapStatus(");
+        string terminal = update[..At(update, "CheckForBackupRestore(status)")];
+
+        Assert.Contains("IsMapFinished()", terminal);
+        Assert.Contains("status == eMapStatus.Live", terminal);
+        Assert.Contains("status == eMapStatus.Knife", terminal);
+    }
+
+    [Fact]
+    public void PlayersAreToldWhenAnOfflineRestoreIsRefused()
+    {
+        string local = Method(Service("GameBackUpRounds"), "private void RestoreRoundOffline(int round)");
+        string refused = local[At(local, "if (refusal != null)")..At(local, "RestoreRound(round);")];
+
+        Assert.Contains("_gameServer.Message(", refused);
+        Assert.Contains("Restore round blocked: {refusal}.", refused);
     }
 
     [Fact]

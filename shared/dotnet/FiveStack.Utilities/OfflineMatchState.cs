@@ -75,10 +75,13 @@ public static class OfflineMatchState
     }
 
     // What the api records for a map status. A surrender stands: it ends the
-    // match, and the statuses after it only wind the map down.
+    // match, and the statuses after it only wind the map down. A map that is
+    // over never goes back into play, or its result would stop counting.
     public static void Record(MatchMap map, eMapStatus status, Guid? winningLineupId)
     {
-        if (StatusOf(map) == eMapStatus.Surrendered)
+        eMapStatus recorded = StatusOf(map);
+
+        if (recorded == eMapStatus.Surrendered || (IsOver(recorded) && !IsOver(status)))
         {
             return;
         }
@@ -187,7 +190,8 @@ public static class OfflineMatchState
 
     // The api's reset_match_map_to_round: it refuses what it would refuse, and
     // marks the rounds after the one being loaded undone, so a restart can't
-    // offer them back.
+    // offer them back. The api forgets an undone round once the next round is
+    // played, and nothing does that here, so an undone round is refused outright.
     public static string? ResetToRound(MatchMap map, bool isRush, int round, string now)
     {
         if (isRush && round > 0)
@@ -205,6 +209,11 @@ public static class OfflineMatchState
         if (round > 0 && !map.rounds.Any(backup => backup.round == round))
         {
             return $"there is no round {round} on this map to go back to";
+        }
+
+        if (round > 0 && RoundRestoreGateUtility.IsUndone(map.rounds, round))
+        {
+            return $"round {round} was undone by an earlier restore";
         }
 
         map.rounds = map

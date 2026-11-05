@@ -540,10 +540,20 @@ public class MatchManager
 
         if (
             _environmentService.IsOfflineMode()
-            && _currentMapStatus == eMapStatus.Unknown
+            && (_currentMapStatus == eMapStatus.Unknown || IsMapFinished())
             && OfflineMatchState.IsMatchOver(_matchData)
         )
         {
+            // CS2 is back in its own warmup once the match is over, and readying
+            // up there would otherwise take the last map live again.
+            if (_currentMapStatus == eMapStatus.Unknown)
+            {
+                _currentMapStatus =
+                    OfflineMatchState.StatusOf(_currentMap) == eMapStatus.Surrendered
+                        ? eMapStatus.Surrendered
+                        : eMapStatus.Finished;
+            }
+
             _logger.LogInformation($"Offline match {_matchData.id} is over, leaving the server idle");
             AnnounceOfflineMatchOver();
             return;

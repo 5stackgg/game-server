@@ -389,18 +389,56 @@ public class OfflineMatchStateTests : IDisposable
     }
 
     [Fact]
+    public void AMapThatIsOverNeverGoesBackIntoPlay()
+    {
+        MatchData match = BestOf(1);
+        Finish(match, Map1, Lineup1);
+
+        OfflineMatchState.Record(MapOf(match, Map1), eMapStatus.Warmup, null);
+        OfflineMatchState.Record(MapOf(match, Map1), eMapStatus.Live, Lineup2);
+
+        Assert.Equal("Finished", MapOf(match, Map1).status);
+        Assert.Equal(Lineup1, MapOf(match, Map1).winning_lineup_id);
+        Assert.True(OfflineMatchState.IsMatchOver(match));
+
+        MatchMap waiting = BestOf(1).match_maps[0];
+        OfflineMatchState.Record(waiting, eMapStatus.WaitingForTV, Lineup1);
+        OfflineMatchState.Record(waiting, eMapStatus.Paused, null);
+
+        Assert.Equal("WaitingForTV", waiting.status);
+    }
+
+    [Fact]
     public void ARestoreUndoesTheRoundsAfterItAsTheApiDoes()
     {
         MatchMap map = BestOf(1).match_maps[0];
         map.status = "Live";
-        map.rounds = new[] { Round(1), Round(2, "earlier"), Round(3), Round(4) };
+        map.rounds = new[] { Round(1), Round(2, "earlier"), Round(2), Round(3), Round(4) };
 
         Assert.Null(OfflineMatchState.ResetToRound(map, false, 2, "now"));
         Assert.Equal(
-            new[] { "", "", "now", "now" },
+            new[] { "", "", "", "now", "now" },
             map.rounds.Select(backup => backup.deleted_at).ToArray()
         );
-        Assert.Equal("backup 3", map.rounds[2].backup_file);
+        Assert.Equal("backup 3", map.rounds[3].backup_file);
+    }
+
+    [Fact]
+    public void ARoundUndoneByARestoreCanOnlyBeRestoredOncePlayedAgain()
+    {
+        MatchMap map = BestOf(1).match_maps[0];
+        map.status = "Live";
+        map.rounds = new[] { Round(1), Round(2), Round(3), Round(4) };
+
+        Assert.Null(OfflineMatchState.ResetToRound(map, false, 1, "now"));
+        Assert.Equal(
+            "round 4 was undone by an earlier restore",
+            OfflineMatchState.ResetToRound(map, false, 4, "later")
+        );
+
+        map.rounds = map.rounds.Append(Round(2)).ToArray();
+
+        Assert.Null(OfflineMatchState.ResetToRound(map, false, 2, "later"));
     }
 
     [Fact]

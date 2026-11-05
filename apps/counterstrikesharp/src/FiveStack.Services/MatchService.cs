@@ -263,9 +263,17 @@ public class MatchService
 
     private static string BackupDirectory => Path.Join(Server.GameDirectory, "csgo");
 
+    // Beside the demos, which GameDemos keeps in the game directory when /opt
+    // can't be written.
+    private static string OfflineRoot =>
+        Directory.Exists("/opt")
+        && !new DirectoryInfo("/opt").Attributes.HasFlag(FileAttributes.ReadOnly)
+            ? OfflineMatchState.DemosRoot
+            : Path.Join(Server.GameDirectory, "demos");
+
     private void RestoreOfflineProgress(MatchData matchData, string sourceHash)
     {
-        string folder = OfflineMatchState.Folder(OfflineMatchState.DemosRoot, matchData.id);
+        string folder = OfflineMatchState.Folder(OfflineRoot, matchData.id);
 
         try
         {
@@ -306,7 +314,7 @@ public class MatchService
             return;
         }
 
-        string folder = OfflineMatchState.Folder(OfflineMatchState.DemosRoot, matchData.id);
+        string folder = OfflineMatchState.Folder(OfflineRoot, matchData.id);
 
         try
         {
