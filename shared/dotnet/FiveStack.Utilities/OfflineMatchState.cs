@@ -51,8 +51,9 @@ public static class OfflineMatchState
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(matchJson)));
     }
 
-    // An edit in the offline tool keeps each map's id, so a fixed Steam ID or a
-    // swapped player keeps the series. Changing the maps starts it over.
+    // An edit in the offline tool keeps each map's and lineup's id, so a fixed
+    // Steam ID or a swapped player keeps the series. Changing the maps, or which
+    // lineup is lineup 1, starts it over: results and sides are kept by both.
     public static string MapsKey(MatchData match)
     {
         return Hash(
@@ -61,6 +62,7 @@ public static class OfflineMatchState
                 match
                     .match_maps.OrderBy(map => map.order)
                     .Select(map => $"{map.id}:{map.map.name}:{map.map.workshop_map_id}")
+                    .Prepend($"{match.lineup_1_id}:{match.lineup_2_id}")
             )
         );
     }
@@ -391,7 +393,10 @@ public static class OfflineMatchState
             File.ReadAllText(path)
         );
 
-        if (progress?.maps == null || progress.maps.Any(map => map?.rounds == null))
+        if (
+            progress?.maps == null
+            || progress.maps.Any(map => map?.rounds == null || map.rounds.Any(round => round == null))
+        )
         {
             throw new JsonException($"{path} has no maps");
         }
@@ -403,7 +408,7 @@ public static class OfflineMatchState
     // backups are moved where an admin can get them back.
     public static string SetAside(string folder, Guid matchId)
     {
-        string aside = Path.Join(folder, Unreadable);
+        string aside = Path.Join(folder, Unreadable, DateTime.UtcNow.ToString("yyyyMMddTHHmmssfff"));
         Directory.CreateDirectory(aside);
 
         foreach (string file in BackupFiles(folder, matchId).Append(Path.Join(folder, FileName)))

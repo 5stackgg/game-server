@@ -54,6 +54,15 @@ public class OfflineWiringTests
     }
 
     [Fact]
+    public void AnOfflineServerTellsTheOfflineToolItKeepsItsProgress()
+    {
+        string report = Method(Code("FiveStack.Commands", "Status.cs"), "private string BuildStatusReport()");
+        int line = At(report, "lines.Add(\"Offline Progress: kept\");");
+
+        Assert.Matches(@"if \(_environmentService\.IsOfflineMode\(\)\)\s*\{\s*$", report[..line]);
+    }
+
+    [Fact]
     public void AnOfflineServerKeepsTheMatchItIsPlayingInsteadOfReadingItAgain()
     {
         string offline = Method(Service("MatchService"), "public void GetMatchFromOffline()");
@@ -242,7 +251,12 @@ public class OfflineWiringTests
         Assert.Contains("AnnounceOfflineMatchOver();", idle);
         Assert.Matches(@"_currentMapStatus =\s*OfflineMatchState\.StatusOf\(_currentMap\)", idle);
         Assert.Contains("eMapStatus.Finished;", idle);
-        Assert.True(At(idle, "gameEnded = true;") < At(idle, "return;"));
+        string restored = idle[
+            At(idle, "if (_currentMapStatus == eMapStatus.Unknown)")..At(idle, "AnnounceOfflineMatchOver();")
+        ];
+
+        Assert.Contains("gameEnded = true;", restored);
+        Assert.DoesNotContain("gameEnded", idle[At(idle, "AnnounceOfflineMatchOver();")..]);
     }
 
     [Fact]

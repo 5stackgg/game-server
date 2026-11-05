@@ -267,11 +267,16 @@ public class OfflineMatchStateTests : IDisposable
         MatchData renamed = BestOf(3);
         MapOf(renamed, Map2).map = new Map { name = "de_other" };
         MatchData shorter = BestOf(1);
+        MatchData swapped = BestOf(3);
+        swapped.lineup_1_id = Lineup2;
+        swapped.lineup_2_id = Lineup1;
 
         Assert.False(OfflineMatchState.Restore(renamed, progress));
         Assert.Equal(Map1, renamed.current_match_map_id);
         Assert.Equal("Warmup", MapOf(renamed, Map1).status);
         Assert.False(OfflineMatchState.Restore(shorter, progress));
+        Assert.False(OfflineMatchState.Restore(swapped, progress));
+        Assert.Null(MapOf(swapped, Map1).winning_lineup_id);
     }
 
     [Fact]
@@ -310,6 +315,7 @@ public class OfflineMatchStateTests : IDisposable
     [InlineData("{not json")]
     [InlineData("{\"maps\":null}")]
     [InlineData("{\"maps\":[{\"rounds\":null}]}")]
+    [InlineData("{\"maps\":[{\"rounds\":[null]}]}")]
     [InlineData("null")]
     public void AnUnreadableStateFileIsSetAsideWithItsBackups(string contents)
     {
@@ -323,7 +329,7 @@ public class OfflineMatchStateTests : IDisposable
 
         string aside = OfflineMatchState.SetAside(Folder, MatchId);
 
-        Assert.Equal(Path.Join(Folder, OfflineMatchState.Unreadable), aside);
+        Assert.Equal(Path.Join(Folder, OfflineMatchState.Unreadable), Path.GetDirectoryName(aside));
         Assert.Empty(Directory.GetFiles(Folder));
         Assert.Equal(contents, File.ReadAllText(Path.Join(aside, OfflineMatchState.FileName)));
         Assert.Equal("backup 4", File.ReadAllText(Path.Join(aside, backup)));
