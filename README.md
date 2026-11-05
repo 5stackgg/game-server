@@ -1,4 +1,4 @@
-# 5stack Game Server
+# 5Stack Game Server
 
 View the documentation [docs.5stack.gg](https://docs.5stack.gg)
 
@@ -6,7 +6,7 @@ This repo holds the CS2 game server images and the tooling that keeps them hones
 
 | App | What it is | Image |
 | --- | --- | --- |
-| [`apps/counterstrikesharp`](apps/counterstrikesharp) | CS2 server + 5stack plugin on CounterStrikeSharp | `ghcr.io/5stackgg/game-server-css` |
+| [`apps/counterstrikesharp`](apps/counterstrikesharp) | CS2 server + 5Stack plugin on CounterStrikeSharp | `ghcr.io/5stackgg/game-server-css` |
 | [`apps/swiftly`](apps/swiftly) | the same plugin on SwiftlyS2 | `ghcr.io/5stackgg/game-server-sw` |
 | [`apps/player-management-css`](apps/player-management-css) / [`apps/player-management-sw`](apps/player-management-sw) | enforces panel bans, mutes and gags on community servers | ships inside both game-server images |
 | [`apps/gamedata-validator`](apps/gamedata-validator) | checks our byte-pattern signatures still resolve after a CS2 update | `ghcr.io/5stackgg/gamedata-validator` |
@@ -54,7 +54,7 @@ the panel reach them through this plugin instead. It syncs every 30 seconds and 
 sends `player_management_refresh`, kicks banned players, mutes voice and blocks chat. It has no
 byte-pattern signatures, so a CS2 update does not break it.
 
-A server on a 5stack node loads it automatically. Anywhere else, take the asset from the same
+A server on a 5Stack node loads it automatically. Anywhere else, take the asset from the same
 release as the match plugin and extract it into `game/csgo`:
 
 - CounterStrikeSharp: `PlayerManagement-css-v0.0.N.zip`, configured in
