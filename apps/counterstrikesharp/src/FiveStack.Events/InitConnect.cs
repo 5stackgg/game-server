@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using FiveStack.Entities;
@@ -14,6 +15,9 @@ public partial class FiveStackPlugin
 {
     private static int PasswordBufferLength = 86;
     public static nint PasswordBuffer { get; set; } = nint.Zero;
+    private static readonly nint RefusedPasswordBuffer = Marshal.StringToCoTaskMemUTF8(
+        ConnectRefusal.Password
+    );
     public static ConnectRoleBook ConnectRoles = new();
 
     // near "CNetworkGameServerBase::ConnectClient( name=\'%s\', remote=\'%s\' )\n"
@@ -87,8 +91,15 @@ public partial class FiveStackPlugin
                 }
                 break;
             case eConnectAction.Reject:
-                hook.SetParam(6, 0);
-                hook.SetParam(7, 0);
+                if (ConnectRefusal.ByPassword(ConVar.Find("sv_password")?.StringValue))
+                {
+                    hook.SetParam(5, RefusedPasswordBuffer);
+                }
+                else
+                {
+                    hook.SetParam(6, 0);
+                    hook.SetParam(7, 0);
+                }
                 break;
         }
 

@@ -24,6 +24,10 @@ public delegate nint ConnectClientDelegate(
 // never loads either of those, so this is the only hook on it.
 public partial class PlayerManagementPlugin
 {
+    private static readonly nint RefusedPasswordBuffer = Marshal.StringToCoTaskMemUTF8(
+        ConnectRefusal.Password
+    );
+
     /**
      * FiveStack_ConnectClient in shared/gamedata/fivestack.gamedata.json, which
      * ships with the plugin and which the gamedata validator checks after every
@@ -95,6 +99,26 @@ public partial class PlayerManagementPlugin
                         authTicket,
                         authTicketLength
                     );
+
+                    if (
+                        access == eServerAccess.Denied
+                        && ConnectRefusal.ByPassword(
+                            Core.ConVar.Find<string>("sv_password")?.Value
+                        )
+                    )
+                    {
+                        return next()(
+                            server,
+                            name,
+                            address,
+                            netInfo,
+                            connectMsg,
+                            RefusedPasswordBuffer,
+                            authTicket,
+                            authTicketLength,
+                            isLowViolence
+                        );
+                    }
 
                     if (access == eServerAccess.Denied)
                     {

@@ -14,6 +14,10 @@ namespace PlayerManagement;
 // never loads either of those, so this is the only hook on it.
 public partial class PlayerManagementPlugin
 {
+    private static readonly nint RefusedPasswordBuffer = Marshal.StringToCoTaskMemUTF8(
+        ConnectRefusal.Password
+    );
+
     // FiveStack_ConnectClient in shared/gamedata/fivestack.gamedata.json, which
     // the gamedata validator checks after every game update.
     // near "CNetworkGameServerBase::ConnectClient( name=\'%s\', remote=\'%s\' )\n"
@@ -123,7 +127,14 @@ public partial class PlayerManagementPlugin
                 password != nint.Zero
             );
 
-            if (access == eServerAccess.Denied)
+            if (
+                access == eServerAccess.Denied
+                && ConnectRefusal.ByPassword(ConVar.Find("sv_password")?.StringValue)
+            )
+            {
+                hook.SetParam(5, RefusedPasswordBuffer);
+            }
+            else if (access == eServerAccess.Denied)
             {
                 hook.SetParam(6, 0);
                 hook.SetParam(7, 0);
