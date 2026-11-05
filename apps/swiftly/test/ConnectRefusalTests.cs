@@ -68,18 +68,4 @@ public class ConnectRefusalTests
         );
         Assert.Contains("RefusedPasswordBuffer,", hook[byPassword..stripped]);
     }
-
-    [Fact]
-    public void APlayerPlacedDuringTheFreezeIsSpawned()
-    {
-        string placed = Between(
-            Code("FiveStack.Services", "MatchManager.cs"),
-            "player.ChangeTeam(applyPlacementTeam);",
-            "[team] ChangeTeam applied"
-        );
-
-        Assert.Contains("IsFreezePeriod()", placed);
-        Assert.Contains("!player.IsAlive", placed);
-        Assert.Contains("player.Respawn();", placed);
-    }
 }

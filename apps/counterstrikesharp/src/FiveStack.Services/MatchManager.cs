@@ -1232,22 +1232,6 @@ public class MatchManager
 
                     player.ChangeTeam(applyPlacementTeam);
 
-                    // CS2 only spawns a player who joins a team within its join
-                    // grace time, so one arriving during a long freeze, such as a
-                    // pause, stood dead for the round while everyone else was frozen
-                    // at spawn.
-                    if (
-                        IsFreezePeriod()
-                        && !player.PawnIsAlive
-                        && (applyPlacementTeam == CsTeam.Terrorist || applyPlacementTeam == CsTeam.CounterTerrorist)
-                    )
-                    {
-                        _logger.LogInformation(
-                            $"[team] Spawning {player.PlayerName} ({player.SteamID}): joined during the freeze"
-                        );
-                        player.Respawn();
-                    }
-
                     _logger.LogInformation(
                         $"[team] ChangeTeam applied {player.PlayerName} ({player.SteamID}) -> {applyPlacementTeam} (expected: {applyExpectedTeam}, playerSwitchTeamsOnNextRoundReset: {player.SwitchTeamsOnNextRoundReset}, {TeamSwitchState()})"
                     );

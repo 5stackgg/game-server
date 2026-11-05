@@ -69,18 +69,4 @@ public class ConnectRefusalTests
         Assert.True(byPassword >= 0 && stripped > byPassword);
         Assert.Contains("else", reject[byPassword..stripped]);
     }
-
-    [Fact]
-    public void APlayerPlacedDuringTheFreezeIsSpawned()
-    {
-        string placed = Between(
-            Code("FiveStack.Services", "MatchManager.cs"),
-            "player.ChangeTeam(applyPlacementTeam);",
-            "[team] ChangeTeam applied"
-        );
-
-        Assert.Contains("IsFreezePeriod()", placed);
-        Assert.Contains("!player.PawnIsAlive", placed);
-        Assert.Contains("player.Respawn();", placed);
-    }
 }
