@@ -7,14 +7,14 @@ using Xunit;
 // password the client is handed one that can't match, and refused once.
 public class ConnectRefusalTests
 {
-    private static string Code(params string[] path)
+    private static string Code(string app, params string[] path)
     {
         DirectoryInfo? directory = new DirectoryInfo(AppContext.BaseDirectory);
 
         while (directory != null)
         {
             string candidate = Path.Combine(
-                new[] { directory.FullName, "apps", "utility-sw", "src" }.Concat(path).ToArray()
+                new[] { directory.FullName, "apps", app, "src" }.Concat(path).ToArray()
             );
 
             if (File.Exists(candidate))
@@ -28,44 +28,47 @@ public class ConnectRefusalTests
         throw new FileNotFoundException($"{path[^1]} was not found above the test output");
     }
 
-    private static string Between(string source, string from, string to)
-    {
-        int start = source.IndexOf(from, StringComparison.Ordinal);
-        int end = source.IndexOf(to, start + 1, StringComparison.Ordinal);
-
-        Assert.True(start >= 0 && end > start, $"{from} is gone");
-
-        return source[start..end];
-    }
-
     [Theory]
     [InlineData("k8by6zss", true)]
+    [InlineData(" none ", true)]
     [InlineData("", false)]
     [InlineData(null, false)]
-    [InlineData(ConnectUtility.RefusedPassword, false)]
+    [InlineData("none", false)]
+    [InlineData("NONE", false)]
+    [InlineData("None", false)]
+    [InlineData(ConnectRefusal.Password, false)]
     public void ARefusedClientIsHandedAPasswordOnlyWhenTheServerHasOne(string? serverPassword, bool refuses)
     {
-        Assert.Equal(refuses, ConnectUtility.RefusesByPassword(serverPassword));
+        Assert.Equal(refuses, ConnectRefusal.ByPassword(serverPassword));
     }
 
     [Fact]
     public void TheRefusedPasswordIsOneNobodyCouldSet()
     {
-        Assert.Contains(ConnectUtility.RefusedPassword, character => char.IsControl(character));
+        Assert.Contains(ConnectRefusal.Password, character => char.IsControl(character));
+    }
+
+    private static void RefusesWithThePasswordBeforeStrippingTheTicket(string hook, string byPassword, string stripped)
+    {
+        Match password = Regex.Match(hook, byPassword);
+        Match ticket = Regex.Match(hook, stripped);
+
+        Assert.True(password.Success, "the refused password path is gone or changed");
+        Assert.True(ticket.Success, "the empty ticket path is gone or changed");
+        Assert.True(password.Index < ticket.Index);
+        Assert.Matches(
+            @"RefusedPasswordBuffer = Marshal\.StringToCoTaskMemUTF8\(\s*ConnectRefusal\.Password\s*\)",
+            hook
+        );
     }
 
     [Fact]
-    public void TheConnectHookRefusesWithThePasswordAndOnlyStripsTheTicketWithoutOne()
+    public void ThePracticeConnectHookRefusesWithThePasswordAndOnlyStripsTheTicketWithoutOne()
     {
-        string hook = Code("Events", "PracticeConnect.cs");
-        int byPassword = hook.IndexOf("ConnectUtility.RefusesByPassword(", StringComparison.Ordinal);
-        int stripped = hook.IndexOf("nint.Zero,\n                                0,", StringComparison.Ordinal);
-
-        Assert.True(byPassword >= 0 && stripped > byPassword);
-        Assert.Contains(
-            "Core.ConVar.FindAsString(\"sv_password\")?.ValueAsString",
-            hook[byPassword..stripped]
+        RefusesWithThePasswordBeforeStrippingTheTicket(
+            Code("utility-sw", "Events", "PracticeConnect.cs"),
+            @"if\s*\(\s*decision\.action == eConnectAction\.Reject\s*&&\s*ConnectRefusal\.ByPassword\(\s*Core\.ConVar\.FindAsString\(""sv_password""\)\?\.ValueAsString\s*\)\s*\)\s*\{\s*return next\(\)\(\s*param1,\s*param2,\s*param3,\s*param4,\s*param5,\s*RefusedPasswordBuffer,\s*param7,\s*param8,\s*param9\s*\);",
+            @"if\s*\(decision\.action == eConnectAction\.Reject\)\s*\{\s*return next\(\)\(\s*param1,\s*param2,\s*param3,\s*param4,\s*param5,\s*param6,\s*nint\.Zero,\s*0,\s*param9\s*\);"
         );
-        Assert.Contains("RefusedPasswordBuffer,", hook[byPassword..stripped]);
     }
 }

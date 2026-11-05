@@ -16,7 +16,7 @@ public partial class FiveStackPlugin
     private static int PasswordBufferLength = 86;
     public static nint PasswordBuffer { get; set; } = nint.Zero;
     private static readonly nint RefusedPasswordBuffer = Marshal.StringToCoTaskMemUTF8(
-        ConnectUtility.RefusedPassword
+        ConnectRefusal.Password
     );
     public static ConnectRoleBook ConnectRoles = new();
 
@@ -91,7 +91,7 @@ public partial class FiveStackPlugin
                 }
                 break;
             case eConnectAction.Reject:
-                if (ConnectUtility.RefusesByPassword(ConVar.Find("sv_password")?.StringValue))
+                if (ConnectRefusal.ByPassword(ConVar.Find("sv_password")?.StringValue))
                 {
                     hook.SetParam(5, RefusedPasswordBuffer);
                 }

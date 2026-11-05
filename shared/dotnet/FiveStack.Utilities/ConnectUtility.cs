@@ -31,17 +31,6 @@ public class ConnectDecision
 // practice plugins -- so a connect is decided, and logged, the same everywhere.
 public static class ConnectUtility
 {
-    // A refused client is handed this as its password. With a server password
-    // set, the engine refuses it once and frees the slot; an empty Steam ticket
-    // instead made the engine challenge the client again, forever, each try
-    // holding a slot. It holds a control character, which no password does.
-    public const string RefusedPassword = "\u0001refused";
-
-    public static bool RefusesByPassword(string? serverPassword)
-    {
-        return !string.IsNullOrEmpty(serverPassword) && serverPassword != RefusedPassword;
-    }
-
     public static ConnectDecision Authorize(ConnectRules? rules, ulong steamId, string? token)
     {
         // Deny by default: nothing loaded must not read as "everyone is

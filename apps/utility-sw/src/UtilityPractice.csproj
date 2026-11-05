@@ -45,6 +45,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/ConnectAuth.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/PlayerRoleUtility.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/ConnectUtility.cs" LinkBase="Shared" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/ConnectRefusal.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/PracticeConnectUtility.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/PracticeJson.cs" LinkBase="Shared" />
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Utilities/PracticeLaunchUtility.cs" LinkBase="Shared" />

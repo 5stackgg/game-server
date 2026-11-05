@@ -28,7 +28,7 @@ public partial class UtilityPracticePlugin
     private static int PasswordBufferLength = 86;
     public static nint PasswordBuffer { get; set; } = nint.Zero;
     private static readonly nint RefusedPasswordBuffer = Marshal.StringToCoTaskMemUTF8(
-        ConnectUtility.RefusedPassword
+        ConnectRefusal.Password
     );
     public static Dictionary<ulong, string> PendingPlayers = new();
 
@@ -163,7 +163,7 @@ public partial class UtilityPracticePlugin
 
                         if (
                             decision.action == eConnectAction.Reject
-                            && ConnectUtility.RefusesByPassword(
+                            && ConnectRefusal.ByPassword(
                                 Core.ConVar.FindAsString("sv_password")?.ValueAsString
                             )
                         )
