@@ -132,6 +132,7 @@ public class GameBackUpRounds
 
     public bool CheckForBackupRestore(eMapStatus status)
     {
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
         MatchMap? matchMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
 
         if (matchMap == null)
@@ -139,7 +140,13 @@ public class GameBackUpRounds
             return false;
         }
 
-        int highestNumber = RoundRestoreGateUtility.HighestRestorableRound(matchMap.rounds, 0);
+        bool offline = _environmentService.IsOfflineMode() && match != null;
+        int highestOnDisk = offline ? HighestBackupRoundOnDisk(match!, matchMap) : 0;
+
+        int highestNumber = RoundRestoreGateUtility.HighestRestorableRound(
+            matchMap.rounds,
+            highestOnDisk
+        );
         int totalRoundsPlayed = _gameServer.GetTotalRoundsPlayed();
 
         _logger.LogInformation(
@@ -149,12 +156,27 @@ public class GameBackUpRounds
         // Nothing to restore ahead of the current round.
         if (highestNumber <= totalRoundsPlayed)
         {
-            if (RoundRestoreGateUtility.HighestRecordedRound(matchMap.rounds, 0) > totalRoundsPlayed)
+            if (
+                RoundRestoreGateUtility.HighestRecordedRound(matchMap.rounds, highestOnDisk)
+                > totalRoundsPlayed
+            )
             {
                 return ReplayMapAfterRestart(status);
             }
 
             return false;
+        }
+
+        if (offline && RoundRestoreGateUtility.LatestBackup(matchMap.rounds, highestNumber) == null)
+        {
+            BackupRound? onDisk = BackupOnDisk(match!, highestNumber);
+
+            if (onDisk == null)
+            {
+                return false;
+            }
+
+            matchMap.rounds = matchMap.rounds.Append(onDisk).ToArray();
         }
 
         if (_matchService.GetCurrentMatch()?.GetMatchData()?.options.CanRestoreRounds() == false)
@@ -531,6 +553,13 @@ public class GameBackUpRounds
     public void SendRestoreRoundToBackend(int round)
     {
         _logger.LogInformation($"Restoring Round {round}");
+
+        if (_environmentService.IsOfflineMode())
+        {
+            RestoreRoundOffline(round);
+            return;
+        }
+
         MatchManager? matchManager = _matchService.GetCurrentMatch();
         MatchData? match = matchManager?.GetMatchData();
         if (matchManager == null || match?.current_match_map_id == null)
@@ -544,6 +573,95 @@ public class GameBackUpRounds
             "restoreRound",
             new Dictionary<string, object> { { "round", round }, { "match_map_id", mapId } }
         );
+    }
+
+    // Offline there is no api to reset the map and answer with api_restore_round,
+    // so this does both.
+    private void RestoreRoundOffline(int round)
+    {
+        MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchMap? matchMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
+
+        if (match == null || matchMap == null)
+        {
+            _logger.LogWarning($"Restore round {round} dropped: no current match or match map");
+            return;
+        }
+
+        string? refusal = OfflineMatchState.ResetToRound(
+            matchMap,
+            match.options.IsRush(),
+            round,
+            DateTime.UtcNow.ToString("o")
+        );
+
+        if (refusal != null)
+        {
+            _logger.LogWarning($"Restore round {round} ignored offline: {refusal}");
+            return;
+        }
+
+        RestoreRound(round);
+        _matchService.SaveOfflineProgress();
+    }
+
+    private static string BackupDirectory => Path.Join(Server.GameDirectory, "csgo");
+
+    // Offline the backup files are all a restarted server has, as sw reads them.
+    private BackupRound? BackupOnDisk(MatchData match, int round)
+    {
+        string path = Path.Join(
+            BackupDirectory,
+            $"{MatchUtility.GetSafeMatchPrefix(match)}_round{round.ToString().PadLeft(2, '0')}.txt"
+        );
+
+        try
+        {
+            string content = File.Exists(path) ? File.ReadAllText(path) : "";
+
+            return string.IsNullOrEmpty(content)
+                ? null
+                : new BackupRound { round = round, backup_file = content };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to read backup round file {path}");
+            return null;
+        }
+    }
+
+    private int HighestBackupRoundOnDisk(MatchData match, MatchMap matchMap)
+    {
+        int highest = 0;
+        string prefix = $"{MatchUtility.GetSafeMatchPrefix(match)}_round";
+
+        if (!Directory.Exists(BackupDirectory))
+        {
+            return highest;
+        }
+
+        try
+        {
+            foreach (string file in Directory.GetFiles(BackupDirectory, $"{prefix}*.txt"))
+            {
+                string number = Path.GetFileNameWithoutExtension(file)[prefix.Length..];
+
+                if (
+                    int.TryParse(number, out int round)
+                    && round > highest
+                    && RoundRestoreGateUtility.IsUsableOnDisk(matchMap.rounds, round, true)
+                )
+                {
+                    highest = round;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed scanning for backup round files");
+        }
+
+        return highest;
     }
 
     public void RestoreRound(int round)
@@ -569,7 +687,7 @@ public class GameBackUpRounds
             return;
         }
 
-        BackupRound? backupRound = RoundRestoreGateUtility.LatestBackup(matchMap.rounds, round);
+        BackupRound? backupRound = BackupOf(match, matchMap, round);
 
         if (backupRound == null)
         {
@@ -647,12 +765,29 @@ public class GameBackUpRounds
             _restore.VotingOrLoading,
             _matchService.GetCurrentMatch()?.GetCurrentMapStatus() ?? eMapStatus.Unknown,
             round,
-            matchMap != null
-                && RoundRestoreGateUtility.LatestBackup(matchMap.rounds, round) != null,
+            match != null && matchMap != null && BackupOf(match, matchMap, round) != null,
             MatchUtility.Players().Count,
             _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10,
             match?.options.type ?? ""
         );
+    }
+
+    private BackupRound? BackupOf(MatchData match, MatchMap matchMap, int round)
+    {
+        BackupRound? kept = RoundRestoreGateUtility.LatestBackup(matchMap.rounds, round);
+        eMapStatus status =
+            _matchService.GetCurrentMatch()?.GetCurrentMapStatus() ?? eMapStatus.Unknown;
+
+        if (
+            kept != null
+            || !_environmentService.IsOfflineMode()
+            || !RoundRestoreGateUtility.ReadsBackupFromDisk(round, status)
+        )
+        {
+            return kept;
+        }
+
+        return BackupOnDisk(match, round);
     }
 
     public bool RoundRestoresDisabled()

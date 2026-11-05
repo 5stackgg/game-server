@@ -50,6 +50,7 @@
   "timeout.not_allowed": " {0}you are not allowed to call a {1} the match!",
   "match.map_over_next_map": "Map complete — the next map is coming up, stay connected.",
   "match.map_over_series_done": "Match complete — stats will appear on the match page once the demo finishes processing.",
+  "match.offline_over": "The match is over — this server has nothing left to play.",
   "timeout.cannot_resume_empty_team": "Cannot resume while a team has no players connected",
   "timeout.admin_resumed": "Admin Resumed the Match",
   "timeout.vote.resume": "Resume",

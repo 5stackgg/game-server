@@ -465,6 +465,18 @@ public class MatchManager
 
         _matchEvents.PublishMapStatus(status, winningLineupId);
         _currentMapStatus = status;
+
+        if (_environmentService.IsOfflineMode() && currentMap != null)
+        {
+            OfflineMatchState.Record(currentMap, status, winningLineupId);
+            _matchService.SaveOfflineProgress();
+        }
+    }
+
+    public void AnnounceOfflineMatchOver()
+    {
+        _gameServer.Message(MessageType.Center, _localizer["match.offline_over"]);
+        _gameServer.Message(MessageType.Chat, _localizer["match.offline_over"]);
     }
 
     private void PublishConnectedPlayers(eMapStatus status)
@@ -523,6 +535,17 @@ public class MatchManager
         if (_currentMap == null)
         {
             _logger.LogWarning("match does not have a current map");
+            return;
+        }
+
+        if (
+            _environmentService.IsOfflineMode()
+            && _currentMapStatus == eMapStatus.Unknown
+            && OfflineMatchState.IsMatchOver(_matchData)
+        )
+        {
+            _logger.LogInformation($"Offline match {_matchData.id} is over, leaving the server idle");
+            AnnounceOfflineMatchOver();
             return;
         }
 

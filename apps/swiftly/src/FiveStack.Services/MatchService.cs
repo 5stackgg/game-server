@@ -220,6 +220,16 @@ public class MatchService
 
         try
         {
+            string sourceHash = OfflineMatchState.Hash(offlineMatchData);
+            MatchData? loaded = _currentMatch?.GetMatchData();
+
+            if (OfflineMatchState.KeepsLoaded(loaded != null, _offlineSourceHash, sourceHash))
+            {
+                _logger.LogInformation($"Keeping offline match {loaded!.id} as it is being played");
+                _currentMatch!.SetupMatch(loaded);
+                return;
+            }
+
             _logger.LogInformation("Loading match data from offline mode");
 
             MatchData? matchData = JsonSerializer.Deserialize<MatchData>(offlineMatchData);
@@ -231,6 +241,9 @@ public class MatchService
             }
 
             _logger.LogInformation($"Loaded match data from offline mode: {matchData.id}");
+
+            RestoreOfflineProgress(matchData, sourceHash);
+            _offlineSourceHash = sourceHash;
 
             if (_currentMatch?.GetMatchData()?.id == matchData.id)
             {
@@ -250,6 +263,70 @@ public class MatchService
         catch (Exception ex)
         {
             _logger.LogError(ex, "An unexpected error occurred while loading offline match data");
+        }
+    }
+
+    private string? _offlineSourceHash;
+
+    private string BackupDirectory => Path.Join(_core.GameDirectory, "csgo");
+
+    private void RestoreOfflineProgress(MatchData matchData, string sourceHash)
+    {
+        string folder = OfflineMatchState.Folder(OfflineMatchState.DemosRoot, matchData.id);
+
+        try
+        {
+            OfflineMatchProgress? progress = OfflineMatchState.Load(folder);
+
+            if (progress == null || !OfflineMatchState.Restore(matchData, progress, sourceHash))
+            {
+                if (progress != null)
+                {
+                    _logger.LogInformation(
+                        $"Offline match {matchData.id} was edited, starting it from the beginning"
+                    );
+                }
+
+                OfflineMatchState.Forget(folder, matchData.id);
+                return;
+            }
+
+            OfflineMatchState.LoadBackups(matchData, progress, folder);
+            int restored = OfflineMatchState.RestoreBackups(folder, BackupDirectory, matchData.id);
+
+            _logger.LogInformation(
+                $"Restored offline match {matchData.id} on map {matchData.current_match_map_id} ({restored} round backups put back)"
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to restore the offline match from {folder}");
+        }
+    }
+
+    public void SaveOfflineProgress()
+    {
+        MatchData? matchData = _currentMatch?.GetMatchData();
+
+        if (!_environmentService.IsOfflineMode() || matchData == null || _offlineSourceHash == null)
+        {
+            return;
+        }
+
+        string folder = OfflineMatchState.Folder(OfflineMatchState.DemosRoot, matchData.id);
+
+        try
+        {
+            OfflineMatchState.Save(folder, OfflineMatchState.Capture(matchData, _offlineSourceHash));
+            OfflineMatchState.SaveBackups(
+                BackupDirectory,
+                folder,
+                MatchUtility.GetSafeMatchPrefix(matchData)
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to save the offline match to {folder}");
         }
     }
 
