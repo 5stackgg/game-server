@@ -1232,6 +1232,11 @@ public class MatchManager
 
                     player.ChangeTeam(applyPlacementTeam);
 
+                    TimerUtility.AddTimer(
+                        WarmupRespawnCheckSeconds,
+                        () => RespawnIfStuckInWarmup(player)
+                    );
+
                     _logger.LogInformation(
                         $"[team] ChangeTeam applied {player.PlayerName} ({player.SteamID}) -> {applyPlacementTeam} (expected: {applyExpectedTeam}, playerSwitchTeamsOnNextRoundReset: {player.SwitchTeamsOnNextRoundReset}, {TeamSwitchState()})"
                     );
@@ -1246,6 +1251,30 @@ public class MatchManager
         }
 
         captainSystem.IsCaptain(player, expectedTeam);
+    }
+
+    // ChangeTeam kills the player and warmup does not always spawn them again.
+    // Checked after a pending mp_restartgame 1 has run (#241) and only if still dead.
+    private const float WarmupRespawnCheckSeconds = 2.0f;
+
+    private void RespawnIfStuckInWarmup(CCSPlayerController player)
+    {
+        if (
+            !player.IsValid
+            || player.PawnIsAlive
+            || (player.Team != CsTeam.Terrorist && player.Team != CsTeam.CounterTerrorist)
+            || !IsWarmup()
+            || IsKnife()
+            || MatchUtility.Rules()?.WarmupPeriod != true
+        )
+        {
+            return;
+        }
+
+        _logger.LogInformation(
+            $"[team] Respawning {player.PlayerName} ({player.SteamID}), still dead on {player.Team} in warmup"
+        );
+        player.Respawn();
     }
 
     public void ReconcileMemberTeams()

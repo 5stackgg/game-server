@@ -13,8 +13,9 @@ public class TeamPlacementTests
 
     // CS2 spawns a player the plugin puts on a team. Every under-the-map spawn
     // in match 46401241 came from the plugin respawning them itself (#241).
+    // The one exception is a player still dead in warmup after the team change.
     [Fact]
-    public void ThePluginNeverRespawnsAPlayer()
+    public void ThePluginOnlyRespawnsAPlayerStuckDeadInWarmup()
     {
         string src = SourceDir();
 
@@ -35,6 +36,28 @@ public class TeamPlacementTests
             .Select(entry => $"{Path.GetRelativePath(src, entry.file)}:{entry.number}")
             .ToList();
 
-        Assert.Empty(respawns);
+        Assert.Single(respawns);
+
+        string matchManager = File.ReadAllText(
+            Path.Combine(src, "FiveStack.Services", "MatchManager.cs")
+        );
+        int from = matchManager.IndexOf(
+            "private void RespawnIfStuckInWarmup(",
+            StringComparison.Ordinal
+        );
+
+        Assert.True(from >= 0, "RespawnIfStuckInWarmup is gone");
+
+        string method = matchManager[from..matchManager.IndexOf("\n    }\n", from, StringComparison.Ordinal)];
+
+        Assert.StartsWith(
+            Path.Combine("FiveStack.Services", "MatchManager.cs") + ":",
+            respawns[0]
+        );
+        Assert.Matches(@"\.Respawn\s*\(", method);
+        Assert.Contains("PawnIsAlive", method);
+        Assert.Contains("!IsWarmup()", method);
+        Assert.Contains("IsKnife()", method);
+        Assert.Contains("WarmupPeriod != true", method);
     }
 }
