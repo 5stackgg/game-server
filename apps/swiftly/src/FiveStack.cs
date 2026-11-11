@@ -87,6 +87,7 @@ public partial class FiveStackPlugin : BasePlugin
             .AddSingleton<CoachSystem>()
             .AddSingleton<CaptainSystem>()
             .AddSingleton<RankSystem>()
+            .AddSingleton<AvatarSystem>()
             .AddSingleton<IdleMapReload>()
             // Singleton: the offline set has to outlive the transient
             // MatchManager that gets rebuilt on every match refresh.

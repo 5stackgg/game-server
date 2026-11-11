@@ -40,7 +40,7 @@ public class EntityContractTests
             "tag": "A",
             "coach_steam_id": "76561198000000009",
             "lineup_players": [
-              { "name": "p1", "role": "verified_user", "steam_id": "76561198000000001", "captain": true, "elo": 1500, "elo_win": 212, "elo_loss": -198, "elo_tie": 7, "is_gagged": true, "camera_ok": false },
+              { "name": "p1", "role": "verified_user", "steam_id": "76561198000000001", "captain": true, "elo": 1500, "elo_win": 212, "elo_loss": -198, "elo_tie": 7, "is_gagged": true, "camera_ok": false, "avatar_url": "/avatars/roster-teams/t-1-abc.png?format=game" },
               { "name": "p2", "role": "", "placeholder_name": "Bot", "steam_id": null, "captain": false, "elo": null }
             ]
           },
@@ -130,6 +130,7 @@ public class EntityContractTests
         Assert.Equal(7, captain.elo_tie);
         Assert.True(captain.is_gagged);
         Assert.False(captain.camera_ok);
+        Assert.Equal("/avatars/roster-teams/t-1-abc.png?format=game", captain.avatar_url);
 
         MatchMember placeholder = lineup.lineup_players[1];
         Assert.Null(placeholder.steam_id);
@@ -141,6 +142,7 @@ public class EntityContractTests
         // Absent from the payload: a plugin talking to an older API must not
         // decide every player is uncompliant.
         Assert.True(placeholder.camera_ok);
+        Assert.Null(placeholder.avatar_url);
     }
 
     [Fact]

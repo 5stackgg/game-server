@@ -51,6 +51,7 @@ public class MatchManager
     public CaptainSystem captainSystem;
     public MatchService _matchService;
     private readonly RankSystem _rankSystem;
+    private readonly AvatarSystem _avatarSystem;
 
     private int _remainingMapChangeDelay = 0;
     public CancellationTokenSource? _mapChangeCountdownTimer;
@@ -70,6 +71,7 @@ public class MatchManager
         SurrenderSystem surrenderSystem,
         MatchService matchService,
         RankSystem rankSystem,
+        AvatarSystem avatarSystem,
         ILocalizer localizer
     )
     {
@@ -87,6 +89,7 @@ public class MatchManager
         _surrenderSystem = surrenderSystem;
         _matchService = matchService;
         _rankSystem = rankSystem;
+        _avatarSystem = avatarSystem;
         _localizer = localizer;
     }
 
@@ -527,6 +530,8 @@ public class MatchManager
         StartPlayerNameCheck();
 
         _rankSystem.OnMatchSetup(_matchData);
+
+        _avatarSystem.Apply(_matchData);
 
         _surrenderSystem.OnMatchSetup(_matchData);
 
@@ -1657,6 +1662,7 @@ public class MatchManager
         captainSystem.Reset();
         knifeSystem.Reset();
         _surrenderSystem.Reset();
+        _avatarSystem.Clear();
     }
 
     private void SetConVar(string name, string value)
