@@ -16,21 +16,21 @@ public class AvatarSystemTests
             {
                 lineup_players =
                 [
-                    Member("76561198000000001", "/avatars/roster-teams/a.png?format=game"),
+                    Member("76561198000000001", "/avatars/roster-teams/a.png?format=cs2-avatar"),
                     Member("76561198000000002", null),
                 ],
             },
             lineup_2 = new MatchLineUp
             {
-                lineup_players = [Member("76561198000000003", "/avatars/roster-teams/b.png?format=game")],
+                lineup_players = [Member("76561198000000003", "/avatars/roster-teams/b.png?format=cs2-avatar")],
             },
         };
 
         Assert.Equal(
             new Dictionary<string, string>
             {
-                ["76561198000000001"] = "/avatars/roster-teams/a.png?format=game",
-                ["76561198000000003"] = "/avatars/roster-teams/b.png?format=game",
+                ["76561198000000001"] = "/avatars/roster-teams/a.png?format=cs2-avatar",
+                ["76561198000000003"] = "/avatars/roster-teams/b.png?format=cs2-avatar",
             },
             AvatarSystem.Wanted(match)
         );
@@ -39,9 +39,9 @@ public class AvatarSystemTests
     // The key is a SteamID64 and the path is fetched from the API, so anything
     // else would write a junk row or fetch from somewhere other than the API.
     [Theory]
-    [InlineData(null, "/avatars/roster-teams/a.png?format=game")]
-    [InlineData("", "/avatars/roster-teams/a.png?format=game")]
-    [InlineData("not-a-steamid", "/avatars/roster-teams/a.png?format=game")]
+    [InlineData(null, "/avatars/roster-teams/a.png?format=cs2-avatar")]
+    [InlineData("", "/avatars/roster-teams/a.png?format=cs2-avatar")]
+    [InlineData("not-a-steamid", "/avatars/roster-teams/a.png?format=cs2-avatar")]
     [InlineData("76561198000000001", "")]
     [InlineData("76561198000000001", "https://elsewhere.example/a.png")]
     public void SkipsAPlayerWithoutASteamIdOrApiPath(string? steamId, string? avatarUrl)
