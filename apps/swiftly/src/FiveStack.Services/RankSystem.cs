@@ -31,14 +31,14 @@ public class RankSystem
     private readonly record struct TrackedPlayer(
         CCSPlayerController Controller,
         ulong SteamId,
-        int Elo
+        EloRank Rank
     );
 
     private readonly ISwiftlyCore _core;
     private readonly ILogger<RankSystem> _logger;
     private readonly MatchService _matchService;
 
-    private Dictionary<ulong, int>? _eloBySteamId;
+    private Dictionary<ulong, EloRank>? _eloBySteamId;
 
     private Dictionary<nint, TrackedPlayer> _tracked = [];
 
@@ -196,16 +196,16 @@ public class RankSystem
         Refresh();
     }
 
-    private static Dictionary<ulong, int> BuildEloLookup(MatchData matchData)
+    private static Dictionary<ulong, EloRank> BuildEloLookup(MatchData matchData)
     {
-        var lookup = new Dictionary<ulong, int>();
+        var lookup = new Dictionary<ulong, EloRank>();
         foreach (
             var member in matchData.lineup_1.lineup_players.Concat(
                 matchData.lineup_2.lineup_players
             )
         )
         {
-            if (!member.elo.HasValue)
+            if (EloRank.From(member) is not EloRank rank)
             {
                 continue;
             }
@@ -213,7 +213,7 @@ public class RankSystem
             {
                 continue;
             }
-            lookup[sid] = member.elo.Value;
+            lookup[sid] = rank;
         }
         return lookup;
     }
@@ -268,7 +268,7 @@ public class RankSystem
                     continue;
                 }
 
-                if (!_eloBySteamId.TryGetValue(player.SteamID, out var elo))
+                if (!_eloBySteamId.TryGetValue(player.SteamID, out var rank))
                 {
                     continue;
                 }
@@ -277,7 +277,7 @@ public class RankSystem
                 tracked[controller.Address] = new TrackedPlayer(
                     controller,
                     controller.SteamID,
-                    elo
+                    rank
                 );
             }
 
@@ -308,23 +308,34 @@ public class RankSystem
             return;
         }
 
-        // Reading first keeps the common case to three schema reads; the write plus
-        // the three *Updated() network flushes only happen once the engine reverts.
+        EloRank rank = tracked.Rank;
+
+        // Reading first keeps the common case to schema reads; the writes and their
+        // *Updated() network flushes only happen once the engine reverts.
         if (
-            controller.CompetitiveRanking == tracked.Elo
+            controller.CompetitiveRanking == rank.Elo
             && controller.CompetitiveRankType == (byte)RankTypeCompetitive
             && controller.CompetitiveWins == MinWinsForVisibility
+            && controller.CompetitiveRankingPredicted_Win == rank.Win
+            && controller.CompetitiveRankingPredicted_Loss == rank.Loss
+            && controller.CompetitiveRankingPredicted_Tie == rank.Tie
         )
         {
             return;
         }
 
         controller.CompetitiveRankType = (byte)RankTypeCompetitive;
-        controller.CompetitiveRanking = tracked.Elo;
+        controller.CompetitiveRanking = rank.Elo;
         controller.CompetitiveWins = MinWinsForVisibility;
+        controller.CompetitiveRankingPredicted_Win = rank.Win;
+        controller.CompetitiveRankingPredicted_Loss = rank.Loss;
+        controller.CompetitiveRankingPredicted_Tie = rank.Tie;
 
         controller.CompetitiveRankTypeUpdated();
         controller.CompetitiveRankingUpdated();
         controller.CompetitiveWinsUpdated();
+        controller.CompetitiveRankingPredicted_WinUpdated();
+        controller.CompetitiveRankingPredicted_LossUpdated();
+        controller.CompetitiveRankingPredicted_TieUpdated();
     }
 }
