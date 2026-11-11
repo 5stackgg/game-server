@@ -17,6 +17,9 @@ public class MatchMember
     public bool camera_ok { get; set; } = true;
     public int? elo { get; set; }
 
+    // The team roster photo the server shows in game, as an API path.
+    public string? avatar_url { get; set; }
+
     // Expected elo change if this player's team wins, loses or ties.
     public int? elo_win { get; set; }
     public int? elo_loss { get; set; }
