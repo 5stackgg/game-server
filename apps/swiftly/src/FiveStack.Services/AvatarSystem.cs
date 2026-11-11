@@ -15,6 +15,7 @@ public class AvatarSystem
 {
     public const string TableName = "ServerAvatarOverrides";
     public const int MaxBytes = 16 * 1024;
+    private static readonly TimeSpan DownloadTimeout = TimeSpan.FromSeconds(10);
 
     // BotHider never puts a photo at index 0 and reserves it with an empty row.
     private const string ReservedKey = "__5stack_no_avatar__";
@@ -98,10 +99,15 @@ public class AvatarSystem
             _downloaded.TryRemove(path, out _);
         }
 
+        string[] paths = wanted.Values.Distinct().ToArray();
+        byte[]?[] downloads = await Task.WhenAll(paths.Select(Download));
+        Dictionary<string, byte[]?> byPath = paths
+            .Zip(downloads)
+            .ToDictionary(pair => pair.First, pair => pair.Second);
+
         foreach ((string steamId, string path) in wanted)
         {
-            byte[]? image = await Download(path);
-            if (image != null)
+            if (byPath[path] is byte[] image)
             {
                 images[steamId] = image;
             }
@@ -142,8 +148,10 @@ public class AvatarSystem
 
         try
         {
+            using CancellationTokenSource timeout = new(DownloadTimeout);
             byte[] image = await HttpClientProvider.Client.GetByteArrayAsync(
-                $"{_environmentService.GetApiUrl()}{path}"
+                $"{_environmentService.GetApiUrl()}{path}",
+                timeout.Token
             );
 
             if (!IsUsablePng(image))
@@ -164,37 +172,62 @@ public class AvatarSystem
 
     private void Write(Dictionary<string, byte[]> images)
     {
-        IStringTable? table = _core.StringTable.FindTable(TableName);
-        if (table == null)
+        try
         {
-            _logger.LogWarning($"{TableName} string table not found, avatars stay as they are");
-            return;
-        }
-
-        if (images.Count > 0 && table.NumStrings == 0)
-        {
-            table.SetOrAddStringUserData(ReservedKey, StringTableUserData.FromRaw(Array.Empty<byte>()));
-        }
-
-        foreach (string steamId in _written.Except(images.Keys).ToList())
-        {
-            if (table.FindStringIndex(steamId) is int index)
+            IStringTable? table = _core.StringTable.FindTable(TableName);
+            if (table == null)
             {
-                table.SetStringUserData(index, StringTableUserData.FromRaw(Array.Empty<byte>()), true);
+                _logger.LogWarning($"{TableName} string table not found, avatars stay as they are");
+                return;
             }
 
-            _written.Remove(steamId);
-        }
+            if (images.Count > 0 && table.NumStrings == 0)
+            {
+                table.SetOrAddStringUserData(
+                    ReservedKey,
+                    StringTableUserData.FromRaw(Array.Empty<byte>())
+                );
+            }
 
-        foreach ((string steamId, byte[] image) in images)
-        {
-            table.SetOrAddStringUserData(steamId, StringTableUserData.FromRaw(image), true);
-            _written.Add(steamId);
-        }
+            foreach (string steamId in _written.Except(images.Keys).ToList())
+            {
+                if (table.FindStringIndex(steamId) is int index)
+                {
+                    table.SetStringUserData(
+                        index,
+                        StringTableUserData.FromRaw(Array.Empty<byte>()),
+                        true
+                    );
+                }
 
-        if (images.Count > 0)
+                _written.Remove(steamId);
+            }
+
+            int changed = 0;
+            foreach ((string steamId, byte[] image) in images)
+            {
+                _written.Add(steamId);
+
+                if (
+                    table.TryGetStringUserData(steamId, out StringTableOutUserData existing)
+                    && existing.AsRaw().SequenceEqual(image)
+                )
+                {
+                    continue;
+                }
+
+                table.SetOrAddStringUserData(steamId, StringTableUserData.FromRaw(image), true);
+                changed++;
+            }
+
+            if (changed > 0)
+            {
+                _logger.LogInformation($"set {changed} roster photo avatars");
+            }
+        }
+        catch (Exception ex)
         {
-            _logger.LogInformation($"set {images.Count} roster photo avatars");
+            _logger.LogWarning($"unable to write {TableName}: {ex.Message}");
         }
     }
 }
