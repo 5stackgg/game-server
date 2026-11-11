@@ -20,12 +20,22 @@ public class RankSystem
 
     private const string RankRevealAllMessage = "CCSUsrMsg_ServerRankRevealAll";
 
+    private static readonly string[] RankFields =
+    [
+        "m_iCompetitiveRankType",
+        "m_iCompetitiveRanking",
+        "m_iCompetitiveWins",
+        "m_iCompetitiveRankingPredicted_Win",
+        "m_iCompetitiveRankingPredicted_Loss",
+        "m_iCompetitiveRankingPredicted_Tie",
+    ];
+
     private readonly ILogger<RankSystem> _logger;
     private readonly MatchService _matchService;
 
-    private Dictionary<ulong, int>? _eloBySteamId;
+    private Dictionary<ulong, EloRank>? _eloBySteamId;
 
-    private (CCSPlayerController Player, int Elo)[] _tracked = [];
+    private (CCSPlayerController Player, EloRank Rank)[] _tracked = [];
 
     public RankSystem(ILogger<RankSystem> logger, MatchService matchService)
     {
@@ -84,14 +94,14 @@ public class RankSystem
 
         try
         {
-            foreach (var (player, elo) in tracked)
+            foreach (var (player, rank) in tracked)
             {
                 if (!player.IsValid)
                 {
                     continue;
                 }
 
-                SetCompetitiveRank(player, elo);
+                SetCompetitiveRank(player, rank);
             }
         }
         catch (Exception ex)
@@ -102,16 +112,16 @@ public class RankSystem
         }
     }
 
-    private static Dictionary<ulong, int> BuildEloLookup(MatchData matchData)
+    private static Dictionary<ulong, EloRank> BuildEloLookup(MatchData matchData)
     {
-        var lookup = new Dictionary<ulong, int>();
+        var lookup = new Dictionary<ulong, EloRank>();
         foreach (
             var member in matchData.lineup_1.lineup_players.Concat(
                 matchData.lineup_2.lineup_players
             )
         )
         {
-            if (!member.elo.HasValue)
+            if (EloRank.From(member) is not EloRank rank)
             {
                 continue;
             }
@@ -119,7 +129,7 @@ public class RankSystem
             {
                 continue;
             }
-            lookup[sid] = member.elo.Value;
+            lookup[sid] = rank;
         }
         return lookup;
     }
@@ -196,16 +206,16 @@ public class RankSystem
                 return;
             }
 
-            var tracked = new List<(CCSPlayerController, int)>();
+            var tracked = new List<(CCSPlayerController, EloRank)>();
 
             foreach (var player in MatchUtility.Players())
             {
-                if (!_eloBySteamId.TryGetValue(player.SteamID, out var elo))
+                if (!_eloBySteamId.TryGetValue(player.SteamID, out var rank))
                 {
                     continue;
                 }
 
-                tracked.Add((player, elo));
+                tracked.Add((player, rank));
             }
 
             _tracked = tracked.ToArray();
@@ -220,37 +230,32 @@ public class RankSystem
         }
     }
 
-    private static void SetCompetitiveRank(CCSPlayerController player, int elo)
+    private static void SetCompetitiveRank(CCSPlayerController player, EloRank rank)
     {
-        // Reading first keeps the common case to three schema reads; the write plus
-        // the three SetStateChanged network flushes only happen once the engine reverts.
+        // Reading first keeps the common case to schema reads; the writes and their
+        // SetStateChanged network flushes only happen once the engine reverts.
         if (
-            player.CompetitiveRanking == elo
+            player.CompetitiveRanking == rank.Elo
             && player.CompetitiveRankType == (sbyte)RankTypeCompetitive
             && player.CompetitiveWins == MinWinsForVisibility
+            && player.CompetitiveRankingPredicted_Win == rank.Win
+            && player.CompetitiveRankingPredicted_Loss == rank.Loss
+            && player.CompetitiveRankingPredicted_Tie == rank.Tie
         )
         {
             return;
         }
 
         player.CompetitiveRankType = (sbyte)RankTypeCompetitive;
-        player.CompetitiveRanking = elo;
+        player.CompetitiveRanking = rank.Elo;
         player.CompetitiveWins = MinWinsForVisibility;
+        player.CompetitiveRankingPredicted_Win = rank.Win;
+        player.CompetitiveRankingPredicted_Loss = rank.Loss;
+        player.CompetitiveRankingPredicted_Tie = rank.Tie;
 
-        CounterStrikeSharp.API.Utilities.SetStateChanged(
-            player,
-            "CCSPlayerController",
-            "m_iCompetitiveRankType"
-        );
-        CounterStrikeSharp.API.Utilities.SetStateChanged(
-            player,
-            "CCSPlayerController",
-            "m_iCompetitiveRanking"
-        );
-        CounterStrikeSharp.API.Utilities.SetStateChanged(
-            player,
-            "CCSPlayerController",
-            "m_iCompetitiveWins"
-        );
+        foreach (string field in RankFields)
+        {
+            CounterStrikeSharp.API.Utilities.SetStateChanged(player, "CCSPlayerController", field);
+        }
     }
 }

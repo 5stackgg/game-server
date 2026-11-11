@@ -16,4 +16,9 @@ public class MatchMember
     // the server cannot see a webcam feed, it is only told about one.
     public bool camera_ok { get; set; } = true;
     public int? elo { get; set; }
+
+    // Expected elo change if this player's team wins, loses or ties.
+    public int? elo_win { get; set; }
+    public int? elo_loss { get; set; }
+    public int? elo_tie { get; set; }
 }
