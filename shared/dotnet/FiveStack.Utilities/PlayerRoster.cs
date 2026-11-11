@@ -170,6 +170,10 @@ public class PlayerRoster
     // The side each player last spawned on since the last round ended.
     private readonly Dictionary<string, int> _spawned = new();
 
+    // Who had a human opponent in the round that ended last, for an MVP or
+    // objective after its end.
+    private readonly HashSet<string> _opposed = new();
+
     private bool _botsPresent;
 
     // Returns when a sync is due if this observation is what made one due.
@@ -277,6 +281,7 @@ public class PlayerRoster
             // A round the map change cut short never ends.
             _roundLive = false;
             _spawned.Clear();
+            _opposed.Clear();
         }
     }
 
@@ -544,8 +549,14 @@ public class PlayerRoster
         }
     }
 
-    // A bomb planted or defused, or a hostage rescued, by the stat's key.
-    public void Objective(string? steamId, string key, bool warmup)
+    // A bomb planted or defused, or a hostage rescued, by the stat's key. Like
+    // a round, it only counts against a human opponent.
+    public void Objective(
+        string? steamId,
+        string key,
+        bool warmup,
+        bool teammatesAreEnemies = false
+    )
     {
         if (warmup || steamId == null)
         {
@@ -554,7 +565,10 @@ public class PlayerRoster
 
         lock (_lock)
         {
-            if (_current.TryGetValue(steamId, out Entry? entry))
+            if (
+                Opposed(steamId, teammatesAreEnemies)
+                && _current.TryGetValue(steamId, out Entry? entry)
+            )
             {
                 entry.Add(key);
             }
@@ -572,6 +586,7 @@ public class PlayerRoster
             _roundLive = !warmup;
             _roundEnded = false;
             _roundMvp = false;
+            _opposed.Clear();
         }
     }
 
@@ -587,6 +602,7 @@ public class PlayerRoster
             _roundLive = false;
             _roundEnded = false;
             _roundMvp = false;
+            _opposed.Clear();
         }
     }
 
@@ -637,18 +653,19 @@ public class PlayerRoster
     // A round is played by whoever spawned in it and ends it on the side they
     // last spawned on. Sitting on a side without spawning, or switching to the
     // side about to win, plays no round, and a spectator plays none. Warmup
-    // rounds are not rounds.
+    // rounds are not rounds, and neither is one without a human opponent.
     public void RoundEnded(
         int winnerTeam,
         IReadOnlyDictionary<string, int> teamsBySteamId,
-        bool warmup
+        bool warmup,
+        bool teammatesAreEnemies = false
     )
     {
         lock (_lock)
         {
             try
             {
-                Credit(winnerTeam, teamsBySteamId, warmup);
+                Credit(winnerTeam, teamsBySteamId, warmup, teammatesAreEnemies);
             }
             finally
             {
@@ -660,7 +677,8 @@ public class PlayerRoster
     private void Credit(
         int winnerTeam,
         IReadOnlyDictionary<string, int> teamsBySteamId,
-        bool warmup
+        bool warmup,
+        bool teammatesAreEnemies
     )
     {
         if (warmup || !_roundLive || _roundEnded)
@@ -674,7 +692,16 @@ public class PlayerRoster
         {
             if (
                 (team != TeamT && team != TeamCT)
-                || !_spawned.TryGetValue(steamId, out int spawnedOn)
+                || !Opposed(steamId, team, teamsBySteamId, teammatesAreEnemies)
+            )
+            {
+                continue;
+            }
+
+            _opposed.Add(steamId);
+
+            if (
+                !_spawned.TryGetValue(steamId, out int spawnedOn)
                 || spawnedOn != team
                 || !_current.TryGetValue(steamId, out Entry? entry)
             )
@@ -693,7 +720,8 @@ public class PlayerRoster
 
     // A round that never went live has no MVP either, and a round ended again
     // has had its MVP: the MVP after its first end is the only one it gets.
-    public void Mvp(string? steamId, bool warmup)
+    // It only counts against a human opponent, as the round does.
+    public void Mvp(string? steamId, bool warmup, bool teammatesAreEnemies = false)
     {
         if (warmup)
         {
@@ -712,6 +740,7 @@ public class PlayerRoster
             if (
                 _roundLive
                 && steamId != null
+                && Opposed(steamId, teammatesAreEnemies)
                 && _current.TryGetValue(steamId, out Entry? entry)
             )
             {
@@ -889,6 +918,38 @@ public class PlayerRoster
         int before = healthAfter > 0 ? healthAfter + damage : healthBefore ?? FullHealth;
 
         return Math.Clamp(damage, 0, Math.Max(before, 0));
+    }
+
+    // After the round's end, as its end found it; before, by the player's spawn.
+    private bool Opposed(string steamId, bool teammatesAreEnemies)
+    {
+        if (_roundEnded)
+        {
+            return _opposed.Contains(steamId);
+        }
+
+        return _spawned.TryGetValue(steamId, out int side)
+            && Opposed(steamId, side, null, teammatesAreEnemies);
+    }
+
+    // A human opponent spawned on the other side, or on any side where
+    // teammates are enemies. Bots never spawn here. With no other human's
+    // spawn on record, the teams at the round's end stand in.
+    private bool Opposed(
+        string steamId,
+        int team,
+        IReadOnlyDictionary<string, int>? teams,
+        bool teammatesAreEnemies
+    )
+    {
+        IEnumerable<KeyValuePair<string, int>> sides =
+            teams == null || _spawned.Keys.Any(id => id != steamId) ? _spawned : teams;
+
+        return sides.Any(other =>
+            other.Key != steamId
+            && (other.Value == TeamT || other.Value == TeamCT)
+            && (teammatesAreEnemies || other.Value != team)
+        );
     }
 
     private static void Scored(Entry scorer, KillFacts facts, bool headshot)

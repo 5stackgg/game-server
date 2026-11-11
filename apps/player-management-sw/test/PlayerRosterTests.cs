@@ -1311,6 +1311,7 @@ public class PlayerRosterTests
         roster.Mvp("1", warmup: true);
         roster.RoundEnded(PlayerRoster.TeamT, Teams(("1", PlayerRoster.TeamT)), warmup: true);
 
+        Spawn(roster, ("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamCT));
         roster.FreezeTimeEnded(warmup: false);
         roster.Died("2", "1", warmup: false, assister: "3", headshot: true);
         roster.Hurt("1", "2", 100, warmup: false);
@@ -1459,6 +1460,7 @@ public class PlayerRosterTests
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1")], Start);
+        Spawn(roster, ("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamCT));
         roster.FreezeTimeEnded(warmup: false);
 
         roster.Mvp("1", warmup: false);
@@ -1512,18 +1514,21 @@ public class PlayerRosterTests
     public void SpawnsAreNotCarriedPastAMapChangeOrAWarmupRound()
     {
         PlayerRoster roster = new();
-        roster.Observe([Human("1")], Start);
-        IReadOnlyDictionary<string, int> teams = Teams(("1", PlayerRoster.TeamT));
+        roster.Observe([Human("1"), Human("2")], Start);
+        IReadOnlyDictionary<string, int> teams = Teams(
+            ("1", PlayerRoster.TeamT),
+            ("2", PlayerRoster.TeamCT)
+        );
 
-        Spawn(roster, ("1", PlayerRoster.TeamT));
+        Spawn(roster, ("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamCT));
         roster.MapEnded(At(1));
         roster.Delivered(roster.Report(At(1)), true);
         roster.MapStarted(At(2), "de_inferno");
-        roster.Observe([Human("1")], At(3));
+        roster.Observe([Human("1"), Human("2")], At(3));
         roster.FreezeTimeEnded(warmup: false);
         roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
 
-        Spawn(roster, ("1", PlayerRoster.TeamT));
+        Spawn(roster, ("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamCT));
         roster.FreezeTimeEnded(warmup: true);
         roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: true);
         roster.FreezeTimeEnded(warmup: false);
@@ -1531,7 +1536,7 @@ public class PlayerRosterTests
 
         Assert.Equal((0, 0), Rounds(roster.Report(At(4)), "1"));
 
-        Spawn(roster, ("1", PlayerRoster.TeamT));
+        Spawn(roster, ("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamCT));
         roster.RoundStarted();
         roster.FreezeTimeEnded(warmup: false);
         roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
@@ -1549,10 +1554,16 @@ public class PlayerRosterTests
         roster.Observe([Human("1"), Human("2")], Start);
         IReadOnlyDictionary<string, int> teams = Teams(
             ("1", PlayerRoster.TeamT),
-            ("2", PlayerRoster.TeamT)
+            ("2", PlayerRoster.TeamT),
+            ("3", PlayerRoster.TeamCT)
         );
 
-        Spawn(roster, ("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamT));
+        Spawn(
+            roster,
+            ("1", PlayerRoster.TeamT),
+            ("2", PlayerRoster.TeamT),
+            ("3", PlayerRoster.TeamCT)
+        );
         roster.LeftSide("1");
         roster.LeftSide(null);
         roster.RoundStarted();
@@ -1567,7 +1578,7 @@ public class PlayerRosterTests
         roster.GameCommencing();
         roster.RoundStarted();
         roster.FreezeTimeEnded(warmup: false);
-        Spawn(roster, ("2", PlayerRoster.TeamT));
+        Spawn(roster, ("2", PlayerRoster.TeamT), ("3", PlayerRoster.TeamCT));
         roster.RoundEnded(PlayerRoster.TeamT, teams, warmup: false);
 
         RosterReport second = roster.Report(At(2));
@@ -1588,7 +1599,8 @@ public class PlayerRosterTests
             roster,
             ("1", PlayerRoster.TeamCT),
             ("1", PlayerRoster.TeamT),
-            ("2", PlayerRoster.TeamT)
+            ("2", PlayerRoster.TeamT),
+            ("3", PlayerRoster.TeamCT)
         );
         roster.Spawned(null, PlayerRoster.TeamCT);
         roster.RoundStarted();
@@ -1599,7 +1611,12 @@ public class PlayerRosterTests
             warmup: false
         );
 
-        Spawn(roster, ("1", PlayerRoster.TeamCT), ("2", PlayerRoster.TeamCT));
+        Spawn(
+            roster,
+            ("1", PlayerRoster.TeamCT),
+            ("2", PlayerRoster.TeamCT),
+            ("3", PlayerRoster.TeamT)
+        );
         roster.RoundStarted();
         roster.FreezeTimeEnded(warmup: false);
         roster.RoundEnded(
@@ -2350,6 +2367,145 @@ public class PlayerRosterTests
         Assert.Equal(57, CountersOf(withoutBots, "1").Damage);
     }
 
+    // Bots never spawn on the roster, so a human alone against them has no
+    // opponent: only their time on the server counts.
+    [Fact]
+    public void ASoloHumanAgainstBotsGetsNoRoundsMvpsOrObjectives()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1")], Start);
+        roster.BotsPresent(true);
+
+        roster.RoundStarted();
+        Spawn(roster, ("1", CT));
+        roster.FreezeTimeEnded(warmup: false);
+        roster.Objective("1", CommunityStatKeys.BombDefuses, warmup: false);
+        roster.RoundEnded(CT, Teams(("1", CT)), warmup: false);
+        roster.Mvp("1", warmup: false);
+        roster.Objective("1", CommunityStatKeys.HostageRescues, warmup: false);
+
+        RosterReport report = roster.Report(At(1));
+
+        Assert.Equal(new Counters(0, 0, 0, 0, 0, 0, 0, 0), CountersOf(report, "1"));
+        Assert.Null(report.Players!.Single().stats);
+    }
+
+    [Fact]
+    public void TwoHumansOnOppositeSidesWithBotsPlayCountedRounds()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+        roster.BotsPresent(true);
+
+        roster.RoundStarted();
+        Spawn(roster, ("1", T), ("2", CT));
+        roster.FreezeTimeEnded(warmup: false);
+        roster.Objective("1", CommunityStatKeys.BombPlants, warmup: false);
+        roster.RoundEnded(T, Teams(("1", T), ("2", CT)), warmup: false);
+        roster.Mvp("1", warmup: false);
+
+        roster.RoundStarted();
+        Spawn(roster, ("1", T), ("2", CT));
+        roster.FreezeTimeEnded(warmup: false);
+        roster.Objective("2", CommunityStatKeys.BombDefuses, warmup: false);
+        roster.RoundEnded(CT, Teams(("1", T), ("2", CT)), warmup: false);
+        roster.Mvp("2", warmup: false);
+
+        RosterReport report = roster.Report(At(1));
+
+        Assert.Equal(new Counters(0, 0, 0, 0, 0, 2, 1, 1), CountersOf(report, "1"));
+        Assert.Equal(new Counters(0, 0, 0, 0, 0, 2, 1, 1), CountersOf(report, "2"));
+        Assert.Equal(1, StatsOf(report, "1")[CommunityStatKeys.BombPlants]);
+        Assert.Equal(1, StatsOf(report, "2")[CommunityStatKeys.BombDefuses]);
+    }
+
+    [Fact]
+    public void TwoHumansOnTheSameSideAgainstBotsPlayNoRound()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+        roster.BotsPresent(true);
+
+        roster.RoundStarted();
+        Spawn(roster, ("1", T), ("2", T));
+        roster.FreezeTimeEnded(warmup: false);
+        roster.Objective("1", CommunityStatKeys.BombPlants, warmup: false);
+        roster.RoundEnded(T, Teams(("1", T), ("2", T)), warmup: false);
+        roster.Mvp("1", warmup: false);
+
+        RosterReport report = roster.Report(At(1));
+
+        Assert.Equal(new Counters(0, 0, 0, 0, 0, 0, 0, 0), CountersOf(report, "1"));
+        Assert.Equal(new Counters(0, 0, 0, 0, 0, 0, 0, 0), CountersOf(report, "2"));
+        Assert.Null(report.Players!.Single(player => player.steam_id == "1").stats);
+    }
+
+    [Fact]
+    public void WhereTeammatesAreEnemiesAnyOtherHumanIsAnOpponent()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+        roster.BotsPresent(true);
+
+        roster.RoundStarted();
+        Spawn(roster, ("1", T), ("2", T));
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(
+            T,
+            Teams(("1", T), ("2", T)),
+            warmup: false,
+            teammatesAreEnemies: true
+        );
+        roster.Mvp("1", warmup: false, teammatesAreEnemies: true);
+
+        RosterReport report = roster.Report(At(1));
+
+        Assert.Equal(new Counters(0, 0, 0, 0, 0, 1, 1, 1), CountersOf(report, "1"));
+        Assert.Equal((1, 1), Rounds(report, "2"));
+    }
+
+    // No other human's spawn on record (the plugin loaded mid-round, say):
+    // the humans on the other team at the round's end stand in.
+    [Fact]
+    public void WithoutAnOpponentsSpawnTheTeamsAtTheRoundsEndDecide()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+
+        roster.RoundStarted();
+        Spawn(roster, ("1", T));
+        roster.FreezeTimeEnded(warmup: false);
+        roster.RoundEnded(T, Teams(("1", T), ("2", CT)), warmup: false);
+        roster.Mvp("1", warmup: false);
+
+        RosterReport report = roster.Report(At(1));
+
+        Assert.Equal(new Counters(0, 0, 0, 0, 0, 1, 1, 1), CountersOf(report, "1"));
+    }
+
+    // Human against human still counts with bots on the server, but a bot's
+    // kill is nobody's kill and no death.
+    [Fact]
+    public void AKillBetweenAHumanAndABotNeverCounts()
+    {
+        PlayerRoster roster = new();
+        roster.Observe([Human("1"), Human("2")], Start);
+        roster.BotsPresent(true);
+
+        roster.Died(
+            "1",
+            null,
+            warmup: false,
+            facts: new KillFacts(VictimSlot: 1, VictimTeam: T, ByBot: true)
+        );
+        roster.Died("2", "1", warmup: false, facts: Kill());
+
+        RosterReport report = roster.Report(At(1));
+
+        Assert.Equal(new Counters(1, 0, 0, 0, 0, 0, 0, 0), CountersOf(report, "1"));
+        Assert.Equal(new Counters(0, 1, 0, 0, 0, 0, 0, 0), CountersOf(report, "2"));
+    }
+
     // Only bullets hit: a knife, a grenade or a fire does damage but is no hit.
     [Fact]
     public void OnlyAFirearmHits()
@@ -2533,6 +2689,7 @@ public class PlayerRosterTests
     {
         PlayerRoster roster = new();
         roster.Observe([Human("1")], Start);
+        Spawn(roster, ("1", PlayerRoster.TeamT), ("2", PlayerRoster.TeamCT));
 
         roster.Objective("1", CommunityStatKeys.BombPlants, warmup: false);
         roster.Objective("1", CommunityStatKeys.BombDefuses, warmup: false);

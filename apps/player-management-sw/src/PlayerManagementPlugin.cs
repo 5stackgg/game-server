@@ -888,7 +888,7 @@ public partial class PlayerManagementPlugin : BasePlugin
                 }
             }
 
-            _roster.RoundEnded(@event.Winner, teams, IsWarmup());
+            _roster.RoundEnded(@event.Winner, teams, IsWarmup(), TeammatesAreEnemies());
         }
         catch (Exception error)
         {
@@ -909,7 +909,8 @@ public partial class PlayerManagementPlugin : BasePlugin
             // MVP, so it reaches the roster without a player to credit.
             _roster.Mvp(
                 player != null && IsHuman(player) ? VerifiedSteamIdOf(player) : null,
-                IsWarmup()
+                IsWarmup(),
+                TeammatesAreEnemies()
             );
         }
         catch (Exception error)
@@ -926,7 +927,12 @@ public partial class PlayerManagementPlugin : BasePlugin
         {
             if (player != null && IsHuman(player))
             {
-                _roster.Objective(VerifiedSteamIdOf(player), key, IsWarmup());
+                _roster.Objective(
+                    VerifiedSteamIdOf(player),
+                    key,
+                    IsWarmup(),
+                    TeammatesAreEnemies()
+                );
             }
         }
         catch (Exception error)
