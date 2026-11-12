@@ -126,7 +126,7 @@ public class MatchEvents
         PendingRoundResult = null;
     }
 
-    public void PublishMapStatus(eMapStatus status, Guid? winningLineupId)
+    public void PublishMapStatus(eMapStatus status, Guid? winningLineupId, bool replay = false)
     {
         // Always log the state change, even offline (where we don't send it).
         _logger.LogInformation(
@@ -141,20 +141,16 @@ public class MatchEvents
             return;
         }
 
-        var data = new Dictionary<string, object>
-        {
-            { "status", status.ToString() },
-            { "winning_lineup_id", winningLineupId?.ToString() ?? "" },
-            { "time", _mapStatusClock.Next(DateTime.UtcNow) },
-        };
-
-        Guid? mapId = _matchService.GetCurrentMatch()?.GetActiveMapId();
-        if (mapId != null)
-        {
-            data["match_map_id"] = mapId.Value.ToString();
-        }
-
-        PublishGameEvent("mapStatus", data);
+        PublishGameEvent(
+            "mapStatus",
+            MatchEventPayloads.MapStatus(
+                status,
+                winningLineupId,
+                _mapStatusClock.Next(DateTime.UtcNow),
+                _matchService.GetCurrentMatch()?.GetActiveMapId(),
+                replay
+            )
+        );
     }
 
     // The api answers whatever reaches it, however late, and an unacknowledged

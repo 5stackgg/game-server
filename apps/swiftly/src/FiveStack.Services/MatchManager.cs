@@ -373,10 +373,11 @@ public class MatchManager
 
         _logger.LogInformation($"Update Map Status {_currentMapStatus} -> {status}");
 
-        if (
+        bool replay =
             _currentMapStatus == eMapStatus.Unknown
-            && _backUpManagement.CheckForBackupRestore(status)
-        )
+            && _backUpManagement.CheckForBackupRestore(status);
+
+        if (replay)
         {
             status = eMapStatus.Warmup;
         }
@@ -466,7 +467,7 @@ public class MatchManager
             PublishConnectedPlayers(status);
         }
 
-        _matchEvents.PublishMapStatus(status, winningLineupId);
+        _matchEvents.PublishMapStatus(status, winningLineupId, replay);
         _currentMapStatus = status;
 
         if (_environmentService.IsOfflineMode() && currentMap != null)

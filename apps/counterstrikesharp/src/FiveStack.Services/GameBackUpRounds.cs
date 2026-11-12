@@ -361,15 +361,15 @@ public class GameBackUpRounds
         _logger.LogInformation(
             "Server restarted with no round it can restore, replaying the map from warmup"
         );
-        ReplayMap();
+        ReplayMap(fromWarmup: true);
 
         return true;
     }
 
-    private void ReplayMap()
+    private void ReplayMap(bool fromWarmup)
     {
         SetBackupWriting(true);
-        SendRestoreRoundToBackend(0);
+        SendRestoreRoundToBackend(0, fromWarmup);
     }
 
 
@@ -477,7 +477,7 @@ public class GameBackUpRounds
                     // the rounds the backend recorded are set aside.
                     if (recovering)
                     {
-                        ReplayMap();
+                        ReplayMap(fromWarmup: false);
                         return;
                     }
 
@@ -550,7 +550,7 @@ public class GameBackUpRounds
         return null;
     }
 
-    public void SendRestoreRoundToBackend(int round)
+    public void SendRestoreRoundToBackend(int round, bool replay = false)
     {
         _logger.LogInformation($"Restoring Round {round}");
 
@@ -571,7 +571,7 @@ public class GameBackUpRounds
 
         _matchEvents.PublishGameEvent(
             "restoreRound",
-            new Dictionary<string, object> { { "round", round }, { "match_map_id", mapId } }
+            MatchEventPayloads.RestoreRound(round, mapId, replay)
         );
     }
 
