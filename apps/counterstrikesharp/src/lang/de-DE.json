@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - Taktische Auszeit",
   "help.tech_pause": " {0}tech, {1}resume - Technische Pause",
   "help.rules": " {0}rules - Regeln",
-  "help.restore_round": " {0}reset <round> - Runde wiederherstellen",
+  "help.restore_round": " {0}reset <round> - Zum Beginn der Runde zurückkehren",
 
   "rules.title": "  Regeln:",
   "rules.with_overtime": "mit Verlängerung",

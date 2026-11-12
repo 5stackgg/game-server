@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - مهلة تكتيكية",
   "help.tech_pause": " {0}tech, {1}resume - إيقاف تقني",
   "help.rules": " {0}rules - القواعد",
-  "help.restore_round": " {0}reset <round> - استعادة الجولة",
+  "help.restore_round": " {0}reset <round> - الاستعادة إلى بداية الجولة",
 
   "rules.title": "  القواعد:",
   "rules.with_overtime": "مع وقت إضافي",

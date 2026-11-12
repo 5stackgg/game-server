@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - 戰術暫停",
   "help.tech_pause": " {0}tech, {1}resume - 技術暫停",
   "help.rules": " {0}rules - 規則",
-  "help.restore_round": " {0}reset <round> - 還原回合",
+  "help.restore_round": " {0}reset <round> - 還原到該回合開始",
 
   "rules.title": "  規則：",
   "rules.with_overtime": "含加時",

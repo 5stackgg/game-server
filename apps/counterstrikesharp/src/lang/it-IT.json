@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - Timeout tattico",
   "help.tech_pause": " {0}tech, {1}resume - Pausa tecnica",
   "help.rules": " {0}rules - Regole",
-  "help.restore_round": " {0}reset <round> - Ripristina round",
+  "help.restore_round": " {0}reset <round> - Ripristina all'inizio del round",
 
   "rules.title": "  Regole:",
   "rules.with_overtime": "con tempi supplementari",

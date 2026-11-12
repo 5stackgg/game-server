@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - Тактична пауза",
   "help.tech_pause": " {0}tech, {1}resume - Технічна пауза",
   "help.rules": " {0}rules - Правила",
-  "help.restore_round": " {0}reset <round> - Відновити раунд",
+  "help.restore_round": " {0}reset <round> - Повернутися до початку раунду",
 
   "rules.title": "  Правила:",
   "rules.with_overtime": "з овертаймом",

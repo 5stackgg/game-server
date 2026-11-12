@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - Czas taktyczny",
   "help.tech_pause": " {0}tech, {1}resume - Pauza techniczna",
   "help.rules": " {0}rules - Zasady",
-  "help.restore_round": " {0}reset <round> - Przywróć rundę",
+  "help.restore_round": " {0}reset <round> - Przywróć do początku rundy",
 
   "rules.title": "  Zasady:",
   "rules.with_overtime": "z dogrywką",

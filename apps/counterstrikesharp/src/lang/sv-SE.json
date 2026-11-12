@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - Taktisk timeout",
   "help.tech_pause": " {0}tech, {1}resume - Teknisk paus",
   "help.rules": " {0}rules - Regler",
-  "help.restore_round": " {0}reset <round> - Återställ runda",
+  "help.restore_round": " {0}reset <round> - Återställ till början av rundan",
 
   "rules.title": "  Regler:",
   "rules.with_overtime": "med förlängning",

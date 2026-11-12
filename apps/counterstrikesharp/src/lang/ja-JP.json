@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - 戦術タイムアウト",
   "help.tech_pause": " {0}tech, {1}resume - テクニカルポーズ",
   "help.rules": " {0}rules - ルール",
-  "help.restore_round": " {0}reset <round> - ラウンドを復元",
+  "help.restore_round": " {0}reset <round> - ラウンドの開始時に復元",
 
   "rules.title": "  ルール:",
   "rules.with_overtime": "延長あり",

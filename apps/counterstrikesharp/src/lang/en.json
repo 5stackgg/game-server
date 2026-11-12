@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - Tactical timeout",
   "help.tech_pause": " {0}tech, {1}resume - Technical pause",
   "help.rules": " {0}rules - Rules",
-  "help.restore_round": " {0}reset <round> - Restore round",
+  "help.restore_round": " {0}reset <round> - Restore to the start of the round",
   "rules.title": "  Rules:",
   "rules.with_overtime": "with Overtime",
   "rules.knife_round": "knife round",

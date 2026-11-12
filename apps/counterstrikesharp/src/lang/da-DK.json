@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - Taktisk timeout",
   "help.tech_pause": " {0}tech, {1}resume - Teknisk pause",
   "help.rules": " {0}rules - Regler",
-  "help.restore_round": " {0}reset <round> - Gendan runde",
+  "help.restore_round": " {0}reset <round> - Gendan til starten af runden",
 
   "rules.title": "  Regler:",
   "rules.with_overtime": "med overtid",

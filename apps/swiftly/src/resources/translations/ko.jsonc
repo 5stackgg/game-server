@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - 전술 타임아웃",
   "help.tech_pause": " {0}tech, {1}resume - 기술 일시정지",
   "help.rules": " {0}rules - 규칙",
-  "help.restore_round": " {0}reset <round> - 라운드 복구",
+  "help.restore_round": " {0}reset <round> - 라운드 시작으로 복구",
 
   "rules.title": "  규칙:",
   "rules.with_overtime": "연장 포함",

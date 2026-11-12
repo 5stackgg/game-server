@@ -13,11 +13,21 @@ namespace FiveStack.Utilities
         public const string MatchStateRefusedPrefix = "match_state refused:";
 
         // Backup N is the state after round N, so it puts the teams at the start of
-        // round N + 1, which is how the web names it. Only players are told that
-        // number; the files, commands, events and the api keep N.
+        // round N + 1, which is how the web names it. Players are told and type that
+        // number; the files, server commands, events and the api keep N.
         public static int StartOfRound(int backup)
         {
             return backup + 1;
+        }
+
+        public static int? ResetBackup(string round)
+        {
+            if (!int.TryParse(round, out int start) || start < 1)
+            {
+                return null;
+            }
+
+            return start - 1;
         }
 
         // A restore vote leaves the round running, because mp_pause_match waits for

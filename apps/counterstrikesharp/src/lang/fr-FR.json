@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - Temps mort tactique",
   "help.tech_pause": " {0}tech, {1}resume - Pause technique",
   "help.rules": " {0}rules - Règles",
-  "help.restore_round": " {0}reset <round> - Restaurer la manche",
+  "help.restore_round": " {0}reset <round> - Restaurer au début de la manche",
 
   "rules.title": "  Règles :",
   "rules.with_overtime": "avec prolongation",

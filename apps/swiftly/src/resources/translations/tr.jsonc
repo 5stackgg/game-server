@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - Taktik mola",
   "help.tech_pause": " {0}tech, {1}resume - Teknik duraklama",
   "help.rules": " {0}rules - Kurallar",
-  "help.restore_round": " {0}reset <round> - Raundu geri yükle",
+  "help.restore_round": " {0}reset <round> - Raundun başına geri yükle",
 
   "rules.title": "  Kurallar:",
   "rules.with_overtime": "uzatmalı",

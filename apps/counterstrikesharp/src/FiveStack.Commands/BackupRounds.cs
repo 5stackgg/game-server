@@ -62,30 +62,27 @@ public partial class FiveStackPlugin
         _gameBackupRounds.RestoreRound(round);
     }
 
-    [ConsoleCommand("css_reset", "Restores to a previous round")]
+    [ConsoleCommand("css_reset", "Restores to the start of a round")]
     public void OnRestoreRound(CCSPlayerController? player, CommandInfo command)
     {
+        if (_gameBackupRounds.IsResettingRound())
+        {
+            _logger.LogWarning("Already restoring round, skipping");
+            return;
+        }
+
         string _round = command.ArgByIndex(1);
+        int? backup = RoundRestoreGateUtility.ResetBackup(_round);
 
-        if (string.IsNullOrWhiteSpace(_round) || _gameBackupRounds.IsResettingRound())
+        if (backup == null)
         {
-            if (_gameBackupRounds.IsResettingRound())
-            {
-                _logger.LogWarning("Already restoring round, skipping");
-            }
-            else
-            {
-                _logger.LogWarning("Invalid round number provided");
-            }
+            _logger.LogWarning($"Invalid round number provided: {_round}");
+            command.ReplyToCommand(
+                _localizer["help.restore_round", CommandUtility.PublicChatTrigger]
+            );
             return;
         }
 
-        if (!int.TryParse(_round, out int round))
-        {
-            _logger.LogWarning($"Failed to parse round number: {_round}");
-            return;
-        }
-
-        _gameBackupRounds.RequestRestoreBackupRound(round, player);
+        _gameBackupRounds.RequestRestoreBackupRound(backup.Value, player);
     }
 }
