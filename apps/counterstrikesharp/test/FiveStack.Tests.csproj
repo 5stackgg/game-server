@@ -8,7 +8,7 @@
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <!-- The plugin keeps the API private, so the tests reference it to compile and run against it. -->
-    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.379" />
+    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.380" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../src/FiveStack.csproj" />

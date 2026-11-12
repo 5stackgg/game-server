@@ -4,7 +4,7 @@
     <RootNamespace>PlayerManagement</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.379" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.380" ExcludeAssets="runtime" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)../../../shared/dotnet/FiveStack.Entities/PlayerManagement/**/*.cs" LinkBase="Shared" />
