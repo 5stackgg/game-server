@@ -57,8 +57,8 @@
   "timeout.called_admin": "관리자에 의한 기술 타임아웃",
   "timeout.already_active": " {0}이미 타임아웃이 진행 중입니다",
 
-  "backup.vote.restore_to": "라운드를 {0}로 복구",
-  "backup.round_restored": " {0}{1} 라운드가 복구되었습니다 ({2}resume 계속)",
+  "backup.vote.restore_to": "{0} 라운드 시작으로 복구",
+  "backup.round_restored": " {0}{1} 라운드 시작으로 복구되었습니다 ({2}resume 계속)",
   "captain.claim_hint": "[{0}] {1}{2}captain 으로 획득",
   "captain.show": "[{0} 주장] {1}{2}",
   "captain.assigned": "{0}이(가) {1}의 주장으로 지정되었습니다",

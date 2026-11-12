@@ -57,8 +57,8 @@
   "timeout.called_admin": "Technische Auszeit vom Admin",
   "timeout.already_active": " {0}Bereits eine Auszeit aktiv",
 
-  "backup.vote.restore_to": "Runde auf {0} wiederherstellen",
-  "backup.round_restored": " {0}Runde {1} wurde wiederhergestellt ({2}resume zum Fortfahren)",
+  "backup.vote.restore_to": "Zum Beginn von Runde {0} zurückkehren",
+  "backup.round_restored": " {0}Zurück am Beginn von Runde {1} ({2}resume zum Fortfahren)",
 
   "captain.claim_hint": "[{0}] {1}{2}captain beanspruchen",
   "captain.show": "[{0} Kapitän] {1}{2}",

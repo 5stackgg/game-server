@@ -57,8 +57,8 @@
   "timeout.called_admin": "管理員發起了技術暫停",
   "timeout.already_active": " {0}已有暫停進行中",
 
-  "backup.vote.restore_to": "將回合還原到 {0}",
-  "backup.round_restored": " {0}第 {1} 回合已還原（{2}resume 繼續）",
+  "backup.vote.restore_to": "還原到第 {0} 回合開始",
+  "backup.round_restored": " {0}已還原到第 {1} 回合開始（{2}resume 繼續）",
 
   "captain.claim_hint": "[{0}] {1}{2}captain 以領取",
   "captain.show": "[{0} 隊長] {1}{2}",

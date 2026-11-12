@@ -57,8 +57,8 @@
   "timeout.called_admin": "Przerwa techniczna wezwana przez admina",
   "timeout.already_active": " {0}Przerwa już jest aktywna",
 
-  "backup.vote.restore_to": "Przywróć rundę do {0}",
-  "backup.round_restored": " {0}Runda {1} została przywrócona ({2}resume aby kontynuować)",
+  "backup.vote.restore_to": "Przywróć do początku rundy {0}",
+  "backup.round_restored": " {0}Przywrócono do początku rundy {1} ({2}resume aby kontynuować)",
 
   "captain.claim_hint": "[{0}] {1}{2}captain aby przejąć",
   "captain.show": "[{0} Kapitan] {1}{2}",

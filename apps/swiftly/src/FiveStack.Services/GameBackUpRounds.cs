@@ -174,7 +174,7 @@ public class GameBackUpRounds
         {
             _gameServer.Message(
                 MessageType.Alert,
-                $" Waiting for all players ({connectedPlayers}/{expectedPlayers}) to vote on restoring round {round}."
+                $" Waiting for all players ({connectedPlayers}/{expectedPlayers}) to vote on restoring the start of round {RoundRestoreGateUtility.StartOfRound(round)}."
             );
             return;
         }
@@ -599,7 +599,7 @@ public class GameBackUpRounds
             }
 
             restoreRoundVote.StartVote(
-                _localizer["backup.vote.restore_to", round],
+                _localizer["backup.vote.restore_to", RoundRestoreGateUtility.StartOfRound(round)],
                 new Team[] { Team.CT, Team.T },
                 () =>
                 {
@@ -910,7 +910,7 @@ public class GameBackUpRounds
                             _localizer[
                                 "backup.round_restored",
                                 ChatColors.Red,
-                                round,
+                                RoundRestoreGateUtility.StartOfRound(round),
                                 CommandUtility.PublicChatTrigger
                             ]
                         );
