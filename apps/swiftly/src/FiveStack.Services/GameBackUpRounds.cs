@@ -448,12 +448,12 @@ public class GameBackUpRounds
             "Server restarted with no round it can restore, replaying the map from warmup"
         );
 
-        ReplayMap(csgoDir, prefix);
+        ReplayMap(csgoDir, prefix, fromWarmup: true);
 
         return true;
     }
 
-    private void ReplayMap(string csgoDir, string prefix)
+    private void ReplayMap(string csgoDir, string prefix, bool fromWarmup)
     {
         try
         {
@@ -468,7 +468,7 @@ public class GameBackUpRounds
         }
 
         SetBackupWriting(true);
-        SendRestoreRoundToBackend(0);
+        SendRestoreRoundToBackend(0, fromWarmup);
     }
 
     // Scans the game dir for CS2 round backup files ({prefix}_round<NN>.txt) and
@@ -656,7 +656,11 @@ public class GameBackUpRounds
                     MatchData? declined = _matchService.GetCurrentMatch()?.GetMatchData();
                     if (recovering && declined != null)
                     {
-                        ReplayMap(BackupDirectory, MatchUtility.GetSafeMatchPrefix(declined));
+                        ReplayMap(
+                            BackupDirectory,
+                            MatchUtility.GetSafeMatchPrefix(declined),
+                            fromWarmup: false
+                        );
                         return;
                     }
 
@@ -751,7 +755,7 @@ public class GameBackUpRounds
         return null;
     }
 
-    public void SendRestoreRoundToBackend(int round)
+    public void SendRestoreRoundToBackend(int round, bool replay = false)
     {
         _logger.LogInformation($"Restoring Round {round}");
 
@@ -785,7 +789,7 @@ public class GameBackUpRounds
 
         _matchEvents.PublishGameEvent(
             "restoreRound",
-            new Dictionary<string, object> { { "round", round }, { "match_map_id", mapId } }
+            MatchEventPayloads.RestoreRound(round, mapId, replay)
         );
     }
 

@@ -40,7 +40,16 @@ public partial class FiveStackPlugin
                 return;
             }
 
+            // A recovery hold pauses the game, and nothing shows that warmup
+            // takes that pause off.
+            bool held = _gameBackupRounds.IsHoldingForRestore();
+
             _gameBackupRounds.AbandonRestore();
+
+            if (held)
+            {
+                match?.ResumeMatch(null, true);
+            }
         }
 
         match?.UpdateMapStatus(status);
