@@ -109,7 +109,7 @@ public class RoundRestoreGateTests
     public void RefusesARoundTheServerHasNoBackupOf()
     {
         Assert.Equal(
-            "the server has no backup of round 4",
+            "the server has no backup for the start of round 5",
             RoundRestoreGateUtility.Refusal(
                 false,
                 false,
