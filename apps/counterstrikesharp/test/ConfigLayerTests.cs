@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using FiveStack;
 using FiveStack.Entities;
 using Xunit;
@@ -151,5 +152,72 @@ public class ConfigLayerTests
 
         Assert.True(reset >= 0, string.Join("; ", commands));
         Assert.True(reset < firstExec, string.Join("; ", commands));
+    }
+
+    // Every shipped type cfg sets mp_round_restart_delay, so the option only
+    // sticks when it is sent after the execs.
+    [Theory]
+    [InlineData("Competitive")]
+    [InlineData("Rush")]
+    public void The_Round_Restart_Delay_Option_Lands_After_Every_Layer(string type)
+    {
+        var match = Match(Layered);
+        match.options.type = type;
+        match.options.cfg_overrides[type] = "mp_round_restart_delay 7";
+        match.options.round_restart_delay = 3;
+
+        string[] commands = MatchManager.MatchConfigExecCommands(match);
+
+        int delay = Array.LastIndexOf(commands, "mp_round_restart_delay 3");
+        int lastExec = Array.FindLastIndex(commands, command => command.StartsWith("exec "));
+
+        Assert.True(lastExec >= 0, string.Join("; ", commands));
+        Assert.True(delay > lastExec, string.Join("; ", commands));
+    }
+
+    [Fact]
+    public void No_Round_Restart_Delay_Option_Leaves_The_Cfg_Value()
+    {
+        string[] commands = MatchManager.MatchConfigExecCommands(Match(Layered));
+
+        Assert.DoesNotContain(commands, command => command.StartsWith("mp_round_restart_delay"));
+    }
+
+    private static string ServiceMethod(
+        string file,
+        string signature,
+        [CallerFilePath] string testFile = ""
+    )
+    {
+        string path = Path.Combine(
+            Path.GetDirectoryName(testFile)!,
+            "..",
+            "src",
+            "FiveStack.Services",
+            file
+        );
+        string source = Regex.Replace(File.ReadAllText(path), @"//[^\n]*", "");
+        int from = source.IndexOf(signature, StringComparison.Ordinal);
+
+        Assert.True(from >= 0, $"{signature} is gone");
+
+        int to = source.IndexOf("\n    }\n", from, StringComparison.Ordinal);
+
+        Assert.True(to > from, $"the end of {signature} was not found");
+
+        return source[from..to];
+    }
+
+    [Theory]
+    [InlineData("MatchManager.cs", "public void SetupMatch(")]
+    [InlineData("MatchManager.cs", "private void StartLive()")]
+    [InlineData("KnifeSystem.cs", "public void SetWinningTeam(")]
+    [InlineData("KnifeSystem.cs", "public void Skip()")]
+    public void Every_Type_Cfg_Exec_Carries_The_Round_Restart_Delay(string file, string signature)
+    {
+        string method = ServiceMethod(file, signature);
+
+        Assert.Contains("MatchConfigExecCommands()", method);
+        Assert.DoesNotContain("mp_round_restart_delay", method);
     }
 }

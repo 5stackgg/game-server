@@ -1050,9 +1050,14 @@ public class MatchManager
         // one and may never set it back.
         string[] resets = ["mp_respawn_immunitytime -1"];
 
+        // The type cfgs set this too, so the match's choice has to follow them.
+        string[] options = _matchData.options.round_restart_delay.HasValue
+            ? [$"mp_round_restart_delay {_matchData.options.round_restart_delay.Value}"]
+            : [];
+
         if (_matchData.options.IsRush())
         {
-            return [.. resets, .. execs];
+            return [.. resets, .. execs, .. options];
         }
 
         // Rush's map script and cfg set these, and a dedicated server reused
@@ -1062,6 +1067,7 @@ public class MatchManager
             "mp_ignore_round_win_conditions 0",
             "cash_team_per_dead_enemy 0",
             .. execs,
+            .. options,
         ];
     }
 
@@ -1144,11 +1150,6 @@ public class MatchManager
         SetConVar("mp_maxrounds", _matchData.options.MaxRounds());
         SetConVar("mp_overtime_enable", _matchData.options.OvertimeEnabled());
         SetConVar("mp_halftime_pausematch", _matchData.options.halftime_pausematch);
-
-        if (_matchData.options.round_restart_delay.HasValue)
-        {
-            SetConVar("mp_round_restart_delay", _matchData.options.round_restart_delay.Value);
-        }
 
         _gameServer.SendCommands(MatchConfigExecCommands());
 
