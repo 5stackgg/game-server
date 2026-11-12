@@ -132,7 +132,7 @@ public class OfflineWiringTests
     [Fact]
     public void AnOfflineRestoreLoadsHereInsteadOfWaitingOnTheApi()
     {
-        string send = Method(Service("GameBackUpRounds"), "public void SendRestoreRoundToBackend(int round)");
+        string send = Method(Service("GameBackUpRounds"), "public void SendRestoreRoundToBackend(");
         int offline = At(send, "if (_environmentService.IsOfflineMode())");
 
         Assert.True(offline < At(send, "RestoreRoundOffline(round);"));
