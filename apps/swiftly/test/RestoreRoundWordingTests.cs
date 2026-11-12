@@ -3,8 +3,8 @@ using System.Text.RegularExpressions;
 using Xunit;
 
 // Backup N is the state after round N, so loading it puts the teams at the start
-// of round N + 1, the number the web shows for it. Players are told that round;
-// the backup files, commands, events and the api keep the backup number.
+// of round N + 1, the number the web shows for it. Players are told and type that
+// round; the backup files, server commands, events and the api keep the backup number.
 public class RestoreRoundWordingTests
 {
     private static string AppDir([CallerFilePath] string testFile = "")
@@ -15,6 +15,13 @@ public class RestoreRoundWordingTests
     private static string Backups()
     {
         string path = Path.Combine(AppDir(), "src", "FiveStack.Services", "GameBackUpRounds.cs");
+
+        return Regex.Replace(File.ReadAllText(path), @"//[^\n]*", "");
+    }
+
+    private static string Commands()
+    {
+        string path = Path.Combine(AppDir(), "src", "FiveStack.Commands", "BackupRounds.cs");
 
         return Regex.Replace(File.ReadAllText(path), @"//[^\n]*", "");
     }
@@ -96,6 +103,34 @@ public class RestoreRoundWordingTests
     }
 
     [Fact]
+    public void ResetTakesTheRoundTheVoteNames()
+    {
+        string reset = Method(Commands(), "public void OnRestoreRound(");
+
+        Assert.Contains("RoundRestoreGateUtility.ResetBackup(_round)", reset);
+        Assert.Contains("RequestRestoreBackupRound(backup.Value", reset);
+        Assert.DoesNotContain("int.TryParse", reset);
+    }
+
+    [Fact]
+    public void AResetToNoRoundShowsHowToUseIt()
+    {
+        Assert.Contains(
+            "\"help.restore_round\"",
+            Method(Commands(), "public void OnRestoreRound(")
+        );
+    }
+
+    [Fact]
+    public void EnglishHelpSaysResetTakesTheRoundItStarts()
+    {
+        Assert.Equal(
+            " {0}reset <round> - Restore to the start of the round",
+            Translation("en.jsonc", "help.restore_round")
+        );
+    }
+
+    [Fact]
     public void EnglishNamesTheStartOfTheRound()
     {
         Assert.Equal(
@@ -121,5 +156,6 @@ public class RestoreRoundWordingTests
         Assert.Contains("{1}", restored);
         Assert.Contains("{2}resume", restored);
         Assert.DoesNotContain("{3}", restored);
+        Assert.Contains("{0}reset <round> - ", Translation(language, "help.restore_round"));
     }
 }

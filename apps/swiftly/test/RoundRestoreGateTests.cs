@@ -339,4 +339,32 @@ public class RoundRestoreGateTests
     {
         Assert.False(RoundRestoreGateUtility.ReadsBackupFromDisk(1, eMapStatus.Live));
     }
+
+    [Theory]
+    [InlineData("1", 0)]
+    [InlineData("6", 5)]
+    [InlineData("13", 12)]
+    public void ResetTakesTheRoundTheRestoreStarts(string round, int backup)
+    {
+        Assert.Equal(backup, RoundRestoreGateUtility.ResetBackup(round));
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-2")]
+    [InlineData("")]
+    [InlineData("six")]
+    public void ResetRefusesARoundBeforeTheFirst(string round)
+    {
+        Assert.Null(RoundRestoreGateUtility.ResetBackup(round));
+    }
+
+    [Fact]
+    public void TheVoteForAResetNamesTheRoundThePlayerTyped()
+    {
+        Assert.Equal(
+            6,
+            RoundRestoreGateUtility.StartOfRound(RoundRestoreGateUtility.ResetBackup("6")!.Value)
+        );
+    }
 }
