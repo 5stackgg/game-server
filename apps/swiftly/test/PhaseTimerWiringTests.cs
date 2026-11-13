@@ -26,11 +26,12 @@ public class PhaseTimerWiringTests
         "GameBackUpRounds.OweLoad",
         "GameBackUpRounds.RestoreRound",
         "VoteSystem.StartVote",
+        // Outlives the phase on purpose: a leaver who is still gone when it runs
+        // out is reported even once the map is over or back in warmup.
+        "SurrenderSystem.SetupDisconnectTimer",
         "TimerUtility.AddTimer",
         "TimerUtility.Repeat",
     };
-
-    private static readonly string[] MovesLater = { "SurrenderSystem" };
 
     private static readonly Regex RawTimer = new(
         @"\b(?:AddTimer|Repeat|RepeatBySeconds|DelayBySeconds|Delay)\s*\(|\bnew\s+Timer\s*\("
@@ -105,7 +106,7 @@ public class PhaseTimerWiringTests
             string file = Path.GetFileNameWithoutExtension(path);
             string[] folders = Path.GetRelativePath(SourceDir(), path).Split(Path.DirectorySeparatorChar);
 
-            if (folders.Any(folder => built.Contains(folder)) || MovesLater.Contains(file))
+            if (folders.Any(folder => built.Contains(folder)))
             {
                 continue;
             }

@@ -250,6 +250,28 @@ public class SurrenderVoteIntegrityTests
         Set(events, "_mapStatusClock", new MapStatusClock());
         Set(events, "_restore", new RoundRestoreState());
 
+        TimeoutSystem timeout = new TimeoutSystem(
+            null!,
+            NullLogger<TimeoutSystem>.Instance,
+            events,
+            null!,
+            matchService,
+            null!,
+            null!,
+            null!,
+            null!,
+            null!,
+            null!
+        );
+        ReadySystem ready = new ReadySystem(
+            NullLogger<ReadySystem>.Instance,
+            null!,
+            matchService,
+            null!,
+            null!,
+            null!,
+            null!
+        );
         VoteRequests votes = new VoteRequests();
         SurrenderSystem surrender = new SurrenderSystem(
             NullLogger<ReadySystem>.Instance,
@@ -268,10 +290,10 @@ public class SurrenderVoteIntegrityTests
             null!,
             null!,
             null!,
-            null!,
+            ready,
             null!,
             environment,
-            null!,
+            timeout,
             surrender,
             matchService,
             null!,
@@ -503,28 +525,52 @@ public class SurrenderVoteIntegrityTests
 
         Assert.True(forget >= 0, "the lineup that just voted is asked again");
         Assert.True(
-            forget < offer.IndexOf("OfferLeaverSurrender(", StringComparison.Ordinal),
+            forget < offer.IndexOf("PhaseTimer(", StringComparison.Ordinal),
             "the next vote is offered before the lineup that just voted is forgotten"
         );
     }
 
+    // Offered in the same tick, the next vote's prompt covered the failed one's
+    // result before the lineup that had just voted could read it.
+    [Fact]
+    public void The_Waiting_Lineups_Vote_Comes_A_Few_Seconds_After_The_Failed_One()
+    {
+        string source = Code("FiveStack.Services", "SurrenderSystem.cs");
+        string offer = Method(source, "private void OfferWaitingLineup(Guid votedLineup)");
+        var delay = Regex.Match(source, @"const float WaitingVoteDelaySeconds = (\d+);");
+
+        Assert.Matches(
+            @"_matchService\.GetCurrentMatch\(\)\?\.PhaseTimer\(\s*WaitingVoteDelaySeconds,\s*OfferNextWaitingLineup\s*\)",
+            offer
+        );
+        Assert.DoesNotContain("OfferLeaverSurrender(", offer);
+        Assert.True(delay.Success, "the waiting vote has no delay");
+        Assert.InRange(int.Parse(delay.Groups[1].Value), 2, 10);
+    }
+
     // A lineup whose leaver came back while it waited would be asked to give up
-    // a map it is whole for.
+    // a map it is whole for, and a vote opened in the meantime goes first.
     [Fact]
     public void A_Waiting_Lineup_That_Is_Whole_Again_Gets_No_Vote()
     {
         string offer = Method(
             Code("FiveStack.Services", "SurrenderSystem.cs"),
-            "private void OfferWaitingLineup(Guid votedLineup)"
+            "private void OfferNextWaitingLineup()"
         );
+        var busy = Regex.Match(offer, @"if \([^{]*IsSurrendering\(\)\s*\)\s*\{\s*return;\s*\}");
         var whole = Regex.Match(
             offer,
             @"if \(\s*ReconnectPauseUtility\.IsLineupWhole\([^;]*\)\s*\)\s*\{\s*return;\s*\}"
         );
 
+        Assert.True(busy.Success, "a waiting lineup is offered its vote while another is open");
+        Assert.True(
+            busy.Index < offer.IndexOf("_waitingLineups.Remove(", StringComparison.Ordinal),
+            "the waiting lineup is dropped before an open vote is checked"
+        );
         Assert.True(whole.Success, "a waiting lineup is offered its vote however many of its players are back");
         Assert.True(
-            whole.Index < offer.LastIndexOf("OfferLeaverSurrender(", StringComparison.Ordinal),
+            whole.Index < offer.IndexOf("OfferLeaverSurrender(", StringComparison.Ordinal),
             "the vote is offered before the lineup is counted"
         );
     }
