@@ -29,6 +29,9 @@ public class SurrenderSystem
     // open, with the side the leaver left from.
     private readonly Dictionary<Guid, Team> _waitingLineups = new Dictionary<Guid, Team>();
 
+    // Long enough for the lineup that just voted to read that its vote failed.
+    private const float WaitingVoteDelaySeconds = 3;
+
     private Guid? winningLineupId;
 
     public SurrenderSystem(
@@ -149,15 +152,25 @@ public class SurrenderSystem
             return;
         }
 
-        KeyValuePair<Guid, Team> next = _waitingLineups.First();
-        _waitingLineups.Remove(next.Key);
+        _matchService.GetCurrentMatch()?.PhaseTimer(WaitingVoteDelaySeconds, OfferNextWaitingLineup);
+    }
 
+    private void OfferNextWaitingLineup()
+    {
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchData? matchData = match?.GetMatchData();
-        if (match == null || matchData == null)
+        if (
+            match == null
+            || matchData == null
+            || _waitingLineups.Count == 0
+            || IsSurrendering()
+        )
         {
             return;
         }
+
+        KeyValuePair<Guid, Team> next = _waitingLineups.First();
+        _waitingLineups.Remove(next.Key);
 
         if (
             ReconnectPauseUtility.IsLineupWhole(
