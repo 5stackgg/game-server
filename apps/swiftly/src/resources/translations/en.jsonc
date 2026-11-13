@@ -44,6 +44,8 @@
 
   "knife.start": "KNIFE KNIFE KNIFE!",
   "knife.captain_picking": "{0} - Captain is Picking Sides!",
+  "team.terrorist": "Terrorist",
+  "team.ct": "CT",
   "knife.captain_prompt": "As the captain you must select to {0}{1}stay {2} or {3}{4}switch",
   "knife.not_captain": " {0}You are not the captain!",
   "knife.captain_picked_stay": "captain picked to {0}stay {1}sides",
@@ -86,6 +88,7 @@
   "match.tv_delay": "TV delay ({0}s left)",
   "ready.forced_start": "Game has been forced to start.",
   "vote.failed": "{0} Vote Failed",
+  "vote.not_allowed": " {0}you are not allowed to vote",
   "vote.success": "{0} Vote Successful",
   "vote.other_team": "The other team is voting to {0}",
   "vote.other_team_timer": "The other team is voting to {0} ({1}s)",
@@ -94,6 +97,10 @@
   "vote.prompt_count_timer": " Vote to {0} ({1}s)",
   "vote.prompt_options_timer": " Vote to {0} ({1}y or {2}n) ({3}s)",
   "surrender.vote": "Surrender",
+  "surrender.lan": " There is no surrender in a LAN match",
+  "surrender.in_progress": " A surrender vote is already in progress",
+  "surrender.unavailable": " Unable to start a surrender vote right now",
+  "surrender.not_in_match": " Only a player in this match can call a surrender",
   "vote.choose_one": "More than one vote is open, answer one: {0}",
 
   "camera.paused": "Match paused - no camera from: {0}",

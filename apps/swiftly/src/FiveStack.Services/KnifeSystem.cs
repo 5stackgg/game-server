@@ -95,9 +95,10 @@ public class KnifeSystem
 
         SetupKnifeMessage();
 
-        _gameServer.Message(
+        _gameServer.MessageEach(
             MessageType.Alert,
-            _localizer["knife.captain_picking", (team == Team.T ? "Terrorist" : "CT")]
+            localizer =>
+                localizer["knife.captain_picking", localizer[TeamUtility.TeamNameKey(team)]]
         );
     }
 

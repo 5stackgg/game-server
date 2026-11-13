@@ -211,14 +211,14 @@ public class SurrenderSystem
             && !_environmentService.IsOfflineMode()
         )
         {
-            player?.PrintToConsole(" There is no surrender in a LAN match");
+            player?.PrintToConsole(_gameServer.Localize(player, "surrender.lan"));
             return;
         }
 
         _logger.LogInformation($"Setting up surrender vote for {team}");
         if (surrenderingVote != null && surrenderingVote.IsVoteActive())
         {
-            player?.PrintToConsole(" A surrender vote is already in progress");
+            player?.PrintToConsole(_gameServer.Localize(player, "surrender.in_progress"));
             return;
         }
 
@@ -257,7 +257,7 @@ public class SurrenderSystem
         if (winningLineup == null)
         {
             _logger.LogWarning($"No lineup id found for {winningTeam}");
-            player?.PrintToConsole(" Unable to start a surrender vote right now");
+            player?.PrintToConsole(_gameServer.Localize(player, "surrender.unavailable"));
             return;
         }
 
@@ -268,13 +268,14 @@ public class SurrenderSystem
         if (surrenderingLineup == null)
         {
             _logger.LogWarning($"No surrendering lineup found for {team}");
-            player?.PrintToConsole(" Unable to start a surrender vote right now");
+            player?.PrintToConsole(_gameServer.Localize(player, "surrender.unavailable"));
             return;
         }
 
         _logger.LogInformation($"Starting Surrender Vote for {team}");
         surrenderingVote.StartVote(
-            "Surrender",
+            "surrender.vote",
+            [],
             new CsTeam[] { CsTeam.Terrorist, CsTeam.CounterTerrorist },
             () =>
             {

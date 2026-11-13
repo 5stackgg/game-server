@@ -44,6 +44,8 @@
 
   "knife.start": "MESSER MESSER MESSER!",
   "knife.captain_picking": "{0} - Kapitän wählt die Seiten!",
+  "team.terrorist": "Terroristen",
+  "team.ct": "CT",
   "knife.captain_prompt": "Als Kapitän musst du {0}{1}stay {2} oder {3}{4}switch wählen",
   "knife.not_captain": " {0}Du bist nicht der Kapitän!",
   "knife.captain_picked_stay": "Kapitän wählte {0}bleiben {1}Seite",
@@ -86,6 +88,7 @@
   "match.tv_delay": "TV‑Verzögerung ({0}s übrig)",
   "ready.forced_start": "Spielstart wurde erzwungen.",
   "vote.failed": "{0} Abstimmung fehlgeschlagen",
+  "vote.not_allowed": " {0}du darfst nicht abstimmen",
   "vote.success": "{0} Abstimmung erfolgreich",
   "vote.other_team": "Das andere Team stimmt ab, um {0}",
   "vote.other_team_timer": "Das andere Team stimmt ab, um {0} ({1}s)",
@@ -94,6 +97,10 @@
   "vote.prompt_count_timer": " Abstimmen für {0} ({1}s)",
   "vote.prompt_options_timer": " Abstimmen für {0} ({1}y oder {2}n) ({3}s)",
   "surrender.vote": "Aufgeben",
+  "surrender.lan": " In einem LAN-Match gibt es keine Aufgabe",
+  "surrender.in_progress": " Eine Abstimmung zur Aufgabe läuft bereits",
+  "surrender.unavailable": " Eine Abstimmung zur Aufgabe kann gerade nicht gestartet werden",
+  "surrender.not_in_match": " Nur ein Spieler dieses Matches kann eine Aufgabe einleiten",
   "vote.choose_one": "Mehr als eine Abstimmung ist offen, beantworte eine: {0}",
 
   "camera.paused": "Match pausiert - keine Kamera von: {0}",

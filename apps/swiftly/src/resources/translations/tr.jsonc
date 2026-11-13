@@ -44,6 +44,8 @@
 
   "knife.start": "BIÇAK BIÇAK BIÇAK!",
   "knife.captain_picking": "{0} - Kaptan taraf seçiyor!",
+  "team.terrorist": "Teröristler",
+  "team.ct": "CT",
   "knife.captain_prompt": "Kaptan olarak {0}{1}stay {2} veya {3}{4}switch seçmelisiniz",
   "knife.not_captain": " {0}Kaptan değilsiniz!",
   "knife.captain_picked_stay": "kaptan {0}{1}tarafta kalmayı seçti",
@@ -85,6 +87,7 @@
   "match.tv_delay": "TV gecikmesi ({0}s kaldı)",
   "ready.forced_start": "Oyun başlatılması zorlandı.",
   "vote.failed": "{0} Oylama başarısız",
+  "vote.not_allowed": " {0}oy kullanma izniniz yok",
   "vote.success": "{0} Oylama başarılı",
   "vote.other_team": "Diğer takım {0} için oy kullanıyor",
   "vote.other_team_timer": "Diğer takım {0} için oy kullanıyor ({1}s)",
@@ -93,6 +96,10 @@
   "vote.prompt_count_timer": " {0} için oy ver ({1}s)",
   "vote.prompt_options_timer": " {0} için oy ver ({1}y veya {2}n) ({3}s)",
   "surrender.vote": "Teslim ol",
+  "surrender.lan": " LAN maçında teslim olunamaz",
+  "surrender.in_progress": " Zaten devam eden bir teslim oylaması var",
+  "surrender.unavailable": " Şu anda teslim oylaması başlatılamıyor",
+  "surrender.not_in_match": " Teslim olmayı yalnızca bu maçtaki bir oyuncu önerebilir",
   "vote.choose_one": "Birden fazla oylama açık, birini yanıtla: {0}",
 
   "camera.paused": "Maç duraklatıldı - kamerası olmayan: {0}",

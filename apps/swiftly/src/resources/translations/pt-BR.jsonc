@@ -44,6 +44,8 @@
 
   "knife.start": "FACA! FACA! FACA!",
   "knife.captain_picking": "{0} - Capitão escolhendo lados!",
+  "team.terrorist": "Terroristas",
+  "team.ct": "CT",
   "knife.captain_prompt": "Como capitão você deve selecionar {0}{1}stay {2} ou {3}{4}switch",
   "knife.not_captain": "{0}Você não é o capitão!",
   "knife.captain_picked_stay": "Capitão escolheu {0}stay {1}lados",
@@ -88,6 +90,7 @@
   "match.tv_delay": "Delay da TV ({0}s restantes)",
   "ready.forced_start": "Partida foi forçada a iniciar.",
   "vote.failed": "{0} Votação falhou",
+  "vote.not_allowed": " {0}você não tem permissão para votar",
   "vote.success": "{0} Votação bem-sucedida",
   "vote.other_team": "A outra equipe está votando para {0}",
   "vote.other_team_timer": "A outra equipe está votando para {0} ({1}s)",
@@ -96,6 +99,10 @@
   "vote.prompt_count_timer": "Votar para {0} ({1}s)",
   "vote.prompt_options_timer": "Votar para {0} ({1}y ou {2}n) ({3}s)",
   "surrender.vote": "Render-se",
+  "surrender.lan": " Não há rendição em uma partida LAN",
+  "surrender.in_progress": " Já há uma votação de rendição em andamento",
+  "surrender.unavailable": " Não é possível iniciar uma votação de rendição agora",
+  "surrender.not_in_match": " Apenas um jogador desta partida pode pedir a rendição",
   "vote.choose_one": "Há mais de uma votação aberta, responda a uma: {0}",
 
   "camera.paused": "Partida pausada - sem câmera de: {0}",

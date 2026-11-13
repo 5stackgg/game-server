@@ -3,7 +3,6 @@ using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
-using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -14,7 +13,6 @@ public class CaptainSystem
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
     private readonly ILogger<CaptainSystem> _logger;
-    private readonly IStringLocalizer _localizer;
 
     public Dictionary<CsTeam, CCSPlayerController?> _captains = new Dictionary<
         CsTeam,
@@ -29,15 +27,13 @@ public class CaptainSystem
         ILogger<CaptainSystem> logger,
         MatchEvents matchEvents,
         GameServer gameServer,
-        MatchService matchService,
-        IStringLocalizer localizer
+        MatchService matchService
     )
     {
         _logger = logger;
         _matchEvents = matchEvents;
         _gameServer = gameServer;
         _matchService = matchService;
-        _localizer = localizer;
     }
 
     public void Reset()
@@ -185,26 +181,30 @@ public class CaptainSystem
             CCSPlayerController? captain = captains[team];
             if (captain == null)
             {
-                _gameServer.Message(
+                _gameServer.MessageEach(
                     HudDestination.Notify,
-                    _localizer[
-                        "captain.claim_hint",
-                        TeamUtility.TeamNumToString((int)team),
-                        ChatColors.Green,
-                        CommandUtility.SilentChatTrigger
-                    ]
+                    viewer =>
+                        _gameServer.Localize(
+                            viewer,
+                            "captain.claim_hint",
+                            _gameServer.Localize(viewer, TeamUtility.TeamNameKey(team)),
+                            ChatColors.Green,
+                            CommandUtility.SilentChatTrigger
+                        )
                 );
                 continue;
             }
 
-            _gameServer.Message(
+            _gameServer.MessageEach(
                 HudDestination.Notify,
-                _localizer[
-                    "captain.show",
-                    TeamUtility.TeamNumToString((int)team),
-                    team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue,
-                    captain.PlayerName
-                ]
+                viewer =>
+                    _gameServer.Localize(
+                        viewer,
+                        "captain.show",
+                        _gameServer.Localize(viewer, TeamUtility.TeamNameKey(team)),
+                        team == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue,
+                        captain.PlayerName
+                    )
             );
         }
     }
@@ -253,13 +253,15 @@ public class CaptainSystem
                 $"Captain {player.PlayerName} claimed captain spot for {captainTeam}"
             );
 
-            _gameServer.Message(
+            _gameServer.MessageEach(
                 HudDestination.Alert,
-                _localizer[
-                    "captain.assigned",
-                    player.PlayerName,
-                    TeamUtility.TeamNumToString((int)captainTeam)
-                ]
+                viewer =>
+                    _gameServer.Localize(
+                        viewer,
+                        "captain.assigned",
+                        player.PlayerName,
+                        _gameServer.Localize(viewer, TeamUtility.TeamNameKey(captainTeam))
+                    )
             );
         }
 

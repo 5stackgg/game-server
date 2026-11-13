@@ -418,9 +418,7 @@ public partial class PlayerManagementPlugin : BasePlugin
                     );
 
                     player.Kick(
-                        _access.KickReason(
-                            Core.Translation.GetPlayerLocalizer(player)["access.denied"]
-                        ),
+                        _access.KickReason(LocalizerFor(player)["access.denied"]),
                         ENetworkDisconnectionReason.NETWORK_DISCONNECT_KICKED
                     );
                 }
@@ -445,7 +443,7 @@ public partial class PlayerManagementPlugin : BasePlugin
                 continue;
             }
 
-            ILocalizer localizer = Core.Translation.GetPlayerLocalizer(player);
+            ILocalizer localizer = LocalizerFor(player);
 
             if (changes.HasFlag(eSanctionChange.Muted))
             {
@@ -1100,9 +1098,19 @@ public partial class PlayerManagementPlugin : BasePlugin
             return HookResult.Continue;
         }
 
-        Tell(player, Core.Translation.GetPlayerLocalizer(player), "sanction.gagged", state.Gag!);
+        Tell(player, LocalizerFor(player), "sanction.gagged", state.Gag!);
 
         return HookResult.Stop;
+    }
+
+    private ILocalizer LocalizerFor(IPlayer player)
+    {
+        if (!TranslationUtility.HasTranslation(Core.PluginPath, player.PlayerLanguage.Value))
+        {
+            return Core.Localizer;
+        }
+
+        return Core.Translation.GetPlayerLocalizer(player);
     }
 
     private static void Tell(

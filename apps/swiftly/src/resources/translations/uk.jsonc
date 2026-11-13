@@ -44,6 +44,8 @@
 
   "knife.start": "НІЖ НІЖ НІЖ!",
   "knife.captain_picking": "{0} - Капітан обирає сторони!",
+  "team.terrorist": "Терористи",
+  "team.ct": "CT",
   "knife.captain_prompt": "Як капітан ви маєте обрати {0}{1}stay {2} або {3}{4}switch",
   "knife.not_captain": " {0}Ви не капітан!",
   "knife.captain_picked_stay": "капітан обрав {0}залишитись на {1}боці",
@@ -86,6 +88,7 @@
   "match.tv_delay": "Затримка TV ({0}с залишилось)",
   "ready.forced_start": "Запуск гри було примусово виконано.",
   "vote.failed": "{0} Голосування неуспішне",
+  "vote.not_allowed": " {0}вам не дозволено голосувати",
   "vote.success": "{0} Голосування успішне",
   "vote.other_team": "Інша команда голосує, щоб {0}",
   "vote.other_team_timer": "Інша команда голосує, щоб {0} ({1}s)",
@@ -94,6 +97,10 @@
   "vote.prompt_count_timer": " Голосувати за {0} ({1}s)",
   "vote.prompt_options_timer": " Голосувати за {0} ({1}y або {2}n) ({3}s)",
   "surrender.vote": "Здатися",
+  "surrender.lan": " У LAN-матчі здатися не можна",
+  "surrender.in_progress": " Голосування про здачу вже триває",
+  "surrender.unavailable": " Зараз неможливо почати голосування про здачу",
+  "surrender.not_in_match": " Запропонувати здатися може лише гравець цього матчу",
   "vote.choose_one": "Відкрито кілька голосувань, дайте відповідь на одне: {0}",
 
   "camera.paused": "Матч призупинено - немає камери від: {0}",

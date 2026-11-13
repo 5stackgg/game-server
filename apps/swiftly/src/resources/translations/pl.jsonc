@@ -44,6 +44,8 @@
 
   "knife.start": "NÓŻ NÓŻ NÓŻ!",
   "knife.captain_picking": "{0} - Kapitan wybiera strony!",
+  "team.terrorist": "Terroryści",
+  "team.ct": "CT",
   "knife.captain_prompt": "Jako kapitan musisz wybrać {0}{1}stay {2} lub {3}{4}switch",
   "knife.not_captain": " {0}Nie jesteś kapitanem!",
   "knife.captain_picked_stay": "kapitan wybrał {0}pozostać po {1}stronie",
@@ -86,6 +88,7 @@
   "match.tv_delay": "Opóźnienie TV ({0}s pozostało)",
   "ready.forced_start": "Start gry został wymuszony.",
   "vote.failed": "{0} Głosowanie nieudane",
+  "vote.not_allowed": " {0}nie możesz głosować",
   "vote.success": "{0} Głosowanie udane",
   "vote.other_team": "Drugi zespół głosuje, aby {0}",
   "vote.other_team_timer": "Drugi zespół głosuje, aby {0} ({1}s)",
@@ -94,6 +97,10 @@
   "vote.prompt_count_timer": " Głosuj za {0} ({1}s)",
   "vote.prompt_options_timer": " Głosuj za {0} ({1}y lub {2}n) ({3}s)",
   "surrender.vote": "Poddać się",
+  "surrender.lan": " W meczu LAN nie można się poddać",
+  "surrender.in_progress": " Głosowanie nad poddaniem już trwa",
+  "surrender.unavailable": " Nie można teraz rozpocząć głosowania nad poddaniem",
+  "surrender.not_in_match": " Tylko gracz z tego meczu może zaproponować poddanie się",
   "vote.choose_one": "Otwartych jest kilka głosowań, odpowiedz na jedno: {0}",
 
   "camera.paused": "Mecz wstrzymany - brak kamery od: {0}",

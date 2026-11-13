@@ -97,9 +97,14 @@ public class KnifeSystem
 
         SetupKnifeMessage();
 
-        _gameServer.Message(
+        _gameServer.MessageEach(
             HudDestination.Alert,
-            _localizer["knife.captain_picking", (team == CsTeam.Terrorist ? "Terrorist" : "CT")]
+            viewer =>
+                _gameServer.Localize(
+                    viewer,
+                    "knife.captain_picking",
+                    _gameServer.Localize(viewer, TeamUtility.TeamNameKey(team))
+                )
         );
     }
 

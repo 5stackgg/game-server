@@ -44,6 +44,8 @@
 
   "knife.start": "나이프! 나이프! 나이프!",
   "knife.captain_picking": "{0} - 주장이 진영을 선택 중!",
+  "team.terrorist": "테러리스트",
+  "team.ct": "CT",
   "knife.captain_prompt": "주장으로서 {0}{1}stay {2} 또는 {3}{4}switch 를 선택해야 합니다",
   "knife.not_captain": " {0}당신은 주장이 아닙니다!",
   "knife.captain_picked_stay": "주장이 {0}유지 {1}진영 선택",
@@ -85,6 +87,7 @@
   "match.tv_delay": "TV 지연({0}s 남음)",
   "ready.forced_start": "게임 시작이 강제되었습니다.",
   "vote.failed": "{0} 투표 실패",
+  "vote.not_allowed": " {0}투표할 권한이 없습니다",
   "vote.success": "{0} 투표 성공",
   "vote.other_team": "상대 팀이 {0} 에 투표 중",
   "vote.other_team_timer": "상대 팀이 {0} 에 투표 중 ({1}s)",
@@ -93,6 +96,10 @@
   "vote.prompt_count_timer": " {0} 에 투표 ({1}s)",
   "vote.prompt_options_timer": " {0} 에 투표 ({1}y 또는 {2}n) ({3}s)",
   "surrender.vote": "항복",
+  "surrender.lan": " LAN 경기에서는 항복할 수 없습니다",
+  "surrender.in_progress": " 이미 항복 투표가 진행 중입니다",
+  "surrender.unavailable": " 지금은 항복 투표를 시작할 수 없습니다",
+  "surrender.not_in_match": " 이 경기의 플레이어만 항복을 요청할 수 있습니다",
   "vote.choose_one": "진행 중인 투표가 둘 이상입니다. 하나에 응답하세요: {0}",
 
   "camera.paused": "경기 일시정지 - 카메라 없음: {0}",

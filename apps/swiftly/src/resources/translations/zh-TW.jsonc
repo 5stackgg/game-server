@@ -44,6 +44,8 @@
 
   "knife.start": "小刀！小刀！小刀！",
   "knife.captain_picking": "{0} - 隊長正在選邊！",
+  "team.terrorist": "恐怖分子",
+  "team.ct": "CT",
   "knife.captain_prompt": "作為隊長你必須選擇 {0}{1}stay {2} 或 {3}{4}switch",
   "knife.not_captain": " {0}你不是隊長！",
   "knife.captain_picked_stay": "隊長選擇了{0}留在{1}方",
@@ -86,6 +88,7 @@
   "match.tv_delay": "TV 延遲（剩餘 {0}s）",
   "ready.forced_start": "比賽已被強制開始。",
   "vote.failed": "{0} 投票失敗",
+  "vote.not_allowed": " {0}你無權投票",
   "vote.success": "{0} 投票成功",
   "vote.other_team": "對方隊伍正在投票 {0}",
   "vote.other_team_timer": "對方隊伍正在投票 {0} ({1}s)",
@@ -94,6 +97,10 @@
   "vote.prompt_count_timer": " 投票 {0} ({1}s)",
   "vote.prompt_options_timer": " 投票 {0}（{1}y 或 {2}n）({3}s)",
   "surrender.vote": "投降",
+  "surrender.lan": " 區域網路比賽不能投降",
+  "surrender.in_progress": " 投降投票已在進行中",
+  "surrender.unavailable": " 現在無法發起投降投票",
+  "surrender.not_in_match": " 只有本場比賽的玩家才能發起投降",
   "vote.choose_one": "有多個投票正在進行，請回答其中一個：{0}",
 
   "camera.paused": "比賽已暫停 - 以下玩家沒有攝影機: {0}",

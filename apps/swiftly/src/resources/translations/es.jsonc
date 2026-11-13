@@ -44,6 +44,8 @@
 
   "knife.start": "¡CUCHILLO CUCHILLO CUCHILLO!",
   "knife.captain_picking": "{0} - ¡El capitán está eligiendo lados!",
+  "team.terrorist": "Terroristas",
+  "team.ct": "CT",
   "knife.captain_prompt": "Como capitán debes seleccionar {0}{1}stay {2} o {3}{4}switch",
   "knife.not_captain": " {0}¡No eres el capitán!",
   "knife.captain_picked_stay": "el capitán eligió {0}quedarse {1}de lado",
@@ -86,6 +88,7 @@
   "match.tv_delay": "Retraso de TV ({0}s restantes)",
   "ready.forced_start": "El juego ha sido forzado a iniciar.",
   "vote.failed": "{0} Votación fallida",
+  "vote.not_allowed": " {0}no tienes permiso para votar",
   "vote.success": "{0} Votación exitosa",
   "vote.other_team": "El otro equipo está votando para {0}",
   "vote.other_team_timer": "El otro equipo está votando para {0} ({1}s)",
@@ -94,6 +97,10 @@
   "vote.prompt_count_timer": " Votar para {0} ({1}s)",
   "vote.prompt_options_timer": " Votar para {0} ({1}y o {2}n) ({3}s)",
   "surrender.vote": "Rendirse",
+  "surrender.lan": " No hay rendición en una partida LAN",
+  "surrender.in_progress": " Ya hay una votación de rendición en curso",
+  "surrender.unavailable": " No se puede iniciar una votación de rendición ahora",
+  "surrender.not_in_match": " Solo un jugador de esta partida puede pedir la rendición",
   "vote.choose_one": "Hay más de una votación abierta, responde a una: {0}",
 
   "camera.paused": "Partida pausada - sin cámara de: {0}",

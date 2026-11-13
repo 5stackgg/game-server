@@ -293,6 +293,7 @@ namespace FiveStack.Utilities
                     || player.UserId == null
                     || !player.IsValid
                     || player.IsBot
+                    || player.IsHLTV
                     || player.PlayerName == "SourceTV"
                 )
                 {
