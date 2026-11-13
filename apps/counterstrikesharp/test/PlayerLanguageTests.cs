@@ -161,10 +161,32 @@ public class PlayerLanguageTests
                 Regex.Matches(Compact(Path.GetRelativePath(src, file)), @"\.ForPlayer\(").Count
             );
 
-        Assert.Equal(1, lookups);
+        Assert.Equal(2, lookups);
         Assert.Contains(
-            "publicstringLocalize(CCSPlayerController?player,stringkey,paramsobject[]args){if(player==null||player.SteamID==0){return_localizer[key,args].Value;}return_localizer.ForPlayer(player,key,args);}",
+            "publicstringLocalize(CCSPlayerController?player,stringkey,paramsobject[]args){if(player==null||player.SteamID==0){return_localizer.ForPlayer(null,key,args);}return_localizer.ForPlayer(player,key,args);}",
             Compact(Path.Combine("FiveStack.Services", "GameServer.cs"))
+        );
+    }
+
+    [Fact]
+    public void SourceTvGetsTheServersLanguageNotTheLastCallers()
+    {
+        Assert.DoesNotContain(
+            "_localizer[",
+            Compact(Path.Combine("FiveStack.Services", "GameServer.cs"))
+        );
+    }
+
+    [Fact]
+    public void SourceTvIsNeverAMatchPlayer()
+    {
+        string utility = Compact(Path.Combine("FiveStack.Utilities", "MatchUtility.cs"));
+        int from = utility.IndexOf("publicstaticList<CCSPlayerController>Players()", StringComparison.Ordinal);
+
+        Assert.True(from >= 0, "MatchUtility.Players is gone");
+        Assert.Contains(
+            "||player.IsHLTV",
+            utility[from..utility.IndexOf("returnvalidPlayers;", from, StringComparison.Ordinal)]
         );
     }
 
