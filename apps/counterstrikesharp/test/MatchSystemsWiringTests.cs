@@ -47,6 +47,9 @@ public class MatchSystemsWiringTests
             .Select(service => service.ServiceType)
             .ToHashSet();
 
+        Assert.Contains(typeof(TimeoutSystem), perMatch);
+        Assert.Contains(typeof(ReadySystem), perMatch);
+
         List<string> copies = services
             .Where(service => service.Lifetime == ServiceLifetime.Singleton)
             .Select(service => service.ImplementationType ?? service.ServiceType)
