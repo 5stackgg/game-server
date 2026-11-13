@@ -24,6 +24,10 @@
   "rules.timeouts.coach_and_captains": "Тренер і капітани",
   "rules.timeouts.coach_and_players": "Тренер і гравці",
   "rules.timeouts.admin": "Адмін",
+  "rules.match_type.competitive": "Рейтинговий",
+  "rules.match_type.wingman": "Wingman",
+  "rules.match_type.duel": "Дуель",
+  "rules.match_type.rush": "Rush",
 
   "gag.you_are_gagged": " [red]Вас вимкнено",
 
@@ -89,6 +93,7 @@
   "vote.prompt_options": " Голосувати за {0} ({1}y або {2}n)",
   "vote.prompt_count_timer": " Голосувати за {0} ({1}s)",
   "vote.prompt_options_timer": " Голосувати за {0} ({1}y або {2}n) ({3}s)",
+  "surrender.vote": "Здатися",
 
   "camera.paused": "Матч призупинено - немає камери від: {0}",
   "camera.waiting": "Очікування камери: {0}",

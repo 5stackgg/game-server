@@ -48,7 +48,7 @@ public class SurrenderSystem
         Reset();
     }
 
-    public void SetupDisconnectTimer(CsTeam team, ulong steamId)
+    public void SetupDisconnectTimer(CsTeam team, ulong steamId, string playerName = "")
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null || !match.IsInPlay())
@@ -58,6 +58,12 @@ public class SurrenderSystem
 
         MatchData? matchData = match.GetMatchData();
         if (matchData == null)
+        {
+            return;
+        }
+
+        // A LAN drop is a dead machine or network far more often than a leaver.
+        if (matchData.is_lan && !_environmentService.IsOfflineMode())
         {
             return;
         }
@@ -77,14 +83,55 @@ public class SurrenderSystem
             _disconnectTimers[team] = new Dictionary<ulong, Timer>();
         }
 
+        Guid? lineupId = LeaverLineup(matchData, steamId.ToString(), playerName);
+
         _disconnectTimers[team][steamId] = TimerUtility.AddTimer(
             60 * 3,
             () =>
             {
-                SetupSurrender(team);
+                MatchManager? current = _matchService.GetCurrentMatch();
+                SetupSurrender(
+                    LeaverSurrenderSide(
+                        current?.GetMatchData(),
+                        current?.GetCurrentMap(),
+                        lineupId,
+                        team,
+                        _gameServer.GetTotalRoundsPlayed()
+                    )
+                );
                 PlayerAbandonedMatch(steamId);
             }
         );
+    }
+
+    public static Guid? LeaverLineup(MatchData matchData, string steamId, string playerName)
+    {
+        return LineupMembership.LineupOf(matchData, steamId, playerName);
+    }
+
+    // The side the leaver's lineup plays when the timer runs out. A halftime in
+    // those three minutes swaps it away from the side they left from.
+    public static CsTeam LeaverSurrenderSide(
+        MatchData? matchData,
+        MatchMap? currentMap,
+        Guid? lineupId,
+        CsTeam sideAtDisconnect,
+        int roundsPlayed
+    )
+    {
+        if (matchData == null || currentMap == null || lineupId == null)
+        {
+            return sideAtDisconnect;
+        }
+
+        CsTeam side = TeamUtility.GetLineupSide(matchData, currentMap, lineupId.Value, roundsPlayed);
+
+        if (side != CsTeam.Terrorist && side != CsTeam.CounterTerrorist)
+        {
+            return sideAtDisconnect;
+        }
+
+        return side;
     }
 
     // we dont pass the team in because they may not be on the team immediately after reconnecting
@@ -153,6 +200,15 @@ public class SurrenderSystem
         Guid? callerLineup = null
     )
     {
+        if (
+            _matchService.GetCurrentMatch()?.GetMatchData()?.is_lan == true
+            && !_environmentService.IsOfflineMode()
+        )
+        {
+            player?.PrintToConsole(" There is no surrender in a LAN match");
+            return;
+        }
+
         _logger.LogInformation($"Setting up surrender vote for {team}");
         if (surrenderingVote != null && surrenderingVote.IsVoteActive())
         {
@@ -246,6 +302,7 @@ public class SurrenderSystem
 
     public void Reset()
     {
+        surrenderingVote?.Abandon();
         surrenderingVote = null;
 
         foreach (var team in _disconnectTimers.Keys)
@@ -350,6 +407,14 @@ public class SurrenderSystem
 
     public void PlayerAbandonedMatch(ulong steamId)
     {
+        if (
+            _matchService.GetCurrentMatch()?.GetMatchData()?.is_lan == true
+            && !_environmentService.IsOfflineMode()
+        )
+        {
+            return;
+        }
+
         // The api escalates the ban on every report, so one leave reported twice
         // -- after a reconnect, or again on the next map -- costs the player a
         // longer ban than they earned.

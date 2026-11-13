@@ -24,6 +24,10 @@
   "rules.timeouts.coach_and_captains": "Tränare och kaptener",
   "rules.timeouts.coach_and_players": "Tränare och spelare",
   "rules.timeouts.admin": "Admin",
+  "rules.match_type.competitive": "Competitive",
+  "rules.match_type.wingman": "Wingman",
+  "rules.match_type.duel": "Duell",
+  "rules.match_type.rush": "Rush",
 
   "gag.you_are_gagged": " [red]Du är tystad",
 
@@ -89,6 +93,7 @@
   "vote.prompt_options": " Rösta för {0} ({1}y eller {2}n)",
   "vote.prompt_count_timer": " Rösta för {0} ({1}s)",
   "vote.prompt_options_timer": " Rösta för {0} ({1}y eller {2}n) ({3}s)",
+  "surrender.vote": "Ge upp",
 
   "camera.paused": "Matchen pausad - ingen kamera från: {0}",
   "camera.waiting": "Väntar på kamera: {0}",

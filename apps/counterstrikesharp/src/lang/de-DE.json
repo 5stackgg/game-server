@@ -19,6 +19,14 @@
   "rules.max_subs": "Maximale Anzahl an Auswechslungen: {0}",
   "rules.allow_timeouts": "Auszeiten erlauben {0}",
   "rules.tech_timeouts": "Technische Auszeiten {0}",
+  "rules.timeouts.coach": "Coach",
+  "rules.timeouts.coach_and_captains": "Coach und Kapitäne",
+  "rules.timeouts.coach_and_players": "Coach und Spieler",
+  "rules.timeouts.admin": "Admin",
+  "rules.match_type.competitive": "Competitive",
+  "rules.match_type.wingman": "Wingman",
+  "rules.match_type.duel": "Duell",
+  "rules.match_type.rush": "Rush",
 
   "gag.you_are_gagged": " {red}Du bist stummgeschaltet",
 
@@ -47,6 +55,8 @@
   "timeout.vote.technical_passed": "Abstimmung zur technischen Auszeit bestanden",
   "timeout.player_paused": "{0} {1}hat das Match pausiert",
   "timeout.not_allowed": " {0}du darfst kein(e) {1} im Match anfordern!",
+  "timeout.not_allowed.resume": "Fortsetzung",
+  "timeout.not_allowed.tactical_timeout": "taktische Auszeit",
   "timeout.admin_resumed": "Admin hat das Match fortgesetzt",
   "timeout.vote.resume": "Fortsetzen",
   "timeout.vote.resume_passed": "Abstimmung zum Fortsetzen bestanden",

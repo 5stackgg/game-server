@@ -23,8 +23,9 @@ public class VoteSystem
     private Dictionary<ulong, bool> _votes = new Dictionary<ulong, bool>();
 
     private bool _captainOnly;
+    private string _voteKey = "";
+    private object[] _voteArgs = [];
     private Func<IPlayer, bool>? _voterFilter;
-    private string? _voteMessage;
     private CancellationTokenSource? _voteTimeoutTimer;
     private CancellationTokenSource? _playerMessageTimer;
     private DateTime? _voteStartTime;
@@ -46,7 +47,8 @@ public class VoteSystem
     }
 
     public void StartVote(
-        string voteMessage,
+        string voteKey,
+        object[] voteArgs,
         Team[] allowedTeamsToVote,
         Action voteSuccessCallback,
         Action voteFailedCallback,
@@ -55,7 +57,8 @@ public class VoteSystem
         Func<IPlayer, bool>? voterFilter = null
     )
     {
-        _voteMessage = voteMessage;
+        _voteKey = voteKey;
+        _voteArgs = voteArgs;
         _allowedTeamsToVote = allowedTeamsToVote;
         _voteSuccessCallback = voteSuccessCallback;
         _voteFailedCallback = voteFailedCallback;
@@ -67,7 +70,7 @@ public class VoteSystem
 
         KillTimers();
 
-        _logger.LogInformation($"Starting vote: {voteMessage}");
+        _logger.LogInformation($"Starting vote: {voteKey}");
 
         _playerMessageTimer = TimerUtility.Repeat(
             1,
@@ -111,13 +114,13 @@ public class VoteSystem
         _voteStartTime = null;
         _voteTimeout = null;
         KillTimers();
-        _logger.LogInformation($"Vote Cancelled: {_voteMessage}");
+        _logger.LogInformation($"Vote Cancelled: {_voteKey}");
         _voteFailedCallback?.Invoke();
     }
 
     private void VoteFailed()
     {
-        _logger.LogInformation($"Vote Failed: {_voteMessage}");
+        _logger.LogInformation($"Vote Failed: {_voteKey}");
         _voteStartTime = null;
         _voteTimeout = null;
         KillTimers();
@@ -130,14 +133,14 @@ public class VoteSystem
 
         _gameServer.Message(
             MessageType.Center,
-            _localizer["vote.failed", _voteMessage ?? string.Empty]
+            _localizer["vote.failed", _localizer[_voteKey, _voteArgs]]
         );
         _voteFailedCallback();
     }
 
     private void VoteSuccess()
     {
-        _logger.LogInformation($"Vote Success: {_voteMessage}");
+        _logger.LogInformation($"Vote Success: {_voteKey}");
         _voteStartTime = null;
         _voteTimeout = null;
         KillTimers();
@@ -150,7 +153,7 @@ public class VoteSystem
 
         _gameServer.Message(
             MessageType.Center,
-            _localizer["vote.success", _voteMessage ?? string.Empty]
+            _localizer["vote.success", _localizer[_voteKey, _voteArgs]]
         );
         _voteSuccessCallback();
     }
@@ -222,7 +225,8 @@ public class VoteSystem
                 continue;
             }
 
-            string action = _voteMessage?.ToLower() ?? "";
+            ILocalizer localizer = _gameServer.LocalizerFor(player);
+            string action = localizer[_voteKey, _voteArgs].ToLower();
             int remainingSeconds = GetRemainingSeconds();
 
             if (!CanVote(player))
@@ -230,12 +234,12 @@ public class VoteSystem
                 if (remainingSeconds > 0)
                 {
                     player.SendCenter(
-                        _localizer["vote.other_team_timer", action, remainingSeconds]
+                        localizer["vote.other_team_timer", action, remainingSeconds]
                     );
                 }
                 else
                 {
-                    player.SendCenter(_localizer["vote.other_team", action]);
+                    player.SendCenter(localizer["vote.other_team", action]);
                 }
 
                 continue;
@@ -246,12 +250,12 @@ public class VoteSystem
                 if (remainingSeconds > 0)
                 {
                     player.SendCenter(
-                        _localizer["vote.prompt_count_timer", action, remainingSeconds]
+                        localizer["vote.prompt_count_timer", action, remainingSeconds]
                     );
                 }
                 else
                 {
-                    player.SendCenter(_localizer["vote.prompt_count", action]);
+                    player.SendCenter(localizer["vote.prompt_count", action]);
                 }
                 continue;
             }
@@ -259,7 +263,7 @@ public class VoteSystem
             if (remainingSeconds > 0)
             {
                 player.SendCenter(
-                    _localizer[
+                    localizer[
                         "vote.prompt_options_timer",
                         action,
                         CommandUtility.PublicChatTrigger,
@@ -271,7 +275,7 @@ public class VoteSystem
             else
             {
                 player.SendCenter(
-                    _localizer[
+                    localizer[
                         "vote.prompt_options",
                         action,
                         CommandUtility.PublicChatTrigger,
