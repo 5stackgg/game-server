@@ -35,14 +35,20 @@ public class LanMatchLeaverTests
         return source[from..to];
     }
 
+    // The LAN check has to return on its own: a check that only logs, or a return
+    // somewhere later in the method, lets the action run.
+    private static readonly Regex LanGuard = new Regex(
+        @"if\s*\([^\n]*is_lan[^\n]*\)\s*\{(?:[^{}]|\{[^{}]*\})*?\breturn;\s*\}"
+    );
+
     private static void ReturnsOnLanBefore(string method, string action)
     {
-        int lan = method.IndexOf("is_lan", StringComparison.Ordinal);
+        Match guard = LanGuard.Match(method);
         int act = method.IndexOf(action, StringComparison.Ordinal);
 
-        Assert.True(lan >= 0, "nothing checks for a LAN match");
-        Assert.True(act > lan, $"{action} runs before the LAN check");
-        Assert.Contains("return;", method[lan..act]);
+        Assert.True(guard.Success, "no LAN check returns on its own");
+        Assert.True(act >= 0, $"{action} is gone");
+        Assert.True(act > guard.Index + guard.Length, $"{action} runs before the LAN check returns");
     }
 
     [Fact]
