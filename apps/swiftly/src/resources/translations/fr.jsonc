@@ -41,6 +41,7 @@
   "ready.not_ready": "pas prêt",
   "ready.marked": "Vous avez été marqué {0}",
   "ready.players_not_ready": "Joueurs Pas prêts : {0} tapez {1}r",
+  "ready.not_connected": "{0} (non connecté)",
 
   "knife.start": "COUTEAU COUTEAU COUTEAU !",
   "knife.captain_picking": "{0} - Le capitaine choisit les côtés !",

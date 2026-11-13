@@ -41,6 +41,7 @@
   "ready.not_ready": "미준비",
   "ready.marked": "{0}(으)로 표시되었습니다",
   "ready.players_not_ready": "플레이어 미준비: {0} {1}r 입력",
+  "ready.not_connected": "{0} (연결 안 됨)",
 
   "knife.start": "나이프! 나이프! 나이프!",
   "knife.captain_picking": "{0} - 주장이 진영을 선택 중!",

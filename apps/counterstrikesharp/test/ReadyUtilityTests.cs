@@ -83,4 +83,80 @@ public class ReadyUtilityTests
     {
         Assert.False(CanReady(eReadySettings.Admin, LineupPlayer, "Alice", true, true));
     }
+
+    private static List<MatchMember> Members(int from, int count)
+    {
+        return Enumerable
+            .Range(from, count)
+            .Select(i => new MatchMember { steam_id = $"7656119800000{i:D4}", name = $"player{i}" })
+            .ToList();
+    }
+
+    private static IEnumerable<(string, string)> Connected(int from, int count)
+    {
+        return Enumerable.Range(from, count).Select(i => ($"7656119800000{i:D4}", $"player{i}"));
+    }
+
+    private static MatchData FiveVersusFour()
+    {
+        return new MatchData
+        {
+            lineup_1 = new MatchLineUp { lineup_players = Members(0, 5) },
+            lineup_2 = new MatchLineUp
+            {
+                lineup_players = Members(5, 3)
+                    .Append(new MatchMember { steam_id = null, placeholder_name = "Luke" })
+                    .ToList(),
+            },
+        };
+    }
+
+    [Fact]
+    public void A_Five_Versus_Four_Is_Ready_With_Nine()
+    {
+        MatchData match = FiveVersusFour();
+
+        Assert.Equal(
+            9,
+            ReadyUtility.ReadyTarget(eReadySettings.Players, match, match.ExpectedPlayerCount())
+        );
+    }
+
+    [Theory]
+    [InlineData(eReadySettings.Captains, 2)]
+    [InlineData(eReadySettings.Coach, 2)]
+    [InlineData(eReadySettings.Admin, 1)]
+    public void The_Other_Modes_Wait_On_Their_Own_Count(eReadySettings setting, int target)
+    {
+        Assert.Equal(target, ReadyUtility.ReadyTarget(setting, FiveVersusFour(), 10));
+    }
+
+    [Fact]
+    public void The_Seats_Nobody_Holds_Are_Named_While_Their_Lineup_Is_Short()
+    {
+        Assert.Equal(
+            new[] { "player7", "Luke" },
+            ReadyUtility.EmptySeats(FiveVersusFour(), Connected(0, 7), 10)
+        );
+    }
+
+    [Fact]
+    public void A_Seat_Held_Under_A_Steam_Name_That_Fits_It_Is_Not_Empty()
+    {
+        var connected = Connected(0, 8).Append(("76561198999999999", "[TAG] Luke"));
+
+        Assert.Empty(ReadyUtility.EmptySeats(FiveVersusFour(), connected, 10));
+    }
+
+    [Fact]
+    public void An_Absent_Substitute_On_A_Whole_Lineup_Is_Not_Named()
+    {
+        var match = new MatchData
+        {
+            lineup_1 = new MatchLineUp { lineup_players = Members(0, 6) },
+            lineup_2 = new MatchLineUp { lineup_players = Members(6, 5) },
+        };
+
+        Assert.Empty(ReadyUtility.EmptySeats(match, Connected(0, 5).Concat(Connected(6, 5)), 10));
+    }
 }

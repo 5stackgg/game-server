@@ -141,22 +141,7 @@ public class ReadySystem
 
         MatchManager? currentMatch = _matchService.GetCurrentMatch();
 
-        int expectedCount = currentMatch?.GetExpectedPlayerCount() ?? 10;
-
-        switch (GetReadySetting())
-        {
-            case eReadySettings.Admin:
-                expectedCount = 1;
-                break;
-            case eReadySettings.Captains:
-                expectedCount = 2;
-                break;
-            case eReadySettings.Coach:
-                expectedCount = 2;
-                break;
-        }
-
-        if (TotalReady() == expectedCount)
+        if (TotalReady() >= ReadyTarget())
         {
             Reset();
             currentMatch?.UpdateMapStatus(eMapStatus.Knife);
@@ -185,7 +170,7 @@ public class ReadySystem
     public void SetupReadyMessage(IPlayer player)
     {
         int totalReady = TotalReady();
-        int expectedReady = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
+        int expectedReady = ReadyTarget();
         ILocalizer localizer = _gameServer.LocalizerFor(player);
 
         int playerId = player.UserID;
@@ -225,6 +210,36 @@ public class ReadySystem
         return _readyPlayers.Count(pair => pair.Value);
     }
 
+    private int ReadyTarget()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+
+        if (match == null || matchData == null)
+        {
+            return 10;
+        }
+
+        return ReadyUtility.ReadyTarget(GetReadySetting(), matchData, match.GetExpectedPlayerCount());
+    }
+
+    private List<string> GetEmptySeats()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+
+        if (match == null || matchData == null || GetReadySetting() != eReadySettings.Players)
+        {
+            return [];
+        }
+
+        return ReadyUtility.EmptySeats(
+            matchData,
+            MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.Name)),
+            match.GetExpectedPlayerCount()
+        );
+    }
+
     public void SendReadyMessage(IPlayer player)
     {
         _readyPlayers.TryGetValue(player.UserID, out bool isReady);
@@ -256,15 +271,25 @@ public class ReadySystem
                 }
 
                 string[] notReadyPlayers = GetNotReadyPlayers();
-                if (notReadyPlayers.Length == 0)
+                List<string> emptySeats = GetEmptySeats();
+                if (notReadyPlayers.Length == 0 && emptySeats.Count == 0)
                 {
                     return;
                 }
 
-                string list = string.Join(", ", notReadyPlayers);
-                _gameServer.Message(
+                _gameServer.MessageEach(
                     MessageType.Notify,
-                    _localizer["ready.players_not_ready", list, CommandUtility.PublicChatTrigger]
+                    localizer =>
+                        localizer[
+                            "ready.players_not_ready",
+                            string.Join(
+                                ", ",
+                                notReadyPlayers.Concat(
+                                    emptySeats.Select(seat => localizer["ready.not_connected", seat])
+                                )
+                            ),
+                            CommandUtility.PublicChatTrigger
+                        ]
                 );
             });
         }

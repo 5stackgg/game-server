@@ -40,6 +40,7 @@
   "ready.not_ready": "не готов",
   "ready.marked": "Вы отмечены как {0}",
   "ready.players_not_ready": "Игроки Не готовы: {0} введите {1}r",
+  "ready.not_connected": "{0} (не подключён)",
 
   "knife.start": "НОЖ НОЖ НОЖ!",
   "knife.captain_picking": "{0} - Капитан выбирает стороны!",

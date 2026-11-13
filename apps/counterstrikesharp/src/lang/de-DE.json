@@ -40,6 +40,7 @@
   "ready.not_ready": "nicht bereit",
   "ready.marked": "Du wurdest als {0} markiert",
   "ready.players_not_ready": "Spieler Nicht bereit: {0} tippe {1}r",
+  "ready.not_connected": "{0} (nicht verbunden)",
 
   "knife.start": "MESSER MESSER MESSER!",
   "knife.captain_picking": "{0} - Kapitän wählt die Seiten!",

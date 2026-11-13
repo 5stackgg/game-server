@@ -41,6 +41,7 @@
   "ready.not_ready": "hazır değil",
   "ready.marked": "{0} olarak işaretlendiniz",
   "ready.players_not_ready": "Oyuncular Hazır değil: {0} {1}r yazın",
+  "ready.not_connected": "{0} (bağlı değil)",
 
   "knife.start": "BIÇAK BIÇAK BIÇAK!",
   "knife.captain_picking": "{0} - Kaptan taraf seçiyor!",

@@ -41,6 +41,7 @@
   "ready.not_ready": "non pronto",
   "ready.marked": "Sei stato contrassegnato come {0}",
   "ready.players_not_ready": "Giocatori Non pronti: {0} digita {1}r",
+  "ready.not_connected": "{0} (non connesso)",
 
   "knife.start": "COLTELLO COLTELLO COLTELLO!",
   "knife.captain_picking": "{0} - Il capitano sta scegliendo i lati!",

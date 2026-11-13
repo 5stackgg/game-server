@@ -50,38 +50,51 @@ public static class LineupMembership
         return FindPlaceholder(matchData, playerName);
     }
 
-    // A name claims the placeholder it equals, or else one it starts. A name that
-    // fits placeholders on both lineups says nothing about which one, and an empty
-    // name would fit them all.
+    // Pickup seats are named after a Discord name, so a Steam name claims a seat
+    // the way the api's PlayersConnected namesMatch does: ignoring case, with
+    // either name inside the other. The exact name goes first, and a name that
+    // fits more than one seat claims none.
     private static (MatchMember Member, int Lineup)? FindPlaceholder(
         MatchData matchData,
         string playerName
     )
     {
-        if (string.IsNullOrEmpty(playerName))
+        string name = Normalize(playerName);
+
+        if (name.Length < 2)
         {
             return null;
         }
 
-        return OnOneLineup(matchData, name => name == playerName)
-            ?? OnOneLineup(matchData, name => name.StartsWith(playerName));
+        return OnlySeat(matchData, seat => seat == name)
+            ?? OnlySeat(
+                matchData,
+                seat =>
+                    seat.Length >= 2
+                    && (
+                        seat.Contains(name, StringComparison.Ordinal)
+                        || name.Contains(seat, StringComparison.Ordinal)
+                    )
+            );
     }
 
-    private static (MatchMember Member, int Lineup)? OnOneLineup(
+    private static (MatchMember Member, int Lineup)? OnlySeat(
         MatchData matchData,
         Func<string, bool> claims
     )
     {
         List<(MatchMember Member, int Lineup)> claimed = Members(matchData)
-            .Where(entry => entry.Member.steam_id == null && claims(entry.Member.placeholder_name))
+            .Where(entry =>
+                entry.Member.steam_id == null && claims(Normalize(entry.Member.placeholder_name))
+            )
             .ToList();
 
-        if (claimed.Count == 0 || claimed.Any(entry => entry.Lineup != claimed[0].Lineup))
-        {
-            return null;
-        }
+        return claimed.Count == 1 ? claimed[0] : null;
+    }
 
-        return claimed[0];
+    private static string Normalize(string? name)
+    {
+        return (name ?? "").Trim().ToLowerInvariant();
     }
 
     private static IEnumerable<(MatchMember Member, int Lineup)> Members(MatchData matchData)

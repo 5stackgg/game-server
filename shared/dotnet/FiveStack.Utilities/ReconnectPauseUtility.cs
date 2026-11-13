@@ -28,9 +28,8 @@ public static class ReconnectPauseUtility
         int expectedPlayers
     )
     {
-        int perLineup = expectedPlayers / 2;
-        int required1 = Math.Min(perLineup, matchData.lineup_1.lineup_players.Count);
-        int required2 = Math.Min(perLineup, matchData.lineup_2.lineup_players.Count);
+        int required1 = Seats(matchData.lineup_1, expectedPlayers);
+        int required2 = Seats(matchData.lineup_2, expectedPlayers);
         int present1 = 0;
         int present2 = 0;
 
@@ -52,5 +51,10 @@ public static class ReconnectPauseUtility
             Math.Min(present1, required1) + Math.Min(present2, required2),
             required1 + required2
         );
+    }
+
+    public static int Seats(MatchLineUp lineup, int expectedPlayers)
+    {
+        return Math.Min(expectedPlayers / 2, lineup.lineup_players.Count);
     }
 }

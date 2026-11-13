@@ -41,6 +41,7 @@
   "ready.not_ready": "未準備",
   "ready.marked": "あなたは {0} に設定されました",
   "ready.players_not_ready": "プレイヤー 未準備: {0} {1}r を入力",
+  "ready.not_connected": "{0}（未接続）",
 
   "knife.start": "ナイフ！ナイフ！ナイフ！",
   "knife.captain_picking": "{0} - キャプテンがサイドを選択中！",
