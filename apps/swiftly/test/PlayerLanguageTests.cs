@@ -6,8 +6,9 @@ using Xunit;
 
 // SwiftlyS2's injected ILocalizer is always the server's language, while
 // CounterStrikeSharp answers a command in the language of the player who typed it.
-// What one player is told goes through GameServer.LocalizerFor; broadcasts stay
-// in the server's language.
+// What one player is told goes through GameServer.LocalizerFor, and a line for
+// everyone goes through GameServer.MessageEach, which gives each player their own
+// language and SourceTV the server's.
 public class PlayerLanguageTests
 {
     private static string AppDir([CallerFilePath] string testFile = "")
@@ -188,6 +189,7 @@ public class PlayerLanguageTests
 
         Assert.Contains("foreach(IPlayerplayerinMatchUtility.Players())", each);
         Assert.Contains("message(LocalizerFor(player))", each);
+        Assert.Matches(@"\.Controller\.IsHLTV\)\{Send\(destination,\w+,message\(_core\.Localizer\)\)", each);
     }
 
     [Theory]
@@ -359,14 +361,49 @@ public class PlayerLanguageTests
     [Fact]
     public void TheKnifeAlertNamesTheTeamInEachPlayersLanguage()
     {
-        Match teams = Regex.Match(
-            Compact(Path.Combine("FiveStack.Services", "KnifeSystem.cs")),
-            @"_gameServer\.MessageEach\(MessageType\.Alert,localizer=>localizer\[""knife\.captain_picking"",localizer\[team==Team\.T\?""([^""]+)"":""([^""]+)""\]\]\)"
+        Assert.Contains(
+            "_gameServer.MessageEach(MessageType.Alert,localizer=>localizer[\"knife.captain_picking\",localizer[TeamUtility.TeamNameKey(team)]]);",
+            Compact(Path.Combine("FiveStack.Services", "KnifeSystem.cs"))
+        );
+    }
+
+    [Fact]
+    public void ATeamIsNamedByATranslationKey()
+    {
+        Match keys = Regex.Match(
+            Compact(Path.Combine("FiveStack.Utilities", "TeamUtility.cs")),
+            @"publicstaticstringTeamNameKey\(Teamteam\)\{returnteam==Team\.T\?""([^""]+)"":""([^""]+)"";\}"
         );
 
-        Assert.True(teams.Success, "the knife alert names the team in English or in one language");
-        Assert.True(Translations("en.jsonc").ContainsKey(teams.Groups[1].Value));
-        Assert.True(Translations("en.jsonc").ContainsKey(teams.Groups[2].Value));
+        Assert.True(keys.Success, "TeamUtility.TeamNameKey is gone");
+        Assert.True(Translations("en.jsonc").ContainsKey(keys.Groups[1].Value));
+        Assert.True(Translations("en.jsonc").ContainsKey(keys.Groups[2].Value));
+    }
+
+    [Theory]
+    [InlineData("captain.claim_hint")]
+    [InlineData("captain.show")]
+    [InlineData("captain.assigned")]
+    public void TheCaptainLinesNameTheTeamInEachPlayersLanguage(string key)
+    {
+        string captains = Compact(Path.Combine("FiveStack.Services", "CaptainSystem.cs"));
+
+        Assert.Matches(
+            $@"_gameServer\.MessageEach\(MessageType\.\w+,localizer=>localizer\[""{Regex.Escape(key)}"",[^;]*localizer\[TeamUtility\.TeamNameKey\(\w+\)\][^;]*\);",
+            captains
+        );
+        Assert.DoesNotContain("TeamNumToString", captains);
+    }
+
+    [Theory]
+    [InlineData("_voteFailedCallback")]
+    [InlineData("_voteSuccessCallback")]
+    public void AVoteEndsEvenIfAMessageFails(string outcome)
+    {
+        string votes = Compact(Path.Combine("FiveStack.Services", "VoteSystem.cs"));
+
+        Assert.Matches($@"try\{{_gameServer\.MessageEach\([^;]*\);\}}finally\{{{outcome}\(\);\}}", votes);
+        Assert.Contains("_votes[player.SteamID]=vote;CheckVotes();SendVoteMessage();", votes);
     }
 
     [Theory]
@@ -434,6 +471,9 @@ public class PlayerLanguageTests
     [InlineData("FiveStack.Services/VoteSystem.cs", "vote.failed")]
     [InlineData("FiveStack.Services/VoteSystem.cs", "vote.success")]
     [InlineData("FiveStack.Services/KnifeSystem.cs", "knife.captain_picking")]
+    [InlineData("FiveStack.Services/CaptainSystem.cs", "captain.claim_hint")]
+    [InlineData("FiveStack.Services/CaptainSystem.cs", "captain.show")]
+    [InlineData("FiveStack.Services/CaptainSystem.cs", "captain.assigned")]
     public void WhatOnePlayerIsToldIsInTheirLanguage(string file, string key)
     {
         string source = Compact(file);

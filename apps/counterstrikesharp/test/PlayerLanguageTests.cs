@@ -152,17 +152,34 @@ public class PlayerLanguageTests
     }
 
     [Fact]
+    public void ALanguageLookupNeverAsksCounterStrikeSharpAboutSteamIdZero()
+    {
+        string src = Path.Combine(AppDir(), "src");
+        int lookups = Directory
+            .GetFiles(src, "*.cs", SearchOption.AllDirectories)
+            .Sum(file =>
+                Regex.Matches(Compact(Path.GetRelativePath(src, file)), @"\.ForPlayer\(").Count
+            );
+
+        Assert.Equal(1, lookups);
+        Assert.Contains(
+            "publicstringLocalize(CCSPlayerController?player,stringkey,paramsobject[]args){if(player==null||player.SteamID==0){return_localizer[key,args].Value;}return_localizer.ForPlayer(player,key,args);}",
+            Compact(Path.Combine("FiveStack.Services", "GameServer.cs"))
+        );
+    }
+
+    [Fact]
     public void TheVoteHudNamesTheVoteInEachPlayersLanguage()
     {
         string votes = Compact(Path.Combine("FiveStack.Services", "VoteSystem.cs"));
 
         Assert.Contains(
-            "stringaction=_localizer.ForPlayer(player,_voteKey,_voteArgs).ToLower();",
+            "stringaction=_gameServer.Localize(player,_voteKey,_voteArgs).ToLower();",
             votes
         );
-        Assert.DoesNotContain("_localizer[", votes);
+        Assert.DoesNotContain("_localizer", votes);
         Assert.NotEmpty(Regex.Matches(votes, @"PrintToCenter\("));
-        Assert.Empty(Regex.Matches(votes, @"PrintToCenter\((?!_localizer\.ForPlayer\(player,)"));
+        Assert.Empty(Regex.Matches(votes, @"PrintToCenter\((?!_gameServer\.Localize\(player,)"));
     }
 
     [Theory]
@@ -171,17 +188,34 @@ public class PlayerLanguageTests
     public void TheVoteResultReachesEachPlayerInTheirLanguage(string key)
     {
         Assert.Contains(
-            $"_gameServer.MessageEach(HudDestination.Center,player=>_localizer.ForPlayer(player,\"{key}\",_localizer.ForPlayer(player,_voteKey,_voteArgs)));",
+            $"_gameServer.MessageEach(HudDestination.Center,viewer=>_gameServer.Localize(viewer,\"{key}\",_gameServer.Localize(viewer,_voteKey,_voteArgs)));",
             Compact(Path.Combine("FiveStack.Services", "VoteSystem.cs"))
         );
     }
 
-    [Fact]
-    public void MessageEachSendsEveryPlayerTheirOwnLine()
+    [Theory]
+    [InlineData("_voteFailedCallback")]
+    [InlineData("_voteSuccessCallback")]
+    public void AVoteEndsEvenIfAMessageFails(string outcome)
     {
+        string votes = Compact(Path.Combine("FiveStack.Services", "VoteSystem.cs"));
+
+        Assert.Matches($@"try\{{_gameServer\.MessageEach\([^;]*\);\}}finally\{{{outcome}\(\);\}}", votes);
+        Assert.Contains("_votes[player.SteamID]=vote;CheckVotes();SendVoteMessage();", votes);
+    }
+
+    [Fact]
+    public void MessageEachSendsEveryPlayerTheirOwnLineAndSourceTvTheServers()
+    {
+        string server = Compact(Path.Combine("FiveStack.Services", "GameServer.cs"));
+
         Assert.Contains(
-            "foreach(CCSPlayerControllerplayerinMatchUtility.Players()){stringtext=message(player);",
-            Compact(Path.Combine("FiveStack.Services", "GameServer.cs"))
+            "foreach(CCSPlayerControllerplayerinMatchUtility.Players()){Send(destination,player,message(player));}",
+            server
+        );
+        Assert.Matches(
+            @"CounterStrikeSharp\.API\.Utilities\.GetPlayers\(\)\)\{if\(\w+\.IsHLTV\)\{Send\(destination,\w+,message\(null\)\);",
+            server
         );
     }
 
@@ -191,7 +225,7 @@ public class PlayerLanguageTests
         string votes = Compact(Path.Combine("FiveStack.Services", "VoteSystem.cs"));
 
         Assert.DoesNotContain("youarenotallowedtovote", votes);
-        Assert.Contains("_localizer.ForPlayer(player,\"vote.not_allowed\",ChatColors.Red)", votes);
+        Assert.Contains("_gameServer.Localize(player,\"vote.not_allowed\",ChatColors.Red)", votes);
         EveryLanguageHas("vote.not_allowed");
     }
 
@@ -218,14 +252,38 @@ public class PlayerLanguageTests
     [Fact]
     public void TheKnifeAlertNamesTheTeamInEachPlayersLanguage()
     {
-        Match teams = Regex.Match(
-            Compact(Path.Combine("FiveStack.Services", "KnifeSystem.cs")),
-            @"_gameServer\.MessageEach\(HudDestination\.Alert,player=>_localizer\.ForPlayer\(player,""knife\.captain_picking"",_localizer\.ForPlayer\(player,team==CsTeam\.Terrorist\?""([^""]+)"":""([^""]+)""\)\)\)"
+        Assert.Contains(
+            "_gameServer.MessageEach(HudDestination.Alert,viewer=>_gameServer.Localize(viewer,\"knife.captain_picking\",_gameServer.Localize(viewer,TeamUtility.TeamNameKey(team))));",
+            Compact(Path.Combine("FiveStack.Services", "KnifeSystem.cs"))
+        );
+    }
+
+    [Fact]
+    public void ATeamIsNamedByATranslationKey()
+    {
+        Match keys = Regex.Match(
+            Compact(Path.Combine("FiveStack.Utilities", "TeamUtility.cs")),
+            @"publicstaticstringTeamNameKey\(CsTeamteam\)\{returnteam==CsTeam\.Terrorist\?""([^""]+)"":""([^""]+)"";\}"
         );
 
-        Assert.True(teams.Success, "the knife alert names the team in English or in one language");
-        EveryLanguageHas(teams.Groups[1].Value);
-        EveryLanguageHas(teams.Groups[2].Value);
+        Assert.True(keys.Success, "TeamUtility.TeamNameKey is gone");
+        EveryLanguageHas(keys.Groups[1].Value);
+        EveryLanguageHas(keys.Groups[2].Value);
+    }
+
+    [Theory]
+    [InlineData("captain.claim_hint")]
+    [InlineData("captain.show")]
+    [InlineData("captain.assigned")]
+    public void TheCaptainLinesNameTheTeamInEachPlayersLanguage(string key)
+    {
+        string captains = Compact(Path.Combine("FiveStack.Services", "CaptainSystem.cs"));
+
+        Assert.Matches(
+            $@"_gameServer\.MessageEach\(HudDestination\.\w+,viewer=>_gameServer\.Localize\(viewer,""{Regex.Escape(key)}"",[^;]*_gameServer\.Localize\(viewer,TeamUtility\.TeamNameKey\(\w+\)\)[^;]*\);",
+            captains
+        );
+        Assert.DoesNotContain("TeamNumToString", captains);
     }
 
     [Theory]
