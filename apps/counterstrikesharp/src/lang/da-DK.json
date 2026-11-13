@@ -61,6 +61,7 @@
   "timeout.not_allowed.tactical_timeout": "taktisk timeout",
   "timeout.admin_resumed": "Admin genoptog kampen",
   "timeout.not_paused": " {0}Kampen er ikke sat på pause",
+  "timeout.already_paused": " {0}Kampen er allerede sat på pause",
   "timeout.vote.resume": "Genoptag",
   "timeout.vote.resume_passed": "Afstemning om genoptagelse godkendt",
   "timeout.player_resumed": "{0} {1}genoptog kampen",

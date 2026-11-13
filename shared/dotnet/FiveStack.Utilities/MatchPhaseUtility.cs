@@ -27,18 +27,19 @@ public static class MatchPhaseUtility
         }
     }
 
-    // Only a new map leaves the end of one: a pause vote or a stale status from
-    // the api must not take a map that is over back into play.
+    // Only a new map leaves the end of one: a vote or a stale status from the api
+    // must not take a map that is over back into play, or surrender it.
     public static bool Reopens(eMapStatus current, eMapStatus next)
     {
-        if (PhaseOf(current) != eMatchPhase.Over)
+        if (PhaseOf(current) != eMatchPhase.Over || current == next)
         {
             return false;
         }
 
         eMatchPhase nextPhase = PhaseOf(next);
 
-        return nextPhase == eMatchPhase.Warmup
+        return next == eMapStatus.Surrendered
+            || nextPhase == eMatchPhase.Warmup
             || nextPhase == eMatchPhase.Knife
             || nextPhase == eMatchPhase.InPlay;
     }

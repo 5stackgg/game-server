@@ -61,6 +61,7 @@
   "timeout.not_allowed.tactical_timeout": "czasu taktycznego",
   "timeout.admin_resumed": "Admin wznowił mecz",
   "timeout.not_paused": " {0}Mecz nie jest zapauzowany",
+  "timeout.already_paused": " {0}Mecz jest już zapauzowany",
   "timeout.vote.resume": "Wznów",
   "timeout.vote.resume_passed": "Głosowanie o wznowienie przyjęte",
   "timeout.player_resumed": "{0} {1}wznowił mecz",

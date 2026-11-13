@@ -65,6 +65,7 @@
   "match.offline_over": "Maç bitti — bu sunucuda oynanacak bir şey kalmadı.",
   "timeout.cannot_resume_empty_team": "Bir takımda bağlı oyuncu yokken devam edilemez",
   "timeout.not_paused": " {0}Maç duraklatılmış değil",
+  "timeout.already_paused": " {0}Maç zaten duraklatıldı",
   "timeout.admin_resumed": "Yönetici maçı sürdürdü",
   "timeout.vote.resume": "Sürdür",
   "timeout.vote.resume_passed": "Sürdürme oylaması geçti",

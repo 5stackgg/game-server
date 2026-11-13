@@ -259,7 +259,11 @@ public class MatchManager
         _phaseTimers.Clear();
 
         _timeoutSystem.Reset();
-        readySystem.Reset();
+
+        if (readySystem.IsWaitingForReady())
+        {
+            readySystem.Reset();
+        }
     }
 
     // Long enough to outlast a full tactical timeout (mp_team_timeout_time is
@@ -937,8 +941,15 @@ public class MatchManager
             return;
         }
 
+        int generation = _phaseGeneration;
+
         HibernationUtility.NextTick(() =>
         {
+            if (generation != _phaseGeneration)
+            {
+                return;
+            }
+
             bool isInWarmup = MatchUtility.Rules()?.WarmupPeriod ?? false;
 
             if (isInWarmup == false)

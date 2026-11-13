@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
@@ -188,7 +189,10 @@ public class CameraSystem
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (match == null)
+        if (
+            match == null
+            || MatchPhaseUtility.PhaseOf(match.GetCurrentMapStatus()) != eMatchPhase.InPlay
+        )
         {
             return;
         }

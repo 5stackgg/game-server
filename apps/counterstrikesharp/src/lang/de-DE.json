@@ -61,6 +61,7 @@
   "timeout.not_allowed.tactical_timeout": "taktische Auszeit",
   "timeout.admin_resumed": "Admin hat das Match fortgesetzt",
   "timeout.not_paused": " {0}Das Match ist nicht pausiert",
+  "timeout.already_paused": " {0}Das Match ist bereits pausiert",
   "timeout.vote.resume": "Fortsetzen",
   "timeout.vote.resume_passed": "Abstimmung zum Fortsetzen bestanden",
   "timeout.player_resumed": "{0} {1}hat das Match fortgesetzt",

@@ -65,6 +65,7 @@
   "match.offline_over": "比赛已结束 — 此服务器已没有可进行的比赛。",
   "timeout.cannot_resume_empty_team": "有队伍没有已连接的玩家，无法恢复",
   "timeout.not_paused": " {0}比赛未暂停",
+  "timeout.already_paused": " {0}比赛已暂停",
   "timeout.admin_resumed": "管理员已恢复比赛",
   "timeout.vote.resume": "继续",
   "timeout.vote.resume_passed": "继续投票通过",

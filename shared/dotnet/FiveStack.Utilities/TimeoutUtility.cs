@@ -54,6 +54,14 @@ namespace FiveStack.Utilities
             return true;
         }
 
+        // Halftime and a round restore hold the round for a resume without the
+        // map's status ever reading Paused.
+        public static bool HasPauseToResume(eMapStatus status, bool waitingForResume)
+        {
+            return status == eMapStatus.Paused
+                || (MatchPhaseUtility.PhaseOf(status) == eMatchPhase.InPlay && waitingForResume);
+        }
+
         private static bool IsStaffRole(ePlayerRoles? role)
         {
             return role == ePlayerRoles.Administrator

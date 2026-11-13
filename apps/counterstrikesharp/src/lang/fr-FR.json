@@ -61,6 +61,7 @@
   "timeout.not_allowed.tactical_timeout": "temps mort tactique",
   "timeout.admin_resumed": "L'admin a repris le match",
   "timeout.not_paused": " {0}Le match n'est pas en pause",
+  "timeout.already_paused": " {0}Le match est déjà en pause",
   "timeout.vote.resume": "Reprendre",
   "timeout.vote.resume_passed": "Vote pour reprendre accepté",
   "timeout.player_resumed": "{0} {1}a repris le match",

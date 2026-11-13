@@ -1,4 +1,5 @@
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared.Players;
@@ -186,7 +187,10 @@ public class CameraSystem
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (match == null)
+        if (
+            match == null
+            || MatchPhaseUtility.PhaseOf(match.GetCurrentMapStatus()) != eMatchPhase.InPlay
+        )
         {
             return;
         }

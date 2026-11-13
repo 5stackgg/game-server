@@ -61,6 +61,7 @@
   "timeout.not_allowed.tactical_timeout": "戦術タイムアウト",
   "timeout.admin_resumed": "管理者が試合を再開しました",
   "timeout.not_paused": " {0}試合は一時停止されていません",
+  "timeout.already_paused": " {0}試合はすでに一時停止されています",
   "timeout.vote.resume": "再開",
   "timeout.vote.resume_passed": "再開の投票が可決",
   "timeout.player_resumed": "{0} {1}が試合を再開しました",

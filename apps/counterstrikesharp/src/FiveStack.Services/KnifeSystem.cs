@@ -51,15 +51,12 @@ public class KnifeSystem
 
         _gameServer.SendCommands(["exec 5stack.knife.cfg", "mp_warmup_end", "mp_restartgame 1"]);
 
-        Server.NextFrame(() =>
-        {
-            _matchService
-                .GetCurrentMatch()
-                ?.PhaseTimer(
-                    5,
-                    () => _gameServer.Message(HudDestination.Alert, _localizer["knife.start"])
-                );
-        });
+        _matchService
+            .GetCurrentMatch()
+            ?.PhaseTimer(
+                5,
+                () => _gameServer.Message(HudDestination.Alert, _localizer["knife.start"])
+            );
     }
 
     public void MarkRoundLive()

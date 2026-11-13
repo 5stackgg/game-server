@@ -65,6 +65,7 @@
   "match.offline_over": "Das Match ist vorbei — auf diesem Server gibt es nichts mehr zu spielen.",
   "timeout.cannot_resume_empty_team": "Fortsetzen nicht möglich, solange ein Team keine verbundenen Spieler hat",
   "timeout.not_paused": " {0}Das Match ist nicht pausiert",
+  "timeout.already_paused": " {0}Das Match ist bereits pausiert",
   "timeout.admin_resumed": "Admin hat das Match fortgesetzt",
   "timeout.vote.resume": "Fortsetzen",
   "timeout.vote.resume_passed": "Abstimmung zum Fortsetzen bestanden",

@@ -65,6 +65,7 @@
   "match.offline_over": "Le match est terminé — il n'y a plus rien à jouer sur ce serveur.",
   "timeout.cannot_resume_empty_team": "Impossible de reprendre tant qu'une équipe n'a aucun joueur connecté",
   "timeout.not_paused": " {0}Le match n'est pas en pause",
+  "timeout.already_paused": " {0}Le match est déjà en pause",
   "timeout.admin_resumed": "L'admin a repris le match",
   "timeout.vote.resume": "Reprendre",
   "timeout.vote.resume_passed": "Vote pour reprendre accepté",
