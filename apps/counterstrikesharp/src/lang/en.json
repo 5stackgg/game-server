@@ -86,6 +86,7 @@
   "surrender.in_progress": " A surrender vote is already in progress",
   "surrender.unavailable": " Unable to start a surrender vote right now",
   "surrender.not_in_match": " Only a player in this match can call a surrender",
+  "surrender.not_in_play": " A surrender can only be called while the map is being played",
   "vote.success": "{0} Vote Successful",
   "vote.other_team": "The other team is voting to {0}",
   "vote.other_team_timer": "The other team is voting to {0} ({1}s)",

@@ -104,6 +104,7 @@
   "surrender.in_progress": " Un vote d'abandon est déjà en cours",
   "surrender.unavailable": " Impossible de lancer un vote d'abandon pour le moment",
   "surrender.not_in_match": " Seul un joueur de ce match peut demander l'abandon",
+  "surrender.not_in_play": " L'abandon ne peut être demandé que pendant que la carte est jouée",
   "vote.choose_one": "Plusieurs votes sont ouverts, réponds à l'un d'eux : {0}",
 
   "camera.paused": "Match en pause - pas de caméra de : {0}",

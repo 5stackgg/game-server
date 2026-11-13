@@ -92,6 +92,7 @@
   "surrender.in_progress": " يوجد تصويت استسلام قيد التنفيذ بالفعل",
   "surrender.unavailable": " تعذر بدء تصويت الاستسلام الآن",
   "surrender.not_in_match": " يمكن فقط للاعب في هذه المباراة طلب الاستسلام",
+  "surrender.not_in_play": " لا يمكن طلب الاستسلام إلا أثناء لعب الخريطة",
   "vote.success": "{0} تم التصويت بنجاح",
   "vote.other_team": "الفريق الآخر يصوت لـ {0}",
   "vote.other_team_timer": "الفريق الآخر يصوت لـ {0} ({1}s)",

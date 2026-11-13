@@ -92,6 +92,7 @@
   "surrender.in_progress": " 降伏投票はすでに進行中です",
   "surrender.unavailable": " 現在、降伏投票を開始できません",
   "surrender.not_in_match": " 降伏を呼びかけられるのはこの試合のプレイヤーだけです",
+  "surrender.not_in_play": " 降伏を呼びかけられるのはマップのプレイ中だけです",
   "vote.success": "{0} 投票成功",
   "vote.other_team": "相手チームが {0} に投票しています",
   "vote.other_team_timer": "相手チームが {0} に投票しています ({1}s)",

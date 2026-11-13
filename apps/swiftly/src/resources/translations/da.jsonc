@@ -104,6 +104,7 @@
   "surrender.in_progress": " Der er allerede en afstemning om overgivelse i gang",
   "surrender.unavailable": " Kan ikke starte en afstemning om overgivelse lige nu",
   "surrender.not_in_match": " Kun en spiller i denne kamp kan kalde en overgivelse",
+  "surrender.not_in_play": " En overgivelse kan kun kaldes, mens banen spilles",
   "vote.choose_one": "Der er mere end én afstemning åben, svar på én: {0}",
 
   "camera.paused": "Kampen er sat på pause - intet kamera fra: {0}",

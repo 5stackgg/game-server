@@ -92,6 +92,7 @@
   "surrender.in_progress": " 投降投票已在进行中",
   "surrender.unavailable": " 现在无法发起投降投票",
   "surrender.not_in_match": " 只有本场比赛的玩家才能发起投降",
+  "surrender.not_in_play": " 只有在地图进行中才能发起投降",
   "vote.success": "{0} 投票成功",
   "vote.other_team": "对方队伍正在投票 {0}",
   "vote.other_team_timer": "对方队伍正在投票 {0} ({1}s)",
