@@ -78,7 +78,25 @@ public class MatchService
         {
             {
                 int request = _fetches.Request();
-                CurrentMatchDecision current = await FetchCurrentMatch(serverId, apiPassword);
+                int? captainsAsOf = _currentMatch?.CaptainsAsOf();
+                string matchUri =
+                    $"{_environmentService.GetApiUrl()}/matches/current-match/{serverId}";
+
+                _logger.LogInformation($"Fetching Match Info for server : {serverId}");
+
+                var request = new HttpRequestMessage(HttpMethod.Get, matchUri);
+                request.Headers.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiPassword);
+
+                var httpResponse = await HttpClientProvider.Client.SendAsync(request);
+                httpResponse.EnsureSuccessStatusCode();
+                string response = await httpResponse.Content.ReadAsStringAsync();
+
+                CurrentMatchDecision current = CurrentMatchUtility.Read(
+                    response,
+                    serverId,
+                    _logger
+                );
 
                 if (current.Action == eCurrentMatchAction.Ignore)
                 {
@@ -91,10 +109,7 @@ public class MatchService
                 {
                     if (!_fetches.TryTake(request))
                     {
-                        _logger.LogInformation(
-                            "a newer match fetch was already applied, fetching again"
-                        );
-                        GetMatchFromApi();
+                        _logger.LogInformation("dropping a match fetch older than one already applied");
                         return;
                     }
 
@@ -124,7 +139,8 @@ public class MatchService
                         _logger.LogInformation(
                             $"Match {matchData.id} still assigned — re-running setup"
                         );
-                        _currentMatch!.SetupMatch(matchData);
+                        _currentMatch!.TakeLineups(matchData, captainsAsOf);
+                        _currentMatch.SetupMatch(matchData);
                         return;
                     }
 
@@ -152,91 +168,6 @@ public class MatchService
         {
             _logger.LogError(ex, "An unexpected error occurred");
         }
-    }
-
-    private async Task<CurrentMatchDecision> FetchCurrentMatch(string serverId, string apiPassword)
-    {
-        string matchUri = $"{_environmentService.GetApiUrl()}/matches/current-match/{serverId}";
-
-        _logger.LogInformation($"Fetching Match Info for server : {serverId}");
-
-        var request = new HttpRequestMessage(HttpMethod.Get, matchUri);
-        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
-            "Bearer",
-            apiPassword
-        );
-
-        var httpResponse = await HttpClientProvider.Client.SendAsync(request);
-        httpResponse.EnsureSuccessStatusCode();
-        string response = await httpResponse.Content.ReadAsStringAsync();
-
-        return CurrentMatchUtility.Read(response, serverId, _logger);
-    }
-
-    // The api binds pickup seats to steam ids and pushes nothing back. Only the
-    // lineups are taken: the map status here can be ahead of the api's.
-    public async void GetLineupsFromApi(bool retry = true)
-    {
-        MatchManager? match = _currentMatch;
-        string? serverId = _environmentService.GetServerId();
-        string? apiPassword = _environmentService.GetServerApiPassword();
-
-        if (
-            match == null
-            || serverId == null
-            || apiPassword == null
-            || _environmentService.IsOfflineMode()
-            || !_fetches.TryStart()
-        )
-        {
-            return;
-        }
-
-        int request = _fetches.Request();
-        int? captainsAsOf = match.CaptainsAsOf();
-        CurrentMatchDecision? current = null;
-
-        if (match._mapChangeCountdownTimer == null)
-        {
-            try
-            {
-                current = await FetchCurrentMatch(serverId, apiPassword);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning($"Unable to refresh the lineups: {ex.Message}");
-            }
-        }
-
-        HibernationUtility.NextTick(() =>
-        {
-            bool again = _fetches.Finish();
-
-            if (_currentMatch == match)
-            {
-                if (current == null)
-                {
-                    if (retry)
-                    {
-                        match.PhaseTimer(5, () => GetLineupsFromApi(false));
-                    }
-                }
-                else if (
-                    current.Action != eCurrentMatchAction.Ignore
-                    && current.Match != null
-                    && current.Match.id == match.GetMatchData()?.id
-                    && _fetches.TryTake(request)
-                )
-                {
-                    match.TakeLineups(current.Match, captainsAsOf);
-                }
-            }
-
-            if (again)
-            {
-                GetLineupsFromApi();
-            }
-        });
     }
 
     private bool _heldAwake;

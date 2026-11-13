@@ -88,8 +88,6 @@ namespace FiveStack.Utilities
                     .Any(member => member.is_gagged && member.steam_id == steamId);
         }
 
-        // A lineup_1 placeholder whose name prefixes a lineup_2 player would
-        // otherwise claim them, so exact steam ids are matched before names.
         public static string? GetTeamChatLineupId(
             MatchData matchData,
             string steamId,
@@ -107,7 +105,6 @@ namespace FiveStack.Utilities
                     )
                     ?.match_lineup_id
                 ?? GetCoachLineupId(matchData, steamId)
-                ?? LineupMembership.Placeholder(matchData, playerName)?.match_lineup_id
                 ?? Guid.Empty;
 
             if (lineupId == Guid.Empty)

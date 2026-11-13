@@ -88,6 +88,7 @@
   "demos.recording": "Gravando demo",
   "player.join.help_hint": "Digite {0}{1}help {2} para ver comandos disponíveis",
   "player.join.ready_hint": "Digite {0}{1}r{2} para ficar pronto!",
+  "player.join.link_discord": " Sem time? Entre no 5stack.gg com sua conta do Discord para ocupar sua vaga e continue conectado",
   "match.resume_hint": "para retomar digite {0}resume",
   "match.received_data": "Dados da partida recebidos",
   "match.tv_delay": "Delay da TV ({0}s restantes)",

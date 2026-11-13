@@ -86,6 +86,7 @@
   "demos.recording": "正在錄製 Demo",
   "player.join.help_hint": " 輸入 {0}{1}help {2} 查看可用指令",
   "player.join.ready_hint": " 輸入 {0}{1}r{2} 以就緒！",
+  "player.join.link_discord": " 沒有隊伍？請用 Discord 帳號登入 5stack.gg 以取得你的位置，然後保持連線",
   "match.resume_hint": "要繼續請輸入 {0}resume",
   "match.received_data": "已接收比賽數據",
   "match.tv_delay": "TV 延遲（剩餘 {0}s）",

@@ -3,6 +3,8 @@ using FiveStack.Enums;
 
 namespace FiveStack.Utilities;
 
+// A pickup seat is taken by linking Discord on 5stack.gg, which binds it to the
+// player's steam id. Until then it holds nobody, and a name never takes one.
 public static class LineupMembership
 {
     public static Guid? LineupOf(MatchData matchData, string steamId, string playerName)
@@ -17,22 +19,17 @@ public static class LineupMembership
 
     public static int? LineupNumber(MatchData matchData, string steamId, string playerName)
     {
-        return Find(matchData, steamId, playerName)?.Lineup;
+        return Find(matchData, steamId)?.Lineup;
     }
 
     public static MatchMember? Member(MatchData matchData, string steamId, string playerName)
     {
-        return Find(matchData, steamId, playerName)?.Member;
-    }
-
-    public static MatchMember? Placeholder(MatchData matchData, string playerName)
-    {
-        return FindPlaceholder(matchData, playerName)?.Member;
+        return Find(matchData, steamId)?.Member;
     }
 
     // Anyone who connected with a signed role, a streamer, caster or staff, and a
-    // lineup's coach are not offered to the api for a seat. Staff who play a free
-    // seat join with the plain password.
+    // lineup's coach never hold a seat. Staff who play a free seat join with the
+    // plain password.
     public static bool CouldHoldASeat(
         MatchData matchData,
         string steamId,
@@ -44,54 +41,33 @@ public static class LineupMembership
             && steamId != matchData.lineup_2.coach_steam_id;
     }
 
-    // Exact steam ids first, so a placeholder never claims a player who is on a lineup.
-    private static (MatchMember Member, int Lineup)? Find(
+    public static bool WaitsForADiscordLink(
         MatchData matchData,
         string steamId,
-        string playerName
+        ePlayerRoles? connectedRole
     )
     {
-        if (!string.IsNullOrEmpty(steamId))
-        {
-            foreach ((MatchMember member, int lineup) in Members(matchData))
-            {
-                if (member.steam_id == steamId)
-                {
-                    return (member, lineup);
-                }
-            }
-        }
-
-        return FindPlaceholder(matchData, playerName);
+        return Find(matchData, steamId) == null
+            && Members(matchData).Any(entry => entry.Member.steam_id == null)
+            && CouldHoldASeat(matchData, steamId, connectedRole);
     }
 
-    // A name that only fits a seat is anyone's to take, so it gives no lineup:
-    // the api binds such a seat to a steam id from the players a server reports.
-    // Only a seat's exact name counts here, and only when no other seat has it.
-    private static (MatchMember Member, int Lineup)? FindPlaceholder(
-        MatchData matchData,
-        string playerName
-    )
+    private static (MatchMember Member, int Lineup)? Find(MatchData matchData, string steamId)
     {
-        string name = (playerName ?? "").Trim();
-
-        if (name.Length < 2)
+        if (string.IsNullOrEmpty(steamId))
         {
             return null;
         }
 
-        List<(MatchMember Member, int Lineup)> seats = Members(matchData)
-            .Where(entry =>
-                entry.Member.steam_id == null
-                && string.Equals(
-                    (entry.Member.placeholder_name ?? "").Trim(),
-                    name,
-                    StringComparison.OrdinalIgnoreCase
-                )
-            )
-            .ToList();
+        foreach ((MatchMember member, int lineup) in Members(matchData))
+        {
+            if (member.steam_id == steamId)
+            {
+                return (member, lineup);
+            }
+        }
 
-        return seats.Count == 1 ? seats[0] : null;
+        return null;
     }
 
     private static IEnumerable<(MatchMember Member, int Lineup)> Members(MatchData matchData)

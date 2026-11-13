@@ -86,6 +86,7 @@
   "demos.recording": "Optager demo",
   "player.join.help_hint": " Skriv {0}{1}help {2} for tilgængelige kommandoer",
   "player.join.ready_hint": " Skriv {0}{1}r{2} for at blive klar!",
+  "player.join.link_discord": " Ikke på et hold? Log ind på 5stack.gg med din Discord-konto for at tage din plads, og bliv forbundet",
   "match.resume_hint": "for at genoptage skriv {0}resume",
   "match.received_data": "Modtog kampdata",
   "match.tv_delay": "TV-forsinkelse ({0}s tilbage)",

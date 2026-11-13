@@ -1,5 +1,4 @@
 using FiveStack.Entities;
-using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared.GameEventDefinitions;
@@ -129,9 +128,19 @@ public partial class FiveStackPlugin
             }
         );
 
-        if (match.IsWarmup() && MatchUtility.HasPlaceholderMembers(matchData))
+        if (
+            LineupMembership.WaitsForADiscordLink(
+                matchData,
+                player.SteamID.ToString(),
+                ConnectRoles.RoleIn(player.SteamID, matchData.id)
+            )
+        )
         {
-            match.PublishConnectedPlayers(eMapStatus.Warmup);
+            _gameServer.Message(
+                MessageType.Chat,
+                _gameServer.LocalizerFor(player)["player.join.link_discord"],
+                player
+            );
         }
 
         return HookResult.Continue;

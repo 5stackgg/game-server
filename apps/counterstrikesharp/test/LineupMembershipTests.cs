@@ -3,8 +3,8 @@ using FiveStack.Enums;
 using FiveStack.Utilities;
 using Xunit;
 
-// The api claims pickup seats from the players a server reports, so only
-// someone who could be one of the lineups' players is reported.
+// A pickup seat is taken by linking Discord on 5stack.gg, so someone in the
+// server who could hold one is told how while a seat is still unbound.
 public class LineupMembershipTests
 {
     private const string Coach1 = "76561198000000101";
@@ -43,5 +43,50 @@ public class LineupMembershipTests
     public void A_Lineups_Coach_Is_Not_Offered_A_Seat(string coach)
     {
         Assert.False(LineupMembership.CouldHoldASeat(BuildMatch(), coach, null));
+    }
+
+    private static MatchData WithAnUnboundSeat()
+    {
+        MatchData match = BuildMatch();
+        match.lineup_1.lineup_players.Add(new MatchMember { steam_id = Player });
+        match.lineup_2.lineup_players.Add(new MatchMember { steam_id = null, placeholder_name = "Luke" });
+
+        return match;
+    }
+
+    [Fact]
+    public void Someone_Off_The_Lineups_Waits_For_A_Discord_Link_While_A_Seat_Is_Unbound()
+    {
+        Assert.True(
+            LineupMembership.WaitsForADiscordLink(WithAnUnboundSeat(), "76561198000000009", null)
+        );
+    }
+
+    [Fact]
+    public void A_Lineup_Player_Does_Not_Wait()
+    {
+        Assert.False(LineupMembership.WaitsForADiscordLink(WithAnUnboundSeat(), Player, null));
+    }
+
+    [Fact]
+    public void Nobody_Waits_Once_Every_Seat_Is_Bound()
+    {
+        MatchData match = WithAnUnboundSeat();
+        match.lineup_2.lineup_players[0].steam_id = "76561198000000002";
+
+        Assert.False(LineupMembership.WaitsForADiscordLink(match, "76561198000000009", null));
+    }
+
+    [Fact]
+    public void A_Coach_Or_Someone_With_A_Role_Does_Not_Wait()
+    {
+        Assert.False(LineupMembership.WaitsForADiscordLink(WithAnUnboundSeat(), Coach1, null));
+        Assert.False(
+            LineupMembership.WaitsForADiscordLink(
+                WithAnUnboundSeat(),
+                "76561198000000009",
+                ePlayerRoles.Streamer
+            )
+        );
     }
 }

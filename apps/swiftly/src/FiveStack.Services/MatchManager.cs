@@ -520,7 +520,7 @@ public class MatchManager
         }
 
         if (
-            (status == eMapStatus.Warmup || status == eMapStatus.Knife || status == eMapStatus.Live)
+            (status == eMapStatus.Knife || status == eMapStatus.Live)
             && MatchUtility.HasPlaceholderMembers(_matchData)
         )
         {
@@ -543,7 +543,7 @@ public class MatchManager
         _gameServer.Message(MessageType.Chat, _localizer["match.offline_over"]);
     }
 
-    public void PublishConnectedPlayers(eMapStatus status)
+    private void PublishConnectedPlayers(eMapStatus status)
     {
         if (_matchData == null)
         {
@@ -554,17 +554,6 @@ public class MatchManager
 
         foreach (var player in MatchUtility.Players())
         {
-            if (
-                !LineupMembership.CouldHoldASeat(
-                    _matchData,
-                    player.SteamID.ToString(),
-                    FiveStackPlugin.ConnectRoles.RoleIn(player.SteamID, _matchData.id)
-                )
-            )
-            {
-                continue;
-            }
-
             Guid? lineupId = MatchUtility.GetPlayerLineup(_matchData, player);
 
             players.Add(

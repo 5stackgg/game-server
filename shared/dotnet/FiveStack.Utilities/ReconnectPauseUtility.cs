@@ -7,8 +7,8 @@ public static class ReconnectPauseUtility
     // Coaches, casters and admins are in the server too, so only the lineups'
     // own players say whether anyone is missing. Each lineup is held to its own
     // size: a lineup short by design (a 5v4 started by its captains or an admin)
-    // is not missing anyone. A placeholder member counts once someone joins
-    // under its name, and a player fills a seat on one lineup only.
+    // is not missing anyone. A pickup seat counts once linking Discord has bound
+    // it to its player's steam id.
     public static bool ShouldPause(
         MatchData matchData,
         IEnumerable<(string SteamId, string Name)> connected,

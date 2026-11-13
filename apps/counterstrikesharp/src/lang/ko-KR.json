@@ -80,6 +80,7 @@
   "demos.recording": "데모 녹화 중",
   "player.join.help_hint": " 사용 가능한 명령을 보려면 {0}{1}help {2} 입력",
   "player.join.ready_hint": " 준비하려면 {0}{1}r{2} 입력!",
+  "player.join.link_discord": " 팀에 없나요? 5stack.gg에 Discord 계정으로 로그인해 자리를 차지한 뒤 접속을 유지하세요",
   "match.resume_hint": "재개하려면 {0}resume 입력",
   "match.received_data": "경기 데이터 수신됨",
   "match.tv_delay": "TV 지연({0}s 남음)",

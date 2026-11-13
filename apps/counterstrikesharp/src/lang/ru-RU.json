@@ -81,6 +81,7 @@
   "demos.recording": "Запись демо",
   "player.join.help_hint": " Введите {0}{1}help {2} для доступных команд",
   "player.join.ready_hint": " Введите {0}{1}r{2}, чтобы быть готовым!",
+  "player.join.link_discord": " Не в команде? Войдите на 5stack.gg через аккаунт Discord, чтобы занять своё место, и оставайтесь на сервере",
   "match.resume_hint": "для возобновления введите {0}resume",
   "match.received_data": "Данные матча получены",
   "match.tv_delay": "Задержка ТВ ({0}с осталось)",

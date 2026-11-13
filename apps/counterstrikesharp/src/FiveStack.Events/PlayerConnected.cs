@@ -4,7 +4,6 @@ using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
-using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
@@ -125,9 +124,19 @@ public partial class FiveStackPlugin
             }
         );
 
-        if (match.IsWarmup() && MatchUtility.HasPlaceholderMembers(matchData))
+        if (
+            LineupMembership.WaitsForADiscordLink(
+                matchData,
+                player.SteamID.ToString(),
+                ConnectRoles.RoleIn(player.SteamID, matchData.id)
+            )
+        )
         {
-            match.PublishConnectedPlayers(eMapStatus.Warmup);
+            _gameServer.Message(
+                HudDestination.Chat,
+                _gameServer.Localize(player, "player.join.link_discord"),
+                player
+            );
         }
 
         return HookResult.Continue;

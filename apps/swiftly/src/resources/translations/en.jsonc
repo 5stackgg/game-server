@@ -86,6 +86,7 @@
   "demos.recording": "Recording Demo",
   "player.join.help_hint": " Type {0}{1}help {2} for available commands",
   "player.join.ready_hint": " Type {0}{1}r{2} to ready up!",
+  "player.join.link_discord": " Not on a team? Log in at 5stack.gg with your Discord account to take your seat, then stay connected",
   "match.resume_hint": "to resume type {0}resume",
   "match.received_data": "Received Match Data",
   "match.tv_delay": "TV delay ({0}s left)",

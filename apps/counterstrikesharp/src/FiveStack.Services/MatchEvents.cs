@@ -267,17 +267,7 @@ public class MatchEvents
                     try
                     {
                         var messageId = Guid.Parse(messageIdStr.Trim('"'));
-
-                        // The api binds pickup seats to steam ids from this and
-                        // pushes nothing back, so its answer is the cue to refetch.
-                        if (
-                            _pendingMessages.TryRemove(messageId, out var answered)
-                            && answered.Event.data?.TryGetValue("event", out object? name) == true
-                            && name as string == "players-connected"
-                        )
-                        {
-                            _matchService.GetLineupsFromApi();
-                        }
+                        _pendingMessages.TryRemove(messageId, out _);
                     }
                     catch (Exception ex)
                     {
