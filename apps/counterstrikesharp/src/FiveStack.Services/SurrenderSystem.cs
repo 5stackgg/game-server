@@ -62,6 +62,12 @@ public class SurrenderSystem
             return;
         }
 
+        // A LAN drop is a dead machine or network far more often than a leaver.
+        if (matchData.is_lan && !_environmentService.IsOfflineMode())
+        {
+            return;
+        }
+
         MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, steamId.ToString(), "");
         if (member == null)
         {
@@ -149,6 +155,15 @@ public class SurrenderSystem
 
     public void SetupSurrender(CsTeam team, CCSPlayerController? player = null)
     {
+        if (
+            _matchService.GetCurrentMatch()?.GetMatchData()?.is_lan == true
+            && !_environmentService.IsOfflineMode()
+        )
+        {
+            player?.PrintToConsole(" There is no surrender in a LAN match");
+            return;
+        }
+
         _logger.LogInformation($"Setting up surrender vote for {team}");
         if (surrenderingVote != null && surrenderingVote.IsVoteActive())
         {
@@ -354,6 +369,14 @@ public class SurrenderSystem
 
     public void PlayerAbandonedMatch(ulong steamId)
     {
+        if (
+            _matchService.GetCurrentMatch()?.GetMatchData()?.is_lan == true
+            && !_environmentService.IsOfflineMode()
+        )
+        {
+            return;
+        }
+
         // The api escalates the ban on every report, so one leave reported twice
         // -- after a reconnect, or again on the next map -- costs the player a
         // longer ban than they earned.
