@@ -38,8 +38,11 @@ namespace FiveStack.Utilities
                 return startingSide;
             }
 
+            // Regulation never reads the overtime length, and reading it needs the engine.
             int overtimeMr =
-                MatchUtility.Core.ConVar.Find<int>("mp_overtime_maxrounds")?.Value ?? 6;
+                round < mr * 2
+                    ? 0
+                    : MatchUtility.Core.ConVar.Find<int>("mp_overtime_maxrounds")?.Value ?? 6;
 
             return TeamRotation.IsOnOppositeSide(round, mr, overtimeMr)
                 ? GetOppositeSide(startingSide)

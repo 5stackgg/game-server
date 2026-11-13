@@ -79,7 +79,11 @@ public partial class FiveStackPlugin
                 );
             }
 
-            _surrenderSystem.SetupDisconnectTimer(@event.Userid.Team, @event.Userid.SteamID);
+            _surrenderSystem.SetupDisconnectTimer(
+                @event.Userid.Team,
+                @event.Userid.SteamID,
+                @event.Userid.PlayerName
+            );
         }
 
         return HookResult.Continue;
