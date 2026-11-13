@@ -1,3 +1,5 @@
+using FiveStack.Entities;
+using FiveStack.Utilities;
 using SwiftlyS2.Shared.Commands;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.SchemaDefinitions;
@@ -13,6 +15,18 @@ public partial class FiveStackPlugin
 
         if (player == null)
         {
+            return;
+        }
+
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+        bool isLineupMember =
+            matchData != null
+            && MatchUtility.GetMemberFromLineup(matchData, player.SteamID.ToString(), player.Name)
+                != null;
+
+        if (!SurrenderSystem.CanCallSurrender(player.Controller.Team, isLineupMember))
+        {
+            player.SendConsole(" Only a player in this match can call a surrender");
             return;
         }
 

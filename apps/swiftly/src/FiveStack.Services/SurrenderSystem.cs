@@ -157,6 +157,11 @@ public class SurrenderSystem
             return;
         }
 
+        if (!CanCallSurrender(team, isLineupMember: true))
+        {
+            return;
+        }
+
         surrenderingVote = _serviceProvider.GetRequiredService(typeof(VoteSystem)) as VoteSystem;
 
         if (surrenderingVote == null)
@@ -195,10 +200,11 @@ public class SurrenderSystem
             () =>
             {
                 _logger.LogInformation("surrender vote failed");
-                Reset();
+                surrenderingVote = null;
             },
             false,
-            30
+            30,
+            voter => CanVoteInSurrender(voter.Controller.Team, IsLineupMember(voter), team)
         );
     }
 
@@ -374,13 +380,24 @@ public class SurrenderSystem
         );
     }
 
+    // Only someone playing on a side can give the map up. Anyone else opened a
+    // vote for whatever team they sat on and handed the map to the other side.
     public static bool CanCallSurrender(Team team, bool isLineupMember)
     {
-        return true;
+        return isLineupMember && (team == Team.T || team == Team.CT);
     }
 
     public static bool CanVoteInSurrender(Team team, bool isLineupMember, Team votingSide)
     {
-        return team == votingSide;
+        return isLineupMember && team == votingSide;
+    }
+
+    private bool IsLineupMember(IPlayer player)
+    {
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        return matchData != null
+            && MatchUtility.GetMemberFromLineup(matchData, player.SteamID.ToString(), player.Name)
+                != null;
     }
 }

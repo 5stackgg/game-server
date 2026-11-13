@@ -23,6 +23,7 @@ public class VoteSystem
     private Dictionary<ulong, bool> _votes = new Dictionary<ulong, bool>();
 
     private bool _captainOnly;
+    private Func<IPlayer, bool>? _voterFilter;
     private string? _voteMessage;
     private CancellationTokenSource? _voteTimeoutTimer;
     private CancellationTokenSource? _playerMessageTimer;
@@ -50,7 +51,8 @@ public class VoteSystem
         Action voteSuccessCallback,
         Action voteFailedCallback,
         bool captainOnly = false,
-        float? timeout = null
+        float? timeout = null,
+        Func<IPlayer, bool>? voterFilter = null
     )
     {
         _voteMessage = voteMessage;
@@ -58,6 +60,7 @@ public class VoteSystem
         _voteSuccessCallback = voteSuccessCallback;
         _voteFailedCallback = voteFailedCallback;
         _captainOnly = captainOnly;
+        _voterFilter = voterFilter;
         _votes.Clear();
         _voteStartTime = DateTime.Now;
         _voteTimeout = timeout;
@@ -361,6 +364,11 @@ public class VoteSystem
 
     private bool CanVote(IPlayer player)
     {
+        if (_voterFilter != null && !_voterFilter(player))
+        {
+            return false;
+        }
+
         if (_allowedTeamsToVote == null)
         {
             return true;
