@@ -62,7 +62,7 @@ public partial class FiveStackPlugin
         }
 
         _surrenderSystem.RemovePlayerVoteOnDisconnect(player.SteamID);
-        _timeoutSystem.RemovePlayerVoteOnDisconnect(player.SteamID);
+        match.timeoutSystem.RemovePlayerVoteOnDisconnect(player.SteamID);
         _gameBackupRounds.RemovePlayerVoteOnDisconnect(player.SteamID);
 
         if (match.IsInPlay())

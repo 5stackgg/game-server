@@ -19,6 +19,8 @@ public partial class FiveStackPlugin
 
         bool answer = command.ArgByIndex(0) == "css_y";
 
+        TimeoutSystem? timeoutSystem = _matchService.GetCurrentMatch()?.timeoutSystem;
+
         Dictionary<string, VoteSystem?> open = new Dictionary<string, VoteSystem?>
         {
             ["restore"] = _gameBackupRounds.IsResettingRound()
@@ -27,8 +29,8 @@ public partial class FiveStackPlugin
             ["surrender"] = _surrenderSystem.IsSurrendering()
                 ? _surrenderSystem.surrenderingVote
                 : null,
-            ["pause"] = _timeoutSystem.pauseVote,
-            ["resume"] = _timeoutSystem.resumeVote,
+            ["pause"] = timeoutSystem?.pauseVote,
+            ["resume"] = timeoutSystem?.resumeVote,
         };
 
         var (targets, choices) = VoteAnswerRouting.Route(

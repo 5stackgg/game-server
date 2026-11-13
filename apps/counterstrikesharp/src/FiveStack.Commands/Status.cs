@@ -46,7 +46,7 @@ public partial class FiveStackPlugin
             lines.Add($"Match: {matchData.id}");
             lines.Add($"Map: {currentMap?.map.name ?? "unknown"}");
             lines.Add($"Map Status: {match!.GetCurrentMapStatus()}");
-            lines.Add($"Timeout Active: {_timeoutSystem.IsTimeoutActive()}");
+            lines.Add($"Timeout Active: {match.timeoutSystem.IsTimeoutActive()}");
         }
 
         return string.Join("\n", lines);
