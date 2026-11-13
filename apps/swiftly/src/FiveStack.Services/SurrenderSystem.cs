@@ -75,16 +75,29 @@ public class SurrenderSystem
             _disconnectTimers[team] = new Dictionary<ulong, CancellationTokenSource>();
         }
 
+        Guid? lineupId = member.match_lineup_id == Guid.Empty ? null : member.match_lineup_id;
+
         _disconnectTimers[team][steamId] = TimerUtility.AddTimer(
             60 * 3,
             () =>
             {
-                SetupSurrender(team);
+                MatchManager? current = _matchService.GetCurrentMatch();
+                SetupSurrender(
+                    LeaverSurrenderSide(
+                        current?.GetMatchData(),
+                        current?.GetCurrentMap(),
+                        lineupId,
+                        team,
+                        _gameServer.GetTotalRoundsPlayed()
+                    )
+                );
                 PlayerAbandonedMatch(steamId);
             }
         );
     }
 
+    // The side the leaver's lineup plays when the timer runs out. A halftime in
+    // those three minutes swaps it away from the side they left from.
     public static Team LeaverSurrenderSide(
         MatchData? matchData,
         MatchMap? currentMap,
@@ -93,7 +106,19 @@ public class SurrenderSystem
         int roundsPlayed
     )
     {
-        return sideAtDisconnect;
+        if (matchData == null || currentMap == null || lineupId == null)
+        {
+            return sideAtDisconnect;
+        }
+
+        Team side = TeamUtility.GetLineupSide(matchData, currentMap, lineupId.Value, roundsPlayed);
+
+        if (side != Team.T && side != Team.CT)
+        {
+            return sideAtDisconnect;
+        }
+
+        return side;
     }
 
     // we dont pass the team in because they may not be on the team immediately after reconnecting
