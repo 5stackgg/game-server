@@ -72,8 +72,10 @@ public class PauseReasonWiringTests
         );
     }
 
+    // A leaver whose seat a substitute filled is still gone, and is reported when
+    // their timer runs out.
     [Fact]
-    public void A_Reconnect_Only_Ends_A_Pause_The_Roster_Made_And_Keeps_A_Surrender_Vote()
+    public void A_Reconnect_Only_Ends_A_Pause_The_Roster_Made_And_Keeps_The_Vote_And_Leavers_Timers()
     {
         string resume = Method(
             Code("FiveStack.Services", "SurrenderSystem.cs"),
@@ -84,6 +86,7 @@ public class PauseReasonWiringTests
         Assert.DoesNotContain("IsPaused()", resume);
         Assert.DoesNotContain("Reset();", resume);
         Assert.DoesNotContain("EndVote();", resume);
+        Assert.DoesNotContain("KillDisconnectTimers();", resume);
     }
 
     [Fact]
