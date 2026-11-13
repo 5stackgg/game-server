@@ -23,6 +23,7 @@ public class VoteSystem
     private Dictionary<ulong, bool> _votes = new Dictionary<ulong, bool>();
 
     private bool _captainOnly;
+    private Func<CCSPlayerController, bool>? _voterFilter;
     private string? _voteMessage;
     private Timer? _voteTimeoutTimer;
     private Timer? _playerMessageTimer;
@@ -51,7 +52,8 @@ public class VoteSystem
         Action voteSuccessCallback,
         Action voteFailedCallback,
         bool captainOnly = false,
-        float? timeout = null
+        float? timeout = null,
+        Func<CCSPlayerController, bool>? voterFilter = null
     )
     {
         _voteMessage = voteMessage;
@@ -59,6 +61,7 @@ public class VoteSystem
         _voteSuccessCallback = voteSuccessCallback;
         _voteFailedCallback = voteFailedCallback;
         _captainOnly = captainOnly;
+        _voterFilter = voterFilter;
         _votes.Clear();
         _voteStartTime = DateTime.Now;
         _voteTimeout = timeout;
@@ -367,6 +370,11 @@ public class VoteSystem
 
     private bool CanVote(CCSPlayerController player)
     {
+        if (_voterFilter != null && !_voterFilter(player))
+        {
+            return false;
+        }
+
         if (_allowedTeamsToVote == null)
         {
             return true;

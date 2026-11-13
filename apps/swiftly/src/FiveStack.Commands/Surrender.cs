@@ -1,3 +1,5 @@
+using FiveStack.Entities;
+using FiveStack.Utilities;
 using SwiftlyS2.Shared.Commands;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.SchemaDefinitions;
@@ -16,6 +18,18 @@ public partial class FiveStackPlugin
             return;
         }
 
-        _surrenderSystem.SetupSurrender(player.Controller.Team, player);
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+        Guid? callerLineup =
+            matchData == null
+                ? null
+                : LineupMembership.LineupOf(matchData, player.SteamID.ToString(), player.Name);
+
+        if (!SurrenderSystem.CanCallSurrender(player.Controller.Team, callerLineup != null))
+        {
+            player.SendConsole(" Only a player in this match can call a surrender");
+            return;
+        }
+
+        _surrenderSystem.SetupSurrender(player.Controller.Team, player, callerLineup);
     }
 }

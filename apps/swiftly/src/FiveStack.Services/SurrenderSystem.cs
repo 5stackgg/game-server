@@ -192,7 +192,7 @@ public class SurrenderSystem
         return killed;
     }
 
-    public void SetupSurrender(Team team, IPlayer? player = null)
+    public void SetupSurrender(Team team, IPlayer? player = null, Guid? callerLineup = null)
     {
         if (
             _matchService.GetCurrentMatch()?.GetMatchData()?.is_lan == true
@@ -216,6 +216,11 @@ public class SurrenderSystem
             return;
         }
 
+        if (!CanCallSurrender(team, isLineupMember: true))
+        {
+            return;
+        }
+
         surrenderingVote = _serviceProvider.GetRequiredService(typeof(VoteSystem)) as VoteSystem;
 
         if (surrenderingVote == null)
@@ -229,7 +234,18 @@ public class SurrenderSystem
         // window swaps them -- handing the map to the team that just gave up.
         Team winningTeam = team == Team.CT ? Team.T : Team.CT;
 
-        Guid? winningLineup = ResolveLineupForSide(winningTeam);
+        MatchManager? current = _matchService.GetCurrentMatch();
+        MatchData? currentMatch = current?.GetMatchData();
+        Guid? winningLineup =
+            currentMatch == null
+                ? null
+                : WinningLineup(
+                    currentMatch,
+                    current?.GetCurrentMap(),
+                    callerLineup,
+                    team,
+                    _gameServer.GetTotalRoundsPlayed()
+                );
 
         if (winningLineup == null)
         {
@@ -241,11 +257,25 @@ public class SurrenderSystem
             return;
         }
 
+        MatchData? surrenderMatch = _matchService.GetCurrentMatch()?.GetMatchData();
+        Guid? surrenderingLineup =
+            surrenderMatch == null ? null : SurrenderingLineup(surrenderMatch, winningLineup.Value);
+
+        if (surrenderingLineup == null)
+        {
+            _logger.LogWarning($"No surrendering lineup found for {team}");
+            if (player != null)
+            {
+                player.SendConsole(" Unable to start a surrender vote right now");
+            }
+            return;
+        }
+
         _logger.LogInformation($"Starting Surrender Vote for {team}");
         surrenderingVote.StartVote(
             "surrender.vote",
             [],
-            new Team[] { team },
+            new Team[] { Team.T, Team.CT },
             () =>
             {
                 _logger.LogInformation("surrender vote passed");
@@ -255,10 +285,11 @@ public class SurrenderSystem
             () =>
             {
                 _logger.LogInformation("surrender vote failed");
-                Reset();
+                surrenderingVote = null;
             },
             false,
-            30
+            30,
+            voterFilter: voter => CanVoteInSurrender(VoterLineup(voter), surrenderingLineup.Value)
         );
     }
 
@@ -305,42 +336,6 @@ public class SurrenderSystem
     // name ("Theft's Team") and never literally "CT"/"TERRORIST" -- so it was
     // always false and every surrender fell through to lineup_2, handing the
     // win to whichever side happened to be lineup 2 regardless of who forfeited.
-    private Guid? ResolveLineupForSide(Team team)
-    {
-        MatchManager? match = _matchService.GetCurrentMatch();
-        if (match == null)
-        {
-            return null;
-        }
-
-        MatchData? matchData = match.GetMatchData();
-        MatchMap? currentMap = match.GetCurrentMap();
-        if (matchData == null || currentMap == null)
-        {
-            return null;
-        }
-
-        int roundsPlayed = _gameServer.GetTotalRoundsPlayed();
-
-        if (
-            TeamUtility.GetLineupSide(matchData, currentMap, matchData.lineup_1_id, roundsPlayed)
-            == team
-        )
-        {
-            return matchData.lineup_1_id;
-        }
-
-        if (
-            TeamUtility.GetLineupSide(matchData, currentMap, matchData.lineup_2_id, roundsPlayed)
-            == team
-        )
-        {
-            return matchData.lineup_2_id;
-        }
-
-        return null;
-    }
-
     // `lineupId` is the lineup that WINS the forfeit, not the one giving up.
     public void Surrender(Guid lineupId)
     {
@@ -441,5 +436,86 @@ public class SurrenderSystem
                 { "steam_id", steamId.ToString() },
             }
         );
+    }
+
+    // Only someone playing on a side can give the map up. Anyone else opened a
+    // vote for whatever team they sat on and handed the map to the other side.
+    public static bool CanCallSurrender(Team team, bool isLineupMember)
+    {
+        return isLineupMember && (team == Team.T || team == Team.CT);
+    }
+
+    // The lineup giving up is the one that did not win.
+    public static Guid? SurrenderingLineup(MatchData matchData, Guid winningLineupId)
+    {
+        if (winningLineupId == matchData.lineup_1_id)
+        {
+            return matchData.lineup_2_id;
+        }
+
+        if (winningLineupId == matchData.lineup_2_id)
+        {
+            return matchData.lineup_1_id;
+        }
+
+        return null;
+    }
+
+    // The vote belongs to the lineup, not to a side: sides move at round end,
+    // before anyone is swapped, and halftime can fall inside the vote.
+    public static bool CanVoteInSurrender(Guid? voterLineupId, Guid surrenderingLineupId)
+    {
+        return voterLineupId == surrenderingLineupId;
+    }
+
+    private Guid? VoterLineup(IPlayer player)
+    {
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        return matchData == null
+            ? null
+            : LineupMembership.LineupOf(matchData, player.SteamID.ToString(), player.Name);
+    }
+
+    // A player calling surrender gives up for their own lineup, whichever side
+    // the round count says it is on: rounds played moves at round end, before
+    // anyone is swapped. Only a timed-out leaver, with no caller, goes by side.
+    public static Guid? WinningLineup(
+        MatchData matchData,
+        MatchMap? currentMap,
+        Guid? callerLineup,
+        Team surrenderingSide,
+        int roundsPlayed
+    )
+    {
+        if (callerLineup != null)
+        {
+            return SurrenderingLineup(matchData, callerLineup.Value);
+        }
+
+        Team winningSide = surrenderingSide == Team.CT ? Team.T : Team.CT;
+
+        if (currentMap == null)
+        {
+            return null;
+        }
+
+        if (
+            TeamUtility.GetLineupSide(matchData, currentMap, matchData.lineup_1_id, roundsPlayed)
+            == winningSide
+        )
+        {
+            return matchData.lineup_1_id;
+        }
+
+        if (
+            TeamUtility.GetLineupSide(matchData, currentMap, matchData.lineup_2_id, roundsPlayed)
+            == winningSide
+        )
+        {
+            return matchData.lineup_2_id;
+        }
+
+        return null;
     }
 }
