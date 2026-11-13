@@ -101,6 +101,7 @@
   "surrender.in_progress": " Zaten devam eden bir teslim oylaması var",
   "surrender.unavailable": " Şu anda teslim oylaması başlatılamıyor",
   "surrender.not_in_match": " Teslim olmayı yalnızca bu maçtaki bir oyuncu önerebilir",
+  "surrender.not_in_play": " Teslim olma yalnızca harita oynanırken önerilebilir",
   "vote.choose_one": "Birden fazla oylama açık, birini yanıtla: {0}",
 
   "camera.paused": "Maç duraklatıldı - kamerası olmayan: {0}",

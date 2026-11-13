@@ -102,6 +102,7 @@
   "surrender.in_progress": " Ya hay una votación de rendición en curso",
   "surrender.unavailable": " No se puede iniciar una votación de rendición ahora",
   "surrender.not_in_match": " Solo un jugador de esta partida puede pedir la rendición",
+  "surrender.not_in_play": " Solo se puede pedir la rendición mientras se juega el mapa",
   "vote.choose_one": "Hay más de una votación abierta, responde a una: {0}",
 
   "camera.paused": "Partida pausada - sin cámara de: {0}",

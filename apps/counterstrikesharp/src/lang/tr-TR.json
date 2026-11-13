@@ -89,6 +89,7 @@
   "surrender.in_progress": " Zaten devam eden bir teslim oylaması var",
   "surrender.unavailable": " Şu anda teslim oylaması başlatılamıyor",
   "surrender.not_in_match": " Teslim olmayı yalnızca bu maçtaki bir oyuncu önerebilir",
+  "surrender.not_in_play": " Teslim olma yalnızca harita oynanırken önerilebilir",
   "vote.success": "{0} Oylama başarılı",
   "vote.other_team": "Diğer takım {0} için oy kullanıyor",
   "vote.other_team_timer": "Diğer takım {0} için oy kullanıyor ({1}s)",

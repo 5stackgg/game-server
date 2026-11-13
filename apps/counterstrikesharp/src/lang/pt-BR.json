@@ -84,6 +84,7 @@
   "surrender.in_progress": " Já há uma votação de rendição em andamento",
   "surrender.unavailable": " Não é possível iniciar uma votação de rendição agora",
   "surrender.not_in_match": " Apenas um jogador desta partida pode pedir a rendição",
+  "surrender.not_in_play": " A rendição só pode ser pedida enquanto o mapa está sendo jogado",
   "vote.success": "{0} Votação bem-sucedida",
   "vote.other_team": "A outra equipe está votando para {0}",
   "vote.other_team_timer": "A outra equipe está votando para {0} ({1}s)",

@@ -90,6 +90,7 @@
   "surrender.in_progress": " Un vote d'abandon est déjà en cours",
   "surrender.unavailable": " Impossible de lancer un vote d'abandon pour le moment",
   "surrender.not_in_match": " Seul un joueur de ce match peut demander l'abandon",
+  "surrender.not_in_play": " L'abandon ne peut être demandé que pendant que la carte est jouée",
   "vote.success": "{0} Vote réussi",
   "vote.other_team": "L'autre équipe vote pour {0}",
   "vote.other_team_timer": "L'autre équipe vote pour {0} ({1}s)",

@@ -102,6 +102,7 @@
   "surrender.in_progress": " Eine Abstimmung zur Aufgabe läuft bereits",
   "surrender.unavailable": " Eine Abstimmung zur Aufgabe kann gerade nicht gestartet werden",
   "surrender.not_in_match": " Nur ein Spieler dieses Matches kann eine Aufgabe einleiten",
+  "surrender.not_in_play": " Eine Aufgabe kann nur eingeleitet werden, während die Map gespielt wird",
   "vote.choose_one": "Mehr als eine Abstimmung ist offen, beantworte eine: {0}",
 
   "camera.paused": "Match pausiert - keine Kamera von: {0}",

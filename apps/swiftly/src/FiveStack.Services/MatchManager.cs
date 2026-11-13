@@ -371,6 +371,18 @@ public class MatchManager
             return;
         }
 
+        // A vote ending on the end screen would hand the map to the lineup that lost it.
+        if (
+            status == eMapStatus.Surrendered
+            && (_currentMapStatus == eMapStatus.WaitingForTV || IsMapFinished())
+        )
+        {
+            _logger.LogInformation(
+                $"Ignoring map status transition {_currentMapStatus} -> {status} because the map is already over"
+            );
+            return;
+        }
+
         _logger.LogInformation($"Update Map Status {_currentMapStatus} -> {status}");
 
         bool replay =
@@ -390,6 +402,7 @@ public class MatchManager
                 UpdateMapStatus(eMapStatus.Warmup);
                 return;
             case eMapStatus.Warmup:
+                _surrenderSystem.Reset();
                 SetupTeams();
                 status = eMapStatus.Warmup;
                 StartWarmup();
@@ -444,6 +457,7 @@ public class MatchManager
                 StartLive();
                 break;
             case eMapStatus.WaitingForTV:
+                _surrenderSystem.Reset();
                 break;
             case eMapStatus.Finished:
             case eMapStatus.Surrendered:

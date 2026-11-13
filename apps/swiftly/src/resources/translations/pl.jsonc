@@ -102,6 +102,7 @@
   "surrender.in_progress": " Głosowanie nad poddaniem już trwa",
   "surrender.unavailable": " Nie można teraz rozpocząć głosowania nad poddaniem",
   "surrender.not_in_match": " Tylko gracz z tego meczu może zaproponować poddanie się",
+  "surrender.not_in_play": " Poddanie się można zaproponować tylko w trakcie gry na mapie",
   "vote.choose_one": "Otwartych jest kilka głosowań, odpowiedz na jedno: {0}",
 
   "camera.paused": "Mecz wstrzymany - brak kamery od: {0}",

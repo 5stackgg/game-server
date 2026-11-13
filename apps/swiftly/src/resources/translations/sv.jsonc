@@ -102,6 +102,7 @@
   "surrender.in_progress": " En kapitulationsomröstning pågår redan",
   "surrender.unavailable": " Det går inte att starta en kapitulationsomröstning just nu",
   "surrender.not_in_match": " Bara en spelare i den här matchen kan begära kapitulation",
+  "surrender.not_in_play": " Kapitulation kan bara begäras medan kartan spelas",
   "vote.choose_one": "Mer än en omröstning är öppen, svara på en: {0}",
 
   "camera.paused": "Matchen pausad - ingen kamera från: {0}",

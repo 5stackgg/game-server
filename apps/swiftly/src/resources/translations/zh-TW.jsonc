@@ -102,6 +102,7 @@
   "surrender.in_progress": " 投降投票已在進行中",
   "surrender.unavailable": " 現在無法發起投降投票",
   "surrender.not_in_match": " 只有本場比賽的玩家才能發起投降",
+  "surrender.not_in_play": " 只有在地圖進行中才能發起投降",
   "vote.choose_one": "有多個投票正在進行，請回答其中一個：{0}",
 
   "camera.paused": "比賽已暫停 - 以下玩家沒有攝影機: {0}",
