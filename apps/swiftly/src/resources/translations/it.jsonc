@@ -39,6 +39,8 @@
   "ready.waiting_coach": "In attesa che l'allenatore sia pronto",
   "ready.ready": "pronto",
   "ready.not_ready": "non pronto",
+  "ready.tag.ready": "pronto",
+  "ready.tag.not_ready": "non pronto",
   "ready.marked": "Sei stato contrassegnato come {0}",
   "ready.players_not_ready": "Giocatori Non pronti: {0} digita {1}r",
   "ready.not_connected": "{0} (non connesso)",

@@ -38,6 +38,8 @@
   "ready.waiting_coach": "等待教练就绪",
   "ready.ready": "已就绪",
   "ready.not_ready": "未就绪",
+  "ready.tag.ready": "已准备",
+  "ready.tag.not_ready": "未准备",
   "ready.marked": "你已被标记为 {0}",
   "ready.players_not_ready": "玩家 未就绪：{0} 输入 {1}r",
   "ready.not_connected": "{0}（未连接）",

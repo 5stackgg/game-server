@@ -35,6 +35,8 @@
   "ready.waiting_coach": "Waiting for the coach to ready up",
   "ready.ready": "ready",
   "ready.not_ready": "not ready",
+  "ready.tag.ready": "ready",
+  "ready.tag.not_ready": "not ready",
   "ready.marked": "You have been marked {0}",
   "ready.players_not_ready": "Players Not Ready: {0} type {1}r",
   "ready.not_connected": "{0} (not connected)",

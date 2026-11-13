@@ -74,6 +74,9 @@ public class ReadySystem
 
     public void UpdatePlayerStatus()
     {
+        string readyTag = ReadyTag(true);
+        string notReadyTag = ReadyTag(false);
+
         foreach (var player in MatchUtility.Players())
         {
             int userId = player.UserID;
@@ -81,8 +84,8 @@ public class ReadySystem
             // only overwrite our own ready tags; leave team, role and camera tags alone
             if (
                 !string.IsNullOrEmpty(player.Controller.Clan)
-                && player.Controller.Clan != "ready"
-                && player.Controller.Clan != "not ready"
+                && player.Controller.Clan != readyTag
+                && player.Controller.Clan != notReadyTag
             )
             {
                 continue;
@@ -100,13 +103,19 @@ public class ReadySystem
             {
                 _matchService
                     .GetCurrentMatch()
-                    ?.UpdatePlayerName(player, player.Controller.PlayerName, "ready");
+                    ?.UpdatePlayerName(player, player.Controller.PlayerName, readyTag);
                 continue;
             }
             _matchService
                 .GetCurrentMatch()
-                ?.UpdatePlayerName(player, player.Controller.PlayerName, "not ready");
+                ?.UpdatePlayerName(player, player.Controller.PlayerName, notReadyTag);
         }
+    }
+
+    // A clan tag is one string the whole server sees on the scoreboard.
+    private string ReadyTag(bool ready)
+    {
+        return _gameServer.LocalizerFor(null)[ready ? "ready.tag.ready" : "ready.tag.not_ready"];
     }
 
     public bool IsWaitingForReady()

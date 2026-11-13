@@ -39,6 +39,8 @@
   "ready.waiting_coach": "Warten, bis der Coach bereit ist",
   "ready.ready": "bereit",
   "ready.not_ready": "nicht bereit",
+  "ready.tag.ready": "bereit",
+  "ready.tag.not_ready": "nicht bereit",
   "ready.marked": "Du wurdest als {0} markiert",
   "ready.players_not_ready": "Spieler Nicht bereit: {0} tippe {1}r",
   "ready.not_connected": "{0} (nicht verbunden)",
