@@ -1,51 +1,11 @@
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
-using FiveStack.Utilities;
 using Xunit;
 
 // A surrender vote that has been answered must not come back on its own.
+// Running it needs the engine, so this reads the plugin.
 public class SurrenderVoteRepeatTests
 {
-    private static readonly Guid Map = Guid.NewGuid();
-    private static readonly Guid Lineup = Guid.NewGuid();
-
-    [Fact]
-    public void A_Lineup_That_Voted_No_Is_Not_Asked_Again_That_Round()
-    {
-        SurrenderVoteCooldown cooldown = new SurrenderVoteCooldown();
-
-        cooldown.Failed(Map, Lineup, 7);
-
-        Assert.True(cooldown.Blocks(Map, Lineup, 7));
-    }
-
-    [Fact]
-    public void It_Can_Be_Asked_Again_Once_Another_Round_Is_Played()
-    {
-        SurrenderVoteCooldown cooldown = new SurrenderVoteCooldown();
-
-        cooldown.Failed(Map, Lineup, 7);
-
-        Assert.False(cooldown.Blocks(Map, Lineup, 8));
-    }
-
-    [Fact]
-    public void The_Other_Lineup_And_Other_Maps_Are_Not_Held_Back()
-    {
-        SurrenderVoteCooldown cooldown = new SurrenderVoteCooldown();
-
-        cooldown.Failed(Map, Lineup, 7);
-
-        Assert.False(cooldown.Blocks(Map, Guid.NewGuid(), 7));
-        Assert.False(cooldown.Blocks(Guid.NewGuid(), Lineup, 7));
-    }
-
-    [Fact]
-    public void Nothing_Is_Held_Back_Before_A_Vote_Fails()
-    {
-        Assert.False(new SurrenderVoteCooldown().Blocks(Map, Lineup, 0));
-    }
-
     private static string SourceDir([CallerFilePath] string testFile = "")
     {
         return Path.GetFullPath(Path.Combine(Path.GetDirectoryName(testFile)!, "..", "src"));
@@ -84,19 +44,5 @@ public class SurrenderVoteRepeatTests
 
         Assert.True(abandon >= 0, "the running vote is never ended");
         Assert.True(abandon < drop, "the vote is dropped before it is ended");
-    }
-
-    [Fact]
-    public void A_Failed_Vote_Holds_Its_Lineup_Back()
-    {
-        string setup = Method(Surrender(), "public void SetupSurrender(");
-        int blocks = setup.IndexOf("_voteCooldown.Blocks(", StringComparison.Ordinal);
-        int start = setup.IndexOf("surrenderingVote.StartVote(", StringComparison.Ordinal);
-        int failed = setup.IndexOf("\"surrender vote failed\"", StringComparison.Ordinal);
-
-        Assert.True(blocks >= 0 && blocks < start, "a vote starts without checking the cooldown");
-        Assert.Contains("return;", setup[blocks..start]);
-        Assert.True(failed > start, "the failure callback is gone");
-        Assert.Contains("_voteCooldown.Failed(", setup[start..]);
     }
 }

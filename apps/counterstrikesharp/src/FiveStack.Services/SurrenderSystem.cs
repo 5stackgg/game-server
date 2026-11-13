@@ -28,8 +28,6 @@ public class SurrenderSystem
     private readonly HashSet<ulong> _reportedAbandons = new HashSet<ulong>();
     private Guid? _reportedAbandonsMatchId;
 
-    private readonly SurrenderVoteCooldown _voteCooldown = new SurrenderVoteCooldown();
-
     private Guid? winningLineupId;
 
     public SurrenderSystem(
@@ -158,23 +156,6 @@ public class SurrenderSystem
             return;
         }
 
-        Guid? losingLineup = ResolveLineupForSide(team);
-        Guid? mapId = _matchService.GetCurrentMatch()?.GetCurrentMap()?.id;
-
-        if (
-            losingLineup != null
-            && mapId != null
-            && _voteCooldown.Blocks(
-                mapId.Value,
-                losingLineup.Value,
-                _gameServer.GetTotalRoundsPlayed()
-            )
-        )
-        {
-            player?.PrintToConsole(" Your team already voted not to surrender this round");
-            return;
-        }
-
         surrenderingVote = _serviceProvider.GetRequiredService(typeof(VoteSystem)) as VoteSystem;
 
         if (surrenderingVote == null)
@@ -211,14 +192,6 @@ public class SurrenderSystem
             () =>
             {
                 _logger.LogInformation("surrender vote failed");
-                if (losingLineup != null && mapId != null)
-                {
-                    _voteCooldown.Failed(
-                        mapId.Value,
-                        losingLineup.Value,
-                        _gameServer.GetTotalRoundsPlayed()
-                    );
-                }
                 Reset();
             },
             false,
