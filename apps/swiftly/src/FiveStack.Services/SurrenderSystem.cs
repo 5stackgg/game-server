@@ -187,10 +187,24 @@ public class SurrenderSystem
             return;
         }
 
+        MatchData? surrenderMatch = _matchService.GetCurrentMatch()?.GetMatchData();
+        Guid? surrenderingLineup =
+            surrenderMatch == null ? null : SurrenderingLineup(surrenderMatch, winningLineup.Value);
+
+        if (surrenderingLineup == null)
+        {
+            _logger.LogWarning($"No surrendering lineup found for {team}");
+            if (player != null)
+            {
+                player.SendConsole(" Unable to start a surrender vote right now");
+            }
+            return;
+        }
+
         _logger.LogInformation($"Starting Surrender Vote for {team}");
         surrenderingVote.StartVote(
             "Surrender",
-            new Team[] { team },
+            new Team[] { Team.T, Team.CT },
             () =>
             {
                 _logger.LogInformation("surrender vote passed");
@@ -204,7 +218,7 @@ public class SurrenderSystem
             },
             false,
             30,
-            voter => CanVoteInSurrender(voter.Controller.Team, IsLineupMember(voter), team)
+            voterFilter: voter => CanVoteInSurrender(VoterLineup(voter), surrenderingLineup.Value)
         );
     }
 
@@ -387,26 +401,35 @@ public class SurrenderSystem
         return isLineupMember && (team == Team.T || team == Team.CT);
     }
 
-    public static bool CanVoteInSurrender(Team team, bool isLineupMember, Team votingSide)
-    {
-        return isLineupMember && team == votingSide;
-    }
-
-    private bool IsLineupMember(IPlayer player)
-    {
-        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
-
-        return matchData != null
-            && MatchUtility.GetMemberFromLineup(matchData, player.SteamID.ToString(), player.Name)
-                != null;
-    }
+    // The lineup giving up is the one that did not win.
     public static Guid? SurrenderingLineup(MatchData matchData, Guid winningLineupId)
     {
+        if (winningLineupId == matchData.lineup_1_id)
+        {
+            return matchData.lineup_2_id;
+        }
+
+        if (winningLineupId == matchData.lineup_2_id)
+        {
+            return matchData.lineup_1_id;
+        }
+
         return null;
     }
 
+    // The vote belongs to the lineup, not to a side: sides move at round end,
+    // before anyone is swapped, and halftime can fall inside the vote.
     public static bool CanVoteInSurrender(Guid? voterLineupId, Guid surrenderingLineupId)
     {
-        return voterLineupId != null;
+        return voterLineupId == surrenderingLineupId;
+    }
+
+    private Guid? VoterLineup(IPlayer player)
+    {
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        return matchData == null
+            ? null
+            : LineupMembership.LineupOf(matchData, player.SteamID.ToString(), player.Name);
     }
 }

@@ -21,8 +21,7 @@ public partial class FiveStackPlugin
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
         bool isLineupMember =
             matchData != null
-            && MatchUtility.GetMemberFromLineup(matchData, player.SteamID.ToString(), player.Name)
-                != null;
+            && LineupMembership.LineupOf(matchData, player.SteamID.ToString(), player.Name) != null;
 
         if (!SurrenderSystem.CanCallSurrender(player.Controller.Team, isLineupMember))
         {
