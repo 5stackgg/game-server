@@ -99,6 +99,33 @@ public class ReconnectTimeoutWiringTests
         );
     }
 
+    // The last line a cfg gives a setting is the one the server keeps, and
+    // Valve's block at the top of each gives 1.
+    [Theory]
+    [InlineData("competitive")]
+    [InlineData("wingman")]
+    [InlineData("duel")]
+    [InlineData("rush")]
+    public void Every_Match_Type_Gives_Each_Team_Two_Technical_Timeouts(string type)
+    {
+        string cfg = File.ReadAllText(
+            Path.Combine(SourceDir(), "..", "..", "..", "shared", "cfg", $"5stack.{type}.cfg")
+        );
+
+        Assert.Equal(
+            "2",
+            Regex
+                .Matches(cfg, @"^mp_technical_timeout_per_team\s+(\S+)", RegexOptions.Multiline)
+                .Last()
+                .Groups[1]
+                .Value
+        );
+        Assert.Contains(
+            "TechnicalTimeoutSetting(\"mp_technical_timeout_per_team\", 2)",
+            Timeout("private bool ChargeReconnectTimeout(")
+        );
+    }
+
     [Fact]
     public void A_Timeout_Takes_Its_Count_And_Length_From_The_Servers_Settings()
     {

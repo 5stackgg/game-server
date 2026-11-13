@@ -601,7 +601,7 @@ public class TimeoutSystem
                     connected,
                     match.GetExpectedPlayerCount()
                 ),
-                TechnicalTimeoutSetting("mp_technical_timeout_per_team", 1)
+                TechnicalTimeoutSetting("mp_technical_timeout_per_team", 2)
             );
     }
 
