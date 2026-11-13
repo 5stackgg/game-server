@@ -323,12 +323,7 @@ public class GameBackUpRounds
 
         if (RoundRestoreGateUtility.IsInPlay(status))
         {
-            PlayerLine why = RoundRestoreGateUtility.WhyTheHoldMovedLine(round, next);
-
-            _gameServer.MessageEach(
-                MessageType.Alert,
-                localizer => GameServer.Render(localizer, why)
-            );
+            TellEveryone(RoundRestoreGateUtility.WhyTheHoldMovedLine(round, next));
         }
 
         if (next is int moved)
@@ -416,10 +411,7 @@ public class GameBackUpRounds
             is PlayerLine refusal
         )
         {
-            _gameServer.MessageEach(
-                MessageType.Alert,
-                localizer => GameServer.Render(localizer, refusal)
-            );
+            TellEveryone(refusal);
         }
     }
 
@@ -1021,6 +1013,11 @@ public class GameBackUpRounds
         );
 
         return true;
+    }
+
+    private void TellEveryone(PlayerLine line)
+    {
+        _gameServer.MessageEach(MessageType.Alert, localizer => GameServer.Render(localizer, line));
     }
 
     private void TellBlocked(PlayerLine refusal)

@@ -143,7 +143,7 @@ public class OfflineWiringTests
 
         string local = Method(Service("GameBackUpRounds"), "private void RestoreRoundOffline(int round)");
 
-        Assert.True(At(local, "OfflineMatchState.ResetToRound(") < At(local, "RestoreRound(round);"));
+        Assert.True(At(local, "OfflineMatchState.ResetToRoundLine(") < At(local, "RestoreRound(round);"));
         Assert.Contains("match.options.IsRush()", local);
         Assert.Contains("_matchService.SaveOfflineProgress();", local);
     }
