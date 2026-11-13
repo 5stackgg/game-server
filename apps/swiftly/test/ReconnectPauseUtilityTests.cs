@@ -161,4 +161,66 @@ public class ReconnectPauseUtilityTests
 
         Assert.Equal((9, 10), ReconnectPauseUtility.RosterCount(BuildMatch(), connected, 10));
     }
+
+    private static MatchData WithPlaceholders(string lineup1Name, string lineup2Name)
+    {
+        return new MatchData
+        {
+            lineup_1 = new MatchLineUp
+            {
+                lineup_players = Members(0, 4)
+                    .Append(new MatchMember { steam_id = null, placeholder_name = lineup1Name })
+                    .ToList(),
+            },
+            lineup_2 = new MatchLineUp
+            {
+                lineup_players = Members(5, 4)
+                    .Append(new MatchMember { steam_id = null, placeholder_name = lineup2Name })
+                    .ToList(),
+            },
+        };
+    }
+
+    [Fact]
+    public void A_Placeholders_Exact_Name_Wins_Over_A_Longer_One_On_The_Other_Lineup()
+    {
+        var connected = Players(0, 4)
+            .Concat(Players(5, 4))
+            .Append(("76561198999999991", "Samuel"))
+            .Append(("76561198999999992", "Sam"));
+
+        Assert.Equal(
+            (10, 10),
+            ReconnectPauseUtility.RosterCount(WithPlaceholders("Samuel", "Sam"), connected, 10)
+        );
+        Assert.Equal(
+            2,
+            LineupMembership.LineupNumber(WithPlaceholders("Samuel", "Sam"), "76561198999999992", "Sam")
+        );
+    }
+
+    [Fact]
+    public void A_Name_Starting_Placeholders_On_Both_Lineups_Is_On_Neither()
+    {
+        Assert.Null(
+            LineupMembership.LineupNumber(
+                WithPlaceholders("Samuel", "Samantha"),
+                "76561198999999992",
+                "Sam"
+            )
+        );
+    }
+
+    [Fact]
+    public void A_Name_Starting_A_Placeholder_On_One_Lineup_Claims_It()
+    {
+        Assert.Equal(
+            2,
+            LineupMembership.LineupNumber(
+                WithPlaceholders("Bob", "Maxwell"),
+                "76561198999999992",
+                "Max"
+            )
+        );
+    }
 }

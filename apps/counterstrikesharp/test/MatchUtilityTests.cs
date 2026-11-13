@@ -55,6 +55,45 @@ public class MatchUtilityTests
     }
 
     [Fact]
+    public void GetMemberFromLineup_AnEmptyNameClaimsNoPlaceholder()
+    {
+        Assert.Null(MatchUtility.GetMemberFromLineup(BuildMatch(), "9999", ""));
+    }
+
+    [Fact]
+    public void GetMemberFromLineup_PrefersExactSteamIdOverPlaceholderPrefix()
+    {
+        MatchMember? member = MatchUtility.GetMemberFromLineup(
+            BuildShadowedMemberMatch(),
+            "76561198000000002",
+            "St"
+        );
+
+        Assert.Equal("76561198000000002", member?.steam_id);
+    }
+
+    [Fact]
+    public void GetMemberFromLineup_AnExactPlaceholderNameWinsOverALongerOne()
+    {
+        MatchMember? member = MatchUtility.GetMemberFromLineup(
+            BuildSamAndSamuelMatch(),
+            "9999",
+            "Sam"
+        );
+
+        Assert.Equal(Lineup2Id, member?.match_lineup_id);
+    }
+
+    [Fact]
+    public void GetMemberFromLineup_APrefixOfPlaceholdersOnBothLineupsClaimsNeither()
+    {
+        MatchData match = BuildSamAndSamuelMatch();
+        match.lineup_2.lineup_players[1].placeholder_name = "Samantha";
+
+        Assert.Null(MatchUtility.GetMemberFromLineup(match, "9999", "Sam"));
+    }
+
+    [Fact]
     public void HasPlaceholderMembers_TrueWhenAnyNullSteamId()
     {
         Assert.True(MatchUtility.HasPlaceholderMembers(BuildMatch()));
@@ -187,6 +226,28 @@ public class MatchUtilityTests
         return match;
     }
 
+    private static MatchData BuildSamAndSamuelMatch()
+    {
+        MatchData match = BuildTeamChatMatch();
+        match.lineup_1.lineup_players.Add(
+            new MatchMember
+            {
+                steam_id = null,
+                placeholder_name = "Samuel",
+                match_lineup_id = Lineup1Id,
+            }
+        );
+        match.lineup_2.lineup_players.Add(
+            new MatchMember
+            {
+                steam_id = null,
+                placeholder_name = "Sam",
+                match_lineup_id = Lineup2Id,
+            }
+        );
+        return match;
+    }
+
     [Fact]
     public void GetTeamChatLineupId_ResolvesMemberLineup()
     {
@@ -202,6 +263,15 @@ public class MatchUtilityTests
         Assert.Equal(
             Lineup2Id.ToString(),
             MatchUtility.GetTeamChatLineupId(BuildTeamChatMatch(), "9999", "Ace")
+        );
+    }
+
+    [Fact]
+    public void GetTeamChatLineupId_AnExactPlaceholderNameWinsOverALongerOne()
+    {
+        Assert.Equal(
+            Lineup2Id.ToString(),
+            MatchUtility.GetTeamChatLineupId(BuildSamAndSamuelMatch(), "9999", "Sam")
         );
     }
 

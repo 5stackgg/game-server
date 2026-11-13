@@ -11,17 +11,46 @@ public class BackupRestoreRosterWiringTests
         return Path.GetFullPath(Path.Combine(Path.GetDirectoryName(testFile)!, "..", "src"));
     }
 
-    [Fact]
-    public void Restores_Count_The_Lineups_Players_Only()
+    private static string Source()
     {
-        string source = Regex.Replace(
+        return Regex.Replace(
             File.ReadAllText(Path.Combine(SourceDir(), "FiveStack.Services", "GameBackUpRounds.cs")),
             @"//[^\n]*",
             ""
         );
+    }
 
-        Assert.Contains("ReconnectPauseUtility.RosterCount(", source);
-        Assert.DoesNotContain("Players().Count", source);
-        Assert.DoesNotContain("MatchUtility.PlayerCount()", source);
+    private static (int From, int To) Method(string source, string signature)
+    {
+        int from = source.IndexOf(signature, StringComparison.Ordinal);
+        int to = from < 0 ? -1 : source.IndexOf("\n    }\n", from, StringComparison.Ordinal);
+
+        Assert.True(from >= 0 && to > from, $"{signature} is gone");
+
+        return (from, to);
+    }
+
+    [Theory]
+    [InlineData("public void OfferPendingRestore()")]
+    [InlineData("public string? RestoreRefusal(int round)")]
+    [InlineData("private bool CanRestoreRound(int round)")]
+    public void Each_Restore_Gate_Counts_Through_The_Roster_Helper(string signature)
+    {
+        string source = Source();
+        (int from, int to) = Method(source, signature);
+
+        Assert.Contains("= RosterCount();", source[from..to]);
+    }
+
+    [Fact]
+    public void Only_The_Roster_Helper_Reads_Who_Is_In_The_Server()
+    {
+        string source = Source();
+        (int from, int to) = Method(source, "private (int Present, int Required) RosterCount()");
+        string rest = source[..from] + source[to..];
+
+        Assert.Contains("ReconnectPauseUtility.RosterCount(", source[from..to]);
+        Assert.DoesNotContain("Players()", rest);
+        Assert.DoesNotContain("GetExpectedPlayerCount", rest);
     }
 }
