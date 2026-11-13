@@ -86,10 +86,11 @@ public class RestoreRoundWordingTests
     [Fact]
     public void TheWaitingMessageNamesTheRoundPlayedNext()
     {
-        Assert.Contains(
-            "the start of round {RoundRestoreGateUtility.StartOfRound(round)}",
-            Method(Backups(), "public void OfferPendingRestore()")
-        );
+        string offer = Method(Backups(), "public void OfferPendingRestore()");
+        int from = offer.IndexOf("\"backup.waiting_for_vote\"", StringComparison.Ordinal);
+
+        Assert.True(from >= 0, "the waiting message has moved");
+        Assert.Contains("RoundRestoreGateUtility.StartOfRound(round)", offer[from..]);
     }
 
     [Fact]

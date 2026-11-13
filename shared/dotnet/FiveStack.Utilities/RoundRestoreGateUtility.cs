@@ -73,6 +73,12 @@ namespace FiveStack.Utilities
         public const string RestartMapNeeded =
             " No round can be restored, an admin needs to use Restart Map.";
 
+        private static readonly PlayerLine RestartMapNeededLine = new PlayerLine(
+            "backup.restart_map_needed",
+            [],
+            RestartMapNeeded
+        );
+
         // Where a hold goes when it comes back, as a hold on a round that can't
         // load would come back for ever. The newest round the backend can load, or
         // NothingToLoad if it has none. Null when no recorded round is ahead of the
@@ -104,21 +110,48 @@ namespace FiveStack.Utilities
 
         public static string WhyTheHoldMoved(int round, int? next)
         {
+            return WhyTheHoldMovedLine(round, next).English;
+        }
+
+        public static PlayerLine WhyTheHoldMovedLine(int round, int? next)
+        {
             return next == RoundRestoreState.NothingToLoad
-                ? RestartMapNeeded
-                : $" The start of round {StartOfRound(round)} can't be restored, its backup is gone.";
+                ? RestartMapNeededLine
+                : new PlayerLine(
+                    "backup.backup_gone",
+                    [StartOfRound(round)],
+                    $" The start of round {StartOfRound(round)} can't be restored, its backup is gone."
+                );
         }
 
         public static string? ResumeRefusal(int? owedRound, bool needsRestartMap = false)
         {
+            return ResumeRefusalLine(owedRound, needsRestartMap)?.English;
+        }
+
+        public static PlayerLine? ResumeRefusalLine(int? owedRound, bool needsRestartMap = false)
+        {
             if (needsRestartMap)
             {
-                return RestartMapNeeded;
+                return RestartMapNeededLine;
             }
 
             return owedRound == null
                 ? null
-                : $" Still restoring the start of round {StartOfRound(owedRound.Value)}, the match can't resume yet.";
+                : new PlayerLine(
+                    "backup.still_restoring",
+                    [StartOfRound(owedRound.Value)],
+                    $" Still restoring the start of round {StartOfRound(owedRound.Value)}, the match can't resume yet."
+                );
+        }
+
+        public static PlayerLine WaitingToReconnect(int connectedPlayers, int expectedPlayers)
+        {
+            return new PlayerLine(
+                "backup.refused.reconnect",
+                [connectedPlayers, expectedPlayers],
+                $"waiting for all players to reconnect ({connectedPlayers}/{expectedPlayers})"
+            );
         }
 
         public static string? Refusal(
@@ -132,36 +165,71 @@ namespace FiveStack.Utilities
             string matchType
         )
         {
+            return RefusalLine(
+                restoresDisabled,
+                alreadyRestoring,
+                mapStatus,
+                round,
+                hasBackup,
+                connectedPlayers,
+                expectedPlayers,
+                matchType
+            )?.English;
+        }
+
+        public static PlayerLine? RefusalLine(
+            bool restoresDisabled,
+            bool alreadyRestoring,
+            eMapStatus mapStatus,
+            int round,
+            bool hasBackup,
+            int connectedPlayers,
+            int expectedPlayers,
+            string matchType
+        )
+        {
             if (restoresDisabled)
             {
-                return $"round restores are disabled in {matchType}";
+                return new PlayerLine(
+                    "backup.refused.disabled",
+                    [PlayerLine.MatchType(matchType)],
+                    $"round restores are disabled in {matchType}"
+                );
             }
 
             if (alreadyRestoring)
             {
-                return "a round restore is already in progress";
+                return new PlayerLine(
+                    "backup.refused.in_progress",
+                    [],
+                    "a round restore is already in progress"
+                );
             }
 
             // CS2 restarts the game when warmup or knife ends, which would wipe a
             // round loaded before that, so the api ignores a restore until then.
             if (mapStatus == eMapStatus.Warmup || mapStatus == eMapStatus.Knife)
             {
-                return "the map isn't live yet";
+                return new PlayerLine("backup.refused.not_live", [], "the map isn't live yet");
             }
 
             if (IsOver(mapStatus))
             {
-                return "the map is already over";
+                return new PlayerLine("backup.refused.over", [], "the map is already over");
             }
 
             if (!hasBackup)
             {
-                return $"the server has no backup for the start of round {StartOfRound(round)}";
+                return new PlayerLine(
+                    "backup.refused.no_backup",
+                    [StartOfRound(round)],
+                    $"the server has no backup for the start of round {StartOfRound(round)}"
+                );
             }
 
             if (connectedPlayers < expectedPlayers)
             {
-                return $"waiting for all players to reconnect ({connectedPlayers}/{expectedPlayers})";
+                return WaitingToReconnect(connectedPlayers, expectedPlayers);
             }
 
             return null;

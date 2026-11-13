@@ -260,14 +260,12 @@ public class SurrenderVoteIntegrityTests
             null!,
             null!,
             null!,
-            null!,
             null!
         );
         ReadySystem ready = new ReadySystem(
             NullLogger<ReadySystem>.Instance,
             null!,
             matchService,
-            null!,
             null!,
             null!,
             null!

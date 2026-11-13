@@ -220,26 +220,47 @@ public static class OfflineMatchState
     // played, and nothing does that here, so an undone round is refused outright.
     public static string? ResetToRound(MatchMap map, bool isRush, int round, string now)
     {
+        return ResetToRoundLine(map, isRush, round, now)?.English;
+    }
+
+    public static PlayerLine? ResetToRoundLine(MatchMap map, bool isRush, int round, string now)
+    {
         if (isRush && round > 0)
         {
-            return "Rush matches only reset to round 0";
+            return new PlayerLine(
+                "backup.offline.rush_round_zero",
+                [],
+                "Rush matches only reset to round 0"
+            );
         }
 
         eMapStatus status = StatusOf(map);
 
         if (!RoundRestoreGateUtility.IsInPlay(status))
         {
-            return $"the map is {status}, not in play";
+            return new PlayerLine(
+                "backup.offline.not_in_play",
+                [],
+                $"the map is {status}, not in play"
+            );
         }
 
         if (round > 0 && !map.rounds.Any(backup => backup.round == round))
         {
-            return $"there is no round {round} on this map to go back to";
+            return new PlayerLine(
+                "backup.offline.no_round",
+                [round],
+                $"there is no round {round} on this map to go back to"
+            );
         }
 
         if (round > 0 && RoundRestoreGateUtility.IsUndone(map.rounds, round))
         {
-            return $"round {round} was undone by an earlier restore";
+            return new PlayerLine(
+                "backup.offline.undone",
+                [round],
+                $"round {round} was undone by an earlier restore"
+            );
         }
 
         map.rounds = map

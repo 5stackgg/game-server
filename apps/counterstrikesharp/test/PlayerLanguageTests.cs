@@ -1,6 +1,8 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.Utilities;
 using Xunit;
 
 // CounterStrikeSharp answers a command in the language of the player who typed it,
@@ -43,6 +45,134 @@ public class PlayerLanguageTests
         return Directory
             .GetFiles(TranslationsDir(), "*.json")
             .Select(file => Path.GetFileName(file))
+            .ToArray();
+    }
+
+    private static IEnumerable<string[]> Calls(string source, string opening)
+    {
+        foreach (Match start in Regex.Matches(source, opening))
+        {
+            List<string> args = [];
+            int from = start.Index + start.Length;
+            int depth = 0;
+
+            for (int at = from; at < source.Length; at++)
+            {
+                char c = source[at];
+
+                if (c == '"')
+                {
+                    at = source.IndexOf('"', at + 1);
+
+                    if (at < 0)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+
+                if (c is '(' or '[' or '{')
+                {
+                    depth++;
+                    continue;
+                }
+
+                if (c is ')' or ']' or '}')
+                {
+                    if (depth == 0)
+                    {
+                        args.Add(source[from..at]);
+                        break;
+                    }
+
+                    depth--;
+                    continue;
+                }
+
+                if (c == ',' && depth == 0)
+                {
+                    args.Add(source[from..at]);
+                    from = at + 1;
+                }
+            }
+
+            Assert.True(args.Count > 0, $"the call at {start.Index} never closes");
+
+            yield return args.ToArray();
+        }
+    }
+
+    // Where each kind of send takes the text a player reads.
+    private static readonly (string Opening, int Text)[] Sends =
+    [
+        (@"_gameServer\.Message\(", 1),
+        (@"\.PrintTo(Chat|Center|CenterAlert|Console)\(", 0),
+        (@"\.ReplyToCommand\(", 0),
+        (@"Server\.PrintToChatAll\(", 0),
+        (@"\.PauseMatch\(", 1),
+        (@"\.ResumeMatch\(", 0),
+    ];
+
+    private static bool IsEnglish(string text)
+    {
+        foreach (Match literal in Regex.Matches(text, @"\$?""([^""]*)"""))
+        {
+            string words = Regex.Replace(literal.Groups[1].Value, @"\{[^}]*\}|\[[A-Za-z]+\]", "");
+
+            if (Regex.IsMatch(words, @"^[a-z_]+(\.[a-z_]+)+$"))
+            {
+                continue;
+            }
+
+            if (Regex.IsMatch(words, "[A-Za-z]{2,}"))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static IEnumerable<object[]> SourceFiles()
+    {
+        string src = Path.Combine(AppDir(), "src");
+
+        return Directory
+            .GetFiles(src, "*.cs", SearchOption.AllDirectories)
+            .Select(file => new object[] { Path.GetRelativePath(src, file) });
+    }
+
+    public static IEnumerable<object[]> ServiceAndEventFiles()
+    {
+        return SourceFiles()
+            .Where(file =>
+                ((string)file[0]).StartsWith("FiveStack.Services")
+                || ((string)file[0]).StartsWith("FiveStack.Events")
+            );
+    }
+
+    public static IEnumerable<object[]> LanguageFiles()
+    {
+        return Languages().Select(file => new object[] { file });
+    }
+
+    private static string[] Placeholders(string text)
+    {
+        return Regex
+            .Matches(text, @"\{\d+\}")
+            .Select(match => match.Value)
+            .Distinct()
+            .Order()
+            .ToArray();
+    }
+
+    private static string[] ColorTags(string text)
+    {
+        return Regex
+            .Matches(text, @"\{[A-Za-z]+\}")
+            .Select(match => match.Value)
+            .Order()
             .ToArray();
     }
 
@@ -100,7 +230,7 @@ public class PlayerLanguageTests
         }
 
         Assert.Contains(
-            "_localizer[\"timeout.not_allowed\",ChatColors.Red,_localizer[refusedKey]]",
+            "_gameServer.Localize(player,\"timeout.not_allowed\",ChatColors.Red,_gameServer.Localize(player,refusedKey))",
             Compact(Path.Combine("FiveStack.Services", "TimeoutSystem.cs"))
         );
     }
@@ -296,19 +426,6 @@ public class PlayerLanguageTests
         );
     }
 
-    [Fact]
-    public void ATeamIsNamedByATranslationKey()
-    {
-        Match keys = Regex.Match(
-            Compact(Path.Combine("FiveStack.Utilities", "TeamUtility.cs")),
-            @"publicstaticstringTeamNameKey\(CsTeamteam\)\{returnteam==CsTeam\.Terrorist\?""([^""]+)"":""([^""]+)"";\}"
-        );
-
-        Assert.True(keys.Success, "TeamUtility.TeamNameKey is gone");
-        EveryLanguageHas(keys.Groups[1].Value);
-        EveryLanguageHas(keys.Groups[2].Value);
-    }
-
     [Theory]
     [InlineData("captain.claim_hint")]
     [InlineData("captain.show")]
@@ -322,6 +439,202 @@ public class PlayerLanguageTests
             captains
         );
         Assert.DoesNotContain("TeamNumToString", captains);
+    }
+
+    [Theory]
+    [MemberData(nameof(LanguageFiles))]
+    public void EveryLanguageHasEveryLine(string language)
+    {
+        Dictionary<string, string> english = Translations("en.json");
+        Dictionary<string, string> translated = Translations(language);
+        object[] args = Enumerable.Repeat<object>("x", 10).ToArray();
+
+        foreach ((string key, string text) in english)
+        {
+            Assert.True(translated.ContainsKey(key), $"{language} has no {key}");
+            Assert.True(
+                Placeholders(text).SequenceEqual(Placeholders(translated[key])),
+                $"{language} {key} does not take the placeholders English does"
+            );
+            Assert.True(
+                Record.Exception(() =>
+                    string.Format(Regex.Replace(translated[key], @"\{[A-Za-z]+\}", ""), args)
+                ) == null,
+                $"{language} {key} has a brace that is not a placeholder"
+            );
+            Assert.True(
+                ColorTags(text).SequenceEqual(ColorTags(translated[key])),
+                $"{language} {key} does not use the colors English does"
+            );
+        }
+    }
+
+    [Theory]
+    [InlineData(CsTeam.Terrorist, "team.terrorist")]
+    [InlineData(CsTeam.CounterTerrorist, "team.ct")]
+    [InlineData(CsTeam.Spectator, "team.spectator")]
+    public void ATeamIsNamedByATranslationKey(CsTeam team, string key)
+    {
+        Assert.Equal(key, TeamUtility.TeamNameKey(team));
+        EveryLanguageHas(key);
+    }
+
+    [Theory]
+    [MemberData(nameof(SourceFiles))]
+    public void NoEnglishIsSentToAPlayer(string file)
+    {
+        string source = Compact(file);
+
+        foreach ((string opening, int text) in Sends)
+        {
+            foreach (string[] args in Calls(source, opening))
+            {
+                Assert.False(
+                    args.Length > text && IsEnglish(args[text]),
+                    $"{file} sends {string.Join(",", args)}"
+                );
+            }
+        }
+    }
+
+    // A command's own reply is already in the caller's language; outside one, a
+    // plain lookup is in whatever culture the thread has. A clan tag is one string
+    // the whole server sees on the scoreboard.
+    [Theory]
+    [MemberData(nameof(ServiceAndEventFiles))]
+    public void NothingIsLookedUpInTheServersLanguageForAPlayer(string file)
+    {
+        if (file.EndsWith("GameServer.cs"))
+        {
+            return;
+        }
+
+        string source = Compact(file).Replace("_localizer[\"camera.tag\"]", "");
+
+        Assert.DoesNotContain("_localizer[", source);
+        Assert.DoesNotMatch(@"(?<![\w.])Localizer\[", source);
+    }
+
+    // Chat a player typed is relayed as they wrote it.
+    [Theory]
+    [MemberData(nameof(ServiceAndEventFiles))]
+    public void ALineForEveryoneGoesThroughMessageEach(string file)
+    {
+        if (file.EndsWith("PlayerChat.cs"))
+        {
+            return;
+        }
+
+        foreach (string[] args in Calls(Compact(file), @"_gameServer\.Message\("))
+        {
+            Assert.True(args.Length == 3, $"{file} sends {string.Join(",", args)} to everyone in one language");
+        }
+    }
+
+    [Theory]
+    [InlineData("_gameServer.MessageEach(HudDestination.Alert,message);")]
+    [InlineData("_gameServer.MessageEach(HudDestination.Center,message);")]
+    public void APauseOrResumeLineReachesEachPlayerInTheirLanguage(string send)
+    {
+        Assert.Contains(send, Compact(Path.Combine("FiveStack.Services", "MatchManager.cs")));
+    }
+
+    [Fact]
+    public void ARestoreRefusalReachesEachPlayerInTheirLanguage()
+    {
+        string backups = Compact(Path.Combine("FiveStack.Services", "GameBackUpRounds.cs"));
+
+        Assert.DoesNotContain("RoundRestoreGateUtility.WhyTheHoldMoved(", backups);
+        Assert.DoesNotContain("RoundRestoreGateUtility.ResumeRefusal(", backups);
+        Assert.DoesNotContain("OfflineMatchState.ResetToRound(", backups);
+        Assert.Contains(
+            "publicstringLocalize(CCSPlayerController?player,PlayerLineline)",
+            Compact(Path.Combine("FiveStack.Services", "GameServer.cs"))
+        );
+    }
+
+    [Fact]
+    public void EveryKeyASharedLineUsesIsTranslated()
+    {
+        string shared = Path.GetFullPath(
+            Path.Combine(AppDir(), "..", "..", "shared", "dotnet", "FiveStack.Utilities")
+        );
+        string[] keys = Directory
+            .GetFiles(shared, "*.cs")
+            .SelectMany(file =>
+                Regex
+                    .Matches(File.ReadAllText(file), @"new PlayerLine\(\s*""([^""]+)""")
+                    .Select(match => match.Groups[1].Value)
+            )
+            .ToArray();
+
+        Assert.NotEmpty(keys);
+
+        foreach (string key in keys)
+        {
+            EveryLanguageHas(key);
+        }
+    }
+
+    [Theory]
+    [InlineData("FiveStack.Events/GagPlayer.cs", "gag.you_are_gagged")]
+    [InlineData("FiveStack.Events/PlayerConnected.cs", "player.join.ready_hint")]
+    [InlineData("FiveStack.Events/PlayerConnected.cs", "player.join.help_hint")]
+    [InlineData("FiveStack.Services/KnifeSystem.cs", "knife.start")]
+    [InlineData("FiveStack.Services/KnifeSystem.cs", "knife.captain_prompt")]
+    [InlineData("FiveStack.Services/KnifeSystem.cs", "knife.not_captain")]
+    [InlineData("FiveStack.Services/KnifeSystem.cs", "knife.captain_picked_stay")]
+    [InlineData("FiveStack.Services/KnifeSystem.cs", "knife.captain_picked_swap")]
+    [InlineData("FiveStack.Services/KnifeSystem.cs", "knife.skipping")]
+    [InlineData("FiveStack.Services/ReadySystem.cs", "ready.waiting_for_players")]
+    [InlineData("FiveStack.Services/ReadySystem.cs", "ready.type_to_ready")]
+    [InlineData("FiveStack.Services/ReadySystem.cs", "ready.marked")]
+    [InlineData("FiveStack.Services/ReadySystem.cs", "ready.forced_start")]
+    [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.cannot_pause_not_live")]
+    [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.called_tactical")]
+    [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.called_admin")]
+    [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.admin_paused")]
+    [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.player_paused")]
+    [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.vote.technical_passed")]
+    [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.admin_resumed")]
+    [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.player_resumed")]
+    [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.vote.resume_passed")]
+    [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.team_already_resumed")]
+    [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.team_resumed")]
+    [InlineData("FiveStack.Services/GameBackUpRounds.cs", "backup.round_restored")]
+    [InlineData("FiveStack.Services/GameBackUpRounds.cs", "backup.waiting_for_vote")]
+    [InlineData("FiveStack.Services/GameBackUpRounds.cs", "backup.blocked")]
+    [InlineData("FiveStack.Services/GameBackUpRounds.cs", "backup.disabled")]
+    [InlineData("FiveStack.Services/CameraSystem.cs", "camera.paused")]
+    [InlineData("FiveStack.Services/CameraSystem.cs", "camera.waiting")]
+    [InlineData("FiveStack.Services/CameraSystem.cs", "camera.restored")]
+    [InlineData("FiveStack.Services/GameDemos.cs", "demos.recording")]
+    [InlineData("FiveStack.Services/MatchManager.cs", "match.resume_hint")]
+    [InlineData("FiveStack.Services/MatchManager.cs", "match.offline_over")]
+    [InlineData("FiveStack.Services/MatchManager.cs", "match.received_data")]
+    [InlineData("FiveStack.Services/MatchManager.cs", "match.tv_delay")]
+    [InlineData("FiveStack.Services/MatchManager.cs", "match.assigned_team")]
+    [InlineData("FiveStack.Events/GameEnd.cs", "match.map_over_next_map")]
+    [InlineData("FiveStack.Events/GameEnd.cs", "match.map_over_series_done")]
+    [InlineData("FiveStack.Events/GameEnd.cs", "match.offline_over")]
+    [InlineData("FiveStack.Events/PlayerDisconnected.cs", "match.player_disconnected")]
+    [InlineData("FiveStack.Events/RoundStart.cs", "match.waiting_reconnect")]
+    public void WhatEachPlayerIsToldIsInTheirLanguage(string file, string key)
+    {
+        string source = Compact(file);
+        string lookup = $"\"{key}\"";
+        int at = source.IndexOf(lookup, StringComparison.Ordinal);
+
+        Assert.True(at >= 0, $"{file} no longer says {key}");
+
+        while (at >= 0)
+        {
+            Assert.Matches(@"_gameServer\.Localize\(\w+,$", source[..at]);
+
+            at = source.IndexOf(lookup, at + 1, StringComparison.Ordinal);
+        }
+
+        EveryLanguageHas(key);
     }
 
     [Theory]

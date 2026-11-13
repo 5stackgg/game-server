@@ -243,14 +243,16 @@ public class CameraSystem
         match.timeoutSystem.resumeVote?.Abandon();
         match.timeoutSystem.resumeVote = null;
 
-        string message = _localizer["camera.paused", OfflineNames()];
+        string names = OfflineNames();
+        Func<CCSPlayerController?, string> message = viewer =>
+            _gameServer.Localize(viewer, "camera.paused", names);
 
         // Gated on play actually being stopped rather than on whether anyone
         // was already offline: an organizer can resume over a breach, and the
         // next player to lose their camera has to stop play again.
         if (match.IsPaused())
         {
-            _gameServer.Message(HudDestination.Alert, message);
+            _gameServer.MessageEach(HudDestination.Alert, message);
         }
 
         match.PauseMatch(ePauseReason.Camera, message, stillRequired: IsBlocking);
@@ -266,9 +268,9 @@ public class CameraSystem
                     return;
                 }
 
-                _gameServer.Message(
+                _gameServer.MessageEach(
                     HudDestination.Alert,
-                    _localizer["camera.waiting", OfflineNames()]
+                    viewer => _gameServer.Localize(viewer, "camera.waiting", OfflineNames())
                 );
             },
             true
@@ -289,9 +291,10 @@ public class CameraSystem
             return;
         }
 
-        _gameServer.Message(
+        _gameServer.MessageEach(
             HudDestination.Alert,
-            _localizer["camera.restored", CommandUtility.PublicChatTrigger]
+            viewer =>
+                _gameServer.Localize(viewer, "camera.restored", CommandUtility.PublicChatTrigger)
         );
     }
 

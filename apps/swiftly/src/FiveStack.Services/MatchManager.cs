@@ -286,7 +286,7 @@ public class MatchManager
     // disconnecting player is still in Players() during player_disconnect.
     public void PauseMatch(
         ePauseReason reason,
-        string? message = null,
+        Func<ILocalizer, string>? message = null,
         bool skipUpdate = false,
         Func<bool>? stillRequired = null,
         int retriesLeft = PauseRetryAttempts
@@ -342,11 +342,13 @@ public class MatchManager
 
         _pauseReason = reason;
 
-        _logger.LogInformation($"Pausing Match{(message != null ? $": {message}" : "")}");
+        _logger.LogInformation(
+            $"Pausing Match{(message != null ? $": {message(_localizer)}" : "")}"
+        );
 
         if (message != null)
         {
-            _gameServer.Message(MessageType.Alert, message);
+            _gameServer.MessageEach(MessageType.Alert, message);
         }
 
         KillPhaseTimer(_resumeMessageTimer);
@@ -359,9 +361,9 @@ public class MatchManager
                     return;
                 }
 
-                _gameServer.Message(
+                _gameServer.MessageEach(
                     MessageType.Alert,
-                    _localizer["match.resume_hint", CommandUtility.PublicChatTrigger]
+                    localizer => localizer["match.resume_hint", CommandUtility.PublicChatTrigger]
                 );
             },
             true
@@ -404,7 +406,7 @@ public class MatchManager
         ResumeMatch();
     }
 
-    public void ResumeMatch(string? message = null, bool skipUpdate = false)
+    public void ResumeMatch(Func<ILocalizer, string>? message = null, bool skipUpdate = false)
     {
         if (_timeoutSystem.IsTimeoutActive())
         {
@@ -419,7 +421,9 @@ public class MatchManager
             return;
         }
 
-        _logger.LogInformation($"Resuming Match{(message != null ? $": {message}" : "")}");
+        _logger.LogInformation(
+            $"Resuming Match{(message != null ? $": {message(_localizer)}" : "")}"
+        );
         _gameServer.SendCommands(["mp_unpause_match"]);
 
         KillPhaseTimer(_resumeMessageTimer);
@@ -432,7 +436,7 @@ public class MatchManager
 
         if (message != null)
         {
-            _gameServer.Message(MessageType.Center, message);
+            _gameServer.MessageEach(MessageType.Center, message);
         }
 
         if (skipUpdate)
@@ -583,8 +587,8 @@ public class MatchManager
 
     public void AnnounceOfflineMatchOver()
     {
-        _gameServer.Message(MessageType.Center, _localizer["match.offline_over"]);
-        _gameServer.Message(MessageType.Chat, _localizer["match.offline_over"]);
+        _gameServer.MessageEach(MessageType.Center, localizer => localizer["match.offline_over"]);
+        _gameServer.MessageEach(MessageType.Chat, localizer => localizer["match.offline_over"]);
     }
 
     private void PublishConnectedPlayers(eMapStatus status)
@@ -850,7 +854,10 @@ public class MatchManager
 
             if (IsWarmup())
             {
-                _gameServer.Message(MessageType.Alert, _localizer["match.received_data"]);
+                _gameServer.MessageEach(
+                    MessageType.Alert,
+                    localizer => localizer["match.received_data"]
+                );
             }
 
             KickBots();
@@ -969,9 +976,9 @@ public class MatchManager
             {
                 if (_remainingMapChangeDelay > 0)
                 {
-                    _gameServer.Message(
+                    _gameServer.MessageEach(
                         MessageType.Alert,
-                        _localizer["match.tv_delay", _remainingMapChangeDelay]
+                        localizer => localizer["match.tv_delay", _remainingMapChangeDelay]
                     );
                     _remainingMapChangeDelay--;
                 }
@@ -1416,9 +1423,15 @@ public class MatchManager
                 }
             );
 
+            ILocalizer localizer = _gameServer.LocalizerFor(player);
+
             _gameServer.Message(
                 MessageType.Chat,
-                $" You've been assigned to {(expectedTeam == Team.T ? "[gold]" : "[blue]")}{TeamUtility.TeamToString(expectedTeam)}.",
+                localizer[
+                    "match.assigned_team",
+                    expectedTeam == Team.T ? "[gold]" : "[blue]",
+                    localizer[TeamUtility.TeamNameKey(expectedTeam)]
+                ],
                 player
             );
         }

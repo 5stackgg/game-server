@@ -7,7 +7,6 @@ using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Players;
-using SwiftlyS2.Shared.Translation;
 
 namespace FiveStack;
 
@@ -24,7 +23,6 @@ public class GameDemos
     private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
     private readonly ILogger<GameDemos> _logger;
-    private readonly ILocalizer _localizer;
     private string _rootDir = "/opt";
 
     public GameDemos(
@@ -32,8 +30,7 @@ public class GameDemos
         ILogger<GameDemos> logger,
         GameServer gameServer,
         MatchService matchService,
-        EnvironmentService environmentService,
-        ILocalizer localizer
+        EnvironmentService environmentService
     )
     {
         _core = core;
@@ -41,7 +38,6 @@ public class GameDemos
         _gameServer = gameServer;
         _matchService = matchService;
         _environmentService = environmentService;
-        _localizer = localizer;
 
         if (
             !Directory.Exists(_rootDir)
@@ -70,7 +66,7 @@ public class GameDemos
 
         File.Create(lockFilePath).Dispose();
 
-        _gameServer.Message(MessageType.Alert, _localizer["demos.recording"]);
+        _gameServer.MessageEach(MessageType.Alert, localizer => localizer["demos.recording"]);
 
         Directory.CreateDirectory(GetMatchDemoPath());
 

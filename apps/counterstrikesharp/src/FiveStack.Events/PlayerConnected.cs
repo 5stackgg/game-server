@@ -163,24 +163,26 @@ public partial class FiveStackPlugin
         {
             _gameServer.Message(
                 HudDestination.Chat,
-                Localizer[
+                _gameServer.Localize(
+                    player,
                     "player.join.ready_hint",
                     ChatColors.Green,
                     CommandUtility.PublicChatTrigger,
                     ChatColors.Default
-                ],
+                ),
                 player
             );
         }
 
         _gameServer.Message(
             HudDestination.Chat,
-            Localizer[
+            _gameServer.Localize(
+                player,
                 "player.join.help_hint",
                 ChatColors.Green,
                 CommandUtility.SilentChatTrigger,
                 ChatColors.Default
-            ],
+            ),
             player
         );
 

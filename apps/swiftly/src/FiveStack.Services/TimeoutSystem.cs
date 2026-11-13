@@ -25,7 +25,6 @@ public class TimeoutSystem
     private readonly CoachSystem _coachSystem;
     private readonly CaptainSystem _captainSystem;
     private readonly CameraSystem _cameraSystem;
-    private readonly ILocalizer _localizer;
     public VoteSystem? pauseVote;
     public VoteSystem? resumeVote;
 
@@ -39,8 +38,7 @@ public class TimeoutSystem
         IServiceProvider serviceProvider,
         CoachSystem coachSystem,
         CaptainSystem captainSystem,
-        CameraSystem cameraSystem,
-        ILocalizer localizer
+        CameraSystem cameraSystem
     )
     {
         _core = core;
@@ -53,7 +51,6 @@ public class TimeoutSystem
         _coachSystem = coachSystem;
         _captainSystem = captainSystem;
         _cameraSystem = cameraSystem;
-        _localizer = localizer;
     }
 
     public void RemovePlayerVoteOnDisconnect(ulong steamId)
@@ -96,7 +93,7 @@ public class TimeoutSystem
             return;
         }
 
-        string pauseMessage = _localizer["timeout.admin_paused"];
+        Func<ILocalizer, string> pauseMessage = localizer => localizer["timeout.admin_paused"];
 
         if (player != null)
         {
@@ -120,7 +117,9 @@ public class TimeoutSystem
                             () =>
                             {
                                 _logger.LogInformation("technical pause vote passed");
-                                PauseTechMatch(_localizer["timeout.vote.technical_passed"]);
+                                PauseTechMatch(
+                                    localizer => localizer["timeout.vote.technical_passed"]
+                                );
                                 pauseVote = null;
                             }
                         ),
@@ -142,7 +141,8 @@ public class TimeoutSystem
                 return;
             }
 
-            pauseMessage = _localizer["timeout.player_paused", player.Controller.PlayerName, ChatColors.Red];
+            string pausedBy = player.Controller.PlayerName;
+            pauseMessage = localizer => localizer["timeout.player_paused", pausedBy, ChatColors.Red];
         }
 
         PauseTechMatch(pauseMessage);
@@ -237,7 +237,7 @@ public class TimeoutSystem
             return;
         }
 
-        string resumeMessage = _localizer["timeout.admin_resumed"];
+        Func<ILocalizer, string> resumeMessage = localizer => localizer["timeout.admin_resumed"];
 
         // Refuse while a required camera is still down, on the same terms as the
         // empty-team gate below: the pause exists because someone is unwatched,
@@ -293,7 +293,10 @@ public class TimeoutSystem
                 {
                     _gameServer.Message(
                         MessageType.Chat,
-                        $" {ChatColors.Red}Your team has already resumed. Waiting for the other team.",
+                        _gameServer.LocalizerFor(player)[
+                            "timeout.team_already_resumed",
+                            ChatColors.Red
+                        ],
                         player
                     );
                     return;
@@ -302,9 +305,18 @@ public class TimeoutSystem
                 _teamsPendingResume.Remove(player.Controller.Team);
                 if (ShouldRequireTeamResume())
                 {
-                    _gameServer.Message(
+                    string teamResumedBy = player.Controller.PlayerName;
+                    Team resumedFor = player.Controller.Team;
+
+                    _gameServer.MessageEach(
                         MessageType.Alert,
-                        $"{player.Controller.PlayerName} {ChatColors.Red}resumed for {player.Controller.Team}. Waiting for the other team to resume."
+                        localizer =>
+                            localizer[
+                                "timeout.team_resumed",
+                                teamResumedBy,
+                                ChatColors.Red,
+                                localizer[TeamUtility.TeamNameKey(resumedFor)]
+                            ]
                     );
                     return;
                 }
@@ -343,7 +355,9 @@ public class TimeoutSystem
 
                                 _matchService
                                     .GetCurrentMatch()
-                                    ?.ResumeMatch(_localizer["timeout.vote.resume_passed"]);
+                                    ?.ResumeMatch(
+                                        localizer => localizer["timeout.vote.resume_passed"]
+                                    );
                             }
                         ),
                         () =>
@@ -364,7 +378,9 @@ public class TimeoutSystem
                 return;
             }
 
-            resumeMessage = _localizer["timeout.player_resumed", player.Controller.PlayerName, ChatColors.Red];
+            string resumedBy = player.Controller.PlayerName;
+            resumeMessage = localizer =>
+                localizer["timeout.player_resumed", resumedBy, ChatColors.Red];
         }
 
         Resume(match, resumeMessage);
@@ -372,7 +388,7 @@ public class TimeoutSystem
 
     // Only staff and the console get past the camera gate, so play going on with
     // a camera still down is them overriding it.
-    private void Resume(MatchManager match, string message)
+    private void Resume(MatchManager match, Func<ILocalizer, string> message)
     {
         ClearPendingTeamResumes();
         match.ResumeMatch(message);
@@ -430,7 +446,7 @@ public class TimeoutSystem
         return ts == 0 || cts == 0;
     }
 
-    private void PauseTechMatch(string pauseMessage)
+    private void PauseTechMatch(Func<ILocalizer, string> pauseMessage)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
@@ -500,14 +516,15 @@ public class TimeoutSystem
             {
                 int remaining = timeoutsAvailable - 1;
 
-                _gameServer.Message(
+                _gameServer.MessageEach(
                     MessageType.Alert,
-                    _localizer[
-                        "timeout.called_tactical",
-                        player.Controller.PlayerName,
-                        ChatColors.Red,
-                        remaining
-                    ]
+                    localizer =>
+                        localizer[
+                            "timeout.called_tactical",
+                            player.Controller.PlayerName,
+                            ChatColors.Red,
+                            remaining
+                        ]
                 );
 
                 PublishTimeoutState();
@@ -515,7 +532,10 @@ public class TimeoutSystem
         }
         else
         {
-            _gameServer.Message(MessageType.Alert, _localizer["timeout.called_admin"]);
+            _gameServer.MessageEach(
+                MessageType.Alert,
+                localizer => localizer["timeout.called_admin"]
+            );
         }
     }
 

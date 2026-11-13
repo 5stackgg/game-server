@@ -32,7 +32,7 @@ public class BackupRestoreRosterWiringTests
 
     [Theory]
     [InlineData("public void OfferPendingRestore()")]
-    [InlineData("public string? RestoreRefusal(int round)")]
+    [InlineData("public PlayerLine? RestoreRefusal(int round)")]
     [InlineData("private bool CanRestoreRound(int round)")]
     public void Each_Restore_Gate_Counts_Through_The_Roster_Helper(string signature)
     {

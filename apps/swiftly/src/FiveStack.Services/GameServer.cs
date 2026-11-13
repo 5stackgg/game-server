@@ -133,6 +133,16 @@ public class GameServer
         }
     }
 
+    public static string Render(ILocalizer localizer, PlayerLine line)
+    {
+        return localizer[line.Key, line.Args.Select(arg => RenderArg(localizer, arg)).ToArray()];
+    }
+
+    public static object RenderArg(ILocalizer localizer, object arg)
+    {
+        return arg is PlayerLine line ? Render(localizer, line) : arg;
+    }
+
     public ILocalizer LocalizerFor(IPlayer? player)
     {
         if (

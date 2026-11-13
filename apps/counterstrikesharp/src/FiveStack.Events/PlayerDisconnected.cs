@@ -73,7 +73,7 @@ public partial class FiveStackPlugin
                 // pause off -- they may be back before it ends.
                 match.PauseMatch(
                     ePauseReason.Roster,
-                    "Player disconnected, pausing match",
+                    viewer => _gameServer.Localize(viewer, "match.player_disconnected"),
                     stillRequired: () =>
                         ReconnectPauseUtility.ShouldPause(
                             match.GetMatchData() ?? matchData,

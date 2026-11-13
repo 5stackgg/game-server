@@ -9,7 +9,6 @@ using CounterStrikeSharp.API.ValveConstants.Protobuf;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
-using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
@@ -44,7 +43,6 @@ public class MatchManager
     private readonly ILogger<MatchManager> _logger;
     private readonly GameBackUpRounds _backUpManagement;
     private readonly SurrenderSystem _surrenderSystem;
-    private readonly IStringLocalizer _localizer;
 
     private readonly EnvironmentService _environmentService;
     private readonly TimeoutSystem _timeoutSystem;
@@ -73,8 +71,7 @@ public class MatchManager
         TimeoutSystem timeoutSystem,
         SurrenderSystem surrenderSystem,
         MatchService matchService,
-        RankSystem rankSystem,
-        IStringLocalizer localizer
+        RankSystem rankSystem
     )
     {
         _logger = logger;
@@ -90,7 +87,6 @@ public class MatchManager
         _surrenderSystem = surrenderSystem;
         _matchService = matchService;
         _rankSystem = rankSystem;
-        _localizer = localizer;
     }
 
     public void Init(MatchData match)
@@ -282,7 +278,7 @@ public class MatchManager
     // disconnecting player is still in Players() during player_disconnect.
     public void PauseMatch(
         ePauseReason reason,
-        string? message = null,
+        Func<CCSPlayerController?, string>? message = null,
         bool skipUpdate = false,
         Func<bool>? stillRequired = null,
         int retriesLeft = PauseRetryAttempts
@@ -338,11 +334,11 @@ public class MatchManager
 
         _pauseReason = reason;
 
-        _logger.LogInformation($"Pausing Match{(message != null ? $": {message}" : "")}");
+        _logger.LogInformation($"Pausing Match{(message != null ? $": {message(null)}" : "")}");
 
         if (message != null)
         {
-            _gameServer.Message(HudDestination.Alert, message);
+            _gameServer.MessageEach(HudDestination.Alert, message);
         }
 
         KillPhaseTimer(_resumeMessageTimer);
@@ -355,9 +351,14 @@ public class MatchManager
                     return;
                 }
 
-                _gameServer.Message(
+                _gameServer.MessageEach(
                     HudDestination.Alert,
-                    _localizer["match.resume_hint", CommandUtility.PublicChatTrigger]
+                    viewer =>
+                        _gameServer.Localize(
+                            viewer,
+                            "match.resume_hint",
+                            CommandUtility.PublicChatTrigger
+                        )
                 );
             },
             true
@@ -400,7 +401,10 @@ public class MatchManager
         ResumeMatch();
     }
 
-    public void ResumeMatch(string? message = null, bool skipUpdate = false)
+    public void ResumeMatch(
+        Func<CCSPlayerController?, string>? message = null,
+        bool skipUpdate = false
+    )
     {
         if (_timeoutSystem.IsTimeoutActive())
         {
@@ -415,7 +419,7 @@ public class MatchManager
             return;
         }
 
-        _logger.LogInformation($"Resuming Match{(message != null ? $": {message}" : "")}");
+        _logger.LogInformation($"Resuming Match{(message != null ? $": {message(null)}" : "")}");
         _gameServer.SendCommands(["mp_unpause_match"]);
 
         KillPhaseTimer(_resumeMessageTimer);
@@ -429,7 +433,7 @@ public class MatchManager
 
         if (message != null)
         {
-            _gameServer.Message(HudDestination.Center, message);
+            _gameServer.MessageEach(HudDestination.Center, message);
         }
 
         if (skipUpdate)
@@ -592,8 +596,14 @@ public class MatchManager
 
     public void AnnounceOfflineMatchOver()
     {
-        _gameServer.Message(HudDestination.Center, _localizer["match.offline_over"]);
-        _gameServer.Message(HudDestination.Chat, _localizer["match.offline_over"]);
+        _gameServer.MessageEach(
+            HudDestination.Center,
+            viewer => _gameServer.Localize(viewer, "match.offline_over")
+        );
+        _gameServer.MessageEach(
+            HudDestination.Chat,
+            viewer => _gameServer.Localize(viewer, "match.offline_over")
+        );
     }
 
     private void PublishConnectedPlayers(eMapStatus status)
@@ -850,7 +860,10 @@ public class MatchManager
 
             if (IsWarmup())
             {
-                _gameServer.Message(HudDestination.Alert, _localizer["match.received_data"]);
+                _gameServer.MessageEach(
+                    HudDestination.Alert,
+                    viewer => _gameServer.Localize(viewer, "match.received_data")
+                );
             }
 
             KickBots();
@@ -970,9 +983,10 @@ public class MatchManager
             {
                 if (_remainingMapChangeDelay > 0)
                 {
-                    _gameServer.Message(
+                    _gameServer.MessageEach(
                         HudDestination.Alert,
-                        _localizer["match.tv_delay", _remainingMapChangeDelay]
+                        viewer =>
+                            _gameServer.Localize(viewer, "match.tv_delay", _remainingMapChangeDelay)
                     );
                     _remainingMapChangeDelay--;
                 }
@@ -1422,7 +1436,12 @@ public class MatchManager
 
             _gameServer.Message(
                 HudDestination.Chat,
-                $" You've been assigned to {(expectedTeam == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue)}{TeamUtility.CSTeamToString(expectedTeam)}.",
+                _gameServer.Localize(
+                    player,
+                    "match.assigned_team",
+                    expectedTeam == CsTeam.Terrorist ? ChatColors.Gold : ChatColors.Blue,
+                    _gameServer.Localize(player, TeamUtility.TeamNameKey(expectedTeam))
+                ),
                 player
             );
         }

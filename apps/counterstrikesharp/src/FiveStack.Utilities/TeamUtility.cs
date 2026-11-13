@@ -126,7 +126,12 @@ namespace FiveStack.Utilities
 
         public static string TeamNameKey(CsTeam team)
         {
-            return team == CsTeam.Terrorist ? "team.terrorist" : "team.ct";
+            return team switch
+            {
+                CsTeam.Terrorist => "team.terrorist",
+                CsTeam.Spectator => "team.spectator",
+                _ => "team.ct",
+            };
         }
 
         public static string TeamNumToString(int teamNum)

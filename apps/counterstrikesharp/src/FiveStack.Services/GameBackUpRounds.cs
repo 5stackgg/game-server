@@ -6,7 +6,6 @@ using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -21,7 +20,6 @@ public class GameBackUpRounds
     private readonly IServiceProvider _serviceProvider;
     private readonly EnvironmentService _environmentService;
     private readonly ILogger<GameBackUpRounds> _logger;
-    private readonly IStringLocalizer _localizer;
 
     public VoteSystem? restoreRoundVote;
 
@@ -34,7 +32,6 @@ public class GameBackUpRounds
         MatchService matchService,
         IServiceProvider serviceProvider,
         EnvironmentService environmentService,
-        IStringLocalizer localizer,
         RoundRestoreState restore
     )
     {
@@ -46,7 +43,6 @@ public class GameBackUpRounds
         _matchService = matchService;
         _serviceProvider = serviceProvider;
         _environmentService = environmentService;
-        _localizer = localizer;
 
         if (
             !Directory.Exists(_rootDir)
@@ -112,9 +108,16 @@ public class GameBackUpRounds
 
         if (connectedPlayers < expectedPlayers)
         {
-            _gameServer.Message(
+            _gameServer.MessageEach(
                 HudDestination.Alert,
-                $" Waiting for all players ({connectedPlayers}/{expectedPlayers}) to vote on restoring the start of round {RoundRestoreGateUtility.StartOfRound(round)}."
+                viewer =>
+                    _gameServer.Localize(
+                        viewer,
+                        "backup.waiting_for_vote",
+                        connectedPlayers,
+                        expectedPlayers,
+                        RoundRestoreGateUtility.StartOfRound(round)
+                    )
             );
             return;
         }
@@ -236,10 +239,7 @@ public class GameBackUpRounds
 
         if (RoundRestoreGateUtility.IsInPlay(status))
         {
-            _gameServer.Message(
-                HudDestination.Alert,
-                RoundRestoreGateUtility.WhyTheHoldMoved(round, next)
-            );
+            TellEveryone(RoundRestoreGateUtility.WhyTheHoldMovedLine(round, next));
         }
 
         if (next is int moved)
@@ -322,14 +322,12 @@ public class GameBackUpRounds
 
     public void TellWhyResumeWaits()
     {
-        string? refusal = RoundRestoreGateUtility.ResumeRefusal(
-            _restore.OwedRound,
-            _restore.NeedsRestartMap
-        );
-
-        if (refusal != null)
+        if (
+            RoundRestoreGateUtility.ResumeRefusalLine(_restore.OwedRound, _restore.NeedsRestartMap)
+            is PlayerLine refusal
+        )
         {
-            _gameServer.Message(HudDestination.Alert, refusal);
+            TellEveryone(refusal);
         }
     }
 
@@ -397,11 +395,11 @@ public class GameBackUpRounds
             return;
         }
 
-        string? refusal = RestoreRefusal(round);
+        PlayerLine? refusal = RestoreRefusal(round);
         if (refusal != null)
         {
-            _logger.LogWarning($"Restore round {round} refused: {refusal}");
-            _gameServer.Message(HudDestination.Alert, $" Restore round blocked: {refusal}.");
+            _logger.LogWarning($"Restore round {round} refused: {refusal.English}");
+            TellBlocked(refusal);
             return;
         }
 
@@ -429,16 +427,13 @@ public class GameBackUpRounds
                     _restore.End();
                     restoreRoundVote = null;
 
-                    string? refusal = RestoreRefusal(round);
+                    PlayerLine? refusal = RestoreRefusal(round);
                     if (refusal != null)
                     {
                         _logger.LogWarning(
-                            $"Restore round {round} refused after the vote: {refusal}"
+                            $"Restore round {round} refused after the vote: {refusal.English}"
                         );
-                        _gameServer.Message(
-                            HudDestination.Alert,
-                            $" Restore round blocked: {refusal}."
-                        );
+                        TellBlocked(refusal);
                         if (recovering && HoldStaysOn(round))
                         {
                             _restore.Hold(round, ActiveMapId());
@@ -588,7 +583,7 @@ public class GameBackUpRounds
             return;
         }
 
-        string? refusal = OfflineMatchState.ResetToRound(
+        PlayerLine? refusal = OfflineMatchState.ResetToRoundLine(
             matchMap,
             match.options.IsRush(),
             round,
@@ -597,8 +592,8 @@ public class GameBackUpRounds
 
         if (refusal != null)
         {
-            _logger.LogWarning($"Restore round {round} ignored offline: {refusal}");
-            _gameServer.Message(HudDestination.Alert, $" Restore round blocked: {refusal}.");
+            _logger.LogWarning($"Restore round {round} ignored offline: {refusal.English}");
+            TellBlocked(refusal);
             return;
         }
 
@@ -736,14 +731,15 @@ public class GameBackUpRounds
 
                         _logger.LogInformation($"Sending Message for Round {round}");
 
-                        _gameServer.Message(
+                        _gameServer.MessageEach(
                             HudDestination.Alert,
-                            _localizer[
+                            viewer => _gameServer.Localize(
+                                viewer,
                                 "backup.round_restored",
                                 ChatColors.Red,
                                 RoundRestoreGateUtility.StartOfRound(round),
                                 CommandUtility.PublicChatTrigger
-                            ]
+                            )
                         );
                     })
                 );
@@ -756,13 +752,13 @@ public class GameBackUpRounds
     // restore_round hands the round to the api, which marks the later rounds'
     // stats deleted before it sends api_restore_round back, so a restore that
     // would be refused there has to be refused before it leaves.
-    public string? RestoreRefusal(int round)
+    public PlayerLine? RestoreRefusal(int round)
     {
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
         MatchMap? matchMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
         (int connectedPlayers, int expectedPlayers) = RosterCount();
 
-        return RoundRestoreGateUtility.Refusal(
+        return RoundRestoreGateUtility.RefusalLine(
             match != null && !match.options.CanRestoreRounds(),
             _restore.VotingOrLoading,
             _matchService.GetCurrentMatch()?.GetCurrentMapStatus() ?? eMapStatus.Unknown,
@@ -818,12 +814,33 @@ public class GameBackUpRounds
         }
 
         _logger.LogWarning($"Restore round blocked: {match.options.type} matches can't restore rounds");
-        _gameServer.Message(
+        object type = PlayerLine.MatchType(match.options.type);
+
+        _gameServer.MessageEach(
             HudDestination.Alert,
-            $" Round restores are disabled in {match.options.type}."
+            viewer =>
+                _gameServer.Localize(
+                    viewer,
+                    "backup.disabled",
+                    _gameServer.LocalizeArg(viewer, type)
+                )
         );
 
         return true;
+    }
+
+    private void TellEveryone(PlayerLine line)
+    {
+        _gameServer.MessageEach(HudDestination.Alert, viewer => _gameServer.Localize(viewer, line));
+    }
+
+    private void TellBlocked(PlayerLine refusal)
+    {
+        _gameServer.MessageEach(
+            HudDestination.Alert,
+            viewer =>
+                _gameServer.Localize(viewer, "backup.blocked", _gameServer.Localize(viewer, refusal))
+        );
     }
 
     private bool CanRestoreRound(int round)
@@ -843,10 +860,7 @@ public class GameBackUpRounds
         _logger.LogWarning(
             $"Restore round {round} blocked: waiting for all players to reconnect ({connectedPlayers}/{expectedPlayers})"
         );
-        _gameServer.Message(
-            HudDestination.Alert,
-            $" Restore round blocked: waiting for all players to reconnect ({connectedPlayers}/{expectedPlayers})."
-        );
+        TellBlocked(RoundRestoreGateUtility.WaitingToReconnect(connectedPlayers, expectedPlayers));
 
         return false;
     }

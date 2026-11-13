@@ -26,7 +26,7 @@ public class RoundStartPauseWiringTests
 
         string handler = source[from..to];
         int decision = handler.IndexOf("ReconnectPauseUtility.ShouldPause(", StringComparison.Ordinal);
-        int pause = handler.IndexOf("\"Waiting for players to reconnect\"", StringComparison.Ordinal);
+        int pause = handler.IndexOf("\"match.waiting_reconnect\"", StringComparison.Ordinal);
 
         Assert.True(decision >= 0, "the pause is not decided by ReconnectPauseUtility");
         Assert.True(pause > decision, "the pause is not behind that decision");
@@ -52,7 +52,7 @@ public class RoundStartPauseWiringTests
 
         Assert.True(pause >= 0, "OnRoundStart no longer pauses");
         Assert.Matches(
-            @"^\.PauseMatch\(\s*ePauseReason\.Roster,\s*""Waiting for players to reconnect"",\s*stillRequired:\s*\(\)\s*=>\s*ReconnectPauseUtility\.ShouldPause\(",
+            @"^\.PauseMatch\(\s*ePauseReason\.Roster,\s*viewer\s*=>\s*_gameServer\.Localize\(viewer,\s*""match\.waiting_reconnect""\),\s*stillRequired:\s*\(\)\s*=>\s*ReconnectPauseUtility\.ShouldPause\(",
             handler[pause..]
         );
     }
