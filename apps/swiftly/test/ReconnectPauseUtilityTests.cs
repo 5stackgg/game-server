@@ -223,4 +223,65 @@ public class ReconnectPauseUtilityTests
             )
         );
     }
+
+    // Pickup seats are named after the player's Discord name, which is rarely
+    // their Steam name exactly.
+    [Theory]
+    [InlineData("lukepolo")]
+    [InlineData("[TAG] Luke")]
+    [InlineData("LUKE")]
+    [InlineData(" luke ")]
+    public void A_Seat_Named_After_A_Discord_Name_Takes_A_Steam_Name_That_Fits_It(string steamName)
+    {
+        Assert.Equal(
+            2,
+            LineupMembership.LineupNumber(
+                WithPlaceholders("Bob", "Luke"),
+                "76561198999999992",
+                steamName
+            )
+        );
+    }
+
+    [Fact]
+    public void A_Discord_Named_Seat_Counts_Toward_Its_Lineup()
+    {
+        var connected = Players(0, 4)
+            .Concat(Players(5, 4))
+            .Append(("76561198999999991", "Bob"))
+            .Append(("76561198999999992", "[TAG] Luke"));
+
+        Assert.Equal(
+            (10, 10),
+            ReconnectPauseUtility.RosterCount(WithPlaceholders("Bob", "Luke"), connected, 10)
+        );
+    }
+
+    [Fact]
+    public void A_One_Character_Name_Claims_No_Seat()
+    {
+        Assert.Null(
+            LineupMembership.LineupNumber(WithPlaceholders("Bob", "Luke"), "76561198999999992", "L")
+        );
+    }
+
+    [Fact]
+    public void A_Name_Fitting_Seats_On_Both_Lineups_Claims_Neither()
+    {
+        Assert.Null(
+            LineupMembership.LineupNumber(
+                WithPlaceholders("Lukewarm", "Big Luke"),
+                "76561198999999992",
+                "Luke"
+            )
+        );
+    }
+
+    [Fact]
+    public void The_Same_Seat_Name_On_Both_Lineups_Claims_Neither()
+    {
+        Assert.Null(
+            LineupMembership.LineupNumber(WithPlaceholders("Sam", "Sam"), "76561198999999992", "Sam")
+        );
+    }
 }

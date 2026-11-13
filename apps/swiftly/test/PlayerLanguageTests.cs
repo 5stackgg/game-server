@@ -577,4 +577,18 @@ public class PlayerLanguageTests
             );
         }
     }
+
+    [Fact]
+    public void TheNotReadyListIsInEachPlayersLanguage()
+    {
+        string ready = Compact(Path.Combine("FiveStack.Services", "ReadySystem.cs"));
+
+        Assert.Contains(
+            "_gameServer.MessageEach(MessageType.Notify,localizer=>localizer[\"ready.players_not_ready\",",
+            ready
+        );
+        Assert.Matches(@"[^_]localizer\[""ready\.not_connected"",", ready);
+        Assert.DoesNotContain("_localizer[\"ready.players_not_ready\"", ready);
+        Assert.True(Translations("en.jsonc").ContainsKey("ready.not_connected"));
+    }
 }

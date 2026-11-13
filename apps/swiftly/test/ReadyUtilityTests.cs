@@ -48,6 +48,12 @@ public class ReadyUtilityTests
         Assert.True(CanReady(eReadySettings.Players, Outsider, "Bob"));
     }
 
+    [Fact]
+    public void A_Player_Whose_Steam_Name_Fits_Their_Seat_Can_Ready()
+    {
+        Assert.True(CanReady(eReadySettings.Players, Outsider, "[TAG] bob"));
+    }
+
     [Theory]
     [InlineData("coach", true)]
     [InlineData("caster", false)]

@@ -42,4 +42,24 @@ public class ReadyWiringTests
         Assert.Contains("CanVote(player)", Method("public void ToggleReady("));
         Assert.Contains("CanVote(player)", Method("private string[] GetNotReadyPlayers()"));
     }
+
+    // A 5v4 has nine players to ready, not the type's ten.
+    [Theory]
+    [InlineData("public void ToggleReady(")]
+    [InlineData("public void SetupReadyMessage(")]
+    public void The_Ready_Count_Is_Held_To_The_Lineups_Own_Sizes(string signature)
+    {
+        string method = Method(signature);
+
+        Assert.Contains("ReadyTarget()", method);
+        Assert.DoesNotContain("GetExpectedPlayerCount", method);
+        Assert.Contains("ReadyUtility.ReadyTarget(", Method("private int ReadyTarget()"));
+    }
+
+    [Fact]
+    public void The_Not_Ready_List_Names_The_Seats_Nobody_Holds()
+    {
+        Assert.Contains("GetEmptySeats()", Method("public async void SendNotReadyMessage()"));
+        Assert.Contains("ReadyUtility.EmptySeats(", Method("private List<string> GetEmptySeats()"));
+    }
 }
