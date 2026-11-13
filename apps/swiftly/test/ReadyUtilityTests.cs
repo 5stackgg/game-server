@@ -49,9 +49,15 @@ public class ReadyUtilityTests
     }
 
     [Fact]
-    public void A_Player_Whose_Steam_Name_Fits_Their_Seat_Can_Ready()
+    public void A_Player_Whose_Name_Only_Fits_A_Seat_Cannot_Ready()
     {
-        Assert.True(CanReady(eReadySettings.Players, Outsider, "[TAG] bob"));
+        Assert.False(CanReady(eReadySettings.Players, Outsider, "[TAG] bob"));
+    }
+
+    [Fact]
+    public void A_Player_Named_Exactly_After_A_Seat_In_Any_Case_Can_Ready()
+    {
+        Assert.True(CanReady(eReadySettings.Players, Outsider, "BOB"));
     }
 
     [Theory]
@@ -141,9 +147,17 @@ public class ReadyUtilityTests
     }
 
     [Fact]
-    public void A_Seat_Held_Under_A_Steam_Name_That_Fits_It_Is_Not_Empty()
+    public void A_Seat_Stays_Empty_Until_Its_Player_Is_Recognised()
     {
         var connected = Connected(0, 8).Append(("76561198999999999", "[TAG] Luke"));
+
+        Assert.Equal(new[] { "Luke" }, ReadyUtility.EmptySeats(FiveVersusFour(), connected, 10));
+    }
+
+    [Fact]
+    public void A_Seat_Held_Under_Its_Exact_Name_Is_Not_Empty()
+    {
+        var connected = Connected(0, 8).Append(("76561198999999999", "luke"));
 
         Assert.Empty(ReadyUtility.EmptySeats(FiveVersusFour(), connected, 10));
     }

@@ -41,11 +41,17 @@ public class MatchUtilityTests
     }
 
     [Fact]
-    public void GetMemberFromLineup_MatchesPlaceholderByNamePrefix()
+    public void GetMemberFromLineup_MatchesPlaceholderByExactName()
     {
-        MatchMember? member = MatchUtility.GetMemberFromLineup(BuildMatch(), "9999", "Ace");
+        MatchMember? member = MatchUtility.GetMemberFromLineup(BuildMatch(), "9999", "acebot");
         Assert.NotNull(member);
         Assert.Equal("AceBot", member!.placeholder_name);
+    }
+
+    [Fact]
+    public void GetMemberFromLineup_APrefixOfAPlaceholderNameIsNotItsPlayer()
+    {
+        Assert.Null(MatchUtility.GetMemberFromLineup(BuildMatch(), "9999", "Ace"));
     }
 
     [Fact]
@@ -258,12 +264,18 @@ public class MatchUtilityTests
     }
 
     [Fact]
-    public void GetTeamChatLineupId_ResolvesPlaceholderByNamePrefix()
+    public void GetTeamChatLineupId_ResolvesPlaceholderByExactName()
     {
         Assert.Equal(
             Lineup2Id.ToString(),
-            MatchUtility.GetTeamChatLineupId(BuildTeamChatMatch(), "9999", "Ace")
+            MatchUtility.GetTeamChatLineupId(BuildTeamChatMatch(), "9999", "AceBot")
         );
+    }
+
+    [Fact]
+    public void GetTeamChatLineupId_APrefixOfAPlaceholderNameReachesNoTeam()
+    {
+        Assert.Null(MatchUtility.GetTeamChatLineupId(BuildTeamChatMatch(), "9999", "Ace"));
     }
 
     [Fact]

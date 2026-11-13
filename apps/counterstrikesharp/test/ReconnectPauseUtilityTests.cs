@@ -211,27 +211,30 @@ public class ReconnectPauseUtilityTests
         );
     }
 
-    [Fact]
-    public void A_Name_Starting_A_Placeholder_On_One_Lineup_Claims_It()
+    // Only a steam id the api bound to a seat, or the seat's exact name, puts a
+    // player on a lineup: a name that merely fits a seat is anyone's to take.
+    [Theory]
+    [InlineData("Max")]
+    [InlineData("lukepolo")]
+    [InlineData("[TAG] Luke")]
+    [InlineData("Big Luke")]
+    [InlineData("luke123")]
+    public void A_Name_That_Only_Fits_A_Seat_Puts_Nobody_On_A_Lineup(string steamName)
     {
-        Assert.Equal(
-            2,
+        Assert.Null(
             LineupMembership.LineupNumber(
-                WithPlaceholders("Bob", "Maxwell"),
+                WithPlaceholders("Maxwell", "Luke"),
                 "76561198999999992",
-                "Max"
+                steamName
             )
         );
     }
 
-    // Pickup seats are named after the player's Discord name, which is rarely
-    // their Steam name exactly.
     [Theory]
-    [InlineData("lukepolo")]
-    [InlineData("[TAG] Luke")]
+    [InlineData("Luke")]
     [InlineData("LUKE")]
     [InlineData(" luke ")]
-    public void A_Seat_Named_After_A_Discord_Name_Takes_A_Steam_Name_That_Fits_It(string steamName)
+    public void A_Seats_Exact_Name_Matches_Ignoring_Case_And_Spaces(string steamName)
     {
         Assert.Equal(
             2,
@@ -244,7 +247,7 @@ public class ReconnectPauseUtilityTests
     }
 
     [Fact]
-    public void A_Discord_Named_Seat_Counts_Toward_Its_Lineup()
+    public void A_Player_Whose_Name_Only_Fits_A_Seat_Is_Not_Counted()
     {
         var connected = Players(0, 4)
             .Concat(Players(5, 4))
@@ -252,7 +255,7 @@ public class ReconnectPauseUtilityTests
             .Append(("76561198999999992", "[TAG] Luke"));
 
         Assert.Equal(
-            (10, 10),
+            (9, 10),
             ReconnectPauseUtility.RosterCount(WithPlaceholders("Bob", "Luke"), connected, 10)
         );
     }

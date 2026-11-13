@@ -43,17 +43,22 @@ public class ReadyWiringTests
         Assert.Contains("CanVote(player)", Method("private string[] GetNotReadyPlayers()"));
     }
 
-    // A 5v4 has nine players to ready, not the type's ten.
+    // Each lineup readies up to its own size, so a 5v4 is ready with nine, and a
+    // spare ready player on one lineup never makes up for one missing on the other.
     [Theory]
     [InlineData("public void ToggleReady(")]
     [InlineData("public void SetupReadyMessage(")]
-    public void The_Ready_Count_Is_Held_To_The_Lineups_Own_Sizes(string signature)
+    public void The_Ready_Count_Is_Held_To_Each_Lineup(string signature)
     {
         string method = Method(signature);
 
-        Assert.Contains("ReadyTarget()", method);
+        Assert.Contains("= ReadyCount();", method);
+        Assert.DoesNotContain("TotalReady()", method);
         Assert.DoesNotContain("GetExpectedPlayerCount", method);
-        Assert.Contains("ReadyUtility.ReadyTarget(", Method("private int ReadyTarget()"));
+        Assert.Contains(
+            "ReadyUtility.ReadyCount(",
+            Method("private (int Ready, int Target) ReadyCount()")
+        );
     }
 
     [Fact]
