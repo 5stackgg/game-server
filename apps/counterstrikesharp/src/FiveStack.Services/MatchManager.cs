@@ -668,7 +668,7 @@ public class MatchManager
         if (_matchData == null || IsMapFinished())
         {
             _gameDemos.Stop();
-            _surrenderSystem.Reset();
+            _surrenderSystem.EndVote();
             return;
         }
 
@@ -1765,6 +1765,6 @@ public class MatchManager
 
         captainSystem.Reset();
         knifeSystem.Reset();
-        _surrenderSystem.Reset();
+        _surrenderSystem.EndVote();
     }
 }

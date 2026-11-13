@@ -21,9 +21,9 @@ public class SurrenderSystem
     private Dictionary<Team, Dictionary<ulong, CancellationTokenSource>> _disconnectTimers =
         new Dictionary<Team, Dictionary<ulong, CancellationTokenSource>>();
 
-    // Survives Reset(), which runs on every map of a series.
+    // Survives Reset(); only a different match clears it.
     private readonly HashSet<ulong> _reportedAbandons = new HashSet<ulong>();
-    private Guid? _reportedAbandonsMatchId;
+    private Guid? _matchId;
 
     // Lineups whose leaver ran out of time while another surrender vote was
     // open, with the side the leaver left from.
@@ -90,12 +90,16 @@ public class SurrenderSystem
         Guid? lineupId = LeaverLineup(matchData, steamId.ToString(), playerName);
         Guid matchId = matchData.id;
 
+        CancellationTokenSource? timer = null;
+
         // Outlives the map's phase on purpose: a player who quits just before the
         // map ends is still reported, only no vote is offered outside play.
-        _disconnectTimers[team][steamId] = TimerUtility.AddTimer(
+        timer = TimerUtility.AddTimer(
             60 * 3,
             () =>
             {
+                ForgetFiredTimer(team, steamId, timer!);
+
                 MatchManager? current = _matchService.GetCurrentMatch();
                 if (
                     current == null
@@ -114,6 +118,20 @@ public class SurrenderSystem
                 PlayerAbandonedMatch(steamId);
             }
         );
+
+        _disconnectTimers[team][steamId] = timer;
+    }
+
+    // A fired timer is never left to be killed later.
+    private void ForgetFiredTimer(Team team, ulong steamId, CancellationTokenSource timer)
+    {
+        if (
+            _disconnectTimers.TryGetValue(team, out Dictionary<ulong, CancellationTokenSource>? timers)
+            && timers.GetValueOrDefault(steamId) == timer
+        )
+        {
+            timers.Remove(steamId);
+        }
     }
 
     private bool IsMapInPlay()
@@ -384,7 +402,7 @@ public class SurrenderSystem
             {
                 _logger.LogInformation("surrender vote passed");
                 Surrender(winningLineup.Value);
-                Reset();
+                EndVote();
             },
             () =>
             {
@@ -398,17 +416,18 @@ public class SurrenderSystem
         );
     }
 
-    // Abandons are reported once per match, never once per map, so the reported
-    // set is only cleared when a different match loads.
+    // Abandons are reported once per match, never once per map, and a leaver's
+    // timer runs on into the next map, so both only go when a different match loads.
     public void OnMatchSetup(MatchData matchData)
     {
-        if (_reportedAbandonsMatchId == matchData.id)
+        if (_matchId == matchData.id)
         {
             return;
         }
 
-        _reportedAbandonsMatchId = matchData.id;
+        _matchId = matchData.id;
         _reportedAbandons.Clear();
+        KillDisconnectTimers();
     }
 
     // A phase change ends the vote. Leavers' timers keep running to report them.
@@ -422,7 +441,11 @@ public class SurrenderSystem
     public void Reset()
     {
         EndVote();
+        KillDisconnectTimers();
+    }
 
+    private void KillDisconnectTimers()
+    {
         foreach (var team in _disconnectTimers.Keys)
         {
             foreach (var timer in _disconnectTimers[team].Values)
