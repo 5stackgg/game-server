@@ -229,6 +229,7 @@ public class SurrenderSystem
 
     public void Reset()
     {
+        surrenderingVote?.Abandon();
         surrenderingVote = null;
 
         foreach (var team in _disconnectTimers.Keys)
