@@ -23,7 +23,7 @@ public class SurrenderSystem
     private Dictionary<CsTeam, Dictionary<ulong, Timer>> _disconnectTimers =
         new Dictionary<CsTeam, Dictionary<ulong, Timer>>();
 
-    // Survives Reset(); only a different match clears it.
+    // Only a different match clears it.
     private readonly HashSet<ulong> _reportedAbandons = new HashSet<ulong>();
     private Guid? _matchId;
 
@@ -51,7 +51,6 @@ public class SurrenderSystem
         _gameServer = gameServer;
         _serviceProvider = serviceProvider;
         _environmentService = environmentService;
-        Reset();
     }
 
     public void SetupDisconnectTimer(CsTeam team, ulong steamId, string playerName = "")
@@ -152,9 +151,26 @@ public class SurrenderSystem
         }
 
         MatchManager? current = _matchService.GetCurrentMatch();
+        MatchData? matchData = current?.GetMatchData();
+
+        if (
+            current != null
+            && matchData != null
+            && lineupId != null
+            && ReconnectPauseUtility.IsLineupWhole(
+                matchData,
+                MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.PlayerName)),
+                current.GetExpectedPlayerCount(),
+                lineupId.Value
+            )
+        )
+        {
+            return;
+        }
+
         SetupSurrender(
             LeaverSurrenderSide(
-                current?.GetMatchData(),
+                matchData,
                 current?.GetCurrentMap(),
                 lineupId,
                 sideAtDisconnect,
@@ -178,32 +194,13 @@ public class SurrenderSystem
 
     private void OfferNextWaitingLineup()
     {
-        MatchManager? match = _matchService.GetCurrentMatch();
-        MatchData? matchData = match?.GetMatchData();
-        if (
-            match == null
-            || matchData == null
-            || _waitingLineups.Count == 0
-            || IsSurrendering()
-        )
+        if (_waitingLineups.Count == 0 || IsSurrendering())
         {
             return;
         }
 
         KeyValuePair<Guid, CsTeam> next = _waitingLineups.First();
         _waitingLineups.Remove(next.Key);
-
-        if (
-            ReconnectPauseUtility.IsLineupWhole(
-                matchData,
-                MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.PlayerName)),
-                match.GetExpectedPlayerCount(),
-                next.Key
-            )
-        )
-        {
-            return;
-        }
 
         OfferLeaverSurrender(next.Key, next.Value);
     }
@@ -274,7 +271,6 @@ public class SurrenderSystem
                 return;
             }
 
-            KillDisconnectTimers();
             match.ResumeMatch();
         });
     }
@@ -426,12 +422,6 @@ public class SurrenderSystem
         surrenderingVote?.Abandon();
         surrenderingVote = null;
         _waitingLineups.Clear();
-    }
-
-    public void Reset()
-    {
-        EndVote();
-        KillDisconnectTimers();
     }
 
     private void KillDisconnectTimers()
