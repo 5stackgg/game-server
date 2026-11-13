@@ -52,16 +52,16 @@ public class RoundStartPauseWiringTests
 
         Assert.True(pause >= 0, "OnRoundStart no longer pauses");
         Assert.Matches(
-            @"^\.PauseMatch\(\s*""Waiting for players to reconnect"",\s*stillRequired:\s*\(\)\s*=>\s*ReconnectPauseUtility\.ShouldPause\(",
+            @"^\.PauseMatch\(\s*ePauseReason\.Roster,\s*""Waiting for players to reconnect"",\s*stillRequired:\s*\(\)\s*=>\s*ReconnectPauseUtility\.ShouldPause\(",
             handler[pause..]
         );
     }
 
-    // The api only sends camera_state when the set changes, and a camera lost in
-    // warmup or the knife pauses nothing, so the first live round checks again.
+    // The api only sends camera_state when the set changes, so a camera lost
+    // outside play, or while the plugin was down, pauses the next round in play.
     // Going live restarts the game, which can drop a pause made before it.
     [Fact]
-    public void A_Camera_Lost_Before_Play_Pauses_The_First_Live_Round()
+    public void A_Camera_Owed_A_Pause_Pauses_The_Next_Round_In_Play()
     {
         string source = Regex.Replace(
             File.ReadAllText(Path.Combine(SourceDir(), "FiveStack.Events", "RoundStart.cs")),
@@ -74,16 +74,14 @@ public class RoundStartPauseWiringTests
         Assert.True(from >= 0 && to > from, "OnRoundStart is gone");
 
         string handler = source[from..to];
-        Match check = Regex.Match(
-            handler,
-            @"if \(totalRoundsPlayed == 0\)\s*\{\s*_cameraSystem\.PauseIfBlocking\(\);\s*\}"
-        );
+        int check = handler.IndexOf("_cameraSystem.PauseIfOwed();", StringComparison.Ordinal);
 
-        Assert.True(check.Success, "a camera lost before play is never enforced once it is live");
+        Assert.True(check >= 0, "a camera owed a pause is never enforced once it is in play");
         Assert.True(
-            check.Index > handler.IndexOf("if (!isInPlay)", StringComparison.Ordinal),
+            check > handler.IndexOf("if (!isInPlay)", StringComparison.Ordinal),
             "the camera is checked before the map is known to be in play"
         );
+        Assert.DoesNotContain("totalRoundsPlayed == 0", handler);
     }
 
     // Resuming has to agree with pausing, or a 5v4 pauses and never comes back.

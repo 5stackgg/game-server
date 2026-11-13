@@ -103,7 +103,7 @@ public class ReplayWiringTests
     {
         Assert.Contains(
             "fromWarmup: false",
-            Between(Backups(), "\"restore round vote failed\"", "ResumeMatch()")
+            Between(Backups(), "\"restore round vote failed\"", "ResumeFrom(ePauseReason.Restore)")
         );
     }
 
