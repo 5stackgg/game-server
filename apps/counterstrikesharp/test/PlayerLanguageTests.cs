@@ -112,6 +112,8 @@ public class PlayerLanguageTests
         (@"Server\.PrintToChatAll\(", 0),
         (@"\.PauseMatch\(", 1),
         (@"\.ResumeMatch\(", 0),
+        (@"_gameServer\.MessageEach\(", 1),
+        (@"UpdatePlayerName\(", 2),
     ];
 
     private static bool IsEnglish(string text)
@@ -551,6 +553,60 @@ public class PlayerLanguageTests
             "publicstringLocalize(CCSPlayerController?player,PlayerLineline)",
             Compact(Path.Combine("FiveStack.Services", "GameServer.cs"))
         );
+    }
+
+    // A clan tag is one string the whole server sees on the scoreboard, and the
+    // ready system finds its own tags by that string.
+    [Fact]
+    public void AReadyTagIsInTheServersLanguage()
+    {
+        string ready = Compact(Path.Combine("FiveStack.Services", "ReadySystem.cs"));
+
+        Assert.DoesNotContain("\"ready\"", ready);
+        Assert.DoesNotContain("\"notready\"", ready);
+        Assert.Contains(
+            "_gameServer.Localize(null,ready?\"ready.tag.ready\":\"ready.tag.not_ready\")",
+            ready
+        );
+        EveryLanguageHas("ready.tag.ready");
+        EveryLanguageHas("ready.tag.not_ready");
+    }
+
+    // The api reads the refusal off the RCON reply and shows it to the organizer.
+    [Fact]
+    public void TheApiReadsARestoreRefusalInEnglish()
+    {
+        string command = Compact(Path.Combine("FiveStack.Commands", "BackupRounds.cs"));
+
+        Assert.Contains("string?refusal=_gameBackupRounds.RestoreRefusal(round)?.English;", command);
+        Assert.Contains(
+            "command.ReplyToCommand($\"{RoundRestoreGateUtility.RefusedPrefix}{refusal}\");",
+            command
+        );
+        int from = command.IndexOf("publicvoidOnResetRound(CCSPlayerController?player,CommandInfocommand)", StringComparison.Ordinal);
+
+        Assert.True(from >= 0, "the restore_round command is gone");
+        Assert.DoesNotMatch(
+            @"Localiz|localizer",
+            command[from..command.IndexOf("publicvoid", from + 1, StringComparison.Ordinal)]
+        );
+    }
+
+    // Polish, Russian and Ukrainian inflect a noun after most words, and a team
+    // name is one fixed form, so it is set off by brackets or a colon.
+    [Theory]
+    [InlineData("timeout.team_resumed", "{2}")]
+    [InlineData("captain.assigned", "{1}")]
+    [InlineData("match.assigned_team", "{1}")]
+    public void ASlavicLineNeverInflectsATeamName(string key, string team)
+    {
+        foreach (string language in new[] { "pl-PL.json", "ru-RU.json", "uk-UA.json" })
+        {
+            string line = Translations(language)[key];
+            string before = Regex.Replace(line[..line.IndexOf(team, StringComparison.Ordinal)], @"\{\d+\}$", "");
+
+            Assert.Matches(@"(^|[(\[:]\s*)$", before);
+        }
     }
 
     [Fact]
