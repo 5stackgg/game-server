@@ -88,8 +88,8 @@ public class LeaverSurrenderSideTests
             },
         };
 
-        Assert.Equal(Lineup2, SurrenderSystem.LeaverLineup(match, "76561198000000002"));
-        Assert.Null(SurrenderSystem.LeaverLineup(match, "76561198000000009"));
+        Assert.Equal(Lineup2, SurrenderSystem.LeaverLineup(match, "76561198000000002", "keith"));
+        Assert.Null(SurrenderSystem.LeaverLineup(match, "76561198000000009", "keith"));
     }
 
     // A leaver who joined under a placeholder name has no steam id on the lineup,

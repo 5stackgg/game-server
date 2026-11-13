@@ -46,7 +46,7 @@ public class SurrenderSystem
         Reset();
     }
 
-    public void SetupDisconnectTimer(Team team, ulong steamId)
+    public void SetupDisconnectTimer(Team team, ulong steamId, string playerName = "")
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null || !match.IsInPlay())
@@ -75,7 +75,7 @@ public class SurrenderSystem
             _disconnectTimers[team] = new Dictionary<ulong, CancellationTokenSource>();
         }
 
-        Guid? lineupId = LeaverLineup(matchData, steamId.ToString());
+        Guid? lineupId = LeaverLineup(matchData, steamId.ToString(), playerName);
 
         _disconnectTimers[team][steamId] = TimerUtility.AddTimer(
             60 * 3,
@@ -96,14 +96,9 @@ public class SurrenderSystem
         );
     }
 
-    public static Guid? LeaverLineup(MatchData matchData, string steamId)
-    {
-        return LineupMembership.LineupOf(matchData, steamId, "");
-    }
-
     public static Guid? LeaverLineup(MatchData matchData, string steamId, string playerName)
     {
-        return LineupMembership.LineupOf(matchData, steamId, "");
+        return LineupMembership.LineupOf(matchData, steamId, playerName);
     }
 
     // The side the leaver's lineup plays when the timer runs out. A halftime in
