@@ -104,6 +104,7 @@ public partial class FiveStackPlugin : BasePlugin
         }
 
         ListenForMapChange();
+        _matchService.MapLeftWaitingForTV += FinishMapLeftWaitingForTV;
 
         _idleMapReload.Start();
 
@@ -128,6 +129,7 @@ public partial class FiveStackPlugin : BasePlugin
     {
         _pingTimer?.Dispose();
         _idleMapReload.Stop();
+        _matchService.MapLeftWaitingForTV -= FinishMapLeftWaitingForTV;
         ConnectClientFunc.Unhook(ConnectClientHook, HookMode.Pre);
         ClanTagUtility.Unhook();
 

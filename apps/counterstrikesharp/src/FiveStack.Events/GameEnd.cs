@@ -97,6 +97,8 @@ public partial class FiveStackPlugin
             PublishSurrender();
         }
 
+        _concludingMapId = match.GetCurrentMap()?.id;
+
         // Move the map off Live immediately so it reflects WaitingForTV during the
         // tv_delay window (HandleEndOfMap may be deferred by use_playcast). This is
         // deduped in UpdateMapStatus, so HandleEndOfMap re-setting it is a no-op.
@@ -136,7 +138,40 @@ public partial class FiveStackPlugin
         return OfflineMatchState.MapWinner(matchData, lineup1Score, lineup2Score);
     }
 
-    private void HandleEndOfMap(Guid? winningLineupId, bool surrenderSent)
+    // A map load forgets the status while this process is still timing the wait,
+    // which then reads the same as a server that only just started.
+    private Guid? _concludingMapId;
+
+    private void FinishMapLeftWaitingForTV()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchMap? currentMap = match?.GetCurrentMap();
+        if (
+            match == null
+            || currentMap == null
+            || match.GetCurrentMapStatus() != eMapStatus.WaitingForTV
+            || _concludingMapId == currentMap.id
+        )
+        {
+            return;
+        }
+
+        _logger.LogInformation(
+            "Map {MapId} was left waiting for TV by a server that is gone, finishing it",
+            currentMap.id
+        );
+
+        _concludingMapId = currentMap.id;
+        match.gameEnded = true;
+
+        HandleEndOfMap(null, false, 0);
+    }
+
+    private void HandleEndOfMap(
+        Guid? winningLineupId,
+        bool surrenderSent,
+        int? recordingDelayOverride = null
+    )
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null)
@@ -153,7 +188,7 @@ public partial class FiveStackPlugin
 
         bool usePlaycast = matchData.options.use_playcast;
         int tvDelay = matchData.options.tv_delay;
-        int recordingDelay = usePlaycast ? 5 : tvDelay;
+        int recordingDelay = recordingDelayOverride ?? (usePlaycast ? 5 : tvDelay);
         Guid expectedMatchId = matchData.id;
         bool wasSurrendered = surrenderSent || match.isSurrendered();
         bool onGameNode = _environmentService.isOnGameServerNode();

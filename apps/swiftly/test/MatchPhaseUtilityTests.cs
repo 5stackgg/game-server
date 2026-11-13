@@ -67,4 +67,23 @@ public class MatchPhaseUtilityTests
     {
         Assert.False(MatchPhaseUtility.Reopens(current, next));
     }
+
+    [Fact]
+    public void A_Server_That_Starts_With_The_Map_Waiting_For_TV_Starts_Into_The_Wait()
+    {
+        Assert.True(
+            MatchPhaseUtility.StartsIntoTvWait(eMapStatus.Unknown, eMapStatus.WaitingForTV)
+        );
+    }
+
+    [Theory]
+    [InlineData(eMapStatus.WaitingForTV, eMapStatus.WaitingForTV)]
+    [InlineData(eMapStatus.Live, eMapStatus.WaitingForTV)]
+    [InlineData(eMapStatus.Unknown, eMapStatus.Live)]
+    [InlineData(eMapStatus.Unknown, eMapStatus.UploadingDemo)]
+    [InlineData(eMapStatus.Unknown, eMapStatus.Finished)]
+    public void Anything_Else_Does_Not(eMapStatus known, eMapStatus reported)
+    {
+        Assert.False(MatchPhaseUtility.StartsIntoTvWait(known, reported));
+    }
 }

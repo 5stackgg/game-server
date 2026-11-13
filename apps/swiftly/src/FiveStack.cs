@@ -145,6 +145,7 @@ public partial class FiveStackPlugin : BasePlugin
         _idleMapReload.Start();
 
         Core.Event.OnMapLoad += OnMapLoad;
+        _matchService.MapLeftWaitingForTV += FinishMapLeftWaitingForTV;
 
         _precacheHandler = (@event) =>
         {
@@ -229,6 +230,7 @@ public partial class FiveStackPlugin : BasePlugin
             _rankSystem.Stop();
             _idleMapReload.Stop();
             Core.Event.OnMapLoad -= OnMapLoad;
+            _matchService.MapLeftWaitingForTV -= FinishMapLeftWaitingForTV;
 
             if (_precacheHandler != null)
             {

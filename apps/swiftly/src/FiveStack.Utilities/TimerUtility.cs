@@ -16,8 +16,29 @@ namespace FiveStack.Utilities
             _core = core;
         }
 
+        // SwiftlyS2 drops a delay of under a millisecond without running it or
+        // saying so.
+        public static bool TooShortToDelay(float interval)
+        {
+            return (long)(interval * 1000) <= 0;
+        }
+
         public static CancellationTokenSource AddTimer(float interval, Action callback)
         {
+            if (TooShortToDelay(interval))
+            {
+                CancellationTokenSource immediate = new CancellationTokenSource();
+                _core!.Scheduler.NextTick(() =>
+                {
+                    if (!immediate.IsCancellationRequested)
+                    {
+                        callback();
+                    }
+                });
+                Timers.Add(immediate);
+                return immediate;
+            }
+
             CancellationTokenSource timer = _core!.Scheduler.DelayBySeconds(interval, callback);
             Timers.Add(timer);
             return timer;

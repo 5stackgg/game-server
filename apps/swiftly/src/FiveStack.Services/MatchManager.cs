@@ -868,9 +868,20 @@ public class MatchManager
             // StartLive, so the backup convars would otherwise never be set.
             _backUpManagement.Setup();
 
-            if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
+            eMapStatus reported = MatchUtility.MapStatusStringToEnum(_currentMap.status);
+            bool startsIntoTvWait = MatchPhaseUtility.StartsIntoTvWait(
+                _currentMapStatus,
+                reported
+            );
+
+            if (reported != _currentMapStatus)
             {
-                UpdateMapStatus(MatchUtility.MapStatusStringToEnum(_currentMap.status));
+                UpdateMapStatus(reported);
+            }
+
+            if (startsIntoTvWait && _currentMapStatus == eMapStatus.WaitingForTV)
+            {
+                _matchService.ReportMapLeftWaitingForTV();
             }
 
             if (IsWarmup())
