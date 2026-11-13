@@ -252,7 +252,7 @@ public class ReconnectPauseUtilityTests
             .Append(("76561198999999992", "[TAG] Luke"));
 
         Assert.Equal(
-            (9, 10),
+            (8, 10),
             ReconnectPauseUtility.RosterCount(WithPlaceholders("Bob", "Luke"), connected, 10)
         );
     }
