@@ -68,11 +68,84 @@ public class PlayerLanguageTests
             .ToArray();
     }
 
+    private static string[] ColorTags(string text)
+    {
+        return Regex
+            .Matches(text, @"\[[A-Za-z]+\]")
+            .Select(match => match.Value)
+            .Order()
+            .ToArray();
+    }
+
+    private static IEnumerable<(string Key, string[] Args)> PlayerLookups(string source)
+    {
+        foreach (Match start in Regex.Matches(source, @"(\.LocalizerFor\([\w.]+\)|(?<!\w)localizer)\["))
+        {
+            List<string> args = [];
+            int from = start.Index + start.Length;
+            int depth = 0;
+
+            for (int at = from; at < source.Length; at++)
+            {
+                char c = source[at];
+
+                if (c == '"')
+                {
+                    at = source.IndexOf('"', at + 1);
+
+                    if (at < 0)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+
+                if (c is '(' or '[' or '{')
+                {
+                    depth++;
+                    continue;
+                }
+
+                if (c is ')' or ']' or '}')
+                {
+                    if (depth == 0)
+                    {
+                        args.Add(source[from..at]);
+                        break;
+                    }
+
+                    depth--;
+                    continue;
+                }
+
+                if (c == ',' && depth == 0)
+                {
+                    args.Add(source[from..at]);
+                    from = at + 1;
+                }
+            }
+
+            Assert.True(args.Count > 0, $"the lookup at {start.Index} never closes");
+
+            yield return (args[0], args.Skip(1).ToArray());
+        }
+    }
+
     public static IEnumerable<object[]> CommandFiles()
     {
         return Directory
             .GetFiles(Path.Combine(AppDir(), "src", "FiveStack.Commands"), "*.cs")
             .Select(file => new object[] { Path.GetFileName(file) });
+    }
+
+    public static IEnumerable<object[]> SourceFiles()
+    {
+        string src = Path.Combine(AppDir(), "src");
+
+        return Directory
+            .GetFiles(src, "*.cs", SearchOption.AllDirectories)
+            .Select(file => new object[] { Path.GetRelativePath(src, file) });
     }
 
     public static IEnumerable<object[]> Languages()
@@ -150,11 +223,52 @@ public class PlayerLanguageTests
     }
 
     [Theory]
+    [MemberData(nameof(SourceFiles))]
+    public void NoEnglishWordIsPassedIntoAPlayersLine(string file)
+    {
+        foreach ((string key, string[] args) in PlayerLookups(Compact(file)))
+        {
+            foreach (string arg in args)
+            {
+                Assert.False(
+                    Regex.IsMatch(arg, @"^\$?""") && !Regex.IsMatch(arg, @"^""\[[A-Za-z]+\]""$"),
+                    $"{file} passes {arg} into {key}"
+                );
+                Assert.False(
+                    arg.Contains("ConvertCamelToHumanReadable"),
+                    $"{file} passes an English setting name into {key}"
+                );
+            }
+        }
+    }
+
+    [Fact]
+    public void ARefusedTimeoutNamesWhatWasRefusedInThePlayersLanguage()
+    {
+        Dictionary<string, string> english = Translations("en.jsonc");
+        MatchCollection refusals = Regex.Matches(
+            Compact(Path.Combine("FiveStack.Services", "TimeoutSystem.cs")),
+            @"CannotPauseMessage\(player,""([^""]*)""\)"
+        );
+
+        Assert.Equal(2, refusals.Count);
+
+        foreach (Match refusal in refusals)
+        {
+            Assert.True(
+                english.ContainsKey(refusal.Groups[1].Value),
+                $"\"{refusal.Groups[1].Value}\" is English, not a translation key"
+            );
+        }
+    }
+
+    [Theory]
     [MemberData(nameof(Languages))]
     public void EveryLanguageHasEveryLine(string language)
     {
         Dictionary<string, string> english = Translations("en.jsonc");
         Dictionary<string, string> translated = Translations(language);
+        object[] args = Enumerable.Repeat<object>("x", 10).ToArray();
 
         foreach ((string key, string text) in english)
         {
@@ -162,6 +276,14 @@ public class PlayerLanguageTests
             Assert.True(
                 Placeholders(text).SequenceEqual(Placeholders(translated[key])),
                 $"{language} {key} does not take the placeholders English does"
+            );
+            Assert.True(
+                Record.Exception(() => string.Format(translated[key], args)) == null,
+                $"{language} {key} has a brace that is not a placeholder"
+            );
+            Assert.True(
+                ColorTags(text).SequenceEqual(ColorTags(translated[key])),
+                $"{language} {key} does not use the colors English does"
             );
         }
     }
