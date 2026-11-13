@@ -251,6 +251,8 @@ public class MatchService
                 return;
             }
 
+            _currentMatch?.Reset();
+
             _currentMatch =
                 _serviceProvider.GetRequiredService(typeof(MatchManager)) as MatchManager;
 

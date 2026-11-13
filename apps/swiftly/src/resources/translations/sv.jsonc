@@ -64,6 +64,8 @@
   "match.map_over_series_done": "Matchen är klar — statistiken visas på matchsidan när demon har bearbetats.",
   "match.offline_over": "Matchen är över — det finns inget mer att spela på den här servern.",
   "timeout.cannot_resume_empty_team": "Kan inte återuppta medan ett lag saknar anslutna spelare",
+  "timeout.not_paused": " {0}Matchen är inte pausad",
+  "timeout.already_paused": " {0}Matchen är redan pausad",
   "timeout.admin_resumed": "Admin återupptog matchen",
   "timeout.vote.resume": "Återuppta",
   "timeout.vote.resume_passed": "Röstning om återupptagning godkänd",

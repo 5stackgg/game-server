@@ -60,6 +60,8 @@
   "timeout.not_allowed.resume": "继续比赛",
   "timeout.not_allowed.tactical_timeout": "战术暂停",
   "timeout.admin_resumed": "管理员已恢复比赛",
+  "timeout.not_paused": " {0}比赛未暂停",
+  "timeout.already_paused": " {0}比赛已暂停",
   "timeout.vote.resume": "继续",
   "timeout.vote.resume_passed": "继续投票通过",
   "timeout.player_resumed": "{0} {1}恢复了比赛",

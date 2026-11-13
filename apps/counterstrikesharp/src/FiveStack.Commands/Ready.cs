@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
+using FiveStack.Enums;
 
 namespace FiveStack;
 
@@ -17,7 +18,7 @@ public partial class FiveStackPlugin
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (player == null || match == null || !match.IsWarmup())
+        if (player == null || match == null || match.GetCurrentMapStatus() != eMapStatus.Warmup)
         {
             return;
         }

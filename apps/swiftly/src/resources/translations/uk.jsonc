@@ -64,6 +64,8 @@
   "match.map_over_series_done": "Матч завершено — статистика з'явиться на сторінці матчу після обробки демо.",
   "match.offline_over": "Матч закінчено — на цьому сервері більше нема чого грати.",
   "timeout.cannot_resume_empty_team": "Не можна відновити, поки в одній із команд немає підключених гравців",
+  "timeout.not_paused": " {0}Матч не на паузі",
+  "timeout.already_paused": " {0}Матч уже на паузі",
   "timeout.admin_resumed": "Адмін відновив матч",
   "timeout.vote.resume": "Відновити",
   "timeout.vote.resume_passed": "Голосування за відновлення прийнято",

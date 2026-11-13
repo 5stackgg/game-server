@@ -64,6 +64,8 @@
   "match.map_over_series_done": "경기 종료 — 데모 처리가 끝나면 경기 페이지에 통계가 표시됩니다.",
   "match.offline_over": "경기가 끝났습니다 — 이 서버에서 더 이상 진행할 경기가 없습니다.",
   "timeout.cannot_resume_empty_team": "연결된 플레이어가 없는 팀이 있어 재개할 수 없습니다",
+  "timeout.not_paused": " {0}경기가 일시정지 상태가 아닙니다",
+  "timeout.already_paused": " {0}경기가 이미 일시정지되었습니다",
   "timeout.admin_resumed": "관리자가 경기를 재개했습니다",
   "timeout.vote.resume": "재개",
   "timeout.vote.resume_passed": "재개 투표 통과",

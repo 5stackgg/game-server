@@ -60,6 +60,8 @@
   "timeout.not_allowed.resume": "繼續比賽",
   "timeout.not_allowed.tactical_timeout": "戰術暫停",
   "timeout.admin_resumed": "管理員已恢復比賽",
+  "timeout.not_paused": " {0}比賽未暫停",
+  "timeout.already_paused": " {0}比賽已暫停",
   "timeout.vote.resume": "繼續",
   "timeout.vote.resume_passed": "繼續投票通過",
   "timeout.player_resumed": "{0} {1}恢復了比賽",
