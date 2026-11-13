@@ -57,6 +57,35 @@ public class RoundStartPauseWiringTests
         );
     }
 
+    // The api only sends camera_state when the set changes, and a camera lost in
+    // warmup or the knife pauses nothing, so the first live round checks again.
+    // Going live restarts the game, which can drop a pause made before it.
+    [Fact]
+    public void A_Camera_Lost_Before_Play_Pauses_The_First_Live_Round()
+    {
+        string source = Regex.Replace(
+            File.ReadAllText(Path.Combine(SourceDir(), "FiveStack.Events", "RoundStart.cs")),
+            @"//[^\n]*",
+            ""
+        );
+        int from = source.IndexOf("public HookResult OnRoundStart(", StringComparison.Ordinal);
+        int to = source.IndexOf("\n    }\n", from, StringComparison.Ordinal);
+
+        Assert.True(from >= 0 && to > from, "OnRoundStart is gone");
+
+        string handler = source[from..to];
+        Match check = Regex.Match(
+            handler,
+            @"if \(totalRoundsPlayed == 0\)\s*\{\s*_cameraSystem\.PauseIfBlocking\(\);\s*\}"
+        );
+
+        Assert.True(check.Success, "a camera lost before play is never enforced once it is live");
+        Assert.True(
+            check.Index > handler.IndexOf("if (!isInPlay)", StringComparison.Ordinal),
+            "the camera is checked before the map is known to be in play"
+        );
+    }
+
     // Resuming has to agree with pausing, or a 5v4 pauses and never comes back.
     [Fact]
     public void A_Reconnect_Resumes_On_The_Same_Rule()

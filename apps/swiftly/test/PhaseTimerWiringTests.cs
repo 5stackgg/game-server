@@ -314,6 +314,27 @@ public class PhaseTimerWiringTests
     }
 
     [Fact]
+    public void A_Pause_That_Never_Happened_Owes_No_Team_Resume()
+    {
+        Assert.Matches(
+            @"if \(retriesLeft <= 0\)\s*\{[^{}]*if \(!IsPaused\(\)\)\s*\{\s*_timeoutSystem\.ClearPendingTeamResumes\(\);\s*\}\s*return;\s*\}",
+            ManagerMethod("public void PauseMatch(")
+        );
+    }
+
+    [Fact]
+    public void Turning_A_Pause_Into_A_Tech_Pause_Ends_A_Resume_Vote()
+    {
+        string pause = TimeoutMethod("private void PauseTechMatch(");
+        int guard = pause.IndexOf("!match.IsInPlay()", StringComparison.Ordinal);
+        int abandoned = pause.IndexOf("resumeVote?.Abandon();", StringComparison.Ordinal);
+
+        Assert.True(guard >= 0 && abandoned > guard, "a resume vote outlives the tech pause");
+        Assert.True(abandoned < pause.IndexOf("resumeVote = null;", StringComparison.Ordinal));
+        Assert.True(abandoned < pause.IndexOf("PauseMatch(", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Resuming_Ends_Both_Votes()
     {
         Assert.Contains("_timeoutSystem.Reset();", ManagerMethod("public void ResumeMatch("));
