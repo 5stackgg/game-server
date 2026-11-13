@@ -425,13 +425,55 @@ public class SurrenderVoteIntegrityTests
         Assert.DoesNotContain("_surrenderSystem.Reset();", warmup);
     }
 
-    // A new match and a map change both go through MatchManager.Reset.
+    // A map change goes through MatchManager.Reset. Within the match it ends the
+    // vote and keeps the leavers' timers, or a short end flow loses the report.
     [Fact]
-    public void A_New_Match_Or_Map_Cancels_Every_Leavers_Timer()
+    public void A_Map_Change_In_The_Same_Match_Keeps_The_Leavers_Timers()
+    {
+        string manager = Code("FiveStack.Services", "MatchManager.cs");
+        string reset = Method(manager, "public void Reset()");
+
+        Assert.Contains("_surrenderSystem.EndVote();", reset);
+        Assert.DoesNotContain("_surrenderSystem.Reset();", reset);
+        Assert.DoesNotContain("_surrenderSystem.Reset();", Method(manager, "public void SetupMatch("));
+    }
+
+    [Fact]
+    public void Only_A_New_Match_Cancels_The_Leavers_Timers()
+    {
+        var (surrender, _, _) = Server(eMapStatus.Live);
+        Guid matchId = Guid.NewGuid();
+        surrender.OnMatchSetup(new MatchData { id = matchId });
+        CancellationTokenSource timer = new CancellationTokenSource();
+        LeaverTimers(surrender)[Team.T] = new Dictionary<ulong, CancellationTokenSource>
+        {
+            [Leaver] = timer,
+        };
+
+        surrender.OnMatchSetup(new MatchData { id = matchId });
+
+        Assert.True(
+            LeaverTimers(surrender).GetValueOrDefault(Team.T)?.ContainsKey(Leaver) == true,
+            "the next map of the same match cancelled the leaver's timer"
+        );
+
+        surrender.OnMatchSetup(new MatchData { id = Guid.NewGuid() });
+
+        Assert.True(timer.IsCancellationRequested, "a new match left the leaver's timer running");
+        Assert.Empty(LeaverTimers(surrender));
+    }
+
+    // The leaver's timer lives on the surrender system, not on a map.
+    [Fact]
+    public void A_Reconnect_On_A_Later_Map_Still_Cancels_The_Leavers_Timer()
     {
         Assert.Contains(
-            "_surrenderSystem.Reset();",
-            Method(Code("FiveStack.Services", "MatchManager.cs"), "public void Reset()")
+            "_surrenderSystem.CancelDisconnectTimer(player.SteamID);",
+            Code("FiveStack.Events", "PlayerConnected.cs")
+        );
+        Assert.Contains(
+            "_disconnectTimers.Values",
+            Method(Code("FiveStack.Services", "SurrenderSystem.cs"), "private bool KillDisconnectTimer(")
         );
     }
 
@@ -483,9 +525,36 @@ public class SurrenderVoteIntegrityTests
 
         Assert.Contains("Guid matchId = matchData.id;", timer);
         Assert.Matches(
-            @"TimerUtility\.AddTimer\(\s*60 \* 3,\s*\(\)\s*=>\s*\{\s*MatchManager\? current = _matchService\.GetCurrentMatch\(\);\s*if \(\s*current == null\s*\|\|\s*current\.GetMatchData\(\)\?\.id != matchId\s*\|\|\s*MatchUtility\.Players\(\)\.Any\(player => player\.SteamID == steamId\)\s*\)\s*\{\s*return;\s*\}\s*if \(current\.IsInPlay\(\)\)\s*\{\s*OfferLeaverSurrender\(lineupId, team\);\s*\}\s*PlayerAbandonedMatch\(steamId\);\s*\}",
+            @"TimerUtility\.AddTimer\(\s*60 \* 3,\s*\(\)\s*=>\s*\{\s*ForgetFiredTimer\(team, steamId, timer!\);\s*MatchManager\? current = _matchService\.GetCurrentMatch\(\);\s*if \(\s*current == null\s*\|\|\s*current\.GetMatchData\(\)\?\.id != matchId\s*\|\|\s*MatchUtility\.Players\(\)\.Any\(player => player\.SteamID == steamId\)\s*\)\s*\{\s*return;\s*\}\s*if \(current\.IsInPlay\(\)\)\s*\{\s*OfferLeaverSurrender\(lineupId, team\);\s*\}\s*PlayerAbandonedMatch\(steamId\);\s*\}",
             timer
         );
+    }
+
+    // CounterStrikeSharp hands a fired timer's address to the next timer it makes,
+    // so killing a fired leaver's timer on a reconnect or reset can kill another.
+    [Fact]
+    public void A_Fired_Leaver_Timer_Forgets_Itself()
+    {
+        Assert.Matches(
+            @"if \(\s*_disconnectTimers\.TryGetValue\(team, out [^)]*\)\s*&&\s*timers\.GetValueOrDefault\(steamId\) == timer\s*\)\s*\{\s*timers\.Remove\(steamId\);\s*\}",
+            Method(Code("FiveStack.Services", "SurrenderSystem.cs"), "private void ForgetFiredTimer(")
+        );
+    }
+
+    // A passed surrender ended every other leaver's timer, so a player who had
+    // quit before it was never reported.
+    [Fact]
+    public void A_Passed_Surrender_Ends_The_Vote_But_Not_Other_Leavers_Timers()
+    {
+        string source = Code("FiveStack.Services", "SurrenderSystem.cs");
+        int passed = source.IndexOf("\"surrender vote passed\"", StringComparison.Ordinal);
+
+        Assert.True(passed >= 0, "the success callback is gone");
+
+        string callback = source[passed..source.IndexOf("},", passed, StringComparison.Ordinal)];
+
+        Assert.Contains("EndVote();", callback);
+        Assert.DoesNotContain("Reset();", callback);
     }
 
     // The vote already open turned the other lineup's leaver away, so that
