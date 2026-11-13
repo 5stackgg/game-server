@@ -56,13 +56,83 @@ public class ReconnectTimeoutsTests
     }
 
     [Fact]
-    public void One_Timeout_Is_Paid_By_Every_Lineup_It_Holds_For()
+    public void Only_One_Lineup_Pays_For_A_Timeout()
     {
         ReconnectTimeouts timeouts = new();
 
         Assert.True(timeouts.Charge(MapA, [Lineup1, Lineup2], 1));
-        Assert.False(timeouts.Charge(MapA, [Lineup1], 1));
-        Assert.False(timeouts.Charge(MapA, [Lineup2], 1));
+
+        Assert.Equal(1, timeouts.Used(Lineup1) + timeouts.Used(Lineup2));
+    }
+
+    [Fact]
+    public void Two_Short_Lineups_Take_Turns_Until_Both_Are_Spent()
+    {
+        ReconnectTimeouts timeouts = new();
+        List<(int, int)> spent = [];
+
+        while (timeouts.Charge(MapA, [Lineup1, Lineup2], 2))
+        {
+            spent.Add((timeouts.Used(Lineup1), timeouts.Used(Lineup2)));
+        }
+
+        Assert.Equal(new[] { (1, 0), (1, 1), (2, 1), (2, 2) }, spent);
+    }
+
+    [Fact]
+    public void The_Lineup_That_Has_Spent_Fewer_Pays_Next()
+    {
+        ReconnectTimeouts timeouts = new();
+        timeouts.Charge(MapA, [Lineup2], 2);
+
+        timeouts.Charge(MapA, [Lineup1, Lineup2], 2);
+
+        Assert.Equal((1, 1), (timeouts.Used(Lineup1), timeouts.Used(Lineup2)));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void With_Timeouts_Level_The_Lineup_That_Did_Not_Pay_Last_Goes_First(bool lineup1PaidLast)
+    {
+        ReconnectTimeouts timeouts = new();
+        Guid first = lineup1PaidLast ? Lineup2 : Lineup1;
+        Guid last = lineup1PaidLast ? Lineup1 : Lineup2;
+        timeouts.Charge(MapA, [first], 2);
+        timeouts.Charge(MapA, [last], 2);
+
+        timeouts.Charge(MapA, [Lineup1, Lineup2], 2);
+
+        Assert.Equal(2, timeouts.Used(first));
+        Assert.Equal(1, timeouts.Used(last));
+    }
+
+    // The lineup is charged at the drop, and its player can be back before the
+    // pause lands while the other lineup is still short.
+    [Fact]
+    public void A_Timeout_Given_Back_Is_Paid_By_Whoever_Is_Short_Now()
+    {
+        ReconnectTimeouts timeouts = new();
+        timeouts.Charge(MapA, [Lineup1], 1);
+
+        timeouts.Refund();
+        timeouts.Charge(MapA, [Lineup2], 1);
+
+        Assert.Equal((0, 1), (timeouts.Used(Lineup1), timeouts.Used(Lineup2)));
+    }
+
+    [Fact]
+    public void A_Timeout_Given_Back_Does_Not_Cost_Its_Lineup_The_Turn()
+    {
+        ReconnectTimeouts timeouts = new();
+        timeouts.Charge(MapA, [Lineup1], 2);
+        timeouts.Charge(MapA, [Lineup2], 2);
+        timeouts.Charge(MapA, [Lineup1, Lineup2], 2);
+        timeouts.Refund();
+
+        timeouts.Charge(MapA, [Lineup1, Lineup2], 2);
+
+        Assert.Equal((2, 1), (timeouts.Used(Lineup1), timeouts.Used(Lineup2)));
     }
 
     [Fact]
@@ -102,6 +172,7 @@ public class ReconnectTimeoutsTests
 
         timeouts.Refund();
 
+        Assert.Equal(0, timeouts.Used(Lineup1) + timeouts.Used(Lineup2));
         Assert.True(timeouts.Charge(MapA, [Lineup1], 1));
         Assert.True(timeouts.Charge(MapA, [Lineup2], 1));
     }

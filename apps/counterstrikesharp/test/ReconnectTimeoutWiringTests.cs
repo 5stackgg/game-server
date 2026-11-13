@@ -195,6 +195,20 @@ public class ReconnectTimeoutWiringTests
         Before(resume, "match.timeoutSystem.RosterChanged(connected);", "RosterOwnsPause()");
     }
 
+    // The lineup is charged at the drop. Its player can be back before the pause
+    // lands with the other lineup still short, and that one pays instead.
+    [Fact]
+    public void A_Timeout_Still_Owed_Is_Paid_By_Whoever_Is_Short_After_A_Reconnect()
+    {
+        string changed = Timeout("public void RosterChanged(");
+
+        Assert.Matches(
+            @"if \(_reconnectTimeoutOwed\)\s*\{\s*_reconnectTimeouts\.Refund\(\);\s*_reconnectTimeoutOwed = ChargeReconnectTimeout\(match, matchData, players\);\s*return;\s*\}\s*if \(\s*!_waitsOnEmptyLineup",
+            changed
+        );
+        Before(changed, "if (!shortHanded)", "_reconnectTimeoutOwed = ChargeReconnectTimeout(");
+    }
+
     // A lineup that was empty and is now only short has its timeouts to spend.
     [Fact]
     public void A_Player_Back_On_An_Empty_Lineup_Ends_The_Wait()

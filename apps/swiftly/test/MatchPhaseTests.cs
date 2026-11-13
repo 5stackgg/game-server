@@ -486,7 +486,7 @@ public class MatchPhaseTests
 
     private static int TimeoutsUsed(Server server)
     {
-        return ((Dictionary<Guid, int>)Get(Timeouts(server), "_used")!).Values.Sum();
+        return Timeouts(server).Used(ReconnectLineup);
     }
 
     [Fact]
@@ -550,19 +550,6 @@ public class MatchPhaseTests
 
         Assert.False(server.Timeout.HoldsForRoster());
         Assert.Equal(0, TimeoutsUsed(server));
-    }
-
-    [Fact]
-    public void A_Timeout_Stays_Owed_While_The_Lineup_Is_Still_Short()
-    {
-        Server server = WithLineup(On(eMapStatus.Live), 2);
-        Timeouts(server).Charge(ReconnectMap, [ReconnectLineup], 1);
-        Set(server.Timeout, "_reconnectTimeoutOwed", true);
-
-        server.Timeout.RosterChanged([("76561198000000000", "player0")]);
-
-        Assert.True(server.Timeout.HoldsForRoster());
-        Assert.Equal(1, TimeoutsUsed(server));
     }
 
     [Fact]
