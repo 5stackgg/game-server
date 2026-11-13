@@ -1733,6 +1733,7 @@ public class MatchManager
     {
         _logger.LogInformation("resetting match state");
         EndPhase();
+        _resumeMessageTimer = null;
         _mapChangeCountdownTimer?.Kill();
         _mapChangeCountdownTimer = null;
         StopPlaycastWindowHeartbeat();
