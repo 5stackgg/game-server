@@ -118,7 +118,13 @@ public class SurrenderSystem
                 return;
             }
 
-            if (MatchUtility.ConnectedRosterCount(matchData) < match.GetExpectedPlayerCount())
+            if (
+                ReconnectPauseUtility.ShouldPause(
+                    matchData,
+                    MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.PlayerName)),
+                    match.GetExpectedPlayerCount()
+                )
+            )
             {
                 return;
             }
