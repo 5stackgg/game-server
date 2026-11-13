@@ -1,5 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using FiveStack.Enums;
+using FiveStack.Utilities;
 using Xunit;
 
 // What offline mode keeps and decides is tested in OfflineMatchStateTests.
@@ -147,36 +149,17 @@ public class OfflineWiringTests
     }
 
     [Fact]
-    public void AnOfflineSurrenderEndsTheGameTheWayCs2sOwnSurrenderVoteDoes()
+    public void AnOfflineMatchHasNoSurrenderToEnd()
     {
         string surrenders = Service("SurrenderSystem");
-        string surrender = Method(surrenders, "public void Surrender(Guid lineupId)");
 
-        Assert.True(
-            At(surrender, "match.UpdateMapStatus(eMapStatus.Surrendered, lineupId);")
-                < At(surrender, "if (_environmentService.IsOfflineMode())")
+        Assert.DoesNotMatch(@"EndGame\w*\(", surrenders);
+        Assert.DoesNotContain("TerminateRound(", surrenders);
+        Assert.DoesNotContain("RoundEndReason", surrenders);
+        Assert.DoesNotContain(
+            "isSurrendered()",
+            Method(Events("RoundStart"), "public HookResult OnRoundStart(")
         );
-        Assert.Contains("EndGameForSurrender(match, lineupId);", surrender);
-
-        string end = Method(surrenders, "private void EndGameForSurrender(");
-
-        Assert.Contains("RoundEndReason.TerroristsSurrender", end);
-        Assert.Contains("RoundEndReason.CTsSurrender", end);
-        Assert.True(At(end, "        try") < At(end, "rules.TerminateRound("));
-        Assert.True(At(end, "rules.TerminateRound(") < At(end, "catch (Exception ex)"));
-    }
-
-    [Fact]
-    public void ASurrenderTheGamePlaysOnFromIsEndedByThePlugin()
-    {
-        string start = Method(Events("RoundStart"), "public HookResult OnRoundStart(");
-        int fallback = At(start, "matchManager.isSurrendered()");
-        string ends = start[fallback..At(start, "if (!isInPlay)")];
-
-        Assert.Contains("_environmentService.IsOfflineMode()", start[..At(start, "if (!isInPlay)")]);
-        Assert.Contains("!matchManager.gameEnded", ends);
-        Assert.Contains("\"mp_pause_match\"", ends);
-        Assert.Contains("ConcludeMap();", ends);
     }
 
     [Fact]
@@ -199,18 +182,18 @@ public class OfflineWiringTests
     }
 
     [Fact]
-    public void OfflineAMapIsWonOnItsScoreOrByTheSurrender()
+    public void OfflineAMapIsWonOnItsScore()
     {
         string events = Events("GameEnd");
 
         Assert.Matches(
-            @"Guid\? winningLineupId = _environmentService\.IsOfflineMode\(\)\s*\? OfflineMapWinner\(match, matchData\)\s*: _matchEvents\.GetWinningLineupId\(\);",
+            @"Guid\? winningLineupId = _environmentService\.IsOfflineMode\(\)\s*\? OfflineMapWinner\(matchData\)\s*: _matchEvents\.GetWinningLineupId\(\);",
             Method(events, "private void ConcludeMap()")
         );
 
         string winner = Method(events, "private Guid? OfflineMapWinner(");
 
-        Assert.Contains("_surrenderSystem.GetWinningLineupId()", winner);
+        Assert.DoesNotContain("_surrenderSystem", winner);
         Assert.Contains("OfflineMatchState.MapWinner(matchData, lineup1Score, lineup2Score)", winner);
     }
 
@@ -265,9 +248,9 @@ public class OfflineWiringTests
         string update = Method(Service("MatchManager"), "public void UpdateMapStatus(");
         string terminal = update[..At(update, "CheckForBackupRestore(status)")];
 
-        Assert.Contains("IsMapFinished()", terminal);
-        Assert.Contains("status == eMapStatus.Live", terminal);
-        Assert.Contains("status == eMapStatus.Knife", terminal);
+        Assert.Contains("MatchPhaseUtility.Reopens(_currentMapStatus, status)", terminal);
+        Assert.True(MatchPhaseUtility.Reopens(eMapStatus.Finished, eMapStatus.Live));
+        Assert.True(MatchPhaseUtility.Reopens(eMapStatus.Finished, eMapStatus.Knife));
     }
 
     [Fact]

@@ -19,7 +19,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        _timeoutSystem.RequestPause(player);
+        match?.timeoutSystem.RequestPause(player);
     }
 
     [
@@ -29,7 +29,7 @@ public partial class FiveStackPlugin
     ]
     public void OnResume(CCSPlayerController? player, CommandInfo? command)
     {
-        _timeoutSystem.RequestResume(player);
+        _matchService.GetCurrentMatch()?.timeoutSystem.RequestResume(player);
     }
 
     [
@@ -44,6 +44,6 @@ public partial class FiveStackPlugin
             return;
         }
 
-        _timeoutSystem.CallTacTimeout(player);
+        match?.timeoutSystem.CallTacTimeout(player);
     }
 }

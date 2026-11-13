@@ -31,18 +31,6 @@ public partial class FiveStackPlugin
             $"OnRoundStart totalRoundsPlayed={totalRoundsPlayed} isInPlay={isInPlay} isWarmup={isWarmup} isKnife={isKnife}"
         );
 
-        if (
-            _environmentService.IsOfflineMode()
-            && matchManager.isSurrendered()
-            && !matchManager.gameEnded
-        )
-        {
-            _logger.LogWarning("The surrender did not end the game, ending the map from here");
-            _gameServer.SendCommands(["mp_pause_match"]);
-            ConcludeMap();
-            return HookResult.Continue;
-        }
-
         if (!isInPlay)
         {
             return HookResult.Continue;
@@ -80,7 +68,20 @@ public partial class FiveStackPlugin
             )
         )
         {
-            matchManager.PauseMatch("Waiting for players to reconnect");
+            matchManager.PauseMatch(
+                "Waiting for players to reconnect",
+                stillRequired: () =>
+                    ReconnectPauseUtility.ShouldPause(
+                        matchManager.GetMatchData() ?? roundMatchData,
+                        MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.PlayerName)),
+                        matchManager.GetExpectedPlayerCount()
+                    )
+            );
+        }
+
+        if (totalRoundsPlayed == 0)
+        {
+            _cameraSystem.PauseIfBlocking();
         }
 
         return HookResult.Continue;

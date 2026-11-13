@@ -311,6 +311,26 @@ public class OfflineMatchStateTests : IDisposable
         Assert.Equal("Scheduled", MapOf(restarted, Map3).status);
     }
 
+    [Fact]
+    public void ASaveFromASurrenderedMapStillRestoresAsOver()
+    {
+        MatchData played = BestOf(3);
+        OfflineMatchState.Record(MapOf(played, Map1), eMapStatus.Surrendered, Lineup2);
+
+        MatchData restarted = BestOf(3);
+
+        Assert.True(
+            OfflineMatchState.Restore(restarted, OfflineMatchState.Capture(played))
+        );
+        Assert.Equal(Map1, restarted.current_match_map_id);
+        Assert.Equal("Surrendered", MapOf(restarted, Map1).status);
+        Assert.Equal(
+            new OfflineMatchResult(eMapStatus.Surrendered, Lineup2),
+            OfflineMatchState.Result(restarted)
+        );
+        Assert.True(OfflineMatchState.IsMatchOver(restarted));
+    }
+
     [Theory]
     [InlineData("{not json")]
     [InlineData("{\"maps\":null}")]

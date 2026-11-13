@@ -1,4 +1,5 @@
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared.Players;
@@ -175,10 +176,20 @@ public class CameraSystem
         return steamIds;
     }
 
+    // camera_state only comes when the set changes, so a camera lost before play
+    // is enforced once play starts.
+    public void PauseIfBlocking()
+    {
+        if (IsBlocking())
+        {
+            OnCamerasLost();
+        }
+    }
+
     public void Reset()
     {
         _offline.Clear();
-        TimerUtility.Kill(_reminderTimer);
+        _matchService.GetCurrentMatch()?.KillPhaseTimer(_reminderTimer);
         _reminderTimer = null;
     }
 
@@ -186,7 +197,10 @@ public class CameraSystem
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (match == null)
+        if (
+            match == null
+            || MatchPhaseUtility.PhaseOf(match.GetCurrentMapStatus()) != eMatchPhase.InPlay
+        )
         {
             return;
         }
@@ -205,8 +219,8 @@ public class CameraSystem
             _gameServer.Message(MessageType.Alert, message);
         }
 
-        TimerUtility.Kill(_reminderTimer);
-        _reminderTimer = TimerUtility.Repeat(
+        match.KillPhaseTimer(_reminderTimer);
+        _reminderTimer = match.PhaseTimer(
             10,
             () =>
             {
@@ -216,7 +230,8 @@ public class CameraSystem
                 }
 
                 _gameServer.Message(MessageType.Alert, _localizer["camera.waiting", OfflineNames()]);
-            }
+            },
+            true
         );
     }
 
@@ -224,7 +239,7 @@ public class CameraSystem
     // play restarts, the same as any other technical pause.
     private void OnCamerasRestored()
     {
-        TimerUtility.Kill(_reminderTimer);
+        _matchService.GetCurrentMatch()?.KillPhaseTimer(_reminderTimer);
         _reminderTimer = null;
 
         _gameServer.Message(

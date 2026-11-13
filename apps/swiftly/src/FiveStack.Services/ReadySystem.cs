@@ -13,6 +13,7 @@ namespace FiveStack;
 public class ReadySystem
 {
     private CancellationTokenSource? _readyStatusTimer;
+    private CancellationTokenSource? _notReadyMessageTimer;
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
     private readonly ILogger<ReadySystem> _logger;
@@ -57,14 +58,18 @@ public class ReadySystem
 
     public void Reset(bool setupTimer = false)
     {
-        TimerUtility.Kill(_readyStatusTimer);
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        match?.KillPhaseTimer(_readyStatusTimer);
         _readyStatusTimer = null;
+        match?.KillPhaseTimer(_notReadyMessageTimer);
+        _notReadyMessageTimer = null;
 
         _readyPlayers.Clear();
 
         if (setupTimer)
         {
-            _readyStatusTimer = TimerUtility.Repeat(3, SendReadyStatusMessage);
+            _readyStatusTimer = match?.PhaseTimer(3, SendReadyStatusMessage, true);
         }
 
         UpdatePlayerStatus();
@@ -157,6 +162,11 @@ public class ReadySystem
 
     public void UnreadyPlayer(IPlayer player)
     {
+        if (!IsWaitingForReady())
+        {
+            return;
+        }
+
         int playerId = player.UserID;
         if (_readyPlayers.ContainsKey(playerId))
         {
@@ -255,20 +265,21 @@ public class ReadySystem
         _gameServer.Message(MessageType.Chat, localizer["ready.marked", colored], player);
     }
 
-    public CancellationTokenSource? _cancelSendNotReadyMessage;
-
-    public async void SendNotReadyMessage()
+    public void SendNotReadyMessage()
     {
-        _cancelSendNotReadyMessage?.Cancel();
+        MatchManager? match = _matchService.GetCurrentMatch();
 
-        try
+        if (match == null)
         {
-            _cancelSendNotReadyMessage = new CancellationTokenSource();
-            await Task.Delay(1000 * 5, _cancelSendNotReadyMessage.Token);
+            return;
+        }
 
-            MatchUtility.Core.Scheduler.NextTick(() =>
+        match.KillPhaseTimer(_notReadyMessageTimer);
+        _notReadyMessageTimer = match.PhaseTimer(
+            5,
+            () =>
             {
-                if (_cancelSendNotReadyMessage.IsCancellationRequested)
+                if (!IsWaitingForReady())
                 {
                     return;
                 }
@@ -294,11 +305,8 @@ public class ReadySystem
                             CommandUtility.PublicChatTrigger
                         ]
                 );
-            });
-        }
-        catch (TaskCanceledException)
-        {
-        }
+            }
+        );
     }
 
     public void Skip()

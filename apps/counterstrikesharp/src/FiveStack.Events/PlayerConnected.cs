@@ -150,7 +150,7 @@ public partial class FiveStackPlugin
 
         CCSPlayerController player = @event.Userid;
 
-        if (_readySystem.IsWaitingForReady())
+        if (match.readySystem.IsWaitingForReady())
         {
             _gameServer.Message(
                 HudDestination.Chat,

@@ -1,7 +1,7 @@
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
@@ -178,10 +178,20 @@ public class CameraSystem
         return steamIds;
     }
 
+    // camera_state only comes when the set changes, so a camera lost before play
+    // is enforced once play starts.
+    public void PauseIfBlocking()
+    {
+        if (IsBlocking())
+        {
+            OnCamerasLost();
+        }
+    }
+
     public void Reset()
     {
         _offline.Clear();
-        _reminderTimer?.Kill();
+        _matchService.GetCurrentMatch()?.KillPhaseTimer(_reminderTimer);
         _reminderTimer = null;
     }
 
@@ -189,7 +199,10 @@ public class CameraSystem
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
-        if (match == null)
+        if (
+            match == null
+            || MatchPhaseUtility.PhaseOf(match.GetCurrentMapStatus()) != eMatchPhase.InPlay
+        )
         {
             return;
         }
@@ -208,8 +221,8 @@ public class CameraSystem
             _gameServer.Message(HudDestination.Alert, message);
         }
 
-        _reminderTimer?.Kill();
-        _reminderTimer = TimerUtility.AddTimer(
+        match.KillPhaseTimer(_reminderTimer);
+        _reminderTimer = match.PhaseTimer(
             10,
             () =>
             {
@@ -223,7 +236,7 @@ public class CameraSystem
                     _localizer["camera.waiting", OfflineNames()]
                 );
             },
-            TimerFlags.REPEAT
+            true
         );
     }
 
@@ -231,7 +244,7 @@ public class CameraSystem
     // play restarts, the same as any other technical pause.
     private void OnCamerasRestored()
     {
-        _reminderTimer?.Kill();
+        _matchService.GetCurrentMatch()?.KillPhaseTimer(_reminderTimer);
         _reminderTimer = null;
 
         _gameServer.Message(
