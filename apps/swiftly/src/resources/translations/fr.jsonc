@@ -98,6 +98,7 @@
   "vote.prompt_options_timer": " Voter pour {0} ({1}y ou {2}n) ({3}s)",
   "surrender.vote": "Abandonner",
   "surrender.lan": " Il n'y a pas d'abandon dans un match LAN",
+  "surrender.offline": " Il n'y a pas d'abandon dans un match hors ligne",
   "surrender.in_progress": " Un vote d'abandon est déjà en cours",
   "surrender.unavailable": " Impossible de lancer un vote d'abandon pour le moment",
   "surrender.not_in_match": " Seul un joueur de ce match peut demander l'abandon",

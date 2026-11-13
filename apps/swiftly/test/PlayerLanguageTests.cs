@@ -485,6 +485,7 @@ public class PlayerLanguageTests
     [InlineData("FiveStack.Services/CaptainSystem.cs", "captain.show")]
     [InlineData("FiveStack.Services/CaptainSystem.cs", "captain.assigned")]
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.lan")]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.offline")]
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.in_progress")]
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.unavailable")]
     [InlineData("FiveStack.Commands/Surrender.cs", "surrender.not_in_match")]

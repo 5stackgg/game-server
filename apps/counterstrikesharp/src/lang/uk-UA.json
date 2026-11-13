@@ -86,6 +86,7 @@
   "vote.not_allowed": " {0}вам не дозволено голосувати",
   "surrender.vote": "Здатися",
   "surrender.lan": " У LAN-матчі здатися не можна",
+  "surrender.offline": " В офлайн-матчі здатися не можна",
   "surrender.in_progress": " Голосування про здачу вже триває",
   "surrender.unavailable": " Зараз неможливо почати голосування про здачу",
   "surrender.not_in_match": " Запропонувати здатися може лише гравець цього матчу",

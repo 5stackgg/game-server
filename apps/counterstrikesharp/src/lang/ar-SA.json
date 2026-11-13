@@ -86,6 +86,7 @@
   "vote.not_allowed": " {0}غير مسموح لك بالتصويت",
   "surrender.vote": "استسلام",
   "surrender.lan": " لا يوجد استسلام في مباراة LAN",
+  "surrender.offline": " لا يوجد استسلام في مباراة دون اتصال",
   "surrender.in_progress": " يوجد تصويت استسلام قيد التنفيذ بالفعل",
   "surrender.unavailable": " تعذر بدء تصويت الاستسلام الآن",
   "surrender.not_in_match": " يمكن فقط للاعب في هذه المباراة طلب الاستسلام",

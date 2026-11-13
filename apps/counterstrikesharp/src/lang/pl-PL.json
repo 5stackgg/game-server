@@ -86,6 +86,7 @@
   "vote.not_allowed": " {0}nie możesz głosować",
   "surrender.vote": "Poddać się",
   "surrender.lan": " W meczu LAN nie można się poddać",
+  "surrender.offline": " W meczu offline nie można się poddać",
   "surrender.in_progress": " Głosowanie nad poddaniem już trwa",
   "surrender.unavailable": " Nie można teraz rozpocząć głosowania nad poddaniem",
   "surrender.not_in_match": " Tylko gracz z tego meczu może zaproponować poddanie się",

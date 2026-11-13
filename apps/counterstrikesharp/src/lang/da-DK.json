@@ -86,6 +86,7 @@
   "vote.not_allowed": " {0}du har ikke tilladelse til at stemme",
   "surrender.vote": "Overgive sig",
   "surrender.lan": " Der er ingen overgivelse i en LAN-kamp",
+  "surrender.offline": " Der er ingen overgivelse i en offline-kamp",
   "surrender.in_progress": " Der er allerede en afstemning om overgivelse i gang",
   "surrender.unavailable": " Kan ikke starte en afstemning om overgivelse lige nu",
   "surrender.not_in_match": " Kun en spiller i denne kamp kan kalde en overgivelse",

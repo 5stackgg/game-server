@@ -86,6 +86,7 @@
   "vote.not_allowed": " {0}non sei autorizzato a votare",
   "surrender.vote": "Arrendersi",
   "surrender.lan": " Non c'è resa in un match LAN",
+  "surrender.offline": " Non c'è resa in un match offline",
   "surrender.in_progress": " È già in corso una votazione di resa",
   "surrender.unavailable": " Impossibile avviare una votazione di resa in questo momento",
   "surrender.not_in_match": " Solo un giocatore di questo match può chiedere la resa",

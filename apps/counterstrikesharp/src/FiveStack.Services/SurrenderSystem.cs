@@ -1,6 +1,5 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Entities.Constants;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
@@ -62,8 +61,8 @@ public class SurrenderSystem
             return;
         }
 
-        // A LAN drop is a dead machine or network far more often than a leaver.
-        if (matchData.is_lan && !_environmentService.IsOfflineMode())
+        // A LAN or offline drop is a dead machine or network far more often than a leaver.
+        if (matchData.is_lan || _environmentService.IsOfflineMode())
         {
             return;
         }
@@ -208,10 +207,17 @@ public class SurrenderSystem
     {
         if (
             _matchService.GetCurrentMatch()?.GetMatchData()?.is_lan == true
-            && !_environmentService.IsOfflineMode()
+            || _environmentService.IsOfflineMode()
         )
         {
-            player?.PrintToConsole(_gameServer.Localize(player, "surrender.lan"));
+            if (_environmentService.IsOfflineMode())
+            {
+                player?.PrintToConsole(_gameServer.Localize(player, "surrender.offline"));
+            }
+            else
+            {
+                player?.PrintToConsole(_gameServer.Localize(player, "surrender.lan"));
+            }
             return;
         }
 
@@ -348,58 +354,6 @@ public class SurrenderSystem
         // The winner has to travel with the status. Without it the API records
         // the map as Surrendered with no winner at all.
         match.UpdateMapStatus(eMapStatus.Surrendered, lineupId);
-
-        if (_environmentService.IsOfflineMode())
-        {
-            EndGameForSurrender(match, lineupId);
-        }
-    }
-
-    private const float SurrenderRoundRestartDelay = 5f;
-
-    // Online the api ends the match and stops the server. Offline the round is
-    // ended the way CS2's own surrender vote ends it, which ends the game with
-    // the surrendering side beaten.
-    private void EndGameForSurrender(MatchManager match, Guid winningLineupId)
-    {
-        MatchData? matchData = match.GetMatchData();
-        MatchMap? currentMap = match.GetCurrentMap();
-        CCSGameRules? rules = MatchUtility.Rules();
-
-        if (matchData == null || currentMap == null || rules == null)
-        {
-            return;
-        }
-
-        CsTeam winningSide = TeamUtility.GetLineupSide(
-            matchData,
-            currentMap,
-            winningLineupId,
-            _gameServer.GetTotalRoundsPlayed()
-        );
-
-        if (winningSide != CsTeam.Terrorist && winningSide != CsTeam.CounterTerrorist)
-        {
-            _logger.LogWarning($"No side found for surrender winner {winningLineupId}");
-            return;
-        }
-
-        RoundEndReason reason =
-            winningSide == CsTeam.CounterTerrorist
-                ? RoundEndReason.TerroristsSurrender
-                : RoundEndReason.CTsSurrender;
-
-        _logger.LogInformation($"Ending the game for the surrender: {reason}");
-
-        // A stale gamedata signature throws here. The next round start ends the map.
-        try
-        {
-            rules.TerminateRound(SurrenderRoundRestartDelay, reason);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to end the game for the surrender");
-        }
     }
 
     public Guid? GetWinningLineupId()
@@ -411,7 +365,7 @@ public class SurrenderSystem
     {
         if (
             _matchService.GetCurrentMatch()?.GetMatchData()?.is_lan == true
-            && !_environmentService.IsOfflineMode()
+            || _environmentService.IsOfflineMode()
         )
         {
             return;

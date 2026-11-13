@@ -86,6 +86,7 @@
   "vote.not_allowed": " {0}vous n'êtes pas autorisé à voter",
   "surrender.vote": "Abandonner",
   "surrender.lan": " Il n'y a pas d'abandon dans un match LAN",
+  "surrender.offline": " Il n'y a pas d'abandon dans un match hors ligne",
   "surrender.in_progress": " Un vote d'abandon est déjà en cours",
   "surrender.unavailable": " Impossible de lancer un vote d'abandon pour le moment",
   "surrender.not_in_match": " Seul un joueur de ce match peut demander l'abandon",

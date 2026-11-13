@@ -86,6 +86,7 @@
   "vote.not_allowed": " {0}du får inte rösta",
   "surrender.vote": "Ge upp",
   "surrender.lan": " Det finns ingen kapitulation i en LAN-match",
+  "surrender.offline": " Det finns ingen kapitulation i en offline-match",
   "surrender.in_progress": " En kapitulationsomröstning pågår redan",
   "surrender.unavailable": " Det går inte att starta en kapitulationsomröstning just nu",
   "surrender.not_in_match": " Bara en spelare i den här matchen kan begära kapitulation",

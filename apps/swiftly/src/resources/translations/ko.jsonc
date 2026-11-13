@@ -97,6 +97,7 @@
   "vote.prompt_options_timer": " {0} 에 투표 ({1}y 또는 {2}n) ({3}s)",
   "surrender.vote": "항복",
   "surrender.lan": " LAN 경기에서는 항복할 수 없습니다",
+  "surrender.offline": " 오프라인 경기에서는 항복할 수 없습니다",
   "surrender.in_progress": " 이미 항복 투표가 진행 중입니다",
   "surrender.unavailable": " 지금은 항복 투표를 시작할 수 없습니다",
   "surrender.not_in_match": " 이 경기의 플레이어만 항복을 요청할 수 있습니다",

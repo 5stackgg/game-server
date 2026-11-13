@@ -86,6 +86,7 @@
   "vote.not_allowed": " {0}du darfst nicht abstimmen",
   "surrender.vote": "Aufgeben",
   "surrender.lan": " In einem LAN-Match gibt es keine Aufgabe",
+  "surrender.offline": " In einem Offline-Match gibt es keine Aufgabe",
   "surrender.in_progress": " Eine Abstimmung zur Aufgabe läuft bereits",
   "surrender.unavailable": " Eine Abstimmung zur Aufgabe kann gerade nicht gestartet werden",
   "surrender.not_in_match": " Nur ein Spieler dieses Matches kann eine Aufgabe einleiten",

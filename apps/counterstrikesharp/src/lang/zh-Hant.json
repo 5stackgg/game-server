@@ -86,6 +86,7 @@
   "vote.not_allowed": " {0}你無權投票",
   "surrender.vote": "投降",
   "surrender.lan": " 區域網路比賽不能投降",
+  "surrender.offline": " 離線比賽不能投降",
   "surrender.in_progress": " 投降投票已在進行中",
   "surrender.unavailable": " 現在無法發起投降投票",
   "surrender.not_in_match": " 只有本場比賽的玩家才能發起投降",

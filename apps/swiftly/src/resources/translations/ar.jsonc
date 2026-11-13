@@ -98,6 +98,7 @@
   "vote.prompt_options_timer": " التصويت لـ {0} ({1}y أو {2}n) ({3}s)",
   "surrender.vote": "استسلام",
   "surrender.lan": " لا يوجد استسلام في مباراة LAN",
+  "surrender.offline": " لا يوجد استسلام في مباراة دون اتصال",
   "surrender.in_progress": " يوجد تصويت استسلام قيد التنفيذ بالفعل",
   "surrender.unavailable": " تعذر بدء تصويت الاستسلام الآن",
   "surrender.not_in_match": " يمكن فقط للاعب في هذه المباراة طلب الاستسلام",
