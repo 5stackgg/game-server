@@ -544,11 +544,18 @@ public class TimeoutSystem
             return;
         }
 
-        // Charged at the drop, before the pause landed: whoever is short now pays.
+        // Charged at the drop, before the pause landed: whoever is short now pays,
+        // and a lineup with nobody left is still waited on at no cost.
         if (_reconnectTimeoutOwed)
         {
             _reconnectTimeouts.Refund();
-            _reconnectTimeoutOwed = ChargeReconnectTimeout(match, matchData, players);
+            _waitsOnEmptyLineup = ReconnectPauseUtility.IsALineupEmpty(
+                matchData,
+                players,
+                match.GetExpectedPlayerCount()
+            );
+            _reconnectTimeoutOwed =
+                !_waitsOnEmptyLineup && ChargeReconnectTimeout(match, matchData, players);
             return;
         }
 

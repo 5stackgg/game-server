@@ -203,10 +203,10 @@ public class ReconnectTimeoutWiringTests
         string changed = Timeout("public void RosterChanged(");
 
         Assert.Matches(
-            @"if \(_reconnectTimeoutOwed\)\s*\{\s*_reconnectTimeouts\.Refund\(\);\s*_reconnectTimeoutOwed = ChargeReconnectTimeout\(match, matchData, players\);\s*return;\s*\}\s*if \(\s*!_waitsOnEmptyLineup",
+            @"if \(_reconnectTimeoutOwed\)\s*\{\s*_reconnectTimeouts\.Refund\(\);\s*_waitsOnEmptyLineup = ReconnectPauseUtility\.IsALineupEmpty\([^;]*\);\s*_reconnectTimeoutOwed =\s*!_waitsOnEmptyLineup && ChargeReconnectTimeout\(match, matchData, players\);\s*return;\s*\}\s*if \(\s*!_waitsOnEmptyLineup",
             changed
         );
-        Before(changed, "if (!shortHanded)", "_reconnectTimeoutOwed = ChargeReconnectTimeout(");
+        Before(changed, "if (!shortHanded)", "_reconnectTimeouts.Refund();\n            _waitsOnEmptyLineup");
     }
 
     // A lineup that was empty and is now only short has its timeouts to spend.

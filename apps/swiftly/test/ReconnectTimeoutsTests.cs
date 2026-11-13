@@ -121,18 +121,37 @@ public class ReconnectTimeoutsTests
         Assert.Equal((0, 1), (timeouts.Used(Lineup1), timeouts.Used(Lineup2)));
     }
 
-    [Fact]
-    public void A_Timeout_Given_Back_Does_Not_Cost_Its_Lineup_The_Turn()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void A_Timeout_Given_Back_Does_Not_Cost_Its_Lineup_The_Turn(bool lineup1HasTheTurn)
     {
         ReconnectTimeouts timeouts = new();
-        timeouts.Charge(MapA, [Lineup1], 2);
-        timeouts.Charge(MapA, [Lineup2], 2);
+        Guid turn = lineup1HasTheTurn ? Lineup1 : Lineup2;
+        Guid other = lineup1HasTheTurn ? Lineup2 : Lineup1;
+        timeouts.Charge(MapA, [turn], 2);
+        timeouts.Charge(MapA, [other], 2);
         timeouts.Charge(MapA, [Lineup1, Lineup2], 2);
         timeouts.Refund();
 
         timeouts.Charge(MapA, [Lineup1, Lineup2], 2);
 
-        Assert.Equal((2, 1), (timeouts.Used(Lineup1), timeouts.Used(Lineup2)));
+        Assert.Equal(2, timeouts.Used(turn));
+        Assert.Equal(1, timeouts.Used(other));
+    }
+
+    // Taking turns alone would hand this one to the lineup that already spent two.
+    [Fact]
+    public void Spending_Fewer_Counts_Before_Whose_Turn_It_Is()
+    {
+        ReconnectTimeouts timeouts = new();
+        timeouts.Charge(MapA, [Lineup1], 3);
+        timeouts.Charge(MapA, [Lineup1], 3);
+        timeouts.Charge(MapA, [Lineup2], 3);
+
+        timeouts.Charge(MapA, [Lineup1, Lineup2], 3);
+
+        Assert.Equal((2, 2), (timeouts.Used(Lineup1), timeouts.Used(Lineup2)));
     }
 
     [Fact]
