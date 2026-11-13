@@ -2,10 +2,10 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Xunit;
 
-// A player who drops out of a LAN match has lost their machine or the network
-// far more often than walked out, so a LAN match never calls a surrender vote
-// and never reports anyone as having abandoned it. Calling these needs the
-// engine, so the tests read the plugin.
+// A player who drops out of a LAN or offline match has lost their machine or
+// the network far more often than walked out, so neither ever calls a
+// surrender vote or reports anyone as having abandoned it. Calling these needs
+// the engine, so the tests read the plugin.
 public class LanMatchLeaverTests
 {
     private static string SourceDir([CallerFilePath] string testFile = "")
@@ -35,9 +35,8 @@ public class LanMatchLeaverTests
         return source[from..to];
     }
 
-    // The LAN check has to return on its own: a check that only logs, or a return
-    // somewhere later in the method, lets the action run. Offline matches are
-    // all LAN, and are left as they were.
+    // The check has to return on its own: a check that only logs, or a return
+    // somewhere later in the method, lets the action run.
     private static readonly Regex LanGuard = new Regex(
         @"if\s*\((?<cond>[^{};]*is_lan[^{};]*)\)\s*\{(?:[^{}]|\{[^{}]*\})*?\breturn;\s*\}"
     );
@@ -54,11 +53,15 @@ public class LanMatchLeaverTests
         string condition = guard.Groups["cond"].Value;
 
         Assert.DoesNotMatch(@"![\w.?()]*is_lan|is_lan\s*(==\s*false|!=\s*true)", condition);
-        Assert.Contains("!_environmentService.IsOfflineMode()", condition);
+        Assert.DoesNotContain("!_environmentService.IsOfflineMode()", condition);
+        Assert.Matches(
+            @"is_lan[^&|]*\|\|\s*_environmentService\.IsOfflineMode\(\)",
+            condition
+        );
     }
 
     [Fact]
-    public void A_Lan_Match_Never_Starts_A_Surrender_Vote()
+    public void A_Lan_Or_Offline_Match_Never_Starts_A_Surrender_Vote()
     {
         ReturnsOnLanBefore(
             Method(Surrender(), "public void SetupSurrender("),
@@ -67,7 +70,7 @@ public class LanMatchLeaverTests
     }
 
     [Fact]
-    public void A_Lan_Match_Never_Times_Out_A_Disconnected_Player()
+    public void A_Lan_Or_Offline_Match_Never_Times_Out_A_Disconnected_Player()
     {
         ReturnsOnLanBefore(
             Method(Surrender(), "public void SetupDisconnectTimer("),
@@ -76,7 +79,7 @@ public class LanMatchLeaverTests
     }
 
     [Fact]
-    public void A_Lan_Match_Never_Reports_An_Abandon()
+    public void A_Lan_Or_Offline_Match_Never_Reports_An_Abandon()
     {
         ReturnsOnLanBefore(
             Method(Surrender(), "public void PlayerAbandonedMatch("),
