@@ -26,6 +26,9 @@ public class PhaseTimerWiringTests
         "GameBackUpRounds.OweLoad",
         "GameBackUpRounds.RestoreRound",
         "VoteSystem.StartVote",
+        "FiveStackPlugin.FiveStackPlugin",
+        "FiveStackPlugin.Load",
+        "TimerUtility.AddTimer",
     };
 
     private static readonly string[] MovesLater = { "SurrenderSystem" };
@@ -96,30 +99,29 @@ public class PhaseTimerWiringTests
     public void Only_The_Listed_Timers_Run_Outside_A_Phase()
     {
         List<string> unlisted = new List<string>();
+        string[] built = { "bin", "obj", "build" };
 
-        foreach (string folder in new[] { "FiveStack.Services", "FiveStack.Events" })
+        foreach (string path in Directory.GetFiles(SourceDir(), "*.cs", SearchOption.AllDirectories))
         {
-            foreach (string path in Directory.GetFiles(Path.Combine(SourceDir(), folder), "*.cs"))
+            string file = Path.GetFileNameWithoutExtension(path);
+            string[] folders = Path.GetRelativePath(SourceDir(), path).Split(Path.DirectorySeparatorChar);
+
+            if (folders.Any(folder => built.Contains(folder)) || MovesLater.Contains(file))
             {
-                string file = Path.GetFileNameWithoutExtension(path);
+                continue;
+            }
 
-                if (MovesLater.Contains(file))
+            string source = Regex.Replace(File.ReadAllText(path), @"//[^\n]*", "");
+            List<Match> members = Member.Matches(source).ToList();
+
+            foreach (Match timer in RawTimer.Matches(source))
+            {
+                Match? member = members.LastOrDefault(candidate => candidate.Index < timer.Index);
+                string owner = $"{file}.{member?.Groups[1].Value}";
+
+                if (!OwnTimers.Contains(owner))
                 {
-                    continue;
-                }
-
-                string source = Code(folder, Path.GetFileName(path));
-                List<Match> members = Member.Matches(source).ToList();
-
-                foreach (Match timer in RawTimer.Matches(source))
-                {
-                    Match? member = members.LastOrDefault(candidate => candidate.Index < timer.Index);
-                    string owner = $"{file}.{member?.Groups[1].Value}";
-
-                    if (!OwnTimers.Contains(owner))
-                    {
-                        unlisted.Add(owner);
-                    }
+                    unlisted.Add(owner);
                 }
             }
         }
@@ -142,12 +144,18 @@ public class PhaseTimerWiringTests
     }
 
     [Fact]
-    public void A_Status_In_Another_Phase_Ends_The_Phase_Before_The_New_One_Starts()
+    public void The_Old_Phase_Ends_Before_The_New_Status_Sets_Up()
     {
-        string update = ManagerMethod("public void UpdateMapStatus(");
+        Before(ManagerMethod("public void UpdateMapStatus("), "EndPhase();", "switch (status)");
+    }
 
-        Assert.Contains("MatchPhaseUtility.PhaseOf(", update);
-        Before(update, "EndPhase();", "switch (status)");
+    [Fact]
+    public void Warmup_Sets_Up_The_Ready_Up_Only_While_It_Is_Still_Warmup()
+    {
+        Assert.Matches(
+            @"int (\w+) = _phaseGeneration;\s*HibernationUtility\.Next(?:Frame|Tick)\(\(\) =>\s*\{\s*if \(\1 != _phaseGeneration\)\s*\{\s*return;\s*\}",
+            ManagerMethod("private void StartWarmup()")
+        );
     }
 
     [Fact]
@@ -158,21 +166,14 @@ public class PhaseTimerWiringTests
         Before(update, "MatchPhaseUtility.Reopens(_currentMapStatus, status)", "EndPhase();");
     }
 
+    // Closing a ready-up redraws every player's tag, which needs the engine.
     [Fact]
-    public void Ending_A_Phase_Kills_Its_Timers_Its_Votes_And_The_Ready_Up()
+    public void Ending_A_Phase_Closes_The_Ready_Up_Only_While_It_Is_Open()
     {
-        string end = ManagerMethod("public void EndPhase()");
-
-        Assert.Contains("_phaseGeneration++;", end);
-        Assert.Contains("_phaseTimers.Clear();", end);
-        Assert.Contains("_timeoutSystem.Reset();", end);
-        Assert.Contains("readySystem.Reset();", end);
-
-        string reset = TimeoutMethod("public void Reset()");
-
-        Assert.Contains("pauseVote?.Abandon();", reset);
-        Assert.Contains("resumeVote?.Abandon();", reset);
-        Assert.Contains("ClearPendingTeamResumes();", reset);
+        Assert.Matches(
+            @"if \(readySystem\.IsWaitingForReady\(\)\)\s*\{\s*readySystem\.Reset\(\);\s*\}",
+            ManagerMethod("public void EndPhase()")
+        );
     }
 
     [Fact]
@@ -239,8 +240,10 @@ public class PhaseTimerWiringTests
     public void The_Knife_Alert_And_Captain_Prompt_End_With_The_Knife()
     {
         string knife = Code("FiveStack.Services", "KnifeSystem.cs");
+        string start = Method(knife, "public void Start()");
 
-        Assert.Contains("PhaseTimer(", Method(knife, "public void Start()"));
+        Assert.Contains("PhaseTimer(", start);
+        Assert.DoesNotContain("NextFrame(", start);
         Before(
             Method(knife, "public void SetWinningTeam("),
             "KillPhaseTimer(_knifeRoundTimer);",
@@ -248,36 +251,73 @@ public class PhaseTimerWiringTests
         );
     }
 
-    [Fact]
-    public void Resume_Is_Refused_When_Nothing_Is_Paused()
+    private static void EveryLocaleHas(string key)
     {
-        string resume = TimeoutMethod("public void RequestResume(");
-
-        Before(resume, "IsPaused()", "StartVote(");
-        Before(resume, "\"timeout.not_paused\"", "StartVote(");
-
         string[] locales = Directory.GetFiles(Path.Combine(SourceDir(), "lang"), "*.json");
 
         Assert.Equal(17, locales.Length);
         foreach (string locale in locales)
         {
-            Assert.Contains("\"timeout.not_paused\"", File.ReadAllText(locale));
+            Assert.Contains($"\"{key}\"", File.ReadAllText(locale));
         }
     }
 
+    // During a tactical timeout there is nothing a player can resume, and it ends
+    // on its own.
     [Fact]
-    public void A_Tech_Pause_Is_Not_Called_Over_A_Pause()
+    public void Resume_Says_Nothing_Is_Paused_Unless_A_Tactical_Timeout_Is_On()
     {
-        Before(TimeoutMethod("public void RequestPause("), "IsPaused()", "StartVote(");
+        string resume = TimeoutMethod("public void RequestResume(");
+        Match refusal = Regex.Match(
+            resume,
+            @"bool (\w+) = TimeoutUtility\.HasPauseToResume\(\s*match\.GetCurrentMapStatus\(\),\s*MatchUtility\.Rules\(\)\?\.MatchWaitingForResume == true\s*\);\s*if \(player != null && !\1\)\s*\{\s*if \(!IsTimeoutActive\(\)\)\s*\{[^{}]*""timeout\.not_paused""[^{}]*\}\s*return;\s*\}"
+        );
+
+        Assert.True(refusal.Success, "resume is not refused when nothing is paused");
+        Assert.True(refusal.Index < resume.IndexOf("StartVote(", StringComparison.Ordinal));
+        EveryLocaleHas("timeout.not_paused");
     }
 
     [Fact]
-    public void A_Passed_Pause_Vote_Only_Pauses_A_Map_Still_In_Play()
+    public void A_Tech_Pause_Is_Only_Refused_Over_One_Both_Teams_Must_Resume()
+    {
+        string pause = TimeoutMethod("public void RequestPause(");
+        Match refusal = Regex.Match(
+            pause,
+            @"if \(ShouldRequireTeamResume\(\)\)\s*\{\s*SendAlreadyPausedMessage\(player\);\s*return;\s*\}"
+        );
+
+        Assert.True(refusal.Success, "a tech pause is refused over a pause it could still turn into one");
+        Assert.True(refusal.Index < pause.IndexOf("StartVote(", StringComparison.Ordinal));
+        Assert.DoesNotContain("IsPaused()", pause);
+        Assert.Contains(
+            "_gameServer.Localize(player, \"timeout.already_paused\", ChatColors.Red)",
+            TimeoutMethod("private void SendAlreadyPausedMessage(")
+        );
+        EveryLocaleHas("timeout.already_paused");
+    }
+
+    // Anything else holding the match -- a drop, a camera, an admin -- becomes a
+    // pause both teams resume, so it holds once the missing player is back.
+    [Fact]
+    public void A_Passed_Pause_Vote_Turns_Any_Other_Pause_Into_One_Both_Teams_Resume()
     {
         string pause = TimeoutMethod("private void PauseTechMatch(");
 
-        Before(pause, "IsInPlay()", "PauseMatch(");
-        Before(pause, "IsPaused()", "PauseMatch(");
+        Assert.Matches(
+            @"if \(match == null \|\| ShouldRequireTeamResume\(\) \|\| !match\.IsInPlay\(\)\)\s*\{\s*return;\s*\}",
+            pause
+        );
+        Assert.DoesNotContain("IsPaused()", pause);
+    }
+
+    [Fact]
+    public void A_Refused_Tech_Pause_Is_Told_In_The_Callers_Language()
+    {
+        Assert.Contains(
+            "_gameServer.Localize(player, \"timeout.already_active\", ChatColors.Red)",
+            TimeoutMethod("private void SendTimeoutAlreadyActiveMessage(")
+        );
     }
 
     [Fact]

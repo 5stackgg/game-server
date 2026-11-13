@@ -41,7 +41,13 @@ public class MatchPhaseUtilityTests
     [InlineData(eMapStatus.Finished, eMapStatus.Knife)]
     [InlineData(eMapStatus.UploadingDemo, eMapStatus.Overtime)]
     [InlineData(eMapStatus.Surrendered, eMapStatus.Scheduled)]
-    public void A_Map_That_Is_Over_Is_Not_Taken_Back_Into_Play(eMapStatus current, eMapStatus next)
+    [InlineData(eMapStatus.WaitingForTV, eMapStatus.Surrendered)]
+    [InlineData(eMapStatus.UploadingDemo, eMapStatus.Surrendered)]
+    [InlineData(eMapStatus.Finished, eMapStatus.Surrendered)]
+    public void A_Map_That_Is_Over_Is_Never_Played_Again_Or_Surrendered(
+        eMapStatus current,
+        eMapStatus next
+    )
     {
         Assert.True(MatchPhaseUtility.Reopens(current, next));
     }
@@ -49,7 +55,9 @@ public class MatchPhaseUtilityTests
     [Theory]
     [InlineData(eMapStatus.WaitingForTV, eMapStatus.UploadingDemo)]
     [InlineData(eMapStatus.WaitingForTV, eMapStatus.Finished)]
-    [InlineData(eMapStatus.WaitingForTV, eMapStatus.Surrendered)]
+    [InlineData(eMapStatus.Surrendered, eMapStatus.WaitingForTV)]
+    [InlineData(eMapStatus.Live, eMapStatus.Surrendered)]
+    [InlineData(eMapStatus.Paused, eMapStatus.Surrendered)]
     [InlineData(eMapStatus.Finished, eMapStatus.Unknown)]
     [InlineData(eMapStatus.Live, eMapStatus.WaitingForTV)]
     [InlineData(eMapStatus.Paused, eMapStatus.Live)]
