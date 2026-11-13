@@ -779,11 +779,7 @@ public class GameBackUpRounds
         eMapStatus status =
             _matchService.GetCurrentMatch()?.GetCurrentMapStatus() ?? eMapStatus.Unknown;
 
-        if (
-            kept != null
-            || !_environmentService.IsOfflineMode()
-            || !RoundRestoreGateUtility.ReadsBackupFromDisk(round, status)
-        )
+        if (kept != null || !RoundRestoreGateUtility.ReadsBackupFromDisk(round, status))
         {
             return kept;
         }
