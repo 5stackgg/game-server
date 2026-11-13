@@ -396,6 +396,16 @@ public class PlayerLanguageTests
     }
 
     [Theory]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "There is no surrender in a LAN match")]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "A surrender vote is already in progress")]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "Unable to start a surrender vote right now")]
+    [InlineData("FiveStack.Commands/Surrender.cs", "Only a player in this match can call a surrender")]
+    public void ASurrenderRefusalIsNotEnglishForEveryone(string file, string english)
+    {
+        Assert.DoesNotContain(english, Source(file));
+    }
+
+    [Theory]
     [InlineData("_voteFailedCallback")]
     [InlineData("_voteSuccessCallback")]
     public void AVoteEndsEvenIfAMessageFails(string outcome)
@@ -474,6 +484,10 @@ public class PlayerLanguageTests
     [InlineData("FiveStack.Services/CaptainSystem.cs", "captain.claim_hint")]
     [InlineData("FiveStack.Services/CaptainSystem.cs", "captain.show")]
     [InlineData("FiveStack.Services/CaptainSystem.cs", "captain.assigned")]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.lan")]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.in_progress")]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.unavailable")]
+    [InlineData("FiveStack.Commands/Surrender.cs", "surrender.not_in_match")]
     public void WhatOnePlayerIsToldIsInTheirLanguage(string file, string key)
     {
         string source = Compact(file);
