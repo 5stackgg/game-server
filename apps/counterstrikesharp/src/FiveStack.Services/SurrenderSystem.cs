@@ -147,7 +147,11 @@ public class SurrenderSystem
         return killed;
     }
 
-    public void SetupSurrender(CsTeam team, CCSPlayerController? player = null)
+    public void SetupSurrender(
+        CsTeam team,
+        CCSPlayerController? player = null,
+        Guid? callerLineup = null
+    )
     {
         _logger.LogInformation($"Setting up surrender vote for {team}");
         if (surrenderingVote != null && surrenderingVote.IsVoteActive())
@@ -175,7 +179,18 @@ public class SurrenderSystem
         CsTeam winningTeam =
             team == CsTeam.CounterTerrorist ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
 
-        Guid? winningLineup = ResolveLineupForSide(winningTeam);
+        MatchManager? current = _matchService.GetCurrentMatch();
+        MatchData? currentMatch = current?.GetMatchData();
+        Guid? winningLineup =
+            currentMatch == null
+                ? null
+                : WinningLineup(
+                    currentMatch,
+                    current?.GetCurrentMap(),
+                    callerLineup,
+                    team,
+                    _gameServer.GetTotalRoundsPlayed()
+                );
 
         if (winningLineup == null)
         {
@@ -258,42 +273,6 @@ public class SurrenderSystem
     // name ("Theft's Team") and never literally "CT"/"TERRORIST" -- so it was
     // always false and every surrender fell through to lineup_2, handing the
     // win to whichever side happened to be lineup 2 regardless of who forfeited.
-    private Guid? ResolveLineupForSide(CsTeam team)
-    {
-        MatchManager? match = _matchService.GetCurrentMatch();
-        if (match == null)
-        {
-            return null;
-        }
-
-        MatchData? matchData = match.GetMatchData();
-        MatchMap? currentMap = match.GetCurrentMap();
-        if (matchData == null || currentMap == null)
-        {
-            return null;
-        }
-
-        int roundsPlayed = _gameServer.GetTotalRoundsPlayed();
-
-        if (
-            TeamUtility.GetLineupSide(matchData, currentMap, matchData.lineup_1_id, roundsPlayed)
-            == team
-        )
-        {
-            return matchData.lineup_1_id;
-        }
-
-        if (
-            TeamUtility.GetLineupSide(matchData, currentMap, matchData.lineup_2_id, roundsPlayed)
-            == team
-        )
-        {
-            return matchData.lineup_2_id;
-        }
-
-        return null;
-    }
-
     // `lineupId` is the lineup that WINS the forfeit, not the one giving up.
     public void Surrender(Guid lineupId)
     {
@@ -429,6 +408,9 @@ public class SurrenderSystem
             : LineupMembership.LineupOf(matchData, player.SteamID.ToString(), player.PlayerName);
     }
 
+    // A player calling surrender gives up for their own lineup, whichever side
+    // the round count says it is on: rounds played moves at round end, before
+    // anyone is swapped. Only a timed-out leaver, with no caller, goes by side.
     public static Guid? WinningLineup(
         MatchData matchData,
         MatchMap? currentMap,
@@ -437,6 +419,11 @@ public class SurrenderSystem
         int roundsPlayed
     )
     {
+        if (callerLineup != null)
+        {
+            return SurrenderingLineup(matchData, callerLineup.Value);
+        }
+
         CsTeam winningSide = surrenderingSide == CsTeam.CounterTerrorist ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
 
         if (currentMap == null)

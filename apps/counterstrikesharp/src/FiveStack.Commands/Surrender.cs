@@ -17,17 +17,17 @@ public partial class FiveStackPlugin
         }
 
         MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
-        bool isLineupMember =
-            matchData != null
-            && LineupMembership.LineupOf(matchData, player.SteamID.ToString(), player.PlayerName)
-                != null;
+        Guid? callerLineup =
+            matchData == null
+                ? null
+                : LineupMembership.LineupOf(matchData, player.SteamID.ToString(), player.PlayerName);
 
-        if (!SurrenderSystem.CanCallSurrender(player.Team, isLineupMember))
+        if (!SurrenderSystem.CanCallSurrender(player.Team, callerLineup != null))
         {
             player.PrintToConsole(" Only a player in this match can call a surrender");
             return;
         }
 
-        _surrenderSystem.SetupSurrender(player.Team, player);
+        _surrenderSystem.SetupSurrender(player.Team, player, callerLineup);
     }
 }
