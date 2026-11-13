@@ -72,6 +72,7 @@ public partial class FiveStackPlugin
                 // Re-checked on each retry if a tactical timeout is holding the
                 // pause off -- they may be back before it ends.
                 match.PauseMatch(
+                    ePauseReason.Roster,
                     "Player disconnected, pausing match",
                     stillRequired: () =>
                         ReconnectPauseUtility.ShouldPause(

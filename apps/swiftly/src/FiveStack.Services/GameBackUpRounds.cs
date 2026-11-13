@@ -664,7 +664,7 @@ public class GameBackUpRounds
                         return;
                     }
 
-                    _matchService.GetCurrentMatch()?.ResumeMatch();
+                    _matchService.GetCurrentMatch()?.ResumeFrom(ePauseReason.Restore);
                 },
                 true
             );
@@ -924,7 +924,7 @@ public class GameBackUpRounds
                 _gameServer.SendCommands(
                     [$"mp_backup_restore_load_file {backupRoundFileName}"]
                 );
-                _matchService.GetCurrentMatch()?.PauseMatch();
+                _matchService.GetCurrentMatch()?.PauseMatch(ePauseReason.Restore);
             });
         });
     }

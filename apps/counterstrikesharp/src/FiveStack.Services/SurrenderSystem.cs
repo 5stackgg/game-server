@@ -153,13 +153,7 @@ public class SurrenderSystem
             MatchManager? match = _matchService.GetCurrentMatch();
             MatchData? matchData = match?.GetMatchData();
 
-            if (match == null || matchData == null || !match.IsPaused())
-            {
-                return;
-            }
-
-            // A tactical or technical pause is released by the teams themselves.
-            if (match.timeoutSystem.ShouldRequireTeamResume())
+            if (match == null || matchData == null || !match.timeoutSystem.RosterOwnsPause())
             {
                 return;
             }
@@ -175,7 +169,7 @@ public class SurrenderSystem
                 return;
             }
 
-            Reset();
+            KillDisconnectTimers();
             match.ResumeMatch();
         });
     }
@@ -318,6 +312,11 @@ public class SurrenderSystem
         surrenderingVote?.Abandon();
         surrenderingVote = null;
 
+        KillDisconnectTimers();
+    }
+
+    private void KillDisconnectTimers()
+    {
         foreach (var team in _disconnectTimers.Keys)
         {
             foreach (var timer in _disconnectTimers[team].Values)
