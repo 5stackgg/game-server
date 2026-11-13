@@ -98,12 +98,21 @@ public class GameServer
 
     public ILocalizer LocalizerFor(IPlayer? player)
     {
-        if (player == null)
+        if (player == null || !HasTranslation(player.PlayerLanguage))
         {
             return _core.Localizer;
         }
 
         return _core.Translation.GetPlayerLocalizer(player);
+    }
+
+    // SwiftlyS2 reads <language>.jsonc from here and falls back to English, not the
+    // server's language, when the player's language has no file.
+    private bool HasTranslation(Language language)
+    {
+        return File.Exists(
+            Path.Join(_core.PluginPath, "resources", "translations", $"{language.Value}.jsonc")
+        );
     }
 
     public int GetCurrentRound()

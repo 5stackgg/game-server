@@ -19,6 +19,14 @@
   "rules.max_subs": "Maksimum yedek sayısı: {0}",
   "rules.allow_timeouts": "Mola izin ver {0}",
   "rules.tech_timeouts": "Teknik molalar {0}",
+  "rules.timeouts.coach": "Koç",
+  "rules.timeouts.coach_and_captains": "Koç ve kaptanlar",
+  "rules.timeouts.coach_and_players": "Koç ve oyuncular",
+  "rules.timeouts.admin": "Yönetici",
+  "rules.match_type.competitive": "Rekabetçi",
+  "rules.match_type.wingman": "Wingman",
+  "rules.match_type.duel": "Düello",
+  "rules.match_type.rush": "Rush",
 
   "gag.you_are_gagged": " {red}Susturuldunuz",
 
@@ -47,6 +55,8 @@
   "timeout.vote.technical_passed": "Teknik mola oylaması geçti",
   "timeout.player_paused": "{0} {1}maçı duraklattı",
   "timeout.not_allowed": " {0}maçta {1} çağırma izniniz yok!",
+  "timeout.not_allowed.resume": "devam",
+  "timeout.not_allowed.tactical_timeout": "taktik mola",
   "timeout.admin_resumed": "Yönetici maçı sürdürdü",
   "timeout.vote.resume": "Sürdür",
   "timeout.vote.resume_passed": "Sürdürme oylaması geçti",

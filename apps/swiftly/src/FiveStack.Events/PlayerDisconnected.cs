@@ -77,14 +77,18 @@ public partial class FiveStackPlugin
                 match.PauseMatch(
                     "Player disconnected, pausing match",
                     stillRequired: () =>
-                        MatchUtility.ConnectedRosterCount(match.GetMatchData() ?? matchData)
-                        < match.GetExpectedPlayerCount()
+                        ReconnectPauseUtility.ShouldPause(
+                            match.GetMatchData() ?? matchData,
+                            MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.Name)),
+                            match.GetExpectedPlayerCount()
+                        )
                 );
             }
 
             _surrenderSystem.SetupDisconnectTimer(
                 @event.UserIdPlayer.Controller.Team,
-                @event.UserIdPlayer.SteamID
+                @event.UserIdPlayer.SteamID,
+                @event.UserIdPlayer.Name
             );
         }
 

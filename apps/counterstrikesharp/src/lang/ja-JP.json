@@ -19,6 +19,14 @@
   "rules.max_subs": "交代の最大人数: {0}",
   "rules.allow_timeouts": "タイムアウトを許可 {0}",
   "rules.tech_timeouts": "テクニカルタイムアウト {0}",
+  "rules.timeouts.coach": "コーチ",
+  "rules.timeouts.coach_and_captains": "コーチとキャプテン",
+  "rules.timeouts.coach_and_players": "コーチとプレイヤー",
+  "rules.timeouts.admin": "管理者",
+  "rules.match_type.competitive": "コンペティティブ",
+  "rules.match_type.wingman": "ウィングマン",
+  "rules.match_type.duel": "デュエル",
+  "rules.match_type.rush": "ラッシュ",
 
   "gag.you_are_gagged": " {red}あなたはミュートされています",
 
@@ -47,6 +55,8 @@
   "timeout.vote.technical_passed": "テクニカルタイムアウトの投票が可決",
   "timeout.player_paused": "{0} {1}が試合を一時停止しました",
   "timeout.not_allowed": " {0}試合中に {1} を呼び出す権限がありません！",
+  "timeout.not_allowed.resume": "再開",
+  "timeout.not_allowed.tactical_timeout": "戦術タイムアウト",
   "timeout.admin_resumed": "管理者が試合を再開しました",
   "timeout.vote.resume": "再開",
   "timeout.vote.resume_passed": "再開の投票が可決",

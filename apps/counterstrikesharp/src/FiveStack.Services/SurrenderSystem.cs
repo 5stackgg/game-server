@@ -48,7 +48,7 @@ public class SurrenderSystem
         Reset();
     }
 
-    public void SetupDisconnectTimer(CsTeam team, ulong steamId)
+    public void SetupDisconnectTimer(CsTeam team, ulong steamId, string playerName = "")
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         if (match == null || !match.IsInPlay())
@@ -58,6 +58,12 @@ public class SurrenderSystem
 
         MatchData? matchData = match.GetMatchData();
         if (matchData == null)
+        {
+            return;
+        }
+
+        // A LAN drop is a dead machine or network far more often than a leaver.
+        if (matchData.is_lan && !_environmentService.IsOfflineMode())
         {
             return;
         }
@@ -77,14 +83,55 @@ public class SurrenderSystem
             _disconnectTimers[team] = new Dictionary<ulong, Timer>();
         }
 
+        Guid? lineupId = LeaverLineup(matchData, steamId.ToString(), playerName);
+
         _disconnectTimers[team][steamId] = TimerUtility.AddTimer(
             60 * 3,
             () =>
             {
-                SetupSurrender(team);
+                MatchManager? current = _matchService.GetCurrentMatch();
+                SetupSurrender(
+                    LeaverSurrenderSide(
+                        current?.GetMatchData(),
+                        current?.GetCurrentMap(),
+                        lineupId,
+                        team,
+                        _gameServer.GetTotalRoundsPlayed()
+                    )
+                );
                 PlayerAbandonedMatch(steamId);
             }
         );
+    }
+
+    public static Guid? LeaverLineup(MatchData matchData, string steamId, string playerName)
+    {
+        return LineupMembership.LineupOf(matchData, steamId, playerName);
+    }
+
+    // The side the leaver's lineup plays when the timer runs out. A halftime in
+    // those three minutes swaps it away from the side they left from.
+    public static CsTeam LeaverSurrenderSide(
+        MatchData? matchData,
+        MatchMap? currentMap,
+        Guid? lineupId,
+        CsTeam sideAtDisconnect,
+        int roundsPlayed
+    )
+    {
+        if (matchData == null || currentMap == null || lineupId == null)
+        {
+            return sideAtDisconnect;
+        }
+
+        CsTeam side = TeamUtility.GetLineupSide(matchData, currentMap, lineupId.Value, roundsPlayed);
+
+        if (side != CsTeam.Terrorist && side != CsTeam.CounterTerrorist)
+        {
+            return sideAtDisconnect;
+        }
+
+        return side;
     }
 
     // we dont pass the team in because they may not be on the team immediately after reconnecting
@@ -118,7 +165,13 @@ public class SurrenderSystem
                 return;
             }
 
-            if (MatchUtility.ConnectedRosterCount(matchData) < match.GetExpectedPlayerCount())
+            if (
+                ReconnectPauseUtility.ShouldPause(
+                    matchData,
+                    MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.PlayerName)),
+                    match.GetExpectedPlayerCount()
+                )
+            )
             {
                 return;
             }
@@ -147,12 +200,30 @@ public class SurrenderSystem
         return killed;
     }
 
-    public void SetupSurrender(CsTeam team, CCSPlayerController? player = null)
+    public void SetupSurrender(
+        CsTeam team,
+        CCSPlayerController? player = null,
+        Guid? callerLineup = null
+    )
     {
+        if (
+            _matchService.GetCurrentMatch()?.GetMatchData()?.is_lan == true
+            && !_environmentService.IsOfflineMode()
+        )
+        {
+            player?.PrintToConsole(" There is no surrender in a LAN match");
+            return;
+        }
+
         _logger.LogInformation($"Setting up surrender vote for {team}");
         if (surrenderingVote != null && surrenderingVote.IsVoteActive())
         {
             player?.PrintToConsole(" A surrender vote is already in progress");
+            return;
+        }
+
+        if (!CanCallSurrender(team, isLineupMember: true))
+        {
             return;
         }
 
@@ -170,7 +241,18 @@ public class SurrenderSystem
         CsTeam winningTeam =
             team == CsTeam.CounterTerrorist ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
 
-        Guid? winningLineup = ResolveLineupForSide(winningTeam);
+        MatchManager? current = _matchService.GetCurrentMatch();
+        MatchData? currentMatch = current?.GetMatchData();
+        Guid? winningLineup =
+            currentMatch == null
+                ? null
+                : WinningLineup(
+                    currentMatch,
+                    current?.GetCurrentMap(),
+                    callerLineup,
+                    team,
+                    _gameServer.GetTotalRoundsPlayed()
+                );
 
         if (winningLineup == null)
         {
@@ -179,10 +261,21 @@ public class SurrenderSystem
             return;
         }
 
+        MatchData? surrenderMatch = _matchService.GetCurrentMatch()?.GetMatchData();
+        Guid? surrenderingLineup =
+            surrenderMatch == null ? null : SurrenderingLineup(surrenderMatch, winningLineup.Value);
+
+        if (surrenderingLineup == null)
+        {
+            _logger.LogWarning($"No surrendering lineup found for {team}");
+            player?.PrintToConsole(" Unable to start a surrender vote right now");
+            return;
+        }
+
         _logger.LogInformation($"Starting Surrender Vote for {team}");
         surrenderingVote.StartVote(
             "Surrender",
-            new CsTeam[] { team },
+            new CsTeam[] { CsTeam.Terrorist, CsTeam.CounterTerrorist },
             () =>
             {
                 _logger.LogInformation("surrender vote passed");
@@ -192,10 +285,11 @@ public class SurrenderSystem
             () =>
             {
                 _logger.LogInformation("surrender vote failed");
-                Reset();
+                surrenderingVote = null;
             },
             false,
-            30
+            30,
+            voterFilter: voter => CanVoteInSurrender(VoterLineup(voter), surrenderingLineup.Value)
         );
     }
 
@@ -214,6 +308,7 @@ public class SurrenderSystem
 
     public void Reset()
     {
+        surrenderingVote?.Abandon();
         surrenderingVote = null;
 
         foreach (var team in _disconnectTimers.Keys)
@@ -241,42 +336,6 @@ public class SurrenderSystem
     // name ("Theft's Team") and never literally "CT"/"TERRORIST" -- so it was
     // always false and every surrender fell through to lineup_2, handing the
     // win to whichever side happened to be lineup 2 regardless of who forfeited.
-    private Guid? ResolveLineupForSide(CsTeam team)
-    {
-        MatchManager? match = _matchService.GetCurrentMatch();
-        if (match == null)
-        {
-            return null;
-        }
-
-        MatchData? matchData = match.GetMatchData();
-        MatchMap? currentMap = match.GetCurrentMap();
-        if (matchData == null || currentMap == null)
-        {
-            return null;
-        }
-
-        int roundsPlayed = _gameServer.GetTotalRoundsPlayed();
-
-        if (
-            TeamUtility.GetLineupSide(matchData, currentMap, matchData.lineup_1_id, roundsPlayed)
-            == team
-        )
-        {
-            return matchData.lineup_1_id;
-        }
-
-        if (
-            TeamUtility.GetLineupSide(matchData, currentMap, matchData.lineup_2_id, roundsPlayed)
-            == team
-        )
-        {
-            return matchData.lineup_2_id;
-        }
-
-        return null;
-    }
-
     // `lineupId` is the lineup that WINS the forfeit, not the one giving up.
     public void Surrender(Guid lineupId)
     {
@@ -354,6 +413,14 @@ public class SurrenderSystem
 
     public void PlayerAbandonedMatch(ulong steamId)
     {
+        if (
+            _matchService.GetCurrentMatch()?.GetMatchData()?.is_lan == true
+            && !_environmentService.IsOfflineMode()
+        )
+        {
+            return;
+        }
+
         // The api escalates the ban on every report, so one leave reported twice
         // -- after a reconnect, or again on the next map -- costs the player a
         // longer ban than they earned.
@@ -371,5 +438,86 @@ public class SurrenderSystem
                 { "steam_id", steamId.ToString() },
             }
         );
+    }
+
+    // Only someone playing on a side can give the map up. Anyone else opened a
+    // vote for whatever team they sat on and handed the map to the other side.
+    public static bool CanCallSurrender(CsTeam team, bool isLineupMember)
+    {
+        return isLineupMember && (team == CsTeam.Terrorist || team == CsTeam.CounterTerrorist);
+    }
+
+    // The lineup giving up is the one that did not win.
+    public static Guid? SurrenderingLineup(MatchData matchData, Guid winningLineupId)
+    {
+        if (winningLineupId == matchData.lineup_1_id)
+        {
+            return matchData.lineup_2_id;
+        }
+
+        if (winningLineupId == matchData.lineup_2_id)
+        {
+            return matchData.lineup_1_id;
+        }
+
+        return null;
+    }
+
+    // The vote belongs to the lineup, not to a side: sides move at round end,
+    // before anyone is swapped, and halftime can fall inside the vote.
+    public static bool CanVoteInSurrender(Guid? voterLineupId, Guid surrenderingLineupId)
+    {
+        return voterLineupId == surrenderingLineupId;
+    }
+
+    private Guid? VoterLineup(CCSPlayerController player)
+    {
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        return matchData == null
+            ? null
+            : LineupMembership.LineupOf(matchData, player.SteamID.ToString(), player.PlayerName);
+    }
+
+    // A player calling surrender gives up for their own lineup, whichever side
+    // the round count says it is on: rounds played moves at round end, before
+    // anyone is swapped. Only a timed-out leaver, with no caller, goes by side.
+    public static Guid? WinningLineup(
+        MatchData matchData,
+        MatchMap? currentMap,
+        Guid? callerLineup,
+        CsTeam surrenderingSide,
+        int roundsPlayed
+    )
+    {
+        if (callerLineup != null)
+        {
+            return SurrenderingLineup(matchData, callerLineup.Value);
+        }
+
+        CsTeam winningSide = surrenderingSide == CsTeam.CounterTerrorist ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
+
+        if (currentMap == null)
+        {
+            return null;
+        }
+
+        if (
+            TeamUtility.GetLineupSide(matchData, currentMap, matchData.lineup_1_id, roundsPlayed)
+            == winningSide
+        )
+        {
+            return matchData.lineup_1_id;
+        }
+
+        if (
+            TeamUtility.GetLineupSide(matchData, currentMap, matchData.lineup_2_id, roundsPlayed)
+            == winningSide
+        )
+        {
+            return matchData.lineup_2_id;
+        }
+
+        return null;
     }
 }

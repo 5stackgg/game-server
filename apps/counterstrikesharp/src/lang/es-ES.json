@@ -19,6 +19,14 @@
   "rules.max_subs": "Número máximo de sustitutos: {0}",
   "rules.allow_timeouts": "Permitir tiempos muertos {0}",
   "rules.tech_timeouts": "Tiempos técnicos {0}",
+  "rules.timeouts.coach": "Entrenador",
+  "rules.timeouts.coach_and_captains": "Entrenador y capitanes",
+  "rules.timeouts.coach_and_players": "Entrenador y jugadores",
+  "rules.timeouts.admin": "Administrador",
+  "rules.match_type.competitive": "Competitivo",
+  "rules.match_type.wingman": "Wingman",
+  "rules.match_type.duel": "Duelo",
+  "rules.match_type.rush": "Rush",
 
   "gag.you_are_gagged": " {red}Estás silenciado",
 
@@ -47,6 +55,8 @@
   "timeout.vote.technical_passed": "Votación de pausa técnica aprobada",
   "timeout.player_paused": "{0} {1}pausó la partida",
   "timeout.not_allowed": " {0}no tienes permiso para solicitar un(a) {1} en la partida!",
+  "timeout.not_allowed.resume": "reanudación",
+  "timeout.not_allowed.tactical_timeout": "tiempo muerto táctico",
   "timeout.admin_resumed": "El administrador reanudó la partida",
   "timeout.vote.resume": "Reanudar",
   "timeout.vote.resume_passed": "Votación para reanudar aprobada",

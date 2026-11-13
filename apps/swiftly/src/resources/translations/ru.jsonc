@@ -24,6 +24,10 @@
   "rules.timeouts.coach_and_captains": "Тренер и капитаны",
   "rules.timeouts.coach_and_players": "Тренер и игроки",
   "rules.timeouts.admin": "Админ",
+  "rules.match_type.competitive": "Соревновательный",
+  "rules.match_type.wingman": "Wingman",
+  "rules.match_type.duel": "Дуэль",
+  "rules.match_type.rush": "Rush",
 
   "gag.you_are_gagged": " [red]Вы заглушены",
 
@@ -89,6 +93,7 @@
   "vote.prompt_options": " Голосовать за {0} ({1}y или {2}n)",
   "vote.prompt_count_timer": " Голосовать за {0} ({1}s)",
   "vote.prompt_options_timer": " Голосовать за {0} ({1}y или {2}n) ({3}s)",
+  "surrender.vote": "Сдаться",
   "vote.choose_one": "Открыто несколько голосований, ответьте на одно: {0}",
 
   "camera.paused": "Матч на паузе - нет камеры от: {0}",
