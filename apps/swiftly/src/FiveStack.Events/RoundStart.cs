@@ -1,3 +1,4 @@
+using FiveStack.Entities;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared.GameEventDefinitions;
@@ -68,11 +69,17 @@ public partial class FiveStackPlugin
 
         matchManager.ReconcileMemberTeams();
 
-        int currentPlayers = MatchUtility.PlayerCount();
-
         int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
+        MatchData? roundMatchData = matchManager.GetMatchData();
 
-        if (currentPlayers < expectedPlayers)
+        if (
+            roundMatchData != null
+            && ReconnectPauseUtility.ShouldPause(
+                roundMatchData,
+                MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.Name)),
+                expectedPlayers
+            )
+        )
         {
             matchManager.PauseMatch("Waiting for players to reconnect");
         }

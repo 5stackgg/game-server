@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
+using FiveStack.Entities;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
@@ -67,11 +68,17 @@ public partial class FiveStackPlugin
 
         matchManager.ReconcileMemberTeams();
 
-        int currentPlayers = MatchUtility.Players().Count;
-
         int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
+        MatchData? roundMatchData = matchManager.GetMatchData();
 
-        if (currentPlayers < expectedPlayers)
+        if (
+            roundMatchData != null
+            && ReconnectPauseUtility.ShouldPause(
+                roundMatchData,
+                MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.PlayerName)),
+                expectedPlayers
+            )
+        )
         {
             matchManager.PauseMatch("Waiting for players to reconnect");
         }
