@@ -1,6 +1,8 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
+using FiveStack.Entities;
+using FiveStack.Utilities;
 
 namespace FiveStack;
 
@@ -14,6 +16,18 @@ public partial class FiveStackPlugin
             return;
         }
 
-        _surrenderSystem.SetupSurrender(player.Team, player);
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+        Guid? callerLineup =
+            matchData == null
+                ? null
+                : LineupMembership.LineupOf(matchData, player.SteamID.ToString(), player.PlayerName);
+
+        if (!SurrenderSystem.CanCallSurrender(player.Team, callerLineup != null))
+        {
+            player.PrintToConsole(" Only a player in this match can call a surrender");
+            return;
+        }
+
+        _surrenderSystem.SetupSurrender(player.Team, player, callerLineup);
     }
 }
