@@ -20,6 +20,10 @@
   "rules.max_subs": "Maksimalt antal udskiftninger: {0}",
   "rules.allow_timeouts": "Tillad timeouts {0}",
   "rules.tech_timeouts": "Tekniske timeouts {0}",
+  "rules.timeouts.coach": "Træner",
+  "rules.timeouts.coach_and_captains": "Træner og kaptajner",
+  "rules.timeouts.coach_and_players": "Træner og spillere",
+  "rules.timeouts.admin": "Admin",
 
   "gag.you_are_gagged": " [red]Du er blevet muted",
 
@@ -48,6 +52,8 @@
   "timeout.vote.technical_passed": "Afstemning om teknisk timeout godkendt",
   "timeout.player_paused": "{0} {1}satte kampen på pause",
   "timeout.not_allowed": " {0}du har ikke tilladelse til at kalde en {1} i kampen!",
+  "timeout.not_allowed.resume": "genoptagelse",
+  "timeout.not_allowed.tactical_timeout": "taktisk timeout",
   "match.map_over_next_map": "Banen er færdig — næste bane er på vej, bliv forbundet.",
   "match.map_over_series_done": "Kampen er færdig — statistik vises på kampsiden, når demoen er færdigbehandlet.",
   "match.offline_over": "Kampen er slut — der er ikke mere at spille på denne server.",

@@ -20,6 +20,10 @@
   "rules.max_subs": "交代の最大人数: {0}",
   "rules.allow_timeouts": "タイムアウトを許可 {0}",
   "rules.tech_timeouts": "テクニカルタイムアウト {0}",
+  "rules.timeouts.coach": "コーチ",
+  "rules.timeouts.coach_and_captains": "コーチとキャプテン",
+  "rules.timeouts.coach_and_players": "コーチとプレイヤー",
+  "rules.timeouts.admin": "管理者",
 
   "gag.you_are_gagged": " [red]あなたはミュートされています",
 
@@ -48,6 +52,8 @@
   "timeout.vote.technical_passed": "テクニカルタイムアウトの投票が可決",
   "timeout.player_paused": "{0} {1}が試合を一時停止しました",
   "timeout.not_allowed": " {0}試合中に {1} を呼び出す権限がありません！",
+  "timeout.not_allowed.resume": "再開",
+  "timeout.not_allowed.tactical_timeout": "戦術タイムアウト",
   "match.map_over_next_map": "マップ終了 — 次のマップが始まります。接続したままお待ちください。",
   "match.map_over_series_done": "試合終了 — デモの処理が終わると、試合ページに統計が表示されます。",
   "match.offline_over": "試合は終了しました — このサーバーでプレイするものはもうありません。",

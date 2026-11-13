@@ -20,6 +20,10 @@
   "rules.max_subs": "Número máximo de sustitutos: {0}",
   "rules.allow_timeouts": "Permitir tiempos muertos {0}",
   "rules.tech_timeouts": "Tiempos técnicos {0}",
+  "rules.timeouts.coach": "Entrenador",
+  "rules.timeouts.coach_and_captains": "Entrenador y capitanes",
+  "rules.timeouts.coach_and_players": "Entrenador y jugadores",
+  "rules.timeouts.admin": "Administrador",
 
   "gag.you_are_gagged": " [red]Estás silenciado",
 
@@ -48,6 +52,8 @@
   "timeout.vote.technical_passed": "Votación de pausa técnica aprobada",
   "timeout.player_paused": "{0} {1}pausó la partida",
   "timeout.not_allowed": " {0}no tienes permiso para solicitar un(a) {1} en la partida!",
+  "timeout.not_allowed.resume": "reanudación",
+  "timeout.not_allowed.tactical_timeout": "tiempo muerto táctico",
   "match.map_over_next_map": "Mapa terminado — el siguiente mapa está por comenzar, mantente conectado.",
   "match.map_over_series_done": "Partida terminada — las estadísticas aparecerán en la página de la partida cuando termine de procesarse la demo.",
   "match.offline_over": "La partida ha terminado — no queda nada por jugar en este servidor.",

@@ -20,6 +20,10 @@
   "rules.max_subs": "Maksymalna liczba zmian: {0}",
   "rules.allow_timeouts": "Zezwalaj na przerwy {0}",
   "rules.tech_timeouts": "Przerwy techniczne {0}",
+  "rules.timeouts.coach": "Trener",
+  "rules.timeouts.coach_and_captains": "Trener i kapitanowie",
+  "rules.timeouts.coach_and_players": "Trener i gracze",
+  "rules.timeouts.admin": "Admin",
 
   "gag.you_are_gagged": " [red]Zostałeś wyciszony",
 
@@ -48,6 +52,8 @@
   "timeout.vote.technical_passed": "Głosowanie przerwy technicznej przyjęte",
   "timeout.player_paused": "{0} {1}zapauzował mecz",
   "timeout.not_allowed": " {0}nie możesz wezwać {1} w meczu!",
+  "timeout.not_allowed.resume": "wznowienia",
+  "timeout.not_allowed.tactical_timeout": "czasu taktycznego",
   "match.map_over_next_map": "Mapa zakończona — zaraz następna mapa, pozostań połączony.",
   "match.map_over_series_done": "Mecz zakończony — statystyki pojawią się na stronie meczu po przetworzeniu demo.",
   "match.offline_over": "Mecz się zakończył — na tym serwerze nie ma już nic do rozegrania.",

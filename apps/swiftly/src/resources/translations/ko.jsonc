@@ -20,6 +20,10 @@
   "rules.max_subs": "최대 교체 인원: {0}",
   "rules.allow_timeouts": "타임아웃 허용 {0}",
   "rules.tech_timeouts": "기술 타임아웃 {0}",
+  "rules.timeouts.coach": "코치",
+  "rules.timeouts.coach_and_captains": "코치와 주장",
+  "rules.timeouts.coach_and_players": "코치와 선수",
+  "rules.timeouts.admin": "관리자",
 
   "gag.you_are_gagged": " [red]음소거되었습니다",
 
@@ -48,6 +52,8 @@
   "timeout.vote.technical_passed": "기술 타임아웃 투표 통과",
   "timeout.player_paused": "{0} {1}이(가) 경기를 일시정지했습니다",
   "timeout.not_allowed": " {0}경기에서 {1}를 호출할 권한이 없습니다!",
+  "timeout.not_allowed.resume": "재개",
+  "timeout.not_allowed.tactical_timeout": "전술 타임아웃",
   "match.map_over_next_map": "맵 종료 — 다음 맵이 곧 시작됩니다. 연결을 유지하세요.",
   "match.map_over_series_done": "경기 종료 — 데모 처리가 끝나면 경기 페이지에 통계가 표시됩니다.",
   "match.offline_over": "경기가 끝났습니다 — 이 서버에서 더 이상 진행할 경기가 없습니다.",

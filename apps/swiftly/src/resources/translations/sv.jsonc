@@ -20,6 +20,10 @@
   "rules.max_subs": "Max antal byten: {0}",
   "rules.allow_timeouts": "Tillåt timeouts {0}",
   "rules.tech_timeouts": "Tekniska timeouts {0}",
+  "rules.timeouts.coach": "Tränare",
+  "rules.timeouts.coach_and_captains": "Tränare och kaptener",
+  "rules.timeouts.coach_and_players": "Tränare och spelare",
+  "rules.timeouts.admin": "Admin",
 
   "gag.you_are_gagged": " [red]Du är tystad",
 
@@ -48,6 +52,8 @@
   "timeout.vote.technical_passed": "Röstning om teknisk timeout godkänd",
   "timeout.player_paused": "{0} {1}pausade matchen",
   "timeout.not_allowed": " {0}du får inte begära {1} i matchen!",
+  "timeout.not_allowed.resume": "återupptagning",
+  "timeout.not_allowed.tactical_timeout": "taktisk timeout",
   "match.map_over_next_map": "Kartan är klar — nästa karta kommer strax, håll dig ansluten.",
   "match.map_over_series_done": "Matchen är klar — statistiken visas på matchsidan när demon har bearbetats.",
   "match.offline_over": "Matchen är över — det finns inget mer att spela på den här servern.",

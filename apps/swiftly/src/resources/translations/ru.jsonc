@@ -20,6 +20,10 @@
   "rules.max_subs": "Максимум замен: {0}",
   "rules.allow_timeouts": "Разрешить тайм-ауты {0}",
   "rules.tech_timeouts": "Технические тайм-ауты {0}",
+  "rules.timeouts.coach": "Тренер",
+  "rules.timeouts.coach_and_captains": "Тренер и капитаны",
+  "rules.timeouts.coach_and_players": "Тренер и игроки",
+  "rules.timeouts.admin": "Админ",
 
   "gag.you_are_gagged": " [red]Вы заглушены",
 
@@ -48,6 +52,8 @@
   "timeout.vote.technical_passed": "Голосование за тех. паузу принято",
   "timeout.player_paused": "{0} {1}поставил матч на паузу",
   "timeout.not_allowed": " {0}вам не разрешено запрашивать {1} в матче!",
+  "timeout.not_allowed.resume": "возобновление",
+  "timeout.not_allowed.tactical_timeout": "тактический тайм-аут",
   "match.map_over_next_map": "Карта завершена — скоро следующая карта, не отключайтесь.",
   "match.map_over_series_done": "Матч завершён — статистика появится на странице матча после обработки демо.",
   "match.offline_over": "Матч окончен — на этом сервере больше нечего играть.",

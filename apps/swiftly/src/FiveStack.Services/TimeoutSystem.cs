@@ -181,11 +181,13 @@ public class TimeoutSystem
         return true;
     }
 
-    private void CannotPauseMessage(IPlayer? player, string type)
+    private void CannotPauseMessage(IPlayer? player, string refusedKey)
     {
+        ILocalizer localizer = _gameServer.LocalizerFor(player);
+
         _gameServer.Message(
             MessageType.Chat,
-            _gameServer.LocalizerFor(player)["timeout.not_allowed", ChatColors.Red, type],
+            localizer["timeout.not_allowed", ChatColors.Red, localizer[refusedKey]],
             player
         );
     }
@@ -248,7 +250,7 @@ public class TimeoutSystem
 
                 if (!CanPause(player))
                 {
-                    CannotPauseMessage(player, "resume");
+                    CannotPauseMessage(player, "timeout.not_allowed.resume");
                     return;
                 }
 
@@ -395,7 +397,7 @@ public class TimeoutSystem
         {
             if (!CanCallTacticalTimeout(player))
             {
-                CannotPauseMessage(player, "tactical timeout");
+                CannotPauseMessage(player, "timeout.not_allowed.tactical_timeout");
                 return;
             }
 

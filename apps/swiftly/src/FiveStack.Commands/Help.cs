@@ -111,14 +111,33 @@ public partial class FiveStackPlugin
         context.Reply(
             localizer[
                 "rules.allow_timeouts",
-                StringUtility.ConvertCamelToHumanReadable(match.options.timeout_setting)
+                TimeoutSetting(localizer, match.options.timeout_setting)
             ]
         );
         context.Reply(
             localizer[
                 "rules.tech_timeouts",
-                StringUtility.ConvertCamelToHumanReadable(match.options.tech_timeout_setting)
+                TimeoutSetting(localizer, match.options.tech_timeout_setting)
             ]
         );
+    }
+
+    private static string TimeoutSetting(ILocalizer localizer, string setting)
+    {
+        string? key = setting switch
+        {
+            "Coach" => "rules.timeouts.coach",
+            "CoachAndCaptains" => "rules.timeouts.coach_and_captains",
+            "CoachAndPlayers" => "rules.timeouts.coach_and_players",
+            "Admin" => "rules.timeouts.admin",
+            _ => null,
+        };
+
+        if (key == null)
+        {
+            return StringUtility.ConvertCamelToHumanReadable(setting);
+        }
+
+        return localizer[key];
     }
 }

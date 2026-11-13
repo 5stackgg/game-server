@@ -20,6 +20,10 @@
   "rules.max_subs": "Maximum Number of Substitutes: {0}",
   "rules.allow_timeouts": "Allow Timeouts {0}",
   "rules.tech_timeouts": "Tech Timeouts {0}",
+  "rules.timeouts.coach": "Coach",
+  "rules.timeouts.coach_and_captains": "Coach And Captains",
+  "rules.timeouts.coach_and_players": "Coach And Players",
+  "rules.timeouts.admin": "Admin",
 
   "gag.you_are_gagged": " [red]You are gagged",
 
@@ -48,6 +52,8 @@
   "timeout.vote.technical_passed": "Technical Timeout Vote Passed",
   "timeout.player_paused": "{0} {1}paused the match",
   "timeout.not_allowed": " {0}you are not allowed to call a {1} the match!",
+  "timeout.not_allowed.resume": "resume",
+  "timeout.not_allowed.tactical_timeout": "tactical timeout",
   "match.map_over_next_map": "Map complete — the next map is coming up, stay connected.",
   "match.map_over_series_done": "Match complete — stats will appear on the match page once the demo finishes processing.",
   "match.offline_over": "The match is over — this server has nothing left to play.",

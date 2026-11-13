@@ -20,6 +20,10 @@
   "rules.max_subs": "最大替補數：{0}",
   "rules.allow_timeouts": "允許暫停 {0}",
   "rules.tech_timeouts": "技術暫停 {0}",
+  "rules.timeouts.coach": "教練",
+  "rules.timeouts.coach_and_captains": "教練和隊長",
+  "rules.timeouts.coach_and_players": "教練和選手",
+  "rules.timeouts.admin": "管理員",
 
   "gag.you_are_gagged": " [red]你已被禁言",
 
@@ -48,6 +52,8 @@
   "timeout.vote.technical_passed": "技術暫停投票通過",
   "timeout.player_paused": "{0} {1}暫停了比賽",
   "timeout.not_allowed": " {0}你無權在比賽中發起 {1}！",
+  "timeout.not_allowed.resume": "繼續比賽",
+  "timeout.not_allowed.tactical_timeout": "戰術暫停",
   "match.map_over_next_map": "本圖已結束 — 下一張地圖即將開始，請保持連線。",
   "match.map_over_series_done": "比賽已結束 — Demo 處理完成後，統計資料將顯示在比賽頁面上。",
   "match.offline_over": "比賽已結束 — 此伺服器已沒有可進行的比賽。",
