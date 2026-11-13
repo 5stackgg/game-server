@@ -60,7 +60,7 @@ public class RestoreWiringTests
     [Fact]
     public void AnOrganizerRestoreIsOnlyRefusedForAVoteOrALoadAsOnMain()
     {
-        string refusal = Method(Backups(), "public string? RestoreRefusal(int round)");
+        string refusal = Method(Backups(), "public PlayerLine? RestoreRefusal(int round)");
 
         Assert.Contains("_restore.VotingOrLoading,", refusal);
         Assert.DoesNotContain("_restore.InProgress", refusal);
@@ -169,7 +169,7 @@ public class RestoreWiringTests
         string check = Method(Backups(), "private bool HoldStaysOn(int round)");
         int asked = check.IndexOf("RoundRestoreGateUtility.RoundToHold(", StringComparison.Ordinal);
         int stays = check.IndexOf("if (next == round)", StringComparison.Ordinal);
-        int told = check.IndexOf("RoundRestoreGateUtility.WhyTheHoldMoved(round, next)", StringComparison.Ordinal);
+        int told = check.IndexOf("RoundRestoreGateUtility.WhyTheHoldMovedLine(round, next)", StringComparison.Ordinal);
         int moved = check.IndexOf("HoldForRestore(moved);", StringComparison.Ordinal);
         int writing = check.IndexOf("SetBackupWriting(!IsHoldingForRestore());", StringComparison.Ordinal);
 
@@ -202,7 +202,7 @@ public class RestoreWiringTests
     public void AResumeOnNothingToLoadSaysWhy()
     {
         Assert.Matches(
-            @"ResumeRefusal\(\s*_restore\.OwedRound,\s*_restore\.NeedsRestartMap\s*\)",
+            @"ResumeRefusalLine\(\s*_restore\.OwedRound,\s*_restore\.NeedsRestartMap\s*\)",
             Method(Backups(), "public void TellWhyResumeWaits()")
         );
     }

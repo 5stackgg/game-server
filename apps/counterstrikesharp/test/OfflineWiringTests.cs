@@ -259,8 +259,7 @@ public class OfflineWiringTests
         string local = Method(Service("GameBackUpRounds"), "private void RestoreRoundOffline(int round)");
         string refused = local[At(local, "if (refusal != null)")..At(local, "RestoreRound(round);")];
 
-        Assert.Contains("_gameServer.Message(", refused);
-        Assert.Contains("Restore round blocked: {refusal}.", refused);
+        Assert.Contains("TellBlocked(refusal);", refused);
     }
 
     [Fact]

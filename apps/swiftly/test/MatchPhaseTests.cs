@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using SwiftlyS2.Shared.Players;
+using SwiftlyS2.Shared.Translation;
 using FiveStack;
 using FiveStack.Entities;
 using FiveStack.Enums;
@@ -128,7 +129,7 @@ public class MatchPhaseTests
     {
         typeof(TimeoutSystem)
             .GetMethod("PauseTechMatch", BindingFlags.NonPublic | BindingFlags.Instance)!
-            .Invoke(timeout, ["paused"]);
+            .Invoke(timeout, [(Func<ILocalizer, string>)(_ => "paused")]);
     }
 
     [Fact]

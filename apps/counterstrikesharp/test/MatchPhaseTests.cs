@@ -126,7 +126,7 @@ public class MatchPhaseTests
     {
         typeof(TimeoutSystem)
             .GetMethod("PauseTechMatch", BindingFlags.NonPublic | BindingFlags.Instance)!
-            .Invoke(timeout, ["paused"]);
+            .Invoke(timeout, [(Func<CounterStrikeSharp.API.Core.CCSPlayerController?, string>)(_ => "paused")]);
     }
 
     [Fact]
