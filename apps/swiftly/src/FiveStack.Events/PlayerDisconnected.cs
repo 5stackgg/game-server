@@ -84,7 +84,8 @@ public partial class FiveStackPlugin
 
             _surrenderSystem.SetupDisconnectTimer(
                 @event.UserIdPlayer.Controller.Team,
-                @event.UserIdPlayer.SteamID
+                @event.UserIdPlayer.SteamID,
+                @event.UserIdPlayer.Name
             );
         }
 
