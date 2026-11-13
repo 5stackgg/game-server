@@ -7,7 +7,7 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
     <!-- The plugin keeps SwiftlyS2 compile-time only, so the tests reference it to compile and run against its types. -->
     <PackageReference Include="SwiftlyS2.CS2" Version="1.5.2" />
   </ItemGroup>
