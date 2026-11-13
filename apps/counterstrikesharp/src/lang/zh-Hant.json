@@ -93,6 +93,7 @@
   "surrender.in_progress": " 投降投票已在進行中",
   "surrender.unavailable": " 現在無法發起投降投票",
   "surrender.not_in_match": " 只有本場比賽的玩家才能發起投降",
+  "surrender.not_in_play": " 只有在地圖進行中才能發起投降",
   "vote.success": "{0} 投票成功",
   "vote.other_team": "對方隊伍正在投票 {0}",
   "vote.other_team_timer": "對方隊伍正在投票 {0} ({1}s)",

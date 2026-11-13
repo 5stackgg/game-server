@@ -38,11 +38,12 @@ public class SurrenderVoteRepeatTests
     [Fact]
     public void Reset_Ends_A_Running_Vote_Before_Letting_Go_Of_It()
     {
-        string reset = Method(Surrender(), "public void Reset()");
-        int abandon = reset.IndexOf("surrenderingVote?.Abandon();", StringComparison.Ordinal);
-        int drop = reset.IndexOf("surrenderingVote = null;", StringComparison.Ordinal);
+        string end = Method(Surrender(), "public void EndVote()");
+        int abandon = end.IndexOf("surrenderingVote?.Abandon();", StringComparison.Ordinal);
+        int drop = end.IndexOf("surrenderingVote = null;", StringComparison.Ordinal);
 
         Assert.True(abandon >= 0, "the running vote is never ended");
         Assert.True(abandon < drop, "the vote is dropped before it is ended");
+        Assert.Contains("EndVote();", Method(Surrender(), "public void Reset()"));
     }
 }

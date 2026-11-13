@@ -93,6 +93,7 @@
   "surrender.in_progress": " È già in corso una votazione di resa",
   "surrender.unavailable": " Impossibile avviare una votazione di resa in questo momento",
   "surrender.not_in_match": " Solo un giocatore di questo match può chiedere la resa",
+  "surrender.not_in_play": " La resa si può chiedere solo mentre la mappa è in corso",
   "vote.success": "{0} Votazione riuscita",
   "vote.other_team": "L'altra squadra sta votando per {0}",
   "vote.other_team_timer": "L'altra squadra sta votando per {0} ({1}s)",

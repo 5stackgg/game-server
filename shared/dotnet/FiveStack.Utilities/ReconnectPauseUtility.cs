@@ -57,4 +57,30 @@ public static class ReconnectPauseUtility
     {
         return Math.Min(expectedPlayers / 2, lineup.lineup_players.Count);
     }
+
+    // Whole once as many of its own players are in as it needs, so a lineup short
+    // by design is whole with everyone it has.
+    public static bool IsLineupWhole(
+        MatchData matchData,
+        IEnumerable<(string SteamId, string Name)> connected,
+        int expectedPlayers,
+        Guid lineupId
+    )
+    {
+        int lineup =
+            lineupId == matchData.lineup_1_id ? 1
+            : lineupId == matchData.lineup_2_id ? 2
+            : 0;
+
+        if (lineup == 0)
+        {
+            return false;
+        }
+
+        int required = Seats(lineup == 1 ? matchData.lineup_1 : matchData.lineup_2, expectedPlayers);
+
+        return connected.Count(player =>
+                LineupMembership.LineupNumber(matchData, player.SteamId, player.Name) == lineup
+            ) >= required;
+    }
 }

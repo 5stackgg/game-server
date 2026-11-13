@@ -93,6 +93,7 @@
   "surrender.in_progress": " En kapitulationsomröstning pågår redan",
   "surrender.unavailable": " Det går inte att starta en kapitulationsomröstning just nu",
   "surrender.not_in_match": " Bara en spelare i den här matchen kan begära kapitulation",
+  "surrender.not_in_play": " Kapitulation kan bara begäras medan kartan spelas",
   "vote.success": "{0} Röstningen lyckades",
   "vote.other_team": "Det andra laget röstar för att {0}",
   "vote.other_team_timer": "Det andra laget röstar för att {0} ({1}s)",

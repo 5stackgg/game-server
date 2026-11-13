@@ -400,6 +400,7 @@ public class PlayerLanguageTests
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "There is no surrender in an offline match")]
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "A surrender vote is already in progress")]
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "Unable to start a surrender vote right now")]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "A surrender can only be called while the map is being played")]
     [InlineData("FiveStack.Commands/Surrender.cs", "Only a player in this match can call a surrender")]
     public void ASurrenderRefusalIsNotEnglishForEveryone(string file, string english)
     {
@@ -489,6 +490,7 @@ public class PlayerLanguageTests
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.offline")]
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.in_progress")]
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.unavailable")]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.not_in_play")]
     [InlineData("FiveStack.Commands/Surrender.cs", "surrender.not_in_match")]
     public void WhatOnePlayerIsToldIsInTheirLanguage(string file, string key)
     {

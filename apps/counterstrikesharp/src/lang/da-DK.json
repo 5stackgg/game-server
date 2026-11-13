@@ -93,6 +93,7 @@
   "surrender.in_progress": " Der er allerede en afstemning om overgivelse i gang",
   "surrender.unavailable": " Kan ikke starte en afstemning om overgivelse lige nu",
   "surrender.not_in_match": " Kun en spiller i denne kamp kan kalde en overgivelse",
+  "surrender.not_in_play": " En overgivelse kan kun kaldes, mens banen spilles",
   "vote.success": "{0} Afstemning lykkedes",
   "vote.other_team": "Det andet hold stemmer for at {0}",
   "vote.other_team_timer": "Det andet hold stemmer for at {0} ({1}s)",
