@@ -8,45 +8,49 @@ public static class ReconnectPauseUtility
     // own players say whether anyone is missing. Each lineup is held to its own
     // size: a lineup short by design (a 5v4 started by its captains or an admin)
     // is not missing anyone. A placeholder member counts once someone joins
-    // under its name, as GetMemberFromLineup matches them.
+    // under its name, and a player fills a seat on one lineup only.
     public static bool ShouldPause(
         MatchData matchData,
         IEnumerable<(string SteamId, string Name)> connected,
         int expectedPlayers
     )
     {
-        List<(string SteamId, string Name)> players = connected.ToList();
-        int perLineup = expectedPlayers / 2;
+        (int present, int required) = RosterCount(matchData, connected, expectedPlayers);
 
-        return IsShort(matchData.lineup_1, players, perLineup)
-            || IsShort(matchData.lineup_2, players, perLineup);
+        return present < required;
     }
 
+    // Each lineup's count is capped at what it needs, so a lineup with a spare
+    // player in the server never makes up for one that is short.
     public static (int Present, int Required) RosterCount(
         MatchData matchData,
         IEnumerable<(string SteamId, string Name)> connected,
         int expectedPlayers
     )
     {
-        return (connected.Count(), expectedPlayers);
-    }
+        int perLineup = expectedPlayers / 2;
+        int required1 = Math.Min(perLineup, matchData.lineup_1.lineup_players.Count);
+        int required2 = Math.Min(perLineup, matchData.lineup_2.lineup_players.Count);
+        int present1 = 0;
+        int present2 = 0;
 
-    private static bool IsShort(
-        MatchLineUp lineup,
-        List<(string SteamId, string Name)> connected,
-        int perLineup
-    )
-    {
-        int required = Math.Min(perLineup, lineup.lineup_players.Count);
+        foreach ((string steamId, string name) in connected)
+        {
+            int? lineup = LineupMembership.LineupNumber(matchData, steamId, name);
 
-        int present = connected.Count(player =>
-            lineup.lineup_players.Any(member =>
-                member.steam_id == null
-                    ? member.placeholder_name.StartsWith(player.Name)
-                    : member.steam_id == player.SteamId
-            )
+            if (lineup == 1)
+            {
+                present1++;
+            }
+            else if (lineup == 2)
+            {
+                present2++;
+            }
+        }
+
+        return (
+            Math.Min(present1, required1) + Math.Min(present2, required2),
+            required1 + required2
         );
-
-        return present < required;
     }
 }

@@ -4,20 +4,30 @@ namespace FiveStack.Utilities;
 
 public static class LineupMembership
 {
+    public static Guid? LineupOf(MatchData matchData, string steamId, string playerName)
+    {
+        return LineupNumber(matchData, steamId, playerName) switch
+        {
+            1 => matchData.lineup_1_id,
+            2 => matchData.lineup_2_id,
+            _ => null,
+        };
+    }
+
     // Exact steam ids first: a placeholder's name matches by prefix, and an empty
     // name would match every unclaimed placeholder.
-    public static Guid? LineupOf(MatchData matchData, string steamId, string playerName)
+    public static int? LineupNumber(MatchData matchData, string steamId, string playerName)
     {
         if (!string.IsNullOrEmpty(steamId))
         {
             if (matchData.lineup_1.lineup_players.Any(member => member.steam_id == steamId))
             {
-                return matchData.lineup_1_id;
+                return 1;
             }
 
             if (matchData.lineup_2.lineup_players.Any(member => member.steam_id == steamId))
             {
-                return matchData.lineup_2_id;
+                return 2;
             }
         }
 
@@ -28,12 +38,12 @@ public static class LineupMembership
 
         if (matchData.lineup_1.lineup_players.Any(member => IsPlaceholderFor(member, playerName)))
         {
-            return matchData.lineup_1_id;
+            return 1;
         }
 
         if (matchData.lineup_2.lineup_players.Any(member => IsPlaceholderFor(member, playerName)))
         {
-            return matchData.lineup_2_id;
+            return 2;
         }
 
         return null;
