@@ -96,23 +96,41 @@ public class GameServer
         }
     }
 
+    public void MessageEach(MessageType destination, Func<ILocalizer, string> message)
+    {
+        foreach (IPlayer player in MatchUtility.Players())
+        {
+            string text = message(LocalizerFor(player)).Colored();
+
+            if (destination == MessageType.Alert)
+            {
+                player.SendAlert($" {text}");
+            }
+            else if (destination == MessageType.Center)
+            {
+                player.SendCenter($" {text}");
+            }
+            else
+            {
+                foreach (string part in text.Split(["\r\n", "\r", "\n"], StringSplitOptions.None))
+                {
+                    player.SendChat(part);
+                }
+            }
+        }
+    }
+
     public ILocalizer LocalizerFor(IPlayer? player)
     {
-        if (player == null || !HasTranslation(player.PlayerLanguage))
+        if (
+            player == null
+            || !TranslationUtility.HasTranslation(_core.PluginPath, player.PlayerLanguage.Value)
+        )
         {
             return _core.Localizer;
         }
 
         return _core.Translation.GetPlayerLocalizer(player);
-    }
-
-    // SwiftlyS2 reads <language>.jsonc from here and falls back to English, not the
-    // server's language, when the player's language has no file.
-    private bool HasTranslation(Language language)
-    {
-        return File.Exists(
-            Path.Join(_core.PluginPath, "resources", "translations", $"{language.Value}.jsonc")
-        );
     }
 
     public int GetCurrentRound()

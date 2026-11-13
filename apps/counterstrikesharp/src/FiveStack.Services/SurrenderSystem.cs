@@ -181,7 +181,8 @@ public class SurrenderSystem
 
         _logger.LogInformation($"Starting Surrender Vote for {team}");
         surrenderingVote.StartVote(
-            "Surrender",
+            "surrender.vote",
+            [],
             new CsTeam[] { team },
             () =>
             {

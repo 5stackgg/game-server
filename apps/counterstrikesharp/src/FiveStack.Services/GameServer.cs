@@ -76,6 +76,30 @@ public class GameServer
         }
     }
 
+    public void MessageEach(HudDestination destination, Func<CCSPlayerController, string> message)
+    {
+        foreach (CCSPlayerController player in MatchUtility.Players())
+        {
+            string text = message(player);
+
+            if (destination == HudDestination.Alert)
+            {
+                player.PrintToCenterAlert($" {text}");
+            }
+            else if (destination == HudDestination.Center)
+            {
+                player.PrintToCenter($" {text}");
+            }
+            else
+            {
+                foreach (string part in text.Split(["\r\n", "\r", "\n"], StringSplitOptions.None))
+                {
+                    player.PrintToChat(part);
+                }
+            }
+        }
+    }
+
     public int GetCurrentRound()
     {
         return GetTotalRoundsPlayed() + 1;

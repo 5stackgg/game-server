@@ -1,4 +1,5 @@
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
@@ -23,7 +24,8 @@ public class VoteSystem
     private Dictionary<ulong, bool> _votes = new Dictionary<ulong, bool>();
 
     private bool _captainOnly;
-    private string? _voteMessage;
+    private string _voteKey = "";
+    private object[] _voteArgs = [];
     private Timer? _voteTimeoutTimer;
     private Timer? _playerMessageTimer;
     private DateTime? _voteStartTime;
@@ -46,7 +48,8 @@ public class VoteSystem
 
     // TODO - either all players , or one team
     public void StartVote(
-        string voteMessage,
+        string voteKey,
+        object[] voteArgs,
         CsTeam[] allowedTeamsToVote,
         Action voteSuccessCallback,
         Action voteFailedCallback,
@@ -54,7 +57,8 @@ public class VoteSystem
         float? timeout = null
     )
     {
-        _voteMessage = voteMessage;
+        _voteKey = voteKey;
+        _voteArgs = voteArgs;
         _allowedTeamsToVote = allowedTeamsToVote;
         _voteSuccessCallback = voteSuccessCallback;
         _voteFailedCallback = voteFailedCallback;
@@ -65,7 +69,7 @@ public class VoteSystem
 
         KillTimers();
 
-        _logger.LogInformation($"Starting vote: {voteMessage}");
+        _logger.LogInformation("Starting vote: {Key} [{Args}]", voteKey, voteArgs);
 
         _playerMessageTimer = TimerUtility.AddTimer(
             1,
@@ -110,13 +114,13 @@ public class VoteSystem
         _voteStartTime = null;
         _voteTimeout = null;
         KillTimers();
-        _logger.LogInformation($"Vote Cancelled: {_voteMessage}");
+        _logger.LogInformation("Vote Cancelled: {Key} [{Args}]", _voteKey, _voteArgs);
         _voteFailedCallback?.Invoke();
     }
 
     private void VoteFailed()
     {
-        _logger.LogInformation($"Vote Failed: {_voteMessage}");
+        _logger.LogInformation("Vote Failed: {Key} [{Args}]", _voteKey, _voteArgs);
         _voteStartTime = null;
         _voteTimeout = null;
         KillTimers();
@@ -127,16 +131,21 @@ public class VoteSystem
             return;
         }
 
-        _gameServer.Message(
+        _gameServer.MessageEach(
             HudDestination.Center,
-            _localizer["vote.failed", _voteMessage ?? string.Empty]
+            player =>
+                _localizer.ForPlayer(
+                    player,
+                    "vote.failed",
+                    _localizer.ForPlayer(player, _voteKey, _voteArgs)
+                )
         );
         _voteFailedCallback();
     }
 
     private void VoteSuccess()
     {
-        _logger.LogInformation($"Vote Success: {_voteMessage}");
+        _logger.LogInformation("Vote Success: {Key} [{Args}]", _voteKey, _voteArgs);
         _voteStartTime = null;
         _voteTimeout = null;
         KillTimers();
@@ -147,9 +156,14 @@ public class VoteSystem
             return;
         }
 
-        _gameServer.Message(
+        _gameServer.MessageEach(
             HudDestination.Center,
-            _localizer["vote.success", _voteMessage ?? string.Empty]
+            player =>
+                _localizer.ForPlayer(
+                    player,
+                    "vote.success",
+                    _localizer.ForPlayer(player, _voteKey, _voteArgs)
+                )
         );
         _voteSuccessCallback();
     }
@@ -191,7 +205,7 @@ public class VoteSystem
             {
                 _gameServer.Message(
                     HudDestination.Chat,
-                    $" {ChatColors.Red}you are not allowed to vote",
+                    _localizer.ForPlayer(player, "vote.not_allowed", ChatColors.Red),
                     player
                 );
                 return;
@@ -221,7 +235,7 @@ public class VoteSystem
                 continue;
             }
 
-            string action = _voteMessage?.ToLower() ?? "";
+            string action = _localizer.ForPlayer(player, _voteKey, _voteArgs).ToLower();
             int remainingSeconds = GetRemainingSeconds();
 
             if (!CanVote(player))
@@ -229,12 +243,17 @@ public class VoteSystem
                 if (remainingSeconds > 0)
                 {
                     player.PrintToCenter(
-                        _localizer["vote.other_team_timer", action, remainingSeconds]
+                        _localizer.ForPlayer(
+                            player,
+                            "vote.other_team_timer",
+                            action,
+                            remainingSeconds
+                        )
                     );
                 }
                 else
                 {
-                    player.PrintToCenter(_localizer["vote.other_team", action]);
+                    player.PrintToCenter(_localizer.ForPlayer(player, "vote.other_team", action));
                 }
 
                 continue;
@@ -245,12 +264,17 @@ public class VoteSystem
                 if (remainingSeconds > 0)
                 {
                     player.PrintToCenter(
-                        _localizer["vote.prompt_count_timer", action, remainingSeconds]
+                        _localizer.ForPlayer(
+                            player,
+                            "vote.prompt_count_timer",
+                            action,
+                            remainingSeconds
+                        )
                     );
                 }
                 else
                 {
-                    player.PrintToCenter(_localizer["vote.prompt_count", action]);
+                    player.PrintToCenter(_localizer.ForPlayer(player, "vote.prompt_count", action));
                 }
                 continue;
             }
@@ -258,24 +282,26 @@ public class VoteSystem
             if (remainingSeconds > 0)
             {
                 player.PrintToCenter(
-                    _localizer[
+                    _localizer.ForPlayer(
+                        player,
                         "vote.prompt_options_timer",
                         action,
                         CommandUtility.PublicChatTrigger,
                         CommandUtility.PublicChatTrigger,
                         remainingSeconds
-                    ]
+                    )
                 );
             }
             else
             {
                 player.PrintToCenter(
-                    _localizer[
+                    _localizer.ForPlayer(
+                        player,
                         "vote.prompt_options",
                         action,
                         CommandUtility.PublicChatTrigger,
                         CommandUtility.PublicChatTrigger
-                    ]
+                    )
                 );
             }
         }

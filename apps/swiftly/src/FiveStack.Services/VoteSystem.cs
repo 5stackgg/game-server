@@ -15,7 +15,6 @@ public class VoteSystem
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
     private readonly CaptainSystem _captainSystem;
-    private readonly ILocalizer _localizer;
 
     private Team[]? _allowedTeamsToVote;
     private Action? _voteFailedCallback;
@@ -34,15 +33,13 @@ public class VoteSystem
         ILogger<VoteSystem> logger,
         MatchService matchService,
         GameServer gameServer,
-        CaptainSystem captainSystem,
-        ILocalizer localizer
+        CaptainSystem captainSystem
     )
     {
         _logger = logger;
         _matchService = matchService;
         _gameServer = gameServer;
         _captainSystem = captainSystem;
-        _localizer = localizer;
     }
 
     public void StartVote(
@@ -67,7 +64,7 @@ public class VoteSystem
 
         KillTimers();
 
-        _logger.LogInformation($"Starting vote: {voteKey}");
+        _logger.LogInformation("Starting vote: {Key} [{Args}]", voteKey, voteArgs);
 
         _playerMessageTimer = TimerUtility.Repeat(
             1,
@@ -111,13 +108,13 @@ public class VoteSystem
         _voteStartTime = null;
         _voteTimeout = null;
         KillTimers();
-        _logger.LogInformation($"Vote Cancelled: {_voteKey}");
+        _logger.LogInformation("Vote Cancelled: {Key} [{Args}]", _voteKey, _voteArgs);
         _voteFailedCallback?.Invoke();
     }
 
     private void VoteFailed()
     {
-        _logger.LogInformation($"Vote Failed: {_voteKey}");
+        _logger.LogInformation("Vote Failed: {Key} [{Args}]", _voteKey, _voteArgs);
         _voteStartTime = null;
         _voteTimeout = null;
         KillTimers();
@@ -128,16 +125,16 @@ public class VoteSystem
             return;
         }
 
-        _gameServer.Message(
+        _gameServer.MessageEach(
             MessageType.Center,
-            _localizer["vote.failed", _localizer[_voteKey, _voteArgs]]
+            localizer => localizer["vote.failed", localizer[_voteKey, _voteArgs]]
         );
         _voteFailedCallback();
     }
 
     private void VoteSuccess()
     {
-        _logger.LogInformation($"Vote Success: {_voteKey}");
+        _logger.LogInformation("Vote Success: {Key} [{Args}]", _voteKey, _voteArgs);
         _voteStartTime = null;
         _voteTimeout = null;
         KillTimers();
@@ -148,9 +145,9 @@ public class VoteSystem
             return;
         }
 
-        _gameServer.Message(
+        _gameServer.MessageEach(
             MessageType.Center,
-            _localizer["vote.success", _localizer[_voteKey, _voteArgs]]
+            localizer => localizer["vote.success", localizer[_voteKey, _voteArgs]]
         );
         _voteSuccessCallback();
     }
@@ -192,7 +189,7 @@ public class VoteSystem
             {
                 _gameServer.Message(
                     MessageType.Chat,
-                    $" {ChatColors.Red}you are not allowed to vote",
+                    _gameServer.LocalizerFor(player)["vote.not_allowed", ChatColors.Red],
                     player
                 );
                 return;

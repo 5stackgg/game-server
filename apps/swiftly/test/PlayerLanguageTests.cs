@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using FiveStack.Utilities;
 using Xunit;
 
 // SwiftlyS2's injected ILocalizer is always the server's language, while
@@ -159,14 +160,18 @@ public class PlayerLanguageTests
     public void APlayerGetsTheirLanguageWhenItShipsAndOtherwiseTheServers()
     {
         string source = Source(Path.Combine("FiveStack.Services", "GameServer.cs"));
-        string helper = Method(source, "public ILocalizer LocalizerFor(IPlayer? player)");
+        string helper = Regex.Replace(
+            Method(source, "public ILocalizer LocalizerFor(IPlayer? player)"),
+            @"\s+",
+            ""
+        );
 
         Assert.Contains(
-            "if (player == null || !TranslationUtility.HasTranslation(_core.PluginPath, player.PlayerLanguage.Value))",
+            "if(player==null||!TranslationUtility.HasTranslation(_core.PluginPath,player.PlayerLanguage.Value))",
             helper
         );
-        Assert.Contains("return _core.Localizer;", helper);
-        Assert.Contains("return _core.Translation.GetPlayerLocalizer(player);", helper);
+        Assert.Contains("return_core.Localizer;", helper);
+        Assert.Contains("return_core.Translation.GetPlayerLocalizer(player);", helper);
     }
 
     [Fact]
@@ -202,6 +207,16 @@ public class PlayerLanguageTests
             File.ReadAllText(Path.Combine(TranslationsDir(), file)),
             File.ReadAllText(shipped)
         );
+    }
+
+    [Theory]
+    [InlineData("en", true)]
+    [InlineData("es-419", true)]
+    [InlineData("pt", true)]
+    [InlineData("cs", false)]
+    public void ALanguageShipsWhenItsFileIsBesideThePlugin(string language, bool ships)
+    {
+        Assert.Equal(ships, TranslationUtility.HasTranslation(AppContext.BaseDirectory, language));
     }
 
     [Theory]

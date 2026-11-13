@@ -421,7 +421,8 @@ public class GameBackUpRounds
             }
 
             restoreRoundVote.StartVote(
-                _localizer["backup.vote.restore_to", RoundRestoreGateUtility.StartOfRound(round)],
+                "backup.vote.restore_to",
+                [RoundRestoreGateUtility.StartOfRound(round)],
                 new CsTeam[] { CsTeam.CounterTerrorist, CsTeam.Terrorist },
                 () =>
                 {

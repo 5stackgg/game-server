@@ -44,6 +44,8 @@
 
   "knife.start": "KNIV KNIV KNIV!",
   "knife.captain_picking": "{0} - Kaptenen väljer sida!",
+  "team.terrorist": "Terrorister",
+  "team.ct": "CT",
   "knife.captain_prompt": "Som kapten måste du välja {0}{1}stay {2} eller {3}{4}switch",
   "knife.not_captain": " {0}Du är inte kapten!",
   "knife.captain_picked_stay": "kaptenen valde att {0}stanna på {1}sidan",
@@ -86,6 +88,7 @@
   "match.tv_delay": "TV-fördröjning ({0}s kvar)",
   "ready.forced_start": "Spelets start har tvingats.",
   "vote.failed": "{0} Röstningen misslyckades",
+  "vote.not_allowed": " {0}du får inte rösta",
   "vote.success": "{0} Röstningen lyckades",
   "vote.other_team": "Det andra laget röstar för att {0}",
   "vote.other_team_timer": "Det andra laget röstar för att {0} ({1}s)",

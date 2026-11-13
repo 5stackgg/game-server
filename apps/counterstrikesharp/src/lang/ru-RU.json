@@ -43,6 +43,8 @@
 
   "knife.start": "НОЖ НОЖ НОЖ!",
   "knife.captain_picking": "{0} - Капитан выбирает стороны!",
+  "team.terrorist": "Террористы",
+  "team.ct": "CT",
   "knife.captain_prompt": "Как капитан вы должны выбрать {0}{1}stay {2} или {3}{4}switch",
   "knife.not_captain": " {0}Вы не капитан!",
   "knife.captain_picked_stay": "капитан выбрал {0}остаться {1}сторона",
@@ -81,6 +83,8 @@
   "match.tv_delay": "Задержка ТВ ({0}с осталось)",
   "ready.forced_start": "Запуск игры был принудительным.",
   "vote.failed": "{0} Голосование не прошло",
+  "vote.not_allowed": " {0}вам не разрешено голосовать",
+  "surrender.vote": "Сдаться",
   "vote.success": "{0} Голосование успешно",
   "vote.other_team": "Другая команда голосует, чтобы {0}",
   "vote.other_team_timer": "Другая команда голосует, чтобы {0} ({1}s)",
