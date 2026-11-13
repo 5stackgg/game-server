@@ -41,6 +41,8 @@
   "ready.not_ready": "no listo",
   "ready.marked": "Has sido marcado como {0}",
   "ready.players_not_ready": "Jugadores No listos: {0} escribe {1}r",
+  "ready.not_connected": "{0} (no conectado)",
+  "ready.not_linked": "{0} (sin vincular)",
 
   "knife.start": "¡CUCHILLO CUCHILLO CUCHILLO!",
   "knife.captain_picking": "{0} - ¡El capitán está eligiendo lados!",
@@ -85,6 +87,7 @@
   "demos.recording": "Grabando demo",
   "player.join.help_hint": " Escribe {0}{1}help {2} para ver comandos disponibles",
   "player.join.ready_hint": " ¡Escribe {0}{1}r{2} para estar listo!",
+  "player.join.link_discord": " ¿Sin equipo? Inicia sesión en 5stack.gg con tu cuenta de Discord para ocupar tu plaza y no te desconectes",
   "match.resume_hint": "para reanudar escribe {0}resume",
   "match.received_data": "Datos del partido recibidos",
   "match.tv_delay": "Retraso de TV ({0}s restantes)",

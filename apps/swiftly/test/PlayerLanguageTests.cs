@@ -581,4 +581,30 @@ public class PlayerLanguageTests
             );
         }
     }
+
+    [Fact]
+    public void TheNotReadyListIsInEachPlayersLanguage()
+    {
+        string ready = Compact(Path.Combine("FiveStack.Services", "ReadySystem.cs"));
+
+        Assert.Contains(
+            "_gameServer.MessageEach(MessageType.Notify,localizer=>localizer[\"ready.players_not_ready\",",
+            ready
+        );
+        Assert.Matches(@"[^_]localizer\[""ready\.not_connected"",", ready);
+        Assert.Matches(@"[^_]localizer\[""ready\.not_linked"",", ready);
+        Assert.True(Translations("en.jsonc").ContainsKey("ready.not_linked"));
+        Assert.DoesNotContain("_localizer[\"ready.players_not_ready\"", ready);
+        Assert.True(Translations("en.jsonc").ContainsKey("ready.not_connected"));
+    }
+
+    [Fact]
+    public void AnUnlinkedPlayerIsToldInTheirLanguageHowToTakeTheirSeat()
+    {
+        Assert.Contains(
+            "_gameServer.Message(MessageType.Chat,_gameServer.LocalizerFor(player)[\"player.join.link_discord\"],player);",
+            Compact(Path.Combine("FiveStack.Events", "PlayerConnected.cs"))
+        );
+        Assert.True(Translations("en.jsonc").ContainsKey("player.join.link_discord"));
+    }
 }

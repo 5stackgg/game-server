@@ -40,6 +40,8 @@
   "ready.not_ready": "غير جاهز",
   "ready.marked": "تم تحديدك كـ {0}",
   "ready.players_not_ready": "اللاعبون غير الجاهزين: {0} اكتب {1}r",
+  "ready.not_connected": "{0} (غير متصل)",
+  "ready.not_linked": "{0} (غير مرتبط)",
 
   "knife.start": "سكين! سكين! سكين!",
   "knife.captain_picking": "{0} - القائد يختار الجوانب!",
@@ -80,6 +82,7 @@
   "demos.recording": "تسجيل ديمو",
   "player.join.help_hint": " اكتب {0}{1}help {2} لعرض الأوامر المتاحة",
   "player.join.ready_hint": " اكتب {0}{1}r{2} للاستعداد!",
+  "player.join.link_discord": " لست في فريق؟ سجّل الدخول إلى 5stack.gg بحساب Discord الخاص بك لتأخذ مقعدك، ثم ابقَ متصلاً",
   "match.resume_hint": "للاستئناف اكتب {0}resume",
   "match.received_data": "تم استلام بيانات المباراة",
   "match.tv_delay": "تأخير التلفاز ({0}ث متبقية)",

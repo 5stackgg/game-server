@@ -41,6 +41,8 @@
   "ready.not_ready": "inte redo",
   "ready.marked": "Du har markerats som {0}",
   "ready.players_not_ready": "Spelare Inte redo: {0} skriv {1}r",
+  "ready.not_connected": "{0} (inte ansluten)",
+  "ready.not_linked": "{0} (inte länkad)",
 
   "knife.start": "KNIV KNIV KNIV!",
   "knife.captain_picking": "{0} - Kaptenen väljer sida!",
@@ -85,6 +87,7 @@
   "demos.recording": "Spelar in demo",
   "player.join.help_hint": " Skriv {0}{1}help {2} för tillgängliga kommandon",
   "player.join.ready_hint": " Skriv {0}{1}r{2} för att bli redo!",
+  "player.join.link_discord": " Inte i ett lag? Logga in på 5stack.gg med ditt Discord-konto för att ta din plats och förbli ansluten",
   "match.resume_hint": "för att återuppta skriv {0}resume",
   "match.received_data": "Matchdata mottagna",
   "match.tv_delay": "TV-fördröjning ({0}s kvar)",

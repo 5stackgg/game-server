@@ -41,6 +41,8 @@ public class MatchService
         return _core.Engine.WorkshopId;
     }
 
+    private readonly FetchSequence _fetches = new();
+
     public async void GetMatchFromApi()
     {
         MatchManager? matchManager = _currentMatch;
@@ -75,6 +77,8 @@ public class MatchService
         try
         {
             {
+                int fetch = _fetches.Request();
+                int? captainsAsOf = _currentMatch?.CaptainsAsOf();
                 string matchUri =
                     $"{_environmentService.GetApiUrl()}/matches/current-match/{serverId}";
 
@@ -103,6 +107,12 @@ public class MatchService
 
                 HibernationUtility.NextTick(() =>
                 {
+                    if (!_fetches.TryTake(fetch))
+                    {
+                        _logger.LogInformation("dropping a match fetch older than one already applied");
+                        return;
+                    }
+
                     Guid? previousMatchId = _currentMatch?.GetMatchData()?.id;
 
                     if (matchData == null)
@@ -129,7 +139,8 @@ public class MatchService
                         _logger.LogInformation(
                             $"Match {matchData.id} still assigned — re-running setup"
                         );
-                        _currentMatch!.SetupMatch(matchData);
+                        _currentMatch!.TakeLineups(matchData, captainsAsOf);
+                        _currentMatch.SetupMatch(matchData);
                         return;
                     }
 

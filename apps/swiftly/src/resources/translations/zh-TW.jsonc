@@ -41,6 +41,8 @@
   "ready.not_ready": "未就緒",
   "ready.marked": "你已被標記為 {0}",
   "ready.players_not_ready": "玩家 未就緒：{0} 請輸入 {1}r",
+  "ready.not_connected": "{0}（未連線）",
+  "ready.not_linked": "{0}（未連結）",
 
   "knife.start": "小刀！小刀！小刀！",
   "knife.captain_picking": "{0} - 隊長正在選邊！",
@@ -85,6 +87,7 @@
   "demos.recording": "正在錄製 Demo",
   "player.join.help_hint": " 輸入 {0}{1}help {2} 查看可用指令",
   "player.join.ready_hint": " 輸入 {0}{1}r{2} 以就緒！",
+  "player.join.link_discord": " 沒有隊伍？請用 Discord 帳號登入 5stack.gg 以取得你的位置，然後保持連線",
   "match.resume_hint": "要繼續請輸入 {0}resume",
   "match.received_data": "已接收比賽數據",
   "match.tv_delay": "TV 延遲（剩餘 {0}s）",

@@ -21,6 +21,7 @@ public class MatchEvents
         Guid,
         (EventData<Dictionary<string, object>> Event, DateTime Timestamp)
     > _pendingMessages = new();
+    private readonly ConcurrentDictionary<string, int> _sent = new();
     private System.Timers.Timer _retryTimer;
     private const int RETRY_INTERVAL_MS = 5000;
     private const int MESSAGE_RETRY_THRESHOLD_SECONDS = 10;
@@ -170,6 +171,19 @@ public class MatchEvents
         }
     }
 
+    public int Sent(string Event)
+    {
+        return _sent.GetValueOrDefault(Event);
+    }
+
+    public bool IsPending(string Event)
+    {
+        return _pendingMessages.Values.Any(message =>
+            message.Event.data?.TryGetValue("event", out object? name) == true
+            && name as string == Event
+        );
+    }
+
     public void PublishGameEvent(string Event, Dictionary<string, object> Data)
     {
         if (RoundRestoreGateUtility.DroppedDuringLoad(Event, _restore.LoadingBackup))
@@ -203,6 +217,7 @@ public class MatchEvents
             data = new Dictionary<string, object> { { "event", Event }, { "data", Data } },
         };
 
+        _sent.AddOrUpdate(Event, 1, (_, count) => count + 1);
         _publishQueue.Writer.TryWrite((matchId, mapId, payload));
     }
 

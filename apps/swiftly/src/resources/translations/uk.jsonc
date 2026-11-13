@@ -41,6 +41,8 @@
   "ready.not_ready": "не готовий",
   "ready.marked": "Вас позначено як {0}",
   "ready.players_not_ready": "Гравці Не готові: {0} введіть {1}r",
+  "ready.not_connected": "{0} (не підключений)",
+  "ready.not_linked": "{0} (не прив'язаний)",
 
   "knife.start": "НІЖ НІЖ НІЖ!",
   "knife.captain_picking": "{0} - Капітан обирає сторони!",
@@ -85,6 +87,7 @@
   "demos.recording": "Запис демо",
   "player.join.help_hint": " Введіть {0}{1}help {2} для доступних команд",
   "player.join.ready_hint": " Введіть {0}{1}r{2}, щоб бути готовим!",
+  "player.join.link_discord": " Не в команді? Увійдіть на 5stack.gg через обліковий запис Discord, щоб зайняти своє місце, і залишайтеся на сервері",
   "match.resume_hint": "щоб відновити, введіть {0}resume",
   "match.received_data": "Отримано дані матчу",
   "match.tv_delay": "Затримка TV ({0}с залишилось)",

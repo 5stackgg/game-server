@@ -621,6 +621,75 @@ public class MatchManager
         );
     }
 
+    // The api answers with the captains it had when asked: a captain event still
+    // unanswered then, or sent since, is not in its answer.
+    public int? CaptainsAsOf()
+    {
+        return _matchEvents.IsPending("captain") ? null : _matchEvents.Sent("captain");
+    }
+
+    // Whoever the refetched lineups put on another lineup, such as a player whose
+    // seat linking Discord has just bound, is moved to their side before the
+    // match setup runs again.
+    public void TakeLineups(MatchData matchData, int? captainsAsOf)
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        Dictionary<ulong, Guid?> lineups = new();
+
+        foreach (IPlayer player in MatchUtility.Players())
+        {
+            lineups[player.SteamID] = MatchUtility.GetPlayerLineup(_matchData, player);
+        }
+
+        if (captainsAsOf == null || captainsAsOf != _matchEvents.Sent("captain"))
+        {
+            KeepCaptains(matchData);
+        }
+
+        _matchData.lineup_1 = matchData.lineup_1;
+        _matchData.lineup_2 = matchData.lineup_2;
+
+        foreach (IPlayer player in MatchUtility.Players())
+        {
+            if (
+                lineups.GetValueOrDefault(player.SteamID)
+                != MatchUtility.GetPlayerLineup(_matchData, player)
+            )
+            {
+                EnforceMemberTeam(player);
+            }
+        }
+
+        readySystem.UpdatePlayerStatus();
+    }
+
+    private void KeepCaptains(MatchData matchData)
+    {
+        List<MatchMember> current = _matchData!
+            .lineup_1.lineup_players.Concat(_matchData.lineup_2.lineup_players)
+            .ToList();
+
+        foreach (
+            MatchMember member in matchData.lineup_1.lineup_players.Concat(
+                matchData.lineup_2.lineup_players
+            )
+        )
+        {
+            MatchMember? kept = current.Find(old =>
+                old.steam_id != null && old.steam_id == member.steam_id
+            );
+
+            if (kept != null)
+            {
+                member.captain = kept.captain;
+            }
+        }
+    }
+
     public void SetupMatch(MatchData match)
     {
         _matchData = match;

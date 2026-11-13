@@ -24,19 +24,7 @@ namespace FiveStack.Utilities
             string playerName
         )
         {
-            List<MatchMember> players = matchData
-                .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
-                .ToList();
-
-            return players.Find(member =>
-            {
-                if (member.steam_id == null)
-                {
-                    return member.placeholder_name.StartsWith(playerName);
-                }
-
-                return member.steam_id == steamId;
-            });
+            return LineupMembership.Member(matchData, steamId, playerName);
         }
 
         public static eAllChatRoute AllChatRoute(
@@ -91,8 +79,6 @@ namespace FiveStack.Utilities
                     .Any(member => member.is_gagged && member.steam_id == steamId);
         }
 
-        // A lineup_1 placeholder whose name prefixes a lineup_2 player would
-        // otherwise claim them, so exact steam ids are matched before names.
         public static string? GetTeamChatLineupId(
             MatchData matchData,
             string steamId,
@@ -110,11 +96,6 @@ namespace FiveStack.Utilities
                     )
                     ?.match_lineup_id
                 ?? GetCoachLineupId(matchData, steamId)
-                ?? players
-                    .Find(member =>
-                        member.steam_id == null && member.placeholder_name.StartsWith(playerName)
-                    )
-                    ?.match_lineup_id
                 ?? Guid.Empty;
 
             if (lineupId == Guid.Empty)

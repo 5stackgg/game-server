@@ -150,23 +150,9 @@ public class ReadySystem
         }
 
         MatchManager? currentMatch = _matchService.GetCurrentMatch();
+        (int readyCount, int target) = ReadyCount();
 
-        int expectedCount = currentMatch?.GetExpectedPlayerCount() ?? 10;
-
-        switch (GetReadySetting())
-        {
-            case eReadySettings.Admin:
-                expectedCount = 1;
-                break;
-            case eReadySettings.Captains:
-                expectedCount = 2;
-                break;
-            case eReadySettings.Coach:
-                expectedCount = 2;
-                break;
-        }
-
-        if (TotalReady() == expectedCount)
+        if (readyCount >= target)
         {
             Reset();
             currentMatch?.UpdateMapStatus(eMapStatus.Knife);
@@ -204,8 +190,7 @@ public class ReadySystem
             return;
         }
 
-        int totalReady = TotalReady();
-        int expectedReady = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
+        (int totalReady, int expectedReady) = ReadyCount();
 
         int playerId = player.UserId.Value;
         if (_readyPlayers.ContainsKey(playerId) && _readyPlayers[playerId])
@@ -226,6 +211,11 @@ public class ReadySystem
 
         switch (GetReadySetting())
         {
+            case eReadySettings.Players:
+                player.PrintToCenter(
+                    _localizer["ready.waiting_for_players", totalReady, expectedReady]
+                );
+                break;
             case eReadySettings.Admin:
                 player.PrintToCenter(_localizer["ready.admin_will_start"]);
                 break;
@@ -238,9 +228,50 @@ public class ReadySystem
         }
     }
 
-    private int TotalReady()
+    private (int Ready, int Target) ReadyCount()
     {
-        return _readyPlayers.Count(pair => pair.Value);
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+
+        if (match == null || matchData == null)
+        {
+            return (0, 10);
+        }
+
+        return ReadyUtility.ReadyCount(
+            GetReadySetting(),
+            matchData,
+            MatchUtility
+                .Players()
+                .Where(player =>
+                    player.UserId != null
+                    && _readyPlayers.GetValueOrDefault(player.UserId.Value)
+                    && CanVote(player)
+                )
+                .Select(player => (player.SteamID.ToString(), player.PlayerName)),
+            match.GetExpectedPlayerCount()
+        );
+    }
+
+    private (List<string> Absent, List<string> Unlinked) GetEmptySeats()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+
+        if (match == null || matchData == null || GetReadySetting() != eReadySettings.Players)
+        {
+            return (new List<string>(), new List<string>());
+        }
+
+        List<(string, string)> connected = MatchUtility
+            .Players()
+            .Select(player => (player.SteamID.ToString(), player.PlayerName))
+            .ToList();
+
+        return (
+            ReadyUtility.EmptySeats(matchData, connected, match.GetExpectedPlayerCount()),
+            ReadyUtility.UnlinkedSeats(matchData, connected, match.GetExpectedPlayerCount())
+        );
     }
 
     public void SendReadyMessage(CCSPlayerController player)
@@ -279,15 +310,34 @@ public class ReadySystem
                 }
 
                 string[] notReadyPlayers = GetNotReadyPlayers();
-                if (notReadyPlayers.Length == 0)
+                (List<string> absent, List<string> unlinked) = GetEmptySeats();
+                if (notReadyPlayers.Length == 0 && absent.Count == 0 && unlinked.Count == 0)
                 {
                     return;
                 }
 
-                string list = string.Join(", ", notReadyPlayers);
-                _gameServer.Message(
+                _gameServer.MessageEach(
                     HudDestination.Notify,
-                    _localizer["ready.players_not_ready", list, CommandUtility.PublicChatTrigger]
+                    viewer =>
+                        _gameServer.Localize(
+                            viewer,
+                            "ready.players_not_ready",
+                            string.Join(
+                                ", ",
+                                notReadyPlayers
+                                    .Concat(
+                                        absent.Select(seat =>
+                                            _gameServer.Localize(viewer, "ready.not_connected", seat)
+                                        )
+                                    )
+                                    .Concat(
+                                        unlinked.Select(seat =>
+                                            _gameServer.Localize(viewer, "ready.not_linked", seat)
+                                        )
+                                    )
+                            ),
+                            CommandUtility.PublicChatTrigger
+                        )
                 );
             }
         );
@@ -347,28 +397,14 @@ public class ReadySystem
             return false;
         }
 
-        bool isCoach = _coachSystem.IsCoach(player, player.Team);
-        bool isCaptain = _captainSystem.IsCaptain(player, player.Team);
-
-        switch (GetReadySetting())
-        {
-            case eReadySettings.Coach:
-                if (!isCoach)
-                {
-                    return false;
-                }
-                break;
-            case eReadySettings.Captains:
-                if (!isCaptain)
-                {
-                    return false;
-                }
-                break;
-            case eReadySettings.Admin:
-                return false;
-        }
-
-        return true;
+        return ReadyUtility.CanReady(
+            GetReadySetting(),
+            matchData,
+            player.SteamID.ToString(),
+            player.PlayerName,
+            _coachSystem.IsCoach(player, player.Team),
+            _captainSystem.IsCaptain(player, player.Team)
+        );
     }
 
     private eReadySettings GetReadySetting()

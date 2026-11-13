@@ -128,6 +128,21 @@ public partial class FiveStackPlugin
             }
         );
 
+        if (
+            LineupMembership.WaitsForADiscordLink(
+                matchData,
+                player.SteamID.ToString(),
+                ConnectRoles.RoleIn(player.SteamID, matchData.id)
+            )
+        )
+        {
+            _gameServer.Message(
+                MessageType.Chat,
+                _gameServer.LocalizerFor(player)["player.join.link_discord"],
+                player
+            );
+        }
+
         return HookResult.Continue;
     }
 

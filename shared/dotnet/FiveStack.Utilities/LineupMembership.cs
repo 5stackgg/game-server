@@ -1,7 +1,10 @@
 using FiveStack.Entities;
+using FiveStack.Enums;
 
 namespace FiveStack.Utilities;
 
+// A pickup seat is taken by linking Discord on 5stack.gg, which binds it to the
+// player's steam id. Until then it holds nobody, and a name never takes one.
 public static class LineupMembership
 {
     public static Guid? LineupOf(MatchData matchData, string steamId, string playerName)
@@ -14,43 +17,63 @@ public static class LineupMembership
         };
     }
 
-    // Exact steam ids first: a placeholder's name matches by prefix, and an empty
-    // name would match every unclaimed placeholder.
     public static int? LineupNumber(MatchData matchData, string steamId, string playerName)
     {
-        if (!string.IsNullOrEmpty(steamId))
-        {
-            if (matchData.lineup_1.lineup_players.Any(member => member.steam_id == steamId))
-            {
-                return 1;
-            }
+        return Find(matchData, steamId)?.Lineup;
+    }
 
-            if (matchData.lineup_2.lineup_players.Any(member => member.steam_id == steamId))
-            {
-                return 2;
-            }
-        }
+    public static MatchMember? Member(MatchData matchData, string steamId, string playerName)
+    {
+        return Find(matchData, steamId)?.Member;
+    }
 
-        if (string.IsNullOrEmpty(playerName))
+    // Anyone who connected with a signed role, a streamer, caster or staff, and a
+    // lineup's coach never hold a seat. Staff who play a free seat join with the
+    // plain password.
+    public static bool CouldHoldASeat(
+        MatchData matchData,
+        string steamId,
+        ePlayerRoles? connectedRole
+    )
+    {
+        return connectedRole == null
+            && steamId != matchData.lineup_1.coach_steam_id
+            && steamId != matchData.lineup_2.coach_steam_id;
+    }
+
+    public static bool WaitsForADiscordLink(
+        MatchData matchData,
+        string steamId,
+        ePlayerRoles? connectedRole
+    )
+    {
+        return Find(matchData, steamId) == null
+            && Members(matchData).Any(entry => entry.Member.steam_id == null)
+            && CouldHoldASeat(matchData, steamId, connectedRole);
+    }
+
+    private static (MatchMember Member, int Lineup)? Find(MatchData matchData, string steamId)
+    {
+        if (string.IsNullOrEmpty(steamId))
         {
             return null;
         }
 
-        if (matchData.lineup_1.lineup_players.Any(member => IsPlaceholderFor(member, playerName)))
+        foreach ((MatchMember member, int lineup) in Members(matchData))
         {
-            return 1;
-        }
-
-        if (matchData.lineup_2.lineup_players.Any(member => IsPlaceholderFor(member, playerName)))
-        {
-            return 2;
+            if (member.steam_id == steamId)
+            {
+                return (member, lineup);
+            }
         }
 
         return null;
     }
 
-    private static bool IsPlaceholderFor(MatchMember member, string playerName)
+    private static IEnumerable<(MatchMember Member, int Lineup)> Members(MatchData matchData)
     {
-        return member.steam_id == null && member.placeholder_name.StartsWith(playerName);
+        return matchData
+            .lineup_1.lineup_players.Select(member => (member, 1))
+            .Concat(matchData.lineup_2.lineup_players.Select(member => (member, 2)));
     }
 }

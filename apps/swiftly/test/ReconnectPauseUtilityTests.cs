@@ -45,13 +45,38 @@ public class ReconnectPauseUtilityTests
         Assert.False(ReconnectPauseUtility.ShouldPause(BuildMatch(), connected, 10));
     }
 
+    // A pickup seat is taken by linking Discord on 5stack.gg, which binds it to the
+    // player's steam id. A seat nobody holds cannot reconnect, so pausing,
+    // restoring and resuming wait only on bound seats, and someone who only shares
+    // a seat's name never fills it.
     [Fact]
-    public void A_Placeholder_Member_Counts_Once_Someone_Joins_Under_Its_Name()
+    public void An_Unbound_Seat_Never_Pauses_The_Match()
     {
         MatchData match = BuildMatch(new MatchMember { steam_id = null, placeholder_name = "Bob" });
         var connected = Roster(9).Append(("76561198999999997", "Bob"));
 
         Assert.False(ReconnectPauseUtility.ShouldPause(match, connected, 10));
+    }
+
+    [Fact]
+    public void A_Restore_And_A_Resume_Wait_Only_On_Bound_Seats()
+    {
+        MatchData match = BuildMatch(new MatchMember { steam_id = null, placeholder_name = "Bob" });
+
+        Assert.Equal((9, 9), ReconnectPauseUtility.RosterCount(match, Roster(9), 10));
+        Assert.Equal((8, 9), ReconnectPauseUtility.RosterCount(match, Roster(8), 10));
+        Assert.True(ReconnectPauseUtility.ShouldPause(match, Roster(8), 10));
+    }
+
+    [Fact]
+    public void A_Lineup_With_An_Unbound_Seat_Is_Whole_With_Its_Bound_Players()
+    {
+        MatchData match = BuildMatch(new MatchMember { steam_id = null, placeholder_name = "Bob" });
+        match.lineup_1_id = Guid.NewGuid();
+        match.lineup_2_id = Guid.NewGuid();
+
+        Assert.True(ReconnectPauseUtility.IsLineupWhole(match, Roster(9), 10, match.lineup_2_id));
+        Assert.False(ReconnectPauseUtility.IsLineupWhole(match, Roster(8), 10, match.lineup_2_id));
     }
 
     private static MatchData FiveVersusFour()
@@ -121,8 +146,8 @@ public class ReconnectPauseUtilityTests
         );
     }
 
-    // One player in the server fills one seat: a lineup 1 player whose name starts
-    // an unclaimed placeholder on lineup 2 does not stand in for that placeholder.
+    // One player in the server fills one seat on one lineup: a lineup 1 player
+    // whose name starts an unbound seat on lineup 2 does not stand in for it.
     [Fact]
     public void A_Player_Counts_Toward_One_Lineup_Only()
     {
@@ -140,7 +165,8 @@ public class ReconnectPauseUtilityTests
             player.Item1 == "76561198000000000" ? (player.Item1, "Max") : player
         );
 
-        Assert.True(ReconnectPauseUtility.ShouldPause(match, connected, 10));
+        Assert.Equal((9, 9), ReconnectPauseUtility.RosterCount(match, connected, 10));
+        Assert.Equal(1, LineupMembership.LineupNumber(match, "76561198000000000", "Max"));
     }
 
     [Fact]
@@ -160,5 +186,126 @@ public class ReconnectPauseUtilityTests
         var connected = Roster(9).Append(("76561198999999999", "caster"));
 
         Assert.Equal((9, 10), ReconnectPauseUtility.RosterCount(BuildMatch(), connected, 10));
+    }
+
+    private static MatchData WithPlaceholders(string lineup1Name, string lineup2Name)
+    {
+        return new MatchData
+        {
+            lineup_1 = new MatchLineUp
+            {
+                lineup_players = Members(0, 4)
+                    .Append(new MatchMember { steam_id = null, placeholder_name = lineup1Name })
+                    .ToList(),
+            },
+            lineup_2 = new MatchLineUp
+            {
+                lineup_players = Members(5, 4)
+                    .Append(new MatchMember { steam_id = null, placeholder_name = lineup2Name })
+                    .ToList(),
+            },
+        };
+    }
+
+    [Fact]
+    public void A_Seat_Bound_To_A_Steam_Id_Counts_That_Player()
+    {
+        MatchData match = WithPlaceholders("Samuel", "Sam");
+        match.lineup_2.lineup_players[4].steam_id = "76561198999999992";
+        var connected = Players(0, 4)
+            .Concat(Players(5, 4))
+            .Append(("76561198999999991", "Samuel"))
+            .Append(("76561198999999992", "lukepolo"));
+
+        Assert.Equal((9, 9), ReconnectPauseUtility.RosterCount(match, connected, 10));
+        Assert.Equal(2, LineupMembership.LineupNumber(match, "76561198999999992", "lukepolo"));
+    }
+
+    [Fact]
+    public void A_Name_Starting_Placeholders_On_Both_Lineups_Is_On_Neither()
+    {
+        Assert.Null(
+            LineupMembership.LineupNumber(
+                WithPlaceholders("Samuel", "Samantha"),
+                "76561198999999992",
+                "Sam"
+            )
+        );
+    }
+
+    // Only a steam id the api bound to a seat, or the seat's exact name, puts a
+    // player on a lineup: a name that merely fits a seat is anyone's to take.
+    [Theory]
+    [InlineData("Max")]
+    [InlineData("lukepolo")]
+    [InlineData("[TAG] Luke")]
+    [InlineData("Big Luke")]
+    [InlineData("luke123")]
+    public void A_Name_That_Only_Fits_A_Seat_Puts_Nobody_On_A_Lineup(string steamName)
+    {
+        Assert.Null(
+            LineupMembership.LineupNumber(
+                WithPlaceholders("Maxwell", "Luke"),
+                "76561198999999992",
+                steamName
+            )
+        );
+    }
+
+    [Theory]
+    [InlineData("Luke")]
+    [InlineData("LUKE")]
+    [InlineData(" luke ")]
+    public void A_Seats_Exact_Name_Puts_Nobody_On_A_Lineup(string steamName)
+    {
+        Assert.Null(
+            LineupMembership.LineupNumber(
+                WithPlaceholders("Bob", "Luke"),
+                "76561198999999992",
+                steamName
+            )
+        );
+    }
+
+    [Fact]
+    public void A_Player_Whose_Name_Only_Fits_A_Seat_Is_Not_Counted()
+    {
+        var connected = Players(0, 4)
+            .Concat(Players(5, 4))
+            .Append(("76561198999999991", "Bob"))
+            .Append(("76561198999999992", "[TAG] Luke"));
+
+        Assert.Equal(
+            (8, 8),
+            ReconnectPauseUtility.RosterCount(WithPlaceholders("Bob", "Luke"), connected, 10)
+        );
+    }
+
+    [Fact]
+    public void A_One_Character_Name_Claims_No_Seat()
+    {
+        Assert.Null(
+            LineupMembership.LineupNumber(WithPlaceholders("Bob", "Luke"), "76561198999999992", "L")
+        );
+    }
+
+    [Fact]
+    public void A_Name_Fitting_Seats_On_Both_Lineups_Claims_Neither()
+    {
+        Assert.Null(
+            LineupMembership.LineupNumber(
+                WithPlaceholders("Lukewarm", "Big Luke"),
+                "76561198999999992",
+                "Luke"
+            )
+        );
+    }
+
+    [Fact]
+    public void The_Same_Seat_Name_On_Both_Lineups_Claims_Neither()
+    {
+        Assert.Null(
+            LineupMembership.LineupNumber(WithPlaceholders("Sam", "Sam"), "76561198999999992", "Sam")
+        );
     }
 }

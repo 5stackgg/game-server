@@ -349,4 +349,30 @@ public class PlayerLanguageTests
             $"ko-KR {key} reads {korean[word]}{after}"
         );
     }
+
+    [Fact]
+    public void TheNotReadyListIsInEachPlayersLanguage()
+    {
+        string ready = Compact(Path.Combine("FiveStack.Services", "ReadySystem.cs"));
+
+        Assert.Contains(
+            "_gameServer.MessageEach(HudDestination.Notify,viewer=>_gameServer.Localize(viewer,\"ready.players_not_ready\",",
+            ready
+        );
+        Assert.Contains("_gameServer.Localize(viewer,\"ready.not_connected\",", ready);
+        Assert.Contains("_gameServer.Localize(viewer,\"ready.not_linked\",", ready);
+        EveryLanguageHas("ready.not_linked");
+        Assert.DoesNotContain("_localizer[\"ready.players_not_ready\"", ready);
+        EveryLanguageHas("ready.not_connected");
+    }
+
+    [Fact]
+    public void AnUnlinkedPlayerIsToldInTheirLanguageHowToTakeTheirSeat()
+    {
+        Assert.Contains(
+            "_gameServer.Message(HudDestination.Chat,_gameServer.Localize(player,\"player.join.link_discord\"),player);",
+            Compact(Path.Combine("FiveStack.Events", "PlayerConnected.cs"))
+        );
+        EveryLanguageHas("player.join.link_discord");
+    }
 }

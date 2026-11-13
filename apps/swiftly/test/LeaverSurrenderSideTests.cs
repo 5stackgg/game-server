@@ -92,10 +92,10 @@ public class LeaverSurrenderSideTests
         Assert.Null(SurrenderSystem.LeaverLineup(match, "76561198000000009", "keith"));
     }
 
-    // A leaver who joined under a placeholder name has no steam id on the lineup,
-    // so only their name finds it.
+    // A pickup seat holds nobody until linking Discord binds it to a steam id, so a
+    // leaver who only shares its name is on no lineup.
     [Fact]
-    public void A_Placeholder_Leaver_Is_Found_By_Name()
+    public void A_Leaver_Who_Only_Shares_A_Seats_Name_Has_No_Lineup()
     {
         var (match, _) = BuildMatch();
         match.lineup_1 = new MatchLineUp
@@ -113,6 +113,6 @@ public class LeaverSurrenderSideTests
             },
         };
 
-        Assert.Equal(Lineup2, SurrenderSystem.LeaverLineup(match, "76561198000000005", "Bob"));
+        Assert.Null(SurrenderSystem.LeaverLineup(match, "76561198000000005", "Bob"));
     }
 }

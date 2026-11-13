@@ -41,6 +41,8 @@
   "ready.not_ready": "未就绪",
   "ready.marked": "你已被标记为 {0}",
   "ready.players_not_ready": "玩家 未就绪：{0} 输入 {1}r",
+  "ready.not_connected": "{0}（未连接）",
+  "ready.not_linked": "{0}（未关联）",
 
   "knife.start": "刀！刀！刀！",
   "knife.captain_picking": "{0} - 队长正在选边！",
@@ -85,6 +87,7 @@
   "demos.recording": "正在录制 Demo",
   "player.join.help_hint": " 输入 {0}{1}help {2} 查看可用命令",
   "player.join.ready_hint": " 输入 {0}{1}r{2} 以就绪！",
+  "player.join.link_discord": " 没有队伍？请用 Discord 账号登录 5stack.gg 以占据你的位置，然后保持连接",
   "match.resume_hint": "要继续请输入 {0}resume",
   "match.received_data": "已接收比赛数据",
   "match.tv_delay": "TV 延迟（剩余 {0}s）",

@@ -41,6 +41,8 @@
   "ready.not_ready": "未準備",
   "ready.marked": "あなたは {0} に設定されました",
   "ready.players_not_ready": "プレイヤー 未準備: {0} {1}r を入力",
+  "ready.not_connected": "{0}（未接続）",
+  "ready.not_linked": "{0}（未連携）",
 
   "knife.start": "ナイフ！ナイフ！ナイフ！",
   "knife.captain_picking": "{0} - キャプテンがサイドを選択中！",
@@ -85,6 +87,7 @@
   "demos.recording": "デモを録画中",
   "player.join.help_hint": " 利用可能なコマンドを見るには {0}{1}help {2} を入力",
   "player.join.ready_hint": " 準備するには {0}{1}r{2} と入力！",
+  "player.join.link_discord": " チームに入っていませんか？5stack.gg に Discord アカウントでログインして席を確保し、そのまま接続していてください",
   "match.resume_hint": "再開するには {0}resume と入力",
   "match.received_data": "試合データを受信しました",
   "match.tv_delay": "TV 遅延（残り {0}s）",

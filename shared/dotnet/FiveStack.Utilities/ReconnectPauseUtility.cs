@@ -7,8 +7,8 @@ public static class ReconnectPauseUtility
     // Coaches, casters and admins are in the server too, so only the lineups'
     // own players say whether anyone is missing. Each lineup is held to its own
     // size: a lineup short by design (a 5v4 started by its captains or an admin)
-    // is not missing anyone. A placeholder member counts once someone joins
-    // under its name, and a player fills a seat on one lineup only.
+    // is not missing anyone. A pickup seat is only waited on once linking Discord
+    // has bound it to its player's steam id: a seat nobody holds cannot reconnect.
     public static bool ShouldPause(
         MatchData matchData,
         IEnumerable<(string SteamId, string Name)> connected,
@@ -28,9 +28,29 @@ public static class ReconnectPauseUtility
         int expectedPlayers
     )
     {
-        int perLineup = expectedPlayers / 2;
-        int required1 = Math.Min(perLineup, matchData.lineup_1.lineup_players.Count);
-        int required2 = Math.Min(perLineup, matchData.lineup_2.lineup_players.Count);
+        return Count(matchData, connected, expectedPlayers, BoundSeats);
+    }
+
+    // Every seat, bound or not: readying up waits on a seat until its player
+    // links Discord, or an admin forces the start.
+    public static (int Present, int Required) SeatCount(
+        MatchData matchData,
+        IEnumerable<(string SteamId, string Name)> connected,
+        int expectedPlayers
+    )
+    {
+        return Count(matchData, connected, expectedPlayers, Seats);
+    }
+
+    private static (int Present, int Required) Count(
+        MatchData matchData,
+        IEnumerable<(string SteamId, string Name)> connected,
+        int expectedPlayers,
+        Func<MatchLineUp, int, int> seats
+    )
+    {
+        int required1 = seats(matchData.lineup_1, expectedPlayers);
+        int required2 = seats(matchData.lineup_2, expectedPlayers);
         int present1 = 0;
         int present2 = 0;
 
@@ -54,6 +74,19 @@ public static class ReconnectPauseUtility
         );
     }
 
+    public static int Seats(MatchLineUp lineup, int expectedPlayers)
+    {
+        return Math.Min(expectedPlayers / 2, lineup.lineup_players.Count);
+    }
+
+    public static int BoundSeats(MatchLineUp lineup, int expectedPlayers)
+    {
+        return Math.Min(
+            expectedPlayers / 2,
+            lineup.lineup_players.Count(member => member.steam_id != null)
+        );
+    }
+
     // Whole once as many of its own players are in as it needs, so a lineup short
     // by design is whole with everyone it has.
     public static bool IsLineupWhole(
@@ -73,8 +106,10 @@ public static class ReconnectPauseUtility
             return false;
         }
 
-        MatchLineUp members = lineup == 1 ? matchData.lineup_1 : matchData.lineup_2;
-        int required = Math.Min(expectedPlayers / 2, members.lineup_players.Count);
+        int required = BoundSeats(
+            lineup == 1 ? matchData.lineup_1 : matchData.lineup_2,
+            expectedPlayers
+        );
 
         return connected.Count(player =>
                 LineupMembership.LineupNumber(matchData, player.SteamId, player.Name) == lineup

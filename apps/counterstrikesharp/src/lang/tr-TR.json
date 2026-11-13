@@ -40,6 +40,8 @@
   "ready.not_ready": "hazır değil",
   "ready.marked": "{0} olarak işaretlendiniz",
   "ready.players_not_ready": "Oyuncular Hazır değil: {0} {1}r yazın",
+  "ready.not_connected": "{0} (bağlı değil)",
+  "ready.not_linked": "{0} (bağlanmamış)",
 
   "knife.start": "BIÇAK BIÇAK BIÇAK!",
   "knife.captain_picking": "{0} - Kaptan taraf seçiyor!",
@@ -79,6 +81,7 @@
   "demos.recording": "Demo kaydediliyor",
   "player.join.help_hint": " Kullanılabilir komutlar için {0}{1}help {2} yazın",
   "player.join.ready_hint": " Hazır olmak için {0}{1}r{2} yazın!",
+  "player.join.link_discord": " Bir takımda değil misin? Yerini almak için 5stack.gg'ye Discord hesabınla giriş yap, ardından bağlı kal",
   "match.resume_hint": "devam etmek için {0}resume yazın",
   "match.received_data": "Maç verileri alındı",
   "match.tv_delay": "TV gecikmesi ({0}s kaldı)",
