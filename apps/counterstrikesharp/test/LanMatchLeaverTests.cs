@@ -36,9 +36,10 @@ public class LanMatchLeaverTests
     }
 
     // The LAN check has to return on its own: a check that only logs, or a return
-    // somewhere later in the method, lets the action run.
+    // somewhere later in the method, lets the action run. Offline matches are
+    // all LAN, and are left as they were.
     private static readonly Regex LanGuard = new Regex(
-        @"if\s*\([^\n]*is_lan[^\n]*\)\s*\{(?:[^{}]|\{[^{}]*\})*?\breturn;\s*\}"
+        @"if\s*\((?<cond>[^{};]*is_lan[^{};]*)\)\s*\{(?:[^{}]|\{[^{}]*\})*?\breturn;\s*\}"
     );
 
     private static void ReturnsOnLanBefore(string method, string action)
@@ -49,6 +50,11 @@ public class LanMatchLeaverTests
         Assert.True(guard.Success, "no LAN check returns on its own");
         Assert.True(act >= 0, $"{action} is gone");
         Assert.True(act > guard.Index + guard.Length, $"{action} runs before the LAN check returns");
+
+        string condition = guard.Groups["cond"].Value;
+
+        Assert.DoesNotMatch(@"![\w.?()]*is_lan|is_lan\s*(==\s*false|!=\s*true)", condition);
+        Assert.Contains("!_environmentService.IsOfflineMode()", condition);
     }
 
     [Fact]
