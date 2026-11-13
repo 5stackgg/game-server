@@ -31,6 +31,6 @@ public class RoundStartPauseWiringTests
         Assert.True(decision >= 0, "the pause is not decided by ReconnectPauseUtility");
         Assert.True(pause > decision, "the pause is not behind that decision");
         Assert.DoesNotContain("Players().Count", handler);
-        Assert.DoesNotContain("PlayerCount()", handler);
+        Assert.DoesNotContain("MatchUtility.PlayerCount()", handler);
     }
 }
