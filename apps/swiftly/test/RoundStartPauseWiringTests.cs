@@ -33,4 +33,33 @@ public class RoundStartPauseWiringTests
         Assert.DoesNotContain("Players().Count", handler);
         Assert.DoesNotContain("MatchUtility.PlayerCount()", handler);
     }
+
+    // Resuming has to agree with pausing, or a 5v4 pauses and never comes back.
+    [Fact]
+    public void A_Reconnect_Resumes_On_The_Same_Rule()
+    {
+        foreach (
+            (string folder, string file, string signature) in new[]
+            {
+                ("FiveStack.Services", "SurrenderSystem.cs", "public void ResumeIfRosterWhole()"),
+                ("FiveStack.Events", "PlayerDisconnected.cs", "public HookResult OnPlayerDisconnect("),
+            }
+        )
+        {
+            string source = Regex.Replace(
+                File.ReadAllText(Path.Combine(SourceDir(), folder, file)),
+                @"//[^\n]*",
+                ""
+            );
+            int from = source.IndexOf(signature, StringComparison.Ordinal);
+            int to = source.IndexOf("\n    }\n", from, StringComparison.Ordinal);
+
+            Assert.True(from >= 0 && to > from, $"{signature} is gone");
+
+            string method = source[from..to];
+
+            Assert.Contains("ReconnectPauseUtility.ShouldPause(", method);
+            Assert.DoesNotContain("ConnectedRosterCount(", method);
+        }
+    }
 }

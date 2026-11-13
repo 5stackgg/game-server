@@ -53,4 +53,43 @@ public class ReconnectPauseUtilityTests
 
         Assert.False(ReconnectPauseUtility.ShouldPause(match, connected, 10));
     }
+
+    private static MatchData FiveVersusFour()
+    {
+        return new MatchData
+        {
+            lineup_1 = new MatchLineUp
+            {
+                lineup_players = Enumerable
+                    .Range(0, 5)
+                    .Select(i => new MatchMember { steam_id = $"7656119800000{i:D4}" })
+                    .ToList(),
+            },
+            lineup_2 = new MatchLineUp
+            {
+                lineup_players = Enumerable
+                    .Range(5, 4)
+                    .Select(i => new MatchMember { steam_id = $"7656119800000{i:D4}" })
+                    .ToList(),
+            },
+        };
+    }
+
+    // A 5v4 that went live through its captains or an admin is whole with nine.
+    [Fact]
+    public void A_Five_Versus_Four_With_Everyone_In_Does_Not_Pause()
+    {
+        MatchData match = FiveVersusFour();
+
+        Assert.False(ReconnectPauseUtility.ShouldPause(match, Roster(9), match.ExpectedPlayerCount()));
+    }
+
+    [Fact]
+    public void A_Five_Versus_Four_Missing_One_Of_The_Four_Pauses()
+    {
+        MatchData match = FiveVersusFour();
+        var connected = Roster(9).Where(player => player.Item1 != "76561198000000008");
+
+        Assert.True(ReconnectPauseUtility.ShouldPause(match, connected, match.ExpectedPlayerCount()));
+    }
 }
