@@ -22,6 +22,15 @@ public static class ReconnectPauseUtility
             || IsShort(matchData.lineup_2, players, perLineup);
     }
 
+    public static (int Present, int Required) RosterCount(
+        MatchData matchData,
+        IEnumerable<(string SteamId, string Name)> connected,
+        int expectedPlayers
+    )
+    {
+        return (connected.Count(), expectedPlayers);
+    }
+
     private static bool IsShort(
         MatchLineUp lineup,
         List<(string SteamId, string Name)> connected,

@@ -174,4 +174,26 @@ public class SurrenderVoteIntegrityTests
         Assert.DoesNotContain("Reset()", callback);
         Assert.Contains("surrenderingVote = null;", callback);
     }
+
+    // A caller's own lineup is only taken once the match can say where it plays:
+    // with no map, no rounds set or no sides yet, nobody can start a surrender.
+    [Fact]
+    public void A_Caller_Cannot_Surrender_Before_The_Map_And_Sides_Are_Known()
+    {
+        var (match, map) = Halftime();
+
+        Assert.Null(SurrenderSystem.WinningLineup(match, null, Lineup1, CsTeam.CounterTerrorist, 0));
+        Assert.Null(
+            SurrenderSystem.WinningLineup(
+                match,
+                new MatchMap { lineup_1_side = "", lineup_2_side = "" },
+                Lineup1,
+                CsTeam.CounterTerrorist,
+                0
+            )
+        );
+
+        match.options.mr = 0;
+        Assert.Null(SurrenderSystem.WinningLineup(match, map, Lineup1, CsTeam.CounterTerrorist, 0));
+    }
 }
