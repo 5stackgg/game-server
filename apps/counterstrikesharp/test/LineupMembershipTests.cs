@@ -26,18 +26,15 @@ public class LineupMembershipTests
         Assert.True(LineupMembership.CouldHoldASeat(BuildMatch(), Player, null));
     }
 
+    // A staff member who plays a free seat joins with the plain password.
     [Theory]
+    [InlineData(ePlayerRoles.Streamer)]
     [InlineData(ePlayerRoles.Administrator)]
     [InlineData(ePlayerRoles.MatchOrganizer)]
-    public void Staff_Could_Hold_A_Seat(ePlayerRoles role)
+    [InlineData(ePlayerRoles.TournamentOrganizer)]
+    public void Anyone_Who_Joined_With_A_Role_Is_Not_Offered_A_Seat(ePlayerRoles role)
     {
-        Assert.True(LineupMembership.CouldHoldASeat(BuildMatch(), Player, role));
-    }
-
-    [Fact]
-    public void A_Streamer_Or_Caster_Is_Not_Offered_A_Seat()
-    {
-        Assert.False(LineupMembership.CouldHoldASeat(BuildMatch(), Player, ePlayerRoles.Streamer));
+        Assert.False(LineupMembership.CouldHoldASeat(BuildMatch(), Player, role));
     }
 
     [Theory]

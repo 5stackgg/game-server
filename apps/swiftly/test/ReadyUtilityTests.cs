@@ -190,6 +190,32 @@ public class ReadyUtilityTests
     }
 
     [Fact]
+    public void A_Coach_On_Only_One_Lineup_Readies_Alone()
+    {
+        MatchData match = FiveVersusFour();
+        match.lineup_1.coach_steam_id = "76561198000000101";
+
+        Assert.Equal(
+            (1, 1),
+            ReadyUtility.ReadyCount(
+                eReadySettings.Coach,
+                match,
+                new[] { ("76561198000000101", "coach") },
+                10
+            )
+        );
+    }
+
+    [Fact]
+    public void Coach_Mode_Without_Coaches_Waits_On_One()
+    {
+        Assert.Equal(
+            (0, 1),
+            ReadyUtility.ReadyCount(eReadySettings.Coach, FiveVersusFour(), Connected(0, 1), 10)
+        );
+    }
+
+    [Fact]
     public void Nobody_Counts_As_Ready_In_Admin_Mode()
     {
         Assert.Equal(

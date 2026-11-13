@@ -108,7 +108,7 @@ public class PlaceholderClaimWiringTests
     [Fact]
     public void A_Newly_Bound_Player_Is_Put_On_Their_Team()
     {
-        string take = Manager("public void TakeLineups(MatchData matchData)");
+        string take = Manager("public void TakeLineups(");
         int swap = take.IndexOf("_matchData.lineup_2=matchData.lineup_2;", StringComparison.Ordinal);
 
         Assert.True(swap >= 0, "the lineups are not taken");
@@ -117,12 +117,54 @@ public class PlaceholderClaimWiringTests
         Assert.DoesNotContain("UpdateMapStatus", take);
     }
 
+    // The api answers with the captains it had when asked: a captain event still
+    // unanswered then, or sent since, is not in its answer.
     [Fact]
     public void A_Captain_Change_The_Api_Has_Not_Taken_Survives_A_Lineup_Refresh()
     {
         Assert.Contains(
-            "_matchEvents.IsPending(\"captain\")",
-            Manager("public void TakeLineups(MatchData matchData)")
+            "return_matchEvents.IsPending(\"captain\")?null:_matchEvents.Sent(\"captain\");",
+            Manager("public int? CaptainsAsOf()")
         );
+        Assert.Contains(
+            "if(captainsAsOf==null||captainsAsOf!=_matchEvents.Sent(\"captain\")){KeepCaptains(matchData);}",
+            Manager("public void TakeLineups(MatchData matchData, int? captainsAsOf)")
+        );
+
+        string refresh = Service("public async void GetLineupsFromApi(bool retry = true)");
+
+        int asked = refresh.IndexOf("int?captainsAsOf=match.CaptainsAsOf();", StringComparison.Ordinal);
+
+        Assert.True(
+            asked >= 0 && asked < refresh.IndexOf("FetchCurrentMatch(", StringComparison.Ordinal),
+            "the captains are read when the answer comes, not when it was asked for"
+        );
+        Assert.Contains(".TakeLineups(current.Match,captainsAsOf);", refresh);
+    }
+
+    // One refresh runs at a time, and an ask while it runs is kept for one more.
+    [Fact]
+    public void Only_One_Lineup_Refresh_Runs_At_A_Time()
+    {
+        string refresh = Service("public async void GetLineupsFromApi(bool retry = true)");
+
+        Assert.Contains("||!_fetches.TryStart())", refresh);
+        Assert.Contains("boolagain=_fetches.Finish();", refresh);
+        Assert.Contains("if(again){GetLineupsFromApi();}", refresh);
+    }
+
+    // An answer to a request older than the last one taken is dropped, whichever
+    // kind of fetch either was.
+    [Theory]
+    [InlineData("public async void GetLineupsFromApi(bool retry = true)")]
+    [InlineData("public async void GetMatchFromApi()")]
+    public void An_Answer_Older_Than_The_Last_Taken_Is_Dropped(string signature)
+    {
+        string fetch = Service(signature);
+        int request = fetch.IndexOf("intrequest=_fetches.Request();", StringComparison.Ordinal);
+
+        Assert.True(request >= 0, "the request is not numbered");
+        Assert.True(request < fetch.IndexOf("FetchCurrentMatch(", StringComparison.Ordinal));
+        Assert.Contains("_fetches.TryTake(request)", fetch);
     }
 }
