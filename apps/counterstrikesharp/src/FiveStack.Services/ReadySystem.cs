@@ -147,8 +147,9 @@ public class ReadySystem
         }
 
         MatchManager? currentMatch = _matchService.GetCurrentMatch();
+        (int readyCount, int target) = ReadyCount();
 
-        if (TotalReady() >= ReadyTarget())
+        if (readyCount >= target)
         {
             Reset();
             currentMatch?.UpdateMapStatus(eMapStatus.Knife);
@@ -186,8 +187,7 @@ public class ReadySystem
             return;
         }
 
-        int totalReady = TotalReady();
-        int expectedReady = ReadyTarget();
+        (int totalReady, int expectedReady) = ReadyCount();
 
         int playerId = player.UserId.Value;
         if (_readyPlayers.ContainsKey(playerId) && _readyPlayers[playerId])
@@ -225,22 +225,27 @@ public class ReadySystem
         }
     }
 
-    private int TotalReady()
-    {
-        return _readyPlayers.Count(pair => pair.Value);
-    }
-
-    private int ReadyTarget()
+    private (int Ready, int Target) ReadyCount()
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchData? matchData = match?.GetMatchData();
 
         if (match == null || matchData == null)
         {
-            return 10;
+            return (0, 10);
         }
 
-        return ReadyUtility.ReadyTarget(GetReadySetting(), matchData, match.GetExpectedPlayerCount());
+        return ReadyUtility.ReadyCount(
+            GetReadySetting(),
+            matchData,
+            MatchUtility
+                .Players()
+                .Where(player =>
+                    player.UserId != null && _readyPlayers.GetValueOrDefault(player.UserId.Value)
+                )
+                .Select(player => (player.SteamID.ToString(), player.PlayerName)),
+            match.GetExpectedPlayerCount()
+        );
     }
 
     private List<string> GetEmptySeats()

@@ -4,6 +4,7 @@ using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
@@ -123,6 +124,11 @@ public partial class FiveStackPlugin
                 { "steam_id", player.SteamID.ToString() },
             }
         );
+
+        if (match.IsWarmup() && MatchUtility.HasPlaceholderMembers(matchData))
+        {
+            match.PublishConnectedPlayers(eMapStatus.Warmup);
+        }
 
         return HookResult.Continue;
     }

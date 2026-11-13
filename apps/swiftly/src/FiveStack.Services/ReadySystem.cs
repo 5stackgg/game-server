@@ -140,8 +140,9 @@ public class ReadySystem
         }
 
         MatchManager? currentMatch = _matchService.GetCurrentMatch();
+        (int readyCount, int target) = ReadyCount();
 
-        if (TotalReady() >= ReadyTarget())
+        if (readyCount >= target)
         {
             Reset();
             currentMatch?.UpdateMapStatus(eMapStatus.Knife);
@@ -169,8 +170,7 @@ public class ReadySystem
 
     public void SetupReadyMessage(IPlayer player)
     {
-        int totalReady = TotalReady();
-        int expectedReady = ReadyTarget();
+        (int totalReady, int expectedReady) = ReadyCount();
         ILocalizer localizer = _gameServer.LocalizerFor(player);
 
         int playerId = player.UserID;
@@ -205,22 +205,25 @@ public class ReadySystem
         }
     }
 
-    private int TotalReady()
-    {
-        return _readyPlayers.Count(pair => pair.Value);
-    }
-
-    private int ReadyTarget()
+    private (int Ready, int Target) ReadyCount()
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchData? matchData = match?.GetMatchData();
 
         if (match == null || matchData == null)
         {
-            return 10;
+            return (0, 10);
         }
 
-        return ReadyUtility.ReadyTarget(GetReadySetting(), matchData, match.GetExpectedPlayerCount());
+        return ReadyUtility.ReadyCount(
+            GetReadySetting(),
+            matchData,
+            MatchUtility
+                .Players()
+                .Where(player => _readyPlayers.GetValueOrDefault(player.UserID))
+                .Select(player => (player.SteamID.ToString(), player.Name)),
+            match.GetExpectedPlayerCount()
+        );
     }
 
     private List<string> GetEmptySeats()

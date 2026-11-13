@@ -41,7 +41,7 @@ public class MatchService
         return _core.Engine.WorkshopId;
     }
 
-    public async void GetMatchFromApi()
+    public async void GetMatchFromApi(bool lineupsOnly = false)
     {
         MatchManager? matchManager = _currentMatch;
         if (matchManager != null && matchManager._mapChangeCountdownTimer != null)
@@ -66,7 +66,7 @@ public class MatchService
             await Task.Delay(1000 * 5);
             HibernationUtility.NextTick(() =>
             {
-                GetMatchFromApi();
+                GetMatchFromApi(lineupsOnly);
             });
 
             return;
@@ -104,6 +104,16 @@ public class MatchService
                 HibernationUtility.NextTick(() =>
                 {
                     Guid? previousMatchId = _currentMatch?.GetMatchData()?.id;
+
+                    if (lineupsOnly)
+                    {
+                        if (matchData != null && previousMatchId == matchData.id)
+                        {
+                            _currentMatch!.TakeLineups(matchData);
+                        }
+
+                        return;
+                    }
 
                     if (matchData == null)
                     {

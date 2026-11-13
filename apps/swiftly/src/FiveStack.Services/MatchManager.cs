@@ -483,7 +483,7 @@ public class MatchManager
         _gameServer.Message(MessageType.Chat, _localizer["match.offline_over"]);
     }
 
-    private void PublishConnectedPlayers(eMapStatus status)
+    public void PublishConnectedPlayers(eMapStatus status)
     {
         if (_matchData == null)
         {
@@ -515,6 +515,19 @@ public class MatchManager
                 { "players", players },
             }
         );
+    }
+
+    // The map status here can be ahead of the api's, so a seat the api has
+    // bound to a steam id comes back without running the match setup again.
+    public void TakeLineups(MatchData matchData)
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        _matchData.lineup_1 = matchData.lineup_1;
+        _matchData.lineup_2 = matchData.lineup_2;
     }
 
     public void SetupMatch(MatchData match)

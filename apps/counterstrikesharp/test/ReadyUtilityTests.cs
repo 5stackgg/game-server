@@ -121,11 +121,25 @@ public class ReadyUtilityTests
     public void A_Five_Versus_Four_Is_Ready_With_Nine()
     {
         MatchData match = FiveVersusFour();
+        var ready = Connected(0, 8).Append(("76561198999999999", "Luke"));
 
         Assert.Equal(
-            9,
-            ReadyUtility.ReadyTarget(eReadySettings.Players, match, match.ExpectedPlayerCount())
+            (9, 9),
+            ReadyUtility.ReadyCount(eReadySettings.Players, match, ready, match.ExpectedPlayerCount())
         );
+    }
+
+    [Fact]
+    public void A_Spare_Ready_Player_Never_Makes_Up_For_One_Missing_On_The_Other_Lineup()
+    {
+        var match = new MatchData
+        {
+            lineup_1 = new MatchLineUp { lineup_players = Members(0, 6) },
+            lineup_2 = new MatchLineUp { lineup_players = Members(6, 5) },
+        };
+        var ready = Connected(0, 6).Concat(Connected(6, 4));
+
+        Assert.Equal((9, 10), ReadyUtility.ReadyCount(eReadySettings.Players, match, ready, 10));
     }
 
     [Theory]
@@ -134,7 +148,10 @@ public class ReadyUtilityTests
     [InlineData(eReadySettings.Admin, 1)]
     public void The_Other_Modes_Wait_On_Their_Own_Count(eReadySettings setting, int target)
     {
-        Assert.Equal(target, ReadyUtility.ReadyTarget(setting, FiveVersusFour(), 10));
+        Assert.Equal(
+            (1, target),
+            ReadyUtility.ReadyCount(setting, FiveVersusFour(), Connected(0, 1), 10)
+        );
     }
 
     [Fact]

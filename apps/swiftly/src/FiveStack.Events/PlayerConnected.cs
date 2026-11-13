@@ -1,4 +1,5 @@
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared.GameEventDefinitions;
@@ -127,6 +128,11 @@ public partial class FiveStackPlugin
                 { "steam_id", player.SteamID.ToString() },
             }
         );
+
+        if (match.IsWarmup() && MatchUtility.HasPlaceholderMembers(matchData))
+        {
+            match.PublishConnectedPlayers(eMapStatus.Warmup);
+        }
 
         return HookResult.Continue;
     }

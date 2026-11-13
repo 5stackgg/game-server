@@ -48,21 +48,22 @@ namespace FiveStack.Utilities
             return onLineup;
         }
 
-        // Each lineup readies up to its own size, as RosterCount counts it, so a
-        // 5v4 is ready with nine.
-        public static int ReadyTarget(eReadySettings setting, MatchData matchData, int expectedPlayers)
+        // Each lineup readies up to its own size, counted as RosterCount counts it:
+        // a 5v4 is ready with nine, and a spare ready player on one lineup never
+        // makes up for one missing on the other.
+        public static (int Ready, int Target) ReadyCount(
+            eReadySettings setting,
+            MatchData matchData,
+            IEnumerable<(string SteamId, string Name)> ready,
+            int expectedPlayers
+        )
         {
-            switch (setting)
+            if (setting == eReadySettings.Players)
             {
-                case eReadySettings.Admin:
-                    return 1;
-                case eReadySettings.Captains:
-                case eReadySettings.Coach:
-                    return 2;
+                return ReconnectPauseUtility.RosterCount(matchData, ready, expectedPlayers);
             }
 
-            return ReconnectPauseUtility.Seats(matchData.lineup_1, expectedPlayers)
-                + ReconnectPauseUtility.Seats(matchData.lineup_2, expectedPlayers);
+            return (ready.Count(), setting == eReadySettings.Admin ? 1 : 2);
         }
 
         // The seats nobody in the server holds, on each lineup still short of its size.
