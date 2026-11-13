@@ -64,6 +64,7 @@
   "match.map_over_series_done": "Kampen er færdig — statistik vises på kampsiden, når demoen er færdigbehandlet.",
   "match.offline_over": "Kampen er slut — der er ikke mere at spille på denne server.",
   "timeout.cannot_resume_empty_team": "Kan ikke genoptage, mens et hold ikke har nogen spillere forbundet",
+  "timeout.not_paused": " {0}Kampen er ikke sat på pause",
   "timeout.admin_resumed": "Admin genoptog kampen",
   "timeout.vote.resume": "Genoptag",
   "timeout.vote.resume_passed": "Afstemning om genoptagelse godkendt",

@@ -64,6 +64,7 @@
   "match.map_over_series_done": "Partida terminada — las estadísticas aparecerán en la página de la partida cuando termine de procesarse la demo.",
   "match.offline_over": "La partida ha terminado — no queda nada por jugar en este servidor.",
   "timeout.cannot_resume_empty_team": "No se puede reanudar mientras un equipo no tenga jugadores conectados",
+  "timeout.not_paused": " {0}La partida no está en pausa",
   "timeout.admin_resumed": "El administrador reanudó la partida",
   "timeout.vote.resume": "Reanudar",
   "timeout.vote.resume_passed": "Votación para reanudar aprobada",

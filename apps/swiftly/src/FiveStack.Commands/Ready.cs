@@ -1,3 +1,4 @@
+using FiveStack.Enums;
 using SwiftlyS2.Shared.Commands;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.SchemaDefinitions;
@@ -16,7 +17,7 @@ public partial class FiveStackPlugin
 
         IPlayer? player = context.Sender;
 
-        if (player == null || match == null || !match.IsWarmup())
+        if (player == null || match == null || match.GetCurrentMapStatus() != eMapStatus.Warmup)
         {
             return;
         }

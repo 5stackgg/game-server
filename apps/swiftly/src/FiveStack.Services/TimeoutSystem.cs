@@ -62,6 +62,15 @@ public class TimeoutSystem
         resumeVote?.RemovePlayerVote(steamId);
     }
 
+    public void Reset()
+    {
+        pauseVote?.Abandon();
+        pauseVote = null;
+        resumeVote?.Abandon();
+        resumeVote = null;
+        ClearPendingTeamResumes();
+    }
+
     public void RequestPause(IPlayer? player)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -75,7 +84,7 @@ public class TimeoutSystem
             return;
         }
 
-        if (IsTimeoutActive())
+        if (IsTimeoutActive() || match.IsPaused())
         {
             SendTimeoutAlreadyActiveMessage(player);
             return;
@@ -195,10 +204,26 @@ public class TimeoutSystem
 
     public void RequestResume(IPlayer? player)
     {
-        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
 
-        if (matchData == null)
+        if (match == null || matchData == null)
         {
+            return;
+        }
+
+        // Halftime and a round restore hold the round for a resume without the
+        // map's status ever reading Paused.
+        bool heldForResume =
+            match.IsInPlay() && MatchUtility.Rules()?.MatchWaitingForResume == true;
+
+        if (player != null && !match.IsPaused() && !heldForResume)
+        {
+            _gameServer.Message(
+                MessageType.Chat,
+                _gameServer.LocalizerFor(player)["timeout.not_paused", ChatColors.Red],
+                player
+            );
             return;
         }
 
@@ -369,11 +394,18 @@ public class TimeoutSystem
 
     private void PauseTechMatch(string pauseMessage)
     {
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (match == null || !match.IsInPlay() || match.IsPaused())
+        {
+            return;
+        }
+
         _teamsPendingResume.Clear();
         _teamsPendingResume.Add(Team.CT);
         _teamsPendingResume.Add(Team.T);
         _requiresTeamResumeForCurrentPause = true;
-        _matchService.GetCurrentMatch()?.PauseMatch(pauseMessage);
+        match.PauseMatch(pauseMessage);
     }
 
     public void CallTacTimeout(IPlayer? player)

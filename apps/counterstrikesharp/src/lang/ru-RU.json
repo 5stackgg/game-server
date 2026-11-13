@@ -60,6 +60,7 @@
   "timeout.not_allowed.resume": "возобновление",
   "timeout.not_allowed.tactical_timeout": "тактический тайм-аут",
   "timeout.admin_resumed": "Админ возобновил матч",
+  "timeout.not_paused": " {0}Матч не на паузе",
   "timeout.vote.resume": "Возобновить",
   "timeout.vote.resume_passed": "Голосование за возобновление принято",
   "timeout.player_resumed": "{0} {1}возобновил матч",

@@ -60,6 +60,7 @@
   "timeout.not_allowed.resume": "återupptagning",
   "timeout.not_allowed.tactical_timeout": "taktisk timeout",
   "timeout.admin_resumed": "Admin återupptog matchen",
+  "timeout.not_paused": " {0}Matchen är inte pausad",
   "timeout.vote.resume": "Återuppta",
   "timeout.vote.resume_passed": "Röstning om återupptagning godkänd",
   "timeout.player_resumed": "{0} {1}återupptog matchen",

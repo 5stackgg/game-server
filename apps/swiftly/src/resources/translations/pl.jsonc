@@ -64,6 +64,7 @@
   "match.map_over_series_done": "Mecz zakończony — statystyki pojawią się na stronie meczu po przetworzeniu demo.",
   "match.offline_over": "Mecz się zakończył — na tym serwerze nie ma już nic do rozegrania.",
   "timeout.cannot_resume_empty_team": "Nie można wznowić, gdy drużyna nie ma połączonych graczy",
+  "timeout.not_paused": " {0}Mecz nie jest zapauzowany",
   "timeout.admin_resumed": "Admin wznowił mecz",
   "timeout.vote.resume": "Wznów",
   "timeout.vote.resume_passed": "Głosowanie o wznowienie przyjęte",

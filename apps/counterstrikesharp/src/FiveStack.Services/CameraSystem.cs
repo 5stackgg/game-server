@@ -1,5 +1,4 @@
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
@@ -181,7 +180,7 @@ public class CameraSystem
     public void Reset()
     {
         _offline.Clear();
-        _reminderTimer?.Kill();
+        _matchService.GetCurrentMatch()?.KillPhaseTimer(_reminderTimer);
         _reminderTimer = null;
     }
 
@@ -208,8 +207,8 @@ public class CameraSystem
             _gameServer.Message(HudDestination.Alert, message);
         }
 
-        _reminderTimer?.Kill();
-        _reminderTimer = TimerUtility.AddTimer(
+        match.KillPhaseTimer(_reminderTimer);
+        _reminderTimer = match.PhaseTimer(
             10,
             () =>
             {
@@ -223,7 +222,7 @@ public class CameraSystem
                     _localizer["camera.waiting", OfflineNames()]
                 );
             },
-            TimerFlags.REPEAT
+            true
         );
     }
 
@@ -231,7 +230,7 @@ public class CameraSystem
     // play restarts, the same as any other technical pause.
     private void OnCamerasRestored()
     {
-        _reminderTimer?.Kill();
+        _matchService.GetCurrentMatch()?.KillPhaseTimer(_reminderTimer);
         _reminderTimer = null;
 
         _gameServer.Message(

@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
@@ -54,10 +53,12 @@ public class KnifeSystem
 
         Server.NextFrame(() =>
         {
-            TimerUtility.AddTimer(
-                5,
-                () => _gameServer.Message(HudDestination.Alert, _localizer["knife.start"])
-            );
+            _matchService
+                .GetCurrentMatch()
+                ?.PhaseTimer(
+                    5,
+                    () => _gameServer.Message(HudDestination.Alert, _localizer["knife.start"])
+                );
         });
     }
 
@@ -93,7 +94,8 @@ public class KnifeSystem
         _winningTeam = team;
         _roundLive = false;
 
-        _knifeRoundTimer = TimerUtility.AddTimer(3, SetupKnifeMessage, TimerFlags.REPEAT);
+        match?.KillPhaseTimer(_knifeRoundTimer);
+        _knifeRoundTimer = match?.PhaseTimer(3, SetupKnifeMessage, true);
 
         SetupKnifeMessage();
 
@@ -324,14 +326,14 @@ public class KnifeSystem
         Server.NextFrame(() =>
         {
             match.UpdateMapStatus(eMapStatus.Live);
+            match.PhaseTimer(
+                1.0f,
+                () =>
+                {
+                    _gameServer.SendCommands(["mp_restartgame 1"]);
+                }
+            );
         });
-        TimerUtility.AddTimer(
-            1.0f,
-            () =>
-            {
-                _gameServer.SendCommands(["mp_restartgame 1"]);
-            }
-        );
     }
 
     public CsTeam? GetWinningTeam()
@@ -341,7 +343,7 @@ public class KnifeSystem
 
     public void Reset()
     {
-        _knifeRoundTimer?.Kill();
+        _matchService.GetCurrentMatch()?.KillPhaseTimer(_knifeRoundTimer);
         _knifeRoundTimer = null;
         _winningTeam = null;
         _roundLive = false;

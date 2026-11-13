@@ -60,6 +60,7 @@
   "timeout.not_allowed.resume": "재개",
   "timeout.not_allowed.tactical_timeout": "전술 타임아웃",
   "timeout.admin_resumed": "관리자가 경기를 재개했습니다",
+  "timeout.not_paused": " {0}경기가 일시정지 상태가 아닙니다",
   "timeout.vote.resume": "재개",
   "timeout.vote.resume_passed": "재개 투표 통과",
   "timeout.player_resumed": "{0} {1}이(가) 경기를 재개했습니다",

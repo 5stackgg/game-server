@@ -69,7 +69,15 @@ public partial class FiveStackPlugin
             )
         )
         {
-            matchManager.PauseMatch("Waiting for players to reconnect");
+            matchManager.PauseMatch(
+                "Waiting for players to reconnect",
+                stillRequired: () =>
+                    ReconnectPauseUtility.ShouldPause(
+                        matchManager.GetMatchData() ?? roundMatchData,
+                        MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.Name)),
+                        matchManager.GetExpectedPlayerCount()
+                    )
+            );
         }
 
         return HookResult.Continue;

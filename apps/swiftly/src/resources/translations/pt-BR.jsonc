@@ -66,6 +66,7 @@
 
   "timeout.admin_resumed": "Admin retomou a partida",
   "timeout.cannot_resume_empty_team": "Não é possível retomar enquanto um time não tem jogadores conectados",
+  "timeout.not_paused": " {0}A partida não está pausada",
 
   "timeout.vote.resume": "Retomar",
   "timeout.vote.resume_passed": "Votação para retomar aprovada",

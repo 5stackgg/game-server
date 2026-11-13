@@ -1,6 +1,4 @@
-using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
@@ -14,6 +12,7 @@ namespace FiveStack;
 public class ReadySystem
 {
     private Timer? _readyStatusTimer;
+    private Timer? _notReadyMessageTimer;
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
     private readonly ILogger<ReadySystem> _logger;
@@ -58,14 +57,18 @@ public class ReadySystem
 
     public void Reset(bool setupTimer = false)
     {
-        _readyStatusTimer?.Kill();
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        match?.KillPhaseTimer(_readyStatusTimer);
         _readyStatusTimer = null;
+        match?.KillPhaseTimer(_notReadyMessageTimer);
+        _notReadyMessageTimer = null;
 
         _readyPlayers.Clear();
 
         if (setupTimer)
         {
-            _readyStatusTimer = TimerUtility.AddTimer(3, SendReadyStatusMessage, TimerFlags.REPEAT);
+            _readyStatusTimer = match?.PhaseTimer(3, SendReadyStatusMessage, true);
         }
 
         UpdatePlayerStatus();
@@ -178,7 +181,7 @@ public class ReadySystem
 
     public void UnreadyPlayer(CCSPlayerController player)
     {
-        if (player.UserId == null)
+        if (player.UserId == null || !IsWaitingForReady())
         {
             return;
         }
@@ -256,20 +259,21 @@ public class ReadySystem
         _gameServer.Message(HudDestination.Chat, _localizer["ready.marked", colored], player);
     }
 
-    public CancellationTokenSource? _cancelSendNotReadyMessage;
-
-    public async void SendNotReadyMessage()
+    public void SendNotReadyMessage()
     {
-        _cancelSendNotReadyMessage?.Cancel();
+        MatchManager? match = _matchService.GetCurrentMatch();
 
-        try
+        if (match == null)
         {
-            _cancelSendNotReadyMessage = new CancellationTokenSource();
-            await Task.Delay(1000 * 5, _cancelSendNotReadyMessage.Token);
+            return;
+        }
 
-            Server.NextFrame(() =>
+        match.KillPhaseTimer(_notReadyMessageTimer);
+        _notReadyMessageTimer = match.PhaseTimer(
+            5,
+            () =>
             {
-                if (_cancelSendNotReadyMessage.IsCancellationRequested)
+                if (!IsWaitingForReady())
                 {
                     return;
                 }
@@ -285,12 +289,8 @@ public class ReadySystem
                     HudDestination.Notify,
                     _localizer["ready.players_not_ready", list, CommandUtility.PublicChatTrigger]
                 );
-            });
-        }
-        catch (TaskCanceledException)
-        {
-            // do nothing
-        }
+            }
+        );
     }
 
     public void Skip()

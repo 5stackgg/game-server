@@ -64,6 +64,7 @@
   "match.map_over_series_done": "比賽已結束 — Demo 處理完成後，統計資料將顯示在比賽頁面上。",
   "match.offline_over": "比賽已結束 — 此伺服器已沒有可進行的比賽。",
   "timeout.cannot_resume_empty_team": "有隊伍沒有已連線的玩家，無法恢復",
+  "timeout.not_paused": " {0}比賽未暫停",
   "timeout.admin_resumed": "管理員已恢復比賽",
   "timeout.vote.resume": "繼續",
   "timeout.vote.resume_passed": "繼續投票通過",

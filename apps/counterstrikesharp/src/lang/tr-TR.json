@@ -60,6 +60,7 @@
   "timeout.not_allowed.resume": "devam",
   "timeout.not_allowed.tactical_timeout": "taktik mola",
   "timeout.admin_resumed": "Yönetici maçı sürdürdü",
+  "timeout.not_paused": " {0}Maç duraklatılmış değil",
   "timeout.vote.resume": "Sürdür",
   "timeout.vote.resume_passed": "Sürdürme oylaması geçti",
   "timeout.player_resumed": "{0} {1}maçı sürdürdü",

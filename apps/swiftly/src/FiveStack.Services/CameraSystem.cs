@@ -178,7 +178,7 @@ public class CameraSystem
     public void Reset()
     {
         _offline.Clear();
-        TimerUtility.Kill(_reminderTimer);
+        _matchService.GetCurrentMatch()?.KillPhaseTimer(_reminderTimer);
         _reminderTimer = null;
     }
 
@@ -205,8 +205,8 @@ public class CameraSystem
             _gameServer.Message(MessageType.Alert, message);
         }
 
-        TimerUtility.Kill(_reminderTimer);
-        _reminderTimer = TimerUtility.Repeat(
+        match.KillPhaseTimer(_reminderTimer);
+        _reminderTimer = match.PhaseTimer(
             10,
             () =>
             {
@@ -216,7 +216,8 @@ public class CameraSystem
                 }
 
                 _gameServer.Message(MessageType.Alert, _localizer["camera.waiting", OfflineNames()]);
-            }
+            },
+            true
         );
     }
 
@@ -224,7 +225,7 @@ public class CameraSystem
     // play restarts, the same as any other technical pause.
     private void OnCamerasRestored()
     {
-        TimerUtility.Kill(_reminderTimer);
+        _matchService.GetCurrentMatch()?.KillPhaseTimer(_reminderTimer);
         _reminderTimer = null;
 
         _gameServer.Message(

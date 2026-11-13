@@ -60,6 +60,7 @@
   "timeout.not_allowed.resume": "відновлення",
   "timeout.not_allowed.tactical_timeout": "тактичну паузу",
   "timeout.admin_resumed": "Адмін відновив матч",
+  "timeout.not_paused": " {0}Матч не на паузі",
   "timeout.vote.resume": "Відновити",
   "timeout.vote.resume_passed": "Голосування за відновлення прийнято",
   "timeout.player_resumed": "{0} {1}відновив матч",

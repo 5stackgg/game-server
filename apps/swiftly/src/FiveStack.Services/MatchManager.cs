@@ -31,6 +31,9 @@ public class MatchManager
     private Guid? _configuredMapId;
     private CancellationTokenSource? _resumeMessageTimer;
     private CancellationTokenSource? _playcastWindowTimer;
+    private int _phaseGeneration;
+    private readonly List<CancellationTokenSource> _phaseTimers =
+        new List<CancellationTokenSource>();
     public bool gameEnded = false;
 
     private readonly ISwiftlyCore _core;
@@ -174,7 +177,7 @@ public class MatchManager
             return true;
         }
 
-        TimerUtility.Kill(_resumeMessageTimer);
+        KillPhaseTimer(_resumeMessageTimer);
 
         return false;
     }
@@ -202,6 +205,61 @@ public class MatchManager
     public bool IsKnife()
     {
         return _currentMapStatus == eMapStatus.Knife;
+    }
+
+    public CancellationTokenSource PhaseTimer(float seconds, Action callback, bool repeat = false)
+    {
+        int generation = _phaseGeneration;
+        CancellationTokenSource? timer = null;
+
+        Action guarded = () =>
+        {
+            if (!repeat)
+            {
+                _phaseTimers.Remove(timer!);
+            }
+
+            if (generation != _phaseGeneration)
+            {
+                return;
+            }
+
+            callback();
+        };
+
+        timer = repeat
+            ? TimerUtility.Repeat(seconds, guarded)
+            : TimerUtility.AddTimer(seconds, guarded);
+
+        _phaseTimers.Add(timer);
+
+        return timer;
+    }
+
+    public void KillPhaseTimer(CancellationTokenSource? timer)
+    {
+        if (timer == null)
+        {
+            return;
+        }
+
+        _phaseTimers.Remove(timer);
+        TimerUtility.Kill(timer);
+    }
+
+    public void EndPhase()
+    {
+        _phaseGeneration++;
+
+        foreach (CancellationTokenSource timer in _phaseTimers)
+        {
+            TimerUtility.Kill(timer);
+        }
+
+        _phaseTimers.Clear();
+
+        _timeoutSystem.Reset();
+        readySystem.Reset();
     }
 
     // Long enough to outlast a full tactical timeout (mp_team_timeout_time is
@@ -241,7 +299,7 @@ public class MatchManager
                 $"Timeout is active, retrying pause in 1s ({retriesLeft} attempts left)"
             );
 
-            TimerUtility.AddTimer(
+            PhaseTimer(
                 1,
                 () =>
                 {
@@ -271,8 +329,8 @@ public class MatchManager
             _gameServer.Message(MessageType.Alert, message);
         }
 
-        TimerUtility.Kill(_resumeMessageTimer);
-        _resumeMessageTimer = TimerUtility.Repeat(
+        KillPhaseTimer(_resumeMessageTimer);
+        _resumeMessageTimer = PhaseTimer(
             3,
             () =>
             {
@@ -285,7 +343,8 @@ public class MatchManager
                     MessageType.Alert,
                     _localizer["match.resume_hint", CommandUtility.PublicChatTrigger]
                 );
-            }
+            },
+            true
         );
 
         if (skipUpdate)
@@ -314,14 +373,8 @@ public class MatchManager
         _logger.LogInformation($"Resuming Match{(message != null ? $": {message}" : "")}");
         _gameServer.SendCommands(["mp_unpause_match"]);
 
-        TimerUtility.Kill(_resumeMessageTimer);
-        if (_timeoutSystem.resumeVote != null)
-        {
-            _timeoutSystem.resumeVote.CancelVote();
-            _timeoutSystem.resumeVote = null;
-        }
-
-        _timeoutSystem.ClearPendingTeamResumes();
+        KillPhaseTimer(_resumeMessageTimer);
+        _timeoutSystem.Reset();
 
         if (!IsPaused())
         {
@@ -353,17 +406,7 @@ public class MatchManager
             return;
         }
 
-        if (
-            IsMapFinished()
-            && (
-                status == eMapStatus.Live
-                || status == eMapStatus.Overtime
-                || status == eMapStatus.Paused
-                || status == eMapStatus.Knife
-                || status == eMapStatus.Warmup
-                || status == eMapStatus.Scheduled
-            )
-        )
+        if (MatchPhaseUtility.Reopens(_currentMapStatus, status))
         {
             _logger.LogInformation(
                 $"Ignoring map status transition {_currentMapStatus} -> {status} because current map is already terminal"
@@ -380,6 +423,11 @@ public class MatchManager
         if (replay)
         {
             status = eMapStatus.Warmup;
+        }
+
+        if (MatchPhaseUtility.PhaseOf(_currentMapStatus) != MatchPhaseUtility.PhaseOf(status))
+        {
+            EndPhase();
         }
 
         var currentMap = GetCurrentMap();
@@ -1679,7 +1727,7 @@ public class MatchManager
     public void Reset()
     {
         _logger.LogInformation("resetting match state");
-        TimerUtility.Kill(_resumeMessageTimer);
+        EndPhase();
         TimerUtility.Kill(_mapChangeCountdownTimer);
         StopPlaycastWindowHeartbeat();
         StopPlayerNameCheck();
@@ -1689,7 +1737,6 @@ public class MatchManager
 
         gameEnded = false;
 
-        readySystem.Reset();
         captainSystem.Reset();
         knifeSystem.Reset();
         _surrenderSystem.Reset();

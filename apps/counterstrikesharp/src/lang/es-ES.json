@@ -60,6 +60,7 @@
   "timeout.not_allowed.resume": "reanudación",
   "timeout.not_allowed.tactical_timeout": "tiempo muerto táctico",
   "timeout.admin_resumed": "El administrador reanudó la partida",
+  "timeout.not_paused": " {0}La partida no está en pausa",
   "timeout.vote.resume": "Reanudar",
   "timeout.vote.resume_passed": "Votación para reanudar aprobada",
   "timeout.player_resumed": "{0} {1}reanudó la partida",

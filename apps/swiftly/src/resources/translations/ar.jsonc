@@ -64,6 +64,7 @@
   "match.map_over_series_done": "انتهت المباراة — ستظهر الإحصائيات في صفحة المباراة بعد انتهاء معالجة الديمو.",
   "match.offline_over": "انتهت المباراة — لم يتبقَّ شيء للعب على هذا الخادم.",
   "timeout.cannot_resume_empty_team": "لا يمكن الاستئناف بينما لا يوجد لاعبون متصلون في أحد الفريقين",
+  "timeout.not_paused": " {0}المباراة ليست متوقفة مؤقتاً",
   "timeout.admin_resumed": "استأنف المدير المباراة",
   "timeout.vote.resume": "استئناف",
   "timeout.vote.resume_passed": "تمت الموافقة على تصويت الاستئناف",

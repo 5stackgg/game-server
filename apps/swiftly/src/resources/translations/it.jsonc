@@ -64,6 +64,7 @@
   "match.map_over_series_done": "Match completato — le statistiche appariranno nella pagina del match una volta elaborata la demo.",
   "match.offline_over": "Il match è finito — su questo server non c'è più niente da giocare.",
   "timeout.cannot_resume_empty_team": "Impossibile riprendere finché una squadra non ha giocatori connessi",
+  "timeout.not_paused": " {0}Il match non è in pausa",
   "timeout.admin_resumed": "L'admin ha ripreso il match",
   "timeout.vote.resume": "Riprendi",
   "timeout.vote.resume_passed": "Votazione per riprendere approvata",
