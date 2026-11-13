@@ -85,6 +85,17 @@ public class SurrenderSystem
         );
     }
 
+    public static Team LeaverSurrenderSide(
+        MatchData? matchData,
+        MatchMap? currentMap,
+        Guid? lineupId,
+        Team sideAtDisconnect,
+        int roundsPlayed
+    )
+    {
+        return sideAtDisconnect;
+    }
+
     // we dont pass the team in because they may not be on the team immediately after reconnecting
     public void CancelDisconnectTimer(ulong steamId)
     {
