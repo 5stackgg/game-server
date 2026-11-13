@@ -116,4 +116,81 @@ public class PauseReasonWiringTests
         Assert.Equal(2, Regex.Matches(request, @"\bResume\(match, resumeMessage\);").Count);
         Assert.Single(Regex.Matches(request, @"ResumeMatch\("));
     }
+
+    // A vote started before the camera went down was voting to end a different
+    // pause, and resuming over a camera is staff's call alone.
+    [Fact]
+    public void A_Lost_Camera_Ends_A_Resume_Vote_And_A_Passed_One_Never_Resumes_Over_A_Camera()
+    {
+        string lost = Method(Code("FiveStack.Services", "CameraSystem.cs"), "private void OnCamerasLost(");
+        int inPlay = lost.IndexOf("eMatchPhase.InPlay", StringComparison.Ordinal);
+        int abandoned = lost.IndexOf("match.timeoutSystem.resumeVote?.Abandon();", StringComparison.Ordinal);
+
+        Assert.True(inPlay >= 0 && abandoned > inPlay, "a lost camera leaves a resume vote running");
+        Before(lost, "match.timeoutSystem.resumeVote = null;", ".PauseMatch(");
+
+        string request = Method(Code("FiveStack.Services", "TimeoutSystem.cs"), "public void RequestResume(");
+        int passed = request.IndexOf("\"resume vote passed\"", StringComparison.Ordinal);
+
+        Assert.True(passed >= 0, "the resume vote's success is gone");
+        Assert.Matches(
+            @"^""resume vote passed""\);\s*resumeVote = null;\s*if \(_cameraSystem\.IsBlocking\(\)\)\s*\{[^{}]*""camera\.cannot_resume""[^{}]*return;\s*\}\s*_matchService\s*\.GetCurrentMatch\(\)\s*\?\.ResumeMatch\(",
+            request[passed..]
+        );
+    }
+
+    // Behind a tactical timeout the pause is retried, and it can run out of
+    // retries; a pause that never landed is still owed to the next round in play.
+    [Fact]
+    public void A_Camera_Pause_That_Never_Lands_Stays_Owed()
+    {
+        Assert.Matches(
+            @"\.PauseMatch\(ePauseReason\.Camera, message, stillRequired: IsBlocking\);\s*_pauseOwed = !match\.IsPaused\(\);",
+            Method(Code("FiveStack.Services", "CameraSystem.cs"), "private void OnCamerasLost(")
+        );
+    }
+
+    [Fact]
+    public void Cameras_Coming_Back_Only_Ask_For_A_Resume_While_Paused()
+    {
+        Before(
+            Method(Code("FiveStack.Services", "CameraSystem.cs"), "private void OnCamerasRestored("),
+            "IsPaused()",
+            "\"camera.restored\""
+        );
+    }
+
+    [Fact]
+    public void An_Overtime_Round_End_Leaves_A_Pause_In_Place()
+    {
+        string ended = Method(Code("FiveStack.Events", "RoundEnd.cs"), "public HookResult OnRoundOfficiallyEnded(");
+
+        Assert.Contains("match.MarkOvertime();", ended);
+        Assert.DoesNotContain("UpdateMapStatus(eMapStatus.Overtime)", ended);
+    }
+
+    [Fact]
+    public void A_New_Map_Owes_A_Pause_For_A_Camera_Still_Down()
+    {
+        Before(Code("FiveStack.Events", "MapChange.cs"), "EndPhase();", "_cameraSystem.NewMap();");
+    }
+
+    [Fact]
+    public void A_Reconnect_Ends_A_Leavers_Vote_Once_Their_Lineup_Is_Whole()
+    {
+        string source = Code("FiveStack.Services", "SurrenderSystem.cs");
+        string resume = Method(source, "public void ResumeIfRosterWhole()");
+
+        Assert.Matches(
+            @"if \(LeaverVoteLineupIsWhole\(match, connected\)\)\s*\{\s*surrenderingVote\?\.CancelVote\(\);\s*\}",
+            resume
+        );
+        Before(resume, "LeaverVoteLineupIsWhole(", "RosterOwnsPause()");
+        Assert.Contains(
+            "_leaverVoteLineup = forLeaver ? surrenderingLineup : null;",
+            Method(source, "public void SetupSurrender(")
+        );
+        Assert.Contains("forLeaver: true", Method(source, "private void OfferLeaverSurrender("));
+        Assert.DoesNotContain("forLeaver", Code("FiveStack.Commands", "Surrender.cs"));
+    }
 }

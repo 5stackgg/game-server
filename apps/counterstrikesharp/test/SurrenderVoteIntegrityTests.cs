@@ -649,6 +649,41 @@ public class SurrenderVoteIntegrityTests
         );
     }
 
+    private static bool LeaverVoteLineupIsWhole(
+        SurrenderSystem surrender,
+        MatchManager match,
+        IEnumerable<(string, string)> connected
+    )
+    {
+        return (bool)
+            typeof(SurrenderSystem)
+                .GetMethod("LeaverVoteLineupIsWhole", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .Invoke(surrender, [match, connected])!;
+    }
+
+    // A vote opened because a player left is about that player, so it ends once
+    // the lineup is whole again, a substitute in the seat or the leaver back.
+    [Fact]
+    public void A_Leavers_Vote_Ends_Once_Their_Lineup_Is_Whole()
+    {
+        var (surrender, match, _) = Server(eMapStatus.Live);
+        match.Init(Roster(5));
+        Set(surrender, "_leaverVoteLineup", Lineup1);
+
+        Assert.False(LeaverVoteLineupIsWhole(surrender, match, Connected(0, 1, 2, 3, 5, 6, 7, 8, 9)));
+        Assert.True(LeaverVoteLineupIsWhole(surrender, match, Connected(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)));
+    }
+
+    [Fact]
+    public void A_Surrender_A_Player_Called_Stays_Open_With_The_Lineup_Whole()
+    {
+        var (surrender, match, _) = Server(eMapStatus.Live);
+        match.Init(Roster(5));
+        Set(surrender, "_leaverVoteLineup", null);
+
+        Assert.False(LeaverVoteLineupIsWhole(surrender, match, Connected(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)));
+    }
+
     private static MatchData Roster(int lineup1Players)
     {
         List<MatchMember> Players(int from, int count) =>

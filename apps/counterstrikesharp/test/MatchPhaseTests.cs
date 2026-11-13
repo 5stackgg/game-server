@@ -311,6 +311,73 @@ public class MatchPhaseTests
         Assert.True(server.Camera.IsBlocking());
     }
 
+    // An override lasts the map it was made on.
+    [Fact]
+    public void A_New_Map_Owes_A_Pause_For_A_Camera_Still_Down_After_An_Override()
+    {
+        Server server = On(eMapStatus.Live);
+        LineupCamera(server, cameraOk: false);
+
+        Assert.True(OwesPause(server));
+
+        Call(server.Camera, "Override");
+        Call(server.Camera, "NewMap");
+
+        Assert.True(OwesPause(server));
+    }
+
+    [Fact]
+    public void A_New_Map_With_Every_Camera_Up_Owes_No_Pause()
+    {
+        Server server = On(eMapStatus.Live);
+        LineupCamera(server, cameraOk: true);
+
+        Assert.False(OwesPause(server));
+
+        Call(server.Camera, "NewMap");
+
+        Assert.False(OwesPause(server));
+    }
+
+    // "type .resume to continue" only makes sense with the map paused.
+    [Theory]
+    [InlineData(eMapStatus.Live)]
+    [InlineData(eMapStatus.Overtime)]
+    [InlineData(eMapStatus.Warmup)]
+    [InlineData(eMapStatus.Knife)]
+    public void Cameras_Coming_Back_Outside_A_Pause_Say_Nothing(eMapStatus status)
+    {
+        Server server = On(status);
+        Set(server.Camera, "_reminderTimer", Bare<Timer>());
+
+        Call(server.Camera, "OnCamerasRestored");
+
+        Assert.Null(Get(server.Camera, "_reminderTimer"));
+    }
+
+    // Round end in overtime used to write Overtime over a pause called mid-round,
+    // which dropped the pause and its reason.
+    [Fact]
+    public void A_Pause_In_Overtime_Keeps_Its_Reason_Through_Round_End_And_A_Reconnect_Still_Ends_It()
+    {
+        Server server = PausedFor("Roster");
+
+        Call(server.Match, "MarkOvertime");
+
+        Assert.Equal(eMapStatus.Paused, server.Match.GetCurrentMapStatus());
+        Assert.True(RosterOwnsPause(server));
+    }
+
+    [Fact]
+    public void An_Overtime_Round_Ending_In_Play_Is_Overtime()
+    {
+        Server server = On(eMapStatus.Live);
+
+        Call(server.Match, "MarkOvertime");
+
+        Assert.Equal(eMapStatus.Overtime, server.Match.GetCurrentMapStatus());
+    }
+
     [Fact]
     public void A_Whole_Roster_Ends_The_Pause_It_Made()
     {
