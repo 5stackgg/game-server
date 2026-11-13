@@ -69,7 +69,7 @@ public class SurrenderSystem
             return;
         }
 
-        MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, steamId.ToString(), "");
+        MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, steamId.ToString(), playerName);
         if (member == null)
         {
             return;
