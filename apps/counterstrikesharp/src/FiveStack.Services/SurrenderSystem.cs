@@ -63,7 +63,7 @@ public class SurrenderSystem
         }
 
         // A LAN drop is a dead machine or network far more often than a leaver.
-        if (matchData.is_lan)
+        if (matchData.is_lan && !_environmentService.IsOfflineMode())
         {
             return;
         }
@@ -155,7 +155,10 @@ public class SurrenderSystem
 
     public void SetupSurrender(CsTeam team, CCSPlayerController? player = null)
     {
-        if (_matchService.GetCurrentMatch()?.GetMatchData()?.is_lan == true)
+        if (
+            _matchService.GetCurrentMatch()?.GetMatchData()?.is_lan == true
+            && !_environmentService.IsOfflineMode()
+        )
         {
             player?.PrintToConsole(" There is no surrender in a LAN match");
             return;
@@ -366,7 +369,10 @@ public class SurrenderSystem
 
     public void PlayerAbandonedMatch(ulong steamId)
     {
-        if (_matchService.GetCurrentMatch()?.GetMatchData()?.is_lan == true)
+        if (
+            _matchService.GetCurrentMatch()?.GetMatchData()?.is_lan == true
+            && !_environmentService.IsOfflineMode()
+        )
         {
             return;
         }
