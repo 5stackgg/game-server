@@ -96,6 +96,7 @@
   "vote.prompt_count_timer": " {0} 에 투표 ({1}s)",
   "vote.prompt_options_timer": " {0} 에 투표 ({1}y 또는 {2}n) ({3}s)",
   "surrender.vote": "항복",
+  "vote.choose_one": "진행 중인 투표가 둘 이상입니다. 하나에 응답하세요: {0}",
 
   "camera.paused": "경기 일시정지 - 카메라 없음: {0}",
   "camera.waiting": "카메라 대기 중: {0}",

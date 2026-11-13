@@ -97,6 +97,7 @@
   "vote.prompt_count_timer": " Голосувати за {0} ({1}s)",
   "vote.prompt_options_timer": " Голосувати за {0} ({1}y або {2}n) ({3}s)",
   "surrender.vote": "Здатися",
+  "vote.choose_one": "Відкрито кілька голосувань, дайте відповідь на одне: {0}",
 
   "camera.paused": "Матч призупинено - немає камери від: {0}",
   "camera.waiting": "Очікування камери: {0}",

@@ -91,5 +91,6 @@
   "vote.prompt_count": " 投票 {0}",
   "vote.prompt_options": " 投票 {0}（{1}y 或 {2}n）",
   "vote.prompt_count_timer": " 投票 {0} ({1}s)",
-  "vote.prompt_options_timer": " 投票 {0}（{1}y 或 {2}n）({3}s)"
+  "vote.prompt_options_timer": " 投票 {0}（{1}y 或 {2}n）({3}s)",
+  "vote.choose_one": "有多個投票正在進行，請回答其中一個：{0}"
 }

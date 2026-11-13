@@ -96,6 +96,7 @@
   "vote.prompt_count_timer": " {0} için oy ver ({1}s)",
   "vote.prompt_options_timer": " {0} için oy ver ({1}y veya {2}n) ({3}s)",
   "surrender.vote": "Teslim ol",
+  "vote.choose_one": "Birden fazla oylama açık, birini yanıtla: {0}",
 
   "camera.paused": "Maç duraklatıldı - kamerası olmayan: {0}",
   "camera.waiting": "Kamera bekleniyor: {0}",

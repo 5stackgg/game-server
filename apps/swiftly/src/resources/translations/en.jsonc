@@ -97,6 +97,7 @@
   "vote.prompt_count_timer": " Vote to {0} ({1}s)",
   "vote.prompt_options_timer": " Vote to {0} ({1}y or {2}n) ({3}s)",
   "surrender.vote": "Surrender",
+  "vote.choose_one": "More than one vote is open, answer one: {0}",
 
   "camera.paused": "Match paused - no camera from: {0}",
   "camera.waiting": "Waiting for camera: {0}",

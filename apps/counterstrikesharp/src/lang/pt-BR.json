@@ -86,6 +86,7 @@
   "vote.prompt_options": "Votar para {0} ({1}y ou {2}n)",
   "vote.prompt_count_timer": "Votar para {0} ({1}s)",
   "vote.prompt_options_timer": "Votar para {0} ({1}y ou {2}n) ({3}s)",
+  "vote.choose_one": "Há mais de uma votação aberta, responda a uma: {0}",
   "match.map_over_series_done": "Partida concluída — estatísticas aparecerão na página da partida após o processamento da demo.",
   "match.map_over_next_map": "Mapa concluído — próximo mapa em breve, permaneça conectado.",
   "camera.paused": "Partida pausada - sem câmera de: {0}",

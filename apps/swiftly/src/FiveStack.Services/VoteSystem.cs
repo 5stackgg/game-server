@@ -24,6 +24,7 @@ public class VoteSystem
     private bool _captainOnly;
     private string _voteKey = "";
     private object[] _voteArgs = [];
+    private Func<IPlayer, bool>? _voterFilter;
     private CancellationTokenSource? _voteTimeoutTimer;
     private CancellationTokenSource? _playerMessageTimer;
     private DateTime? _voteStartTime;
@@ -49,7 +50,8 @@ public class VoteSystem
         Action voteSuccessCallback,
         Action voteFailedCallback,
         bool captainOnly = false,
-        float? timeout = null
+        float? timeout = null,
+        Func<IPlayer, bool>? voterFilter = null
     )
     {
         _voteKey = voteKey;
@@ -58,6 +60,7 @@ public class VoteSystem
         _voteSuccessCallback = voteSuccessCallback;
         _voteFailedCallback = voteFailedCallback;
         _captainOnly = captainOnly;
+        _voterFilter = voterFilter;
         _votes.Clear();
         _voteStartTime = DateTime.Now;
         _voteTimeout = timeout;
@@ -175,6 +178,26 @@ public class VoteSystem
     public bool IsVoteActive()
     {
         return _playerMessageTimer != null;
+    }
+
+    // Whether an answer from this player would count, mirroring CastVote.
+    public bool CanAnswer(IPlayer player)
+    {
+        if (!IsVoteActive() || !CanVote(player))
+        {
+            return false;
+        }
+
+        if (!IsCaptainVoteOnly())
+        {
+            return true;
+        }
+
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        return matchData != null
+            && MatchUtility.GetMemberFromLineup(matchData, player.SteamID.ToString(), player.Name)?.captain
+                != false;
     }
 
     public void CastVote(IPlayer player, bool vote)
@@ -374,6 +397,11 @@ public class VoteSystem
 
     private bool CanVote(IPlayer player)
     {
+        if (_voterFilter != null && !_voterFilter(player))
+        {
+            return false;
+        }
+
         if (_allowedTeamsToVote == null)
         {
             return true;

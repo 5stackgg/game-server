@@ -91,5 +91,6 @@
   "vote.prompt_count": " Голосовать за {0}",
   "vote.prompt_options": " Голосовать за {0} ({1}y или {2}n)",
   "vote.prompt_count_timer": " Голосовать за {0} ({1}s)",
-  "vote.prompt_options_timer": " Голосовать за {0} ({1}y или {2}n) ({3}s)"
+  "vote.prompt_options_timer": " Голосовать за {0} ({1}y или {2}n) ({3}s)",
+  "vote.choose_one": "Открыто несколько голосований, ответьте на одно: {0}"
 }

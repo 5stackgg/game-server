@@ -97,6 +97,7 @@
   "vote.prompt_count_timer": " Stem for {0} ({1}s)",
   "vote.prompt_options_timer": " Stem for {0} ({1}y eller {2}n) ({3}s)",
   "surrender.vote": "Overgive sig",
+  "vote.choose_one": "Der er mere end én afstemning åben, svar på én: {0}",
 
   "camera.paused": "Kampen er sat på pause - intet kamera fra: {0}",
   "camera.waiting": "Venter på kamera: {0}",

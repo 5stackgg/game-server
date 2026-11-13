@@ -97,6 +97,7 @@
   "vote.prompt_count_timer": " Rösta för {0} ({1}s)",
   "vote.prompt_options_timer": " Rösta för {0} ({1}y eller {2}n) ({3}s)",
   "surrender.vote": "Ge upp",
+  "vote.choose_one": "Mer än en omröstning är öppen, svara på en: {0}",
 
   "camera.paused": "Matchen pausad - ingen kamera från: {0}",
   "camera.waiting": "Väntar på kamera: {0}",

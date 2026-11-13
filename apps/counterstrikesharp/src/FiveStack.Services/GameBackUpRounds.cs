@@ -108,8 +108,7 @@ public class GameBackUpRounds
         }
 
         int round = _restore.HeldRound!.Value;
-        int connectedPlayers = MatchUtility.Players().Count;
-        int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
+        (int connectedPlayers, int expectedPlayers) = RosterCount();
 
         if (connectedPlayers < expectedPlayers)
         {
@@ -761,6 +760,7 @@ public class GameBackUpRounds
     {
         MatchData? match = _matchService.GetCurrentMatch()?.GetMatchData();
         MatchMap? matchMap = _matchService.GetCurrentMatch()?.GetCurrentMap();
+        (int connectedPlayers, int expectedPlayers) = RosterCount();
 
         return RoundRestoreGateUtility.Refusal(
             match != null && !match.options.CanRestoreRounds(),
@@ -768,9 +768,29 @@ public class GameBackUpRounds
             _matchService.GetCurrentMatch()?.GetCurrentMapStatus() ?? eMapStatus.Unknown,
             round,
             match != null && matchMap != null && BackupOf(match, matchMap, round) != null,
-            MatchUtility.Players().Count,
-            _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10,
+            connectedPlayers,
+            expectedPlayers,
             match?.options.type ?? ""
+        );
+    }
+
+    // The lineups' own players against what each lineup needs: a 5v4 is whole
+    // with nine, and a coach or caster never fills a missing player's seat.
+    private (int Present, int Required) RosterCount()
+    {
+        MatchManager? matchManager = _matchService.GetCurrentMatch();
+        int expectedPlayers = matchManager?.GetExpectedPlayerCount() ?? 10;
+        MatchData? matchData = matchManager?.GetMatchData();
+
+        if (matchData == null)
+        {
+            return (0, expectedPlayers);
+        }
+
+        return ReconnectPauseUtility.RosterCount(
+            matchData,
+            MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.PlayerName)),
+            expectedPlayers
         );
     }
 
@@ -813,8 +833,7 @@ public class GameBackUpRounds
             return false;
         }
 
-        int connectedPlayers = MatchUtility.Players().Count;
-        int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
+        (int connectedPlayers, int expectedPlayers) = RosterCount();
 
         if (connectedPlayers >= expectedPlayers)
         {

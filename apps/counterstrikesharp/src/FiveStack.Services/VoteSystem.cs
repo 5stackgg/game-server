@@ -23,6 +23,7 @@ public class VoteSystem
     private bool _captainOnly;
     private string _voteKey = "";
     private object[] _voteArgs = [];
+    private Func<CCSPlayerController, bool>? _voterFilter;
     private Timer? _voteTimeoutTimer;
     private Timer? _playerMessageTimer;
     private DateTime? _voteStartTime;
@@ -49,7 +50,8 @@ public class VoteSystem
         Action voteSuccessCallback,
         Action voteFailedCallback,
         bool captainOnly = false,
-        float? timeout = null
+        float? timeout = null,
+        Func<CCSPlayerController, bool>? voterFilter = null
     )
     {
         _voteKey = voteKey;
@@ -58,6 +60,7 @@ public class VoteSystem
         _voteSuccessCallback = voteSuccessCallback;
         _voteFailedCallback = voteFailedCallback;
         _captainOnly = captainOnly;
+        _voterFilter = voterFilter;
         _votes.Clear();
         _voteStartTime = DateTime.Now;
         _voteTimeout = timeout;
@@ -186,6 +189,26 @@ public class VoteSystem
     public bool IsVoteActive()
     {
         return _playerMessageTimer != null;
+    }
+
+    // Whether an answer from this player would count, mirroring CastVote.
+    public bool CanAnswer(CCSPlayerController player)
+    {
+        if (!IsVoteActive() || !CanVote(player))
+        {
+            return false;
+        }
+
+        if (!IsCaptainVoteOnly())
+        {
+            return true;
+        }
+
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        return matchData != null
+            && MatchUtility.GetMemberFromLineup(matchData, player.SteamID.ToString(), player.PlayerName)?.captain
+                != false;
     }
 
     public void CastVote(CCSPlayerController player, bool vote)
@@ -400,6 +423,11 @@ public class VoteSystem
 
     private bool CanVote(CCSPlayerController player)
     {
+        if (_voterFilter != null && !_voterFilter(player))
+        {
+            return false;
+        }
+
         if (_allowedTeamsToVote == null)
         {
             return true;

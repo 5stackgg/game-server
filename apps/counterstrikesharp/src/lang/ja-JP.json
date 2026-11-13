@@ -91,5 +91,6 @@
   "vote.prompt_count": " {0} に投票",
   "vote.prompt_options": " {0} に投票（{1}y または {2}n）",
   "vote.prompt_count_timer": " {0} に投票 ({1}s)",
-  "vote.prompt_options_timer": " {0} に投票（{1}y または {2}n）({3}s)"
+  "vote.prompt_options_timer": " {0} に投票（{1}y または {2}n）({3}s)",
+  "vote.choose_one": "複数の投票が進行中です。どれか一つに回答してください: {0}"
 }

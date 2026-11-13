@@ -91,5 +91,6 @@
   "vote.prompt_count": " Voter pour {0}",
   "vote.prompt_options": " Voter pour {0} ({1}y ou {2}n)",
   "vote.prompt_count_timer": " Voter pour {0} ({1}s)",
-  "vote.prompt_options_timer": " Voter pour {0} ({1}y ou {2}n) ({3}s)"
+  "vote.prompt_options_timer": " Voter pour {0} ({1}y ou {2}n) ({3}s)",
+  "vote.choose_one": "Plusieurs votes sont ouverts, réponds à l'un d'eux : {0}"
 }
