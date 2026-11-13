@@ -142,15 +142,59 @@ public class ReadyUtilityTests
         Assert.Equal((9, 10), ReadyUtility.ReadyCount(eReadySettings.Players, match, ready, 10));
     }
 
-    [Theory]
-    [InlineData(eReadySettings.Captains, 2)]
-    [InlineData(eReadySettings.Coach, 2)]
-    [InlineData(eReadySettings.Admin, 1)]
-    public void The_Other_Modes_Wait_On_Their_Own_Count(eReadySettings setting, int target)
+    // A captain who readied, released the spot and was replaced by a teammate who
+    // readied too is still one lineup: the other captain has not readied.
+    [Fact]
+    public void Two_Ready_Captains_Of_One_Lineup_Count_Once()
     {
         Assert.Equal(
-            (1, target),
-            ReadyUtility.ReadyCount(setting, FiveVersusFour(), Connected(0, 1), 10)
+            (1, 2),
+            ReadyUtility.ReadyCount(eReadySettings.Captains, FiveVersusFour(), Connected(0, 2), 10)
+        );
+        Assert.Equal(
+            (2, 2),
+            ReadyUtility.ReadyCount(
+                eReadySettings.Captains,
+                FiveVersusFour(),
+                Connected(0, 1).Concat(Connected(5, 1)),
+                10
+            )
+        );
+    }
+
+    [Fact]
+    public void Each_Lineups_Coach_Has_To_Ready()
+    {
+        MatchData match = FiveVersusFour();
+        match.lineup_1.coach_steam_id = "76561198000000101";
+        match.lineup_2.coach_steam_id = "76561198000000102";
+
+        Assert.Equal(
+            (1, 2),
+            ReadyUtility.ReadyCount(
+                eReadySettings.Coach,
+                match,
+                new[] { ("76561198000000101", "coach"), ("76561198000000000", "player0") },
+                10
+            )
+        );
+        Assert.Equal(
+            (2, 2),
+            ReadyUtility.ReadyCount(
+                eReadySettings.Coach,
+                match,
+                new[] { ("76561198000000101", "coach"), ("76561198000000102", "coach") },
+                10
+            )
+        );
+    }
+
+    [Fact]
+    public void Nobody_Counts_As_Ready_In_Admin_Mode()
+    {
+        Assert.Equal(
+            (0, 1),
+            ReadyUtility.ReadyCount(eReadySettings.Admin, FiveVersusFour(), Connected(0, 1), 10)
         );
     }
 

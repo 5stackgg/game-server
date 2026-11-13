@@ -61,6 +61,13 @@ public class ReadyWiringTests
         );
     }
 
+    // A captain who released the spot keeps their ready flag, but it no longer counts.
+    [Fact]
+    public void Only_Players_Who_May_Ready_Now_Are_Counted()
+    {
+        Assert.Contains("CanVote(player)", Method("private (int Ready, int Target) ReadyCount()"));
+    }
+
     [Fact]
     public void The_Not_Ready_List_Names_The_Seats_Nobody_Holds()
     {

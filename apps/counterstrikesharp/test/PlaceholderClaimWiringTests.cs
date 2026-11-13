@@ -3,8 +3,8 @@ using System.Text.RegularExpressions;
 using Xunit;
 
 // Only the api binds a pickup seat to a steam id, claiming it from the players a
-// server reports. Those are reported as players join in warmup, and the bound
-// lineups are taken back once the api has answered.
+// server reports. Those are reported in warmup, and the bound lineups are taken
+// back once the api has answered.
 public class PlaceholderClaimWiringTests
 {
     private static string SourceDir([CallerFilePath] string testFile = "")
@@ -27,6 +27,16 @@ public class PlaceholderClaimWiringTests
         return Regex.Replace(source[from..to], @"\s+", "");
     }
 
+    private static string Manager(string signature)
+    {
+        return Method(Path.Combine("FiveStack.Services", "MatchManager.cs"), signature);
+    }
+
+    private static string Service(string signature)
+    {
+        return Method(Path.Combine("FiveStack.Services", "MatchService.cs"), signature);
+    }
+
     [Fact]
     public void Connected_Players_Are_Reported_When_Someone_Joins_In_Warmup()
     {
@@ -47,6 +57,26 @@ public class PlaceholderClaimWiringTests
     }
 
     [Fact]
+    public void Connected_Players_Are_Reported_As_Warmup_Starts()
+    {
+        Assert.Contains(
+            "if((status==eMapStatus.Warmup||status==eMapStatus.Knife||status==eMapStatus.Live)&&MatchUtility.HasPlaceholderMembers(_matchData)){PublishConnectedPlayers(status);}",
+            Manager("public void UpdateMapStatus(")
+        );
+    }
+
+    [Fact]
+    public void Streamers_Casters_And_Coaches_Are_Not_Offered_A_Seat()
+    {
+        string publish = Manager("public void PublishConnectedPlayers(");
+        int offered = publish.IndexOf("LineupMembership.CouldHoldASeat(", StringComparison.Ordinal);
+
+        Assert.True(offered >= 0, "everyone in the server is offered a seat");
+        Assert.Contains("FiveStackPlugin.ConnectRoles.RoleIn(", publish);
+        Assert.True(offered < publish.IndexOf("players.Add(", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void The_Apis_Answer_Brings_Back_The_Bound_Lineups()
     {
         string monitor = Method(
@@ -55,34 +85,44 @@ public class PlaceholderClaimWiringTests
         );
 
         Assert.Contains("==\"players-connected\"", monitor);
-        Assert.Contains("_matchService.GetMatchFromApi(lineupsOnly:true);", monitor);
+        Assert.Contains("_matchService.GetLineupsFromApi();", monitor);
     }
 
     // The map status here can be ahead of the api's, so a lineup refresh never
-    // runs the match setup again.
+    // runs the match setup again. A failed one is tried once more in the phase.
     [Fact]
-    public void A_Lineup_Refresh_Takes_Only_The_Lineups()
+    public void A_Lineup_Refresh_Takes_Only_The_Lineups_And_Is_Tried_Once_More()
     {
-        string fetch = Method(
-            Path.Combine("FiveStack.Services", "MatchService.cs"),
-            "public async void GetMatchFromApi("
-        );
-        int lineupsOnly = fetch.IndexOf("if(lineupsOnly){", StringComparison.Ordinal);
+        string refresh = Service("public async void GetLineupsFromApi(bool retry = true)");
 
-        Assert.True(lineupsOnly >= 0, "a lineup refresh runs the whole match setup");
-        Assert.True(
-            lineupsOnly < fetch.IndexOf("if(matchData==null)", StringComparison.Ordinal),
-            "a lineup refresh can clear or set up the match"
-        );
-        Assert.Contains("_currentMatch!.TakeLineups(matchData);}return;}", fetch);
+        Assert.Contains(".TakeLineups(", refresh);
+        Assert.DoesNotContain("SetupMatch(", refresh);
+        Assert.DoesNotContain("Reset()", refresh);
+        Assert.Contains("if(retry){", refresh);
+        Assert.Contains(".PhaseTimer(", refresh);
+        Assert.Contains("GetLineupsFromApi(false)", refresh);
+        Assert.DoesNotContain("GetLineupsFromApi(true)", refresh);
+        Assert.DoesNotContain("lineupsOnly", Service("public async void GetMatchFromApi()"));
+    }
 
-        string take = Method(
-            Path.Combine("FiveStack.Services", "MatchManager.cs"),
-            "public void TakeLineups(MatchData matchData)"
-        );
+    [Fact]
+    public void A_Newly_Bound_Player_Is_Put_On_Their_Team()
+    {
+        string take = Manager("public void TakeLineups(MatchData matchData)");
+        int swap = take.IndexOf("_matchData.lineup_2=matchData.lineup_2;", StringComparison.Ordinal);
 
-        Assert.Contains("_matchData.lineup_1=matchData.lineup_1;", take);
-        Assert.Contains("_matchData.lineup_2=matchData.lineup_2;", take);
+        Assert.True(swap >= 0, "the lineups are not taken");
+        Assert.True(take.IndexOf("EnforceMemberTeam(player);", StringComparison.Ordinal) > swap);
+        Assert.True(take.IndexOf("readySystem.UpdatePlayerStatus();", StringComparison.Ordinal) > swap);
         Assert.DoesNotContain("UpdateMapStatus", take);
+    }
+
+    [Fact]
+    public void A_Captain_Change_The_Api_Has_Not_Taken_Survives_A_Lineup_Refresh()
+    {
+        Assert.Contains(
+            "_matchEvents.IsPending(\"captain\")",
+            Manager("public void TakeLineups(MatchData matchData)")
+        );
     }
 }

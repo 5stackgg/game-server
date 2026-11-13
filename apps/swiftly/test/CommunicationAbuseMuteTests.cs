@@ -74,6 +74,20 @@ public class CommunicationAbuseMuteTests
                 false,
                 BuildMatch(),
                 PenalisedId + "9",
+                "placeholder"
+            )
+        );
+    }
+
+    [Fact]
+    public void ANameThatOnlyFitsAMutedPlaceholderIsNotItsPlayer()
+    {
+        Assert.True(
+            CommunicationAbuseMute.ShouldClear(
+                true,
+                false,
+                BuildMatch(),
+                PenalisedId + "9",
                 "Place"
             )
         );
