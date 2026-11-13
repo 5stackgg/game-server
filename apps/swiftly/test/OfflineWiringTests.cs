@@ -187,7 +187,7 @@ public class OfflineWiringTests
         string events = Events("GameEnd");
 
         Assert.Matches(
-            @"Guid\? winningLineupId = _environmentService\.IsOfflineMode\(\)\s*\? OfflineMapWinner\(match, matchData\)\s*: _matchEvents\.GetWinningLineupId\(\);",
+            @"Guid\? winningLineupId = _environmentService\.IsOfflineMode\(\)\s*\? OfflineMapWinner\(matchData\)\s*: _matchEvents\.GetWinningLineupId\(\);",
             Method(events, "private void ConcludeMap()")
         );
 
