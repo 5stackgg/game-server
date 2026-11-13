@@ -107,5 +107,9 @@ public class TvWaitWiringTests
         Assert.True(
             At(finish, "_concludingMapId == currentMap.id") < At(finish, "HandleEndOfMap(")
         );
+        Assert.True(
+            At(finish, "match.GetCurrentMapStatus() != eMapStatus.WaitingForTV")
+                < At(finish, "HandleEndOfMap(")
+        );
     }
 }
