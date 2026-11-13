@@ -96,6 +96,12 @@ public class SurrenderSystem
         );
     }
 
+    public static Guid? LeaverLineup(MatchData matchData, string steamId)
+    {
+        Guid? lineupId = MatchUtility.GetMemberFromLineup(matchData, steamId, "")?.match_lineup_id;
+        return lineupId == Guid.Empty ? null : lineupId;
+    }
+
     // The side the leaver's lineup plays when the timer runs out. A halftime in
     // those three minutes swaps it away from the side they left from.
     public static Team LeaverSurrenderSide(

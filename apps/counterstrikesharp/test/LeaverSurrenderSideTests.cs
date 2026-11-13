@@ -66,4 +66,29 @@ public class LeaverSurrenderSideTests
             SurrenderSystem.LeaverSurrenderSide(match, map, null, CsTeam.Terrorist, 12)
         );
     }
+
+    // An empty name matches every unclaimed placeholder, and lineup_1 is searched
+    // first, so a lineup_2 leaver was taken for lineup_1's open slot.
+    [Fact]
+    public void A_Lineup_2_Leaver_Is_Not_Taken_For_A_Lineup_1_Placeholder()
+    {
+        var (match, _) = BuildMatch();
+        match.lineup_1 = new MatchLineUp
+        {
+            lineup_players = new List<MatchMember>
+            {
+                new MatchMember { steam_id = null, placeholder_name = "Open slot", match_lineup_id = Lineup1 },
+            },
+        };
+        match.lineup_2 = new MatchLineUp
+        {
+            lineup_players = new List<MatchMember>
+            {
+                new MatchMember { steam_id = "76561198000000002", match_lineup_id = Lineup2 },
+            },
+        };
+
+        Assert.Equal(Lineup2, SurrenderSystem.LeaverLineup(match, "76561198000000002"));
+        Assert.Null(SurrenderSystem.LeaverLineup(match, "76561198000000009"));
+    }
 }
