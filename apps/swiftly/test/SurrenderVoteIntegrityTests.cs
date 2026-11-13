@@ -441,6 +441,17 @@ public class SurrenderVoteIntegrityTests
         );
     }
 
+    // A player who joined under a placeholder name has no steam id on the lineup
+    // yet, so only their name finds them, and an empty name finds nobody.
+    [Fact]
+    public void A_Leaver_Is_Found_On_Their_Lineup_By_Their_Name_Too()
+    {
+        Assert.Contains(
+            "MatchUtility.GetMemberFromLineup(matchData, steamId.ToString(), playerName)",
+            Method(Code("FiveStack.Services", "SurrenderSystem.cs"), "public void SetupDisconnectTimer(")
+        );
+    }
+
     // Outside play the timer still reports a player who is still gone from the
     // same match, but starts no vote.
     [Fact]
