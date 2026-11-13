@@ -428,4 +428,38 @@ public class SurrenderSystem
             ? null
             : LineupMembership.LineupOf(matchData, player.SteamID.ToString(), player.PlayerName);
     }
+
+    public static Guid? WinningLineup(
+        MatchData matchData,
+        MatchMap? currentMap,
+        Guid? callerLineup,
+        CsTeam surrenderingSide,
+        int roundsPlayed
+    )
+    {
+        CsTeam winningSide = surrenderingSide == CsTeam.CounterTerrorist ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
+
+        if (currentMap == null)
+        {
+            return null;
+        }
+
+        if (
+            TeamUtility.GetLineupSide(matchData, currentMap, matchData.lineup_1_id, roundsPlayed)
+            == winningSide
+        )
+        {
+            return matchData.lineup_1_id;
+        }
+
+        if (
+            TeamUtility.GetLineupSide(matchData, currentMap, matchData.lineup_2_id, roundsPlayed)
+            == winningSide
+        )
+        {
+            return matchData.lineup_2_id;
+        }
+
+        return null;
+    }
 }

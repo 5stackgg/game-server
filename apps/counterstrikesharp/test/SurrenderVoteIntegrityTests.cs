@@ -38,18 +38,45 @@ public class SurrenderVoteIntegrityTests
         Assert.Null(SurrenderSystem.SurrenderingLineup(match, Guid.NewGuid()));
     }
 
-    // Rounds played moves at round end, before players are swapped, so for that
-    // window the opponents stand on the surrendering side.
-    [Fact]
-    public void Opponents_On_The_Surrendering_Side_Before_The_Swap_Do_Not_Vote()
+    private static (MatchData match, MatchMap map) Halftime()
     {
-        Assert.False(SurrenderSystem.CanVoteInSurrender(Lineup2, Lineup1));
-        Assert.True(SurrenderSystem.CanVoteInSurrender(Lineup1, Lineup1));
+        var match = new MatchData
+        {
+            lineup_1_id = Lineup1,
+            lineup_2_id = Lineup2,
+            options = new MatchOptions { mr = 12, type = "Competitive" },
+        };
+        var map = new MatchMap { lineup_1_side = "CT", lineup_2_side = "TERRORIST" };
+        return (match, map);
     }
 
-    // A halftime inside the 30 seconds swaps the sides but not the lineups.
+    // Twelve rounds played puts lineup 1 on T by the count, but until the swap its
+    // players still stand on CT. One of them calling surrender from CT gives up for
+    // lineup 1, not for whoever the count says is on CT.
     [Fact]
-    public void A_Halftime_Inside_The_Vote_Does_Not_Change_Who_Votes()
+    public void A_Surrender_Called_At_Halftime_Before_The_Swap_Is_The_Callers_Lineups()
+    {
+        var (match, map) = Halftime();
+
+        Assert.Equal(
+            Lineup2,
+            SurrenderSystem.WinningLineup(match, map, Lineup1, CsTeam.CounterTerrorist, 12)
+        );
+    }
+
+    [Fact]
+    public void A_Timed_Out_Leaver_With_No_Caller_Goes_By_Side()
+    {
+        var (match, map) = Halftime();
+
+        Assert.Equal(
+            Lineup2,
+            SurrenderSystem.WinningLineup(match, map, null, CsTeam.Terrorist, 12)
+        );
+    }
+
+    [Fact]
+    public void Only_The_Surrendering_Lineups_Players_Vote()
     {
         Assert.True(SurrenderSystem.CanVoteInSurrender(Lineup1, Lineup1));
         Assert.False(SurrenderSystem.CanVoteInSurrender(Lineup2, Lineup1));
@@ -98,6 +125,16 @@ public class SurrenderVoteIntegrityTests
             @"voterFilter:\s*voter\s*=>\s*CanVoteInSurrender\(\s*VoterLineup\(voter\),\s*surrenderingLineup\.Value\s*\)",
             setup[start..]
         );
+    }
+
+    [Fact]
+    public void The_Command_Hands_The_Callers_Lineup_To_The_Vote()
+    {
+        string command = Code("FiveStack.Commands", "Surrender.cs");
+        string setup = Method(Code("FiveStack.Services", "SurrenderSystem.cs"), "public void SetupSurrender(");
+
+        Assert.Matches(@"SetupSurrender\([^;]*,\s*callerLineup\)", command);
+        Assert.Matches(@"WinningLineup\([^;]*callerLineup,", setup);
     }
 
     [Fact]
