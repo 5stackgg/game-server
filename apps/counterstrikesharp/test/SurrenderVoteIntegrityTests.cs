@@ -1,9 +1,14 @@
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack;
 using FiveStack.Entities;
+using FiveStack.Enums;
+using FiveStack.Utilities;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
+using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
 public class SurrenderVoteIntegrityTests
 {
@@ -195,5 +200,266 @@ public class SurrenderVoteIntegrityTests
 
         match.options.mr = 0;
         Assert.Null(SurrenderSystem.WinningLineup(match, map, Lineup1, CsTeam.CounterTerrorist, 0));
+    }
+
+    private static T Bare<T>()
+    {
+        return (T)RuntimeHelpers.GetUninitializedObject(typeof(T));
+    }
+
+    private static void Set(object target, string field, object? value)
+    {
+        target
+            .GetType()
+            .GetField(field, BindingFlags.NonPublic | BindingFlags.Instance)!
+            .SetValue(target, value);
+    }
+
+    private static object? Get(object target, string field)
+    {
+        return target
+            .GetType()
+            .GetField(field, BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(target);
+    }
+
+    private sealed class VoteRequests : IServiceProvider
+    {
+        public int Asked;
+
+        public object? GetService(Type serviceType)
+        {
+            Asked++;
+            return Bare<VoteSystem>();
+        }
+    }
+
+    // The plugin's own SurrenderSystem and MatchManager on a map in the given
+    // status. The engine is never asked whether warmup is on, so every status
+    // but Warmup is only used where the plugin reads nothing but the status.
+    private static (SurrenderSystem surrender, MatchManager match, VoteRequests votes) Server(
+        eMapStatus status
+    )
+    {
+        EnvironmentService environment = Bare<EnvironmentService>();
+        MatchService matchService = Bare<MatchService>();
+
+        MatchEvents events = Bare<MatchEvents>();
+        Set(events, "_logger", NullLogger<MatchEvents>.Instance);
+        Set(events, "_environmentService", environment);
+        Set(events, "_matchService", matchService);
+        Set(events, "_mapStatusClock", new MapStatusClock());
+        Set(events, "_restore", new RoundRestoreState());
+
+        VoteRequests votes = new VoteRequests();
+        SurrenderSystem surrender = new SurrenderSystem(
+            NullLogger<ReadySystem>.Instance,
+            events,
+            matchService,
+            null!,
+            votes,
+            environment
+        );
+
+        MatchManager match = new MatchManager(
+            NullLogger<MatchManager>.Instance,
+            events,
+            null!,
+            null!,
+            null!,
+            null!,
+            null!,
+            null!,
+            environment,
+            null!,
+            surrender,
+            matchService,
+            null!,
+            null!
+        );
+        match.Init(
+            new MatchData
+            {
+                id = Guid.NewGuid(),
+                lineup_1_id = Lineup1,
+                lineup_2_id = Lineup2,
+            }
+        );
+        Set(match, "_currentMapStatus", status);
+        Set(matchService, "_currentMatch", match);
+
+        return (surrender, match, votes);
+    }
+
+    // Restart Map puts a map being played back in warmup.
+    [Fact]
+    public void No_Surrender_Vote_Starts_Outside_Play()
+    {
+        var (surrender, _, votes) = Server(eMapStatus.Warmup);
+
+        Exception? error = Record.Exception(() => surrender.SetupSurrender(CsTeam.Terrorist));
+
+        Assert.Equal(0, votes.Asked);
+        Assert.Null(error);
+        Assert.False(surrender.IsSurrendering());
+    }
+
+    [Fact]
+    public void A_Surrender_Vote_That_Passes_Outside_Play_Records_Nothing()
+    {
+        var (surrender, match, _) = Server(eMapStatus.Warmup);
+
+        surrender.Surrender(Lineup2);
+
+        Assert.Equal(eMapStatus.Warmup, match.GetCurrentMapStatus());
+        Assert.Null(surrender.GetWinningLineupId());
+    }
+
+    // A vote finishing on the end screen handed the map, and in a series the
+    // match, to the lineup that had just lost it.
+    [Theory]
+    [InlineData(eMapStatus.WaitingForTV)]
+    [InlineData(eMapStatus.UploadingDemo)]
+    [InlineData(eMapStatus.Finished)]
+    public void A_Map_That_Is_Over_Is_Never_Surrendered(eMapStatus over)
+    {
+        var (_, match, _) = Server(over);
+
+        match.UpdateMapStatus(eMapStatus.Surrendered, Lineup2);
+
+        Assert.Equal(over, match.GetCurrentMapStatus());
+    }
+
+    [Fact]
+    public void A_Map_Being_Played_Can_Still_Be_Surrendered()
+    {
+        var (_, match, _) = Server(eMapStatus.Live);
+
+        match.UpdateMapStatus(eMapStatus.Surrendered, Lineup2);
+
+        Assert.Equal(eMapStatus.Surrendered, match.GetCurrentMapStatus());
+    }
+
+    private const ulong Leaver = 76561198000000001;
+
+    private static Dictionary<CsTeam, Dictionary<ulong, Timer>> LeaverTimers(SurrenderSystem surrender)
+    {
+        return (Dictionary<CsTeam, Dictionary<ulong, Timer>>)Get(surrender, "_disconnectTimers")!;
+    }
+
+    // The timer ran out on the end screen and opened a surrender vote and an
+    // abandon report there.
+    [Fact]
+    public void A_Map_Ending_Cancels_Every_Leavers_Timer()
+    {
+        var (surrender, match, _) = Server(eMapStatus.Live);
+        LeaverTimers(surrender)[CsTeam.Terrorist] = new Dictionary<ulong, Timer> { [Leaver] = null! };
+
+        match.UpdateMapStatus(eMapStatus.WaitingForTV, Lineup1);
+
+        Assert.Empty(LeaverTimers(surrender));
+    }
+
+    private static string UpdateMapStatusCase(string status)
+    {
+        string update = Method(Code("FiveStack.Services", "MatchManager.cs"), "public void UpdateMapStatus(");
+        int from = update.IndexOf($"case eMapStatus.{status}:", StringComparison.Ordinal);
+
+        Assert.True(from >= 0, $"UpdateMapStatus has no {status} case");
+
+        return update[from..update.IndexOf("break;", from, StringComparison.Ordinal)];
+    }
+
+    // Restart Map sends the map back to warmup. Going there needs the engine,
+    // so this reads the plugin.
+    [Fact]
+    public void A_Restarted_Map_Cancels_Every_Leavers_Timer()
+    {
+        Assert.Contains("_surrenderSystem.Reset();", UpdateMapStatusCase("Warmup"));
+    }
+
+    // A new match and a map change both go through MatchManager.Reset.
+    [Fact]
+    public void A_New_Match_Or_Map_Cancels_Every_Leavers_Timer()
+    {
+        Assert.Contains(
+            "_surrenderSystem.Reset();",
+            Method(Code("FiveStack.Services", "MatchManager.cs"), "public void Reset()")
+        );
+    }
+
+    // Whether the map is in play needs the engine, so the rest read the plugin.
+    [Fact]
+    public void A_Surrender_Called_Outside_Play_Tells_The_Caller_And_Starts_No_Vote()
+    {
+        string setup = Method(Code("FiveStack.Services", "SurrenderSystem.cs"), "public void SetupSurrender(");
+        var guard = Regex.Match(
+            setup,
+            @"if \(!IsMapInPlay\(\)\)\s*\{\s*player\?\.PrintToConsole\(_gameServer\.Localize\(player, ""surrender\.not_in_play""\)\);\s*return;\s*\}"
+        );
+
+        Assert.True(guard.Success, "a surrender is called whether or not the map is in play");
+        Assert.True(
+            guard.Index < setup.IndexOf("surrenderingVote.StartVote(", StringComparison.Ordinal),
+            "the vote starts before the map is checked"
+        );
+    }
+
+    [Fact]
+    public void A_Passed_Vote_Only_Surrenders_A_Map_In_Play()
+    {
+        string surrender = Method(Code("FiveStack.Services", "SurrenderSystem.cs"), "public void Surrender(Guid lineupId)");
+
+        Assert.Matches(
+            @"^public void Surrender\(Guid lineupId\)\s*\{\s*MatchManager\? match = _matchService\.GetCurrentMatch\(\);\s*if \(match == null \|\| !match\.IsInPlay\(\)\)\s*\{[^}]*return;\s*\}",
+            surrender
+        );
+    }
+
+    [Fact]
+    public void A_Leavers_Timer_Does_Nothing_Once_The_Map_Is_Out_Of_Play()
+    {
+        string timer = Method(Code("FiveStack.Services", "SurrenderSystem.cs"), "public void SetupDisconnectTimer(");
+
+        Assert.Matches(
+            @"TimerUtility\.AddTimer\(\s*60 \* 3,\s*\(\)\s*=>\s*\{\s*if \(!IsMapInPlay\(\)\)\s*\{\s*return;\s*\}\s*OfferLeaverSurrender\(lineupId, team\);\s*PlayerAbandonedMatch\(steamId\);\s*\}",
+            timer
+        );
+    }
+
+    // The vote already open turned the other lineup's leaver away, so that
+    // lineup was never asked.
+    [Fact]
+    public void A_Leaver_Who_Times_Out_During_Another_Vote_Waits_For_It()
+    {
+        string source = Code("FiveStack.Services", "SurrenderSystem.cs");
+
+        Assert.Matches(
+            @"^private void OfferLeaverSurrender\(Guid\? lineupId, CsTeam sideAtDisconnect\)\s*\{\s*if \(lineupId != null && IsSurrendering\(\)\)\s*\{\s*_waitingLineups\.TryAdd\(lineupId\.Value, sideAtDisconnect\);\s*return;\s*\}",
+            Method(source, "private void OfferLeaverSurrender(")
+        );
+        Assert.Contains("_waitingLineups.Clear();", Method(source, "public void Reset()"));
+    }
+
+    [Fact]
+    public void A_Failed_Vote_Hands_The_Other_Lineup_Its_Waiting_Vote()
+    {
+        string source = Code("FiveStack.Services", "SurrenderSystem.cs");
+        int failed = source.IndexOf("\"surrender vote failed\"", StringComparison.Ordinal);
+
+        Assert.True(failed >= 0, "the failure callback is gone");
+        Assert.Contains(
+            "OfferWaitingLineup(surrenderingLineup.Value);",
+            source[failed..source.IndexOf("},", failed, StringComparison.Ordinal)]
+        );
+
+        string offer = Method(source, "private void OfferWaitingLineup(Guid votedLineup)");
+        int forget = offer.IndexOf("_waitingLineups.Remove(votedLineup);", StringComparison.Ordinal);
+
+        Assert.True(forget >= 0, "the lineup that just voted is asked again");
+        Assert.True(
+            forget < offer.IndexOf("OfferLeaverSurrender(", StringComparison.Ordinal),
+            "the next vote is offered before the lineup that just voted is forgotten"
+        );
     }
 }
