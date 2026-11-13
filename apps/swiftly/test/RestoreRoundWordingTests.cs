@@ -122,6 +122,15 @@ public class RestoreRoundWordingTests
     }
 
     [Fact]
+    public void AResetToNoRoundShowsHowToUseItInThePlayersLanguage()
+    {
+        string reset = Method(Commands(), "public void OnRestoreRound(");
+
+        Assert.Contains("Core.Translation.GetPlayerLocalizer(context.Sender)", reset);
+        Assert.DoesNotContain("_localizer[\"help.restore_round\"", reset);
+    }
+
+    [Fact]
     public void EnglishHelpSaysResetTakesTheRoundItStarts()
     {
         Assert.Equal(
