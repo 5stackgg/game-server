@@ -41,6 +41,7 @@
   "ready.marked": "你已被標記為 {0}",
   "ready.players_not_ready": "玩家 未就緒：{0} 請輸入 {1}r",
   "ready.not_connected": "{0}（未連線）",
+  "ready.not_linked": "{0}（未連結）",
 
   "knife.start": "小刀！小刀！小刀！",
   "knife.captain_picking": "{0} - 隊長正在選邊！",

@@ -236,20 +236,24 @@ public class ReadySystem
         );
     }
 
-    private List<string> GetEmptySeats()
+    private (List<string> Absent, List<string> Unlinked) GetEmptySeats()
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchData? matchData = match?.GetMatchData();
 
         if (match == null || matchData == null || GetReadySetting() != eReadySettings.Players)
         {
-            return [];
+            return (new List<string>(), new List<string>());
         }
 
-        return ReadyUtility.EmptySeats(
-            matchData,
-            MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.Name)),
-            match.GetExpectedPlayerCount()
+        List<(string, string)> connected = MatchUtility
+            .Players()
+            .Select(player => (player.SteamID.ToString(), player.Name))
+            .ToList();
+
+        return (
+            ReadyUtility.EmptySeats(matchData, connected, match.GetExpectedPlayerCount()),
+            ReadyUtility.UnlinkedSeats(matchData, connected, match.GetExpectedPlayerCount())
         );
     }
 
@@ -285,8 +289,8 @@ public class ReadySystem
                 }
 
                 string[] notReadyPlayers = GetNotReadyPlayers();
-                List<string> emptySeats = GetEmptySeats();
-                if (notReadyPlayers.Length == 0 && emptySeats.Count == 0)
+                (List<string> absent, List<string> unlinked) = GetEmptySeats();
+                if (notReadyPlayers.Length == 0 && absent.Count == 0 && unlinked.Count == 0)
                 {
                     return;
                 }
@@ -298,9 +302,9 @@ public class ReadySystem
                             "ready.players_not_ready",
                             string.Join(
                                 ", ",
-                                notReadyPlayers.Concat(
-                                    emptySeats.Select(seat => localizer["ready.not_connected", seat])
-                                )
+                                notReadyPlayers
+                                    .Concat(absent.Select(seat => localizer["ready.not_connected", seat]))
+                                    .Concat(unlinked.Select(seat => localizer["ready.not_linked", seat]))
                             ),
                             CommandUtility.PublicChatTrigger
                         ]

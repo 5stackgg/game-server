@@ -38,6 +38,7 @@
   "ready.marked": "You have been marked {0}",
   "ready.players_not_ready": "Players Not Ready: {0} type {1}r",
   "ready.not_connected": "{0} (not connected)",
+  "ready.not_linked": "{0} (not linked)",
   "knife.start": "KNIFE KNIFE KNIFE!",
   "knife.captain_picking": "{0} - Captain is Picking Sides!",
   "team.terrorist": "Terrorist",

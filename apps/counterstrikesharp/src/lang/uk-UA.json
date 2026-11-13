@@ -41,6 +41,7 @@
   "ready.marked": "Вас позначено як {0}",
   "ready.players_not_ready": "Гравці Не готові: {0} введіть {1}r",
   "ready.not_connected": "{0} (не підключений)",
+  "ready.not_linked": "{0} (не прив'язаний)",
 
   "knife.start": "НІЖ НІЖ НІЖ!",
   "knife.captain_picking": "{0} - Капітан обирає сторони!",

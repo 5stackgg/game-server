@@ -38,6 +38,7 @@
   "ready.marked": "Você foi marcado como {0}",
   "ready.players_not_ready": "Jogadores não prontos: {0} digite {1}r",
   "ready.not_connected": "{0} (não conectado)",
+  "ready.not_linked": "{0} (não vinculado)",
   "knife.start": "FACA! FACA! FACA!",
   "knife.captain_picking": "{0} - Capitão escolhendo lados!",
   "team.terrorist": "Terroristas",

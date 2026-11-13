@@ -41,6 +41,7 @@
   "ready.marked": "Zostałeś oznaczony jako {0}",
   "ready.players_not_ready": "Gracze Niegotowi: {0} wpisz {1}r",
   "ready.not_connected": "{0} (brak połączenia)",
+  "ready.not_linked": "{0} (brak powiązania)",
 
   "knife.start": "NÓŻ NÓŻ NÓŻ!",
   "knife.captain_picking": "{0} - Kapitan wybiera strony!",

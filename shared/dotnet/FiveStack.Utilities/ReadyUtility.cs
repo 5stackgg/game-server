@@ -48,10 +48,10 @@ namespace FiveStack.Utilities
             return onLineup;
         }
 
-        // Each lineup readies on its own: up to its own size, counted as RosterCount
-        // counts it, or through its captain or its coach. A 5v4 is ready with nine,
-        // a spare ready player on one lineup never makes up for the other, and only
-        // the lineups that have a coach wait on one.
+        // Each lineup readies on its own: up to its own size, every seat counted
+        // whether bound or not, or through its captain or its coach. A 5v4 is ready
+        // with nine, a spare ready player on one lineup never makes up for the
+        // other, and only the lineups that have a coach wait on one.
         public static (int Ready, int Target) ReadyCount(
             eReadySettings setting,
             MatchData matchData,
@@ -62,7 +62,7 @@ namespace FiveStack.Utilities
             switch (setting)
             {
                 case eReadySettings.Players:
-                    return ReconnectPauseUtility.RosterCount(matchData, ready, expectedPlayers);
+                    return ReconnectPauseUtility.SeatCount(matchData, ready, expectedPlayers);
                 case eReadySettings.Captains:
                     return (
                         ready
@@ -108,8 +108,33 @@ namespace FiveStack.Utilities
             return matchData.lineup_2.coach_steam_id == steamId ? 2 : null;
         }
 
-        // The seats nobody in the server holds, on each lineup still short of its size.
+        // Lineup players not in the server, on each lineup still short of its size.
         public static List<string> EmptySeats(
+            MatchData matchData,
+            IEnumerable<(string SteamId, string Name)> connected,
+            int expectedPlayers
+        )
+        {
+            return OpenSeats(matchData, connected, expectedPlayers)
+                .Where(member => member.steam_id != null)
+                .Select(member => string.IsNullOrEmpty(member.name) ? member.steam_id! : member.name)
+                .ToList();
+        }
+
+        // Seats nobody has taken by linking Discord, on each lineup still short of its size.
+        public static List<string> UnlinkedSeats(
+            MatchData matchData,
+            IEnumerable<(string SteamId, string Name)> connected,
+            int expectedPlayers
+        )
+        {
+            return OpenSeats(matchData, connected, expectedPlayers)
+                .Where(member => member.steam_id == null)
+                .Select(member => member.placeholder_name)
+                .ToList();
+        }
+
+        private static List<MatchMember> OpenSeats(
             MatchData matchData,
             IEnumerable<(string SteamId, string Name)> connected,
             int expectedPlayers
@@ -119,34 +144,24 @@ namespace FiveStack.Utilities
                 .Select(player => LineupMembership.Member(matchData, player.SteamId, player.Name))
                 .OfType<MatchMember>()
                 .ToHashSet();
-            List<string> empty = [];
+            List<MatchMember> open = [];
 
             foreach (MatchLineUp lineup in new[] { matchData.lineup_1, matchData.lineup_2 })
             {
-                List<MatchMember> open = lineup
+                List<MatchMember> missing = lineup
                     .lineup_players.Where(member => !held.Contains(member))
                     .ToList();
 
                 if (
-                    lineup.lineup_players.Count - open.Count
+                    lineup.lineup_players.Count - missing.Count
                     < ReconnectPauseUtility.Seats(lineup, expectedPlayers)
                 )
                 {
-                    empty.AddRange(open.Select(SeatName));
+                    open.AddRange(missing);
                 }
             }
 
-            return empty;
-        }
-
-        private static string SeatName(MatchMember member)
-        {
-            if (member.steam_id == null)
-            {
-                return member.placeholder_name;
-            }
-
-            return string.IsNullOrEmpty(member.name) ? member.steam_id : member.name;
+            return open;
         }
     }
 }

@@ -228,6 +228,19 @@ public class ReadyUtilityTests
         );
     }
 
+    [Fact]
+    public void An_Unbound_Seat_Is_Named_As_Not_Linked_Until_The_Api_Binds_It()
+    {
+        var connected = Connected(0, 8).Append(("76561198999999999", "Luke"));
+
+        Assert.Equal(new[] { "Luke" }, ReadyUtility.UnlinkedSeats(FiveVersusFour(), connected, 10));
+
+        MatchData match = FiveVersusFour();
+        match.lineup_2.lineup_players[3].steam_id = "76561198999999999";
+
+        Assert.Empty(ReadyUtility.UnlinkedSeats(match, connected, 10));
+    }
+
     // An unbound seat is waiting on a Discord link, not on someone who left.
     [Fact]
     public void An_Unbound_Seat_Is_Not_Named_As_A_Player_Who_Left()

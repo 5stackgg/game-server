@@ -42,6 +42,7 @@
   "ready.marked": "Du har markerats som {0}",
   "ready.players_not_ready": "Spelare Inte redo: {0} skriv {1}r",
   "ready.not_connected": "{0} (inte ansluten)",
+  "ready.not_linked": "{0} (inte länkad)",
 
   "knife.start": "KNIV KNIV KNIV!",
   "knife.captain_picking": "{0} - Kaptenen väljer sida!",

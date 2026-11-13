@@ -41,6 +41,7 @@
   "ready.marked": "تم تحديدك كـ {0}",
   "ready.players_not_ready": "اللاعبون غير الجاهزين: {0} اكتب {1}r",
   "ready.not_connected": "{0} (غير متصل)",
+  "ready.not_linked": "{0} (غير مرتبط)",
 
   "knife.start": "سكين! سكين! سكين!",
   "knife.captain_picking": "{0} - القائد يختار الجوانب!",

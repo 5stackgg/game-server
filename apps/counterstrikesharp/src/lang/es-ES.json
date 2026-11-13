@@ -41,6 +41,7 @@
   "ready.marked": "Has sido marcado como {0}",
   "ready.players_not_ready": "Jugadores No listos: {0} escribe {1}r",
   "ready.not_connected": "{0} (no conectado)",
+  "ready.not_linked": "{0} (sin vincular)",
 
   "knife.start": "¡CUCHILLO CUCHILLO CUCHILLO!",
   "knife.captain_picking": "{0} - ¡El capitán está eligiendo lados!",

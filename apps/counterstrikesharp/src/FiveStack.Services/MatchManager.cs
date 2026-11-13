@@ -637,8 +637,9 @@ public class MatchManager
         return _matchEvents.IsPending("captain") ? null : _matchEvents.Sent("captain");
     }
 
-    // The map status here can be ahead of the api's, so a seat the api has
-    // bound to a steam id comes back without running the match setup again.
+    // Whoever the refetched lineups put on another lineup, such as a player whose
+    // seat linking Discord has just bound, is moved to their side before the
+    // match setup runs again.
     public void TakeLineups(MatchData matchData, int? captainsAsOf)
     {
         if (_matchData == null)

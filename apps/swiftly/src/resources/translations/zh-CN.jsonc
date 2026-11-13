@@ -42,6 +42,7 @@
   "ready.marked": "你已被标记为 {0}",
   "ready.players_not_ready": "玩家 未就绪：{0} 输入 {1}r",
   "ready.not_connected": "{0}（未连接）",
+  "ready.not_linked": "{0}（未关联）",
 
   "knife.start": "刀！刀！刀！",
   "knife.captain_picking": "{0} - 队长正在选边！",

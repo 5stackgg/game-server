@@ -253,20 +253,24 @@ public class ReadySystem
         );
     }
 
-    private List<string> GetEmptySeats()
+    private (List<string> Absent, List<string> Unlinked) GetEmptySeats()
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchData? matchData = match?.GetMatchData();
 
         if (match == null || matchData == null || GetReadySetting() != eReadySettings.Players)
         {
-            return [];
+            return (new List<string>(), new List<string>());
         }
 
-        return ReadyUtility.EmptySeats(
-            matchData,
-            MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.PlayerName)),
-            match.GetExpectedPlayerCount()
+        List<(string, string)> connected = MatchUtility
+            .Players()
+            .Select(player => (player.SteamID.ToString(), player.PlayerName))
+            .ToList();
+
+        return (
+            ReadyUtility.EmptySeats(matchData, connected, match.GetExpectedPlayerCount()),
+            ReadyUtility.UnlinkedSeats(matchData, connected, match.GetExpectedPlayerCount())
         );
     }
 
@@ -306,8 +310,8 @@ public class ReadySystem
                 }
 
                 string[] notReadyPlayers = GetNotReadyPlayers();
-                List<string> emptySeats = GetEmptySeats();
-                if (notReadyPlayers.Length == 0 && emptySeats.Count == 0)
+                (List<string> absent, List<string> unlinked) = GetEmptySeats();
+                if (notReadyPlayers.Length == 0 && absent.Count == 0 && unlinked.Count == 0)
                 {
                     return;
                 }
@@ -320,11 +324,17 @@ public class ReadySystem
                             "ready.players_not_ready",
                             string.Join(
                                 ", ",
-                                notReadyPlayers.Concat(
-                                    emptySeats.Select(seat =>
-                                        _gameServer.Localize(viewer, "ready.not_connected", seat)
+                                notReadyPlayers
+                                    .Concat(
+                                        absent.Select(seat =>
+                                            _gameServer.Localize(viewer, "ready.not_connected", seat)
+                                        )
                                     )
-                                )
+                                    .Concat(
+                                        unlinked.Select(seat =>
+                                            _gameServer.Localize(viewer, "ready.not_linked", seat)
+                                        )
+                                    )
                             ),
                             CommandUtility.PublicChatTrigger
                         )
