@@ -66,7 +66,7 @@ public partial class FiveStackPlugin
         command.ReplyToCommand(_localizer["rules.title"]);
         string matchDetails = _localizer[
             "rules.match_details",
-            match.options.type,
+            MatchType(match.options.type),
             match.options.mr,
             match.options.best_of
         ];
@@ -108,16 +108,48 @@ public partial class FiveStackPlugin
         }
 
         command.ReplyToCommand(
-            _localizer[
-                "rules.allow_timeouts",
-                StringUtility.ConvertCamelToHumanReadable(match.options.timeout_setting)
-            ]
+            _localizer["rules.allow_timeouts", TimeoutSetting(match.options.timeout_setting)]
         );
         command.ReplyToCommand(
-            _localizer[
-                "rules.tech_timeouts",
-                StringUtility.ConvertCamelToHumanReadable(match.options.tech_timeout_setting)
-            ]
+            _localizer["rules.tech_timeouts", TimeoutSetting(match.options.tech_timeout_setting)]
         );
+    }
+
+    private string MatchType(string type)
+    {
+        string? key = type switch
+        {
+            "Competitive" => "rules.match_type.competitive",
+            "Wingman" => "rules.match_type.wingman",
+            "Duel" => "rules.match_type.duel",
+            "Rush" => "rules.match_type.rush",
+            _ => null,
+        };
+
+        if (key == null)
+        {
+            return type;
+        }
+
+        return _localizer[key].Value;
+    }
+
+    private string TimeoutSetting(string setting)
+    {
+        string? key = setting switch
+        {
+            "Coach" => "rules.timeouts.coach",
+            "CoachAndCaptains" => "rules.timeouts.coach_and_captains",
+            "CoachAndPlayers" => "rules.timeouts.coach_and_players",
+            "Admin" => "rules.timeouts.admin",
+            _ => null,
+        };
+
+        if (key == null)
+        {
+            return StringUtility.ConvertCamelToHumanReadable(setting);
+        }
+
+        return _localizer[key].Value;
     }
 }

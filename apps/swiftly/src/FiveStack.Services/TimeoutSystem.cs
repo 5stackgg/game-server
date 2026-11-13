@@ -98,7 +98,8 @@ public class TimeoutSystem
                 if (pauseVote != null)
                 {
                     pauseVote.StartVote(
-                        _localizer["timeout.vote.technical"],
+                        "timeout.vote.technical",
+                        [],
                         new Team[] { Team.CT, Team.T },
                         (
                             () =>
@@ -288,7 +289,8 @@ public class TimeoutSystem
                 if (resumeVote != null)
                 {
                     resumeVote.StartVote(
-                        _localizer["timeout.vote.resume"],
+                        "timeout.vote.resume",
+                        [],
                         new Team[] { Team.CT, Team.T },
                         (
                             () =>

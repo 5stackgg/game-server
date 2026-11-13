@@ -24,6 +24,10 @@
   "rules.timeouts.coach_and_captains": "Koç ve kaptanlar",
   "rules.timeouts.coach_and_players": "Koç ve oyuncular",
   "rules.timeouts.admin": "Yönetici",
+  "rules.match_type.competitive": "Rekabetçi",
+  "rules.match_type.wingman": "Wingman",
+  "rules.match_type.duel": "Düello",
+  "rules.match_type.rush": "Rush",
 
   "gag.you_are_gagged": " [red]Susturuldunuz",
 
@@ -88,6 +92,7 @@
   "vote.prompt_options": " {0} için oy ver ({1}y veya {2}n)",
   "vote.prompt_count_timer": " {0} için oy ver ({1}s)",
   "vote.prompt_options_timer": " {0} için oy ver ({1}y veya {2}n) ({3}s)",
+  "surrender.vote": "Teslim ol",
 
   "camera.paused": "Maç duraklatıldı - kamerası olmayan: {0}",
   "camera.waiting": "Kamera bekleniyor: {0}",

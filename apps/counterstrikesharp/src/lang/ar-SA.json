@@ -19,6 +19,14 @@
   "rules.max_subs": "الحد الأقصى للاستبدالات: {0}",
   "rules.allow_timeouts": "السماح بالمهل {0}",
   "rules.tech_timeouts": "المهل التقنية {0}",
+  "rules.timeouts.coach": "المدرب",
+  "rules.timeouts.coach_and_captains": "المدرب والقادة",
+  "rules.timeouts.coach_and_players": "المدرب واللاعبون",
+  "rules.timeouts.admin": "المدير",
+  "rules.match_type.competitive": "تنافسي",
+  "rules.match_type.wingman": "Wingman",
+  "rules.match_type.duel": "مبارزة",
+  "rules.match_type.rush": "Rush",
 
   "gag.you_are_gagged": " {red}تم كتمك",
 
@@ -47,6 +55,8 @@
   "timeout.vote.technical_passed": "تمت الموافقة على تصويت الإيقاف التقني",
   "timeout.player_paused": "{0} {1}أوقف المباراة",
   "timeout.not_allowed": " {0}غير مسموح لك بطلب {1} في المباراة!",
+  "timeout.not_allowed.resume": "استئناف",
+  "timeout.not_allowed.tactical_timeout": "مهلة تكتيكية",
   "timeout.admin_resumed": "استأنف المدير المباراة",
   "timeout.vote.resume": "استئناف",
   "timeout.vote.resume_passed": "تمت الموافقة على تصويت الاستئناف",

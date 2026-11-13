@@ -67,7 +67,7 @@ public partial class FiveStackPlugin
         context.Reply(localizer["rules.title"]);
         string matchDetails = localizer[
             "rules.match_details",
-            match.options.type,
+            MatchType(localizer, match.options.type),
             match.options.mr,
             match.options.best_of
         ];
@@ -120,6 +120,25 @@ public partial class FiveStackPlugin
                 TimeoutSetting(localizer, match.options.tech_timeout_setting)
             ]
         );
+    }
+
+    private static string MatchType(ILocalizer localizer, string type)
+    {
+        string? key = type switch
+        {
+            "Competitive" => "rules.match_type.competitive",
+            "Wingman" => "rules.match_type.wingman",
+            "Duel" => "rules.match_type.duel",
+            "Rush" => "rules.match_type.rush",
+            _ => null,
+        };
+
+        if (key == null)
+        {
+            return type;
+        }
+
+        return localizer[key];
     }
 
     private static string TimeoutSetting(ILocalizer localizer, string setting)

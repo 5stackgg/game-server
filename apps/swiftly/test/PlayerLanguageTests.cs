@@ -156,16 +156,122 @@ public class PlayerLanguageTests
     }
 
     [Fact]
-    public void APlayerGetsTheirLanguageAndTheConsoleGetsTheServers()
+    public void APlayerGetsTheirLanguageWhenItShipsAndOtherwiseTheServers()
     {
-        string helper = Method(
-            Source(Path.Combine("FiveStack.Services", "GameServer.cs")),
-            "public ILocalizer LocalizerFor(IPlayer? player)"
-        );
+        string source = Source(Path.Combine("FiveStack.Services", "GameServer.cs"));
+        string helper = Method(source, "public ILocalizer LocalizerFor(IPlayer? player)");
 
-        Assert.Contains("if (player == null)", helper);
+        Assert.Contains("if (player == null || !HasTranslation(player.PlayerLanguage))", helper);
         Assert.Contains("return _core.Localizer;", helper);
         Assert.Contains("return _core.Translation.GetPlayerLocalizer(player);", helper);
+        Assert.Contains(
+            "File.Exists(Path.Join(_core.PluginPath,\"resources\",\"translations\",$\"{language.Value}.jsonc\"))",
+            Regex.Replace(Method(source, "private bool HasTranslation(Language language)"), @"\s+", "")
+        );
+    }
+
+    [Theory]
+    [InlineData("es-419", "es.jsonc")]
+    [InlineData("pt", "pt-BR.jsonc")]
+    public void AClientOnAVariantOfALanguageWeShipGetsThatLanguage(string language, string file)
+    {
+        string shipped = Path.Join(
+            AppContext.BaseDirectory,
+            "resources",
+            "translations",
+            $"{language}.jsonc"
+        );
+
+        Assert.True(File.Exists(shipped), $"{language} clients get no translation file");
+        Assert.Equal(
+            File.ReadAllText(Path.Combine(TranslationsDir(), file)),
+            File.ReadAllText(shipped)
+        );
+    }
+
+    [Theory]
+    [InlineData("Competitive")]
+    [InlineData("Wingman")]
+    [InlineData("Duel")]
+    [InlineData("Rush")]
+    [InlineData("Coach")]
+    [InlineData("CoachAndCaptains")]
+    [InlineData("CoachAndPlayers")]
+    [InlineData("Admin")]
+    public void RulesSaysEverySettingInThePlayersLanguage(string setting)
+    {
+        Match key = Regex.Match(
+            Compact(Path.Combine("FiveStack.Commands", "Help.cs")),
+            $@"""{setting}""=>""([^""]+)"""
+        );
+
+        Assert.True(key.Success, $".rules says {setting} in English");
+        Assert.True(
+            Translations("en.jsonc").ContainsKey(key.Groups[1].Value),
+            $"{key.Groups[1].Value} is not a translation key"
+        );
+    }
+
+    [Fact]
+    public void EveryVoteIsNamedByATranslationKey()
+    {
+        Dictionary<string, string> english = Translations("en.jsonc");
+        string[] names = SourceFiles()
+            .SelectMany(file =>
+                Regex
+                    .Matches(Compact((string)file[0]), @"\w+Vote\.StartVote\(([^,]*),")
+                    .Select(match => match.Groups[1].Value)
+            )
+            .ToArray();
+
+        Assert.Equal(4, names.Length);
+
+        foreach (string name in names)
+        {
+            Match key = Regex.Match(name, @"^""([^""]+)""$");
+
+            Assert.True(
+                key.Success && english.ContainsKey(key.Groups[1].Value),
+                $"a vote is named {name}, not a translation key"
+            );
+        }
+    }
+
+    [Fact]
+    public void TheVoteHudNamesTheVoteInEachPlayersLanguage()
+    {
+        Assert.DoesNotContain(
+            "_localizer",
+            Method(
+                Source(Path.Combine("FiveStack.Services", "VoteSystem.cs")),
+                "private void SendVoteMessage()"
+            )
+        );
+    }
+
+    [Theory]
+    [InlineData("timeout.not_allowed", "{1}", "timeout.not_allowed.tactical_timeout", "을", "을(를)")]
+    [InlineData("timeout.not_allowed", "{1}", "timeout.not_allowed.resume", "를", "을(를)")]
+    [InlineData("ready.marked", "{0}", "ready.ready", "으로", "(으)로")]
+    [InlineData("ready.marked", "{0}", "ready.not_ready", "로", "(으)로")]
+    public void AKoreanParticleFitsTheWordBeforeIt(
+        string key,
+        string placeholder,
+        string word,
+        string particle,
+        string eitherParticle
+    )
+    {
+        Dictionary<string, string> korean = Translations("ko.jsonc");
+        string line = korean[key];
+        int at = line.IndexOf(placeholder, StringComparison.Ordinal) + placeholder.Length;
+        string after = line[at..];
+
+        Assert.True(
+            after.StartsWith(particle, StringComparison.Ordinal)
+                || after.StartsWith(eitherParticle, StringComparison.Ordinal),
+            $"ko {key} reads {korean[word]}{after}"
+        );
     }
 
     [Theory]
@@ -198,6 +304,12 @@ public class PlayerLanguageTests
     [InlineData("FiveStack.Events/GagPlayer.cs", "gag.you_are_gagged")]
     [InlineData("FiveStack.Events/PlayerConnected.cs", "player.join.ready_hint")]
     [InlineData("FiveStack.Events/PlayerConnected.cs", "player.join.help_hint")]
+    [InlineData("FiveStack.Services/VoteSystem.cs", "vote.other_team_timer")]
+    [InlineData("FiveStack.Services/VoteSystem.cs", "vote.other_team")]
+    [InlineData("FiveStack.Services/VoteSystem.cs", "vote.prompt_count_timer")]
+    [InlineData("FiveStack.Services/VoteSystem.cs", "vote.prompt_count")]
+    [InlineData("FiveStack.Services/VoteSystem.cs", "vote.prompt_options_timer")]
+    [InlineData("FiveStack.Services/VoteSystem.cs", "vote.prompt_options")]
     public void WhatOnePlayerIsToldIsInTheirLanguage(string file, string key)
     {
         string source = Compact(file);
