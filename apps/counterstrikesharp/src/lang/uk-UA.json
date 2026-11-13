@@ -39,7 +39,7 @@
   "ready.ready": "готовий",
   "ready.not_ready": "не готовий",
   "ready.tag.ready": "готовий",
-  "ready.tag.not_ready": "не готовий",
+  "ready.tag.not_ready": "ще ні",
   "ready.marked": "Вас позначено як {0}",
   "ready.players_not_ready": "Гравці Не готові: {0} введіть {1}r",
   "ready.not_connected": "{0} (не підключений)",
@@ -137,7 +137,7 @@
   "camera.restored": "Усі камери повернулися - введіть {0}resume для продовження",
   "camera.cannot_resume": "Не можна відновити, досі очікуємо камеру від: {0}",
   "camera.cannot_ready": "Ви не можете позначити готовність, доки ваша камера не підключена",
-  "camera.tag": "без камери",
+  "camera.tag": "без кам.",
   "camera.not_required": "Цей матч не потребує камери",
   "camera.yours_ok": "Ваша камера підключена",
   "camera.yours_down": "Ваша камера НЕ підключена - підключіть її знову на сторінці матчу"
