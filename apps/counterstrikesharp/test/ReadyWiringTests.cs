@@ -64,7 +64,7 @@ public class ReadyWiringTests
     [Fact]
     public void The_Not_Ready_List_Names_The_Seats_Nobody_Holds()
     {
-        Assert.Contains("GetEmptySeats()", Method("public async void SendNotReadyMessage()"));
+        Assert.Contains("GetEmptySeats()", Method("public void SendNotReadyMessage()"));
         Assert.Contains("ReadyUtility.EmptySeats(", Method("private List<string> GetEmptySeats()"));
     }
 }
