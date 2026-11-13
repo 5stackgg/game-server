@@ -97,6 +97,10 @@
   "vote.prompt_count_timer": " {0} に投票 ({1}s)",
   "vote.prompt_options_timer": " {0} に投票（{1}y または {2}n）({3}s)",
   "surrender.vote": "降伏",
+  "surrender.lan": " LAN 試合では降伏できません",
+  "surrender.in_progress": " 降伏投票はすでに進行中です",
+  "surrender.unavailable": " 現在、降伏投票を開始できません",
+  "surrender.not_in_match": " 降伏を呼びかけられるのはこの試合のプレイヤーだけです",
   "vote.choose_one": "複数の投票が進行中です。どれか一つに回答してください: {0}",
 
   "camera.paused": "試合を一時停止しました - カメラが接続されていません: {0}",

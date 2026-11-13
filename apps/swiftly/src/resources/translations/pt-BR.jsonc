@@ -99,6 +99,10 @@
   "vote.prompt_count_timer": "Votar para {0} ({1}s)",
   "vote.prompt_options_timer": "Votar para {0} ({1}y ou {2}n) ({3}s)",
   "surrender.vote": "Render-se",
+  "surrender.lan": " Não há rendição em uma partida LAN",
+  "surrender.in_progress": " Já há uma votação de rendição em andamento",
+  "surrender.unavailable": " Não é possível iniciar uma votação de rendição agora",
+  "surrender.not_in_match": " Apenas um jogador desta partida pode pedir a rendição",
   "vote.choose_one": "Há mais de uma votação aberta, responda a uma: {0}",
 
   "camera.paused": "Partida pausada - sem câmera de: {0}",

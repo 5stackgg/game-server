@@ -97,6 +97,10 @@
   "vote.prompt_count_timer": " 投票 {0} ({1}s)",
   "vote.prompt_options_timer": " 投票 {0}（{1}y 或 {2}n）({3}s)",
   "surrender.vote": "投降",
+  "surrender.lan": " 局域网比赛不能投降",
+  "surrender.in_progress": " 投降投票已在进行中",
+  "surrender.unavailable": " 现在无法发起投降投票",
+  "surrender.not_in_match": " 只有本场比赛的玩家才能发起投降",
   "vote.choose_one": "有多个投票正在进行，请回答其中一个：{0}",
 
   "camera.paused": "比赛已暂停 - 以下玩家没有摄像头: {0}",

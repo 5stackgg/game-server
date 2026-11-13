@@ -97,6 +97,10 @@
   "vote.prompt_count_timer": " Stem for {0} ({1}s)",
   "vote.prompt_options_timer": " Stem for {0} ({1}y eller {2}n) ({3}s)",
   "surrender.vote": "Overgive sig",
+  "surrender.lan": " Der er ingen overgivelse i en LAN-kamp",
+  "surrender.in_progress": " Der er allerede en afstemning om overgivelse i gang",
+  "surrender.unavailable": " Kan ikke starte en afstemning om overgivelse lige nu",
+  "surrender.not_in_match": " Kun en spiller i denne kamp kan kalde en overgivelse",
   "vote.choose_one": "Der er mere end én afstemning åben, svar på én: {0}",
 
   "camera.paused": "Kampen er sat på pause - intet kamera fra: {0}",

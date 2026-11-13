@@ -97,6 +97,10 @@
   "vote.prompt_count_timer": " Votare per {0} ({1}s)",
   "vote.prompt_options_timer": " Votare per {0} ({1}y o {2}n) ({3}s)",
   "surrender.vote": "Arrendersi",
+  "surrender.lan": " Non c'è resa in un match LAN",
+  "surrender.in_progress": " È già in corso una votazione di resa",
+  "surrender.unavailable": " Impossibile avviare una votazione di resa in questo momento",
+  "surrender.not_in_match": " Solo un giocatore di questo match può chiedere la resa",
   "vote.choose_one": "C'è più di una votazione aperta, rispondi a una: {0}",
 
   "camera.paused": "Match in pausa - nessuna webcam da: {0}",

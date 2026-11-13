@@ -207,7 +207,7 @@ public class SurrenderSystem
         {
             if (player != null)
             {
-                player.SendConsole(" There is no surrender in a LAN match");
+                player.SendConsole(_gameServer.LocalizerFor(player)["surrender.lan"]);
             }
             return;
         }
@@ -217,7 +217,7 @@ public class SurrenderSystem
         {
             if (player != null)
             {
-                player.SendConsole(" A surrender vote is already in progress");
+                player.SendConsole(_gameServer.LocalizerFor(player)["surrender.in_progress"]);
             }
             return;
         }
@@ -258,7 +258,7 @@ public class SurrenderSystem
             _logger.LogWarning($"No lineup id found for {winningTeam}");
             if (player != null)
             {
-                player.SendConsole(" Unable to start a surrender vote right now");
+                player.SendConsole(_gameServer.LocalizerFor(player)["surrender.unavailable"]);
             }
             return;
         }
@@ -272,7 +272,7 @@ public class SurrenderSystem
             _logger.LogWarning($"No surrendering lineup found for {team}");
             if (player != null)
             {
-                player.SendConsole(" Unable to start a surrender vote right now");
+                player.SendConsole(_gameServer.LocalizerFor(player)["surrender.unavailable"]);
             }
             return;
         }

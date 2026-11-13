@@ -97,6 +97,10 @@
   "vote.prompt_count_timer": " Vote to {0} ({1}s)",
   "vote.prompt_options_timer": " Vote to {0} ({1}y or {2}n) ({3}s)",
   "surrender.vote": "Surrender",
+  "surrender.lan": " There is no surrender in a LAN match",
+  "surrender.in_progress": " A surrender vote is already in progress",
+  "surrender.unavailable": " Unable to start a surrender vote right now",
+  "surrender.not_in_match": " Only a player in this match can call a surrender",
   "vote.choose_one": "More than one vote is open, answer one: {0}",
 
   "camera.paused": "Match paused - no camera from: {0}",

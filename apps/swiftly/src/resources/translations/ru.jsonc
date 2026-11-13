@@ -97,6 +97,10 @@
   "vote.prompt_count_timer": " Голосовать за {0} ({1}s)",
   "vote.prompt_options_timer": " Голосовать за {0} ({1}y или {2}n) ({3}s)",
   "surrender.vote": "Сдаться",
+  "surrender.lan": " В LAN-матче сдаться нельзя",
+  "surrender.in_progress": " Голосование о сдаче уже идёт",
+  "surrender.unavailable": " Сейчас нельзя начать голосование о сдаче",
+  "surrender.not_in_match": " Предложить сдаться может только игрок этого матча",
   "vote.choose_one": "Открыто несколько голосований, ответьте на одно: {0}",
 
   "camera.paused": "Матч на паузе - нет камеры от: {0}",
