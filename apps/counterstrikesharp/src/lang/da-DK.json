@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - Taktisk timeout",
   "help.tech_pause": " {0}tech, {1}resume - Teknisk pause",
   "help.rules": " {0}rules - Regler",
-  "help.restore_round": " {0}reset <round> - Gendan runde",
+  "help.restore_round": " {0}reset <round> - Gendan til starten af runden",
 
   "rules.title": "  Regler:",
   "rules.with_overtime": "med overtid",
@@ -57,8 +57,8 @@
   "timeout.called_admin": "Teknisk timeout kaldt af admin",
   "timeout.already_active": " {0}En timeout er allerede aktiv",
 
-  "backup.vote.restore_to": "Gendan runde til {0}",
-  "backup.round_restored": " {0}Runde {1} er blevet gendannet ({2}resume for at fortsætte)",
+  "backup.vote.restore_to": "Gendan til starten af runde {0}",
+  "backup.round_restored": " {0}Gendannet til starten af runde {1} ({2}resume for at fortsætte)",
 
   "captain.claim_hint": "[{0}] {1}{2}captain for at gøre krav",
   "captain.show": "[{0} Kaptajn] {1}{2}",

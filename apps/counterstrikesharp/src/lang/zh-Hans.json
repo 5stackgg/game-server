@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - 战术暂停",
   "help.tech_pause": " {0}tech, {1}resume - 技术暂停",
   "help.rules": " {0}rules - 规则",
-  "help.restore_round": " {0}reset <round> - 恢复回合",
+  "help.restore_round": " {0}reset <round> - 恢复到该回合开始",
 
   "rules.title": "  规则：",
   "rules.with_overtime": "含加时",
@@ -57,8 +57,8 @@
   "timeout.called_admin": "管理员发起了技术暂停",
   "timeout.already_active": " {0}已有暂停进行中",
 
-  "backup.vote.restore_to": "将回合恢复到 {0}",
-  "backup.round_restored": " {0}第 {1} 回合已恢复（{2}resume 继续）",
+  "backup.vote.restore_to": "恢复到第 {0} 回合开始",
+  "backup.round_restored": " {0}已恢复到第 {1} 回合开始（{2}resume 继续）",
 
   "captain.claim_hint": "[{0}] {1}{2}captain 以领取",
   "captain.show": "[{0} 队长] {1}{2}",

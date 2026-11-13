@@ -68,28 +68,23 @@ public partial class FiveStackPlugin
     [Command("reset", registerRaw: false, permission: "")]
     public void OnRestoreRound(ICommandContext context)
     {
+        if (_gameBackupRounds.IsResettingRound())
+        {
+            _logger.LogWarning("Already restoring round, skipping");
+            return;
+        }
+
         string _round = context.Args.Length > 0 ? context.Args[0] : "";
+        int? backup = RoundRestoreGateUtility.ResetBackup(_round);
 
-        if (string.IsNullOrWhiteSpace(_round) || _gameBackupRounds.IsResettingRound())
+        if (backup == null)
         {
-            if (_gameBackupRounds.IsResettingRound())
-            {
-                _logger.LogWarning("Already restoring round, skipping");
-            }
-            else
-            {
-                _logger.LogWarning("Invalid round number provided");
-            }
+            _logger.LogWarning($"Invalid round number provided: {_round}");
+            context.Reply(_localizer["help.restore_round", CommandUtility.PublicChatTrigger]);
             return;
         }
 
-        if (!int.TryParse(_round, out int round))
-        {
-            _logger.LogWarning($"Failed to parse round number: {_round}");
-            return;
-        }
-
-        _gameBackupRounds.RequestRestoreBackupRound(round, context.Sender);
+        _gameBackupRounds.RequestRestoreBackupRound(backup.Value, context.Sender);
     }
 
     [Command("stop", registerRaw: false, permission: "")]

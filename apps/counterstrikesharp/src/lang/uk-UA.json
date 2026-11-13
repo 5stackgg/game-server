@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - Тактична пауза",
   "help.tech_pause": " {0}tech, {1}resume - Технічна пауза",
   "help.rules": " {0}rules - Правила",
-  "help.restore_round": " {0}reset <round> - Відновити раунд",
+  "help.restore_round": " {0}reset <round> - Повернутися до початку раунду",
 
   "rules.title": "  Правила:",
   "rules.with_overtime": "з овертаймом",
@@ -57,8 +57,8 @@
   "timeout.called_admin": "Технічна пауза від адміністратора",
   "timeout.already_active": " {0}Пауза вже активна",
 
-  "backup.vote.restore_to": "Відновити раунд до {0}",
-  "backup.round_restored": " {0}Раунд {1} відновлено ({2}resume для продовження)",
+  "backup.vote.restore_to": "Повернутися до початку раунду {0}",
+  "backup.round_restored": " {0}Відновлено початок раунду {1} ({2}resume для продовження)",
 
   "captain.claim_hint": "[{0}] {1}{2}captain щоб отримати",
   "captain.show": "[{0} Капітан] {1}{2}",

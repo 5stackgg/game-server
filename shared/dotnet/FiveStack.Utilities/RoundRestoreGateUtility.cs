@@ -12,6 +12,24 @@ namespace FiveStack.Utilities
         // Same for match_state, which the api sends to restart a map from warmup.
         public const string MatchStateRefusedPrefix = "match_state refused:";
 
+        // Backup N is the state after round N, so it puts the teams at the start of
+        // round N + 1, which is how the web names it. Players are told and type that
+        // number; the files, server commands, events and the api keep N.
+        public static int StartOfRound(int backup)
+        {
+            return backup + 1;
+        }
+
+        public static int? ResetBackup(string round)
+        {
+            if (!int.TryParse(round, out int start) || start < 1)
+            {
+                return null;
+            }
+
+            return start - 1;
+        }
+
         // A restore vote leaves the round running, because mp_pause_match waits for
         // the next freezetime, so a round ending during one is real and is lost if
         // the vote fails. A recovery vote is not that: the server is behind the
@@ -88,7 +106,7 @@ namespace FiveStack.Utilities
         {
             return next == RoundRestoreState.NothingToLoad
                 ? RestartMapNeeded
-                : $" Round {round} can't be restored, its backup is gone.";
+                : $" The start of round {StartOfRound(round)} can't be restored, its backup is gone.";
         }
 
         public static string? ResumeRefusal(int? owedRound, bool needsRestartMap = false)
@@ -100,7 +118,7 @@ namespace FiveStack.Utilities
 
             return owedRound == null
                 ? null
-                : $" Round {owedRound} is still being restored, the match can't resume yet.";
+                : $" Still restoring the start of round {StartOfRound(owedRound.Value)}, the match can't resume yet.";
         }
 
         public static string? Refusal(
@@ -138,7 +156,7 @@ namespace FiveStack.Utilities
 
             if (!hasBackup)
             {
-                return $"the server has no backup of round {round}";
+                return $"the server has no backup for the start of round {StartOfRound(round)}";
             }
 
             if (connectedPlayers < expectedPlayers)

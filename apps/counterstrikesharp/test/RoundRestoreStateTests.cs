@@ -247,7 +247,7 @@ public class RoundRestoreStateTests
     public void ResetToRoundZeroIsRefusedOnlyForAMissingBackup()
     {
         Assert.Equal(
-            "the server has no backup of round 0",
+            "the server has no backup for the start of round 1",
             RoundRestoreGateUtility.Refusal(false, false, eMapStatus.Live, 0, false, 10, 10, "Competitive")
         );
     }
@@ -527,7 +527,7 @@ public class RoundRestoreStateTests
     {
         string told = RoundRestoreGateUtility.WhyTheHoldMoved(Round, next);
 
-        Assert.Contains(Round.ToString(), told);
+        Assert.Contains($"start of round {Round + 1}", told);
         Assert.DoesNotContain("Restart Map", told);
     }
 
@@ -572,7 +572,10 @@ public class RoundRestoreStateTests
     [Fact]
     public void PlayersAreToldWhyResumeWaits()
     {
-        Assert.Contains(Round.ToString(), RoundRestoreGateUtility.ResumeRefusal(Round));
+        Assert.Contains(
+            $"start of round {Round + 1}",
+            RoundRestoreGateUtility.ResumeRefusal(Round)
+        );
     }
 
     [Fact]

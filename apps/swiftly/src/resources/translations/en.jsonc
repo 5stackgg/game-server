@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - Tactical timeout",
   "help.tech_pause": " {0}tech, {1}resume - Technical pause",
   "help.rules": " {0}rules - Rules",
-  "help.restore_round": " {0}reset <round> - Restore round",
+  "help.restore_round": " {0}reset <round> - Restore to the start of the round",
   "help.stop": " {0}stop - Replay the current round",
 
   "rules.title": "  Rules:",
@@ -62,8 +62,8 @@
   "timeout.called_admin": "Tech Timeout Called by Admin",
   "timeout.already_active": " {0}A timeout is already active",
 
-  "backup.vote.restore_to": "Restore Round to {0}",
-  "backup.round_restored": " {0}Round {1} has been restored ({2}resume to continue)",
+  "backup.vote.restore_to": "Restore to the Start of Round {0}",
+  "backup.round_restored": " {0}Restored to the start of round {1} ({2}resume to continue)",
 
   "captain.claim_hint": "[{0}] {1}{2}captain to claim",
   "captain.show": "[{0} Captain] {1}{2}",

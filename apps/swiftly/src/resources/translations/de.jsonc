@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - Taktische Auszeit",
   "help.tech_pause": " {0}tech, {1}resume - Technische Pause",
   "help.rules": " {0}rules - Regeln",
-  "help.restore_round": " {0}reset <round> - Runde wiederherstellen",
+  "help.restore_round": " {0}reset <round> - Zum Beginn der Runde zurückkehren",
 
   "rules.title": "  Regeln:",
   "rules.with_overtime": "mit Verlängerung",
@@ -57,8 +57,8 @@
   "timeout.called_admin": "Technische Auszeit vom Admin",
   "timeout.already_active": " {0}Bereits eine Auszeit aktiv",
 
-  "backup.vote.restore_to": "Runde auf {0} wiederherstellen",
-  "backup.round_restored": " {0}Runde {1} wurde wiederhergestellt ({2}resume zum Fortfahren)",
+  "backup.vote.restore_to": "Zum Beginn von Runde {0} zurückkehren",
+  "backup.round_restored": " {0}Zurück am Beginn von Runde {1} ({2}resume zum Fortfahren)",
 
   "captain.claim_hint": "[{0}] {1}{2}captain beanspruchen",
   "captain.show": "[{0} Kapitän] {1}{2}",

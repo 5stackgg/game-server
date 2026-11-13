@@ -7,7 +7,7 @@
   "help.tac_timeout": " {0}tac - Taktik mola",
   "help.tech_pause": " {0}tech, {1}resume - Teknik duraklama",
   "help.rules": " {0}rules - Kurallar",
-  "help.restore_round": " {0}reset <round> - Raundu geri yükle",
+  "help.restore_round": " {0}reset <round> - Raundun başına geri yükle",
 
   "rules.title": "  Kurallar:",
   "rules.with_overtime": "uzatmalı",
@@ -57,8 +57,8 @@
   "timeout.called_admin": "Yönetici tarafından teknik mola",
   "timeout.already_active": " {0}Zaten aktif bir mola var",
 
-  "backup.vote.restore_to": "Raundu {0} olarak geri yükle",
-  "backup.round_restored": " {0}{1}. raund geri yüklendi ({2}resume ile devam)",
+  "backup.vote.restore_to": "{0}. raundun başına geri yükle",
+  "backup.round_restored": " {0}{1}. raundun başına geri yüklendi ({2}resume ile devam)",
   "captain.claim_hint": "[{0}] {1}{2}captain ile talep et",
   "captain.show": "[{0} Kaptan] {1}{2}",
   "captain.assigned": "{0}, {1} için kaptan olarak atandı",
