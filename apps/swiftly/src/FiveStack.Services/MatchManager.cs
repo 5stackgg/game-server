@@ -588,9 +588,16 @@ public class MatchManager
         );
     }
 
+    // The api answers with the captains it had when asked: a captain event still
+    // unanswered then, or sent since, is not in its answer.
+    public int? CaptainsAsOf()
+    {
+        return _matchEvents.IsPending("captain") ? null : _matchEvents.Sent("captain");
+    }
+
     // The map status here can be ahead of the api's, so a seat the api has
     // bound to a steam id comes back without running the match setup again.
-    public void TakeLineups(MatchData matchData)
+    public void TakeLineups(MatchData matchData, int? captainsAsOf)
     {
         if (_matchData == null)
         {
@@ -604,9 +611,7 @@ public class MatchManager
             lineups[player.SteamID] = MatchUtility.GetPlayerLineup(_matchData, player);
         }
 
-        // A captain claimed or released here reaches the api as an event, and the
-        // api hands back the old flags until it has taken it.
-        if (_matchEvents.IsPending("captain"))
+        if (captainsAsOf == null || captainsAsOf != _matchEvents.Sent("captain"))
         {
             KeepCaptains(matchData);
         }

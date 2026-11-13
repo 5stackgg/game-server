@@ -50,7 +50,8 @@ namespace FiveStack.Utilities
 
         // Each lineup readies on its own: up to its own size, counted as RosterCount
         // counts it, or through its captain or its coach. A 5v4 is ready with nine,
-        // and a spare ready player on one lineup never makes up for the other.
+        // a spare ready player on one lineup never makes up for the other, and only
+        // the lineups that have a coach wait on one.
         public static (int Ready, int Target) ReadyCount(
             eReadySettings setting,
             MatchData matchData,
@@ -80,7 +81,12 @@ namespace FiveStack.Utilities
                             .OfType<int>()
                             .Distinct()
                             .Count(),
-                        2
+                        Math.Max(
+                            1,
+                            new[] { matchData.lineup_1, matchData.lineup_2 }.Count(lineup =>
+                                !string.IsNullOrEmpty(lineup.coach_steam_id)
+                            )
+                        )
                     );
             }
 

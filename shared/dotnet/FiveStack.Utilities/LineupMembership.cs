@@ -30,15 +30,16 @@ public static class LineupMembership
         return FindPlaceholder(matchData, playerName)?.Member;
     }
 
-    // A streamer or caster, who connects with the match password, and a lineup's
-    // coach are never its players, so the api is not offered them for a seat.
+    // Anyone who connected with a signed role, a streamer, caster or staff, and a
+    // lineup's coach are not offered to the api for a seat. Staff who play a free
+    // seat join with the plain password.
     public static bool CouldHoldASeat(
         MatchData matchData,
         string steamId,
         ePlayerRoles? connectedRole
     )
     {
-        return connectedRole != ePlayerRoles.Streamer
+        return connectedRole == null
             && steamId != matchData.lineup_1.coach_steam_id
             && steamId != matchData.lineup_2.coach_steam_id;
     }

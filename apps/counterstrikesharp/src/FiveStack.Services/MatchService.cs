@@ -42,6 +42,8 @@ public class MatchService
         return _networkServerService.GetWorkshopID();
     }
 
+    private readonly FetchSequence _fetches = new();
+
     public async void GetMatchFromApi()
     {
         MatchManager? matchManager = _currentMatch;
@@ -76,6 +78,7 @@ public class MatchService
         try
         {
             {
+                int request = _fetches.Request();
                 CurrentMatchDecision current = await FetchCurrentMatch(serverId, apiPassword);
 
                 if (current.Action == eCurrentMatchAction.Ignore)
@@ -87,6 +90,15 @@ public class MatchService
 
                 HibernationUtility.NextFrame(() =>
                 {
+                    if (!_fetches.TryTake(request))
+                    {
+                        _logger.LogInformation(
+                            "a newer match fetch was already applied, fetching again"
+                        );
+                        GetMatchFromApi();
+                        return;
+                    }
+
                     Guid? previousMatchId = _currentMatch?.GetMatchData()?.id;
 
                     if (matchData == null)
@@ -175,11 +187,14 @@ public class MatchService
             || serverId == null
             || apiPassword == null
             || _environmentService.IsOfflineMode()
+            || !_fetches.TryStart()
         )
         {
             return;
         }
 
+        int request = _fetches.Request();
+        int? captainsAsOf = match.CaptainsAsOf();
         CurrentMatchDecision? current = null;
 
         if (match._mapChangeCountdownTimer == null)
@@ -196,28 +211,31 @@ public class MatchService
 
         HibernationUtility.NextFrame(() =>
         {
-            if (_currentMatch != match)
-            {
-                return;
-            }
+            bool again = _fetches.Finish();
 
-            if (current == null)
+            if (_currentMatch == match)
             {
-                if (retry)
+                if (current == null)
                 {
-                    match.PhaseTimer(5, () => GetLineupsFromApi(false));
+                    if (retry)
+                    {
+                        match.PhaseTimer(5, () => GetLineupsFromApi(false));
+                    }
                 }
-
-                return;
+                else if (
+                    current.Action != eCurrentMatchAction.Ignore
+                    && current.Match != null
+                    && current.Match.id == match.GetMatchData()?.id
+                    && _fetches.TryTake(request)
+                )
+                {
+                    match.TakeLineups(current.Match, captainsAsOf);
+                }
             }
 
-            if (
-                current.Action != eCurrentMatchAction.Ignore
-                && current.Match != null
-                && current.Match.id == match.GetMatchData()?.id
-            )
+            if (again)
             {
-                match.TakeLineups(current.Match);
+                GetLineupsFromApi();
             }
         });
     }
