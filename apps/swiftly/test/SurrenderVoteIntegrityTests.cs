@@ -351,22 +351,35 @@ public class SurrenderVoteIntegrityTests
             Get(surrender, "_disconnectTimers")!;
     }
 
-    // The timer ran out on the end screen and opened a surrender vote and an
-    // abandon report there.
-    [Fact]
-    public void A_Map_Ending_Cancels_Every_Leavers_Timer()
+    private static Dictionary<Guid, Team> WaitingLineups(SurrenderSystem surrender)
     {
-        var (surrender, match, _) = Server(eMapStatus.Live);
+        return (Dictionary<Guid, Team>)Get(surrender, "_waitingLineups")!;
+    }
+
+    // A phase change ends the surrender vote, not a leaver's timer: a player who
+    // quits just before the map ends is still reported once it runs out.
+    [Theory]
+    [InlineData(eMapStatus.Live, eMapStatus.WaitingForTV)]
+    [InlineData(eMapStatus.WaitingForTV, eMapStatus.UploadingDemo)]
+    [InlineData(eMapStatus.UploadingDemo, eMapStatus.Finished)]
+    public void The_End_Of_A_Map_Ends_The_Vote_But_Not_The_Leavers_Timers(
+        eMapStatus from,
+        eMapStatus to
+    )
+    {
+        var (surrender, match, _) = Server(from);
         CancellationTokenSource timer = new CancellationTokenSource();
         LeaverTimers(surrender)[Team.T] = new Dictionary<ulong, CancellationTokenSource>
         {
             [Leaver] = timer,
         };
+        WaitingLineups(surrender)[Lineup2] = Team.CT;
 
-        match.UpdateMapStatus(eMapStatus.WaitingForTV, Lineup1);
+        match.UpdateMapStatus(to, Lineup1);
 
-        Assert.True(timer.IsCancellationRequested, "the leaver's timer still runs");
-        Assert.Empty(LeaverTimers(surrender));
+        Assert.Equal(to, match.GetCurrentMapStatus());
+        Assert.False(timer.IsCancellationRequested, "the leaver's timer was cancelled");
+        Assert.Empty(WaitingLineups(surrender));
     }
 
     private static string UpdateMapStatusCase(string status)
@@ -382,9 +395,12 @@ public class SurrenderVoteIntegrityTests
     // Restart Map sends the map back to warmup. Going there needs the engine,
     // so this reads the plugin.
     [Fact]
-    public void A_Restarted_Map_Cancels_Every_Leavers_Timer()
+    public void A_Restarted_Map_Ends_The_Vote_But_Not_The_Leavers_Timers()
     {
-        Assert.Contains("_surrenderSystem.Reset();", UpdateMapStatusCase("Warmup"));
+        string warmup = UpdateMapStatusCase("Warmup");
+
+        Assert.Contains("_surrenderSystem.EndVote();", warmup);
+        Assert.DoesNotContain("_surrenderSystem.Reset();", warmup);
     }
 
     // A new match and a map change both go through MatchManager.Reset.
@@ -425,13 +441,16 @@ public class SurrenderVoteIntegrityTests
         );
     }
 
+    // Outside play the timer still reports a player who is still gone from the
+    // same match, but starts no vote.
     [Fact]
-    public void A_Leavers_Timer_Does_Nothing_Once_The_Map_Is_Out_Of_Play()
+    public void A_Leavers_Timer_Reports_Them_Outside_Play_But_Starts_No_Vote()
     {
         string timer = Method(Code("FiveStack.Services", "SurrenderSystem.cs"), "public void SetupDisconnectTimer(");
 
+        Assert.Contains("Guid matchId = matchData.id;", timer);
         Assert.Matches(
-            @"TimerUtility\.AddTimer\(\s*60 \* 3,\s*\(\)\s*=>\s*\{\s*if \(!IsMapInPlay\(\)\)\s*\{\s*return;\s*\}\s*OfferLeaverSurrender\(lineupId, team\);\s*PlayerAbandonedMatch\(steamId\);\s*\}",
+            @"TimerUtility\.AddTimer\(\s*60 \* 3,\s*\(\)\s*=>\s*\{\s*MatchManager\? current = _matchService\.GetCurrentMatch\(\);\s*if \(\s*current == null\s*\|\|\s*current\.GetMatchData\(\)\?\.id != matchId\s*\|\|\s*MatchUtility\.Players\(\)\.Any\(player => player\.SteamID == steamId\)\s*\)\s*\{\s*return;\s*\}\s*if \(current\.IsInPlay\(\)\)\s*\{\s*OfferLeaverSurrender\(lineupId, team\);\s*\}\s*PlayerAbandonedMatch\(steamId\);\s*\}",
             timer
         );
     }
@@ -447,9 +466,12 @@ public class SurrenderVoteIntegrityTests
             @"^private void OfferLeaverSurrender\(Guid\? lineupId, Team sideAtDisconnect\)\s*\{\s*if \(lineupId != null && IsSurrendering\(\)\)\s*\{\s*_waitingLineups\.TryAdd\(lineupId\.Value, sideAtDisconnect\);\s*return;\s*\}",
             Method(source, "private void OfferLeaverSurrender(")
         );
-        Assert.Contains("_waitingLineups.Clear();", Method(source, "public void Reset()"));
+        Assert.Contains("_waitingLineups.Clear();", Method(source, "public void EndVote()"));
+        Assert.Contains("EndVote();", Method(source, "public void Reset()"));
     }
 
+    // Setting up the next vote before letting go of the failed one would let go
+    // of the new one while it still prompts (#316).
     [Fact]
     public void A_Failed_Vote_Hands_The_Other_Lineup_Its_Waiting_Vote()
     {
@@ -457,10 +479,13 @@ public class SurrenderVoteIntegrityTests
         int failed = source.IndexOf("\"surrender vote failed\"", StringComparison.Ordinal);
 
         Assert.True(failed >= 0, "the failure callback is gone");
-        Assert.Contains(
-            "OfferWaitingLineup(surrenderingLineup.Value);",
-            source[failed..source.IndexOf("},", failed, StringComparison.Ordinal)]
-        );
+
+        string callback = source[failed..source.IndexOf("},", failed, StringComparison.Ordinal)];
+        int dropped = callback.IndexOf("surrenderingVote = null;", StringComparison.Ordinal);
+        int offered = callback.IndexOf("OfferWaitingLineup(surrenderingLineup.Value);", StringComparison.Ordinal);
+
+        Assert.True(offered >= 0, "the waiting lineup is never offered its vote");
+        Assert.True(dropped >= 0 && dropped < offered, "the failed vote is let go of after the next one is set up");
 
         string offer = Method(source, "private void OfferWaitingLineup(Guid votedLineup)");
         int forget = offer.IndexOf("_waitingLineups.Remove(votedLineup);", StringComparison.Ordinal);
@@ -470,5 +495,75 @@ public class SurrenderVoteIntegrityTests
             forget < offer.IndexOf("OfferLeaverSurrender(", StringComparison.Ordinal),
             "the next vote is offered before the lineup that just voted is forgotten"
         );
+    }
+
+    // A lineup whose leaver came back while it waited would be asked to give up
+    // a map it is whole for.
+    [Fact]
+    public void A_Waiting_Lineup_That_Is_Whole_Again_Gets_No_Vote()
+    {
+        string offer = Method(
+            Code("FiveStack.Services", "SurrenderSystem.cs"),
+            "private void OfferWaitingLineup(Guid votedLineup)"
+        );
+        var whole = Regex.Match(
+            offer,
+            @"if \(\s*ReconnectPauseUtility\.IsLineupWhole\([^;]*\)\s*\)\s*\{\s*return;\s*\}"
+        );
+
+        Assert.True(whole.Success, "a waiting lineup is offered its vote however many of its players are back");
+        Assert.True(
+            whole.Index < offer.LastIndexOf("OfferLeaverSurrender(", StringComparison.Ordinal),
+            "the vote is offered before the lineup is counted"
+        );
+    }
+
+    private static MatchData Roster(int lineup1Players)
+    {
+        List<MatchMember> Players(int from, int count) =>
+            Enumerable
+                .Range(from, count)
+                .Select(i => new MatchMember { steam_id = $"7656119800000{i:D4}" })
+                .ToList();
+
+        return new MatchData
+        {
+            lineup_1_id = Lineup1,
+            lineup_2_id = Lineup2,
+            lineup_1 = new MatchLineUp { lineup_players = Players(0, lineup1Players) },
+            lineup_2 = new MatchLineUp { lineup_players = Players(5, 5) },
+        };
+    }
+
+    private static IEnumerable<(string, string)> Connected(params int[] players)
+    {
+        return players.Select(i => ($"7656119800000{i:D4}", $"player{i}"));
+    }
+
+    [Fact]
+    public void A_Lineup_With_Its_Players_Back_Is_Whole()
+    {
+        Assert.True(
+            ReconnectPauseUtility.IsLineupWhole(Roster(5), Connected(0, 1, 2, 3, 4), 10, Lineup1)
+        );
+    }
+
+    [Fact]
+    public void A_Lineup_Still_Missing_A_Player_Is_Not_Whole_Whoever_Else_Is_In()
+    {
+        Assert.False(
+            ReconnectPauseUtility.IsLineupWhole(
+                Roster(5),
+                Connected(0, 1, 2, 3, 5, 6, 7, 8, 9),
+                10,
+                Lineup1
+            )
+        );
+    }
+
+    [Fact]
+    public void A_Lineup_Short_By_Design_Is_Whole_With_All_Its_Players_In()
+    {
+        Assert.True(ReconnectPauseUtility.IsLineupWhole(Roster(4), Connected(0, 1, 2, 3), 10, Lineup1));
     }
 }

@@ -53,4 +53,14 @@ public static class ReconnectPauseUtility
             required1 + required2
         );
     }
+
+    public static bool IsLineupWhole(
+        MatchData matchData,
+        IEnumerable<(string SteamId, string Name)> connected,
+        int expectedPlayers,
+        Guid lineupId
+    )
+    {
+        return false;
+    }
 }
