@@ -64,6 +64,8 @@
   "match.map_over_series_done": "試合終了 — デモの処理が終わると、試合ページに統計が表示されます。",
   "match.offline_over": "試合は終了しました — このサーバーでプレイするものはもうありません。",
   "timeout.cannot_resume_empty_team": "接続しているプレイヤーがいないチームがあるため再開できません",
+  "timeout.not_paused": " {0}試合は一時停止されていません",
+  "timeout.already_paused": " {0}試合はすでに一時停止されています",
   "timeout.admin_resumed": "管理者が試合を再開しました",
   "timeout.vote.resume": "再開",
   "timeout.vote.resume_passed": "再開の投票が可決",

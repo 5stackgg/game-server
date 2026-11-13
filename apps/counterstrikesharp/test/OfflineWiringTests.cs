@@ -1,5 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using FiveStack.Enums;
+using FiveStack.Utilities;
 using Xunit;
 
 // What offline mode keeps and decides is tested in OfflineMatchStateTests.
@@ -246,9 +248,9 @@ public class OfflineWiringTests
         string update = Method(Service("MatchManager"), "public void UpdateMapStatus(");
         string terminal = update[..At(update, "CheckForBackupRestore(status)")];
 
-        Assert.Contains("IsMapFinished()", terminal);
-        Assert.Contains("status == eMapStatus.Live", terminal);
-        Assert.Contains("status == eMapStatus.Knife", terminal);
+        Assert.Contains("MatchPhaseUtility.Reopens(_currentMapStatus, status)", terminal);
+        Assert.True(MatchPhaseUtility.Reopens(eMapStatus.Finished, eMapStatus.Live));
+        Assert.True(MatchPhaseUtility.Reopens(eMapStatus.Finished, eMapStatus.Knife));
     }
 
     [Fact]

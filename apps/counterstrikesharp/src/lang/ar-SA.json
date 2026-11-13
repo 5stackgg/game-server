@@ -60,6 +60,8 @@
   "timeout.not_allowed.resume": "استئناف",
   "timeout.not_allowed.tactical_timeout": "مهلة تكتيكية",
   "timeout.admin_resumed": "استأنف المدير المباراة",
+  "timeout.not_paused": " {0}المباراة ليست متوقفة مؤقتاً",
+  "timeout.already_paused": " {0}المباراة متوقفة مؤقتاً بالفعل",
   "timeout.vote.resume": "استئناف",
   "timeout.vote.resume_passed": "تمت الموافقة على تصويت الاستئناف",
   "timeout.player_resumed": "{0} {1}استأنف المباراة",

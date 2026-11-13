@@ -58,6 +58,15 @@ public class TimeoutSystem
         resumeVote?.RemovePlayerVote(steamId);
     }
 
+    public void Reset()
+    {
+        pauseVote?.Abandon();
+        pauseVote = null;
+        resumeVote?.Abandon();
+        resumeVote = null;
+        ClearPendingTeamResumes();
+    }
+
     public void RequestPause(CCSPlayerController? player)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -74,6 +83,12 @@ public class TimeoutSystem
         if (IsTimeoutActive())
         {
             SendTimeoutAlreadyActiveMessage(player);
+            return;
+        }
+
+        if (ShouldRequireTeamResume())
+        {
+            SendAlreadyPausedMessage(player);
             return;
         }
 
@@ -189,10 +204,30 @@ public class TimeoutSystem
 
     public void RequestResume(CCSPlayerController? player)
     {
-        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
 
-        if (matchData == null)
+        if (match == null || matchData == null)
         {
+            return;
+        }
+
+        bool somethingToResume = TimeoutUtility.HasPauseToResume(
+            match.GetCurrentMapStatus(),
+            MatchUtility.Rules()?.MatchWaitingForResume == true
+        );
+
+        if (player != null && !somethingToResume)
+        {
+            if (!IsTimeoutActive())
+            {
+                _gameServer.Message(
+                    HudDestination.Chat,
+                    _gameServer.Localize(player, "timeout.not_paused", ChatColors.Red),
+                    player
+                );
+            }
+
             return;
         }
 
@@ -363,11 +398,21 @@ public class TimeoutSystem
 
     private void PauseTechMatch(string pauseMessage)
     {
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (match == null || ShouldRequireTeamResume() || !match.IsInPlay())
+        {
+            return;
+        }
+
+        resumeVote?.Abandon();
+        resumeVote = null;
+
         _teamsPendingResume.Clear();
         _teamsPendingResume.Add(CsTeam.CounterTerrorist);
         _teamsPendingResume.Add(CsTeam.Terrorist);
         _requiresTeamResumeForCurrentPause = true;
-        _matchService.GetCurrentMatch()?.PauseMatch(pauseMessage);
+        match.PauseMatch(pauseMessage);
     }
 
     public void CallTacTimeout(CCSPlayerController? player)
@@ -523,6 +568,20 @@ public class TimeoutSystem
         return PlayerRoleUtility.PlayerRoleStringToEnum(member.role);
     }
 
+    private void SendAlreadyPausedMessage(CCSPlayerController? player)
+    {
+        if (player == null)
+        {
+            return;
+        }
+
+        _gameServer.Message(
+            HudDestination.Chat,
+            _gameServer.Localize(player, "timeout.already_paused", ChatColors.Red),
+            player
+        );
+    }
+
     private void SendTimeoutAlreadyActiveMessage(CCSPlayerController? player)
     {
         if (player == null)
@@ -532,7 +591,7 @@ public class TimeoutSystem
 
         _gameServer.Message(
             HudDestination.Chat,
-            _localizer["timeout.already_active", ChatColors.Red],
+            _gameServer.Localize(player, "timeout.already_active", ChatColors.Red),
             player
         );
     }

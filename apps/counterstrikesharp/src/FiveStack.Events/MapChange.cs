@@ -18,6 +18,8 @@ public partial class FiveStackPlugin
                 Server.PrecacheModel(ModelPathCtmSas);
                 Server.PrecacheModel(ModelPathTmPhoenix);
 
+                _matchService.GetCurrentMatch()?.EndPhase();
+
                 // code smell: we have to wait till server exec's default cfgs
                 await Task.Delay(1000 * 5);
                 HibernationUtility.NextFrame(() =>
