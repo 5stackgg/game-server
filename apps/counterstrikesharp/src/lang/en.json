@@ -104,6 +104,8 @@
   "match.assigned_team": " You've been assigned to {0}{1}.",
   "match.player_disconnected": "Player disconnected, pausing match",
   "match.waiting_reconnect": "Waiting for players to reconnect",
+  "match.reconnect_timeout": "Technical timeout: waiting {0}s for players to reconnect",
+  "match.reconnect_timeout_over": "Technical timeout over, playing on",
   "ready.forced_start": "Game has been forced to start.",
   "vote.failed": "{0} Vote Failed",
   "vote.not_allowed": " {0}you are not allowed to vote",

@@ -109,6 +109,8 @@
   "match.assigned_team": " {0}{1} tarafına atandın.",
   "match.player_disconnected": "Oyuncunun bağlantısı koptu, maç duraklatılıyor",
   "match.waiting_reconnect": "Oyuncuların yeniden bağlanması bekleniyor",
+  "match.reconnect_timeout": "Teknik mola: oyuncuların yeniden bağlanması için {0} sn bekleniyor",
+  "match.reconnect_timeout_over": "Teknik mola bitti, maç devam ediyor",
   "ready.forced_start": "Oyun başlatılması zorlandı.",
   "vote.failed": "{0} Oylama başarısız",
   "vote.not_allowed": " {0}oy kullanma izniniz yok",

@@ -110,6 +110,8 @@
   "match.assigned_team": " 你已被分配到{0}{1}。",
   "match.player_disconnected": "玩家斷線，比賽暫停",
   "match.waiting_reconnect": "等待玩家重新連線",
+  "match.reconnect_timeout": "技術暫停：等待玩家重新連線，剩餘 {0} 秒",
+  "match.reconnect_timeout_over": "技術暫停結束，比賽繼續",
   "ready.forced_start": "比賽已被強制開始。",
   "vote.failed": "{0} 投票失敗",
   "vote.not_allowed": " {0}你無權投票",

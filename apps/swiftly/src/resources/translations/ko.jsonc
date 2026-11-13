@@ -114,6 +114,8 @@
   "match.assigned_team": " {0}{1}에 배정되었습니다.",
   "match.player_disconnected": "플레이어 연결이 끊겨 경기를 일시정지합니다",
   "match.waiting_reconnect": "플레이어의 재접속을 기다리는 중",
+  "match.reconnect_timeout": "기술 타임아웃: 플레이어의 재접속을 {0}초 동안 기다립니다",
+  "match.reconnect_timeout_over": "기술 타임아웃 종료, 경기를 계속합니다",
   "ready.forced_start": "게임 시작이 강제되었습니다.",
   "vote.failed": "{0} 투표 실패",
   "vote.not_allowed": " {0}투표할 권한이 없습니다",

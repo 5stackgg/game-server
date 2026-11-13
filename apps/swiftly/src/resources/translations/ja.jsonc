@@ -115,6 +115,8 @@
   "match.assigned_team": " {0}{1}に割り当てられました。",
   "match.player_disconnected": "プレイヤーが切断したため、試合を一時停止します",
   "match.waiting_reconnect": "プレイヤーの再接続を待っています",
+  "match.reconnect_timeout": "テクニカルタイムアウト: プレイヤーの再接続を{0}秒待ちます",
+  "match.reconnect_timeout_over": "テクニカルタイムアウト終了、試合を続行します",
   "ready.forced_start": "ゲームの開始が強制されました。",
   "vote.failed": "{0} 投票失敗",
   "vote.not_allowed": " {0}投票する権限がありません",

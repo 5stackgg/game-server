@@ -68,6 +68,9 @@ public partial class FiveStackPlugin
                 MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.Name)),
                 expectedPlayers
             )
+            && matchManager.timeoutSystem.HoldForRoster(
+                MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.Name))
+            )
         )
         {
             matchManager.PauseMatch(
@@ -78,7 +81,7 @@ public partial class FiveStackPlugin
                         matchManager.GetMatchData() ?? roundMatchData,
                         MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.Name)),
                         matchManager.GetExpectedPlayerCount()
-                    )
+                    ) && matchManager.timeoutSystem.HoldsForRoster()
             );
         }
 

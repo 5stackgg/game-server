@@ -181,6 +181,11 @@ public class MatchManager
         return IsPaused() ? _pauseReason : null;
     }
 
+    public bool IsLan()
+    {
+        return _matchData?.is_lan == true || _environmentService.IsOfflineMode();
+    }
+
     public bool IsFreezePeriod()
     {
         return MatchUtility.Rules()?.FreezePeriod ?? false;
@@ -351,14 +356,22 @@ public class MatchManager
                     return;
                 }
 
+                int? reconnectSeconds = _timeoutSystem.ReconnectTimeoutSecondsLeft();
+
                 _gameServer.MessageEach(
                     HudDestination.Alert,
                     viewer =>
-                        _gameServer.Localize(
-                            viewer,
-                            "match.resume_hint",
-                            CommandUtility.PublicChatTrigger
-                        )
+                        reconnectSeconds != null
+                            ? _gameServer.Localize(
+                                viewer,
+                                "match.reconnect_timeout",
+                                reconnectSeconds.Value
+                            )
+                            : _gameServer.Localize(
+                                viewer,
+                                "match.resume_hint",
+                                CommandUtility.PublicChatTrigger
+                            )
                 );
             },
             true

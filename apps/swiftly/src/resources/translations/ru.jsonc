@@ -115,6 +115,8 @@
   "match.assigned_team": " Ваша команда: {0}{1}.",
   "match.player_disconnected": "Игрок отключился, матч на паузе",
   "match.waiting_reconnect": "Ожидание переподключения игроков",
+  "match.reconnect_timeout": "Техническая пауза: ожидание переподключения игроков, {0} с",
+  "match.reconnect_timeout_over": "Техническая пауза окончена, игра продолжается",
   "ready.forced_start": "Запуск игры был принудительным.",
   "vote.failed": "{0} Голосование не прошло",
   "vote.not_allowed": " {0}вам не разрешено голосовать",

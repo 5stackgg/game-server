@@ -425,6 +425,67 @@ public class MatchPhaseTests
         Assert.False(RosterOwnsPause(On(eMapStatus.Live)));
     }
 
+    // On a LAN someone at the table says the player is back.
+    [Fact]
+    public void A_Whole_Roster_Never_Ends_A_Lan_Pause()
+    {
+        Server server = PausedFor("Roster");
+        server.Match.GetMatchData()!.is_lan = true;
+
+        Assert.False(RosterOwnsPause(server));
+    }
+
+    [Theory]
+    [InlineData(eMapStatus.Live)]
+    [InlineData(eMapStatus.Paused)]
+    public void A_Lan_Match_Holds_For_Its_Roster_On_No_Timeout(eMapStatus status)
+    {
+        Server server = On(status);
+        server.Match.GetMatchData()!.is_lan = true;
+
+        Assert.True(server.Timeout.HoldForRoster([]));
+        Assert.True(server.Timeout.HoldsForRoster());
+        Assert.Null(Get(server.Timeout, "_reconnectTimer"));
+        Assert.Null(server.Timeout.ReconnectTimeoutSecondsLeft());
+    }
+
+    [Theory]
+    [InlineData("Camera")]
+    [InlineData("Tech")]
+    [InlineData("Admin")]
+    [InlineData("Restore")]
+    public void A_Drop_Under_A_Pause_Someone_Else_Made_Costs_No_Timeout(string reason)
+    {
+        Server server = PausedFor(reason);
+
+        Assert.True(server.Timeout.HoldForRoster([]));
+        Assert.Null(Get(server.Timeout, "_reconnectTimer"));
+        Assert.False(server.Timeout.HoldsForRoster());
+    }
+
+    [Fact]
+    public void Resuming_Ends_The_Timeout_A_Missing_Player_Was_Given()
+    {
+        Server server = PausedFor("Roster");
+        Set(server.Timeout, "_reconnectTimeoutEnds", DateTime.UtcNow.AddSeconds(90));
+
+        Assert.InRange(server.Timeout.ReconnectTimeoutSecondsLeft() ?? 0, 1, 90);
+
+        server.Timeout.Reset();
+
+        Assert.Null(server.Timeout.ReconnectTimeoutSecondsLeft());
+        Assert.False(server.Timeout.HoldsForRoster());
+    }
+
+    [Fact]
+    public void The_Countdown_Is_Only_Shown_Over_A_Pause_The_Roster_Made()
+    {
+        Server server = PausedFor("Tech");
+        Set(server.Timeout, "_reconnectTimeoutEnds", DateTime.UtcNow.AddSeconds(90));
+
+        Assert.Null(server.Timeout.ReconnectTimeoutSecondsLeft());
+    }
+
     [Theory]
     [InlineData("Roster", "Restore", "Restore")]
     [InlineData("Roster", "Camera", "Camera")]
