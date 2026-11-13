@@ -509,6 +509,21 @@ public class PlayerLanguageTests
         Assert.True(Translations("en.jsonc").ContainsKey("ready.tag.not_ready"));
     }
 
+    // CS:GO cut a clan tag at 15 bytes, and the ready system finds its own tags
+    // by reading them back off the scoreboard.
+    [Theory]
+    [MemberData(nameof(Languages))]
+    public void AScoreboardTagFitsInFifteenBytes(string language)
+    {
+        foreach (string key in new[] { "ready.tag.ready", "ready.tag.not_ready", "camera.tag" })
+        {
+            string tag = Translations(language)[key];
+            int bytes = System.Text.Encoding.UTF8.GetByteCount(tag);
+
+            Assert.True(bytes <= 15, $"{language} {key} \"{tag}\" is {bytes} bytes");
+        }
+    }
+
     // The api reads the refusal off the RCON reply and shows it to the organizer.
     [Fact]
     public void TheApiReadsARestoreRefusalInEnglish()
