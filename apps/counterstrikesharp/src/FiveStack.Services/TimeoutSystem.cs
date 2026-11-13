@@ -328,9 +328,14 @@ public class TimeoutSystem
 
                                 if (_cameraSystem.IsBlocking())
                                 {
-                                    _gameServer.Message(
+                                    _gameServer.MessageEach(
                                         HudDestination.Chat,
-                                        _localizer["camera.cannot_resume", _cameraSystem.OfflineNames()]
+                                        viewer =>
+                                            _gameServer.Localize(
+                                                viewer,
+                                                "camera.cannot_resume",
+                                                _cameraSystem.OfflineNames()
+                                            )
                                     );
                                     return;
                                 }

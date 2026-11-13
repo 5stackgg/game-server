@@ -334,9 +334,9 @@ public class TimeoutSystem
 
                                 if (_cameraSystem.IsBlocking())
                                 {
-                                    _gameServer.Message(
+                                    _gameServer.MessageEach(
                                         MessageType.Chat,
-                                        _localizer["camera.cannot_resume", _cameraSystem.OfflineNames()]
+                                        localizer => localizer["camera.cannot_resume", _cameraSystem.OfflineNames()]
                                     );
                                     return;
                                 }
