@@ -486,7 +486,7 @@ public class MatchPhaseTests
 
     private static int TimeoutsUsed(Server server)
     {
-        return ((Dictionary<Guid, int>)Get(Timeouts(server), "_used")!).Values.Sum();
+        return Timeouts(server).Used(ReconnectLineup);
     }
 
     [Fact]
@@ -552,17 +552,20 @@ public class MatchPhaseTests
         Assert.Equal(0, TimeoutsUsed(server));
     }
 
+    // The lineup charged at the drop got its player back, and by then the other
+    // lineup had nobody left: that one is waited on, not charged.
     [Fact]
-    public void A_Timeout_Stays_Owed_While_The_Lineup_Is_Still_Short()
+    public void A_Timeout_Still_Owed_Is_Given_Back_When_A_Lineup_Has_Nobody_Left()
     {
         Server server = WithLineup(On(eMapStatus.Live), 2);
         Timeouts(server).Charge(ReconnectMap, [ReconnectLineup], 1);
         Set(server.Timeout, "_reconnectTimeoutOwed", true);
 
-        server.Timeout.RosterChanged([("76561198000000000", "player0")]);
+        server.Timeout.RosterChanged([]);
 
+        Assert.Equal(0, TimeoutsUsed(server));
+        Assert.False((bool)Get(server.Timeout, "_reconnectTimeoutOwed")!);
         Assert.True(server.Timeout.HoldsForRoster());
-        Assert.Equal(1, TimeoutsUsed(server));
     }
 
     [Fact]

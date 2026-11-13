@@ -3,46 +3,58 @@ namespace FiveStack.Utilities;
 public class ReconnectTimeouts
 {
     private readonly Dictionary<Guid, int> _used = new Dictionary<Guid, int>();
-    private readonly List<Guid> _lastCharged = new List<Guid>();
     private Guid? _mapId;
+    private Guid? _charged;
+    private Guid? _paidLast;
+    private Guid? _paidBefore;
 
-    // One timeout holds the match for every lineup that is short, so each of
-    // them that still has one pays for it. Sides swap at halftime, so the count
-    // is kept by lineup, and it starts over on a new map.
+    public int Used(Guid lineup)
+    {
+        return _used.GetValueOrDefault(lineup);
+    }
+
+    // One short lineup pays for each timeout: the one that has spent fewest,
+    // and with those level the one that did not pay last, so two short lineups
+    // take turns. Sides swap at halftime, so the count is kept by lineup, and
+    // it starts over on a new map.
     public bool Charge(Guid? mapId, IEnumerable<Guid> shortLineups, int perLineup)
     {
         if (_mapId != mapId)
         {
             _mapId = mapId;
             _used.Clear();
+            _paidLast = null;
         }
 
-        _lastCharged.Clear();
+        _charged = null;
 
-        foreach (Guid lineup in shortLineups.Distinct())
+        List<Guid> able = shortLineups.Distinct().Where(lineup => Used(lineup) < perLineup).ToList();
+
+        if (able.Count == 0)
         {
-            int used = _used.GetValueOrDefault(lineup);
-
-            if (used >= perLineup)
-            {
-                continue;
-            }
-
-            _used[lineup] = used + 1;
-            _lastCharged.Add(lineup);
+            return false;
         }
 
-        return _lastCharged.Count > 0;
+        Guid payer = able.OrderBy(Used).ThenBy(lineup => lineup == _paidLast).First();
+
+        _used[payer] = Used(payer) + 1;
+        _charged = payer;
+        _paidBefore = _paidLast;
+        _paidLast = payer;
+
+        return true;
     }
 
-    // A timeout whose pause never happened is given back.
+    // A timeout whose pause never happened is given back, and with it the turn.
     public void Refund()
     {
-        foreach (Guid lineup in _lastCharged)
+        if (_charged is not Guid lineup)
         {
-            _used[lineup] = Math.Max(0, _used.GetValueOrDefault(lineup) - 1);
+            return;
         }
 
-        _lastCharged.Clear();
+        _used[lineup] = Math.Max(0, Used(lineup) - 1);
+        _paidLast = _paidBefore;
+        _charged = null;
     }
 }

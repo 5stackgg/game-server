@@ -431,8 +431,8 @@ public class TimeoutSystem
     }
 
     // A LAN match waits for someone to resume it. Any other waits one technical
-    // timeout, paid by every lineup that is short and still has one, and plays
-    // on once they are spent.
+    // timeout at a time, each paid by a lineup that is short, and plays on once
+    // they are spent.
     public bool HoldForRoster(IEnumerable<(string SteamId, string Name)> connected)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -539,6 +539,21 @@ public class TimeoutSystem
             return;
         }
 
+        // Charged at the drop, before the pause landed: whoever is short now pays,
+        // and a lineup with nobody left is still waited on at no cost.
+        if (_reconnectTimeoutOwed)
+        {
+            _reconnectTimeouts.Refund();
+            _waitsOnEmptyLineup = ReconnectPauseUtility.IsALineupEmpty(
+                matchData,
+                players,
+                match.GetExpectedPlayerCount()
+            );
+            _reconnectTimeoutOwed =
+                !_waitsOnEmptyLineup && ChargeReconnectTimeout(match, matchData, players);
+            return;
+        }
+
         if (
             !_waitsOnEmptyLineup
             || ReconnectPauseUtility.IsALineupEmpty(
@@ -586,7 +601,7 @@ public class TimeoutSystem
                     connected,
                     match.GetExpectedPlayerCount()
                 ),
-                TechnicalTimeoutSetting("mp_technical_timeout_per_team", 1)
+                TechnicalTimeoutSetting("mp_technical_timeout_per_team", 2)
             );
     }
 
