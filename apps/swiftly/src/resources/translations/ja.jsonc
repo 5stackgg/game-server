@@ -104,6 +104,7 @@
   "surrender.in_progress": " 降伏投票はすでに進行中です",
   "surrender.unavailable": " 現在、降伏投票を開始できません",
   "surrender.not_in_match": " 降伏を呼びかけられるのはこの試合のプレイヤーだけです",
+  "surrender.not_in_play": " 降伏を呼びかけられるのはマップのプレイ中だけです",
   "vote.choose_one": "複数の投票が進行中です。どれか一つに回答してください: {0}",
 
   "camera.paused": "試合を一時停止しました - カメラが接続されていません: {0}",

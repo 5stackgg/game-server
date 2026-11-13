@@ -482,6 +482,7 @@ public class MatchManager
                 UpdateMapStatus(eMapStatus.Warmup);
                 return;
             case eMapStatus.Warmup:
+                _surrenderSystem.EndVote();
                 SetupTeams();
                 status = eMapStatus.Warmup;
                 StartWarmup();
@@ -536,14 +537,15 @@ public class MatchManager
                 StartLive();
                 break;
             case eMapStatus.WaitingForTV:
+                _surrenderSystem.EndVote();
                 break;
             case eMapStatus.Finished:
             case eMapStatus.Surrendered:
-                _surrenderSystem.Reset();
+                _surrenderSystem.EndVote();
                 _matchEvents.ClearPendingRoundResult();
                 break;
             case eMapStatus.UploadingDemo:
-                _surrenderSystem.Reset();
+                _surrenderSystem.EndVote();
                 if (_currentMapStatus == eMapStatus.Unknown || IsMapFinished())
                 {
                     return;
@@ -692,7 +694,7 @@ public class MatchManager
         if (_matchData == null || IsMapFinished())
         {
             _gameDemos.Stop();
-            _surrenderSystem.Reset();
+            _surrenderSystem.EndVote();
             return;
         }
 
@@ -1791,7 +1793,7 @@ public class MatchManager
 
         captainSystem.Reset();
         knifeSystem.Reset();
-        _surrenderSystem.Reset();
+        _surrenderSystem.EndVote();
         _avatarSystem.Clear();
     }
 

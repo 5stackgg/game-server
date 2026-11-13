@@ -104,6 +104,7 @@
   "surrender.in_progress": " È già in corso una votazione di resa",
   "surrender.unavailable": " Impossibile avviare una votazione di resa in questo momento",
   "surrender.not_in_match": " Solo un giocatore di questo match può chiedere la resa",
+  "surrender.not_in_play": " La resa si può chiedere solo mentre la mappa è in corso",
   "vote.choose_one": "C'è più di una votazione aperta, rispondi a una: {0}",
 
   "camera.paused": "Match in pausa - nessuna webcam da: {0}",

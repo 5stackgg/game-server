@@ -23,9 +23,16 @@ public class SurrenderSystem
     private Dictionary<CsTeam, Dictionary<ulong, Timer>> _disconnectTimers =
         new Dictionary<CsTeam, Dictionary<ulong, Timer>>();
 
-    // Survives Reset(), which runs on every map of a series.
+    // Survives Reset(); only a different match clears it.
     private readonly HashSet<ulong> _reportedAbandons = new HashSet<ulong>();
-    private Guid? _reportedAbandonsMatchId;
+    private Guid? _matchId;
+
+    // Lineups whose leaver ran out of time while another surrender vote was
+    // open, with the side the leaver left from.
+    private readonly Dictionary<Guid, CsTeam> _waitingLineups = new Dictionary<Guid, CsTeam>();
+
+    // Long enough for the lineup that just voted to read that its vote failed.
+    private const float WaitingVoteDelaySeconds = 3;
 
     private Guid? winningLineupId;
 
@@ -67,7 +74,7 @@ public class SurrenderSystem
             return;
         }
 
-        MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, steamId.ToString(), "");
+        MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, steamId.ToString(), playerName);
         if (member == null)
         {
             return;
@@ -83,24 +90,122 @@ public class SurrenderSystem
         }
 
         Guid? lineupId = LeaverLineup(matchData, steamId.ToString(), playerName);
+        Guid matchId = matchData.id;
 
-        _disconnectTimers[team][steamId] = TimerUtility.AddTimer(
+        Timer? timer = null;
+
+        // Outlives the map's phase on purpose: a player who quits just before the
+        // map ends is still reported, only no vote is offered outside play.
+        timer = TimerUtility.AddTimer(
             60 * 3,
             () =>
             {
+                ForgetFiredTimer(team, steamId, timer!);
+
                 MatchManager? current = _matchService.GetCurrentMatch();
-                SetupSurrender(
-                    LeaverSurrenderSide(
-                        current?.GetMatchData(),
-                        current?.GetCurrentMap(),
-                        lineupId,
-                        team,
-                        _gameServer.GetTotalRoundsPlayed()
-                    )
-                );
+                if (
+                    current == null
+                    || current.GetMatchData()?.id != matchId
+                    || MatchUtility.Players().Any(player => player.SteamID == steamId)
+                )
+                {
+                    return;
+                }
+
+                if (current.IsInPlay())
+                {
+                    OfferLeaverSurrender(lineupId, team);
+                }
+
                 PlayerAbandonedMatch(steamId);
             }
         );
+
+        _disconnectTimers[team][steamId] = timer;
+    }
+
+    // CounterStrikeSharp hands a fired timer's address to the next timer it
+    // makes, so a fired one must never be left to be killed later.
+    private void ForgetFiredTimer(CsTeam team, ulong steamId, Timer timer)
+    {
+        if (
+            _disconnectTimers.TryGetValue(team, out Dictionary<ulong, Timer>? timers)
+            && timers.GetValueOrDefault(steamId) == timer
+        )
+        {
+            timers.Remove(steamId);
+        }
+    }
+
+    private bool IsMapInPlay()
+    {
+        return _matchService.GetCurrentMatch()?.IsInPlay() == true;
+    }
+
+    // An open vote would turn this one away, so the leaver's lineup waits for it.
+    private void OfferLeaverSurrender(Guid? lineupId, CsTeam sideAtDisconnect)
+    {
+        if (lineupId != null && IsSurrendering())
+        {
+            _waitingLineups.TryAdd(lineupId.Value, sideAtDisconnect);
+            return;
+        }
+
+        MatchManager? current = _matchService.GetCurrentMatch();
+        SetupSurrender(
+            LeaverSurrenderSide(
+                current?.GetMatchData(),
+                current?.GetCurrentMap(),
+                lineupId,
+                sideAtDisconnect,
+                _gameServer.GetTotalRoundsPlayed()
+            )
+        );
+    }
+
+    // The lineup that just voted has been asked, whichever of its leavers was waiting.
+    private void OfferWaitingLineup(Guid votedLineup)
+    {
+        _waitingLineups.Remove(votedLineup);
+
+        if (_waitingLineups.Count == 0)
+        {
+            return;
+        }
+
+        _matchService.GetCurrentMatch()?.PhaseTimer(WaitingVoteDelaySeconds, OfferNextWaitingLineup);
+    }
+
+    private void OfferNextWaitingLineup()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+        if (
+            match == null
+            || matchData == null
+            || _waitingLineups.Count == 0
+            || IsSurrendering()
+        )
+        {
+            return;
+        }
+
+        KeyValuePair<Guid, CsTeam> next = _waitingLineups.First();
+        _waitingLineups.Remove(next.Key);
+
+        if (
+            ReconnectPauseUtility.IsLineupWhole(
+                matchData,
+                MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.PlayerName)),
+                match.GetExpectedPlayerCount(),
+                next.Key
+            )
+        )
+        {
+            return;
+        }
+
+        OfferLeaverSurrender(next.Key, next.Value);
     }
 
     public static Guid? LeaverLineup(MatchData matchData, string steamId, string playerName)
@@ -215,6 +320,12 @@ public class SurrenderSystem
             return;
         }
 
+        if (!IsMapInPlay())
+        {
+            player?.PrintToConsole(_gameServer.Localize(player, "surrender.not_in_play"));
+            return;
+        }
+
         _logger.LogInformation($"Setting up surrender vote for {team}");
         if (surrenderingVote != null && surrenderingVote.IsVoteActive())
         {
@@ -281,12 +392,13 @@ public class SurrenderSystem
             {
                 _logger.LogInformation("surrender vote passed");
                 Surrender(winningLineup.Value);
-                Reset();
+                EndVote();
             },
             () =>
             {
                 _logger.LogInformation("surrender vote failed");
                 surrenderingVote = null;
+                OfferWaitingLineup(surrenderingLineup.Value);
             },
             false,
             30,
@@ -294,24 +406,31 @@ public class SurrenderSystem
         );
     }
 
-    // Abandons are reported once per match, never once per map, so the reported
-    // set is only cleared when a different match loads.
+    // Abandons are reported once per match, never once per map, and a leaver's
+    // timer runs on into the next map, so both only go when a different match loads.
     public void OnMatchSetup(MatchData matchData)
     {
-        if (_reportedAbandonsMatchId == matchData.id)
+        if (_matchId == matchData.id)
         {
             return;
         }
 
-        _reportedAbandonsMatchId = matchData.id;
+        _matchId = matchData.id;
         _reportedAbandons.Clear();
+        KillDisconnectTimers();
+    }
+
+    // A phase change ends the vote. Leavers' timers keep running to report them.
+    public void EndVote()
+    {
+        surrenderingVote?.Abandon();
+        surrenderingVote = null;
+        _waitingLineups.Clear();
     }
 
     public void Reset()
     {
-        surrenderingVote?.Abandon();
-        surrenderingVote = null;
-
+        EndVote();
         KillDisconnectTimers();
     }
 
@@ -341,8 +460,9 @@ public class SurrenderSystem
     public void Surrender(Guid lineupId)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
-        if (match == null)
+        if (match == null || !match.IsInPlay())
         {
+            _logger.LogInformation("Not surrendering, the map is not in play");
             return;
         }
 

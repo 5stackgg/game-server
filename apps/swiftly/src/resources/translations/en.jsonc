@@ -104,6 +104,7 @@
   "surrender.in_progress": " A surrender vote is already in progress",
   "surrender.unavailable": " Unable to start a surrender vote right now",
   "surrender.not_in_match": " Only a player in this match can call a surrender",
+  "surrender.not_in_play": " A surrender can only be called while the map is being played",
   "vote.choose_one": "More than one vote is open, answer one: {0}",
 
   "camera.paused": "Match paused - no camera from: {0}",
