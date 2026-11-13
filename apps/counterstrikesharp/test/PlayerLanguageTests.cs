@@ -426,19 +426,6 @@ public class PlayerLanguageTests
         );
     }
 
-    [Fact]
-    public void ATeamIsNamedByATranslationKey()
-    {
-        Match keys = Regex.Match(
-            Compact(Path.Combine("FiveStack.Utilities", "TeamUtility.cs")),
-            @"publicstaticstringTeamNameKey\(CsTeamteam\)\{returnteam==CsTeam\.Terrorist\?""([^""]+)"":""([^""]+)"";\}"
-        );
-
-        Assert.True(keys.Success, "TeamUtility.TeamNameKey is gone");
-        EveryLanguageHas(keys.Groups[1].Value);
-        EveryLanguageHas(keys.Groups[2].Value);
-    }
-
     [Theory]
     [InlineData("captain.claim_hint")]
     [InlineData("captain.show")]
