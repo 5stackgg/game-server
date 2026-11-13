@@ -853,9 +853,20 @@ public class MatchManager
             ConVar.Find("mp_match_restart_delay")?.SetValue(matchRestartDelay);
             ConVar.Find("hostname")?.SetValue("5Stack.gg");
 
-            if (MatchUtility.MapStatusStringToEnum(_currentMap.status) != _currentMapStatus)
+            eMapStatus reported = MatchUtility.MapStatusStringToEnum(_currentMap.status);
+            bool startsIntoTvWait = MatchPhaseUtility.StartsIntoTvWait(
+                _currentMapStatus,
+                reported
+            );
+
+            if (reported != _currentMapStatus)
             {
-                UpdateMapStatus(MatchUtility.MapStatusStringToEnum(_currentMap.status));
+                UpdateMapStatus(reported);
+            }
+
+            if (startsIntoTvWait && _currentMapStatus == eMapStatus.WaitingForTV)
+            {
+                _matchService.ReportMapLeftWaitingForTV();
             }
 
             if (IsWarmup())

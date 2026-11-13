@@ -42,6 +42,13 @@ public class MatchService
         return _networkServerService.GetWorkshopID();
     }
 
+    public event Action? MapLeftWaitingForTV;
+
+    public void ReportMapLeftWaitingForTV()
+    {
+        MapLeftWaitingForTV?.Invoke();
+    }
+
     private readonly FetchSequence _fetches = new();
 
     public async void GetMatchFromApi()

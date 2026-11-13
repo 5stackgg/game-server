@@ -43,4 +43,11 @@ public static class MatchPhaseUtility
             || nextPhase == eMatchPhase.Knife
             || nextPhase == eMatchPhase.InPlay;
     }
+
+    // The wait for the broadcast is a timer in the process that ended the map,
+    // so a server that starts into that wait has nothing to finish the map.
+    public static bool StartsIntoTvWait(eMapStatus known, eMapStatus reported)
+    {
+        return known == eMapStatus.Unknown && reported == eMapStatus.WaitingForTV;
+    }
 }
