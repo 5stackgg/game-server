@@ -411,6 +411,9 @@ public class TimeoutSystem
             return;
         }
 
+        resumeVote?.Abandon();
+        resumeVote = null;
+
         _teamsPendingResume.Clear();
         _teamsPendingResume.Add(Team.CT);
         _teamsPendingResume.Add(Team.T);

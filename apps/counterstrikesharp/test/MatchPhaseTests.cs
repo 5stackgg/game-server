@@ -212,6 +212,41 @@ public class MatchPhaseTests
         Assert.Equal(eMapStatus.Paused, server.Match.GetCurrentMapStatus());
     }
 
+    private static void CamerasOffline(Server server, params ulong[] steamIds)
+    {
+        MatchData matchData = server.Match.GetMatchData()!;
+        matchData.options.camera_required = true;
+        Set(server.Camera, "_matchId", matchData.id);
+        ((HashSet<ulong>)Get(server.Camera, "_offline")!).UnionWith(steamIds);
+    }
+
+    // Live needs the engine, so this only shows the lost camera is still owed
+    // when the first live round asks for it.
+    [Fact]
+    public void A_Camera_Lost_Before_Play_Stays_Owed_Until_Play()
+    {
+        Server server = On(eMapStatus.Knife);
+        CamerasOffline(server, 76561198000000001);
+
+        server.Camera.PauseIfBlocking();
+
+        Assert.Equal(eMapStatus.Knife, server.Match.GetCurrentMapStatus());
+        Assert.Null(Get(server.Camera, "_reminderTimer"));
+        Assert.True(server.Camera.IsBlocking());
+    }
+
+    [Fact]
+    public void Play_Starting_With_Every_Camera_Up_Pauses_Nothing()
+    {
+        Server server = On(eMapStatus.Live);
+        CamerasOffline(server);
+
+        server.Camera.PauseIfBlocking();
+
+        Assert.Equal(eMapStatus.Live, server.Match.GetCurrentMapStatus());
+        Assert.Null(Get(server.Camera, "_reminderTimer"));
+    }
+
     [Theory]
     [InlineData(eMapStatus.Warmup)]
     [InlineData(eMapStatus.Knife)]

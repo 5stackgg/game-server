@@ -80,6 +80,11 @@ public partial class FiveStackPlugin
             );
         }
 
+        if (totalRoundsPlayed == 0)
+        {
+            _cameraSystem.PauseIfBlocking();
+        }
+
         return HookResult.Continue;
     }
 

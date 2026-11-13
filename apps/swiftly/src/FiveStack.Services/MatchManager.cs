@@ -296,6 +296,12 @@ public class MatchManager
                 _logger.LogWarning(
                     "Timeout still active, giving up on pausing the match"
                 );
+
+                if (!IsPaused())
+                {
+                    _timeoutSystem.ClearPendingTeamResumes();
+                }
+
                 return;
             }
 

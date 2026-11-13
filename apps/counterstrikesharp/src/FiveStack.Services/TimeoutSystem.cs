@@ -405,6 +405,9 @@ public class TimeoutSystem
             return;
         }
 
+        resumeVote?.Abandon();
+        resumeVote = null;
+
         _teamsPendingResume.Clear();
         _teamsPendingResume.Add(CsTeam.CounterTerrorist);
         _teamsPendingResume.Add(CsTeam.Terrorist);

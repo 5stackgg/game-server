@@ -176,6 +176,16 @@ public class CameraSystem
         return steamIds;
     }
 
+    // camera_state only comes when the set changes, so a camera lost before play
+    // is enforced once play starts.
+    public void PauseIfBlocking()
+    {
+        if (IsBlocking())
+        {
+            OnCamerasLost();
+        }
+    }
+
     public void Reset()
     {
         _offline.Clear();
