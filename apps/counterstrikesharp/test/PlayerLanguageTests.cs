@@ -360,6 +360,8 @@ public class PlayerLanguageTests
             ready
         );
         Assert.Contains("_gameServer.Localize(viewer,\"ready.not_connected\",", ready);
+        Assert.Contains("_gameServer.Localize(viewer,\"ready.not_linked\",", ready);
+        EveryLanguageHas("ready.not_linked");
         Assert.DoesNotContain("_localizer[\"ready.players_not_ready\"", ready);
         EveryLanguageHas("ready.not_connected");
     }

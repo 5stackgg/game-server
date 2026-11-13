@@ -46,14 +46,37 @@ public class ReconnectPauseUtilityTests
     }
 
     // A pickup seat is taken by linking Discord on 5stack.gg, which binds it to the
-    // player's steam id: someone who only shares its name never fills it.
+    // player's steam id. A seat nobody holds cannot reconnect, so pausing,
+    // restoring and resuming wait only on bound seats, and someone who only shares
+    // a seat's name never fills it.
     [Fact]
-    public void A_Placeholder_Seat_Counts_Nobody_Until_It_Is_Bound()
+    public void An_Unbound_Seat_Never_Pauses_The_Match()
     {
         MatchData match = BuildMatch(new MatchMember { steam_id = null, placeholder_name = "Bob" });
         var connected = Roster(9).Append(("76561198999999997", "Bob"));
 
-        Assert.True(ReconnectPauseUtility.ShouldPause(match, connected, 10));
+        Assert.False(ReconnectPauseUtility.ShouldPause(match, connected, 10));
+    }
+
+    [Fact]
+    public void A_Restore_And_A_Resume_Wait_Only_On_Bound_Seats()
+    {
+        MatchData match = BuildMatch(new MatchMember { steam_id = null, placeholder_name = "Bob" });
+
+        Assert.Equal((9, 9), ReconnectPauseUtility.RosterCount(match, Roster(9), 10));
+        Assert.Equal((8, 9), ReconnectPauseUtility.RosterCount(match, Roster(8), 10));
+        Assert.True(ReconnectPauseUtility.ShouldPause(match, Roster(8), 10));
+    }
+
+    [Fact]
+    public void A_Lineup_With_An_Unbound_Seat_Is_Whole_With_Its_Bound_Players()
+    {
+        MatchData match = BuildMatch(new MatchMember { steam_id = null, placeholder_name = "Bob" });
+        match.lineup_1_id = Guid.NewGuid();
+        match.lineup_2_id = Guid.NewGuid();
+
+        Assert.True(ReconnectPauseUtility.IsLineupWhole(match, Roster(9), 10, match.lineup_2_id));
+        Assert.False(ReconnectPauseUtility.IsLineupWhole(match, Roster(8), 10, match.lineup_2_id));
     }
 
     private static MatchData FiveVersusFour()
@@ -123,8 +146,8 @@ public class ReconnectPauseUtilityTests
         );
     }
 
-    // One player in the server fills one seat: a lineup 1 player whose name starts
-    // an unclaimed placeholder on lineup 2 does not stand in for that placeholder.
+    // One player in the server fills one seat on one lineup: a lineup 1 player
+    // whose name starts an unbound seat on lineup 2 does not stand in for it.
     [Fact]
     public void A_Player_Counts_Toward_One_Lineup_Only()
     {
@@ -142,7 +165,8 @@ public class ReconnectPauseUtilityTests
             player.Item1 == "76561198000000000" ? (player.Item1, "Max") : player
         );
 
-        Assert.True(ReconnectPauseUtility.ShouldPause(match, connected, 10));
+        Assert.Equal((9, 9), ReconnectPauseUtility.RosterCount(match, connected, 10));
+        Assert.Equal(1, LineupMembership.LineupNumber(match, "76561198000000000", "Max"));
     }
 
     [Fact]
@@ -193,7 +217,7 @@ public class ReconnectPauseUtilityTests
             .Append(("76561198999999991", "Samuel"))
             .Append(("76561198999999992", "lukepolo"));
 
-        Assert.Equal((9, 10), ReconnectPauseUtility.RosterCount(match, connected, 10));
+        Assert.Equal((9, 9), ReconnectPauseUtility.RosterCount(match, connected, 10));
         Assert.Equal(2, LineupMembership.LineupNumber(match, "76561198999999992", "lukepolo"));
     }
 
@@ -252,7 +276,7 @@ public class ReconnectPauseUtilityTests
             .Append(("76561198999999992", "[TAG] Luke"));
 
         Assert.Equal(
-            (8, 10),
+            (8, 8),
             ReconnectPauseUtility.RosterCount(WithPlaceholders("Bob", "Luke"), connected, 10)
         );
     }

@@ -68,10 +68,15 @@ public class ReadyWiringTests
         Assert.Contains("CanVote(player)", Method("private (int Ready, int Target) ReadyCount()"));
     }
 
+    // Lineup players who left are "not connected"; a seat nobody has taken by
+    // linking Discord is "not linked".
     [Fact]
     public void The_Not_Ready_List_Names_The_Seats_Nobody_Holds()
     {
+        string seats = Method("private (List<string> Absent, List<string> Unlinked) GetEmptySeats()");
+
         Assert.Contains("GetEmptySeats()", Method("public void SendNotReadyMessage()"));
-        Assert.Contains("ReadyUtility.EmptySeats(", Method("private List<string> GetEmptySeats()"));
+        Assert.Contains("ReadyUtility.EmptySeats(", seats);
+        Assert.Contains("ReadyUtility.UnlinkedSeats(", seats);
     }
 }

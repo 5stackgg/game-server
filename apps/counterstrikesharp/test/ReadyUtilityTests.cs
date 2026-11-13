@@ -220,28 +220,21 @@ public class ReadyUtilityTests
     }
 
     [Fact]
-    public void The_Seats_Nobody_Holds_Are_Named_While_Their_Lineup_Is_Short()
+    public void Lineup_Players_Not_In_The_Server_Are_Named_While_Their_Lineup_Is_Short()
     {
         Assert.Equal(
-            new[] { "player7", "Luke" },
+            new[] { "player7" },
             ReadyUtility.EmptySeats(FiveVersusFour(), Connected(0, 7), 10)
         );
     }
 
+    // An unbound seat is waiting on a Discord link, not on someone who left.
     [Fact]
-    public void A_Seat_Stays_Empty_Until_Its_Player_Is_Recognised()
-    {
-        var connected = Connected(0, 8).Append(("76561198999999999", "[TAG] Luke"));
-
-        Assert.Equal(new[] { "Luke" }, ReadyUtility.EmptySeats(FiveVersusFour(), connected, 10));
-    }
-
-    [Fact]
-    public void A_Seat_Is_Empty_Until_The_Api_Binds_It_Even_Under_Its_Exact_Name()
+    public void An_Unbound_Seat_Is_Not_Named_As_A_Player_Who_Left()
     {
         var connected = Connected(0, 8).Append(("76561198999999999", "Luke"));
 
-        Assert.Equal(new[] { "Luke" }, ReadyUtility.EmptySeats(FiveVersusFour(), connected, 10));
+        Assert.Empty(ReadyUtility.EmptySeats(FiveVersusFour(), connected, 10));
     }
 
     // Players mode waits on an unbound seat until its player links Discord, or an

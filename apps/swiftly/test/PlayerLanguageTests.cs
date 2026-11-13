@@ -592,6 +592,8 @@ public class PlayerLanguageTests
             ready
         );
         Assert.Matches(@"[^_]localizer\[""ready\.not_connected"",", ready);
+        Assert.Matches(@"[^_]localizer\[""ready\.not_linked"",", ready);
+        Assert.True(Translations("en.jsonc").ContainsKey("ready.not_linked"));
         Assert.DoesNotContain("_localizer[\"ready.players_not_ready\"", ready);
         Assert.True(Translations("en.jsonc").ContainsKey("ready.not_connected"));
     }
