@@ -165,6 +165,26 @@ public class VoteSystem
         return _playerMessageTimer != null;
     }
 
+    // Whether an answer from this player would count, mirroring CastVote.
+    public bool CanAnswer(IPlayer player)
+    {
+        if (!IsVoteActive() || !CanVote(player))
+        {
+            return false;
+        }
+
+        if (!IsCaptainVoteOnly())
+        {
+            return true;
+        }
+
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
+
+        return matchData != null
+            && MatchUtility.GetMemberFromLineup(matchData, player.SteamID.ToString(), player.Name)?.captain
+                != false;
+    }
+
     public void CastVote(IPlayer player, bool vote)
     {
         if (!CanVote(player))

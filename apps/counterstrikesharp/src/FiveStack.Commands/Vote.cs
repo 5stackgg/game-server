@@ -1,14 +1,15 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
+using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    [ConsoleCommand("css_n", "Casts vote for Resetting a Round")]
-    [ConsoleCommand("css_y", "Casts vote for Resetting a Round")]
+    [ConsoleCommand("css_n", "Answers no to the open vote")]
+    [ConsoleCommand("css_y", "Answers yes to the open vote")]
     public void OnResetAnswer(CCSPlayerController? player, CommandInfo command)
     {
         if (player == null)
@@ -16,30 +17,39 @@ public partial class FiveStackPlugin
             return;
         }
 
-        if (_gameBackupRounds.IsResettingRound())
+        bool answer = command.ArgByIndex(0) == "css_y";
+
+        Dictionary<string, VoteSystem?> open = new Dictionary<string, VoteSystem?>
         {
-            _gameBackupRounds.restoreRoundVote?.CastVote(
-                player,
-                command.GetCommandString == "css_y"
+            ["restore"] = _gameBackupRounds.IsResettingRound()
+                ? _gameBackupRounds.restoreRoundVote
+                : null,
+            ["surrender"] = _surrenderSystem.IsSurrendering()
+                ? _surrenderSystem.surrenderingVote
+                : null,
+            ["pause"] = _timeoutSystem.pauseVote,
+            ["resume"] = _timeoutSystem.resumeVote,
+        };
+
+        var (targets, choices) = VoteAnswerRouting.Route(
+            open.Where(entry => entry.Value != null && entry.Value.IsVoteActive())
+                .Select(entry => (entry.Key, entry.Value!.CanAnswer(player)))
+                .ToList(),
+            command.ArgCount > 1 ? command.ArgByIndex(1) : null
+        );
+
+        if (choices.Count > 0)
+        {
+            string reply = answer ? "y" : "n";
+            player.PrintToChat(
+                $" More than one vote is open, answer one: {string.Join(" or ", choices.Select(choice => $"{CommandUtility.PublicChatTrigger}{reply} {choice}"))}"
             );
+            return;
         }
 
-        if (_surrenderSystem.IsSurrendering())
+        foreach (string target in targets)
         {
-            _surrenderSystem.surrenderingVote?.CastVote(
-                player,
-                command.GetCommandString == "css_y"
-            );
-        }
-
-        if (_timeoutSystem.pauseVote != null)
-        {
-            _timeoutSystem.pauseVote?.CastVote(player, command.GetCommandString == "css_y");
-        }
-
-        if (_timeoutSystem.resumeVote != null)
-        {
-            _timeoutSystem.resumeVote?.CastVote(player, command.GetCommandString == "css_y");
+            open[target]?.CastVote(player, answer);
         }
     }
 }
