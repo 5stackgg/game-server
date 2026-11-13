@@ -62,6 +62,11 @@ namespace FiveStack.Utilities
             }
         }
 
+        public static string TeamNameKey(Team team)
+        {
+            return team == Team.T ? "team.terrorist" : "team.ct";
+        }
+
         public static string TeamNumToString(int teamNum)
         {
             switch (teamNum)

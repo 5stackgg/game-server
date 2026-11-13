@@ -8,7 +8,6 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
-    [ConsoleCommand("css_rules", "Shows Available Commands")]
     [ConsoleCommand("css_help", "Shows Available Commands")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnHelp(CCSPlayerController? player, CommandInfo command)

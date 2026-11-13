@@ -44,6 +44,8 @@
 
   "knife.start": "KNIV KNIV KNIV!",
   "knife.captain_picking": "{0} - Kaptenen väljer sida!",
+  "team.terrorist": "Terrorister",
+  "team.ct": "CT",
   "knife.captain_prompt": "Som kapten måste du välja {0}{1}stay {2} eller {3}{4}switch",
   "knife.not_captain": " {0}Du är inte kapten!",
   "knife.captain_picked_stay": "kaptenen valde att {0}stanna på {1}sidan",
@@ -86,6 +88,7 @@
   "match.tv_delay": "TV-fördröjning ({0}s kvar)",
   "ready.forced_start": "Spelets start har tvingats.",
   "vote.failed": "{0} Röstningen misslyckades",
+  "vote.not_allowed": " {0}du får inte rösta",
   "vote.success": "{0} Röstningen lyckades",
   "vote.other_team": "Det andra laget röstar för att {0}",
   "vote.other_team_timer": "Det andra laget röstar för att {0} ({1}s)",
@@ -94,6 +97,11 @@
   "vote.prompt_count_timer": " Rösta för {0} ({1}s)",
   "vote.prompt_options_timer": " Rösta för {0} ({1}y eller {2}n) ({3}s)",
   "surrender.vote": "Ge upp",
+  "surrender.lan": " Det finns ingen kapitulation i en LAN-match",
+  "surrender.offline": " Det finns ingen kapitulation i en offline-match",
+  "surrender.in_progress": " En kapitulationsomröstning pågår redan",
+  "surrender.unavailable": " Det går inte att starta en kapitulationsomröstning just nu",
+  "surrender.not_in_match": " Bara en spelare i den här matchen kan begära kapitulation",
   "vote.choose_one": "Mer än en omröstning är öppen, svara på en: {0}",
 
   "camera.paused": "Matchen pausad - ingen kamera från: {0}",

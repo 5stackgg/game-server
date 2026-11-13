@@ -44,6 +44,8 @@
 
   "knife.start": "KNIV KNIV KNIV!",
   "knife.captain_picking": "{0} - Kaptajn vælger side!",
+  "team.terrorist": "Terrorister",
+  "team.ct": "CT",
   "knife.captain_prompt": "Som kaptajn skal du vælge {0}{1}stay {2} eller {3}{4}switch",
   "knife.not_captain": " {0}Du er ikke kaptajn!",
   "knife.captain_picked_stay": "kaptajn valgte at {0}blive på {1}siden",
@@ -86,6 +88,7 @@
   "match.tv_delay": "TV-forsinkelse ({0}s tilbage)",
   "ready.forced_start": "Spilstart er blevet tvunget.",
   "vote.failed": "{0} Afstemning mislykkedes",
+  "vote.not_allowed": " {0}du har ikke tilladelse til at stemme",
   "vote.success": "{0} Afstemning lykkedes",
   "vote.other_team": "Det andet hold stemmer for at {0}",
   "vote.other_team_timer": "Det andet hold stemmer for at {0} ({1}s)",
@@ -94,6 +97,11 @@
   "vote.prompt_count_timer": " Stem for {0} ({1}s)",
   "vote.prompt_options_timer": " Stem for {0} ({1}y eller {2}n) ({3}s)",
   "surrender.vote": "Overgive sig",
+  "surrender.lan": " Der er ingen overgivelse i en LAN-kamp",
+  "surrender.offline": " Der er ingen overgivelse i en offline-kamp",
+  "surrender.in_progress": " Der er allerede en afstemning om overgivelse i gang",
+  "surrender.unavailable": " Kan ikke starte en afstemning om overgivelse lige nu",
+  "surrender.not_in_match": " Kun en spiller i denne kamp kan kalde en overgivelse",
   "vote.choose_one": "Der er mere end én afstemning åben, svar på én: {0}",
 
   "camera.paused": "Kampen er sat på pause - intet kamera fra: {0}",

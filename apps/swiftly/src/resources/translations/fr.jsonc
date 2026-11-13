@@ -44,6 +44,8 @@
 
   "knife.start": "COUTEAU COUTEAU COUTEAU !",
   "knife.captain_picking": "{0} - Le capitaine choisit les côtés !",
+  "team.terrorist": "Terroristes",
+  "team.ct": "CT",
   "knife.captain_prompt": "En tant que capitaine vous devez sélectionner {0}{1}stay {2} ou {3}{4}switch",
   "knife.not_captain": " {0}Vous n'êtes pas le capitaine !",
   "knife.captain_picked_stay": "le capitaine a choisi de {0}rester {1}côté",
@@ -86,6 +88,7 @@
   "match.tv_delay": "Délai TV ({0}s restants)",
   "ready.forced_start": "La partie a été forcée à démarrer.",
   "vote.failed": "{0} Vote échoué",
+  "vote.not_allowed": " {0}vous n'êtes pas autorisé à voter",
   "vote.success": "{0} Vote réussi",
   "vote.other_team": "L'autre équipe vote pour {0}",
   "vote.other_team_timer": "L'autre équipe vote pour {0} ({1}s)",
@@ -94,6 +97,11 @@
   "vote.prompt_count_timer": " Voter pour {0} ({1}s)",
   "vote.prompt_options_timer": " Voter pour {0} ({1}y ou {2}n) ({3}s)",
   "surrender.vote": "Abandonner",
+  "surrender.lan": " Il n'y a pas d'abandon dans un match LAN",
+  "surrender.offline": " Il n'y a pas d'abandon dans un match hors ligne",
+  "surrender.in_progress": " Un vote d'abandon est déjà en cours",
+  "surrender.unavailable": " Impossible de lancer un vote d'abandon pour le moment",
+  "surrender.not_in_match": " Seul un joueur de ce match peut demander l'abandon",
   "vote.choose_one": "Plusieurs votes sont ouverts, réponds à l'un d'eux : {0}",
 
   "camera.paused": "Match en pause - pas de caméra de : {0}",

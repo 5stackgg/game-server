@@ -1,12 +1,14 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using FiveStack.Utilities;
 using Xunit;
 
 // SwiftlyS2's injected ILocalizer is always the server's language, while
 // CounterStrikeSharp answers a command in the language of the player who typed it.
-// What one player is told goes through GameServer.LocalizerFor; broadcasts stay
-// in the server's language.
+// What one player is told goes through GameServer.LocalizerFor, and a line for
+// everyone goes through GameServer.MessageEach, which gives each player their own
+// language and SourceTV the server's.
 public class PlayerLanguageTests
 {
     private static string AppDir([CallerFilePath] string testFile = "")
@@ -159,15 +161,35 @@ public class PlayerLanguageTests
     public void APlayerGetsTheirLanguageWhenItShipsAndOtherwiseTheServers()
     {
         string source = Source(Path.Combine("FiveStack.Services", "GameServer.cs"));
-        string helper = Method(source, "public ILocalizer LocalizerFor(IPlayer? player)");
-
-        Assert.Contains("if (player == null || !HasTranslation(player.PlayerLanguage))", helper);
-        Assert.Contains("return _core.Localizer;", helper);
-        Assert.Contains("return _core.Translation.GetPlayerLocalizer(player);", helper);
-        Assert.Contains(
-            "File.Exists(Path.Join(_core.PluginPath,\"resources\",\"translations\",$\"{language.Value}.jsonc\"))",
-            Regex.Replace(Method(source, "private bool HasTranslation(Language language)"), @"\s+", "")
+        string helper = Regex.Replace(
+            Method(source, "public ILocalizer LocalizerFor(IPlayer? player)"),
+            @"\s+",
+            ""
         );
+
+        Assert.Contains(
+            "if(player==null||!TranslationUtility.HasTranslation(_core.PluginPath,player.PlayerLanguage.Value))",
+            helper
+        );
+        Assert.Contains("return_core.Localizer;", helper);
+        Assert.Contains("return_core.Translation.GetPlayerLocalizer(player);", helper);
+    }
+
+    [Fact]
+    public void MessageEachSendsEveryPlayerTheirOwnLanguage()
+    {
+        string each = Regex.Replace(
+            Method(
+                Source(Path.Combine("FiveStack.Services", "GameServer.cs")),
+                "public void MessageEach(MessageType destination, Func<ILocalizer, string> message)"
+            ),
+            @"\s+",
+            ""
+        );
+
+        Assert.Contains("foreach(IPlayerplayerinMatchUtility.Players())", each);
+        Assert.Contains("message(LocalizerFor(player))", each);
+        Assert.Matches(@"\.Controller\.IsHLTV\)\{Send\(destination,\w+,message\(_core\.Localizer\)\)", each);
     }
 
     [Theory]
@@ -187,6 +209,16 @@ public class PlayerLanguageTests
             File.ReadAllText(Path.Combine(TranslationsDir(), file)),
             File.ReadAllText(shipped)
         );
+    }
+
+    [Theory]
+    [InlineData("en", true)]
+    [InlineData("es-419", true)]
+    [InlineData("pt", true)]
+    [InlineData("cs", false)]
+    public void ALanguageShipsWhenItsFileIsBesideThePlugin(string language, bool ships)
+    {
+        Assert.Equal(ships, TranslationUtility.HasTranslation(AppContext.BaseDirectory, language));
     }
 
     [Theory]
@@ -213,18 +245,45 @@ public class PlayerLanguageTests
     }
 
     [Fact]
+    public void RulesNamesTheMatchTypeThroughItsKey()
+    {
+        string help = Compact(Path.Combine("FiveStack.Commands", "Help.cs"));
+        (string Key, string[] Args)[] details = PlayerLookups(help)
+            .Where(lookup => lookup.Key == "\"rules.match_details\"")
+            .ToArray();
+
+        Assert.Single(details);
+        Assert.Equal("MatchType(localizer,match.options.type)", details[0].Args[0]);
+        Assert.DoesNotContain("\"rules.match_details\",match.options.type", help);
+    }
+
+    [Fact]
     public void EveryVoteIsNamedByATranslationKey()
     {
         Dictionary<string, string> english = Translations("en.jsonc");
-        string[] names = SourceFiles()
-            .SelectMany(file =>
-                Regex
-                    .Matches(Compact((string)file[0]), @"\w+Vote\.StartVote\(([^,]*),")
-                    .Select(match => match.Groups[1].Value)
-            )
-            .ToArray();
+        List<string> names = [];
 
-        Assert.Equal(4, names.Length);
+        foreach (object[] file in SourceFiles())
+        {
+            string source = Compact((string)file[0]);
+
+            foreach (Match call in Regex.Matches(source, @"(\w*)\.StartVote\(([^,)]*)"))
+            {
+                string receiver = call.Groups[1].Value;
+
+                if (
+                    receiver != ""
+                    && Regex.IsMatch(source, $@"RoundRestoreState\??{Regex.Escape(receiver)}[;=,)]")
+                )
+                {
+                    continue;
+                }
+
+                names.Add(call.Groups[2].Value);
+            }
+        }
+
+        Assert.NotEmpty(names);
 
         foreach (string name in names)
         {
@@ -240,13 +299,121 @@ public class PlayerLanguageTests
     [Fact]
     public void TheVoteHudNamesTheVoteInEachPlayersLanguage()
     {
-        Assert.DoesNotContain(
-            "_localizer",
+        string votes = Compact(Path.Combine("FiveStack.Services", "VoteSystem.cs"));
+        string hud = Regex.Replace(
             Method(
                 Source(Path.Combine("FiveStack.Services", "VoteSystem.cs")),
                 "private void SendVoteMessage()"
-            )
+            ),
+            @"\s+",
+            ""
         );
+
+        Assert.Contains(
+            "ILocalizerlocalizer=_gameServer.LocalizerFor(player);stringaction=localizer[_voteKey,_voteArgs].ToLower();",
+            hud
+        );
+        Assert.DoesNotContain("_localizer", votes);
+        Assert.DoesNotContain("Core.Localizer", votes);
+    }
+
+    [Theory]
+    [InlineData("vote.failed")]
+    [InlineData("vote.success")]
+    public void TheVoteResultReachesEachPlayerInTheirLanguage(string key)
+    {
+        Assert.Contains(
+            $"_gameServer.MessageEach(MessageType.Center,localizer=>localizer[\"{key}\",localizer[_voteKey,_voteArgs]]);",
+            Compact(Path.Combine("FiveStack.Services", "VoteSystem.cs"))
+        );
+    }
+
+    [Fact]
+    public void ARefusedVoteIsTranslated()
+    {
+        Assert.DoesNotContain(
+            "you are not allowed to vote",
+            Source(Path.Combine("FiveStack.Services", "VoteSystem.cs"))
+        );
+        Assert.True(Translations("en.jsonc").ContainsKey("vote.not_allowed"));
+    }
+
+    [Fact]
+    public void VoteLogsKeepTheVotesArguments()
+    {
+        string[] logs = Regex
+            .Matches(
+                Compact(Path.Combine("FiveStack.Services", "VoteSystem.cs")),
+                @"_logger\.LogInformation\(([^;]*)\);"
+            )
+            .Select(match => match.Groups[1].Value)
+            .Where(log => log.Contains("oteKey"))
+            .ToArray();
+
+        Assert.Equal(4, logs.Length);
+
+        foreach (string log in logs)
+        {
+            Assert.Contains("oteArgs", log);
+        }
+    }
+
+    [Fact]
+    public void TheKnifeAlertNamesTheTeamInEachPlayersLanguage()
+    {
+        Assert.Contains(
+            "_gameServer.MessageEach(MessageType.Alert,localizer=>localizer[\"knife.captain_picking\",localizer[TeamUtility.TeamNameKey(team)]]);",
+            Compact(Path.Combine("FiveStack.Services", "KnifeSystem.cs"))
+        );
+    }
+
+    [Fact]
+    public void ATeamIsNamedByATranslationKey()
+    {
+        Match keys = Regex.Match(
+            Compact(Path.Combine("FiveStack.Utilities", "TeamUtility.cs")),
+            @"publicstaticstringTeamNameKey\(Teamteam\)\{returnteam==Team\.T\?""([^""]+)"":""([^""]+)"";\}"
+        );
+
+        Assert.True(keys.Success, "TeamUtility.TeamNameKey is gone");
+        Assert.True(Translations("en.jsonc").ContainsKey(keys.Groups[1].Value));
+        Assert.True(Translations("en.jsonc").ContainsKey(keys.Groups[2].Value));
+    }
+
+    [Theory]
+    [InlineData("captain.claim_hint")]
+    [InlineData("captain.show")]
+    [InlineData("captain.assigned")]
+    public void TheCaptainLinesNameTheTeamInEachPlayersLanguage(string key)
+    {
+        string captains = Compact(Path.Combine("FiveStack.Services", "CaptainSystem.cs"));
+
+        Assert.Matches(
+            $@"_gameServer\.MessageEach\(MessageType\.\w+,localizer=>localizer\[""{Regex.Escape(key)}"",[^;]*localizer\[TeamUtility\.TeamNameKey\(\w+\)\][^;]*\);",
+            captains
+        );
+        Assert.DoesNotContain("TeamNumToString", captains);
+    }
+
+    [Theory]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "There is no surrender in a LAN match")]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "A surrender vote is already in progress")]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "Unable to start a surrender vote right now")]
+    [InlineData("FiveStack.Commands/Surrender.cs", "Only a player in this match can call a surrender")]
+    public void ASurrenderRefusalIsNotEnglishForEveryone(string file, string english)
+    {
+        Assert.DoesNotContain(english, Source(file));
+    }
+
+    [Theory]
+    [InlineData("_voteFailedCallback")]
+    [InlineData("_voteSuccessCallback")]
+    public void AVoteEndsEvenIfAMessageFails(string outcome)
+    {
+        string votes = Compact(Path.Combine("FiveStack.Services", "VoteSystem.cs"));
+
+        Assert.Matches($@"try\{{_gameServer\.MessageEach\([^;]*\);\}}finally\{{{outcome}\(\);\}}", votes);
+        Assert.Contains("_votes[player.SteamID]=vote;CheckVotes();SendVoteMessage();", votes);
     }
 
     [Theory]
@@ -310,6 +477,18 @@ public class PlayerLanguageTests
     [InlineData("FiveStack.Services/VoteSystem.cs", "vote.prompt_count")]
     [InlineData("FiveStack.Services/VoteSystem.cs", "vote.prompt_options_timer")]
     [InlineData("FiveStack.Services/VoteSystem.cs", "vote.prompt_options")]
+    [InlineData("FiveStack.Services/VoteSystem.cs", "vote.not_allowed")]
+    [InlineData("FiveStack.Services/VoteSystem.cs", "vote.failed")]
+    [InlineData("FiveStack.Services/VoteSystem.cs", "vote.success")]
+    [InlineData("FiveStack.Services/KnifeSystem.cs", "knife.captain_picking")]
+    [InlineData("FiveStack.Services/CaptainSystem.cs", "captain.claim_hint")]
+    [InlineData("FiveStack.Services/CaptainSystem.cs", "captain.show")]
+    [InlineData("FiveStack.Services/CaptainSystem.cs", "captain.assigned")]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.lan")]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.offline")]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.in_progress")]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.unavailable")]
+    [InlineData("FiveStack.Commands/Surrender.cs", "surrender.not_in_match")]
     public void WhatOnePlayerIsToldIsInTheirLanguage(string file, string key)
     {
         string source = Compact(file);

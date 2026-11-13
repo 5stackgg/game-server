@@ -44,6 +44,8 @@
 
   "knife.start": "ナイフ！ナイフ！ナイフ！",
   "knife.captain_picking": "{0} - キャプテンがサイドを選択中！",
+  "team.terrorist": "テロリスト",
+  "team.ct": "CT",
   "knife.captain_prompt": "キャプテンとして {0}{1}stay {2} または {3}{4}switch を選択してください",
   "knife.not_captain": " {0}あなたはキャプテンではありません！",
   "knife.captain_picked_stay": "キャプテンが{0}とどまる {1}側を選択",
@@ -86,6 +88,7 @@
   "match.tv_delay": "TV 遅延（残り {0}s）",
   "ready.forced_start": "ゲームの開始が強制されました。",
   "vote.failed": "{0} 投票失敗",
+  "vote.not_allowed": " {0}投票する権限がありません",
   "vote.success": "{0} 投票成功",
   "vote.other_team": "相手チームが {0} に投票しています",
   "vote.other_team_timer": "相手チームが {0} に投票しています ({1}s)",
@@ -94,6 +97,11 @@
   "vote.prompt_count_timer": " {0} に投票 ({1}s)",
   "vote.prompt_options_timer": " {0} に投票（{1}y または {2}n）({3}s)",
   "surrender.vote": "降伏",
+  "surrender.lan": " LAN 試合では降伏できません",
+  "surrender.offline": " オフライン試合では降伏できません",
+  "surrender.in_progress": " 降伏投票はすでに進行中です",
+  "surrender.unavailable": " 現在、降伏投票を開始できません",
+  "surrender.not_in_match": " 降伏を呼びかけられるのはこの試合のプレイヤーだけです",
   "vote.choose_one": "複数の投票が進行中です。どれか一つに回答してください: {0}",
 
   "camera.paused": "試合を一時停止しました - カメラが接続されていません: {0}",

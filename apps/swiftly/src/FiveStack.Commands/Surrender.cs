@@ -26,7 +26,7 @@ public partial class FiveStackPlugin
 
         if (!SurrenderSystem.CanCallSurrender(player.Controller.Team, callerLineup != null))
         {
-            player.SendConsole(" Only a player in this match can call a surrender");
+            player.SendConsole(_gameServer.LocalizerFor(player)["surrender.not_in_match"]);
             return;
         }
 

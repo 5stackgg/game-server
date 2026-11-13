@@ -96,23 +96,54 @@ public class GameServer
         }
     }
 
+    public void MessageEach(MessageType destination, Func<ILocalizer, string> message)
+    {
+        foreach (IPlayer player in MatchUtility.Players())
+        {
+            Send(destination, player, message(LocalizerFor(player)));
+        }
+
+        foreach (IPlayer tv in _core.PlayerManager.GetAllPlayers())
+        {
+            if (tv.Controller.IsValid && tv.Controller.IsHLTV)
+            {
+                Send(destination, tv, message(_core.Localizer));
+            }
+        }
+    }
+
+    private static void Send(MessageType destination, IPlayer player, string message)
+    {
+        message = message.Colored();
+
+        if (destination == MessageType.Alert)
+        {
+            player.SendAlert($" {message}");
+        }
+        else if (destination == MessageType.Center)
+        {
+            player.SendCenter($" {message}");
+        }
+        else
+        {
+            foreach (string part in message.Split(["\r\n", "\r", "\n"], StringSplitOptions.None))
+            {
+                player.SendChat(part);
+            }
+        }
+    }
+
     public ILocalizer LocalizerFor(IPlayer? player)
     {
-        if (player == null || !HasTranslation(player.PlayerLanguage))
+        if (
+            player == null
+            || !TranslationUtility.HasTranslation(_core.PluginPath, player.PlayerLanguage.Value)
+        )
         {
             return _core.Localizer;
         }
 
         return _core.Translation.GetPlayerLocalizer(player);
-    }
-
-    // SwiftlyS2 reads <language>.jsonc from here and falls back to English, not the
-    // server's language, when the player's language has no file.
-    private bool HasTranslation(Language language)
-    {
-        return File.Exists(
-            Path.Join(_core.PluginPath, "resources", "translations", $"{language.Value}.jsonc")
-        );
     }
 
     public int GetCurrentRound()
