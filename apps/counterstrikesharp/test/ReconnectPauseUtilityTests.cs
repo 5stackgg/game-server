@@ -45,13 +45,15 @@ public class ReconnectPauseUtilityTests
         Assert.False(ReconnectPauseUtility.ShouldPause(BuildMatch(), connected, 10));
     }
 
+    // A pickup seat is taken by linking Discord on 5stack.gg, which binds it to the
+    // player's steam id: someone who only shares its name never fills it.
     [Fact]
-    public void A_Placeholder_Member_Counts_Once_Someone_Joins_Under_Its_Name()
+    public void A_Placeholder_Seat_Counts_Nobody_Until_It_Is_Bound()
     {
         MatchData match = BuildMatch(new MatchMember { steam_id = null, placeholder_name = "Bob" });
         var connected = Roster(9).Append(("76561198999999997", "Bob"));
 
-        Assert.False(ReconnectPauseUtility.ShouldPause(match, connected, 10));
+        Assert.True(ReconnectPauseUtility.ShouldPause(match, connected, 10));
     }
 
     private static MatchData FiveVersusFour()
@@ -182,21 +184,17 @@ public class ReconnectPauseUtilityTests
     }
 
     [Fact]
-    public void A_Placeholders_Exact_Name_Wins_Over_A_Longer_One_On_The_Other_Lineup()
+    public void A_Seat_Bound_To_A_Steam_Id_Counts_That_Player()
     {
+        MatchData match = WithPlaceholders("Samuel", "Sam");
+        match.lineup_2.lineup_players[4].steam_id = "76561198999999992";
         var connected = Players(0, 4)
             .Concat(Players(5, 4))
             .Append(("76561198999999991", "Samuel"))
-            .Append(("76561198999999992", "Sam"));
+            .Append(("76561198999999992", "lukepolo"));
 
-        Assert.Equal(
-            (10, 10),
-            ReconnectPauseUtility.RosterCount(WithPlaceholders("Samuel", "Sam"), connected, 10)
-        );
-        Assert.Equal(
-            2,
-            LineupMembership.LineupNumber(WithPlaceholders("Samuel", "Sam"), "76561198999999992", "Sam")
-        );
+        Assert.Equal((9, 10), ReconnectPauseUtility.RosterCount(match, connected, 10));
+        Assert.Equal(2, LineupMembership.LineupNumber(match, "76561198999999992", "lukepolo"));
     }
 
     [Fact]
@@ -234,10 +232,9 @@ public class ReconnectPauseUtilityTests
     [InlineData("Luke")]
     [InlineData("LUKE")]
     [InlineData(" luke ")]
-    public void A_Seats_Exact_Name_Matches_Ignoring_Case_And_Spaces(string steamName)
+    public void A_Seats_Exact_Name_Puts_Nobody_On_A_Lineup(string steamName)
     {
-        Assert.Equal(
-            2,
+        Assert.Null(
             LineupMembership.LineupNumber(
                 WithPlaceholders("Bob", "Luke"),
                 "76561198999999992",

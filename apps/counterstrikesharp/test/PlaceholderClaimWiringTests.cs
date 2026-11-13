@@ -2,9 +2,9 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Xunit;
 
-// Only the api binds a pickup seat to a steam id, claiming it from the players a
-// server reports. Those are reported in warmup, and the bound lineups are taken
-// back once the api has answered.
+// A pickup seat is taken only by linking Discord on 5stack.gg: the api binds it
+// to the player's steam id and sends get_match, which brings the bound lineups
+// back and puts the player on their team. A name never takes a seat.
 public class PlaceholderClaimWiringTests
 {
     private static string SourceDir([CallerFilePath] string testFile = "")
@@ -12,13 +12,18 @@ public class PlaceholderClaimWiringTests
         return Path.GetFullPath(Path.Combine(Path.GetDirectoryName(testFile)!, "..", "src"));
     }
 
-    private static string Method(string file, string signature)
+    private static string Source(params string[] path)
     {
-        string source = Regex.Replace(
-            File.ReadAllText(Path.Combine(SourceDir(), file)),
+        return Regex.Replace(
+            File.ReadAllText(Path.Combine(new[] { SourceDir() }.Concat(path).ToArray())),
             @"//[^\n]*",
             ""
         );
+    }
+
+    private static string Method(string file, string signature)
+    {
+        string source = Source(file);
         int from = source.IndexOf(signature, StringComparison.Ordinal);
         int to = from < 0 ? -1 : source.IndexOf("\n    }\n", from, StringComparison.Ordinal);
 
@@ -32,77 +37,52 @@ public class PlaceholderClaimWiringTests
         return Method(Path.Combine("FiveStack.Services", "MatchManager.cs"), signature);
     }
 
-    private static string Service(string signature)
+    private static string Connect()
     {
-        return Method(Path.Combine("FiveStack.Services", "MatchService.cs"), signature);
-    }
-
-    [Fact]
-    public void Connected_Players_Are_Reported_When_Someone_Joins_In_Warmup()
-    {
-        string connect = Method(
+        return Method(
             Path.Combine("FiveStack.Events", "PlayerConnected.cs"),
             "public HookResult OnPlayerConnect("
         );
-        int publish = connect.IndexOf(
-            "if(match.IsWarmup()&&MatchUtility.HasPlaceholderMembers(matchData)){match.PublishConnectedPlayers(eMapStatus.Warmup);}",
-            StringComparison.Ordinal
-        );
+    }
 
-        Assert.True(publish >= 0, "joining in warmup reports nobody to the api");
-        Assert.True(
-            publish > connect.LastIndexOf("kickid", StringComparison.Ordinal),
-            "a player about to be kicked is reported"
+    private static string Fetch()
+    {
+        return Method(
+            Path.Combine("FiveStack.Services", "MatchService.cs"),
+            "public async void GetMatchFromApi()"
         );
     }
 
     [Fact]
-    public void Connected_Players_Are_Reported_As_Warmup_Starts()
+    public void Connected_Players_Are_Reported_At_Knife_And_Live_Only()
     {
         Assert.Contains(
-            "if((status==eMapStatus.Warmup||status==eMapStatus.Knife||status==eMapStatus.Live)&&MatchUtility.HasPlaceholderMembers(_matchData)){PublishConnectedPlayers(status);}",
+            "if((status==eMapStatus.Knife||status==eMapStatus.Live)&&MatchUtility.HasPlaceholderMembers(_matchData)){PublishConnectedPlayers(status);}",
             Manager("public void UpdateMapStatus(")
         );
+        Assert.DoesNotContain("PublishConnectedPlayers", Connect());
     }
 
     [Fact]
-    public void Streamers_Casters_And_Coaches_Are_Not_Offered_A_Seat()
-    {
-        string publish = Manager("public void PublishConnectedPlayers(");
-        int offered = publish.IndexOf("LineupMembership.CouldHoldASeat(", StringComparison.Ordinal);
-
-        Assert.True(offered >= 0, "everyone in the server is offered a seat");
-        Assert.Contains("FiveStackPlugin.ConnectRoles.RoleIn(", publish);
-        Assert.True(offered < publish.IndexOf("players.Add(", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void The_Apis_Answer_Brings_Back_The_Bound_Lineups()
+    public void The_Apis_Answer_To_An_Event_Refreshes_Nothing()
     {
         string monitor = Method(
             Path.Combine("FiveStack.Services", "MatchEvents.cs"),
             "private async Task MonitorConnection()"
         );
 
-        Assert.Contains("==\"players-connected\"", monitor);
-        Assert.Contains("_matchService.GetLineupsFromApi();", monitor);
+        Assert.Contains("_pendingMessages.TryRemove(messageId,out_);", monitor);
+        Assert.DoesNotContain("players-connected", monitor);
+        Assert.DoesNotContain("GetLineupsFromApi", Source("FiveStack.Services", "MatchService.cs"));
     }
 
-    // The map status here can be ahead of the api's, so a lineup refresh never
-    // runs the match setup again. A failed one is tried once more in the phase.
     [Fact]
-    public void A_Lineup_Refresh_Takes_Only_The_Lineups_And_Is_Tried_Once_More()
+    public void A_Get_Match_Puts_A_Newly_Bound_Player_On_Their_Team()
     {
-        string refresh = Service("public async void GetLineupsFromApi(bool retry = true)");
-
-        Assert.Contains(".TakeLineups(", refresh);
-        Assert.DoesNotContain("SetupMatch(", refresh);
-        Assert.DoesNotContain("Reset()", refresh);
-        Assert.Contains("if(retry){", refresh);
-        Assert.Contains(".PhaseTimer(", refresh);
-        Assert.Contains("GetLineupsFromApi(false)", refresh);
-        Assert.DoesNotContain("GetLineupsFromApi(true)", refresh);
-        Assert.DoesNotContain("lineupsOnly", Service("public async void GetMatchFromApi()"));
+        Assert.Contains(
+            "if(previousMatchId==matchData.id){_logger.LogInformation($\"Match{matchData.id}stillassigned—re-runningsetup\");_currentMatch!.TakeLineups(matchData,captainsAsOf);_currentMatch.SetupMatch(matchData);return;}",
+            Fetch()
+        );
     }
 
     [Fact]
@@ -120,7 +100,7 @@ public class PlaceholderClaimWiringTests
     // The api answers with the captains it had when asked: a captain event still
     // unanswered then, or sent since, is not in its answer.
     [Fact]
-    public void A_Captain_Change_The_Api_Has_Not_Taken_Survives_A_Lineup_Refresh()
+    public void A_Captain_Change_The_Api_Has_Not_Taken_Survives_A_Get_Match()
     {
         Assert.Contains(
             "return_matchEvents.IsPending(\"captain\")?null:_matchEvents.Sent(\"captain\");",
@@ -131,40 +111,41 @@ public class PlaceholderClaimWiringTests
             Manager("public void TakeLineups(MatchData matchData, int? captainsAsOf)")
         );
 
-        string refresh = Service("public async void GetLineupsFromApi(bool retry = true)");
-
-        int asked = refresh.IndexOf("int?captainsAsOf=match.CaptainsAsOf();", StringComparison.Ordinal);
+        string fetch = Fetch();
+        int asked = fetch.IndexOf("int?captainsAsOf=_currentMatch?.CaptainsAsOf();", StringComparison.Ordinal);
 
         Assert.True(
-            asked >= 0 && asked < refresh.IndexOf("FetchCurrentMatch(", StringComparison.Ordinal),
+            asked >= 0 && asked < fetch.IndexOf("HttpClientProvider.Client.SendAsync(", StringComparison.Ordinal),
             "the captains are read when the answer comes, not when it was asked for"
         );
-        Assert.Contains(".TakeLineups(current.Match,captainsAsOf);", refresh);
     }
 
-    // One refresh runs at a time, and an ask while it runs is kept for one more.
+    // Two get_match answers can arrive in either order, and taking the older one
+    // last would hand a bound seat back to its placeholder.
     [Fact]
-    public void Only_One_Lineup_Refresh_Runs_At_A_Time()
+    public void An_Answer_Older_Than_The_Last_Taken_Is_Dropped()
     {
-        string refresh = Service("public async void GetLineupsFromApi(bool retry = true)");
-
-        Assert.Contains("||!_fetches.TryStart())", refresh);
-        Assert.Contains("boolagain=_fetches.Finish();", refresh);
-        Assert.Contains("if(again){GetLineupsFromApi();}", refresh);
-    }
-
-    // An answer to a request older than the last one taken is dropped, whichever
-    // kind of fetch either was.
-    [Theory]
-    [InlineData("public async void GetLineupsFromApi(bool retry = true)")]
-    [InlineData("public async void GetMatchFromApi()")]
-    public void An_Answer_Older_Than_The_Last_Taken_Is_Dropped(string signature)
-    {
-        string fetch = Service(signature);
+        string fetch = Fetch();
         int request = fetch.IndexOf("intrequest=_fetches.Request();", StringComparison.Ordinal);
 
         Assert.True(request >= 0, "the request is not numbered");
-        Assert.True(request < fetch.IndexOf("FetchCurrentMatch(", StringComparison.Ordinal));
-        Assert.Contains("_fetches.TryTake(request)", fetch);
+        Assert.True(
+            request < fetch.IndexOf("HttpClientProvider.Client.SendAsync(", StringComparison.Ordinal)
+        );
+        Assert.Contains("if(!_fetches.TryTake(request)){", fetch);
+    }
+
+    [Fact]
+    public void An_Unlinked_Player_Is_Told_Once_How_To_Take_Their_Seat()
+    {
+        string connect = Connect();
+        int told = connect.IndexOf("LineupMembership.WaitsForADiscordLink(", StringComparison.Ordinal);
+
+        Assert.True(told >= 0, "an unlinked player is never told how to take their seat");
+        Assert.True(
+            told > connect.LastIndexOf("kickid", StringComparison.Ordinal),
+            "a player about to be kicked is told to link Discord"
+        );
+        Assert.Contains("\"player.join.link_discord\"", connect[told..]);
     }
 }

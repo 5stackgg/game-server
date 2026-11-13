@@ -66,15 +66,15 @@ public class CommunicationAbuseMuteTests
     }
 
     [Fact]
-    public void AMutedPlaceholderClaimedByNameIsLeftAlone()
+    public void AMutedPlaceholderSeatIsNobodysUntilItIsBound()
     {
-        Assert.False(
+        Assert.True(
             CommunicationAbuseMute.ShouldClear(
                 true,
                 false,
                 BuildMatch(),
                 PenalisedId + "9",
-                "placeholder"
+                "Placeholder"
             )
         );
     }

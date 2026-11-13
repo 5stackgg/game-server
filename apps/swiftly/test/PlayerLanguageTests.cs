@@ -595,4 +595,14 @@ public class PlayerLanguageTests
         Assert.DoesNotContain("_localizer[\"ready.players_not_ready\"", ready);
         Assert.True(Translations("en.jsonc").ContainsKey("ready.not_connected"));
     }
+
+    [Fact]
+    public void AnUnlinkedPlayerIsToldInTheirLanguageHowToTakeTheirSeat()
+    {
+        Assert.Contains(
+            "_gameServer.Message(MessageType.Chat,_gameServer.LocalizerFor(player)[\"player.join.link_discord\"],player);",
+            Compact(Path.Combine("FiveStack.Events", "PlayerConnected.cs"))
+        );
+        Assert.True(Translations("en.jsonc").ContainsKey("player.join.link_discord"));
+    }
 }

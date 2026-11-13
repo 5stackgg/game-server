@@ -363,4 +363,14 @@ public class PlayerLanguageTests
         Assert.DoesNotContain("_localizer[\"ready.players_not_ready\"", ready);
         EveryLanguageHas("ready.not_connected");
     }
+
+    [Fact]
+    public void AnUnlinkedPlayerIsToldInTheirLanguageHowToTakeTheirSeat()
+    {
+        Assert.Contains(
+            "_gameServer.Message(HudDestination.Chat,_gameServer.Localize(player,\"player.join.link_discord\"),player);",
+            Compact(Path.Combine("FiveStack.Events", "PlayerConnected.cs"))
+        );
+        EveryLanguageHas("player.join.link_discord");
+    }
 }

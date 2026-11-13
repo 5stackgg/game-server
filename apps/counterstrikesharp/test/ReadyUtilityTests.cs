@@ -43,21 +43,15 @@ public class ReadyUtilityTests
     }
 
     [Fact]
-    public void A_Player_Who_Joined_Under_A_Placeholder_Name_Can_Ready()
+    public void A_Player_Who_Only_Shares_A_Seats_Name_Cannot_Ready()
     {
-        Assert.True(CanReady(eReadySettings.Players, Outsider, "Bob"));
+        Assert.False(CanReady(eReadySettings.Players, Outsider, "Bob"));
     }
 
     [Fact]
     public void A_Player_Whose_Name_Only_Fits_A_Seat_Cannot_Ready()
     {
         Assert.False(CanReady(eReadySettings.Players, Outsider, "[TAG] bob"));
-    }
-
-    [Fact]
-    public void A_Player_Named_Exactly_After_A_Seat_In_Any_Case_Can_Ready()
-    {
-        Assert.True(CanReady(eReadySettings.Players, Outsider, "BOB"));
     }
 
     [Theory]
@@ -121,7 +115,8 @@ public class ReadyUtilityTests
     public void A_Five_Versus_Four_Is_Ready_With_Nine()
     {
         MatchData match = FiveVersusFour();
-        var ready = Connected(0, 8).Append(("76561198999999999", "Luke"));
+        match.lineup_2.lineup_players[3].steam_id = "76561198999999999";
+        var ready = Connected(0, 8).Append(("76561198999999999", "lukepolo"));
 
         Assert.Equal(
             (9, 9),
@@ -242,11 +237,24 @@ public class ReadyUtilityTests
     }
 
     [Fact]
-    public void A_Seat_Held_Under_Its_Exact_Name_Is_Not_Empty()
+    public void A_Seat_Is_Empty_Until_The_Api_Binds_It_Even_Under_Its_Exact_Name()
     {
-        var connected = Connected(0, 8).Append(("76561198999999999", "luke"));
+        var connected = Connected(0, 8).Append(("76561198999999999", "Luke"));
 
-        Assert.Empty(ReadyUtility.EmptySeats(FiveVersusFour(), connected, 10));
+        Assert.Equal(new[] { "Luke" }, ReadyUtility.EmptySeats(FiveVersusFour(), connected, 10));
+    }
+
+    // Players mode waits on an unbound seat until its player links Discord, or an
+    // admin forces the start.
+    [Fact]
+    public void An_Unbound_Seat_Holds_Up_Players_Mode()
+    {
+        var ready = Connected(0, 8).Append(("76561198999999999", "Luke"));
+
+        Assert.Equal(
+            (8, 9),
+            ReadyUtility.ReadyCount(eReadySettings.Players, FiveVersusFour(), ready, 10)
+        );
     }
 
     [Fact]

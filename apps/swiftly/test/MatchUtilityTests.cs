@@ -39,12 +39,12 @@ public class MatchUtilityTests
         Assert.Equal("Real", member!.name);
     }
 
-    [Fact]
-    public void GetMemberFromLineup_MatchesPlaceholderByExactName()
+    [Theory]
+    [InlineData("AceBot")]
+    [InlineData("acebot")]
+    public void GetMemberFromLineup_APlaceholdersNameIsNotItsPlayer(string playerName)
     {
-        MatchMember? member = MatchUtility.GetMemberFromLineup(BuildMatch(), "9999", "acebot");
-        Assert.NotNull(member);
-        Assert.Equal("AceBot", member!.placeholder_name);
+        Assert.Null(MatchUtility.GetMemberFromLineup(BuildMatch(), "9999", playerName));
     }
 
     [Fact]
@@ -75,18 +75,6 @@ public class MatchUtilityTests
         );
 
         Assert.Equal("76561198000000002", member?.steam_id);
-    }
-
-    [Fact]
-    public void GetMemberFromLineup_AnExactPlaceholderNameWinsOverALongerOne()
-    {
-        MatchMember? member = MatchUtility.GetMemberFromLineup(
-            BuildSamAndSamuelMatch(),
-            "9999",
-            "Sam"
-        );
-
-        Assert.Equal(Lineup2Id, member?.match_lineup_id);
     }
 
     [Fact]
@@ -240,27 +228,15 @@ public class MatchUtilityTests
     }
 
     [Fact]
-    public void GetTeamChatLineupId_ResolvesPlaceholderByExactName()
+    public void GetTeamChatLineupId_APlaceholdersNameReachesNoTeam()
     {
-        Assert.Equal(
-            Lineup2Id.ToString(),
-            MatchUtility.GetTeamChatLineupId(BuildTeamChatMatch(), "9999", "AceBot")
-        );
+        Assert.Null(MatchUtility.GetTeamChatLineupId(BuildTeamChatMatch(), "9999", "AceBot"));
     }
 
     [Fact]
     public void GetTeamChatLineupId_APrefixOfAPlaceholderNameReachesNoTeam()
     {
         Assert.Null(MatchUtility.GetTeamChatLineupId(BuildTeamChatMatch(), "9999", "Ace"));
-    }
-
-    [Fact]
-    public void GetTeamChatLineupId_AnExactPlaceholderNameWinsOverALongerOne()
-    {
-        Assert.Equal(
-            Lineup2Id.ToString(),
-            MatchUtility.GetTeamChatLineupId(BuildSamAndSamuelMatch(), "9999", "Sam")
-        );
     }
 
     [Fact]
