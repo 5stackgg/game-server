@@ -126,8 +126,8 @@ public class RestoreRoundWordingTests
     {
         string reset = Method(Commands(), "public void OnRestoreRound(");
 
-        Assert.Contains("Core.Translation.GetPlayerLocalizer(context.Sender)", reset);
-        Assert.DoesNotContain("_localizer[\"help.restore_round\"", reset);
+        Assert.Contains("_gameServer.LocalizerFor(context.Sender)", reset);
+        Assert.DoesNotContain("_localizer", reset);
     }
 
     [Fact]
