@@ -77,5 +77,6 @@
   "vote.prompt_count": " Abstimmen für {0}",
   "vote.prompt_options": " Abstimmen für {0} ({1}y oder {2}n)",
   "vote.prompt_count_timer": " Abstimmen für {0} ({1}s)",
-  "vote.prompt_options_timer": " Abstimmen für {0} ({1}y oder {2}n) ({3}s)"
+  "vote.prompt_options_timer": " Abstimmen für {0} ({1}y oder {2}n) ({3}s)",
+  "vote.choose_one": "Mehr als eine Abstimmung ist offen, beantworte eine: {0}"
 }

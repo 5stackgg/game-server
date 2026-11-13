@@ -89,6 +89,7 @@
   "vote.prompt_options": " Głosuj za {0} ({1}y lub {2}n)",
   "vote.prompt_count_timer": " Głosuj za {0} ({1}s)",
   "vote.prompt_options_timer": " Głosuj za {0} ({1}y lub {2}n) ({3}s)",
+  "vote.choose_one": "Otwartych jest kilka głosowań, odpowiedz na jedno: {0}",
 
   "camera.paused": "Mecz wstrzymany - brak kamery od: {0}",
   "camera.waiting": "Oczekiwanie na kamerę: {0}",

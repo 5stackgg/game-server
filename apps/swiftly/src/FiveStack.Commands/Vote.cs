@@ -55,7 +55,16 @@ public partial class FiveStackPlugin
             string reply = answer ? "y" : "n";
             _gameServer.Message(
                 MessageType.Chat,
-                $" More than one vote is open, answer one: {string.Join(" or ", choices.Select(choice => $"{CommandUtility.PublicChatTrigger}{reply} {choice}"))}",
+                " "
+                    + _gameServer.LocalizerFor(player)[
+                        "vote.choose_one",
+                        string.Join(
+                            " / ",
+                            choices.Select(choice =>
+                                $"{CommandUtility.PublicChatTrigger}{reply} {choice}"
+                            )
+                        )
+                    ],
                 player
             );
             return;

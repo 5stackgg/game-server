@@ -42,7 +42,16 @@ public partial class FiveStackPlugin
         {
             string reply = answer ? "y" : "n";
             player.PrintToChat(
-                $" More than one vote is open, answer one: {string.Join(" or ", choices.Select(choice => $"{CommandUtility.PublicChatTrigger}{reply} {choice}"))}"
+                " "
+                    + Localizer[
+                        "vote.choose_one",
+                        string.Join(
+                            " / ",
+                            choices.Select(choice =>
+                                $"{CommandUtility.PublicChatTrigger}{reply} {choice}"
+                            )
+                        )
+                    ]
             );
             return;
         }
