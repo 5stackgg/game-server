@@ -156,7 +156,7 @@ public partial class FiveStackPlugin
                 liveCt = team.Score;
         }
 
-        (int l1Timeouts, int l2Timeouts) = _timeoutSystem.GetLineupTimeouts();
+        (int l1Timeouts, int l2Timeouts) = match.timeoutSystem.GetLineupTimeouts();
 
         int currentSideIndex = Math.Max(0, totalRoundsPlayed - 1);
         string l1Money = TeamUtility
