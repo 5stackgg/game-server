@@ -383,6 +383,16 @@ public class MatchManager
         }
     }
 
+    public void MarkOvertime()
+    {
+        if (IsPaused())
+        {
+            return;
+        }
+
+        UpdateMapStatus(eMapStatus.Overtime);
+    }
+
     public void ResumeFrom(ePauseReason reason)
     {
         if (IsPaused() && _pauseReason != reason)

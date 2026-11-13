@@ -324,10 +324,20 @@ public class TimeoutSystem
                             () =>
                             {
                                 _logger.LogInformation("resume vote passed");
+                                resumeVote = null;
+
+                                if (_cameraSystem.IsBlocking())
+                                {
+                                    _gameServer.Message(
+                                        HudDestination.Chat,
+                                        _localizer["camera.cannot_resume", _cameraSystem.OfflineNames()]
+                                    );
+                                    return;
+                                }
+
                                 _matchService
                                     .GetCurrentMatch()
                                     ?.ResumeMatch(_localizer["timeout.vote.resume_passed"]);
-                                resumeVote = null;
                             }
                         ),
                         () =>

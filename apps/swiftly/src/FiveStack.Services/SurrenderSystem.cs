@@ -32,6 +32,9 @@ public class SurrenderSystem
     // Long enough for the lineup that just voted to read that its vote failed.
     private const float WaitingVoteDelaySeconds = 3;
 
+    // The lineup a leaver's vote was opened for. A vote a player called has none.
+    private Guid? _leaverVoteLineup;
+
     private Guid? winningLineupId;
 
     public SurrenderSystem(
@@ -172,7 +175,8 @@ public class SurrenderSystem
                 lineupId,
                 sideAtDisconnect,
                 _gameServer.GetTotalRoundsPlayed()
-            )
+            ),
+            forLeaver: true
         );
     }
 
@@ -252,17 +256,24 @@ public class SurrenderSystem
             MatchManager? match = _matchService.GetCurrentMatch();
             MatchData? matchData = match?.GetMatchData();
 
-            if (match == null || matchData == null || !match.timeoutSystem.RosterOwnsPause())
+            if (match == null || matchData == null)
             {
                 return;
             }
 
+            List<(string SteamId, string Name)> connected = MatchUtility
+                .Players()
+                .Select(player => (player.SteamID.ToString(), player.Name))
+                .ToList();
+
+            if (LeaverVoteLineupIsWhole(match, connected))
+            {
+                surrenderingVote?.CancelVote();
+            }
+
             if (
-                ReconnectPauseUtility.ShouldPause(
-                    matchData,
-                    MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.Name)),
-                    match.GetExpectedPlayerCount()
-                )
+                !match.timeoutSystem.RosterOwnsPause()
+                || ReconnectPauseUtility.ShouldPause(matchData, connected, match.GetExpectedPlayerCount())
             )
             {
                 return;
@@ -270,6 +281,23 @@ public class SurrenderSystem
 
             match.ResumeMatch();
         });
+    }
+
+    private bool LeaverVoteLineupIsWhole(
+        MatchManager match,
+        IEnumerable<(string SteamId, string Name)> connected
+    )
+    {
+        MatchData? matchData = match.GetMatchData();
+
+        return _leaverVoteLineup is Guid lineup
+            && matchData != null
+            && ReconnectPauseUtility.IsLineupWhole(
+                matchData,
+                connected,
+                match.GetExpectedPlayerCount(),
+                lineup
+            );
     }
 
     // Swept across every bucket, not just the team the player is on now: a
@@ -291,7 +319,12 @@ public class SurrenderSystem
         return killed;
     }
 
-    public void SetupSurrender(Team team, IPlayer? player = null, Guid? callerLineup = null)
+    public void SetupSurrender(
+        Team team,
+        IPlayer? player = null,
+        Guid? callerLineup = null,
+        bool forLeaver = false
+    )
     {
         if (
             _matchService.GetCurrentMatch()?.GetMatchData()?.is_lan == true
@@ -384,6 +417,7 @@ public class SurrenderSystem
         }
 
         _logger.LogInformation($"Starting Surrender Vote for {team}");
+        _leaverVoteLineup = forLeaver ? surrenderingLineup : null;
         surrenderingVote.StartVote(
             "surrender.vote",
             [],

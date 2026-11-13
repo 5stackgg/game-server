@@ -194,6 +194,7 @@ public class CameraSystem
         return IsBlocking() && _pauseOwed;
     }
 
+    // Lasts the map it was made on: NewMap owes the pause again.
     public void Override()
     {
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -209,6 +210,11 @@ public class CameraSystem
         _pauseOwed = false;
         match.KillPhaseTimer(_reminderTimer);
         _reminderTimer = null;
+    }
+
+    public void NewMap()
+    {
+        _pauseOwed = _offline.Count > 0;
     }
 
     public void Reset()
@@ -232,7 +238,8 @@ public class CameraSystem
             return;
         }
 
-        _pauseOwed = false;
+        match.timeoutSystem.resumeVote?.Abandon();
+        match.timeoutSystem.resumeVote = null;
 
         string message = _localizer["camera.paused", OfflineNames()];
 
@@ -244,7 +251,8 @@ public class CameraSystem
             _gameServer.Message(MessageType.Alert, message);
         }
 
-        match.PauseMatch(ePauseReason.Camera, message);
+        match.PauseMatch(ePauseReason.Camera, message, stillRequired: IsBlocking);
+        _pauseOwed = !match.IsPaused();
 
         match.KillPhaseTimer(_reminderTimer);
         _reminderTimer = match.PhaseTimer(
@@ -266,8 +274,15 @@ public class CameraSystem
     // play restarts, the same as any other technical pause.
     private void OnCamerasRestored()
     {
-        _matchService.GetCurrentMatch()?.KillPhaseTimer(_reminderTimer);
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        match?.KillPhaseTimer(_reminderTimer);
         _reminderTimer = null;
+
+        if (match?.IsPaused() != true)
+        {
+            return;
+        }
 
         _gameServer.Message(
             MessageType.Alert,

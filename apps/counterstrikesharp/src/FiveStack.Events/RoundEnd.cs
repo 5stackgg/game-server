@@ -30,9 +30,11 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        // A pause called mid-round holds into the next round, and resuming it
+        // goes back to overtime.
         if (match.isOverTime())
         {
-            match.UpdateMapStatus(eMapStatus.Overtime);
+            match.MarkOvertime();
         }
 
         if (_gameBackupRounds.HoldsRoundResults())
