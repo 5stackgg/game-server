@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.SchemaDefinitions;
-using SwiftlyS2.Shared.Translation;
 using static SwiftlyS2.Shared.Helper;
 
 namespace FiveStack;
@@ -16,7 +15,6 @@ public class CaptainSystem
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
     private readonly ILogger<CaptainSystem> _logger;
-    private readonly ILocalizer _localizer;
 
     public Dictionary<Team, IPlayer?> _captains = new Dictionary<
         Team,
@@ -31,15 +29,13 @@ public class CaptainSystem
         ILogger<CaptainSystem> logger,
         MatchEvents matchEvents,
         GameServer gameServer,
-        MatchService matchService,
-        ILocalizer localizer
+        MatchService matchService
     )
     {
         _logger = logger;
         _matchEvents = matchEvents;
         _gameServer = gameServer;
         _matchService = matchService;
-        _localizer = localizer;
     }
 
     public void Reset()
@@ -192,26 +188,28 @@ public class CaptainSystem
             IPlayer? captain = captains[team];
             if (captain == null)
             {
-                _gameServer.Message(
+                _gameServer.MessageEach(
                     MessageType.Notify,
-                    _localizer[
-                        "captain.claim_hint",
-                        TeamUtility.TeamNumToString((int)team),
-                        ChatColors.Green,
-                        CommandUtility.SilentChatTrigger
-                    ]
+                    localizer =>
+                        localizer[
+                            "captain.claim_hint",
+                            localizer[TeamUtility.TeamNameKey(team)],
+                            ChatColors.Green,
+                            CommandUtility.SilentChatTrigger
+                        ]
                 );
                 continue;
             }
 
-            _gameServer.Message(
+            _gameServer.MessageEach(
                 MessageType.Notify,
-                _localizer[
-                    "captain.show",
-                    TeamUtility.TeamNumToString((int)team),
-                    team == Team.T ? ChatColors.Gold : ChatColors.Blue,
-                    captain.Name
-                ]
+                localizer =>
+                    localizer[
+                        "captain.show",
+                        localizer[TeamUtility.TeamNameKey(team)],
+                        team == Team.T ? ChatColors.Gold : ChatColors.Blue,
+                        captain.Name
+                    ]
             );
         }
     }
@@ -260,13 +258,14 @@ public class CaptainSystem
                 $"Captain {player.Name} claimed captain spot for {captainTeam}"
             );
 
-            _gameServer.Message(
+            _gameServer.MessageEach(
                 MessageType.Alert,
-                _localizer[
-                    "captain.assigned",
-                    player.Name,
-                    TeamUtility.TeamNumToString((int)captainTeam)
-                ]
+                localizer =>
+                    localizer[
+                        "captain.assigned",
+                        player.Name,
+                        localizer[TeamUtility.TeamNameKey(captainTeam)]
+                    ]
             );
         }
 

@@ -100,22 +100,35 @@ public class GameServer
     {
         foreach (IPlayer player in MatchUtility.Players())
         {
-            string text = message(LocalizerFor(player)).Colored();
+            Send(destination, player, message(LocalizerFor(player)));
+        }
 
-            if (destination == MessageType.Alert)
+        foreach (IPlayer tv in _core.PlayerManager.GetAllPlayers())
+        {
+            if (tv.Controller.IsValid && tv.Controller.IsHLTV)
             {
-                player.SendAlert($" {text}");
+                Send(destination, tv, message(_core.Localizer));
             }
-            else if (destination == MessageType.Center)
+        }
+    }
+
+    private static void Send(MessageType destination, IPlayer player, string message)
+    {
+        message = message.Colored();
+
+        if (destination == MessageType.Alert)
+        {
+            player.SendAlert($" {message}");
+        }
+        else if (destination == MessageType.Center)
+        {
+            player.SendCenter($" {message}");
+        }
+        else
+        {
+            foreach (string part in message.Split(["\r\n", "\r", "\n"], StringSplitOptions.None))
             {
-                player.SendCenter($" {text}");
-            }
-            else
-            {
-                foreach (string part in text.Split(["\r\n", "\r", "\n"], StringSplitOptions.None))
-                {
-                    player.SendChat(part);
-                }
+                player.SendChat(part);
             }
         }
     }

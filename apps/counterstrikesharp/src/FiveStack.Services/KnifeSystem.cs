@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
@@ -100,14 +99,11 @@ public class KnifeSystem
 
         _gameServer.MessageEach(
             HudDestination.Alert,
-            player =>
-                _localizer.ForPlayer(
-                    player,
+            viewer =>
+                _gameServer.Localize(
+                    viewer,
                     "knife.captain_picking",
-                    _localizer.ForPlayer(
-                        player,
-                        team == CsTeam.Terrorist ? "team.terrorist" : "team.ct"
-                    )
+                    _gameServer.Localize(viewer, TeamUtility.TeamNameKey(team))
                 )
         );
     }

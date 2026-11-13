@@ -125,11 +125,17 @@ public class VoteSystem
             return;
         }
 
-        _gameServer.MessageEach(
-            MessageType.Center,
-            localizer => localizer["vote.failed", localizer[_voteKey, _voteArgs]]
-        );
-        _voteFailedCallback();
+        try
+        {
+            _gameServer.MessageEach(
+                MessageType.Center,
+                localizer => localizer["vote.failed", localizer[_voteKey, _voteArgs]]
+            );
+        }
+        finally
+        {
+            _voteFailedCallback();
+        }
     }
 
     private void VoteSuccess()
@@ -145,11 +151,17 @@ public class VoteSystem
             return;
         }
 
-        _gameServer.MessageEach(
-            MessageType.Center,
-            localizer => localizer["vote.success", localizer[_voteKey, _voteArgs]]
-        );
-        _voteSuccessCallback();
+        try
+        {
+            _gameServer.MessageEach(
+                MessageType.Center,
+                localizer => localizer["vote.success", localizer[_voteKey, _voteArgs]]
+            );
+        }
+        finally
+        {
+            _voteSuccessCallback();
+        }
     }
 
     public void KillTimers()
@@ -198,9 +210,9 @@ public class VoteSystem
 
         _votes[player.SteamID] = vote;
 
-        SendVoteMessage();
-
         CheckVotes();
+
+        SendVoteMessage();
     }
 
     private void SendVoteMessage()

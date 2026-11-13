@@ -1,10 +1,8 @@
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Utilities;
-using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
@@ -16,7 +14,6 @@ public class VoteSystem
     private readonly GameServer _gameServer;
     private readonly MatchService _matchService;
     private readonly CaptainSystem _captainSystem;
-    private readonly IStringLocalizer _localizer;
 
     private CsTeam[]? _allowedTeamsToVote;
     private Action? _voteFailedCallback;
@@ -35,15 +32,13 @@ public class VoteSystem
         ILogger<VoteSystem> logger,
         MatchService matchService,
         GameServer gameServer,
-        CaptainSystem captainSystem,
-        IStringLocalizer localizer
+        CaptainSystem captainSystem
     )
     {
         _logger = logger;
         _matchService = matchService;
         _gameServer = gameServer;
         _captainSystem = captainSystem;
-        _localizer = localizer;
     }
 
     // TODO - either all players , or one team
@@ -131,16 +126,22 @@ public class VoteSystem
             return;
         }
 
-        _gameServer.MessageEach(
-            HudDestination.Center,
-            player =>
-                _localizer.ForPlayer(
-                    player,
-                    "vote.failed",
-                    _localizer.ForPlayer(player, _voteKey, _voteArgs)
-                )
-        );
-        _voteFailedCallback();
+        try
+        {
+            _gameServer.MessageEach(
+                HudDestination.Center,
+                viewer =>
+                    _gameServer.Localize(
+                        viewer,
+                        "vote.failed",
+                        _gameServer.Localize(viewer, _voteKey, _voteArgs)
+                    )
+            );
+        }
+        finally
+        {
+            _voteFailedCallback();
+        }
     }
 
     private void VoteSuccess()
@@ -156,16 +157,22 @@ public class VoteSystem
             return;
         }
 
-        _gameServer.MessageEach(
-            HudDestination.Center,
-            player =>
-                _localizer.ForPlayer(
-                    player,
-                    "vote.success",
-                    _localizer.ForPlayer(player, _voteKey, _voteArgs)
-                )
-        );
-        _voteSuccessCallback();
+        try
+        {
+            _gameServer.MessageEach(
+                HudDestination.Center,
+                viewer =>
+                    _gameServer.Localize(
+                        viewer,
+                        "vote.success",
+                        _gameServer.Localize(viewer, _voteKey, _voteArgs)
+                    )
+            );
+        }
+        finally
+        {
+            _voteSuccessCallback();
+        }
     }
 
     public void KillTimers()
@@ -205,7 +212,7 @@ public class VoteSystem
             {
                 _gameServer.Message(
                     HudDestination.Chat,
-                    _localizer.ForPlayer(player, "vote.not_allowed", ChatColors.Red),
+                    _gameServer.Localize(player, "vote.not_allowed", ChatColors.Red),
                     player
                 );
                 return;
@@ -214,9 +221,9 @@ public class VoteSystem
 
         _votes[player.SteamID] = vote;
 
-        SendVoteMessage();
-
         CheckVotes();
+
+        SendVoteMessage();
     }
 
     private void SendVoteMessage()
@@ -235,7 +242,7 @@ public class VoteSystem
                 continue;
             }
 
-            string action = _localizer.ForPlayer(player, _voteKey, _voteArgs).ToLower();
+            string action = _gameServer.Localize(player, _voteKey, _voteArgs).ToLower();
             int remainingSeconds = GetRemainingSeconds();
 
             if (!CanVote(player))
@@ -243,7 +250,7 @@ public class VoteSystem
                 if (remainingSeconds > 0)
                 {
                     player.PrintToCenter(
-                        _localizer.ForPlayer(
+                        _gameServer.Localize(
                             player,
                             "vote.other_team_timer",
                             action,
@@ -253,7 +260,7 @@ public class VoteSystem
                 }
                 else
                 {
-                    player.PrintToCenter(_localizer.ForPlayer(player, "vote.other_team", action));
+                    player.PrintToCenter(_gameServer.Localize(player, "vote.other_team", action));
                 }
 
                 continue;
@@ -264,7 +271,7 @@ public class VoteSystem
                 if (remainingSeconds > 0)
                 {
                     player.PrintToCenter(
-                        _localizer.ForPlayer(
+                        _gameServer.Localize(
                             player,
                             "vote.prompt_count_timer",
                             action,
@@ -274,7 +281,7 @@ public class VoteSystem
                 }
                 else
                 {
-                    player.PrintToCenter(_localizer.ForPlayer(player, "vote.prompt_count", action));
+                    player.PrintToCenter(_gameServer.Localize(player, "vote.prompt_count", action));
                 }
                 continue;
             }
@@ -282,7 +289,7 @@ public class VoteSystem
             if (remainingSeconds > 0)
             {
                 player.PrintToCenter(
-                    _localizer.ForPlayer(
+                    _gameServer.Localize(
                         player,
                         "vote.prompt_options_timer",
                         action,
@@ -295,7 +302,7 @@ public class VoteSystem
             else
             {
                 player.PrintToCenter(
-                    _localizer.ForPlayer(
+                    _gameServer.Localize(
                         player,
                         "vote.prompt_options",
                         action,

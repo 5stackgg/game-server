@@ -1,10 +1,12 @@
 using System.Net.Http.Headers;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Utilities;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace FiveStack;
@@ -15,6 +17,7 @@ public class GameServer
     private readonly MatchService _matchService;
     private readonly EnvironmentService _environmentService;
     private readonly ILogger<GameServer> _logger;
+    private readonly IStringLocalizer _localizer;
     private readonly bool _listening;
     private readonly bool _expected;
 
@@ -22,10 +25,12 @@ public class GameServer
         ILogger<GameServer> logger,
         SteamAPI steamAPI,
         EnvironmentService environmentService,
-        MatchService matchService
+        MatchService matchService,
+        IStringLocalizer localizer
     )
     {
         _logger = logger;
+        _localizer = localizer;
         _steamAPI = steamAPI;
         _matchService = matchService;
         _environmentService = environmentService;
@@ -76,26 +81,49 @@ public class GameServer
         }
     }
 
-    public void MessageEach(HudDestination destination, Func<CCSPlayerController, string> message)
+    // A null viewer is SourceTV, which gets the server's language.
+    public void MessageEach(HudDestination destination, Func<CCSPlayerController?, string> message)
     {
         foreach (CCSPlayerController player in MatchUtility.Players())
         {
-            string text = message(player);
+            Send(destination, player, message(player));
+        }
 
-            if (destination == HudDestination.Alert)
+        foreach (CCSPlayerController tv in CounterStrikeSharp.API.Utilities.GetPlayers())
+        {
+            if (tv.IsHLTV)
             {
-                player.PrintToCenterAlert($" {text}");
+                Send(destination, tv, message(null));
             }
-            else if (destination == HudDestination.Center)
+        }
+    }
+
+    // CounterStrikeSharp throws looking up the language of a SteamID of 0.
+    public string Localize(CCSPlayerController? player, string key, params object[] args)
+    {
+        if (player == null || player.SteamID == 0)
+        {
+            return _localizer[key, args].Value;
+        }
+
+        return _localizer.ForPlayer(player, key, args);
+    }
+
+    private static void Send(HudDestination destination, CCSPlayerController player, string message)
+    {
+        if (destination == HudDestination.Alert)
+        {
+            player.PrintToCenterAlert($" {message}");
+        }
+        else if (destination == HudDestination.Center)
+        {
+            player.PrintToCenter($" {message}");
+        }
+        else
+        {
+            foreach (string part in message.Split(["\r\n", "\r", "\n"], StringSplitOptions.None))
             {
-                player.PrintToCenter($" {text}");
-            }
-            else
-            {
-                foreach (string part in text.Split(["\r\n", "\r", "\n"], StringSplitOptions.None))
-                {
-                    player.PrintToChat(part);
-                }
+                player.PrintToChat(part);
             }
         }
     }
