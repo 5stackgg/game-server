@@ -623,6 +623,8 @@ public class TimeoutSystem
         List<(string SteamId, string Name)> connected
     )
     {
+        StopReconnectTimer();
+
         // ResumeMatch refuses during a tactical timeout or a round restore, and
         // nothing else would come back to a pause whose timeouts are spent.
         if (IsTimeoutActive() || _backUpManagement.IsResettingRound())

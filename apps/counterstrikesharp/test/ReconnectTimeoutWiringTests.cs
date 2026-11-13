@@ -124,7 +124,7 @@ public class ReconnectTimeoutWiringTests
             hold
         );
         Assert.Matches(
-            @"if \(IsPaused\(\)\)\s*\{\s*HoldPauseFor\(reason\);\s*return;\s*\}\s*_pauseReason = reason;\s*if \(reason == ePauseReason\.Roster\)\s*\{\s*_timeoutSystem\.RosterPauseLanded\(\);\s*\}",
+            @"if \(IsPaused\(\)\)\s*\{\s*HoldPauseFor\(reason\);\s*if \(_pauseReason == ePauseReason\.Roster\)\s*\{\s*_timeoutSystem\.RosterPauseLanded\(\);\s*\}\s*return;\s*\}\s*_pauseReason = reason;\s*if \(reason == ePauseReason\.Roster\)\s*\{\s*_timeoutSystem\.RosterPauseLanded\(\);\s*\}",
             Method(Code("FiveStack.Services", "MatchManager.cs"), "public void PauseMatch(")
         );
         Assert.Matches(
@@ -148,12 +148,13 @@ public class ReconnectTimeoutWiringTests
     }
 
     // ResumeMatch refuses during a tactical timeout or a round restore, and
-    // nothing else comes back to a pause whose timeouts are spent.
+    // nothing else comes back to a pause whose timeouts are spent. A reconnect
+    // settles twice in one tick, so the timer it re-arms replaces the last one.
     [Fact]
     public void A_Timeout_That_Runs_Out_While_A_Resume_Is_Refused_Looks_Again()
     {
         Assert.Matches(
-            @"^[^{]*\{\s*if \(IsTimeoutActive\(\) \|\| _backUpManagement\.IsResettingRound\(\)\)\s*\{\s*_reconnectTimer = match\.PhaseTimer\(1, EndReconnectTimeout\);\s*return;\s*\}",
+            @"^[^{]*\{\s*StopReconnectTimer\(\);\s*if \(IsTimeoutActive\(\) \|\| _backUpManagement\.IsResettingRound\(\)\)\s*\{\s*_reconnectTimer = match\.PhaseTimer\(1, EndReconnectTimeout\);\s*return;\s*\}",
             Timeout("private void SettleRosterPause(")
         );
     }

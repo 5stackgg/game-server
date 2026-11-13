@@ -342,6 +342,12 @@ public class MatchManager
         if (IsPaused())
         {
             HoldPauseFor(reason);
+
+            if (_pauseReason == ePauseReason.Roster)
+            {
+                _timeoutSystem.RosterPauseLanded();
+            }
+
             return;
         }
 
