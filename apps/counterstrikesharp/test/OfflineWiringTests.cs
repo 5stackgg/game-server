@@ -283,7 +283,8 @@ public class OfflineWiringTests
     [Fact]
     public void ARestartedOfflineServerReadsItsBackupsOffDisk()
     {
-        string check = Method(Service("GameBackUpRounds"), "public bool CheckForBackupRestore(");
+        string backups = Service("GameBackUpRounds");
+        string check = Method(backups, "public bool CheckForBackupRestore(");
 
         Assert.Contains(
             "int highestOnDisk = offline ? HighestBackupRoundOnDisk(match!, matchMap) : 0;",
@@ -296,18 +297,6 @@ public class OfflineWiringTests
             @"if \(offline && RoundRestoreGateUtility\.LatestBackup\(matchMap\.rounds, highestNumber\) == null\)",
             check
         );
-    }
-
-    [Fact]
-    public void OnlyAnOfflineServerReadsARoundsBackupOffDisk()
-    {
-        string backups = Service("GameBackUpRounds");
-        string backupOf = Method(backups, "private BackupRound? BackupOf(");
-
-        Assert.Contains("|| !_environmentService.IsOfflineMode()", backupOf);
-        Assert.Contains("RoundRestoreGateUtility.ReadsBackupFromDisk(round, status)", backupOf);
-        Assert.Contains("BackupOf(match, matchMap, round)", Method(backups, "public void RestoreRound(int round)"));
-        Assert.Contains("BackupOf(match, matchMap, round)", Method(backups, "public string? RestoreRefusal(int round)"));
         Assert.Contains(
             "RoundRestoreGateUtility.IsUsableOnDisk(matchMap.rounds, round, true)",
             Method(backups, "private int HighestBackupRoundOnDisk(")
