@@ -400,4 +400,13 @@ public class SurrenderSystem
             && MatchUtility.GetMemberFromLineup(matchData, player.SteamID.ToString(), player.Name)
                 != null;
     }
+    public static Guid? SurrenderingLineup(MatchData matchData, Guid winningLineupId)
+    {
+        return null;
+    }
+
+    public static bool CanVoteInSurrender(Guid? voterLineupId, Guid surrenderingLineupId)
+    {
+        return voterLineupId != null;
+    }
 }
