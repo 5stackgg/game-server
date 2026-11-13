@@ -15,6 +15,7 @@ public partial class FiveStackPlugin
         _logger.LogInformation("map changed: precaching models");
 
         _matchService.GetCurrentMatch()?.EndPhase();
+        _cameraSystem.NewMap();
 
         await Task.Delay(1000 * 5);
         FiveStack.Utilities.HibernationUtility.NextTick(() =>

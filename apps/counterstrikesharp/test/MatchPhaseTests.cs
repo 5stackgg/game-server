@@ -49,6 +49,12 @@ public class MatchPhaseTests
         Set(events, "_mapStatusClock", new MapStatusClock());
         Set(events, "_restore", new RoundRestoreState());
 
+        CameraSystem camera = new CameraSystem(
+            NullLogger<CameraSystem>.Instance,
+            null!,
+            matchService,
+            null!
+        );
         TimeoutSystem timeout = new TimeoutSystem(
             NullLogger<TimeoutSystem>.Instance,
             events,
@@ -58,7 +64,7 @@ public class MatchPhaseTests
             null!,
             null!,
             null!,
-            null!,
+            camera,
             null!
         );
         ReadySystem ready = new ReadySystem(
@@ -77,12 +83,6 @@ public class MatchPhaseTests
             null!,
             null!,
             environment
-        );
-        CameraSystem camera = new CameraSystem(
-            NullLogger<CameraSystem>.Instance,
-            null!,
-            matchService,
-            null!
         );
 
         MatchManager match = new MatchManager(
@@ -220,31 +220,240 @@ public class MatchPhaseTests
         ((HashSet<ulong>)Get(server.Camera, "_offline")!).UnionWith(steamIds);
     }
 
-    // Live needs the engine, so this only shows the lost camera is still owed
-    // when the first live round asks for it.
+    private static void LineupCamera(Server server, bool cameraOk)
+    {
+        MatchData matchData = server.Match.GetMatchData()!;
+        matchData.options.camera_required = true;
+        matchData.lineup_1.lineup_players.Add(
+            new MatchMember { steam_id = "76561198000000001", camera_ok = cameraOk }
+        );
+    }
+
+    private static object? Call(object target, string method, params object[] args)
+    {
+        return target
+            .GetType()
+            .GetMethod(method, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(target, args);
+    }
+
+    private static object Reason(string name)
+    {
+        return Enum.Parse(typeof(eMapStatus).Assembly.GetType("FiveStack.Enums.ePauseReason")!, name);
+    }
+
+    private static Server PausedFor(string reason)
+    {
+        Server server = On(eMapStatus.Paused);
+        Set(server.Match, "_pauseReason", Reason(reason));
+
+        return server;
+    }
+
+    private static bool OwesPause(Server server)
+    {
+        return (bool)Call(server.Camera, "OwesPause")!;
+    }
+
+    private static bool RosterOwnsPause(Server server)
+    {
+        return (bool)Call(server.Timeout, "RosterOwnsPause")!;
+    }
+
     [Fact]
-    public void A_Camera_Lost_Before_Play_Stays_Owed_Until_Play()
+    public void A_Camera_Lost_Before_Play_Is_Owed_A_Pause()
     {
         Server server = On(eMapStatus.Knife);
         CamerasOffline(server, 76561198000000001);
 
-        server.Camera.PauseIfBlocking();
+        typeof(CameraSystem)
+            .GetMethod("OnCamerasLost", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(server.Camera, []);
 
         Assert.Equal(eMapStatus.Knife, server.Match.GetCurrentMapStatus());
+        Assert.True(OwesPause(server));
+    }
+
+    // camera_state is only sent on a change, so a plugin that restarts mid-map
+    // learns of a camera that is still down from the match data alone.
+    [Fact]
+    public void A_Camera_Down_When_The_Plugin_Loads_Is_Owed_A_Pause()
+    {
+        Server server = On(eMapStatus.Live);
+        LineupCamera(server, cameraOk: false);
+
+        Assert.True(OwesPause(server));
+    }
+
+    [Fact]
+    public void Every_Camera_Up_Owes_No_Pause()
+    {
+        Server server = On(eMapStatus.Live);
+        LineupCamera(server, cameraOk: true);
+
+        Assert.False(OwesPause(server));
+    }
+
+    [Fact]
+    public void Staff_Resuming_Over_A_Breach_Uses_Up_The_Owed_Pause_And_Its_Reminder()
+    {
+        Server server = On(eMapStatus.Live);
+        LineupCamera(server, cameraOk: false);
+
+        Assert.True(OwesPause(server));
+
+        Set(server.Camera, "_reminderTimer", Bare<Timer>());
+
+        Call(server.Camera, "Override");
+
+        Assert.False(OwesPause(server));
         Assert.Null(Get(server.Camera, "_reminderTimer"));
         Assert.True(server.Camera.IsBlocking());
     }
 
+    // An override lasts the map it was made on.
     [Fact]
-    public void Play_Starting_With_Every_Camera_Up_Pauses_Nothing()
+    public void A_New_Map_Owes_A_Pause_For_A_Camera_Still_Down_After_An_Override()
     {
         Server server = On(eMapStatus.Live);
-        CamerasOffline(server);
+        LineupCamera(server, cameraOk: false);
 
-        server.Camera.PauseIfBlocking();
+        Assert.True(OwesPause(server));
 
-        Assert.Equal(eMapStatus.Live, server.Match.GetCurrentMapStatus());
+        Call(server.Camera, "Override");
+        Call(server.Camera, "NewMap");
+
+        Assert.True(OwesPause(server));
+    }
+
+    [Fact]
+    public void A_New_Map_With_Every_Camera_Up_Owes_No_Pause()
+    {
+        Server server = On(eMapStatus.Live);
+        LineupCamera(server, cameraOk: true);
+
+        Assert.False(OwesPause(server));
+
+        Call(server.Camera, "NewMap");
+
+        Assert.False(OwesPause(server));
+    }
+
+    // "type .resume to continue" only makes sense with the map paused.
+    [Theory]
+    [InlineData(eMapStatus.Live)]
+    [InlineData(eMapStatus.Overtime)]
+    [InlineData(eMapStatus.Warmup)]
+    [InlineData(eMapStatus.Knife)]
+    public void Cameras_Coming_Back_Outside_A_Pause_Say_Nothing(eMapStatus status)
+    {
+        Server server = On(status);
+        Set(server.Camera, "_reminderTimer", Bare<Timer>());
+
+        Call(server.Camera, "OnCamerasRestored");
+
         Assert.Null(Get(server.Camera, "_reminderTimer"));
+    }
+
+    // Round end in overtime used to write Overtime over a pause called mid-round,
+    // which dropped the pause and its reason.
+    [Fact]
+    public void A_Pause_In_Overtime_Keeps_Its_Reason_Through_Round_End_And_A_Reconnect_Still_Ends_It()
+    {
+        Server server = PausedFor("Roster");
+
+        Call(server.Match, "MarkOvertime");
+
+        Assert.Equal(eMapStatus.Paused, server.Match.GetCurrentMapStatus());
+        Assert.True(RosterOwnsPause(server));
+    }
+
+    [Fact]
+    public void An_Overtime_Round_Ending_In_Play_Is_Overtime()
+    {
+        Server server = On(eMapStatus.Live);
+
+        Call(server.Match, "MarkOvertime");
+
+        Assert.Equal(eMapStatus.Overtime, server.Match.GetCurrentMapStatus());
+    }
+
+    [Fact]
+    public void A_Whole_Roster_Ends_The_Pause_It_Made()
+    {
+        Assert.True(RosterOwnsPause(PausedFor("Roster")));
+    }
+
+    // A caster, coach or spectator joining makes the roster whole as much as the
+    // player who left coming back does.
+    [Theory]
+    [InlineData("Camera")]
+    [InlineData("Tech")]
+    [InlineData("Admin")]
+    [InlineData("Restore")]
+    public void A_Whole_Roster_Leaves_A_Pause_It_Did_Not_Make(string reason)
+    {
+        Assert.False(RosterOwnsPause(PausedFor(reason)));
+    }
+
+    [Fact]
+    public void A_Whole_Roster_Never_Resumes_Over_A_Camera_Still_Down()
+    {
+        Server server = PausedFor("Roster");
+        CamerasOffline(server, 76561198000000001);
+
+        Assert.False(RosterOwnsPause(server));
+    }
+
+    [Fact]
+    public void A_Whole_Roster_Leaves_A_Pause_The_Teams_Still_Resume()
+    {
+        Server server = PausedFor("Roster");
+        WaitingOn(server.Timeout, CsTeam.Terrorist);
+
+        Assert.False(RosterOwnsPause(server));
+    }
+
+    [Fact]
+    public void A_Whole_Roster_Has_Nothing_To_Resume_In_Play()
+    {
+        Assert.False(RosterOwnsPause(On(eMapStatus.Live)));
+    }
+
+    [Theory]
+    [InlineData("Roster", "Restore", "Restore")]
+    [InlineData("Roster", "Camera", "Camera")]
+    [InlineData("Restore", "Camera", "Camera")]
+    [InlineData("Restore", "Tech", "Tech")]
+    [InlineData("Restore", "Roster", "Restore")]
+    [InlineData("Camera", "Roster", "Camera")]
+    [InlineData("Tech", "Restore", "Tech")]
+    [InlineData("Admin", "Roster", "Admin")]
+    public void A_Second_Pause_Only_Takes_Over_One_That_Ends_On_Its_Own(
+        string held,
+        string next,
+        string kept
+    )
+    {
+        Server server = PausedFor(held);
+
+        Call(server.Match, "HoldPauseFor", Reason(next));
+
+        Assert.Equal(Reason(kept), Call(server.Match, "GetPauseReason"));
+    }
+
+    [Theory]
+    [InlineData("Roster")]
+    [InlineData("Camera")]
+    [InlineData("Tech")]
+    [InlineData("Admin")]
+    public void A_Declined_Restore_Leaves_A_Pause_It_Did_Not_Make(string reason)
+    {
+        Server server = PausedFor(reason);
+
+        Call(server.Match, "ResumeFrom", Reason("Restore"));
+
+        Assert.Equal(eMapStatus.Paused, server.Match.GetCurrentMapStatus());
     }
 
     [Theory]

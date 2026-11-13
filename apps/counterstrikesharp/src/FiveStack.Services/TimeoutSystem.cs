@@ -273,8 +273,7 @@ public class TimeoutSystem
             {
                 if (IsAdminOrOrganizer(player, matchData))
                 {
-                    ClearPendingTeamResumes();
-                    _matchService.GetCurrentMatch()?.ResumeMatch(resumeMessage);
+                    Resume(match, resumeMessage);
                     return;
                 }
 
@@ -325,10 +324,25 @@ public class TimeoutSystem
                             () =>
                             {
                                 _logger.LogInformation("resume vote passed");
+                                resumeVote = null;
+
+                                if (_cameraSystem.IsBlocking())
+                                {
+                                    _gameServer.MessageEach(
+                                        HudDestination.Chat,
+                                        viewer =>
+                                            _gameServer.Localize(
+                                                viewer,
+                                                "camera.cannot_resume",
+                                                _cameraSystem.OfflineNames()
+                                            )
+                                    );
+                                    return;
+                                }
+
                                 _matchService
                                     .GetCurrentMatch()
                                     ?.ResumeMatch(_localizer["timeout.vote.resume_passed"]);
-                                resumeVote = null;
                             }
                         ),
                         () =>
@@ -352,8 +366,20 @@ public class TimeoutSystem
             resumeMessage = _localizer["timeout.player_resumed", player.PlayerName, ChatColors.Red];
         }
 
+        Resume(match, resumeMessage);
+    }
+
+    // Only staff and the console get past the camera gate, so play going on with
+    // a camera still down is them overriding it.
+    private void Resume(MatchManager match, string message)
+    {
         ClearPendingTeamResumes();
-        _matchService.GetCurrentMatch()?.ResumeMatch(resumeMessage);
+        match.ResumeMatch(message);
+
+        if (!match.IsPaused() && _cameraSystem.IsBlocking())
+        {
+            _cameraSystem.Override();
+        }
     }
 
     public void ClearPendingTeamResumes()
@@ -365,6 +391,13 @@ public class TimeoutSystem
     public bool ShouldRequireTeamResume()
     {
         return _requiresTeamResumeForCurrentPause && _teamsPendingResume.Count > 0;
+    }
+
+    public bool RosterOwnsPause()
+    {
+        return _matchService.GetCurrentMatch()?.GetPauseReason() == ePauseReason.Roster
+            && !ShouldRequireTeamResume()
+            && !_cameraSystem.IsBlocking();
     }
 
     // Only meaningful once the match is actually being played -- during warmup
@@ -412,7 +445,7 @@ public class TimeoutSystem
         _teamsPendingResume.Add(CsTeam.CounterTerrorist);
         _teamsPendingResume.Add(CsTeam.Terrorist);
         _requiresTeamResumeForCurrentPause = true;
-        match.PauseMatch(pauseMessage);
+        match.PauseMatch(ePauseReason.Tech, pauseMessage);
     }
 
     public void CallTacTimeout(CCSPlayerController? player)

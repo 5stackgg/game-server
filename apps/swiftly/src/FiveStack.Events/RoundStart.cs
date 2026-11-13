@@ -1,4 +1,5 @@
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared.GameEventDefinitions;
@@ -70,6 +71,7 @@ public partial class FiveStackPlugin
         )
         {
             matchManager.PauseMatch(
+                ePauseReason.Roster,
                 "Waiting for players to reconnect",
                 stillRequired: () =>
                     ReconnectPauseUtility.ShouldPause(
@@ -80,10 +82,7 @@ public partial class FiveStackPlugin
             );
         }
 
-        if (totalRoundsPlayed == 0)
-        {
-            _cameraSystem.PauseIfBlocking();
-        }
+        _cameraSystem.PauseIfOwed();
 
         return HookResult.Continue;
     }

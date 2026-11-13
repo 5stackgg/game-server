@@ -35,6 +35,7 @@ public class MatchManager
     private Timer? _playcastWindowTimer;
     private int _phaseGeneration;
     private readonly List<Timer> _phaseTimers = new List<Timer>();
+    private ePauseReason? _pauseReason;
     public bool gameEnded = false;
 
     private readonly MatchEvents _matchEvents;
@@ -179,6 +180,11 @@ public class MatchManager
         return false;
     }
 
+    public ePauseReason? GetPauseReason()
+    {
+        return IsPaused() ? _pauseReason : null;
+    }
+
     public bool IsFreezePeriod()
     {
         return MatchUtility.Rules()?.FreezePeriod ?? false;
@@ -275,6 +281,7 @@ public class MatchManager
     // the caller's own precondition may not be observable yet -- a
     // disconnecting player is still in Players() during player_disconnect.
     public void PauseMatch(
+        ePauseReason reason,
         string? message = null,
         bool skipUpdate = false,
         Func<bool>? stillRequired = null,
@@ -315,7 +322,7 @@ public class MatchManager
                         return;
                     }
 
-                    PauseMatch(message, skipUpdate, stillRequired, retriesLeft - 1);
+                    PauseMatch(reason, message, skipUpdate, stillRequired, retriesLeft - 1);
                 }
             );
             return;
@@ -325,8 +332,11 @@ public class MatchManager
 
         if (IsPaused())
         {
+            HoldPauseFor(reason);
             return;
         }
+
+        _pauseReason = reason;
 
         _logger.LogInformation($"Pausing Match{(message != null ? $": {message}" : "")}");
 
@@ -359,6 +369,35 @@ public class MatchManager
         }
 
         UpdateMapStatus(eMapStatus.Paused);
+    }
+
+    private void HoldPauseFor(ePauseReason reason)
+    {
+        if (_pauseReason == null || reason > _pauseReason)
+        {
+            _pauseReason = reason;
+        }
+    }
+
+    public void MarkOvertime()
+    {
+        if (IsPaused())
+        {
+            return;
+        }
+
+        UpdateMapStatus(eMapStatus.Overtime);
+    }
+
+    public void ResumeFrom(ePauseReason reason)
+    {
+        if (IsPaused() && _pauseReason != reason)
+        {
+            _logger.LogInformation($"Still paused for {_pauseReason}, not resuming for {reason}");
+            return;
+        }
+
+        ResumeMatch();
     }
 
     public void ResumeMatch(string? message = null, bool skipUpdate = false)
@@ -437,6 +476,11 @@ public class MatchManager
             EndPhase();
         }
 
+        if (status != eMapStatus.Paused)
+        {
+            _pauseReason = null;
+        }
+
         var currentMap = GetCurrentMap();
 
         // TODO - this should only happen discord matches
@@ -495,7 +539,7 @@ public class MatchManager
                     _gameServer.SendCommands(["mp_warmup_end"]);
                 }
 
-                PauseMatch(null, true);
+                PauseMatch(_pauseReason ?? ePauseReason.Admin, null, true);
                 break;
             case eMapStatus.Live:
                 if (
@@ -1759,6 +1803,7 @@ public class MatchManager
         StopPlayerNameCheck();
 
         _currentMapStatus = eMapStatus.Unknown;
+        _pauseReason = null;
         _configuredMapId = null;
 
         gameEnded = false;

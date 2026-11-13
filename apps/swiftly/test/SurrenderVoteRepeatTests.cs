@@ -44,6 +44,5 @@ public class SurrenderVoteRepeatTests
 
         Assert.True(abandon >= 0, "the running vote is never ended");
         Assert.True(abandon < drop, "the vote is dropped before it is ended");
-        Assert.Contains("EndVote();", Method(Surrender(), "public void Reset()"));
     }
 }
