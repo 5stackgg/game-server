@@ -126,13 +126,13 @@ public class PlaceholderClaimWiringTests
     public void An_Answer_Older_Than_The_Last_Taken_Is_Dropped()
     {
         string fetch = Fetch();
-        int request = fetch.IndexOf("intrequest=_fetches.Request();", StringComparison.Ordinal);
+        int numbered = fetch.IndexOf("intfetch=_fetches.Request();", StringComparison.Ordinal);
 
-        Assert.True(request >= 0, "the request is not numbered");
+        Assert.True(numbered >= 0, "the request is not numbered");
         Assert.True(
-            request < fetch.IndexOf("HttpClientProvider.Client.SendAsync(", StringComparison.Ordinal)
+            numbered < fetch.IndexOf("HttpClientProvider.Client.SendAsync(", StringComparison.Ordinal)
         );
-        Assert.Contains("if(!_fetches.TryTake(request)){", fetch);
+        Assert.Contains("if(!_fetches.TryTake(fetch)){", fetch);
     }
 
     [Fact]

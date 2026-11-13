@@ -77,7 +77,7 @@ public class MatchService
         try
         {
             {
-                int request = _fetches.Request();
+                int fetch = _fetches.Request();
                 int? captainsAsOf = _currentMatch?.CaptainsAsOf();
                 string matchUri =
                     $"{_environmentService.GetApiUrl()}/matches/current-match/{serverId}";
@@ -107,7 +107,7 @@ public class MatchService
 
                 HibernationUtility.NextTick(() =>
                 {
-                    if (!_fetches.TryTake(request))
+                    if (!_fetches.TryTake(fetch))
                     {
                         _logger.LogInformation("dropping a match fetch older than one already applied");
                         return;
