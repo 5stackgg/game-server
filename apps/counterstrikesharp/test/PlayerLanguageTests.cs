@@ -681,6 +681,8 @@ public class PlayerLanguageTests
     [InlineData("FiveStack.Services/CameraSystem.cs", "camera.restored")]
     [InlineData("FiveStack.Services/GameDemos.cs", "demos.recording")]
     [InlineData("FiveStack.Services/MatchManager.cs", "match.resume_hint")]
+    [InlineData("FiveStack.Services/MatchManager.cs", "match.reconnect_timeout")]
+    [InlineData("FiveStack.Services/TimeoutSystem.cs", "match.reconnect_timeout_over")]
     [InlineData("FiveStack.Services/MatchManager.cs", "match.offline_over")]
     [InlineData("FiveStack.Services/MatchManager.cs", "match.received_data")]
     [InlineData("FiveStack.Services/MatchManager.cs", "match.tv_delay")]

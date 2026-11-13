@@ -110,6 +110,8 @@
   "match.assigned_team": " تم تعيينك إلى {0}{1}.",
   "match.player_disconnected": "انقطع اتصال لاعب، تم إيقاف المباراة مؤقتًا",
   "match.waiting_reconnect": "بانتظار عودة اتصال اللاعبين",
+  "match.reconnect_timeout": "إيقاف تقني: انتظار عودة اتصال اللاعبين لمدة {0} ثانية",
+  "match.reconnect_timeout_over": "انتهى الإيقاف التقني، تستمر المباراة",
   "ready.forced_start": "تم فرض بدء اللعبة.",
   "vote.failed": "{0} فشل التصويت",
   "vote.not_allowed": " {0}غير مسموح لك بالتصويت",

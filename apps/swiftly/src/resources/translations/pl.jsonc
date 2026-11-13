@@ -115,6 +115,8 @@
   "match.assigned_team": " Twoja drużyna: {0}{1}.",
   "match.player_disconnected": "Gracz rozłączony, pauza meczu",
   "match.waiting_reconnect": "Oczekiwanie na ponowne połączenie graczy",
+  "match.reconnect_timeout": "Przerwa techniczna: {0}s na ponowne połączenie graczy",
+  "match.reconnect_timeout_over": "Koniec przerwy technicznej, gramy dalej",
   "ready.forced_start": "Start gry został wymuszony.",
   "vote.failed": "{0} Głosowanie nieudane",
   "vote.not_allowed": " {0}nie możesz głosować",

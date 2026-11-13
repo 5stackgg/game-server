@@ -115,6 +115,8 @@
   "match.assigned_team": " 你已被分配到{0}{1}。",
   "match.player_disconnected": "玩家断开连接，比赛暂停",
   "match.waiting_reconnect": "等待玩家重新连接",
+  "match.reconnect_timeout": "技术暂停：等待玩家重新连接，剩余 {0} 秒",
+  "match.reconnect_timeout_over": "技术暂停结束，比赛继续",
   "ready.forced_start": "比赛已被强制开始。",
   "vote.failed": "{0} 投票失败",
   "vote.not_allowed": " {0}你无权投票",

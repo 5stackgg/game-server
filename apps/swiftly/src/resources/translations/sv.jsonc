@@ -115,6 +115,8 @@
   "match.assigned_team": " Du har placerats i {0}{1}.",
   "match.player_disconnected": "Spelare frånkopplad, pausar matchen",
   "match.waiting_reconnect": "Väntar på att spelare ansluter igen",
+  "match.reconnect_timeout": "Teknisk timeout: väntar {0}s på att spelare ansluter igen",
+  "match.reconnect_timeout_over": "Teknisk timeout är över, matchen fortsätter",
   "ready.forced_start": "Spelets start har tvingats.",
   "vote.failed": "{0} Röstningen misslyckades",
   "vote.not_allowed": " {0}du får inte rösta",

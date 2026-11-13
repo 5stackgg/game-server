@@ -188,6 +188,11 @@ public class MatchManager
         return IsPaused() ? _pauseReason : null;
     }
 
+    public bool IsLan()
+    {
+        return _matchData?.is_lan == true || _environmentService.IsOfflineMode();
+    }
+
     public bool IsFreezePeriod()
     {
         return MatchUtility.Rules()?.FreezePeriod ?? false;
@@ -337,10 +342,21 @@ public class MatchManager
         if (IsPaused())
         {
             HoldPauseFor(reason);
+
+            if (_pauseReason == ePauseReason.Roster)
+            {
+                _timeoutSystem.RosterPauseLanded();
+            }
+
             return;
         }
 
         _pauseReason = reason;
+
+        if (reason == ePauseReason.Roster)
+        {
+            _timeoutSystem.RosterPauseLanded();
+        }
 
         _logger.LogInformation(
             $"Pausing Match{(message != null ? $": {message(_localizer)}" : "")}"
@@ -361,9 +377,14 @@ public class MatchManager
                     return;
                 }
 
+                int? reconnectSeconds = _timeoutSystem.ReconnectTimeoutSecondsLeft();
+
                 _gameServer.MessageEach(
                     MessageType.Alert,
-                    localizer => localizer["match.resume_hint", CommandUtility.PublicChatTrigger]
+                    localizer =>
+                        reconnectSeconds != null
+                            ? localizer["match.reconnect_timeout", reconnectSeconds.Value]
+                            : localizer["match.resume_hint", CommandUtility.PublicChatTrigger]
                 );
             },
             true

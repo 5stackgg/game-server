@@ -1,3 +1,4 @@
+using System.Globalization;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
@@ -15,6 +16,11 @@ public class TimeoutSystem
 {
     private readonly HashSet<Team> _teamsPendingResume = new();
     private bool _requiresTeamResumeForCurrentPause;
+    private readonly ReconnectTimeouts _reconnectTimeouts = new();
+    private CancellationTokenSource? _reconnectTimer;
+    private DateTime? _reconnectTimeoutEnds;
+    private bool _reconnectTimeoutOwed;
+    private bool _waitsOnEmptyLineup;
     private readonly ISwiftlyCore _core;
     private readonly MatchEvents _matchEvents;
     private readonly GameServer _gameServer;
@@ -66,6 +72,7 @@ public class TimeoutSystem
         resumeVote?.Abandon();
         resumeVote = null;
         ClearPendingTeamResumes();
+        StopReconnectTimeout();
     }
 
     public void RequestPause(IPlayer? player)
@@ -410,11 +417,288 @@ public class TimeoutSystem
         return _requiresTeamResumeForCurrentPause && _teamsPendingResume.Count > 0;
     }
 
+    // On a LAN someone at the table says the player is back, so the roster
+    // never ends its own pause there.
     public bool RosterOwnsPause()
     {
-        return _matchService.GetCurrentMatch()?.GetPauseReason() == ePauseReason.Roster
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        return match != null
+            && match.GetPauseReason() == ePauseReason.Roster
+            && !match.IsLan()
             && !ShouldRequireTeamResume()
             && !_cameraSystem.IsBlocking();
+    }
+
+    // A LAN match waits for someone to resume it. Any other waits one technical
+    // timeout, paid by every lineup that is short and still has one, and plays
+    // on once they are spent.
+    public bool HoldForRoster(IEnumerable<(string SteamId, string Name)> connected)
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+
+        if (match == null || matchData == null)
+        {
+            return false;
+        }
+
+        if (match.IsLan() || _reconnectTimeoutOwed || _reconnectTimer != null)
+        {
+            return true;
+        }
+
+        ePauseReason? held = match.GetPauseReason();
+
+        if (held != null && held != ePauseReason.Roster)
+        {
+            return true;
+        }
+
+        List<(string SteamId, string Name)> players = connected.ToList();
+
+        // A lineup with nobody left is waited on, at no cost: playing on would
+        // give the other side rounds against no one.
+        _waitsOnEmptyLineup = ReconnectPauseUtility.IsALineupEmpty(
+            matchData,
+            players,
+            match.GetExpectedPlayerCount()
+        );
+
+        if (_waitsOnEmptyLineup)
+        {
+            return true;
+        }
+
+        if (!ChargeReconnectTimeout(match, matchData, players))
+        {
+            return false;
+        }
+
+        // The clock only starts once the pause lands: behind a tactical timeout
+        // it is retried, and the player may be back before it ever does.
+        if (held == ePauseReason.Roster)
+        {
+            StartReconnectTimer(match);
+        }
+        else
+        {
+            _reconnectTimeoutOwed = true;
+        }
+
+        return true;
+    }
+
+    public bool HoldsForRoster()
+    {
+        return _reconnectTimeoutOwed
+            || _waitsOnEmptyLineup
+            || _reconnectTimer != null
+            || _matchService.GetCurrentMatch()?.IsLan() == true;
+    }
+
+    public void RosterPauseLanded()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (!_reconnectTimeoutOwed || match == null)
+        {
+            return;
+        }
+
+        _reconnectTimeoutOwed = false;
+        StartReconnectTimer(match);
+    }
+
+    public void RosterChanged(IEnumerable<(string SteamId, string Name)> connected)
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+
+        if (match == null || matchData == null)
+        {
+            return;
+        }
+
+        List<(string SteamId, string Name)> players = connected.ToList();
+        bool shortHanded = ReconnectPauseUtility.ShouldPause(
+            matchData,
+            players,
+            match.GetExpectedPlayerCount()
+        );
+
+        if (!shortHanded)
+        {
+            if (_reconnectTimeoutOwed)
+            {
+                _reconnectTimeouts.Refund();
+            }
+
+            _reconnectTimeoutOwed = false;
+            _waitsOnEmptyLineup = false;
+            return;
+        }
+
+        if (
+            !_waitsOnEmptyLineup
+            || ReconnectPauseUtility.IsALineupEmpty(
+                matchData,
+                players,
+                match.GetExpectedPlayerCount()
+            )
+        )
+        {
+            return;
+        }
+
+        if (RosterOwnsPause())
+        {
+            SettleRosterPause(match, matchData, players);
+            return;
+        }
+
+        _waitsOnEmptyLineup = false;
+        _reconnectTimeoutOwed =
+            match.GetPauseReason() == null && ChargeReconnectTimeout(match, matchData, players);
+    }
+
+    public int? ReconnectTimeoutSecondsLeft()
+    {
+        if (_reconnectTimeoutEnds is not DateTime ends || !RosterOwnsPause())
+        {
+            return null;
+        }
+
+        return Math.Max(0, (int)Math.Ceiling((ends - DateTime.UtcNow).TotalSeconds));
+    }
+
+    private bool ChargeReconnectTimeout(
+        MatchManager match,
+        MatchData matchData,
+        List<(string SteamId, string Name)> connected
+    )
+    {
+        return TechnicalTimeoutSetting("mp_technical_timeout_duration_s", 120) > 0
+            && _reconnectTimeouts.Charge(
+                match.GetActiveMapId() ?? matchData.current_match_map_id,
+                ReconnectPauseUtility.ShortLineups(
+                    matchData,
+                    connected,
+                    match.GetExpectedPlayerCount()
+                ),
+                TechnicalTimeoutSetting("mp_technical_timeout_per_team", 1)
+            );
+    }
+
+    private void StartReconnectTimer(MatchManager match)
+    {
+        int seconds = Math.Max(1, TechnicalTimeoutSetting("mp_technical_timeout_duration_s", 120));
+
+        _reconnectTimeoutEnds = DateTime.UtcNow.AddSeconds(seconds);
+        _reconnectTimer = match.PhaseTimer(seconds, EndReconnectTimeout);
+    }
+
+    private void EndReconnectTimeout()
+    {
+        StopReconnectTimer();
+
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+
+        if (match == null || matchData == null || !RosterOwnsPause())
+        {
+            return;
+        }
+
+        SettleRosterPause(
+            match,
+            matchData,
+            MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.Name)).ToList()
+        );
+    }
+
+    private void SettleRosterPause(
+        MatchManager match,
+        MatchData matchData,
+        List<(string SteamId, string Name)> connected
+    )
+    {
+        StopReconnectTimer();
+
+        // ResumeMatch refuses during a tactical timeout or a round restore, and
+        // nothing else would come back to a pause whose timeouts are spent.
+        if (IsTimeoutActive() || _backUpManagement.IsResettingRound())
+        {
+            _reconnectTimer = match.PhaseTimer(1, EndReconnectTimeout);
+            return;
+        }
+
+        _waitsOnEmptyLineup = ReconnectPauseUtility.IsALineupEmpty(
+            matchData,
+            connected,
+            match.GetExpectedPlayerCount()
+        );
+
+        if (_waitsOnEmptyLineup)
+        {
+            return;
+        }
+
+        if (ChargeReconnectTimeout(match, matchData, connected))
+        {
+            StartReconnectTimer(match);
+            return;
+        }
+
+        match.ResumeMatch(localizer => localizer["match.reconnect_timeout_over"]);
+    }
+
+    private void StopReconnectTimeout()
+    {
+        StopReconnectTimer();
+
+        if (_reconnectTimeoutOwed)
+        {
+            _reconnectTimeouts.Refund();
+        }
+
+        _reconnectTimeoutOwed = false;
+        _waitsOnEmptyLineup = false;
+    }
+
+    private void StopReconnectTimer()
+    {
+        if (_reconnectTimer != null)
+        {
+            _matchService.GetCurrentMatch()?.KillPhaseTimer(_reconnectTimer);
+        }
+
+        _reconnectTimer = null;
+        _reconnectTimeoutEnds = null;
+    }
+
+    // Read as text: asking for a number of the wrong type throws.
+    private int TechnicalTimeoutSetting(string conVar, int fallback)
+    {
+        try
+        {
+            string? value = _core.ConVar.FindAsString(conVar)?.ValueAsString;
+
+            return double.TryParse(
+                value,
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out double parsed
+            )
+                ? (int)parsed
+                : fallback;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, $"Could not read {conVar}, using {fallback}");
+
+            return fallback;
+        }
     }
 
     // Only meaningful once the match is actually being played -- during warmup

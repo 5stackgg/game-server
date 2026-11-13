@@ -110,6 +110,8 @@
   "match.assigned_team": " Du wurdest {0}{1} zugewiesen.",
   "match.player_disconnected": "Spieler getrennt, Match wird pausiert",
   "match.waiting_reconnect": "Warten auf die Wiederverbindung der Spieler",
+  "match.reconnect_timeout": "Technische Auszeit: {0}s Warten auf die Wiederverbindung der Spieler",
+  "match.reconnect_timeout_over": "Technische Auszeit vorbei, es geht weiter",
   "ready.forced_start": "Spielstart wurde erzwungen.",
   "vote.failed": "{0} Abstimmung fehlgeschlagen",
   "vote.not_allowed": " {0}du darfst nicht abstimmen",

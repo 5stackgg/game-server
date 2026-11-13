@@ -110,6 +110,8 @@
   "match.assigned_team": " Du er blevet sat på {0}{1}.",
   "match.player_disconnected": "Spiller afbrudt, kampen sættes på pause",
   "match.waiting_reconnect": "Venter på at spillere forbinder igen",
+  "match.reconnect_timeout": "Teknisk timeout: venter {0}s på at spillere forbinder igen",
+  "match.reconnect_timeout_over": "Teknisk timeout er slut, kampen fortsætter",
   "ready.forced_start": "Spilstart er blevet tvunget.",
   "vote.failed": "{0} Afstemning mislykkedes",
   "vote.not_allowed": " {0}du har ikke tilladelse til at stemme",

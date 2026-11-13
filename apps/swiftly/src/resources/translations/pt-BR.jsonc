@@ -117,6 +117,8 @@
   "match.assigned_team": " Você foi colocado em {0}{1}.",
   "match.player_disconnected": "Jogador desconectado, pausando a partida",
   "match.waiting_reconnect": "Aguardando os jogadores reconectarem",
+  "match.reconnect_timeout": "Pause técnico: aguardando {0}s os jogadores reconectarem",
+  "match.reconnect_timeout_over": "Pause técnico encerrado, a partida continua",
   "ready.forced_start": "Partida foi forçada a iniciar.",
   "vote.failed": "{0} Votação falhou",
   "vote.not_allowed": " {0}você não tem permissão para votar",

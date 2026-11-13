@@ -70,7 +70,16 @@ public partial class FiveStackPlugin
 
         if (match.IsInPlay())
         {
-            if (match.IsFreezePeriod())
+            // The leaver is still on the player list during player_disconnect.
+            if (
+                match.IsFreezePeriod()
+                && match.timeoutSystem.HoldForRoster(
+                    MatchUtility
+                        .Players()
+                        .Where(connected => connected.SteamID != player.SteamID)
+                        .Select(connected => (connected.SteamID.ToString(), connected.Name))
+                )
+            )
             {
                 // Re-checked on each retry if a tactical timeout is holding the
                 // pause off -- they may be back before it ends.
@@ -82,7 +91,7 @@ public partial class FiveStackPlugin
                             match.GetMatchData() ?? matchData,
                             MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.Name)),
                             match.GetExpectedPlayerCount()
-                        )
+                        ) && match.timeoutSystem.HoldsForRoster()
                 );
             }
 

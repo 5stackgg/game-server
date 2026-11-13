@@ -110,6 +110,8 @@
   "match.assigned_team": " Ваша команда: {0}{1}.",
   "match.player_disconnected": "Гравець відключився, матч на паузі",
   "match.waiting_reconnect": "Очікування повторного підключення гравців",
+  "match.reconnect_timeout": "Технічна пауза: очікування повторного підключення гравців, {0} с",
+  "match.reconnect_timeout_over": "Технічну паузу завершено, гра триває",
   "ready.forced_start": "Запуск гри було примусово виконано.",
   "vote.failed": "{0} Голосування неуспішне",
   "vote.not_allowed": " {0}вам не дозволено голосувати",

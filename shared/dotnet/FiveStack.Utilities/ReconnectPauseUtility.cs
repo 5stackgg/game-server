@@ -87,6 +87,49 @@ public static class ReconnectPauseUtility
         );
     }
 
+    public static List<Guid> ShortLineups(
+        MatchData matchData,
+        IEnumerable<(string SteamId, string Name)> connected,
+        int expectedPlayers
+    )
+    {
+        List<(string SteamId, string Name)> players = connected.ToList();
+
+        return new[] { matchData.lineup_1_id, matchData.lineup_2_id }
+            .Distinct()
+            .Where(lineup => !IsLineupWhole(matchData, players, expectedPlayers, lineup))
+            .ToList();
+    }
+
+    // A lineup with seats to fill and nobody in them leaves the other side
+    // playing rounds out against no one.
+    public static bool IsALineupEmpty(
+        MatchData matchData,
+        IEnumerable<(string SteamId, string Name)> connected,
+        int expectedPlayers
+    )
+    {
+        int present1 = 0;
+        int present2 = 0;
+
+        foreach ((string steamId, string name) in connected)
+        {
+            int? lineup = LineupMembership.LineupNumber(matchData, steamId, name);
+
+            if (lineup == 1)
+            {
+                present1++;
+            }
+            else if (lineup == 2)
+            {
+                present2++;
+            }
+        }
+
+        return (present1 == 0 && BoundSeats(matchData.lineup_1, expectedPlayers) > 0)
+            || (present2 == 0 && BoundSeats(matchData.lineup_2, expectedPlayers) > 0);
+    }
+
     // Whole once as many of its own players are in as it needs, so a lineup short
     // by design is whole with everyone it has.
     public static bool IsLineupWhole(
