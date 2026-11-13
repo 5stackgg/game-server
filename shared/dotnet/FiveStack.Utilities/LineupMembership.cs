@@ -14,43 +14,80 @@ public static class LineupMembership
         };
     }
 
-    // Exact steam ids first: a placeholder's name matches by prefix, and an empty
-    // name would match every unclaimed placeholder.
     public static int? LineupNumber(MatchData matchData, string steamId, string playerName)
+    {
+        return Find(matchData, steamId, playerName)?.Lineup;
+    }
+
+    public static MatchMember? Member(MatchData matchData, string steamId, string playerName)
+    {
+        return Find(matchData, steamId, playerName)?.Member;
+    }
+
+    public static MatchMember? Placeholder(MatchData matchData, string playerName)
+    {
+        return FindPlaceholder(matchData, playerName)?.Member;
+    }
+
+    // Exact steam ids first, so a placeholder never claims a player who is on a lineup.
+    private static (MatchMember Member, int Lineup)? Find(
+        MatchData matchData,
+        string steamId,
+        string playerName
+    )
     {
         if (!string.IsNullOrEmpty(steamId))
         {
-            if (matchData.lineup_1.lineup_players.Any(member => member.steam_id == steamId))
+            foreach ((MatchMember member, int lineup) in Members(matchData))
             {
-                return 1;
-            }
-
-            if (matchData.lineup_2.lineup_players.Any(member => member.steam_id == steamId))
-            {
-                return 2;
+                if (member.steam_id == steamId)
+                {
+                    return (member, lineup);
+                }
             }
         }
 
+        return FindPlaceholder(matchData, playerName);
+    }
+
+    // A name claims the placeholder it equals, or else one it starts. A name that
+    // fits placeholders on both lineups says nothing about which one, and an empty
+    // name would fit them all.
+    private static (MatchMember Member, int Lineup)? FindPlaceholder(
+        MatchData matchData,
+        string playerName
+    )
+    {
         if (string.IsNullOrEmpty(playerName))
         {
             return null;
         }
 
-        if (matchData.lineup_1.lineup_players.Any(member => IsPlaceholderFor(member, playerName)))
-        {
-            return 1;
-        }
-
-        if (matchData.lineup_2.lineup_players.Any(member => IsPlaceholderFor(member, playerName)))
-        {
-            return 2;
-        }
-
-        return null;
+        return OnOneLineup(matchData, name => name == playerName)
+            ?? OnOneLineup(matchData, name => name.StartsWith(playerName));
     }
 
-    private static bool IsPlaceholderFor(MatchMember member, string playerName)
+    private static (MatchMember Member, int Lineup)? OnOneLineup(
+        MatchData matchData,
+        Func<string, bool> claims
+    )
     {
-        return member.steam_id == null && member.placeholder_name.StartsWith(playerName);
+        List<(MatchMember Member, int Lineup)> claimed = Members(matchData)
+            .Where(entry => entry.Member.steam_id == null && claims(entry.Member.placeholder_name))
+            .ToList();
+
+        if (claimed.Count == 0 || claimed.Any(entry => entry.Lineup != claimed[0].Lineup))
+        {
+            return null;
+        }
+
+        return claimed[0];
+    }
+
+    private static IEnumerable<(MatchMember Member, int Lineup)> Members(MatchData matchData)
+    {
+        return matchData
+            .lineup_1.lineup_players.Select(member => (member, 1))
+            .Concat(matchData.lineup_2.lineup_players.Select(member => (member, 2)));
     }
 }

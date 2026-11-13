@@ -203,6 +203,11 @@ public class ReadySystem
 
         switch (GetReadySetting())
         {
+            case eReadySettings.Players:
+                player.SendCenter(
+                    localizer["ready.waiting_for_players", totalReady, expectedReady]
+                );
+                break;
             case eReadySettings.Admin:
                 player.SendCenter(localizer["ready.admin_will_start"]);
                 break;
@@ -322,28 +327,14 @@ public class ReadySystem
             return false;
         }
 
-        bool isCoach = _coachSystem.IsCoach(player, player.Controller.Team);
-        bool isCaptain = _captainSystem.IsCaptain(player, player.Controller.Team);
-
-        switch (GetReadySetting())
-        {
-            case eReadySettings.Coach:
-                if (!isCoach)
-                {
-                    return false;
-                }
-                break;
-            case eReadySettings.Captains:
-                if (!isCaptain)
-                {
-                    return false;
-                }
-                break;
-            case eReadySettings.Admin:
-                return false;
-        }
-
-        return true;
+        return ReadyUtility.CanReady(
+            GetReadySetting(),
+            matchData,
+            player.SteamID.ToString(),
+            player.Name,
+            _coachSystem.IsCoach(player, player.Controller.Team),
+            _captainSystem.IsCaptain(player, player.Controller.Team)
+        );
     }
 
     private eReadySettings GetReadySetting()
