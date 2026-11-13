@@ -22,6 +22,7 @@ public class CameraSystem
     private Timer? _reminderTimer;
     private HashSet<ulong> _offline = new HashSet<ulong>();
     private Guid _matchId = Guid.Empty;
+    private bool _pauseOwed;
 
     public CameraSystem(
         ILogger<CameraSystem> logger,
@@ -77,6 +78,8 @@ public class CameraSystem
                 _offline.Add(steamId);
             }
         }
+
+        _pauseOwed = _offline.Count > 0;
     }
 
     public bool IsBlocking()
@@ -178,19 +181,48 @@ public class CameraSystem
         return steamIds;
     }
 
-    // camera_state only comes when the set changes, so a camera lost before play
-    // is enforced once play starts.
-    public void PauseIfBlocking()
+    // camera_state only comes when the set changes, so a camera lost outside play
+    // or while the plugin was down is enforced at the next round in play.
+    public void PauseIfOwed()
     {
-        if (IsBlocking())
+        if (OwesPause())
         {
             OnCamerasLost();
         }
     }
 
+    public bool OwesPause()
+    {
+        return IsBlocking() && _pauseOwed;
+    }
+
+    // Lasts the map it was made on: NewMap owes the pause again.
+    public void Override()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        if (
+            match == null
+            || MatchPhaseUtility.PhaseOf(match.GetCurrentMapStatus()) != eMatchPhase.InPlay
+        )
+        {
+            return;
+        }
+
+        _pauseOwed = false;
+        match.KillPhaseTimer(_reminderTimer);
+        _reminderTimer = null;
+    }
+
+    public void NewMap()
+    {
+        _pauseOwed = _offline.Count > 0;
+    }
+
     public void Reset()
     {
         _offline.Clear();
+        _pauseOwed = false;
         _matchService.GetCurrentMatch()?.KillPhaseTimer(_reminderTimer);
         _reminderTimer = null;
     }
@@ -204,22 +236,25 @@ public class CameraSystem
             || MatchPhaseUtility.PhaseOf(match.GetCurrentMapStatus()) != eMatchPhase.InPlay
         )
         {
+            _pauseOwed = true;
             return;
         }
+
+        match.timeoutSystem.resumeVote?.Abandon();
+        match.timeoutSystem.resumeVote = null;
 
         string message = _localizer["camera.paused", OfflineNames()];
 
         // Gated on play actually being stopped rather than on whether anyone
         // was already offline: an organizer can resume over a breach, and the
         // next player to lose their camera has to stop play again.
-        if (!match.IsPaused())
-        {
-            match.PauseMatch(message);
-        }
-        else
+        if (match.IsPaused())
         {
             _gameServer.Message(HudDestination.Alert, message);
         }
+
+        match.PauseMatch(ePauseReason.Camera, message, stillRequired: IsBlocking);
+        _pauseOwed = !match.IsPaused();
 
         match.KillPhaseTimer(_reminderTimer);
         _reminderTimer = match.PhaseTimer(
@@ -244,8 +279,15 @@ public class CameraSystem
     // play restarts, the same as any other technical pause.
     private void OnCamerasRestored()
     {
-        _matchService.GetCurrentMatch()?.KillPhaseTimer(_reminderTimer);
+        MatchManager? match = _matchService.GetCurrentMatch();
+
+        match?.KillPhaseTimer(_reminderTimer);
         _reminderTimer = null;
+
+        if (match?.IsPaused() != true)
+        {
+            return;
+        }
 
         _gameServer.Message(
             HudDestination.Alert,

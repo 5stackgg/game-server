@@ -558,7 +558,6 @@ public class SurrenderVoteIntegrityTests
             Method(source, "private void OfferLeaverSurrender(")
         );
         Assert.Contains("_waitingLineups.Clear();", Method(source, "public void EndVote()"));
-        Assert.Contains("EndVote();", Method(source, "public void Reset()"));
     }
 
     // Setting up the next vote before letting go of the failed one would let go
@@ -606,31 +605,83 @@ public class SurrenderVoteIntegrityTests
         Assert.InRange(int.Parse(delay.Groups[1].Value), 2, 10);
     }
 
-    // A lineup whose leaver came back while it waited would be asked to give up
-    // a map it is whole for, and a vote opened in the meantime goes first.
+    // A vote opened in the meantime goes first.
     [Fact]
-    public void A_Waiting_Lineup_That_Is_Whole_Again_Gets_No_Vote()
+    public void A_Waiting_Lineup_Waits_For_An_Open_Vote()
     {
         string offer = Method(
             Code("FiveStack.Services", "SurrenderSystem.cs"),
             "private void OfferNextWaitingLineup()"
         );
         var busy = Regex.Match(offer, @"if \([^{]*IsSurrendering\(\)\s*\)\s*\{\s*return;\s*\}");
-        var whole = Regex.Match(
-            offer,
-            @"if \(\s*ReconnectPauseUtility\.IsLineupWhole\([^;]*\)\s*\)\s*\{\s*return;\s*\}"
-        );
 
         Assert.True(busy.Success, "a waiting lineup is offered its vote while another is open");
         Assert.True(
             busy.Index < offer.IndexOf("_waitingLineups.Remove(", StringComparison.Ordinal),
             "the waiting lineup is dropped before an open vote is checked"
         );
-        Assert.True(whole.Success, "a waiting lineup is offered its vote however many of its players are back");
+        Assert.Contains("OfferLeaverSurrender(next.Key, next.Value);", offer);
+    }
+
+    // A substitute in the leaver's seat, or the leaver back while their lineup
+    // waited on another vote, makes the lineup whole, and a whole lineup is never
+    // asked to give up the map. The leaver's timer still reports them.
+    [Fact]
+    public void A_Whole_Lineup_Is_Never_Asked_To_Surrender_For_A_Leaver()
+    {
+        string offer = Method(
+            Code("FiveStack.Services", "SurrenderSystem.cs"),
+            "private void OfferLeaverSurrender("
+        );
+        var whole = Regex.Match(
+            offer,
+            @"if \([^{]*ReconnectPauseUtility\.IsLineupWhole\([^;]*\)\s*\)\s*\{\s*return;\s*\}"
+        );
+
+        Assert.True(whole.Success, "a leaver's lineup is asked to surrender however many of its players are in");
         Assert.True(
-            whole.Index < offer.IndexOf("OfferLeaverSurrender(", StringComparison.Ordinal),
+            whole.Index > offer.IndexOf("_waitingLineups.TryAdd(", StringComparison.Ordinal),
+            "a lineup is counted before it waits for an open vote"
+        );
+        Assert.True(
+            whole.Index < offer.IndexOf("SetupSurrender(", StringComparison.Ordinal),
             "the vote is offered before the lineup is counted"
         );
+    }
+
+    private static bool LeaverVoteLineupIsWhole(
+        SurrenderSystem surrender,
+        MatchManager match,
+        IEnumerable<(string, string)> connected
+    )
+    {
+        return (bool)
+            typeof(SurrenderSystem)
+                .GetMethod("LeaverVoteLineupIsWhole", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .Invoke(surrender, [match, connected])!;
+    }
+
+    // A vote opened because a player left is about that player, so it ends once
+    // the lineup is whole again, a substitute in the seat or the leaver back.
+    [Fact]
+    public void A_Leavers_Vote_Ends_Once_Their_Lineup_Is_Whole()
+    {
+        var (surrender, match, _) = Server(eMapStatus.Live);
+        match.Init(Roster(5));
+        Set(surrender, "_leaverVoteLineup", Lineup1);
+
+        Assert.False(LeaverVoteLineupIsWhole(surrender, match, Connected(0, 1, 2, 3, 5, 6, 7, 8, 9)));
+        Assert.True(LeaverVoteLineupIsWhole(surrender, match, Connected(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)));
+    }
+
+    [Fact]
+    public void A_Surrender_A_Player_Called_Stays_Open_With_The_Lineup_Whole()
+    {
+        var (surrender, match, _) = Server(eMapStatus.Live);
+        match.Init(Roster(5));
+        Set(surrender, "_leaverVoteLineup", null);
+
+        Assert.False(LeaverVoteLineupIsWhole(surrender, match, Connected(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)));
     }
 
     private static MatchData Roster(int lineup1Players)

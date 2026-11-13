@@ -19,6 +19,7 @@ public partial class FiveStackPlugin
                 Server.PrecacheModel(ModelPathTmPhoenix);
 
                 _matchService.GetCurrentMatch()?.EndPhase();
+                _cameraSystem.NewMap();
 
                 // code smell: we have to wait till server exec's default cfgs
                 await Task.Delay(1000 * 5);

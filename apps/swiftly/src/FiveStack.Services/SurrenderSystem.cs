@@ -21,7 +21,7 @@ public class SurrenderSystem
     private Dictionary<Team, Dictionary<ulong, CancellationTokenSource>> _disconnectTimers =
         new Dictionary<Team, Dictionary<ulong, CancellationTokenSource>>();
 
-    // Survives Reset(); only a different match clears it.
+    // Only a different match clears it.
     private readonly HashSet<ulong> _reportedAbandons = new HashSet<ulong>();
     private Guid? _matchId;
 
@@ -31,6 +31,9 @@ public class SurrenderSystem
 
     // Long enough for the lineup that just voted to read that its vote failed.
     private const float WaitingVoteDelaySeconds = 3;
+
+    // The lineup a leaver's vote was opened for. A vote a player called has none.
+    private Guid? _leaverVoteLineup;
 
     private Guid? winningLineupId;
 
@@ -49,7 +52,6 @@ public class SurrenderSystem
         _gameServer = gameServer;
         _serviceProvider = serviceProvider;
         _environmentService = environmentService;
-        Reset();
     }
 
     public void SetupDisconnectTimer(Team team, ulong steamId, string playerName = "")
@@ -149,14 +151,32 @@ public class SurrenderSystem
         }
 
         MatchManager? current = _matchService.GetCurrentMatch();
+        MatchData? matchData = current?.GetMatchData();
+
+        if (
+            current != null
+            && matchData != null
+            && lineupId != null
+            && ReconnectPauseUtility.IsLineupWhole(
+                matchData,
+                MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.Name)),
+                current.GetExpectedPlayerCount(),
+                lineupId.Value
+            )
+        )
+        {
+            return;
+        }
+
         SetupSurrender(
             LeaverSurrenderSide(
-                current?.GetMatchData(),
+                matchData,
                 current?.GetCurrentMap(),
                 lineupId,
                 sideAtDisconnect,
                 _gameServer.GetTotalRoundsPlayed()
-            )
+            ),
+            forLeaver: true
         );
     }
 
@@ -175,32 +195,13 @@ public class SurrenderSystem
 
     private void OfferNextWaitingLineup()
     {
-        MatchManager? match = _matchService.GetCurrentMatch();
-        MatchData? matchData = match?.GetMatchData();
-        if (
-            match == null
-            || matchData == null
-            || _waitingLineups.Count == 0
-            || IsSurrendering()
-        )
+        if (_waitingLineups.Count == 0 || IsSurrendering())
         {
             return;
         }
 
         KeyValuePair<Guid, Team> next = _waitingLineups.First();
         _waitingLineups.Remove(next.Key);
-
-        if (
-            ReconnectPauseUtility.IsLineupWhole(
-                matchData,
-                MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.Name)),
-                match.GetExpectedPlayerCount(),
-                next.Key
-            )
-        )
-        {
-            return;
-        }
 
         OfferLeaverSurrender(next.Key, next.Value);
     }
@@ -255,31 +256,48 @@ public class SurrenderSystem
             MatchManager? match = _matchService.GetCurrentMatch();
             MatchData? matchData = match?.GetMatchData();
 
-            if (match == null || matchData == null || !match.IsPaused())
+            if (match == null || matchData == null)
             {
                 return;
             }
 
-            // A tactical or technical pause is released by the teams themselves.
-            if (match.timeoutSystem.ShouldRequireTeamResume())
+            List<(string SteamId, string Name)> connected = MatchUtility
+                .Players()
+                .Select(player => (player.SteamID.ToString(), player.Name))
+                .ToList();
+
+            if (LeaverVoteLineupIsWhole(match, connected))
             {
-                return;
+                surrenderingVote?.CancelVote();
             }
 
             if (
-                ReconnectPauseUtility.ShouldPause(
-                    matchData,
-                    MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.Name)),
-                    match.GetExpectedPlayerCount()
-                )
+                !match.timeoutSystem.RosterOwnsPause()
+                || ReconnectPauseUtility.ShouldPause(matchData, connected, match.GetExpectedPlayerCount())
             )
             {
                 return;
             }
 
-            Reset();
             match.ResumeMatch();
         });
+    }
+
+    private bool LeaverVoteLineupIsWhole(
+        MatchManager match,
+        IEnumerable<(string SteamId, string Name)> connected
+    )
+    {
+        MatchData? matchData = match.GetMatchData();
+
+        return _leaverVoteLineup is Guid lineup
+            && matchData != null
+            && ReconnectPauseUtility.IsLineupWhole(
+                matchData,
+                connected,
+                match.GetExpectedPlayerCount(),
+                lineup
+            );
     }
 
     // Swept across every bucket, not just the team the player is on now: a
@@ -301,7 +319,12 @@ public class SurrenderSystem
         return killed;
     }
 
-    public void SetupSurrender(Team team, IPlayer? player = null, Guid? callerLineup = null)
+    public void SetupSurrender(
+        Team team,
+        IPlayer? player = null,
+        Guid? callerLineup = null,
+        bool forLeaver = false
+    )
     {
         if (
             _matchService.GetCurrentMatch()?.GetMatchData()?.is_lan == true
@@ -394,6 +417,7 @@ public class SurrenderSystem
         }
 
         _logger.LogInformation($"Starting Surrender Vote for {team}");
+        _leaverVoteLineup = forLeaver ? surrenderingLineup : null;
         surrenderingVote.StartVote(
             "surrender.vote",
             [],
@@ -436,12 +460,6 @@ public class SurrenderSystem
         surrenderingVote?.Abandon();
         surrenderingVote = null;
         _waitingLineups.Clear();
-    }
-
-    public void Reset()
-    {
-        EndVote();
-        KillDisconnectTimers();
     }
 
     private void KillDisconnectTimers()
