@@ -230,7 +230,7 @@ public class PlayerLanguageTests
         }
 
         Assert.Contains(
-            "_localizer[\"timeout.not_allowed\",ChatColors.Red,_localizer[refusedKey]]",
+            "_gameServer.Localize(player,\"timeout.not_allowed\",ChatColors.Red,_gameServer.Localize(player,refusedKey))",
             Compact(Path.Combine("FiveStack.Services", "TimeoutSystem.cs"))
         );
     }

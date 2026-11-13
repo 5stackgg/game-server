@@ -5,7 +5,6 @@ using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
-using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
@@ -18,7 +17,6 @@ public class KnifeSystem
     private readonly MatchService _matchService;
     private readonly ILogger<KnifeSystem> _logger;
     private readonly EnvironmentService _environmentService;
-    private readonly IStringLocalizer _localizer;
     private Timer? _knifeRoundTimer;
 
     private CsTeam? _winningTeam;
@@ -33,8 +31,7 @@ public class KnifeSystem
         GameServer gameServer,
         MatchEvents matchEvents,
         MatchService matchService,
-        EnvironmentService environmentService,
-        IStringLocalizer localizer
+        EnvironmentService environmentService
     )
     {
         _logger = logger;
@@ -42,7 +39,6 @@ public class KnifeSystem
         _matchEvents = matchEvents;
         _gameServer = gameServer;
         _environmentService = environmentService;
-        _localizer = localizer;
     }
 
     public void Start()
@@ -55,7 +51,10 @@ public class KnifeSystem
             .GetCurrentMatch()
             ?.PhaseTimer(
                 5,
-                () => _gameServer.Message(HudDestination.Alert, _localizer["knife.start"])
+                () => _gameServer.MessageEach(
+                    HudDestination.Alert,
+                    viewer => _gameServer.Localize(viewer, "knife.start")
+                )
             );
     }
 
@@ -133,14 +132,15 @@ public class KnifeSystem
         }
 
         captain.PrintToCenter(
-            _localizer[
+            _gameServer.Localize(
+                captain,
                 "knife.captain_prompt",
                 ChatColors.Green,
                 CommandUtility.PublicChatTrigger,
                 ChatColors.Default,
                 ChatColors.Green,
                 CommandUtility.PublicChatTrigger
-            ]
+            )
         );
     }
 
@@ -212,7 +212,7 @@ public class KnifeSystem
         {
             _gameServer.Message(
                 HudDestination.Chat,
-                _localizer["knife.not_captain", ChatColors.Red],
+                _gameServer.Localize(player, "knife.not_captain", ChatColors.Red),
                 player
             );
             return;
@@ -220,9 +220,15 @@ public class KnifeSystem
 
         Reset();
 
-        _gameServer.Message(
+        _gameServer.MessageEach(
             HudDestination.Alert,
-            _localizer["knife.captain_picked_stay", ChatColors.Red, ChatColors.Default]
+            viewer =>
+                _gameServer.Localize(
+                    viewer,
+                    "knife.captain_picked_stay",
+                    ChatColors.Red,
+                    ChatColors.Default
+                )
         );
 
         match.UpdateMapStatus(eMapStatus.Live);
@@ -242,7 +248,7 @@ public class KnifeSystem
         {
             _gameServer.Message(
                 HudDestination.Chat,
-                _localizer["knife.not_captain", ChatColors.Red],
+                _gameServer.Localize(player, "knife.not_captain", ChatColors.Red),
                 player
             );
             return;
@@ -250,9 +256,15 @@ public class KnifeSystem
 
         Reset();
 
-        _gameServer.Message(
+        _gameServer.MessageEach(
             HudDestination.Alert,
-            _localizer["knife.captain_picked_swap", ChatColors.Red, ChatColors.Default]
+            viewer =>
+                _gameServer.Localize(
+                    viewer,
+                    "knife.captain_picked_swap",
+                    ChatColors.Red,
+                    ChatColors.Default
+                )
         );
 
         if (_environmentService.IsOfflineMode())
@@ -296,7 +308,10 @@ public class KnifeSystem
             return;
         }
 
-        _gameServer.Message(HudDestination.Center, _localizer["knife.skipping"]);
+        _gameServer.MessageEach(
+            HudDestination.Center,
+            viewer => _gameServer.Localize(viewer, "knife.skipping")
+        );
 
         _gameServer.SendCommands(["mp_restartgame 1;mp_warmup_end"]);
 

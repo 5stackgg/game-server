@@ -328,11 +328,14 @@ public partial class FiveStackPlugin
         {
             if (_environmentService.IsOfflineMode())
             {
-                _gameServer.Message(
+                bool nextMap = OfflineMatchState.NextMap(matchData, currentMap) != null;
+
+                _gameServer.MessageEach(
                     HudDestination.Chat,
-                    OfflineMatchState.NextMap(matchData, currentMap) != null
-                        ? _localizer["match.map_over_next_map"]
-                        : _localizer["match.offline_over"]
+                    viewer =>
+                        nextMap
+                            ? _gameServer.Localize(viewer, "match.map_over_next_map")
+                            : _gameServer.Localize(viewer, "match.offline_over")
                 );
                 return;
             }
@@ -365,11 +368,12 @@ public partial class FiveStackPlugin
 
             bool seriesDecided = lineup1Wins >= mapsToWin || lineup2Wins >= mapsToWin;
 
-            _gameServer.Message(
+            _gameServer.MessageEach(
                 HudDestination.Chat,
-                hasNextMap && !seriesDecided
-                    ? _localizer["match.map_over_next_map"]
-                    : _localizer["match.map_over_series_done"]
+                viewer =>
+                    hasNextMap && !seriesDecided
+                        ? _gameServer.Localize(viewer, "match.map_over_next_map")
+                        : _gameServer.Localize(viewer, "match.map_over_series_done")
             );
         }
         catch (Exception error)

@@ -20,7 +20,6 @@ public class ReadySystem
     private readonly CoachSystem _coachSystem;
     private readonly CaptainSystem _captainSystem;
     private readonly CameraSystem _cameraSystem;
-    private readonly ILocalizer _localizer;
 
     private Dictionary<int, bool> _readyPlayers = new Dictionary<int, bool>();
 
@@ -30,8 +29,7 @@ public class ReadySystem
         MatchService matchService,
         CoachSystem coachSystem,
         CaptainSystem captainSystem,
-        CameraSystem cameraSystem,
-        ILocalizer localizer
+        CameraSystem cameraSystem
     )
     {
         _logger = logger;
@@ -40,7 +38,6 @@ public class ReadySystem
         _coachSystem = coachSystem;
         _captainSystem = captainSystem;
         _cameraSystem = cameraSystem;
-        _localizer = localizer;
     }
 
     public void Setup()
@@ -324,7 +321,7 @@ public class ReadySystem
             return;
         }
 
-        _gameServer.Message(MessageType.Center, _localizer["ready.forced_start"]);
+        _gameServer.MessageEach(MessageType.Center, localizer => localizer["ready.forced_start"]);
 
         if (match.IsWarmup())
         {

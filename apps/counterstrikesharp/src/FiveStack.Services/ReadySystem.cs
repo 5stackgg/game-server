@@ -3,7 +3,6 @@ using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
 using FiveStack.Utilities;
-using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
@@ -19,7 +18,6 @@ public class ReadySystem
     private readonly CoachSystem _coachSystem;
     private readonly CaptainSystem _captainSystem;
     private readonly CameraSystem _cameraSystem;
-    private readonly IStringLocalizer _localizer;
 
     private Dictionary<int, bool> _readyPlayers = new Dictionary<int, bool>();
 
@@ -29,8 +27,7 @@ public class ReadySystem
         MatchService matchService,
         CoachSystem coachSystem,
         CaptainSystem captainSystem,
-        CameraSystem cameraSystem,
-        IStringLocalizer localizer
+        CameraSystem cameraSystem
     )
     {
         _logger = logger;
@@ -39,7 +36,6 @@ public class ReadySystem
         _coachSystem = coachSystem;
         _captainSystem = captainSystem;
         _cameraSystem = cameraSystem;
-        _localizer = localizer;
     }
 
     public void Setup()
@@ -128,13 +124,21 @@ public class ReadySystem
 
         if (_cameraSystem.IsPlayerBlocked(player))
         {
-            _gameServer.Message(HudDestination.Chat, _localizer["camera.cannot_ready"], player);
+            _gameServer.Message(
+                HudDestination.Chat,
+                _gameServer.Localize(player, "camera.cannot_ready"),
+                player
+            );
             return;
         }
 
         if (!CanVote(player))
         {
-            _gameServer.Message(HudDestination.Chat, _localizer["ready.not_allowed"], player);
+            _gameServer.Message(
+                HudDestination.Chat,
+                _gameServer.Localize(player, "ready.not_allowed"),
+                player
+            );
             return;
         }
 
@@ -196,7 +200,7 @@ public class ReadySystem
         if (_readyPlayers.ContainsKey(playerId) && _readyPlayers[playerId])
         {
             player.PrintToCenter(
-                _localizer["ready.waiting_for_players", totalReady, expectedReady]
+                _gameServer.Localize(player, "ready.waiting_for_players", totalReady, expectedReady)
             );
             return;
         }
@@ -204,7 +208,7 @@ public class ReadySystem
         if (CanVote(player))
         {
             player.PrintToCenter(
-                _localizer["ready.type_to_ready", CommandUtility.PublicChatTrigger]
+                _gameServer.Localize(player, "ready.type_to_ready", CommandUtility.PublicChatTrigger)
             );
             return;
         }
@@ -213,17 +217,22 @@ public class ReadySystem
         {
             case eReadySettings.Players:
                 player.PrintToCenter(
-                    _localizer["ready.waiting_for_players", totalReady, expectedReady]
+                    _gameServer.Localize(
+                        player,
+                        "ready.waiting_for_players",
+                        totalReady,
+                        expectedReady
+                    )
                 );
                 break;
             case eReadySettings.Admin:
-                player.PrintToCenter(_localizer["ready.admin_will_start"]);
+                player.PrintToCenter(_gameServer.Localize(player, "ready.admin_will_start"));
                 break;
             case eReadySettings.Captains:
-                player.PrintToCenter(_localizer["ready.waiting_captains"]);
+                player.PrintToCenter(_gameServer.Localize(player, "ready.waiting_captains"));
                 break;
             case eReadySettings.Coach:
-                player.PrintToCenter(_localizer["ready.waiting_coach"]);
+                player.PrintToCenter(_gameServer.Localize(player, "ready.waiting_coach"));
                 break;
         }
     }
@@ -283,11 +292,15 @@ public class ReadySystem
 
         _readyPlayers.TryGetValue(player.UserId.Value, out bool isReady);
 
-        string readyWord = isReady ? _localizer["ready.ready"] : _localizer["ready.not_ready"];
+        string readyWord = _gameServer.Localize(player, isReady ? "ready.ready" : "ready.not_ready");
         string colored = isReady
             ? $"{ChatColors.Green}{readyWord}"
             : $"{ChatColors.Red}{readyWord}";
-        _gameServer.Message(HudDestination.Chat, _localizer["ready.marked", colored], player);
+        _gameServer.Message(
+            HudDestination.Chat,
+            _gameServer.Localize(player, "ready.marked", colored),
+            player
+        );
     }
 
     public void SendNotReadyMessage()
@@ -354,7 +367,10 @@ public class ReadySystem
             return;
         }
 
-        _gameServer.Message(HudDestination.Center, _localizer["ready.forced_start"]);
+        _gameServer.MessageEach(
+            HudDestination.Center,
+            viewer => _gameServer.Localize(viewer, "ready.forced_start")
+        );
 
         if (match.IsWarmup())
         {

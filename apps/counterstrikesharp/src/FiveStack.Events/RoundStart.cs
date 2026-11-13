@@ -71,7 +71,7 @@ public partial class FiveStackPlugin
         {
             matchManager.PauseMatch(
                 ePauseReason.Roster,
-                "Waiting for players to reconnect",
+                viewer => _gameServer.Localize(viewer, "match.waiting_reconnect"),
                 stillRequired: () =>
                     ReconnectPauseUtility.ShouldPause(
                         matchManager.GetMatchData() ?? roundMatchData,

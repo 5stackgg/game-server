@@ -111,6 +111,20 @@ public class GameServer
         return _localizer.ForPlayer(player, key, args);
     }
 
+    public string Localize(CCSPlayerController? player, PlayerLine line)
+    {
+        return Localize(
+            player,
+            line.Key,
+            line.Args.Select(arg => LocalizeArg(player, arg)).ToArray()
+        );
+    }
+
+    public object LocalizeArg(CCSPlayerController? player, object arg)
+    {
+        return arg is PlayerLine line ? Localize(player, line) : arg;
+    }
+
     private static void Send(HudDestination destination, CCSPlayerController player, string message)
     {
         if (destination == HudDestination.Alert)

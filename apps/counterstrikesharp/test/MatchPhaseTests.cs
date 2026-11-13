@@ -64,14 +64,12 @@ public class MatchPhaseTests
             null!,
             null!,
             null!,
-            camera,
-            null!
+            camera
         );
         ReadySystem ready = new ReadySystem(
             NullLogger<ReadySystem>.Instance,
             null!,
             matchService,
-            null!,
             null!,
             null!,
             null!
@@ -98,7 +96,6 @@ public class MatchPhaseTests
             timeout,
             surrender,
             matchService,
-            null!,
             null!
         );
         match.Init(new MatchData { id = Guid.NewGuid() });

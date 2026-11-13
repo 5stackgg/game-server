@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.SchemaDefinitions;
-using SwiftlyS2.Shared.Translation;
 using static SwiftlyS2.Shared.Helper;
 
 namespace FiveStack;
@@ -17,7 +16,6 @@ public class KnifeSystem
     private readonly MatchService _matchService;
     private readonly ILogger<KnifeSystem> _logger;
     private readonly EnvironmentService _environmentService;
-    private readonly ILocalizer _localizer;
     private CancellationTokenSource? _knifeRoundTimer;
 
     private Team? _winningTeam;
@@ -32,8 +30,7 @@ public class KnifeSystem
         GameServer gameServer,
         MatchEvents matchEvents,
         MatchService matchService,
-        EnvironmentService environmentService,
-        ILocalizer localizer
+        EnvironmentService environmentService
     )
     {
         _logger = logger;
@@ -41,7 +38,6 @@ public class KnifeSystem
         _matchEvents = matchEvents;
         _gameServer = gameServer;
         _environmentService = environmentService;
-        _localizer = localizer;
     }
 
     public void Start()
@@ -54,7 +50,10 @@ public class KnifeSystem
             .GetCurrentMatch()
             ?.PhaseTimer(
                 5,
-                () => _gameServer.Message(MessageType.Alert, _localizer["knife.start"])
+                () => _gameServer.MessageEach(
+                    MessageType.Alert,
+                    localizer => localizer["knife.start"]
+                )
             );
     }
 
@@ -214,9 +213,9 @@ public class KnifeSystem
 
         Reset();
 
-        _gameServer.Message(
+        _gameServer.MessageEach(
             MessageType.Alert,
-            _localizer["knife.captain_picked_stay", ChatColors.Red, ChatColors.Default]
+            localizer => localizer["knife.captain_picked_stay", ChatColors.Red, ChatColors.Default]
         );
 
         match.UpdateMapStatus(eMapStatus.Live);
@@ -244,9 +243,9 @@ public class KnifeSystem
 
         Reset();
 
-        _gameServer.Message(
+        _gameServer.MessageEach(
             MessageType.Alert,
-            _localizer["knife.captain_picked_swap", ChatColors.Red, ChatColors.Default]
+            localizer => localizer["knife.captain_picked_swap", ChatColors.Red, ChatColors.Default]
         );
 
         if (_environmentService.IsOfflineMode())
@@ -290,7 +289,7 @@ public class KnifeSystem
             return;
         }
 
-        _gameServer.Message(MessageType.Center, _localizer["knife.skipping"]);
+        _gameServer.MessageEach(MessageType.Center, localizer => localizer["knife.skipping"]);
 
         _gameServer.SendCommands(["mp_restartgame 1;mp_warmup_end"]);
 

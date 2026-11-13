@@ -26,7 +26,7 @@ public partial class FiveStackPlugin
             return;
         }
 
-        string? refusal = _gameBackupRounds.RestoreRefusal(round);
+        string? refusal = _gameBackupRounds.RestoreRefusal(round)?.English;
         if (refusal != null)
         {
             _logger.LogWarning($"Restore round {round} refused: {refusal}");
