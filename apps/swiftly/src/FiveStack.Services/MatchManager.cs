@@ -518,7 +518,7 @@ public class MatchManager
         }
 
         if (
-            (status == eMapStatus.Knife || status == eMapStatus.Live)
+            (status == eMapStatus.Warmup || status == eMapStatus.Knife || status == eMapStatus.Live)
             && MatchUtility.HasPlaceholderMembers(_matchData)
         )
         {
@@ -552,6 +552,17 @@ public class MatchManager
 
         foreach (var player in MatchUtility.Players())
         {
+            if (
+                !LineupMembership.CouldHoldASeat(
+                    _matchData,
+                    player.SteamID.ToString(),
+                    FiveStackPlugin.ConnectRoles.RoleIn(player.SteamID, _matchData.id)
+                )
+            )
+            {
+                continue;
+            }
+
             Guid? lineupId = MatchUtility.GetPlayerLineup(_matchData, player);
 
             players.Add(
@@ -584,8 +595,58 @@ public class MatchManager
             return;
         }
 
+        Dictionary<ulong, Guid?> lineups = new();
+
+        foreach (IPlayer player in MatchUtility.Players())
+        {
+            lineups[player.SteamID] = MatchUtility.GetPlayerLineup(_matchData, player);
+        }
+
+        // A captain claimed or released here reaches the api as an event, and the
+        // api hands back the old flags until it has taken it.
+        if (_matchEvents.IsPending("captain"))
+        {
+            KeepCaptains(matchData);
+        }
+
         _matchData.lineup_1 = matchData.lineup_1;
         _matchData.lineup_2 = matchData.lineup_2;
+
+        foreach (IPlayer player in MatchUtility.Players())
+        {
+            if (
+                lineups.GetValueOrDefault(player.SteamID)
+                != MatchUtility.GetPlayerLineup(_matchData, player)
+            )
+            {
+                EnforceMemberTeam(player);
+            }
+        }
+
+        readySystem.UpdatePlayerStatus();
+    }
+
+    private void KeepCaptains(MatchData matchData)
+    {
+        List<MatchMember> current = _matchData!
+            .lineup_1.lineup_players.Concat(_matchData.lineup_2.lineup_players)
+            .ToList();
+
+        foreach (
+            MatchMember member in matchData.lineup_1.lineup_players.Concat(
+                matchData.lineup_2.lineup_players
+            )
+        )
+        {
+            MatchMember? kept = current.Find(old =>
+                old.steam_id != null && old.steam_id == member.steam_id
+            );
+
+            if (kept != null)
+            {
+                member.captain = kept.captain;
+            }
+        }
     }
 
     public void SetupMatch(MatchData match)

@@ -48,9 +48,9 @@ namespace FiveStack.Utilities
             return onLineup;
         }
 
-        // Each lineup readies up to its own size, counted as RosterCount counts it:
-        // a 5v4 is ready with nine, and a spare ready player on one lineup never
-        // makes up for one missing on the other.
+        // Each lineup readies on its own: up to its own size, counted as RosterCount
+        // counts it, or through its captain or its coach. A 5v4 is ready with nine,
+        // and a spare ready player on one lineup never makes up for the other.
         public static (int Ready, int Target) ReadyCount(
             eReadySettings setting,
             MatchData matchData,
@@ -58,12 +58,48 @@ namespace FiveStack.Utilities
             int expectedPlayers
         )
         {
-            if (setting == eReadySettings.Players)
+            switch (setting)
             {
-                return ReconnectPauseUtility.RosterCount(matchData, ready, expectedPlayers);
+                case eReadySettings.Players:
+                    return ReconnectPauseUtility.RosterCount(matchData, ready, expectedPlayers);
+                case eReadySettings.Captains:
+                    return (
+                        ready
+                            .Select(player =>
+                                LineupMembership.LineupNumber(matchData, player.SteamId, player.Name)
+                            )
+                            .OfType<int>()
+                            .Distinct()
+                            .Count(),
+                        2
+                    );
+                case eReadySettings.Coach:
+                    return (
+                        ready
+                            .Select(player => CoachedLineup(matchData, player.SteamId))
+                            .OfType<int>()
+                            .Distinct()
+                            .Count(),
+                        2
+                    );
             }
 
-            return (ready.Count(), setting == eReadySettings.Admin ? 1 : 2);
+            return (0, 1);
+        }
+
+        private static int? CoachedLineup(MatchData matchData, string steamId)
+        {
+            if (string.IsNullOrEmpty(steamId))
+            {
+                return null;
+            }
+
+            if (matchData.lineup_1.coach_steam_id == steamId)
+            {
+                return 1;
+            }
+
+            return matchData.lineup_2.coach_steam_id == steamId ? 2 : null;
         }
 
         // The seats nobody in the server holds, on each lineup still short of its size.

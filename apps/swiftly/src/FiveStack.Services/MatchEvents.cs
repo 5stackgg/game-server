@@ -170,6 +170,14 @@ public class MatchEvents
         }
     }
 
+    public bool IsPending(string Event)
+    {
+        return _pendingMessages.Values.Any(message =>
+            message.Event.data?.TryGetValue("event", out object? name) == true
+            && name as string == Event
+        );
+    }
+
     public void PublishGameEvent(string Event, Dictionary<string, object> Data)
     {
         if (RoundRestoreGateUtility.DroppedDuringLoad(Event, _restore.LoadingBackup))
@@ -270,7 +278,7 @@ public class MatchEvents
                             && name as string == "players-connected"
                         )
                         {
-                            _matchService.GetMatchFromApi(lineupsOnly: true);
+                            _matchService.GetLineupsFromApi();
                         }
                     }
                     catch (Exception ex)

@@ -19,18 +19,7 @@ namespace FiveStack.Utilities
                 return false;
             }
 
-            return !matchData
-                .lineup_1.lineup_players.Concat(matchData.lineup_2.lineup_players)
-                .Any(member =>
-                    member.is_muted
-                    && (
-                        member.steam_id == steamId
-                        || (
-                            member.steam_id == null
-                            && member.placeholder_name.StartsWith(playerName)
-                        )
-                    )
-                );
+            return LineupMembership.Member(matchData, steamId, playerName)?.is_muted != true;
         }
     }
 }

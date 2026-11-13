@@ -230,7 +230,7 @@ public class ReadySystem
             matchData,
             MatchUtility
                 .Players()
-                .Where(player => _readyPlayers.GetValueOrDefault(player.UserID))
+                .Where(player => _readyPlayers.GetValueOrDefault(player.UserID) && CanVote(player))
                 .Select(player => (player.SteamID.ToString(), player.Name)),
             match.GetExpectedPlayerCount()
         );

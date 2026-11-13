@@ -244,7 +244,9 @@ public class ReadySystem
             MatchUtility
                 .Players()
                 .Where(player =>
-                    player.UserId != null && _readyPlayers.GetValueOrDefault(player.UserId.Value)
+                    player.UserId != null
+                    && _readyPlayers.GetValueOrDefault(player.UserId.Value)
+                    && CanVote(player)
                 )
                 .Select(player => (player.SteamID.ToString(), player.PlayerName)),
             match.GetExpectedPlayerCount()

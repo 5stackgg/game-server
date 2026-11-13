@@ -188,7 +188,7 @@ public class PhaseTimerWiringTests
 
         string service = Code("FiveStack.Services", "MatchService.cs");
 
-        foreach (string signature in new[] { "void GetMatchFromApi(", "void GetMatchFromOffline()" })
+        foreach (string signature in new[] { "void GetMatchFromApi()", "void GetMatchFromOffline()" })
         {
             string fetch = Method(service, signature);
             int create = fetch.IndexOf("GetRequiredService(typeof(MatchManager))", StringComparison.Ordinal);
