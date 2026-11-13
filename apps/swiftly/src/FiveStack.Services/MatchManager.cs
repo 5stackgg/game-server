@@ -402,7 +402,7 @@ public class MatchManager
                 UpdateMapStatus(eMapStatus.Warmup);
                 return;
             case eMapStatus.Warmup:
-                _surrenderSystem.Reset();
+                _surrenderSystem.EndVote();
                 SetupTeams();
                 status = eMapStatus.Warmup;
                 StartWarmup();
@@ -457,15 +457,15 @@ public class MatchManager
                 StartLive();
                 break;
             case eMapStatus.WaitingForTV:
-                _surrenderSystem.Reset();
+                _surrenderSystem.EndVote();
                 break;
             case eMapStatus.Finished:
             case eMapStatus.Surrendered:
-                _surrenderSystem.Reset();
+                _surrenderSystem.EndVote();
                 _matchEvents.ClearPendingRoundResult();
                 break;
             case eMapStatus.UploadingDemo:
-                _surrenderSystem.Reset();
+                _surrenderSystem.EndVote();
                 if (_currentMapStatus == eMapStatus.Unknown || IsMapFinished())
                 {
                     return;

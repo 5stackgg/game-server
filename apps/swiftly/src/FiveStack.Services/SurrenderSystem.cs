@@ -85,17 +85,29 @@ public class SurrenderSystem
         }
 
         Guid? lineupId = LeaverLineup(matchData, steamId.ToString(), playerName);
+        Guid matchId = matchData.id;
 
+        // Outlives the map's phase on purpose: a player who quits just before the
+        // map ends is still reported, only no vote is offered outside play.
         _disconnectTimers[team][steamId] = TimerUtility.AddTimer(
             60 * 3,
             () =>
             {
-                if (!IsMapInPlay())
+                MatchManager? current = _matchService.GetCurrentMatch();
+                if (
+                    current == null
+                    || current.GetMatchData()?.id != matchId
+                    || MatchUtility.Players().Any(player => player.SteamID == steamId)
+                )
                 {
                     return;
                 }
 
-                OfferLeaverSurrender(lineupId, team);
+                if (current.IsInPlay())
+                {
+                    OfferLeaverSurrender(lineupId, team);
+                }
+
                 PlayerAbandonedMatch(steamId);
             }
         );
@@ -139,6 +151,26 @@ public class SurrenderSystem
 
         KeyValuePair<Guid, Team> next = _waitingLineups.First();
         _waitingLineups.Remove(next.Key);
+
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+        if (match == null || matchData == null)
+        {
+            return;
+        }
+
+        if (
+            ReconnectPauseUtility.IsLineupWhole(
+                matchData,
+                MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.Name)),
+                match.GetExpectedPlayerCount(),
+                next.Key
+            )
+        )
+        {
+            return;
+        }
+
         OfferLeaverSurrender(next.Key, next.Value);
     }
 
@@ -366,11 +398,17 @@ public class SurrenderSystem
         _reportedAbandons.Clear();
     }
 
-    public void Reset()
+    // A phase change ends the vote. Leavers' timers keep running to report them.
+    public void EndVote()
     {
         surrenderingVote?.Abandon();
         surrenderingVote = null;
         _waitingLineups.Clear();
+    }
+
+    public void Reset()
+    {
+        EndVote();
 
         foreach (var team in _disconnectTimers.Keys)
         {
