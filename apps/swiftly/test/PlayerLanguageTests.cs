@@ -149,6 +149,8 @@ public class PlayerLanguageTests
         (@"context\.Reply\(", 0),
         (@"\.PauseMatch\(", 1),
         (@"\.ResumeMatch\(", 0),
+        (@"_gameServer\.MessageEach\(", 1),
+        (@"UpdatePlayerName\(", 2),
     ];
 
     private static bool IsEnglish(string text)
@@ -488,6 +490,72 @@ public class PlayerLanguageTests
         Assert.DoesNotContain("RoundRestoreGateUtility.ResumeRefusal(", backups);
         Assert.DoesNotContain("OfflineMatchState.ResetToRound(", backups);
         Assert.Contains("GameServer.Render(localizer,", backups);
+    }
+
+    // A clan tag is one string the whole server sees on the scoreboard, and the
+    // ready system finds its own tags by that string.
+    [Fact]
+    public void AReadyTagIsInTheServersLanguage()
+    {
+        string ready = Compact(Path.Combine("FiveStack.Services", "ReadySystem.cs"));
+
+        Assert.DoesNotContain("\"ready\"", ready);
+        Assert.DoesNotContain("\"notready\"", ready);
+        Assert.Contains(
+            "_gameServer.LocalizerFor(null)[ready?\"ready.tag.ready\":\"ready.tag.not_ready\"]",
+            ready
+        );
+        Assert.True(Translations("en.jsonc").ContainsKey("ready.tag.ready"));
+        Assert.True(Translations("en.jsonc").ContainsKey("ready.tag.not_ready"));
+    }
+
+    // CS:GO cut a clan tag at 15 bytes, and the ready system finds its own tags
+    // by reading them back off the scoreboard.
+    [Theory]
+    [MemberData(nameof(Languages))]
+    public void AScoreboardTagFitsInFifteenBytes(string language)
+    {
+        foreach (string key in new[] { "ready.tag.ready", "ready.tag.not_ready", "camera.tag" })
+        {
+            string tag = Translations(language)[key];
+            int bytes = System.Text.Encoding.UTF8.GetByteCount(tag);
+
+            Assert.True(bytes <= 15, $"{language} {key} \"{tag}\" is {bytes} bytes");
+        }
+    }
+
+    // The api reads the refusal off the RCON reply and shows it to the organizer.
+    [Fact]
+    public void TheApiReadsARestoreRefusalInEnglish()
+    {
+        string command = Compact(Path.Combine("FiveStack.Commands", "BackupRounds.cs"));
+
+        Assert.Contains("string?refusal=_gameBackupRounds.RestoreRefusal(round)?.English;", command);
+        Assert.Contains("context.Reply($\"{RoundRestoreGateUtility.RefusedPrefix}{refusal}\");", command);
+        int from = command.IndexOf("publicvoidOnResetRound(ICommandContextcontext)", StringComparison.Ordinal);
+
+        Assert.True(from >= 0, "the restore_round command is gone");
+        Assert.DoesNotMatch(
+            @"Localiz|localizer",
+            command[from..command.IndexOf("publicvoid", from + 1, StringComparison.Ordinal)]
+        );
+    }
+
+    // Polish, Russian and Ukrainian inflect a noun after most words, and a team
+    // name is one fixed form, so it is set off by brackets or a colon.
+    [Theory]
+    [InlineData("timeout.team_resumed", "{2}")]
+    [InlineData("captain.assigned", "{1}")]
+    [InlineData("match.assigned_team", "{1}")]
+    public void ASlavicLineNeverInflectsATeamName(string key, string team)
+    {
+        foreach (string language in new[] { "pl.jsonc", "ru.jsonc", "uk.jsonc" })
+        {
+            string line = Translations(language)[key];
+            string before = Regex.Replace(line[..line.IndexOf(team, StringComparison.Ordinal)], @"\{\d+\}$", "");
+
+            Assert.Matches(@"(^|[(\[:]\s*)$", before);
+        }
     }
 
     [Fact]

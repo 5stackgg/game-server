@@ -39,6 +39,8 @@
   "ready.waiting_coach": "بانتظار جاهزية المدرب",
   "ready.ready": "جاهز",
   "ready.not_ready": "غير جاهز",
+  "ready.tag.ready": "جاهز",
+  "ready.tag.not_ready": "غير جاهز",
   "ready.marked": "تم تحديدك كـ {0}",
   "ready.players_not_ready": "اللاعبون غير الجاهزين: {0} اكتب {1}r",
   "ready.not_connected": "{0} (غير متصل)",
@@ -137,7 +139,7 @@
   "camera.restored": "عادت جميع الكاميرات - اكتب {0}resume للمتابعة",
   "camera.cannot_resume": "لا يمكن الاستئناف، لا يزال بانتظار كاميرا من: {0}",
   "camera.cannot_ready": "لا يمكنك إعلان الجاهزية حتى تتصل كاميرتك",
-  "camera.tag": "بلا كاميرا",
+  "camera.tag": "بلا كام",
   "camera.not_required": "هذه المباراة لا تتطلب كاميرا",
   "camera.yours_ok": "كاميرتك متصلة",
   "camera.yours_down": "كاميرتك غير متصلة - أعد توصيلها من صفحة المباراة"

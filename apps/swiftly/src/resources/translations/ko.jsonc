@@ -39,6 +39,8 @@
   "ready.waiting_coach": "코치가 준비되기를 기다리는 중",
   "ready.ready": "준비됨",
   "ready.not_ready": "미준비",
+  "ready.tag.ready": "준비됨",
+  "ready.tag.not_ready": "미준비",
   "ready.marked": "{0}(으)로 표시되었습니다",
   "ready.players_not_ready": "플레이어 미준비: {0} {1}r 입력",
   "ready.not_connected": "{0} (연결 안 됨)",

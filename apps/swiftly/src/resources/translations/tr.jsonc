@@ -39,6 +39,8 @@
   "ready.waiting_coach": "Koçun hazır olması bekleniyor",
   "ready.ready": "hazır",
   "ready.not_ready": "hazır değil",
+  "ready.tag.ready": "hazır",
+  "ready.tag.not_ready": "hazır değil",
   "ready.marked": "{0} olarak işaretlendiniz",
   "ready.players_not_ready": "Oyuncular Hazır değil: {0} {1}r yazın",
   "ready.not_connected": "{0} (bağlı değil)",
