@@ -151,11 +151,9 @@ public class OfflineWiringTests
     {
         string surrenders = Service("SurrenderSystem");
 
-        Assert.DoesNotContain(
-            "IsOfflineMode",
-            Method(surrenders, "public void Surrender(Guid lineupId)")
-        );
+        Assert.DoesNotMatch(@"EndGame\w*\(", surrenders);
         Assert.DoesNotContain("TerminateRound(", surrenders);
+        Assert.DoesNotContain("RoundEndReason", surrenders);
         Assert.DoesNotContain(
             "isSurrendered()",
             Method(Events("RoundStart"), "public HookResult OnRoundStart(")

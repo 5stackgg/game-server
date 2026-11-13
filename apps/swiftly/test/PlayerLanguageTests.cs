@@ -397,6 +397,7 @@ public class PlayerLanguageTests
 
     [Theory]
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "There is no surrender in a LAN match")]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "There is no surrender in an offline match")]
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "A surrender vote is already in progress")]
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "Unable to start a surrender vote right now")]
     [InlineData("FiveStack.Commands/Surrender.cs", "Only a player in this match can call a surrender")]
