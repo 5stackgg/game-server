@@ -98,12 +98,14 @@ public class GameServer
         }
     }
 
-    // CounterStrikeSharp throws looking up the language of a SteamID of 0.
+    // CounterStrikeSharp throws looking up the language of a SteamID of 0, and a
+    // plain lookup is in the culture of whoever ran the current command; ForPlayer
+    // with no player is the server's language.
     public string Localize(CCSPlayerController? player, string key, params object[] args)
     {
         if (player == null || player.SteamID == 0)
         {
-            return _localizer[key, args].Value;
+            return _localizer.ForPlayer(null, key, args);
         }
 
         return _localizer.ForPlayer(player, key, args);
