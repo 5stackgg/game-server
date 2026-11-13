@@ -347,6 +347,11 @@ public class MatchManager
 
         _pauseReason = reason;
 
+        if (reason == ePauseReason.Roster)
+        {
+            _timeoutSystem.RosterPauseLanded();
+        }
+
         _logger.LogInformation(
             $"Pausing Match{(message != null ? $": {message(_localizer)}" : "")}"
         );

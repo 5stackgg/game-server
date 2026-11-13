@@ -4,7 +4,7 @@ using Xunit;
 
 // A disconnect, a round start and a timer running out are engine events, so
 // these read the plugin. What a timeout costs is tested in ReconnectTimeoutsTests,
-// and who ends a roster pause in MatchPhaseTests.
+// and who holds for a roster and ends its pause in MatchPhaseTests.
 public class ReconnectTimeoutWiringTests
 {
     private static string SourceDir([CallerFilePath] string testFile = "")
@@ -100,38 +100,110 @@ public class ReconnectTimeoutWiringTests
     }
 
     [Fact]
-    public void A_Timeout_Is_Charged_Before_Its_Timer_Starts_And_Dies_With_The_Phase()
+    public void A_Timeout_Takes_Its_Count_And_Length_From_The_Servers_Settings()
     {
-        string start = Timeout("private bool StartReconnectTimeout(");
+        string charge = Timeout("private bool ChargeReconnectTimeout(");
 
-        Before(start, "_reconnectTimeouts.Charge(", "match.PhaseTimer(seconds, EndReconnectTimeout);");
-        Assert.Contains("\"mp_technical_timeout_duration_s\"", start);
-        Assert.Contains("\"mp_technical_timeout_per_team\"", start);
-        Assert.Contains("return false;", start);
+        Before(charge, "\"mp_technical_timeout_duration_s\"", "_reconnectTimeouts.Charge(");
+        Before(charge, "_reconnectTimeouts.Charge(", "\"mp_technical_timeout_per_team\"");
+        Assert.Contains(
+            "match.PhaseTimer(seconds, EndReconnectTimeout);",
+            Timeout("private void StartReconnectTimer(")
+        );
+    }
+
+    // Behind a tactical timeout the pause is retried for up to 45 seconds, and a
+    // clock started at the drop would run, or run out, before anyone is paused.
+    [Fact]
+    public void The_Clock_Starts_When_The_Pause_Lands()
+    {
+        string hold = Timeout("public bool HoldForRoster(");
+
+        Assert.Matches(
+            @"if \(held == ePauseReason\.Roster\)\s*\{\s*StartReconnectTimer\(match\);\s*\}\s*else\s*\{\s*_reconnectTimeoutOwed = true;\s*\}",
+            hold
+        );
+        Assert.Matches(
+            @"if \(IsPaused\(\)\)\s*\{\s*HoldPauseFor\(reason\);\s*return;\s*\}\s*_pauseReason = reason;\s*if \(reason == ePauseReason\.Roster\)\s*\{\s*_timeoutSystem\.RosterPauseLanded\(\);\s*\}",
+            Method(Code("FiveStack.Services", "MatchManager.cs"), "public void PauseMatch(")
+        );
+        Assert.Matches(
+            @"_reconnectTimeoutOwed = false;\s*StartReconnectTimer\(match\);",
+            Timeout("public void RosterPauseLanded()")
+        );
     }
 
     // A person, a camera or a restore that took the pause over ends it instead.
     [Fact]
-    public void A_Spent_Timeout_Only_Resumes_A_Pause_The_Roster_Still_Owns()
+    public void A_Spent_Timeout_Only_Settles_A_Pause_The_Roster_Still_Owns()
     {
         string end = Timeout("private void EndReconnectTimeout(");
 
-        Before(end, "StopReconnectTimeout();", "RosterOwnsPause()");
-        Before(end, "!RosterOwnsPause()", "ResumeMatch(");
-        Assert.Matches(@"!RosterOwnsPause\(\)\s*\)\s*\{\s*return;\s*\}", end);
+        Before(end, "StopReconnectTimer();", "RosterOwnsPause()");
+        Assert.Matches(
+            @"!RosterOwnsPause\(\)\s*\)\s*\{\s*return;\s*\}\s*SettleRosterPause\(",
+            end
+        );
+        Assert.DoesNotContain("ResumeMatch(", end);
+    }
+
+    // ResumeMatch refuses during a tactical timeout or a round restore, and
+    // nothing else comes back to a pause whose timeouts are spent.
+    [Fact]
+    public void A_Timeout_That_Runs_Out_While_A_Resume_Is_Refused_Looks_Again()
+    {
+        Assert.Matches(
+            @"^[^{]*\{\s*if \(IsTimeoutActive\(\) \|\| _backUpManagement\.IsResettingRound\(\)\)\s*\{\s*_reconnectTimer = match\.PhaseTimer\(1, EndReconnectTimeout\);\s*return;\s*\}",
+            Timeout("private void SettleRosterPause(")
+        );
     }
 
     // A lineup with nobody left would have the other side play rounds out alone.
     [Fact]
     public void A_Spent_Timeout_Is_Followed_By_The_Next_One_And_Never_Resumes_Into_An_Empty_Lineup()
     {
-        string end = Timeout("private void EndReconnectTimeout(");
+        string settle = Timeout("private void SettleRosterPause(");
+
+        Before(settle, "ReconnectPauseUtility.IsALineupEmpty(", "ChargeReconnectTimeout(");
+        Assert.Matches(
+            @"if \(_waitsOnEmptyLineup\)\s*\{\s*return;\s*\}\s*if \(ChargeReconnectTimeout\(match, matchData, connected\)\)\s*\{\s*StartReconnectTimer\(match\);\s*return;\s*\}\s*match\.ResumeMatch\(",
+            settle
+        );
+        Assert.Contains("\"match.reconnect_timeout_over\"", settle);
+    }
+
+    [Fact]
+    public void A_Lineup_With_Nobody_Left_Is_Waited_On_Before_Anything_Is_Charged()
+    {
+        string hold = Timeout("public bool HoldForRoster(");
+
+        Before(hold, "ReconnectPauseUtility.IsALineupEmpty(", "ChargeReconnectTimeout(");
+        Assert.Matches(@"if \(_waitsOnEmptyLineup\)\s*\{\s*return true;\s*\}", hold);
+    }
+
+    // The roster is whole only a tick after player_connect_full, which is where
+    // a reconnect is looked at.
+    [Fact]
+    public void A_Reconnect_Is_Told_To_The_Timeouts_Before_The_Roster_Resumes()
+    {
+        string resume = Method(
+            Code("FiveStack.Services", "SurrenderSystem.cs"),
+            "public void ResumeIfRosterWhole()"
+        );
+
+        Before(resume, "match.timeoutSystem.RosterChanged(connected);", "RosterOwnsPause()");
+    }
+
+    // A lineup that was empty and is now only short has its timeouts to spend.
+    [Fact]
+    public void A_Player_Back_On_An_Empty_Lineup_Ends_The_Wait()
+    {
+        string changed = Timeout("public void RosterChanged(");
 
         Assert.Matches(
-            @"if \(\s*ReconnectPauseUtility\.IsALineupEmpty\((?:[^()]|\([^()]*\))*\)\s*\|\|\s*StartReconnectTimeout\(match, matchData, connected\)\s*\)\s*\{\s*return;\s*\}\s*match\.ResumeMatch\(",
-            end
+            @"if \(RosterOwnsPause\(\)\)\s*\{\s*SettleRosterPause\(match, matchData, players\);\s*return;\s*\}\s*_waitsOnEmptyLineup = false;\s*_reconnectTimeoutOwed =\s*match\.GetPauseReason\(\) == null && ChargeReconnectTimeout\(match, matchData, players\);",
+            changed
         );
-        Assert.Contains("\"match.reconnect_timeout_over\"", end);
     }
 
     [Fact]
@@ -139,18 +211,26 @@ public class ReconnectTimeoutWiringTests
     {
         Assert.Contains("StopReconnectTimeout();", Timeout("public void Reset()"));
         Assert.Matches(
-            @"KillPhaseTimer\(_reconnectTimer\);\s*\}\s*_reconnectTimer = null;\s*_reconnectTimeoutEnds = null;",
+            @"StopReconnectTimer\(\);\s*if \(_reconnectTimeoutOwed\)\s*\{\s*_reconnectTimeouts\.Refund\(\);\s*\}\s*_reconnectTimeoutOwed = false;\s*_waitsOnEmptyLineup = false;",
             Timeout("private void StopReconnectTimeout()")
+        );
+        Assert.Matches(
+            @"KillPhaseTimer\(_reconnectTimer\);\s*\}\s*_reconnectTimer = null;\s*_reconnectTimeoutEnds = null;",
+            Timeout("private void StopReconnectTimer()")
         );
     }
 
     [Fact]
-    public void A_Timeout_Already_Running_Is_Not_Charged_Twice()
+    public void A_Timeout_Already_Given_Is_Not_Charged_Twice()
     {
         string hold = Timeout("public bool HoldForRoster(");
 
-        Before(hold, "match.IsLan() || _reconnectTimer != null", "StartReconnectTimeout(");
-        Before(hold, "held != ePauseReason.Roster", "StartReconnectTimeout(");
+        Before(
+            hold,
+            "match.IsLan() || _reconnectTimeoutOwed || _reconnectTimer != null",
+            "ChargeReconnectTimeout("
+        );
+        Before(hold, "held != ePauseReason.Roster", "ChargeReconnectTimeout(");
     }
 
     [Fact]

@@ -274,6 +274,8 @@ public class SurrenderSystem
                 surrenderingVote?.CancelVote();
             }
 
+            match.timeoutSystem.RosterChanged(connected);
+
             if (
                 !match.timeoutSystem.RosterOwnsPause()
                 || ReconnectPauseUtility.ShouldPause(matchData, connected, match.GetExpectedPlayerCount())

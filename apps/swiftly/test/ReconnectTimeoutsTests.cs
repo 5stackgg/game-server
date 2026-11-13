@@ -95,6 +95,45 @@ public class ReconnectTimeoutsTests
     }
 
     [Fact]
+    public void A_Timeout_Whose_Pause_Never_Happened_Is_Given_Back()
+    {
+        ReconnectTimeouts timeouts = new();
+        timeouts.Charge(MapA, [Lineup1, Lineup2], 1);
+
+        timeouts.Refund();
+
+        Assert.True(timeouts.Charge(MapA, [Lineup1], 1));
+        Assert.True(timeouts.Charge(MapA, [Lineup2], 1));
+    }
+
+    [Fact]
+    public void Only_The_Last_Timeout_Is_Given_Back_And_Only_Once()
+    {
+        ReconnectTimeouts timeouts = new();
+        timeouts.Charge(MapA, [Lineup1], 2);
+        timeouts.Charge(MapA, [Lineup1], 2);
+
+        timeouts.Refund();
+        timeouts.Refund();
+
+        Assert.True(timeouts.Charge(MapA, [Lineup1], 2));
+        Assert.False(timeouts.Charge(MapA, [Lineup1], 2));
+    }
+
+    [Fact]
+    public void A_Lineup_That_Paid_Nothing_Is_Given_Nothing_Back()
+    {
+        ReconnectTimeouts timeouts = new();
+        timeouts.Charge(MapA, [Lineup1], 1);
+        timeouts.Charge(MapA, [Lineup1, Lineup2], 1);
+
+        timeouts.Refund();
+
+        Assert.False(timeouts.Charge(MapA, [Lineup1], 1));
+        Assert.True(timeouts.Charge(MapA, [Lineup2], 1));
+    }
+
+    [Fact]
     public void Only_The_Lineup_Missing_A_Player_Is_Short()
     {
         MatchData match = Match();

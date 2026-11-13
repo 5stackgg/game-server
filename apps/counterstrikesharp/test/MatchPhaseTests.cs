@@ -455,17 +455,129 @@ public class MatchPhaseTests
         Assert.False(server.Timeout.HoldsForRoster());
     }
 
+    private static readonly Guid ReconnectMap = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    private static readonly Guid ReconnectLineup = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private static Server WithLineup(Server server, int players)
+    {
+        MatchData matchData = server.Match.GetMatchData()!;
+        matchData.lineup_1_id = ReconnectLineup;
+        matchData.lineup_1.lineup_players.AddRange(
+            Enumerable
+                .Range(0, players)
+                .Select(i => new MatchMember { steam_id = $"7656119800000{i:D4}" })
+        );
+
+        return server;
+    }
+
+    private static ReconnectTimeouts Timeouts(Server server)
+    {
+        return (ReconnectTimeouts)Get(server.Timeout, "_reconnectTimeouts")!;
+    }
+
+    private static int TimeoutsUsed(Server server)
+    {
+        return ((Dictionary<Guid, int>)Get(Timeouts(server), "_used")!).Values.Sum();
+    }
+
     [Fact]
     public void Resuming_Ends_The_Timeout_A_Missing_Player_Was_Given()
     {
         Server server = PausedFor("Roster");
+        Timer timer = Bare<Timer>();
+        Assert.Empty((List<Timer>)Get(server.Match, "_phaseTimers")!);
+        Set(server.Timeout, "_reconnectTimer", timer);
         Set(server.Timeout, "_reconnectTimeoutEnds", DateTime.UtcNow.AddSeconds(90));
 
         Assert.InRange(server.Timeout.ReconnectTimeoutSecondsLeft() ?? 0, 1, 90);
+        Assert.True(server.Timeout.HoldsForRoster());
 
         server.Timeout.Reset();
 
+        Assert.Empty((List<Timer>)Get(server.Match, "_phaseTimers")!);
+        Assert.Null(Get(server.Timeout, "_reconnectTimer"));
         Assert.Null(server.Timeout.ReconnectTimeoutSecondsLeft());
+        Assert.False(server.Timeout.HoldsForRoster());
+    }
+
+    [Theory]
+    [InlineData("_reconnectTimeoutOwed", true)]
+    [InlineData("_reconnectTimer", null)]
+    public void A_Timeout_Already_Given_Holds_For_A_Second_Drop_At_No_Cost(
+        string field,
+        object? value
+    )
+    {
+        Server server = WithLineup(On(eMapStatus.Live), 2);
+        Timer timer = Bare<Timer>();
+        Set(server.Timeout, field, value ?? timer);
+
+        Assert.True(server.Timeout.HoldForRoster([("76561198000000000", "player0")]));
+        Assert.Equal(0, TimeoutsUsed(server));
+    }
+
+    // Playing on would give the other side rounds against no one.
+    [Fact]
+    public void A_Lineup_With_Nobody_Left_Is_Waited_On_At_No_Cost()
+    {
+        Server server = WithLineup(On(eMapStatus.Live), 2);
+
+        Assert.True(server.Timeout.HoldForRoster([]));
+        Assert.True(server.Timeout.HoldsForRoster());
+        Assert.Equal(0, TimeoutsUsed(server));
+        Assert.Null(Get(server.Timeout, "_reconnectTimer"));
+    }
+
+    // Behind a tactical timeout the pause is retried, and the player can be back
+    // before it lands.
+    [Fact]
+    public void A_Player_Back_Before_The_Pause_Lands_Gets_Their_Lineups_Timeout_Back()
+    {
+        Server server = WithLineup(On(eMapStatus.Live), 1);
+        Timeouts(server).Charge(ReconnectMap, [ReconnectLineup], 1);
+        Set(server.Timeout, "_reconnectTimeoutOwed", true);
+
+        server.Timeout.RosterChanged([("76561198000000000", "player0")]);
+
+        Assert.False(server.Timeout.HoldsForRoster());
+        Assert.Equal(0, TimeoutsUsed(server));
+    }
+
+    [Fact]
+    public void A_Timeout_Stays_Owed_While_The_Lineup_Is_Still_Short()
+    {
+        Server server = WithLineup(On(eMapStatus.Live), 2);
+        Timeouts(server).Charge(ReconnectMap, [ReconnectLineup], 1);
+        Set(server.Timeout, "_reconnectTimeoutOwed", true);
+
+        server.Timeout.RosterChanged([("76561198000000000", "player0")]);
+
+        Assert.True(server.Timeout.HoldsForRoster());
+        Assert.Equal(1, TimeoutsUsed(server));
+    }
+
+    [Fact]
+    public void Resuming_Gives_Back_A_Timeout_Whose_Pause_Never_Landed()
+    {
+        Server server = WithLineup(On(eMapStatus.Live), 2);
+        Timeouts(server).Charge(ReconnectMap, [ReconnectLineup], 1);
+        Set(server.Timeout, "_reconnectTimeoutOwed", true);
+
+        server.Timeout.Reset();
+
+        Assert.False(server.Timeout.HoldsForRoster());
+        Assert.Equal(0, TimeoutsUsed(server));
+    }
+
+    [Fact]
+    public void A_Whole_Roster_Stops_Waiting_On_A_Lineup_That_Was_Empty()
+    {
+        Server server = WithLineup(On(eMapStatus.Live), 1);
+        Set(server.Timeout, "_waitsOnEmptyLineup", true);
+
+        server.Timeout.RosterChanged([("76561198000000000", "player0")]);
+
         Assert.False(server.Timeout.HoldsForRoster());
     }
 

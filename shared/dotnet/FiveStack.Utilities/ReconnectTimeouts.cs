@@ -3,6 +3,7 @@ namespace FiveStack.Utilities;
 public class ReconnectTimeouts
 {
     private readonly Dictionary<Guid, int> _used = new Dictionary<Guid, int>();
+    private readonly List<Guid> _lastCharged = new List<Guid>();
     private Guid? _mapId;
 
     // One timeout holds the match for every lineup that is short, so each of
@@ -16,7 +17,7 @@ public class ReconnectTimeouts
             _used.Clear();
         }
 
-        bool charged = false;
+        _lastCharged.Clear();
 
         foreach (Guid lineup in shortLineups.Distinct())
         {
@@ -28,9 +29,20 @@ public class ReconnectTimeouts
             }
 
             _used[lineup] = used + 1;
-            charged = true;
+            _lastCharged.Add(lineup);
         }
 
-        return charged;
+        return _lastCharged.Count > 0;
+    }
+
+    // A timeout whose pause never happened is given back.
+    public void Refund()
+    {
+        foreach (Guid lineup in _lastCharged)
+        {
+            _used[lineup] = Math.Max(0, _used.GetValueOrDefault(lineup) - 1);
+        }
+
+        _lastCharged.Clear();
     }
 }
