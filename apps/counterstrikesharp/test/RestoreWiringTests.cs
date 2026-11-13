@@ -58,6 +58,17 @@ public class RestoreWiringTests
     }
 
     [Fact]
+    public void AnOnlineServerReadsTheFirstRoundsBackupOffDisk()
+    {
+        string backupOf = Method(Backups(), "private BackupRound? BackupOf(");
+
+        Assert.Contains("RoundRestoreGateUtility.ReadsBackupFromDisk(round, status)", backupOf);
+        Assert.DoesNotContain("IsOfflineMode", backupOf);
+        Assert.Contains("BackupOf(match, matchMap, round)", Method(Backups(), "public void RestoreRound(int round)"));
+        Assert.Contains("BackupOf(match, matchMap, round)", Method(Backups(), "public string? RestoreRefusal(int round)"));
+    }
+
+    [Fact]
     public void AnOrganizerRestoreIsOnlyRefusedForAVoteOrALoadAsOnMain()
     {
         string refusal = Method(Backups(), "public string? RestoreRefusal(int round)");
