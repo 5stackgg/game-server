@@ -94,6 +94,7 @@
   "vote.prompt_count_timer": " Voter pour {0} ({1}s)",
   "vote.prompt_options_timer": " Voter pour {0} ({1}y ou {2}n) ({3}s)",
   "surrender.vote": "Abandonner",
+  "vote.choose_one": "Plusieurs votes sont ouverts, réponds à l'un d'eux : {0}",
 
   "camera.paused": "Match en pause - pas de caméra de : {0}",
   "camera.waiting": "En attente de caméra : {0}",

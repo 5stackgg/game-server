@@ -87,5 +87,6 @@
   "vote.prompt_count": " Голосувати за {0}",
   "vote.prompt_options": " Голосувати за {0} ({1}y або {2}n)",
   "vote.prompt_count_timer": " Голосувати за {0} ({1}s)",
-  "vote.prompt_options_timer": " Голосувати за {0} ({1}y або {2}n) ({3}s)"
+  "vote.prompt_options_timer": " Голосувати за {0} ({1}y або {2}n) ({3}s)",
+  "vote.choose_one": "Відкрито кілька голосувань, дайте відповідь на одне: {0}"
 }

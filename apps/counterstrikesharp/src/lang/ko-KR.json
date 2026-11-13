@@ -86,5 +86,6 @@
   "vote.prompt_count": " {0} 에 투표",
   "vote.prompt_options": " {0} 에 투표 ({1}y 또는 {2}n)",
   "vote.prompt_count_timer": " {0} 에 투표 ({1}s)",
-  "vote.prompt_options_timer": " {0} 에 투표 ({1}y 또는 {2}n) ({3}s)"
+  "vote.prompt_options_timer": " {0} 에 투표 ({1}y 또는 {2}n) ({3}s)",
+  "vote.choose_one": "진행 중인 투표가 둘 이상입니다. 하나에 응답하세요: {0}"
 }

@@ -94,6 +94,7 @@
   "vote.prompt_count_timer": " 投票 {0} ({1}s)",
   "vote.prompt_options_timer": " 投票 {0}（{1}y 或 {2}n）({3}s)",
   "surrender.vote": "投降",
+  "vote.choose_one": "有多个投票正在进行，请回答其中一个：{0}",
 
   "camera.paused": "比赛已暂停 - 以下玩家没有摄像头: {0}",
   "camera.waiting": "等待摄像头: {0}",

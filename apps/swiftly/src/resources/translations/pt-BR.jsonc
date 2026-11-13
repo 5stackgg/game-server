@@ -96,6 +96,7 @@
   "vote.prompt_count_timer": "Votar para {0} ({1}s)",
   "vote.prompt_options_timer": "Votar para {0} ({1}y ou {2}n) ({3}s)",
   "surrender.vote": "Render-se",
+  "vote.choose_one": "Há mais de uma votação aberta, responda a uma: {0}",
 
   "camera.paused": "Partida pausada - sem câmera de: {0}",
   "camera.waiting": "Aguardando câmera: {0}",

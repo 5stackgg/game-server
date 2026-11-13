@@ -94,6 +94,7 @@
   "vote.prompt_count_timer": " Голосовать за {0} ({1}s)",
   "vote.prompt_options_timer": " Голосовать за {0} ({1}y или {2}n) ({3}s)",
   "surrender.vote": "Сдаться",
+  "vote.choose_one": "Открыто несколько голосований, ответьте на одно: {0}",
 
   "camera.paused": "Матч на паузе - нет камеры от: {0}",
   "camera.waiting": "Ожидание камеры: {0}",
