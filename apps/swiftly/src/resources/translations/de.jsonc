@@ -89,6 +89,7 @@
   "vote.prompt_options": " Abstimmen für {0} ({1}y oder {2}n)",
   "vote.prompt_count_timer": " Abstimmen für {0} ({1}s)",
   "vote.prompt_options_timer": " Abstimmen für {0} ({1}y oder {2}n) ({3}s)",
+  "vote.choose_one": "Mehr als eine Abstimmung ist offen, beantworte eine: {0}",
 
   "camera.paused": "Match pausiert - keine Kamera von: {0}",
   "camera.waiting": "Warte auf Kamera: {0}",

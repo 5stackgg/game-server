@@ -77,5 +77,6 @@
   "vote.prompt_count": " Stem for {0}",
   "vote.prompt_options": " Stem for {0} ({1}y eller {2}n)",
   "vote.prompt_count_timer": " Stem for {0} ({1}s)",
-  "vote.prompt_options_timer": " Stem for {0} ({1}y eller {2}n) ({3}s)"
+  "vote.prompt_options_timer": " Stem for {0} ({1}y eller {2}n) ({3}s)",
+  "vote.choose_one": "Der er mere end én afstemning åben, svar på én: {0}"
 }
