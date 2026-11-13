@@ -8,6 +8,7 @@
   "help.tech_pause": " {0}tech, {1}resume - Pausa tecnica",
   "help.rules": " {0}rules - Regole",
   "help.restore_round": " {0}reset <round> - Ripristina all'inizio del round",
+  "help.stop": " {0}stop - Rigioca il round attuale",
 
   "rules.title": "  Regole:",
   "rules.with_overtime": "con tempi supplementari",
@@ -47,6 +48,10 @@
   "timeout.vote.technical_passed": "Votazione pausa tecnica approvata",
   "timeout.player_paused": "{0} {1}ha messo in pausa il match",
   "timeout.not_allowed": " {0}non sei autorizzato a richiedere un(a) {1} nel match!",
+  "match.map_over_next_map": "Mappa completata — la prossima mappa sta per iniziare, resta connesso.",
+  "match.map_over_series_done": "Match completato — le statistiche appariranno nella pagina del match una volta elaborata la demo.",
+  "match.offline_over": "Il match è finito — su questo server non c'è più niente da giocare.",
+  "timeout.cannot_resume_empty_team": "Impossibile riprendere finché una squadra non ha giocatori connessi",
   "timeout.admin_resumed": "L'admin ha ripreso il match",
   "timeout.vote.resume": "Riprendi",
   "timeout.vote.resume_passed": "Votazione per riprendere approvata",
@@ -77,5 +82,15 @@
   "vote.prompt_count": " Votare per {0}",
   "vote.prompt_options": " Votare per {0} ({1}y o {2}n)",
   "vote.prompt_count_timer": " Votare per {0} ({1}s)",
-  "vote.prompt_options_timer": " Votare per {0} ({1}y o {2}n) ({3}s)"
+  "vote.prompt_options_timer": " Votare per {0} ({1}y o {2}n) ({3}s)",
+
+  "camera.paused": "Match in pausa - nessuna webcam da: {0}",
+  "camera.waiting": "In attesa della webcam: {0}",
+  "camera.restored": "Tutte le webcam sono tornate - digita {0}resume per continuare",
+  "camera.cannot_resume": "Impossibile riprendere, ancora in attesa di una webcam da: {0}",
+  "camera.cannot_ready": "Non puoi segnarti pronto finché la tua webcam non è connessa",
+  "camera.tag": "no cam",
+  "camera.not_required": "Questo match non richiede una webcam",
+  "camera.yours_ok": "La tua webcam è connessa",
+  "camera.yours_down": "La tua webcam NON è connessa - ricollegala dalla pagina del match"
 }

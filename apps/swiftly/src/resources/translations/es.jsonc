@@ -8,6 +8,7 @@
   "help.tech_pause": " {0}tech, {1}resume - Pausa técnica",
   "help.rules": " {0}rules - Reglas",
   "help.restore_round": " {0}reset <round> - Restaurar al inicio de la ronda",
+  "help.stop": " {0}stop - Repetir la ronda actual",
 
   "rules.title": "  Reglas:",
   "rules.with_overtime": "con prórroga",
@@ -47,6 +48,10 @@
   "timeout.vote.technical_passed": "Votación de pausa técnica aprobada",
   "timeout.player_paused": "{0} {1}pausó la partida",
   "timeout.not_allowed": " {0}no tienes permiso para solicitar un(a) {1} en la partida!",
+  "match.map_over_next_map": "Mapa terminado — el siguiente mapa está por comenzar, mantente conectado.",
+  "match.map_over_series_done": "Partida terminada — las estadísticas aparecerán en la página de la partida cuando termine de procesarse la demo.",
+  "match.offline_over": "La partida ha terminado — no queda nada por jugar en este servidor.",
+  "timeout.cannot_resume_empty_team": "No se puede reanudar mientras un equipo no tenga jugadores conectados",
   "timeout.admin_resumed": "El administrador reanudó la partida",
   "timeout.vote.resume": "Reanudar",
   "timeout.vote.resume_passed": "Votación para reanudar aprobada",
@@ -77,5 +82,15 @@
   "vote.prompt_count": " Votar para {0}",
   "vote.prompt_options": " Votar para {0} ({1}y o {2}n)",
   "vote.prompt_count_timer": " Votar para {0} ({1}s)",
-  "vote.prompt_options_timer": " Votar para {0} ({1}y o {2}n) ({3}s)"
+  "vote.prompt_options_timer": " Votar para {0} ({1}y o {2}n) ({3}s)",
+
+  "camera.paused": "Partida pausada - sin cámara de: {0}",
+  "camera.waiting": "Esperando cámara: {0}",
+  "camera.restored": "Todas las cámaras han vuelto - escribe {0}resume para continuar",
+  "camera.cannot_resume": "No se puede reanudar, aún esperando una cámara de: {0}",
+  "camera.cannot_ready": "No puedes marcarte listo hasta que tu cámara esté conectada",
+  "camera.tag": "sin cám",
+  "camera.not_required": "Esta partida no requiere cámara",
+  "camera.yours_ok": "Tu cámara está conectada",
+  "camera.yours_down": "Tu cámara NO está conectada - vuelve a conectarla desde la página de la partida"
 }

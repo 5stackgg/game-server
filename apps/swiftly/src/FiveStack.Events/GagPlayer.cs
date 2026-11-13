@@ -30,7 +30,11 @@ public partial class FiveStackPlugin
 
         if (MatchUtility.IsGagged(matchData, player.SteamID.ToString(), player.Name))
         {
-            _gameServer.Message(MessageType.Chat, _localizer["gag.you_are_gagged"], player);
+            _gameServer.Message(
+                MessageType.Chat,
+                _gameServer.LocalizerFor(player)["gag.you_are_gagged"],
+                player
+            );
             return HookResult.Stop;
         }
 

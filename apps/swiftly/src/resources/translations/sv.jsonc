@@ -8,6 +8,7 @@
   "help.tech_pause": " {0}tech, {1}resume - Teknisk paus",
   "help.rules": " {0}rules - Regler",
   "help.restore_round": " {0}reset <round> - Återställ till början av rundan",
+  "help.stop": " {0}stop - Spela om den aktuella rundan",
 
   "rules.title": "  Regler:",
   "rules.with_overtime": "med förlängning",
@@ -47,6 +48,10 @@
   "timeout.vote.technical_passed": "Röstning om teknisk timeout godkänd",
   "timeout.player_paused": "{0} {1}pausade matchen",
   "timeout.not_allowed": " {0}du får inte begära {1} i matchen!",
+  "match.map_over_next_map": "Kartan är klar — nästa karta kommer strax, håll dig ansluten.",
+  "match.map_over_series_done": "Matchen är klar — statistiken visas på matchsidan när demon har bearbetats.",
+  "match.offline_over": "Matchen är över — det finns inget mer att spela på den här servern.",
+  "timeout.cannot_resume_empty_team": "Kan inte återuppta medan ett lag saknar anslutna spelare",
   "timeout.admin_resumed": "Admin återupptog matchen",
   "timeout.vote.resume": "Återuppta",
   "timeout.vote.resume_passed": "Röstning om återupptagning godkänd",
@@ -77,5 +82,15 @@
   "vote.prompt_count": " Rösta för {0}",
   "vote.prompt_options": " Rösta för {0} ({1}y eller {2}n)",
   "vote.prompt_count_timer": " Rösta för {0} ({1}s)",
-  "vote.prompt_options_timer": " Rösta för {0} ({1}y eller {2}n) ({3}s)"
+  "vote.prompt_options_timer": " Rösta för {0} ({1}y eller {2}n) ({3}s)",
+
+  "camera.paused": "Matchen pausad - ingen kamera från: {0}",
+  "camera.waiting": "Väntar på kamera: {0}",
+  "camera.restored": "Alla kameror är tillbaka - skriv {0}resume för att fortsätta",
+  "camera.cannot_resume": "Kan inte återuppta, väntar fortfarande på en kamera från: {0}",
+  "camera.cannot_ready": "Du kan inte markera dig som redo förrän din kamera är ansluten",
+  "camera.tag": "ingen kam",
+  "camera.not_required": "Den här matchen kräver ingen kamera",
+  "camera.yours_ok": "Din kamera är ansluten",
+  "camera.yours_down": "Din kamera är INTE ansluten - anslut den igen från matchsidan"
 }

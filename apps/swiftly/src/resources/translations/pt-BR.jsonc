@@ -8,6 +8,7 @@
   "help.tech_pause": "{0}tech, {1}resume - Pausa técnica",
   "help.rules": "{0}rules - Regras",
   "help.restore_round": "{0}reset <round> - Restaurar para o início do round",
+  "help.stop": "{0}stop - Jogar novamente o round atual",
 
   "rules.title": "  Regras:",
   "rules.with_overtime": "com Overtime",
@@ -47,6 +48,9 @@
   "timeout.vote.technical_passed": "Votação de pause técnico aprovada",
   "timeout.player_paused": "{0} {1}pausou a partida",
   "timeout.not_allowed": "{0}você não tem permissão para chamar um {1} na partida!",
+  "match.map_over_next_map": "Mapa concluído — o próximo mapa já vai começar, fique conectado.",
+  "match.map_over_series_done": "Partida concluída — as estatísticas aparecerão na página da partida quando a demo terminar de ser processada.",
+  "match.offline_over": "A partida acabou — não há mais nada para jogar neste servidor.",
 
   "timeout.admin_resumed": "Admin retomou a partida",
   "timeout.cannot_resume_empty_team": "Não é possível retomar enquanto um time não tem jogadores conectados",

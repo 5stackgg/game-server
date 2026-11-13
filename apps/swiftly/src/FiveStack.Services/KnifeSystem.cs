@@ -127,7 +127,7 @@ public class KnifeSystem
         }
 
         captain.SendCenter(
-            _localizer[
+            _gameServer.LocalizerFor(captain)[
                 "knife.captain_prompt",
                 ChatColors.Green,
                 CommandUtility.PublicChatTrigger,
@@ -205,7 +205,7 @@ public class KnifeSystem
         {
             _gameServer.Message(
                 MessageType.Chat,
-                _localizer["knife.not_captain", ChatColors.Red],
+                _gameServer.LocalizerFor(player)["knife.not_captain", ChatColors.Red],
                 player
             );
             return;
@@ -235,7 +235,7 @@ public class KnifeSystem
         {
             _gameServer.Message(
                 MessageType.Chat,
-                _localizer["knife.not_captain", ChatColors.Red],
+                _gameServer.LocalizerFor(player)["knife.not_captain", ChatColors.Red],
                 player
             );
             return;

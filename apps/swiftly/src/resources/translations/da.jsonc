@@ -8,6 +8,7 @@
   "help.tech_pause": " {0}tech, {1}resume - Teknisk pause",
   "help.rules": " {0}rules - Regler",
   "help.restore_round": " {0}reset <round> - Gendan til starten af runden",
+  "help.stop": " {0}stop - Genspil den nuværende runde",
 
   "rules.title": "  Regler:",
   "rules.with_overtime": "med overtid",
@@ -47,6 +48,10 @@
   "timeout.vote.technical_passed": "Afstemning om teknisk timeout godkendt",
   "timeout.player_paused": "{0} {1}satte kampen på pause",
   "timeout.not_allowed": " {0}du har ikke tilladelse til at kalde en {1} i kampen!",
+  "match.map_over_next_map": "Banen er færdig — næste bane er på vej, bliv forbundet.",
+  "match.map_over_series_done": "Kampen er færdig — statistik vises på kampsiden, når demoen er færdigbehandlet.",
+  "match.offline_over": "Kampen er slut — der er ikke mere at spille på denne server.",
+  "timeout.cannot_resume_empty_team": "Kan ikke genoptage, mens et hold ikke har nogen spillere forbundet",
   "timeout.admin_resumed": "Admin genoptog kampen",
   "timeout.vote.resume": "Genoptag",
   "timeout.vote.resume_passed": "Afstemning om genoptagelse godkendt",
@@ -77,5 +82,15 @@
   "vote.prompt_count": " Stem for {0}",
   "vote.prompt_options": " Stem for {0} ({1}y eller {2}n)",
   "vote.prompt_count_timer": " Stem for {0} ({1}s)",
-  "vote.prompt_options_timer": " Stem for {0} ({1}y eller {2}n) ({3}s)"
+  "vote.prompt_options_timer": " Stem for {0} ({1}y eller {2}n) ({3}s)",
+
+  "camera.paused": "Kampen er sat på pause - intet kamera fra: {0}",
+  "camera.waiting": "Venter på kamera: {0}",
+  "camera.restored": "Alle kameraer er tilbage - skriv {0}resume for at fortsætte",
+  "camera.cannot_resume": "Kan ikke genoptage, venter stadig på et kamera fra: {0}",
+  "camera.cannot_ready": "Du kan ikke blive klar, før dit kamera er forbundet",
+  "camera.tag": "intet kam",
+  "camera.not_required": "Denne kamp kræver ikke et kamera",
+  "camera.yours_ok": "Dit kamera er forbundet",
+  "camera.yours_down": "Dit kamera er IKKE forbundet - forbind det igen fra kampsiden"
 }

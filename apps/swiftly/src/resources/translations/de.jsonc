@@ -8,6 +8,7 @@
   "help.tech_pause": " {0}tech, {1}resume - Technische Pause",
   "help.rules": " {0}rules - Regeln",
   "help.restore_round": " {0}reset <round> - Zum Beginn der Runde zurückkehren",
+  "help.stop": " {0}stop - Aktuelle Runde wiederholen",
 
   "rules.title": "  Regeln:",
   "rules.with_overtime": "mit Verlängerung",
@@ -47,6 +48,10 @@
   "timeout.vote.technical_passed": "Abstimmung zur technischen Auszeit bestanden",
   "timeout.player_paused": "{0} {1}hat das Match pausiert",
   "timeout.not_allowed": " {0}du darfst kein(e) {1} im Match anfordern!",
+  "match.map_over_next_map": "Map beendet — die nächste Map kommt gleich, bleib verbunden.",
+  "match.map_over_series_done": "Match beendet — die Statistiken erscheinen auf der Match-Seite, sobald die Demo verarbeitet ist.",
+  "match.offline_over": "Das Match ist vorbei — auf diesem Server gibt es nichts mehr zu spielen.",
+  "timeout.cannot_resume_empty_team": "Fortsetzen nicht möglich, solange ein Team keine verbundenen Spieler hat",
   "timeout.admin_resumed": "Admin hat das Match fortgesetzt",
   "timeout.vote.resume": "Fortsetzen",
   "timeout.vote.resume_passed": "Abstimmung zum Fortsetzen bestanden",
@@ -77,5 +82,15 @@
   "vote.prompt_count": " Abstimmen für {0}",
   "vote.prompt_options": " Abstimmen für {0} ({1}y oder {2}n)",
   "vote.prompt_count_timer": " Abstimmen für {0} ({1}s)",
-  "vote.prompt_options_timer": " Abstimmen für {0} ({1}y oder {2}n) ({3}s)"
+  "vote.prompt_options_timer": " Abstimmen für {0} ({1}y oder {2}n) ({3}s)",
+
+  "camera.paused": "Match pausiert - keine Kamera von: {0}",
+  "camera.waiting": "Warte auf Kamera: {0}",
+  "camera.restored": "Alle Kameras sind zurück - tippe {0}resume zum Fortfahren",
+  "camera.cannot_resume": "Fortsetzen nicht möglich, warte noch auf eine Kamera von: {0}",
+  "camera.cannot_ready": "Du kannst dich nicht bereit melden, bis deine Kamera verbunden ist",
+  "camera.tag": "keine Kam",
+  "camera.not_required": "Dieses Match erfordert keine Kamera",
+  "camera.yours_ok": "Deine Kamera ist verbunden",
+  "camera.yours_down": "Deine Kamera ist NICHT verbunden - verbinde sie über die Match-Seite neu"
 }

@@ -8,6 +8,7 @@
   "help.tech_pause": " {0}tech, {1}resume - Teknik duraklama",
   "help.rules": " {0}rules - Kurallar",
   "help.restore_round": " {0}reset <round> - Raundun başına geri yükle",
+  "help.stop": " {0}stop - Mevcut raundu yeniden oyna",
 
   "rules.title": "  Kurallar:",
   "rules.with_overtime": "uzatmalı",
@@ -47,6 +48,10 @@
   "timeout.vote.technical_passed": "Teknik mola oylaması geçti",
   "timeout.player_paused": "{0} {1}maçı duraklattı",
   "timeout.not_allowed": " {0}maçta {1} çağırma izniniz yok!",
+  "match.map_over_next_map": "Harita tamamlandı — sıradaki harita geliyor, bağlı kalın.",
+  "match.map_over_series_done": "Maç tamamlandı — demo işlendikten sonra istatistikler maç sayfasında görünecek.",
+  "match.offline_over": "Maç bitti — bu sunucuda oynanacak bir şey kalmadı.",
+  "timeout.cannot_resume_empty_team": "Bir takımda bağlı oyuncu yokken devam edilemez",
   "timeout.admin_resumed": "Yönetici maçı sürdürdü",
   "timeout.vote.resume": "Sürdür",
   "timeout.vote.resume_passed": "Sürdürme oylaması geçti",
@@ -76,5 +81,15 @@
   "vote.prompt_count": " {0} için oy ver",
   "vote.prompt_options": " {0} için oy ver ({1}y veya {2}n)",
   "vote.prompt_count_timer": " {0} için oy ver ({1}s)",
-  "vote.prompt_options_timer": " {0} için oy ver ({1}y veya {2}n) ({3}s)"
+  "vote.prompt_options_timer": " {0} için oy ver ({1}y veya {2}n) ({3}s)",
+
+  "camera.paused": "Maç duraklatıldı - kamerası olmayan: {0}",
+  "camera.waiting": "Kamera bekleniyor: {0}",
+  "camera.restored": "Tüm kameralar geri geldi - devam etmek için {0}resume yazın",
+  "camera.cannot_resume": "Devam edilemez, hâlâ kamerası beklenen: {0}",
+  "camera.cannot_ready": "Kameranız bağlanana kadar hazır olamazsınız",
+  "camera.tag": "kamera yok",
+  "camera.not_required": "Bu maç kamera gerektirmiyor",
+  "camera.yours_ok": "Kameranız bağlı",
+  "camera.yours_down": "Kameranız bağlı DEĞİL - maç sayfasından yeniden bağlayın"
 }

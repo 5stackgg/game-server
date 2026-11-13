@@ -8,6 +8,7 @@
   "help.tech_pause": " {0}tech, {1}resume - 技术暂停",
   "help.rules": " {0}rules - 规则",
   "help.restore_round": " {0}reset <round> - 恢复到该回合开始",
+  "help.stop": " {0}stop - 重打当前回合",
 
   "rules.title": "  规则：",
   "rules.with_overtime": "含加时",
@@ -47,6 +48,10 @@
   "timeout.vote.technical_passed": "技术暂停投票通过",
   "timeout.player_paused": "{0} {1}暂停了比赛",
   "timeout.not_allowed": " {0}你无权在比赛中发起 {1}！",
+  "match.map_over_next_map": "本图已结束 — 下一张地图即将开始，请保持连接。",
+  "match.map_over_series_done": "比赛已结束 — Demo 处理完成后，统计数据将显示在比赛页面上。",
+  "match.offline_over": "比赛已结束 — 此服务器已没有可进行的比赛。",
+  "timeout.cannot_resume_empty_team": "有队伍没有已连接的玩家，无法恢复",
   "timeout.admin_resumed": "管理员已恢复比赛",
   "timeout.vote.resume": "继续",
   "timeout.vote.resume_passed": "继续投票通过",
@@ -77,5 +82,15 @@
   "vote.prompt_count": " 投票 {0}",
   "vote.prompt_options": " 投票 {0}（{1}y 或 {2}n）",
   "vote.prompt_count_timer": " 投票 {0} ({1}s)",
-  "vote.prompt_options_timer": " 投票 {0}（{1}y 或 {2}n）({3}s)"
+  "vote.prompt_options_timer": " 投票 {0}（{1}y 或 {2}n）({3}s)",
+
+  "camera.paused": "比赛已暂停 - 以下玩家没有摄像头: {0}",
+  "camera.waiting": "等待摄像头: {0}",
+  "camera.restored": "所有摄像头已恢复 - 输入 {0}resume 继续",
+  "camera.cannot_resume": "无法恢复，仍在等待以下玩家的摄像头: {0}",
+  "camera.cannot_ready": "你的摄像头连接之前无法就绪",
+  "camera.tag": "无摄像头",
+  "camera.not_required": "本场比赛不需要摄像头",
+  "camera.yours_ok": "你的摄像头已连接",
+  "camera.yours_down": "你的摄像头未连接 - 请在比赛页面重新连接"
 }

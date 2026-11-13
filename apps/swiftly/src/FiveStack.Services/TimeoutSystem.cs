@@ -69,7 +69,7 @@ public class TimeoutSystem
         {
             _gameServer.Message(
                 MessageType.Chat,
-                _localizer["timeout.cannot_pause_not_live", ChatColors.Red],
+                _gameServer.LocalizerFor(player)["timeout.cannot_pause_not_live", ChatColors.Red],
                 player
             );
             return;
@@ -185,7 +185,7 @@ public class TimeoutSystem
     {
         _gameServer.Message(
             MessageType.Chat,
-            _localizer["timeout.not_allowed", ChatColors.Red, type],
+            _gameServer.LocalizerFor(player)["timeout.not_allowed", ChatColors.Red, type],
             player
         );
     }
@@ -213,7 +213,7 @@ public class TimeoutSystem
         {
             _gameServer.Message(
                 MessageType.Chat,
-                _localizer["camera.cannot_resume", _cameraSystem.OfflineNames()],
+                _gameServer.LocalizerFor(player)["camera.cannot_resume", _cameraSystem.OfflineNames()],
                 player
             );
             return;
@@ -229,7 +229,7 @@ public class TimeoutSystem
         {
             _gameServer.Message(
                 MessageType.Chat,
-                _localizer["timeout.cannot_resume_empty_team"],
+                _gameServer.LocalizerFor(player)["timeout.cannot_resume_empty_team"],
                 player
             );
             return;
@@ -379,7 +379,7 @@ public class TimeoutSystem
         {
             _gameServer.Message(
                 MessageType.Chat,
-                _localizer["timeout.cannot_tac_not_live", ChatColors.Red],
+                _gameServer.LocalizerFor(player)["timeout.cannot_tac_not_live", ChatColors.Red],
                 player
             );
             return;
@@ -409,7 +409,7 @@ public class TimeoutSystem
             {
                 _gameServer.Message(
                     MessageType.Chat,
-                    _localizer["timeout.no_timeouts_left"],
+                    _gameServer.LocalizerFor(player)["timeout.no_timeouts_left"],
                     player
                 );
                 return;
@@ -531,7 +531,7 @@ public class TimeoutSystem
 
         _gameServer.Message(
             MessageType.Chat,
-            _localizer["timeout.already_active", ChatColors.Red],
+            _gameServer.LocalizerFor(player)["timeout.already_active", ChatColors.Red],
             player
         );
     }

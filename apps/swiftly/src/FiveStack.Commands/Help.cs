@@ -1,6 +1,7 @@
 using FiveStack.Entities;
 using FiveStack.Utilities;
 using SwiftlyS2.Shared.Commands;
+using SwiftlyS2.Shared.Translation;
 
 namespace FiveStack;
 
@@ -14,11 +15,13 @@ public partial class FiveStackPlugin
             return;
         }
 
-        context.Reply(_localizer["help.available"]);
+        ILocalizer localizer = _gameServer.LocalizerFor(context.Sender);
 
-        context.Reply(_localizer["help.toggle_ready", CommandUtility.PublicChatTrigger]);
+        context.Reply(localizer["help.available"]);
+
+        context.Reply(localizer["help.toggle_ready", CommandUtility.PublicChatTrigger]);
         context.Reply(
-            _localizer[
+            localizer[
                 "help.knife_round",
                 CommandUtility.PublicChatTrigger,
                 CommandUtility.PublicChatTrigger
@@ -26,28 +29,28 @@ public partial class FiveStackPlugin
         );
 
         context.Reply(
-            _localizer[
+            localizer[
                 "help.captains",
                 CommandUtility.SilentChatTrigger,
                 CommandUtility.SilentChatTrigger
             ]
         );
-        context.Reply(_localizer["help.show_captains", CommandUtility.PublicChatTrigger]);
+        context.Reply(localizer["help.show_captains", CommandUtility.PublicChatTrigger]);
 
-        context.Reply(_localizer["help.tac_timeout", CommandUtility.SilentChatTrigger]);
+        context.Reply(localizer["help.tac_timeout", CommandUtility.SilentChatTrigger]);
 
         context.Reply(
-            _localizer[
+            localizer[
                 "help.tech_pause",
                 CommandUtility.PublicChatTrigger,
                 CommandUtility.PublicChatTrigger
             ]
         );
 
-        context.Reply(_localizer["help.rules", CommandUtility.PublicChatTrigger]);
+        context.Reply(localizer["help.rules", CommandUtility.PublicChatTrigger]);
 
-        context.Reply(_localizer["help.restore_round", CommandUtility.PublicChatTrigger]);
-        context.Reply(_localizer["help.stop", CommandUtility.PublicChatTrigger]);
+        context.Reply(localizer["help.restore_round", CommandUtility.PublicChatTrigger]);
+        context.Reply(localizer["help.stop", CommandUtility.PublicChatTrigger]);
     }
 
     [Command("rules", registerRaw: false, permission: "")]
@@ -59,8 +62,10 @@ public partial class FiveStackPlugin
             return;
         }
 
-        context.Reply(_localizer["rules.title"]);
-        string matchDetails = _localizer[
+        ILocalizer localizer = _gameServer.LocalizerFor(context.Sender);
+
+        context.Reply(localizer["rules.title"]);
+        string matchDetails = localizer[
             "rules.match_details",
             match.options.type,
             match.options.mr,
@@ -72,13 +77,13 @@ public partial class FiveStackPlugin
         if (match.options.OvertimeEnabled())
         {
             hasDetails = true;
-            matchDetails += $" {_localizer["rules.with_overtime"]}";
+            matchDetails += $" {localizer["rules.with_overtime"]}";
         }
 
         if (match.options.KnifeRoundEnabled())
         {
             matchDetails +=
-                $" {(hasDetails ? _localizer["common.with"] : _localizer["common.and"])} {_localizer["rules.knife_round"]}";
+                $" {(hasDetails ? localizer["common.with"] : localizer["common.and"])} {localizer["rules.knife_round"]}";
         }
 
         context.Reply(matchDetails);
@@ -89,13 +94,13 @@ public partial class FiveStackPlugin
         if (match.options.coaches)
         {
             hasDetails = true;
-            additionalDetails += $"{_localizer["rules.coach_support"]}";
+            additionalDetails += $"{localizer["rules.coach_support"]}";
         }
 
         if (match.options.number_of_substitutes > 0)
         {
             additionalDetails +=
-                $" {(hasDetails ? _localizer["common.with"] : _localizer["common.and"])} {_localizer["rules.max_subs", match.options.number_of_substitutes]}";
+                $" {(hasDetails ? localizer["common.with"] : localizer["common.and"])} {localizer["rules.max_subs", match.options.number_of_substitutes]}";
         }
 
         if (additionalDetails != "")
@@ -104,13 +109,13 @@ public partial class FiveStackPlugin
         }
 
         context.Reply(
-            _localizer[
+            localizer[
                 "rules.allow_timeouts",
                 StringUtility.ConvertCamelToHumanReadable(match.options.timeout_setting)
             ]
         );
         context.Reply(
-            _localizer[
+            localizer[
                 "rules.tech_timeouts",
                 StringUtility.ConvertCamelToHumanReadable(match.options.tech_timeout_setting)
             ]

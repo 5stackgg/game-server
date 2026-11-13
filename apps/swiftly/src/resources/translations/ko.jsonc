@@ -8,6 +8,7 @@
   "help.tech_pause": " {0}tech, {1}resume - 기술 일시정지",
   "help.rules": " {0}rules - 규칙",
   "help.restore_round": " {0}reset <round> - 라운드 시작으로 복구",
+  "help.stop": " {0}stop - 현재 라운드 다시 하기",
 
   "rules.title": "  규칙:",
   "rules.with_overtime": "연장 포함",
@@ -47,6 +48,10 @@
   "timeout.vote.technical_passed": "기술 타임아웃 투표 통과",
   "timeout.player_paused": "{0} {1}이(가) 경기를 일시정지했습니다",
   "timeout.not_allowed": " {0}경기에서 {1}를 호출할 권한이 없습니다!",
+  "match.map_over_next_map": "맵 종료 — 다음 맵이 곧 시작됩니다. 연결을 유지하세요.",
+  "match.map_over_series_done": "경기 종료 — 데모 처리가 끝나면 경기 페이지에 통계가 표시됩니다.",
+  "match.offline_over": "경기가 끝났습니다 — 이 서버에서 더 이상 진행할 경기가 없습니다.",
+  "timeout.cannot_resume_empty_team": "연결된 플레이어가 없는 팀이 있어 재개할 수 없습니다",
   "timeout.admin_resumed": "관리자가 경기를 재개했습니다",
   "timeout.vote.resume": "재개",
   "timeout.vote.resume_passed": "재개 투표 통과",
@@ -76,5 +81,15 @@
   "vote.prompt_count": " {0} 에 투표",
   "vote.prompt_options": " {0} 에 투표 ({1}y 또는 {2}n)",
   "vote.prompt_count_timer": " {0} 에 투표 ({1}s)",
-  "vote.prompt_options_timer": " {0} 에 투표 ({1}y 또는 {2}n) ({3}s)"
+  "vote.prompt_options_timer": " {0} 에 투표 ({1}y 또는 {2}n) ({3}s)",
+
+  "camera.paused": "경기 일시정지 - 카메라 없음: {0}",
+  "camera.waiting": "카메라 대기 중: {0}",
+  "camera.restored": "모든 카메라가 복구되었습니다 - 계속하려면 {0}resume 입력",
+  "camera.cannot_resume": "재개할 수 없습니다. 아직 카메라를 기다리는 중: {0}",
+  "camera.cannot_ready": "카메라가 연결될 때까지 준비할 수 없습니다",
+  "camera.tag": "캠 없음",
+  "camera.not_required": "이 경기는 카메라가 필요하지 않습니다",
+  "camera.yours_ok": "카메라가 연결되어 있습니다",
+  "camera.yours_down": "카메라가 연결되어 있지 않습니다 - 경기 페이지에서 다시 연결하세요"
 }

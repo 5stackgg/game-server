@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.SchemaDefinitions;
+using SwiftlyS2.Shared.Translation;
 
 namespace FiveStack;
 
@@ -93,6 +94,16 @@ public class GameServer
                 _core.PlayerManager.SendChat(part);
             }
         }
+    }
+
+    public ILocalizer LocalizerFor(IPlayer? player)
+    {
+        if (player == null)
+        {
+            return _core.Localizer;
+        }
+
+        return _core.Translation.GetPlayerLocalizer(player);
     }
 
     public int GetCurrentRound()

@@ -114,15 +114,17 @@ public class ReadySystem
 
     public void ToggleReady(IPlayer player)
     {
+        ILocalizer localizer = _gameServer.LocalizerFor(player);
+
         if (_cameraSystem.IsPlayerBlocked(player))
         {
-            _gameServer.Message(MessageType.Chat, _localizer["camera.cannot_ready"], player);
+            _gameServer.Message(MessageType.Chat, localizer["camera.cannot_ready"], player);
             return;
         }
 
         if (!CanVote(player))
         {
-            _gameServer.Message(MessageType.Chat, _localizer["ready.not_allowed"], player);
+            _gameServer.Message(MessageType.Chat, localizer["ready.not_allowed"], player);
             return;
         }
 
@@ -184,30 +186,31 @@ public class ReadySystem
     {
         int totalReady = TotalReady();
         int expectedReady = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
+        ILocalizer localizer = _gameServer.LocalizerFor(player);
 
         int playerId = player.UserID;
         if (_readyPlayers.ContainsKey(playerId) && _readyPlayers[playerId])
         {
-            player.SendCenter(_localizer["ready.waiting_for_players", totalReady, expectedReady]);
+            player.SendCenter(localizer["ready.waiting_for_players", totalReady, expectedReady]);
             return;
         }
 
         if (CanVote(player))
         {
-            player.SendCenter(_localizer["ready.type_to_ready", CommandUtility.PublicChatTrigger]);
+            player.SendCenter(localizer["ready.type_to_ready", CommandUtility.PublicChatTrigger]);
             return;
         }
 
         switch (GetReadySetting())
         {
             case eReadySettings.Admin:
-                player.SendCenter(_localizer["ready.admin_will_start"]);
+                player.SendCenter(localizer["ready.admin_will_start"]);
                 break;
             case eReadySettings.Captains:
-                player.SendCenter(_localizer["ready.waiting_captains"]);
+                player.SendCenter(localizer["ready.waiting_captains"]);
                 break;
             case eReadySettings.Coach:
-                player.SendCenter(_localizer["ready.waiting_coach"]);
+                player.SendCenter(localizer["ready.waiting_coach"]);
                 break;
         }
     }
@@ -220,12 +223,13 @@ public class ReadySystem
     public void SendReadyMessage(IPlayer player)
     {
         _readyPlayers.TryGetValue(player.UserID, out bool isReady);
+        ILocalizer localizer = _gameServer.LocalizerFor(player);
 
-        string readyWord = isReady ? _localizer["ready.ready"] : _localizer["ready.not_ready"];
+        string readyWord = isReady ? localizer["ready.ready"] : localizer["ready.not_ready"];
         string colored = isReady
             ? $"{ChatColors.Green}{readyWord}"
             : $"{ChatColors.Red}{readyWord}";
-        _gameServer.Message(MessageType.Chat, _localizer["ready.marked", colored], player);
+        _gameServer.Message(MessageType.Chat, localizer["ready.marked", colored], player);
     }
 
     public CancellationTokenSource? _cancelSendNotReadyMessage;

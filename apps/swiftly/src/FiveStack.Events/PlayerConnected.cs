@@ -157,7 +157,7 @@ public partial class FiveStackPlugin
         {
             _gameServer.Message(
                 MessageType.Chat,
-                _localizer[
+                _gameServer.LocalizerFor(player)[
                     "player.join.ready_hint",
                     "[green]",
                     CommandUtility.PublicChatTrigger,
@@ -169,7 +169,7 @@ public partial class FiveStackPlugin
 
         _gameServer.Message(
             MessageType.Chat,
-            _localizer[
+            _gameServer.LocalizerFor(player)[
                 "player.join.help_hint",
                 "[green]",
                 CommandUtility.SilentChatTrigger,
