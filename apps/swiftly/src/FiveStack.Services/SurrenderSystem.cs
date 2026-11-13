@@ -373,4 +373,14 @@ public class SurrenderSystem
             }
         );
     }
+
+    public static bool CanCallSurrender(Team team, bool isLineupMember)
+    {
+        return true;
+    }
+
+    public static bool CanVoteInSurrender(Team team, bool isLineupMember, Team votingSide)
+    {
+        return team == votingSide;
+    }
 }
