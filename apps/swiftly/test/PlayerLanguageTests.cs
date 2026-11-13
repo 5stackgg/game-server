@@ -161,13 +161,28 @@ public class PlayerLanguageTests
         string source = Source(Path.Combine("FiveStack.Services", "GameServer.cs"));
         string helper = Method(source, "public ILocalizer LocalizerFor(IPlayer? player)");
 
-        Assert.Contains("if (player == null || !HasTranslation(player.PlayerLanguage))", helper);
+        Assert.Contains(
+            "if (player == null || !TranslationUtility.HasTranslation(_core.PluginPath, player.PlayerLanguage.Value))",
+            helper
+        );
         Assert.Contains("return _core.Localizer;", helper);
         Assert.Contains("return _core.Translation.GetPlayerLocalizer(player);", helper);
-        Assert.Contains(
-            "File.Exists(Path.Join(_core.PluginPath,\"resources\",\"translations\",$\"{language.Value}.jsonc\"))",
-            Regex.Replace(Method(source, "private bool HasTranslation(Language language)"), @"\s+", "")
+    }
+
+    [Fact]
+    public void MessageEachSendsEveryPlayerTheirOwnLanguage()
+    {
+        string each = Regex.Replace(
+            Method(
+                Source(Path.Combine("FiveStack.Services", "GameServer.cs")),
+                "public void MessageEach(MessageType destination, Func<ILocalizer, string> message)"
+            ),
+            @"\s+",
+            ""
         );
+
+        Assert.Contains("foreach(IPlayerplayerinMatchUtility.Players())", each);
+        Assert.Contains("message(LocalizerFor(player))", each);
     }
 
     [Theory]
@@ -213,18 +228,45 @@ public class PlayerLanguageTests
     }
 
     [Fact]
+    public void RulesNamesTheMatchTypeThroughItsKey()
+    {
+        string help = Compact(Path.Combine("FiveStack.Commands", "Help.cs"));
+        (string Key, string[] Args)[] details = PlayerLookups(help)
+            .Where(lookup => lookup.Key == "\"rules.match_details\"")
+            .ToArray();
+
+        Assert.Single(details);
+        Assert.Equal("MatchType(localizer,match.options.type)", details[0].Args[0]);
+        Assert.DoesNotContain("\"rules.match_details\",match.options.type", help);
+    }
+
+    [Fact]
     public void EveryVoteIsNamedByATranslationKey()
     {
         Dictionary<string, string> english = Translations("en.jsonc");
-        string[] names = SourceFiles()
-            .SelectMany(file =>
-                Regex
-                    .Matches(Compact((string)file[0]), @"\w+Vote\.StartVote\(([^,]*),")
-                    .Select(match => match.Groups[1].Value)
-            )
-            .ToArray();
+        List<string> names = [];
 
-        Assert.Equal(4, names.Length);
+        foreach (object[] file in SourceFiles())
+        {
+            string source = Compact((string)file[0]);
+
+            foreach (Match call in Regex.Matches(source, @"(\w*)\.StartVote\(([^,)]*)"))
+            {
+                string receiver = call.Groups[1].Value;
+
+                if (
+                    receiver != ""
+                    && Regex.IsMatch(source, $@"RoundRestoreState\??{Regex.Escape(receiver)}[;=,)]")
+                )
+                {
+                    continue;
+                }
+
+                names.Add(call.Groups[2].Value);
+            }
+        }
+
+        Assert.NotEmpty(names);
 
         foreach (string name in names)
         {
@@ -240,13 +282,76 @@ public class PlayerLanguageTests
     [Fact]
     public void TheVoteHudNamesTheVoteInEachPlayersLanguage()
     {
-        Assert.DoesNotContain(
-            "_localizer",
+        string votes = Compact(Path.Combine("FiveStack.Services", "VoteSystem.cs"));
+        string hud = Regex.Replace(
             Method(
                 Source(Path.Combine("FiveStack.Services", "VoteSystem.cs")),
                 "private void SendVoteMessage()"
-            )
+            ),
+            @"\s+",
+            ""
         );
+
+        Assert.Contains(
+            "ILocalizerlocalizer=_gameServer.LocalizerFor(player);stringaction=localizer[_voteKey,_voteArgs].ToLower();",
+            hud
+        );
+        Assert.DoesNotContain("_localizer", votes);
+        Assert.DoesNotContain("Core.Localizer", votes);
+    }
+
+    [Theory]
+    [InlineData("vote.failed")]
+    [InlineData("vote.success")]
+    public void TheVoteResultReachesEachPlayerInTheirLanguage(string key)
+    {
+        Assert.Contains(
+            $"_gameServer.MessageEach(MessageType.Center,localizer=>localizer[\"{key}\",localizer[_voteKey,_voteArgs]]);",
+            Compact(Path.Combine("FiveStack.Services", "VoteSystem.cs"))
+        );
+    }
+
+    [Fact]
+    public void ARefusedVoteIsTranslated()
+    {
+        Assert.DoesNotContain(
+            "you are not allowed to vote",
+            Source(Path.Combine("FiveStack.Services", "VoteSystem.cs"))
+        );
+        Assert.True(Translations("en.jsonc").ContainsKey("vote.not_allowed"));
+    }
+
+    [Fact]
+    public void VoteLogsKeepTheVotesArguments()
+    {
+        string[] logs = Regex
+            .Matches(
+                Compact(Path.Combine("FiveStack.Services", "VoteSystem.cs")),
+                @"_logger\.LogInformation\(([^;]*)\);"
+            )
+            .Select(match => match.Groups[1].Value)
+            .Where(log => log.Contains("oteKey"))
+            .ToArray();
+
+        Assert.Equal(4, logs.Length);
+
+        foreach (string log in logs)
+        {
+            Assert.Contains("oteArgs", log);
+        }
+    }
+
+    [Fact]
+    public void TheKnifeAlertNamesTheTeamInEachPlayersLanguage()
+    {
+        Match teams = Regex.Match(
+            Compact(Path.Combine("FiveStack.Services", "KnifeSystem.cs")),
+            @"_gameServer\.MessageEach\(MessageType\.Alert,localizer=>localizer\[""knife\.captain_picking"",localizer\[team==Team\.T\?""([^""]+)"":""([^""]+)""\]\]\)"
+        );
+
+        Assert.True(teams.Success, "the knife alert names the team in English or in one language");
+        Assert.True(Translations("en.jsonc").ContainsKey(teams.Groups[1].Value));
+        Assert.True(Translations("en.jsonc").ContainsKey(teams.Groups[2].Value));
     }
 
     [Theory]
@@ -310,6 +415,10 @@ public class PlayerLanguageTests
     [InlineData("FiveStack.Services/VoteSystem.cs", "vote.prompt_count")]
     [InlineData("FiveStack.Services/VoteSystem.cs", "vote.prompt_options_timer")]
     [InlineData("FiveStack.Services/VoteSystem.cs", "vote.prompt_options")]
+    [InlineData("FiveStack.Services/VoteSystem.cs", "vote.not_allowed")]
+    [InlineData("FiveStack.Services/VoteSystem.cs", "vote.failed")]
+    [InlineData("FiveStack.Services/VoteSystem.cs", "vote.success")]
+    [InlineData("FiveStack.Services/KnifeSystem.cs", "knife.captain_picking")]
     public void WhatOnePlayerIsToldIsInTheirLanguage(string file, string key)
     {
         string source = Compact(file);

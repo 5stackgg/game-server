@@ -66,9 +66,9 @@ public class RestoreRoundWordingTests
     [Fact]
     public void TheVoteNamesTheRoundPlayedNext()
     {
-        Assert.Contains(
-            "_localizer[\"backup.vote.restore_to\", RoundRestoreGateUtility.StartOfRound(round)]",
-            Backups()
+        Assert.Matches(
+            @"""backup\.vote\.restore_to"",\[?RoundRestoreGateUtility\.StartOfRound\(round\)\]",
+            Regex.Replace(Backups(), @"\s+", "")
         );
     }
 
