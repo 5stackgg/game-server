@@ -103,6 +103,11 @@ public class SurrenderSystem
         return LineupMembership.LineupOf(matchData, steamId, "");
     }
 
+    public static Guid? LeaverLineup(MatchData matchData, string steamId, string playerName)
+    {
+        return LineupMembership.LineupOf(matchData, steamId, "");
+    }
+
     // The side the leaver's lineup plays when the timer runs out. A halftime in
     // those three minutes swaps it away from the side they left from.
     public static CsTeam LeaverSurrenderSide(
