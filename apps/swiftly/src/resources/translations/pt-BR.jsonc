@@ -24,6 +24,10 @@
   "rules.timeouts.coach_and_captains": "Coach e capitães",
   "rules.timeouts.coach_and_players": "Coach e jogadores",
   "rules.timeouts.admin": "Admin",
+  "rules.match_type.competitive": "Competitivo",
+  "rules.match_type.wingman": "Braço Direito",
+  "rules.match_type.duel": "X1",
+  "rules.match_type.rush": "Rush",
 
   "gag.you_are_gagged": " [red]Você está censurado",
 
@@ -91,6 +95,7 @@
   "vote.prompt_options": "Votar para {0} ({1}y ou {2}n)",
   "vote.prompt_count_timer": "Votar para {0} ({1}s)",
   "vote.prompt_options_timer": "Votar para {0} ({1}y ou {2}n) ({3}s)",
+  "surrender.vote": "Render-se",
 
   "camera.paused": "Partida pausada - sem câmera de: {0}",
   "camera.waiting": "Aguardando câmera: {0}",

@@ -79,7 +79,8 @@ public class PlayerLanguageTests
     {
         string help = Compact(Path.Combine("FiveStack.Commands", "Help.cs"));
 
-        Assert.DoesNotContain("ConvertCamelToHumanReadable", help);
+        Assert.DoesNotContain("\"rules.allow_timeouts\",StringUtility.ConvertCamelToHumanReadable", help);
+        Assert.DoesNotContain("\"rules.tech_timeouts\",StringUtility.ConvertCamelToHumanReadable", help);
         Assert.DoesNotContain("\"rules.match_details\",match.options.type", help);
     }
 

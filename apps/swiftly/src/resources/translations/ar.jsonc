@@ -24,6 +24,10 @@
   "rules.timeouts.coach_and_captains": "المدرب والقادة",
   "rules.timeouts.coach_and_players": "المدرب واللاعبون",
   "rules.timeouts.admin": "المدير",
+  "rules.match_type.competitive": "تنافسي",
+  "rules.match_type.wingman": "Wingman",
+  "rules.match_type.duel": "مبارزة",
+  "rules.match_type.rush": "Rush",
 
   "gag.you_are_gagged": " [red]تم كتمك",
 
@@ -89,6 +93,7 @@
   "vote.prompt_options": " التصويت لـ {0} ({1}y أو {2}n)",
   "vote.prompt_count_timer": " التصويت لـ {0} ({1}s)",
   "vote.prompt_options_timer": " التصويت لـ {0} ({1}y أو {2}n) ({3}s)",
+  "surrender.vote": "استسلام",
 
   "camera.paused": "تم إيقاف المباراة مؤقتًا - لا توجد كاميرا من: {0}",
   "camera.waiting": "بانتظار الكاميرا: {0}",

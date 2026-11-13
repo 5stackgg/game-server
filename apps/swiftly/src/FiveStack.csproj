@@ -27,6 +27,14 @@
     <Content Include="resources/translations/**/*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- SwiftlyS2 maps a latam client to es-419 and a portuguese one to pt, and only
+         loads a file with exactly that name. -->
+    <Content Include="$(MSBuildThisFileDirectory)resources/translations/es.jsonc" Link="resources/translations/es-419.jsonc">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="$(MSBuildThisFileDirectory)resources/translations/pt-BR.jsonc" Link="resources/translations/pt.jsonc">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="$(MSBuildThisFileDirectory)../../../shared/gamedata/fivestack.gamedata.json" Link="resources/gamedata/fivestack.gamedata.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

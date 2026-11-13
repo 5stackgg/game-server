@@ -19,6 +19,14 @@
   "rules.max_subs": "Max antal byten: {0}",
   "rules.allow_timeouts": "Tillåt timeouts {0}",
   "rules.tech_timeouts": "Tekniska timeouts {0}",
+  "rules.timeouts.coach": "Tränare",
+  "rules.timeouts.coach_and_captains": "Tränare och kaptener",
+  "rules.timeouts.coach_and_players": "Tränare och spelare",
+  "rules.timeouts.admin": "Admin",
+  "rules.match_type.competitive": "Competitive",
+  "rules.match_type.wingman": "Wingman",
+  "rules.match_type.duel": "Duell",
+  "rules.match_type.rush": "Rush",
 
   "gag.you_are_gagged": " {red}Du är tystad",
 
@@ -47,6 +55,8 @@
   "timeout.vote.technical_passed": "Röstning om teknisk timeout godkänd",
   "timeout.player_paused": "{0} {1}pausade matchen",
   "timeout.not_allowed": " {0}du får inte begära {1} i matchen!",
+  "timeout.not_allowed.resume": "återupptagning",
+  "timeout.not_allowed.tactical_timeout": "taktisk timeout",
   "timeout.admin_resumed": "Admin återupptog matchen",
   "timeout.vote.resume": "Återuppta",
   "timeout.vote.resume_passed": "Röstning om återupptagning godkänd",

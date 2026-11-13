@@ -177,11 +177,11 @@ public class TimeoutSystem
         return true;
     }
 
-    private void CannotPauseMessage(CCSPlayerController? player, string type)
+    private void CannotPauseMessage(CCSPlayerController? player, string refusedKey)
     {
         _gameServer.Message(
             HudDestination.Chat,
-            _localizer["timeout.not_allowed", ChatColors.Red, type],
+            _localizer["timeout.not_allowed", ChatColors.Red, _localizer[refusedKey]],
             player
         );
     }
@@ -244,7 +244,7 @@ public class TimeoutSystem
 
                 if (!CanPause(player))
                 {
-                    CannotPauseMessage(player, "resume");
+                    CannotPauseMessage(player, "timeout.not_allowed.resume");
                     return;
                 }
 
@@ -391,7 +391,7 @@ public class TimeoutSystem
         {
             if (!CanCallTacticalTimeout(player))
             {
-                CannotPauseMessage(player, "tactical timeout");
+                CannotPauseMessage(player, "timeout.not_allowed.tactical_timeout");
                 return;
             }
 
