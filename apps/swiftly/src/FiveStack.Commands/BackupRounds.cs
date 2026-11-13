@@ -1,7 +1,6 @@
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared.Commands;
-using SwiftlyS2.Shared.Translation;
 
 namespace FiveStack;
 
@@ -81,13 +80,12 @@ public partial class FiveStackPlugin
         if (backup == null)
         {
             _logger.LogWarning($"Invalid round number provided: {_round}");
-
-            ILocalizer localizer =
-                context.Sender == null
-                    ? _localizer
-                    : Core.Translation.GetPlayerLocalizer(context.Sender);
-
-            context.Reply(localizer["help.restore_round", CommandUtility.PublicChatTrigger]);
+            context.Reply(
+                _gameServer.LocalizerFor(context.Sender)[
+                    "help.restore_round",
+                    CommandUtility.PublicChatTrigger
+                ]
+            );
             return;
         }
 

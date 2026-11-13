@@ -8,6 +8,7 @@
   "help.tech_pause": " {0}tech, {1}resume - テクニカルポーズ",
   "help.rules": " {0}rules - ルール",
   "help.restore_round": " {0}reset <round> - ラウンドの開始時に復元",
+  "help.stop": " {0}stop - 現在のラウンドをやり直す",
 
   "rules.title": "  ルール:",
   "rules.with_overtime": "延長あり",
@@ -19,6 +20,10 @@
   "rules.max_subs": "交代の最大人数: {0}",
   "rules.allow_timeouts": "タイムアウトを許可 {0}",
   "rules.tech_timeouts": "テクニカルタイムアウト {0}",
+  "rules.timeouts.coach": "コーチ",
+  "rules.timeouts.coach_and_captains": "コーチとキャプテン",
+  "rules.timeouts.coach_and_players": "コーチとプレイヤー",
+  "rules.timeouts.admin": "管理者",
 
   "gag.you_are_gagged": " [red]あなたはミュートされています",
 
@@ -47,6 +52,12 @@
   "timeout.vote.technical_passed": "テクニカルタイムアウトの投票が可決",
   "timeout.player_paused": "{0} {1}が試合を一時停止しました",
   "timeout.not_allowed": " {0}試合中に {1} を呼び出す権限がありません！",
+  "timeout.not_allowed.resume": "再開",
+  "timeout.not_allowed.tactical_timeout": "戦術タイムアウト",
+  "match.map_over_next_map": "マップ終了 — 次のマップが始まります。接続したままお待ちください。",
+  "match.map_over_series_done": "試合終了 — デモの処理が終わると、試合ページに統計が表示されます。",
+  "match.offline_over": "試合は終了しました — このサーバーでプレイするものはもうありません。",
+  "timeout.cannot_resume_empty_team": "接続しているプレイヤーがいないチームがあるため再開できません",
   "timeout.admin_resumed": "管理者が試合を再開しました",
   "timeout.vote.resume": "再開",
   "timeout.vote.resume_passed": "再開の投票が可決",
@@ -77,5 +88,15 @@
   "vote.prompt_count": " {0} に投票",
   "vote.prompt_options": " {0} に投票（{1}y または {2}n）",
   "vote.prompt_count_timer": " {0} に投票 ({1}s)",
-  "vote.prompt_options_timer": " {0} に投票（{1}y または {2}n）({3}s)"
+  "vote.prompt_options_timer": " {0} に投票（{1}y または {2}n）({3}s)",
+
+  "camera.paused": "試合を一時停止しました - カメラが接続されていません: {0}",
+  "camera.waiting": "カメラを待っています: {0}",
+  "camera.restored": "すべてのカメラが復帰しました - 続行するには {0}resume と入力",
+  "camera.cannot_resume": "再開できません。まだカメラを待っています: {0}",
+  "camera.cannot_ready": "カメラが接続されるまで準備できません",
+  "camera.tag": "カメラなし",
+  "camera.not_required": "この試合ではカメラは不要です",
+  "camera.yours_ok": "あなたのカメラは接続されています",
+  "camera.yours_down": "あなたのカメラは接続されていません - 試合ページから再接続してください"
 }

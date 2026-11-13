@@ -8,6 +8,7 @@
   "help.tech_pause": " {0}tech, {1}resume - إيقاف تقني",
   "help.rules": " {0}rules - القواعد",
   "help.restore_round": " {0}reset <round> - الاستعادة إلى بداية الجولة",
+  "help.stop": " {0}stop - إعادة لعب الجولة الحالية",
 
   "rules.title": "  القواعد:",
   "rules.with_overtime": "مع وقت إضافي",
@@ -19,6 +20,10 @@
   "rules.max_subs": "الحد الأقصى للاستبدالات: {0}",
   "rules.allow_timeouts": "السماح بالمهل {0}",
   "rules.tech_timeouts": "المهل التقنية {0}",
+  "rules.timeouts.coach": "المدرب",
+  "rules.timeouts.coach_and_captains": "المدرب والقادة",
+  "rules.timeouts.coach_and_players": "المدرب واللاعبون",
+  "rules.timeouts.admin": "المدير",
 
   "gag.you_are_gagged": " [red]تم كتمك",
 
@@ -47,6 +52,12 @@
   "timeout.vote.technical_passed": "تمت الموافقة على تصويت الإيقاف التقني",
   "timeout.player_paused": "{0} {1}أوقف المباراة",
   "timeout.not_allowed": " {0}غير مسموح لك بطلب {1} في المباراة!",
+  "timeout.not_allowed.resume": "استئناف",
+  "timeout.not_allowed.tactical_timeout": "مهلة تكتيكية",
+  "match.map_over_next_map": "انتهت الخريطة — الخريطة التالية قادمة، ابقَ متصلاً.",
+  "match.map_over_series_done": "انتهت المباراة — ستظهر الإحصائيات في صفحة المباراة بعد انتهاء معالجة الديمو.",
+  "match.offline_over": "انتهت المباراة — لم يتبقَّ شيء للعب على هذا الخادم.",
+  "timeout.cannot_resume_empty_team": "لا يمكن الاستئناف بينما لا يوجد لاعبون متصلون في أحد الفريقين",
   "timeout.admin_resumed": "استأنف المدير المباراة",
   "timeout.vote.resume": "استئناف",
   "timeout.vote.resume_passed": "تمت الموافقة على تصويت الاستئناف",
@@ -77,5 +88,15 @@
   "vote.prompt_count": " التصويت لـ {0}",
   "vote.prompt_options": " التصويت لـ {0} ({1}y أو {2}n)",
   "vote.prompt_count_timer": " التصويت لـ {0} ({1}s)",
-  "vote.prompt_options_timer": " التصويت لـ {0} ({1}y أو {2}n) ({3}s)"
+  "vote.prompt_options_timer": " التصويت لـ {0} ({1}y أو {2}n) ({3}s)",
+
+  "camera.paused": "تم إيقاف المباراة مؤقتًا - لا توجد كاميرا من: {0}",
+  "camera.waiting": "بانتظار الكاميرا: {0}",
+  "camera.restored": "عادت جميع الكاميرات - اكتب {0}resume للمتابعة",
+  "camera.cannot_resume": "لا يمكن الاستئناف، لا يزال بانتظار كاميرا من: {0}",
+  "camera.cannot_ready": "لا يمكنك إعلان الجاهزية حتى تتصل كاميرتك",
+  "camera.tag": "بلا كاميرا",
+  "camera.not_required": "هذه المباراة لا تتطلب كاميرا",
+  "camera.yours_ok": "كاميرتك متصلة",
+  "camera.yours_down": "كاميرتك غير متصلة - أعد توصيلها من صفحة المباراة"
 }

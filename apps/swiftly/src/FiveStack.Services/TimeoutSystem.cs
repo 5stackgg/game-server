@@ -69,7 +69,7 @@ public class TimeoutSystem
         {
             _gameServer.Message(
                 MessageType.Chat,
-                _localizer["timeout.cannot_pause_not_live", ChatColors.Red],
+                _gameServer.LocalizerFor(player)["timeout.cannot_pause_not_live", ChatColors.Red],
                 player
             );
             return;
@@ -181,11 +181,13 @@ public class TimeoutSystem
         return true;
     }
 
-    private void CannotPauseMessage(IPlayer? player, string type)
+    private void CannotPauseMessage(IPlayer? player, string refusedKey)
     {
+        ILocalizer localizer = _gameServer.LocalizerFor(player);
+
         _gameServer.Message(
             MessageType.Chat,
-            _localizer["timeout.not_allowed", ChatColors.Red, type],
+            localizer["timeout.not_allowed", ChatColors.Red, localizer[refusedKey]],
             player
         );
     }
@@ -213,7 +215,7 @@ public class TimeoutSystem
         {
             _gameServer.Message(
                 MessageType.Chat,
-                _localizer["camera.cannot_resume", _cameraSystem.OfflineNames()],
+                _gameServer.LocalizerFor(player)["camera.cannot_resume", _cameraSystem.OfflineNames()],
                 player
             );
             return;
@@ -229,7 +231,7 @@ public class TimeoutSystem
         {
             _gameServer.Message(
                 MessageType.Chat,
-                _localizer["timeout.cannot_resume_empty_team"],
+                _gameServer.LocalizerFor(player)["timeout.cannot_resume_empty_team"],
                 player
             );
             return;
@@ -248,7 +250,7 @@ public class TimeoutSystem
 
                 if (!CanPause(player))
                 {
-                    CannotPauseMessage(player, "resume");
+                    CannotPauseMessage(player, "timeout.not_allowed.resume");
                     return;
                 }
 
@@ -379,7 +381,7 @@ public class TimeoutSystem
         {
             _gameServer.Message(
                 MessageType.Chat,
-                _localizer["timeout.cannot_tac_not_live", ChatColors.Red],
+                _gameServer.LocalizerFor(player)["timeout.cannot_tac_not_live", ChatColors.Red],
                 player
             );
             return;
@@ -395,7 +397,7 @@ public class TimeoutSystem
         {
             if (!CanCallTacticalTimeout(player))
             {
-                CannotPauseMessage(player, "tactical timeout");
+                CannotPauseMessage(player, "timeout.not_allowed.tactical_timeout");
                 return;
             }
 
@@ -409,7 +411,7 @@ public class TimeoutSystem
             {
                 _gameServer.Message(
                     MessageType.Chat,
-                    _localizer["timeout.no_timeouts_left"],
+                    _gameServer.LocalizerFor(player)["timeout.no_timeouts_left"],
                     player
                 );
                 return;
@@ -531,7 +533,7 @@ public class TimeoutSystem
 
         _gameServer.Message(
             MessageType.Chat,
-            _localizer["timeout.already_active", ChatColors.Red],
+            _gameServer.LocalizerFor(player)["timeout.already_active", ChatColors.Red],
             player
         );
     }

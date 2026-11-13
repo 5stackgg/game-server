@@ -8,6 +8,7 @@
   "help.tech_pause": " {0}tech, {1}resume - Техническая пауза",
   "help.rules": " {0}rules - Правила",
   "help.restore_round": " {0}reset <round> - Вернуться к началу раунда",
+  "help.stop": " {0}stop - Переиграть текущий раунд",
 
   "rules.title": "  Правила:",
   "rules.with_overtime": "с овертаймом",
@@ -19,6 +20,10 @@
   "rules.max_subs": "Максимум замен: {0}",
   "rules.allow_timeouts": "Разрешить тайм-ауты {0}",
   "rules.tech_timeouts": "Технические тайм-ауты {0}",
+  "rules.timeouts.coach": "Тренер",
+  "rules.timeouts.coach_and_captains": "Тренер и капитаны",
+  "rules.timeouts.coach_and_players": "Тренер и игроки",
+  "rules.timeouts.admin": "Админ",
 
   "gag.you_are_gagged": " [red]Вы заглушены",
 
@@ -47,6 +52,12 @@
   "timeout.vote.technical_passed": "Голосование за тех. паузу принято",
   "timeout.player_paused": "{0} {1}поставил матч на паузу",
   "timeout.not_allowed": " {0}вам не разрешено запрашивать {1} в матче!",
+  "timeout.not_allowed.resume": "возобновление",
+  "timeout.not_allowed.tactical_timeout": "тактический тайм-аут",
+  "match.map_over_next_map": "Карта завершена — скоро следующая карта, не отключайтесь.",
+  "match.map_over_series_done": "Матч завершён — статистика появится на странице матча после обработки демо.",
+  "match.offline_over": "Матч окончен — на этом сервере больше нечего играть.",
+  "timeout.cannot_resume_empty_team": "Нельзя возобновить, пока в одной из команд нет подключённых игроков",
   "timeout.admin_resumed": "Админ возобновил матч",
   "timeout.vote.resume": "Возобновить",
   "timeout.vote.resume_passed": "Голосование за возобновление принято",
@@ -77,5 +88,15 @@
   "vote.prompt_count": " Голосовать за {0}",
   "vote.prompt_options": " Голосовать за {0} ({1}y или {2}n)",
   "vote.prompt_count_timer": " Голосовать за {0} ({1}s)",
-  "vote.prompt_options_timer": " Голосовать за {0} ({1}y или {2}n) ({3}s)"
+  "vote.prompt_options_timer": " Голосовать за {0} ({1}y или {2}n) ({3}s)",
+
+  "camera.paused": "Матч на паузе - нет камеры от: {0}",
+  "camera.waiting": "Ожидание камеры: {0}",
+  "camera.restored": "Все камеры вернулись - введите {0}resume для продолжения",
+  "camera.cannot_resume": "Нельзя возобновить, всё ещё ждём камеру от: {0}",
+  "camera.cannot_ready": "Вы не можете отметиться готовым, пока ваша камера не подключена",
+  "camera.tag": "нет камеры",
+  "camera.not_required": "Этот матч не требует камеры",
+  "camera.yours_ok": "Ваша камера подключена",
+  "camera.yours_down": "Ваша камера НЕ подключена - переподключите её на странице матча"
 }

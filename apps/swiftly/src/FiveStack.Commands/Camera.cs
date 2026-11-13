@@ -1,5 +1,6 @@
 using SwiftlyS2.Shared.Commands;
 using SwiftlyS2.Shared.Players;
+using SwiftlyS2.Shared.Translation;
 
 namespace FiveStack;
 
@@ -29,17 +30,19 @@ public partial class FiveStackPlugin
             return;
         }
 
+        ILocalizer localizer = _gameServer.LocalizerFor(player);
+
         if (!_cameraSystem.IsRequired())
         {
-            _gameServer.Message(MessageType.Chat, _localizer["camera.not_required"], player);
+            _gameServer.Message(MessageType.Chat, localizer["camera.not_required"], player);
             return;
         }
 
         _gameServer.Message(
             MessageType.Chat,
             _cameraSystem.IsPlayerBlocked(player)
-                ? _localizer["camera.yours_down"]
-                : _localizer["camera.yours_ok"],
+                ? localizer["camera.yours_down"]
+                : localizer["camera.yours_ok"],
             player
         );
     }

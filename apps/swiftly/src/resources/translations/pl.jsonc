@@ -8,6 +8,7 @@
   "help.tech_pause": " {0}tech, {1}resume - Pauza techniczna",
   "help.rules": " {0}rules - Zasady",
   "help.restore_round": " {0}reset <round> - Przywróć do początku rundy",
+  "help.stop": " {0}stop - Powtórz bieżącą rundę",
 
   "rules.title": "  Zasady:",
   "rules.with_overtime": "z dogrywką",
@@ -19,6 +20,10 @@
   "rules.max_subs": "Maksymalna liczba zmian: {0}",
   "rules.allow_timeouts": "Zezwalaj na przerwy {0}",
   "rules.tech_timeouts": "Przerwy techniczne {0}",
+  "rules.timeouts.coach": "Trener",
+  "rules.timeouts.coach_and_captains": "Trener i kapitanowie",
+  "rules.timeouts.coach_and_players": "Trener i gracze",
+  "rules.timeouts.admin": "Admin",
 
   "gag.you_are_gagged": " [red]Zostałeś wyciszony",
 
@@ -47,6 +52,12 @@
   "timeout.vote.technical_passed": "Głosowanie przerwy technicznej przyjęte",
   "timeout.player_paused": "{0} {1}zapauzował mecz",
   "timeout.not_allowed": " {0}nie możesz wezwać {1} w meczu!",
+  "timeout.not_allowed.resume": "wznowienia",
+  "timeout.not_allowed.tactical_timeout": "czasu taktycznego",
+  "match.map_over_next_map": "Mapa zakończona — zaraz następna mapa, pozostań połączony.",
+  "match.map_over_series_done": "Mecz zakończony — statystyki pojawią się na stronie meczu po przetworzeniu demo.",
+  "match.offline_over": "Mecz się zakończył — na tym serwerze nie ma już nic do rozegrania.",
+  "timeout.cannot_resume_empty_team": "Nie można wznowić, gdy drużyna nie ma połączonych graczy",
   "timeout.admin_resumed": "Admin wznowił mecz",
   "timeout.vote.resume": "Wznów",
   "timeout.vote.resume_passed": "Głosowanie o wznowienie przyjęte",
@@ -77,5 +88,15 @@
   "vote.prompt_count": " Głosuj za {0}",
   "vote.prompt_options": " Głosuj za {0} ({1}y lub {2}n)",
   "vote.prompt_count_timer": " Głosuj za {0} ({1}s)",
-  "vote.prompt_options_timer": " Głosuj za {0} ({1}y lub {2}n) ({3}s)"
+  "vote.prompt_options_timer": " Głosuj za {0} ({1}y lub {2}n) ({3}s)",
+
+  "camera.paused": "Mecz wstrzymany - brak kamery od: {0}",
+  "camera.waiting": "Oczekiwanie na kamerę: {0}",
+  "camera.restored": "Wszystkie kamery wróciły - wpisz {0}resume aby kontynuować",
+  "camera.cannot_resume": "Nie można wznowić, nadal oczekiwanie na kamerę od: {0}",
+  "camera.cannot_ready": "Nie możesz oznaczyć gotowości, dopóki twoja kamera nie jest połączona",
+  "camera.tag": "brak kam",
+  "camera.not_required": "Ten mecz nie wymaga kamery",
+  "camera.yours_ok": "Twoja kamera jest połączona",
+  "camera.yours_down": "Twoja kamera NIE jest połączona - połącz ją ponownie ze strony meczu"
 }
