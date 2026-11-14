@@ -6,6 +6,7 @@
   "help.show_captains": " {0}captains - 顯示隊長",
   "help.tac_timeout": " {0}tac - 戰術暫停",
   "help.tech_pause": " {0}tech, {1}resume - 技術暫停",
+  "help.check": " {0}check - 檢查所有玩家是否已回來",
   "help.rules": " {0}rules - 規則",
   "help.restore_round": " {0}reset <round> - 還原到該回合開始",
 
@@ -77,6 +78,9 @@
   "timeout.called_tactical": "{0} {1}發起戰術暫停（剩餘 {2}）",
   "timeout.called_admin": "管理員發起了技術暫停",
   "timeout.already_active": " {0}已有暫停進行中",
+  "timeout.check_missing": "仍在等待: {0}",
+  "timeout.check_whole": "所有玩家均已連線",
+  "timeout.check_resumed": "{0} {1}已檢查，所有玩家都已回來",
 
   "backup.vote.restore_to": "還原到第 {0} 回合開始",
   "backup.round_restored": " {0}已還原到第 {1} 回合開始（{2}resume 繼續）",

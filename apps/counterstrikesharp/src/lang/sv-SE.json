@@ -6,6 +6,7 @@
   "help.show_captains": " {0}captains - Visa kaptener",
   "help.tac_timeout": " {0}tac - Taktisk timeout",
   "help.tech_pause": " {0}tech, {1}resume - Teknisk paus",
+  "help.check": " {0}check - Kontrollera att alla spelare är tillbaka",
   "help.rules": " {0}rules - Regler",
   "help.restore_round": " {0}reset <round> - Återställ till början av rundan",
 
@@ -77,6 +78,9 @@
   "timeout.called_tactical": "{0} {1}begärde en taktisk timeout ({2} kvar)",
   "timeout.called_admin": "Teknisk timeout begärd av admin",
   "timeout.already_active": " {0}En timeout är redan aktiv",
+  "timeout.check_missing": "Väntar fortfarande på: {0}",
+  "timeout.check_whole": "Alla spelare är anslutna",
+  "timeout.check_resumed": "{0} {1}kontrollerade, alla spelare är tillbaka",
 
   "backup.vote.restore_to": "Återställ till början av runda {0}",
   "backup.round_restored": " {0}Återställd till början av runda {1} ({2}resume för att fortsätta)",

@@ -6,6 +6,7 @@
   "help.show_captains": " {0}captains - キャプテンを表示",
   "help.tac_timeout": " {0}tac - 戦術タイムアウト",
   "help.tech_pause": " {0}tech, {1}resume - テクニカルポーズ",
+  "help.check": " {0}check - 全プレイヤーが戻ったか確認",
   "help.rules": " {0}rules - ルール",
   "help.restore_round": " {0}reset <round> - ラウンドの開始時に復元",
 
@@ -77,6 +78,9 @@
   "timeout.called_tactical": "{0} {1}が戦術タイムアウトを要求（残り {2}）",
   "timeout.called_admin": "管理者によるテクニカルタイムアウト",
   "timeout.already_active": " {0}既にタイムアウトが進行中です",
+  "timeout.check_missing": "まだ待っています: {0}",
+  "timeout.check_whole": "全プレイヤーが接続しています",
+  "timeout.check_resumed": "{0} {1}が確認しました。全プレイヤーが戻りました",
 
   "backup.vote.restore_to": "ラウンド {0} の開始時に復元",
   "backup.round_restored": " {0}ラウンド {1} の開始時に復元しました（続行は {2}resume）",

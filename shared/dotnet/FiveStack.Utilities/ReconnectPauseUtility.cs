@@ -1,4 +1,5 @@
 using FiveStack.Entities;
+using FiveStack.Enums;
 
 namespace FiveStack.Utilities;
 
@@ -18,6 +19,24 @@ public static class ReconnectPauseUtility
         (int present, int required) = RosterCount(matchData, connected, expectedPlayers);
 
         return present < required;
+    }
+
+    // Only the pause the roster made is ended by finding everyone back: any other
+    // waits for whoever called it, and so does one the teams, a camera or a
+    // timeout still hold.
+    public static eRosterCheck Check(ePauseReason? pause, bool shortHanded, bool held)
+    {
+        if (pause == null)
+        {
+            return eRosterCheck.NotPaused;
+        }
+
+        if (shortHanded)
+        {
+            return eRosterCheck.Missing;
+        }
+
+        return pause == ePauseReason.Roster && !held ? eRosterCheck.Resume : eRosterCheck.Whole;
     }
 
     // Each lineup's count is capped at what it needs, so a lineup with a spare

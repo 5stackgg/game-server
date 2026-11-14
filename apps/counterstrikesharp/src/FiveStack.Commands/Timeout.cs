@@ -32,6 +32,18 @@ public partial class FiveStackPlugin
         _matchService.GetCurrentMatch()?.timeoutSystem.RequestResume(player);
     }
 
+    [ConsoleCommand("css_check", "Checks that every player is back")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    public void OnCheck(CCSPlayerController? player, CommandInfo? command)
+    {
+        if (player == null)
+        {
+            return;
+        }
+
+        _matchService.GetCurrentMatch()?.timeoutSystem.CheckRoster(player);
+    }
+
     [
         ConsoleCommand("css_tac", "Tactical Timeout"),
         ConsoleCommand("css_timeout", "Tactical Timeout")

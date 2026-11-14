@@ -6,6 +6,7 @@
   "help.show_captains": " {0}captains - Kaptanları göster",
   "help.tac_timeout": " {0}tac - Taktik mola",
   "help.tech_pause": " {0}tech, {1}resume - Teknik duraklama",
+  "help.check": " {0}check - Tüm oyuncuların döndüğünü kontrol et",
   "help.rules": " {0}rules - Kurallar",
   "help.restore_round": " {0}reset <round> - Raundun başına geri yükle",
 
@@ -77,6 +78,9 @@
   "timeout.called_tactical": "{0} {1}taktik mola istedi (kaldı {2})",
   "timeout.called_admin": "Yönetici tarafından teknik mola",
   "timeout.already_active": " {0}Zaten aktif bir mola var",
+  "timeout.check_missing": "Hâlâ beklenen: {0}",
+  "timeout.check_whole": "Tüm oyuncular bağlı",
+  "timeout.check_resumed": "{0} {1}kontrol etti, tüm oyuncular döndü",
 
   "backup.vote.restore_to": "{0}. raundun başına geri yükle",
   "backup.round_restored": " {0}{1}. raundun başına geri yüklendi ({2}resume ile devam)",

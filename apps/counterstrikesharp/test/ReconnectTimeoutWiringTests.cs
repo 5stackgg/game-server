@@ -283,4 +283,67 @@ public class ReconnectTimeoutWiringTests
         Before(pause, "_timeoutSystem.ReconnectTimeoutSecondsLeft()", "\"match.reconnect_timeout\"");
         Before(pause, "\"match.reconnect_timeout\"", "\"match.resume_hint\"");
     }
+
+    // On a LAN the roster never ends its own pause, so a check is how it ends
+    // there, held to what the roster's own resume is held to.
+    [Fact]
+    public void A_Check_Holds_Any_Match_To_What_The_Rosters_Own_Resume_Waits_On()
+    {
+        string check = Timeout("public void CheckRoster(");
+
+        Assert.Matches(
+            @"ReconnectPauseUtility\.Check\(\s*match\.GetPauseReason\(\),\s*ReconnectPauseUtility\.ShouldPause\(matchData, connected, match\.GetExpectedPlayerCount\(\)\),\s*ShouldRequireTeamResume\(\) \|\| _cameraSystem\.IsBlocking\(\) \|\| IsTimeoutActive\(\)\s*\)",
+            check
+        );
+        Assert.DoesNotContain("IsLan()", check);
+    }
+
+    [Fact]
+    public void A_Check_Tells_Only_Its_Caller_That_Nothing_Is_Paused()
+    {
+        Assert.Matches(
+            @"if \(check == eRosterCheck\.NotPaused\)\s*\{\s*_gameServer\.Message\([^{}]*""timeout\.not_paused""[^{}]*,\s*player\s*\);\s*return;\s*\}",
+            Timeout("public void CheckRoster(")
+        );
+    }
+
+    [Fact]
+    public void A_Check_Names_Whoever_Is_Still_Out_To_Everyone_And_Stays_Paused()
+    {
+        Assert.Matches(
+            @"if \(check == eRosterCheck\.Missing\)\s*\{[^{}]*ReadyUtility\.EmptySeats\(matchData, connected, match\.GetExpectedPlayerCount\(\)\)[^{}]*_gameServer\.MessageEach\([^{}]*""timeout\.check_missing""[^{}]*return;\s*\}",
+            Timeout("public void CheckRoster(")
+        );
+    }
+
+    [Fact]
+    public void A_Check_Only_Resumes_Once_Every_Other_Answer_Is_Ruled_Out()
+    {
+        string check = Timeout("public void CheckRoster(");
+
+        Assert.Matches(
+            @"if \(check == eRosterCheck\.Whole\)\s*\{\s*_gameServer\.MessageEach\([^{}]*""timeout\.check_whole""[^{}]*return;\s*\}\s*string checkedBy = [^;]*;\s*match\.ResumeMatch\([^;]*""timeout\.check_resumed"", checkedBy,",
+            check
+        );
+        Assert.Single(Regex.Matches(check, @"ResumeMatch\("));
+    }
+
+    [Fact]
+    public void Check_Is_A_Command_Any_Player_In_The_Server_Can_Type()
+    {
+        string commands = Code("FiveStack.Commands", "Timeout.cs");
+
+        Assert.Matches(
+            @"\[ConsoleCommand\(""css_check"", [^\]]*\]\s*\[CommandHelper\(whoCanExecute: CommandUsage\.CLIENT_ONLY\)\]\s*public void OnCheck\(",
+            commands
+        );
+        Assert.Matches(
+            @"if \(player == null\)\s*\{\s*return;\s*\}\s*_matchService\.GetCurrentMatch\(\)\?\.timeoutSystem\.CheckRoster\(player\);",
+            Method(commands, "public void OnCheck(")
+        );
+        Assert.Contains(
+            "_localizer[\"help.check\", CommandUtility.PublicChatTrigger]",
+            Method(Code("FiveStack.Commands", "Help.cs"), "public void OnHelp(")
+        );
+    }
 }

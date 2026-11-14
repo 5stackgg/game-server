@@ -6,6 +6,7 @@
   "help.show_captains": " {0}captains - Kapitäne anzeigen",
   "help.tac_timeout": " {0}tac - Taktische Auszeit",
   "help.tech_pause": " {0}tech, {1}resume - Technische Pause",
+  "help.check": " {0}check - Prüfen, ob alle Spieler zurück sind",
   "help.rules": " {0}rules - Regeln",
   "help.restore_round": " {0}reset <round> - Zum Beginn der Runde zurückkehren",
 
@@ -77,6 +78,9 @@
   "timeout.called_tactical": "{0} {1}hat eine taktische Auszeit genommen ({2} verbleibend)",
   "timeout.called_admin": "Technische Auszeit vom Admin",
   "timeout.already_active": " {0}Bereits eine Auszeit aktiv",
+  "timeout.check_missing": "Warte noch auf: {0}",
+  "timeout.check_whole": "Alle Spieler sind verbunden",
+  "timeout.check_resumed": "{0} {1}hat geprüft, alle Spieler sind zurück",
 
   "backup.vote.restore_to": "Zum Beginn von Runde {0} zurückkehren",
   "backup.round_restored": " {0}Zurück am Beginn von Runde {1} ({2}resume zum Fortfahren)",

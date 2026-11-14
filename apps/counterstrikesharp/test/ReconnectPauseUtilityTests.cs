@@ -1,4 +1,5 @@
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Xunit;
 
@@ -307,5 +308,97 @@ public class ReconnectPauseUtilityTests
         Assert.Null(
             LineupMembership.LineupNumber(WithPlaceholders("Sam", "Sam"), "76561198999999992", "Sam")
         );
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void A_Check_With_Nothing_Paused_Only_Says_So(bool shortHanded)
+    {
+        Assert.Equal(
+            eRosterCheck.NotPaused,
+            ReconnectPauseUtility.Check(null, shortHanded, false)
+        );
+    }
+
+    [Theory]
+    [InlineData(ePauseReason.Roster, false)]
+    [InlineData(ePauseReason.Roster, true)]
+    [InlineData(ePauseReason.Restore, false)]
+    [InlineData(ePauseReason.Camera, true)]
+    [InlineData(ePauseReason.Tech, true)]
+    [InlineData(ePauseReason.Admin, false)]
+    public void A_Check_With_A_Player_Still_Out_Leaves_Any_Pause_In_Place(
+        ePauseReason pause,
+        bool held
+    )
+    {
+        Assert.Equal(eRosterCheck.Missing, ReconnectPauseUtility.Check(pause, true, held));
+    }
+
+    [Fact]
+    public void A_Check_That_Finds_Everyone_Back_Ends_The_Pause_The_Roster_Made()
+    {
+        Assert.Equal(
+            eRosterCheck.Resume,
+            ReconnectPauseUtility.Check(ePauseReason.Roster, false, false)
+        );
+    }
+
+    // A timeout or a pause someone called is theirs to end, whoever is back.
+    [Theory]
+    [InlineData(ePauseReason.Restore)]
+    [InlineData(ePauseReason.Camera)]
+    [InlineData(ePauseReason.Tech)]
+    [InlineData(ePauseReason.Admin)]
+    public void A_Check_Never_Ends_A_Pause_The_Roster_Did_Not_Make(ePauseReason pause)
+    {
+        Assert.Equal(eRosterCheck.Whole, ReconnectPauseUtility.Check(pause, false, false));
+    }
+
+    [Fact]
+    public void A_Check_Never_Ends_A_Roster_Pause_Something_Else_Still_Holds()
+    {
+        Assert.Equal(
+            eRosterCheck.Whole,
+            ReconnectPauseUtility.Check(ePauseReason.Roster, false, true)
+        );
+    }
+
+    // A check decides on the roster count and names players from the seats the
+    // not-ready list shows, so the two have to agree on when anyone is out.
+    [Fact]
+    public void A_Check_Has_A_Player_To_Name_Exactly_When_The_Roster_Is_Short()
+    {
+        MatchData unbound = BuildMatch(
+            new MatchMember { steam_id = null, placeholder_name = "Bob" }
+        );
+        MatchData substitute = new MatchData
+        {
+            lineup_1 = new MatchLineUp { lineup_players = Members(0, 6) },
+            lineup_2 = new MatchLineUp { lineup_players = Members(6, 5) },
+        };
+
+        (MatchData Match, IEnumerable<(string, string)> Connected)[] rosters =
+        [
+            (BuildMatch(), Roster(10)),
+            (BuildMatch(), Roster(9)),
+            (BuildMatch(), Roster(9).Append(("76561198999999999", "caster"))),
+            (unbound, Roster(9)),
+            (unbound, Roster(8)),
+            (FiveVersusFour(), Roster(9)),
+            (FiveVersusFour(), Roster(8)),
+            (substitute, Players(0, 5).Concat(Players(6, 5))),
+            (substitute, Players(0, 4).Concat(Players(6, 5))),
+            (substitute, Players(1, 5).Concat(Players(6, 4))),
+        ];
+
+        foreach ((MatchData match, IEnumerable<(string, string)> connected) in rosters)
+        {
+            Assert.Equal(
+                ReconnectPauseUtility.ShouldPause(match, connected, 10),
+                ReadyUtility.EmptySeats(match, connected, 10).Count > 0
+            );
+        }
     }
 }
