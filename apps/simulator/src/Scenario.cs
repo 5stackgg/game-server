@@ -138,6 +138,27 @@ public static class MapScript
         return rounds;
     }
 
+    // A map the loser is ahead in when it gives up `after` rounds in, the
+    // winner taking every round from there as CS2 hands them out.
+    public static List<Guid> GivenUp(
+        MatchOptions options,
+        Guid winner,
+        Guid loser,
+        int after,
+        Random random
+    )
+    {
+        int toWin = options.MaxRounds() / 2 + 1;
+        int ahead = after / 2 + 1;
+
+        return Enumerable
+            .Repeat(loser, ahead)
+            .Concat(Enumerable.Repeat(winner, after - ahead))
+            .OrderBy(_ => random.Next())
+            .Concat(Enumerable.Repeat(winner, toWin - (after - ahead)))
+            .ToList();
+    }
+
     // The rest of a map restored at winnerScore-loserScore, still won by the
     // same lineup.
     public static List<Guid> Rest(
@@ -150,7 +171,8 @@ public static class MapScript
     )
     {
         int toWin = options.MaxRounds() / 2 + 1;
-        int lost = random.Next(0, Math.Max(0, toWin - 1 - loserScore) + 1);
+        // One short of level: at 12-12 overtime decides the map, not the script.
+        int lost = random.Next(0, Math.Max(0, toWin - 2 - loserScore) + 1);
 
         List<Guid> rounds = Enumerable
             .Repeat(winner, Math.Max(0, toWin - 1 - winnerScore))

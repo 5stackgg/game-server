@@ -247,6 +247,10 @@ public sealed class SimulatedServer
 
         try
         {
+            // The api refuses a demo for a map it does not have in
+            // UploadingDemo yet. The plugin's 15 seconds before the upload
+            // cover that; at speed they are over before the api has read it.
+            await _sink.Flushed(token);
             await Demos.Upload(matchId, mapId, token);
         }
         // A timed out request throws TaskCanceledException, which ended the map

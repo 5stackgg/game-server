@@ -113,6 +113,15 @@ services:
     volumes:
       - ./mediamtx.yml:/mediamtx.yml:ro
 
+  # tools.mjs runs here and not in the api's container: the api image's
+  # runtime is the api's to change, and its move to Bun broke every tool.
+  tools:
+    image: node:24.22.1-alpine
+    init: true
+    command: ["sleep", "infinity"]
+    volumes:
+      - ./tools.mjs:/tools.mjs:ro
+
   # Hasura's metadata ships inside the api image.
   metadata:
     image: ${API_IMAGE:-ghcr.io/5stackgg/api:latest}

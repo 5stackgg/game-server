@@ -634,7 +634,13 @@ public sealed class MapRun
         bool leaves = (_scenario.Disconnect || _scenario.Abandon) && ScenarioMap;
         SimPlayer? leaver = null;
         List<Guid>? script = surrenders
-            ? MapScript.Won(Options, Opponent(_scenario.Subject), _scenario.Subject, _random)
+            ? MapScript.GivenUp(
+                Options,
+                Opponent(_scenario.Subject),
+                _scenario.Subject,
+                SurrenderAfterRounds,
+                _random
+            )
             : RoundScript();
         if (start != null && script != null && !(_scenario.Tie && ScenarioMap))
         {

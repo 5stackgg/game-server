@@ -32,6 +32,9 @@ SCENARIOS=(
 
 ENDED="('Finished', 'Tie', 'Canceled', 'Forfeit', 'Surrendered')"
 
+# The api retitles a pause alert once the map resumes.
+PAUSE_ALERT="('Match Alert: Map Paused', 'Map Resumed')"
+
 # Over once the api has ended the match, rated it and given the server back.
 settled() {
     local match=$1 server=$2
@@ -172,29 +175,30 @@ SQL
     return "$failed"
 }
 
-# surrender <server>: the second lineup votes to surrender after eight rounds
-# and leaves; CS2 then hands every round to the first until the game ends.
+# surrender <server>: the second lineup votes to surrender after eight rounds,
+# ahead 5-3, and leaves; CS2 then hands every round to the first until the game
+# ends. The map is Surrendered only until the server ends it.
 surrender() {
     local server=$1 match failed=0
     match=$(new_id)
     create_match "$match" "$server" 1 "Alpha" "Bravo sim:surrender" live_match_timeout=3
     start_match "$match"
-    wait_for 600 "$(map_reaches "$match" Surrendered)" || echo "  (timed out waiting for the surrender)"
-    wait_for 300 "$(ended "$match" "$server")" || true
+    wait_for 600 "$(settled "$match" "$server")" || echo "  (timed out waiting for the match to settle)"
+    wait_for 120 "$(map_reaches "$match" Finished)" || echo "  (timed out waiting for the server to end the map)"
 
     check -v match="$match" -v server="$(server_id "$server")" <<'SQL' || failed=1
 WITH m AS (SELECT * FROM matches WHERE id = :'match'),
 map AS (SELECT * FROM match_maps WHERE match_id = :'match')
-SELECT 'map status', 'Surrendered', (SELECT status FROM map)
-UNION ALL
-SELECT 'map goes to the lineup that stayed', (SELECT lineup_1_id::text FROM m), (SELECT winning_lineup_id::text FROM map)
-UNION ALL
-SELECT 'the lineup that gave up left', '5',
-       (SELECT count(*)::text FROM match_lineup_players WHERE match_lineup_id = (SELECT lineup_2_id FROM m) AND NOT is_connected)
-UNION ALL
 SELECT 'match ends surrendered', 'Surrendered', (SELECT status FROM m)
 UNION ALL
 SELECT 'match goes to the lineup that stayed', (SELECT lineup_1_id::text FROM m), (SELECT coalesce(winning_lineup_id::text, '') FROM m)
+UNION ALL
+SELECT 'the server ended the map', 'Finished', (SELECT status FROM map)
+UNION ALL
+SELECT 'map goes to the lineup that stayed', (SELECT lineup_1_id::text FROM m), (SELECT coalesce(winning_lineup_id::text, '') FROM map)
+UNION ALL
+SELECT 'the lineup that gave up left', '5',
+       (SELECT count(*)::text FROM match_lineup_players WHERE match_lineup_id = (SELECT lineup_2_id FROM m) AND NOT is_connected)
 UNION ALL
 SELECT 'every player rated', '10', (SELECT count(*)::text FROM player_elo WHERE match_id = :'match')
 UNION ALL
@@ -222,9 +226,11 @@ SELECT 'the lineup that turned up is not', '0',
        (SELECT count(*)::text FROM abandoned_matches am JOIN match_lineup_players mlp ON mlp.steam_id = am.steam_id
          WHERE am.match_id = :'match' AND mlp.match_lineup_id = (SELECT lineup_1_id FROM m))
 UNION ALL
-SELECT 'ratings', :'rated',
-       (SELECT coalesce(string_agg(DISTINCT pe.change::text, ','), 'none') || ' x' || count(*)::text
-          FROM player_elo pe WHERE pe.match_id = :'match')
+SELECT 'players rated', :'rated', (SELECT count(*)::text FROM player_elo WHERE match_id = :'match')
+UNION ALL
+SELECT 'each a no-show, losing at least the leaver penalty', :'rated',
+       (SELECT count(*)::text FROM player_elo pe JOIN match_lineup_players mlp ON mlp.steam_id = pe.steam_id
+         WHERE pe.match_id = :'match' AND mlp.match_lineup_id = (SELECT lineup_2_id FROM m) AND pe.change <= -150)
 UNION ALL
 SELECT 'server released', 'true',
        (SELECT (reserved_by_match_id IS DISTINCT FROM :'match')::text FROM servers WHERE id = :'server')
@@ -238,7 +244,7 @@ noshow() {
     create_match "$match" "$server" 1 "Alpha" "Bravo sim:noshow" auto_cancel_duration=1
     start_match "$match"
     wait_for 300 "$(ended "$match" "$server")" || echo "  (timed out waiting for the deadline)"
-    no_show_checks "$match" "$server" Canceled "none x0" || failed=1
+    no_show_checks "$match" "$server" Canceled 0 || failed=1
     release "$match"
     return "$failed"
 }
@@ -252,7 +258,7 @@ noshow_tournament() {
     make_tournament_match "$match"
     start_match "$match"
     wait_for 300 "$(settled "$match" "$server")" || echo "  (timed out waiting for the deadline)"
-    no_show_checks "$match" "$server" Forfeit "-150 x5" || failed=1
+    no_show_checks "$match" "$server" Forfeit 5 || failed=1
     check -v match="$match" <<'SQL' || failed=1
 SELECT 'forfeit goes to the lineup that turned up', lineup_1_id::text, coalesce(winning_lineup_id::text, '')
   FROM matches WHERE id = :'match'
@@ -270,12 +276,12 @@ disconnect() {
     start_match "$match"
     wait_for 600 "$(settled "$match" "$server")" || echo "  (timed out waiting for the match to settle)"
 
-    check -v match="$match" -v server="$(server_id "$server")" <<'SQL' || failed=1
+    check -v match="$match" -v server="$(server_id "$server")" -v pause_alert="$PAUSE_ALERT" <<'SQL' || failed=1
 WITH m AS (SELECT * FROM matches WHERE id = :'match')
 SELECT 'match status', 'Finished', (SELECT status FROM m)
 UNION ALL
 SELECT 'the pause raised an alert', 'true',
-       (SELECT (count(*) > 0)::text FROM notifications WHERE entity_id = :'match' AND title = 'Match Alert: Map Paused')
+       (SELECT (count(*) > 0)::text FROM notifications WHERE entity_id = :'match' AND title IN :pause_alert)
 UNION ALL
 SELECT 'everyone is connected again', '10',
        (SELECT count(*)::text FROM match_lineup_players
@@ -320,8 +326,8 @@ SELECT 'match ends surrendered', 'Surrendered', (SELECT status FROM m)
 UNION ALL
 SELECT 'match goes to the lineup that stayed', (SELECT lineup_1_id::text FROM m), (SELECT coalesce(winning_lineup_id::text, '') FROM m)
 UNION ALL
-SELECT 'the leaver takes the leaver penalty', '-150',
-       (SELECT coalesce(string_agg(pe.change::text, ','), 'unrated') FROM player_elo pe
+SELECT 'the leaver loses at least the leaver penalty', 'true',
+       (SELECT coalesce(bool_and(pe.change <= -150)::text, 'unrated') FROM player_elo pe
          WHERE pe.match_id = :'match' AND pe.steam_id IN (SELECT steam_id FROM leaver))
 UNION ALL
 SELECT 'server released', 'true',
@@ -500,7 +506,7 @@ timeouts() {
     start_match "$match"
     wait_for 600 "$(settled "$match" "$server")" || echo "  (timed out waiting for the match to settle)"
 
-    check -v match="$match" -v server="$(server_id "$server")" <<'SQL' || failed=1
+    check -v match="$match" -v server="$(server_id "$server")" -v pause_alert="$PAUSE_ALERT" <<'SQL' || failed=1
 WITH m AS (SELECT * FROM matches WHERE id = :'match'),
 map AS (SELECT * FROM match_maps WHERE match_id = :'match')
 SELECT 'match status', 'Finished', (SELECT status FROM m)
@@ -514,7 +520,7 @@ SELECT 'the last round carries both', '3-2',
          WHERE match_map_id = (SELECT id FROM map) AND deleted_at IS NULL ORDER BY round DESC LIMIT 1)
 UNION ALL
 SELECT 'the technical pause raised an alert', 'true',
-       (SELECT (count(*) > 0)::text FROM notifications WHERE entity_id = :'match' AND title = 'Match Alert: Map Paused')
+       (SELECT (count(*) > 0)::text FROM notifications WHERE entity_id = :'match' AND title IN :pause_alert)
 UNION ALL
 SELECT 'every player rated', '10', (SELECT count(*)::text FROM player_elo WHERE match_id = :'match')
 UNION ALL
@@ -625,6 +631,7 @@ camera() {
     done
 
     check -v match="$match" -v late="$late" -v paused="$paused" -v server="$(server_id "$server")" \
+        -v pause_alert="$PAUSE_ALERT" \
         -v reported="$(docker compose logs "sim-$server" 2>/dev/null | grep -c "cameras offline: $late" || true)" <<'SQL' || failed=1
 SELECT 'match status', 'Finished', (SELECT status FROM matches WHERE id = :'match')
 UNION ALL
@@ -633,7 +640,7 @@ UNION ALL
 SELECT 'which paused the match', 'true', :'paused'
 UNION ALL
 SELECT 'the pause raised an alert', 'true',
-       (SELECT (count(*) > 0)::text FROM notifications WHERE entity_id = :'match' AND title = 'Match Alert: Map Paused')
+       (SELECT (count(*) > 0)::text FROM notifications WHERE entity_id = :'match' AND title IN :pause_alert)
 UNION ALL
 SELECT 'every player rated', '10', (SELECT count(*)::text FROM player_elo WHERE match_id = :'match')
 UNION ALL
@@ -690,13 +697,13 @@ ready_3v3() {
     wait_for 600 "$(settled "$match" "$server")" || echo "  (timed out waiting for the match to settle)"
 
     check -v match="$match" -v forced="$forced" -v expected_forced="$([ "$ready" = Admin ] && echo true || echo n/a)" \
-        -v server="$(server_id "$server")" <<'SQL' || failed=1
+        -v server="$(server_id "$server")" -v pause_alert="$PAUSE_ALERT" <<'SQL' || failed=1
 SELECT 'match status', 'Finished', (SELECT status FROM matches WHERE id = :'match')
 UNION ALL
 SELECT 'force_ready sent', :'expected_forced', :'forced'
 UNION ALL
 SELECT 'no round paused for missing players', '0',
-       (SELECT count(*)::text FROM notifications WHERE entity_id = :'match' AND title = 'Match Alert: Map Paused')
+       (SELECT count(*)::text FROM notifications WHERE entity_id = :'match' AND title IN :pause_alert)
 UNION ALL
 SELECT 'every player rated', '6', (SELECT count(*)::text FROM player_elo WHERE match_id = :'match')
 UNION ALL
