@@ -187,4 +187,50 @@ public static class ReconnectPauseUtility
                 LineupMembership.LineupNumber(matchData, player.SteamId, player.Name) == lineup
             ) >= required;
     }
+
+    // Only someone who left while leaving was not timed. A player who never
+    // connected was the match's deadline to settle, and a match started without
+    // them was started that way on purpose; with a bench, they also look the
+    // same as a substitute nobody needed.
+    public static List<ulong> AbsentToTime(
+        MatchData matchData,
+        IEnumerable<(string SteamId, string Name)> connected,
+        int expectedPlayers,
+        IReadOnlySet<ulong> leftUntimed,
+        IReadOnlySet<ulong> timed
+    )
+    {
+        List<(string SteamId, string Name)> players = connected.ToList();
+        string[] coaches = [matchData.lineup_1.coach_steam_id, matchData.lineup_2.coach_steam_id];
+        List<ulong> absent = [];
+
+        for (int number = 1; number <= 2; number++)
+        {
+            MatchLineUp lineup = number == 1 ? matchData.lineup_1 : matchData.lineup_2;
+            int emptySeats =
+                BoundSeats(lineup, expectedPlayers)
+                - players.Count(player =>
+                    LineupMembership.LineupNumber(matchData, player.SteamId, player.Name) == number
+                );
+
+            if (emptySeats <= 0)
+            {
+                continue;
+            }
+
+            List<ulong> missing = lineup
+                .lineup_players.Select(member => member.steam_id)
+                .OfType<string>()
+                .Where(steamId =>
+                    !coaches.Contains(steamId) && players.All(player => player.SteamId != steamId)
+                )
+                .Select(steamId => ulong.TryParse(steamId, out ulong id) ? id : 0)
+                .Where(steamId => steamId != 0)
+                .ToList();
+
+            absent.AddRange(missing.Where(leftUntimed.Contains));
+        }
+
+        return absent.Where(steamId => !timed.Contains(steamId)).ToList();
+    }
 }

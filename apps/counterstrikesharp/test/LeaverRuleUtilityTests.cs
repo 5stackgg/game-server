@@ -94,4 +94,88 @@ public class LeaverRuleUtilityTests
     {
         Assert.False(LeaverRuleUtility.TimesLeaver(rule, inPlay: false, mapOver: true));
     }
+
+    [Theory]
+    [InlineData(eMapStatus.Warmup, eMapStatus.Knife)]
+    [InlineData(eMapStatus.Warmup, eMapStatus.Live)]
+    [InlineData(eMapStatus.Warmup, eMapStatus.Paused)]
+    [InlineData(eMapStatus.Knife, eMapStatus.Live)]
+    public void Every_Match_Times_The_Players_Missing_As_A_Map_Starts_Play(
+        eMapStatus from,
+        eMapStatus to
+    )
+    {
+        foreach (eLeaverRule rule in Enum.GetValues<eLeaverRule>())
+        {
+            Assert.True(LeaverRuleUtility.TimesAbsentPlayers(rule, from, to, mapOrder: 1));
+        }
+    }
+
+    // A resume, overtime, a map that ends and a server that starts into play
+    // start nothing: whoever is missing then was timed, or left where they are.
+    [Theory]
+    [InlineData(eMapStatus.Paused, eMapStatus.Live)]
+    [InlineData(eMapStatus.Live, eMapStatus.Paused)]
+    [InlineData(eMapStatus.Live, eMapStatus.Overtime)]
+    [InlineData(eMapStatus.Live, eMapStatus.WaitingForTV)]
+    [InlineData(eMapStatus.Unknown, eMapStatus.Live)]
+    [InlineData(eMapStatus.Unknown, eMapStatus.Knife)]
+    [InlineData(eMapStatus.Knife, eMapStatus.Warmup)]
+    public void Nothing_But_A_Map_Starting_Play_Times_The_Missing_Players(
+        eMapStatus from,
+        eMapStatus to
+    )
+    {
+        foreach (eLeaverRule rule in Enum.GetValues<eLeaverRule>())
+        {
+            Assert.False(LeaverRuleUtility.TimesAbsentPlayers(rule, from, to, mapOrder: 1));
+        }
+    }
+
+    // A player who left while the last map was over is first missed as the next
+    // map loads into warmup, where only a LAN tournament times anyone.
+    [Theory]
+    [InlineData(eLeaverRule.Abandon, false)]
+    [InlineData(eLeaverRule.AbandonOnSurrender, false)]
+    [InlineData(eLeaverRule.NoSurrender, true)]
+    public void Only_A_Lan_Tournament_Times_The_Players_Missing_From_A_Later_Maps_Warmup(
+        eLeaverRule rule,
+        bool timed
+    )
+    {
+        Assert.Equal(
+            timed,
+            LeaverRuleUtility.TimesAbsentPlayers(
+                rule,
+                eMapStatus.Unknown,
+                eMapStatus.Warmup,
+                mapOrder: 2
+            )
+        );
+        Assert.Equal(
+            timed,
+            LeaverRuleUtility.TimesAbsentPlayers(
+                rule,
+                eMapStatus.UploadingDemo,
+                eMapStatus.Warmup,
+                mapOrder: 2
+            )
+        );
+    }
+
+    // Nobody has missed anything by the first map's warmup.
+    [Theory]
+    [InlineData(eMapStatus.Unknown)]
+    [InlineData(eMapStatus.Live)]
+    public void A_Lan_Tournament_Times_Nobody_From_The_First_Maps_Warmup(eMapStatus from)
+    {
+        Assert.False(
+            LeaverRuleUtility.TimesAbsentPlayers(
+                eLeaverRule.NoSurrender,
+                from,
+                eMapStatus.Warmup,
+                mapOrder: 1
+            )
+        );
+    }
 }

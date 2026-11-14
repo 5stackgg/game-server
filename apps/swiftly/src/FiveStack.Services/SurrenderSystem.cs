@@ -35,6 +35,13 @@ public class SurrenderSystem
     // lineup being whole without them.
     private readonly HashSet<ulong> _timedOutLeavers = new HashSet<ulong>();
 
+    // Lineup players who left where leaving is not timed. Coming back takes a
+    // player off it, and so does their lineup being whole without them.
+    private readonly HashSet<ulong> _untimedLeavers = new HashSet<ulong>();
+
+    // A map started play and its untimed leavers are still to be timed.
+    private bool _timesAbsentPlayers;
+
     // Lineups whose leaver ran out of time while another surrender vote was
     // open, with the side the leaver left from.
     private readonly Dictionary<Guid, Team> _waitingLineups = new Dictionary<Guid, Team>();
@@ -67,8 +74,14 @@ public class SurrenderSystem
     public void SetupDisconnectTimer(Team team, ulong steamId, string playerName = "")
     {
         MatchManager? match = _matchService.GetCurrentMatch();
-        if (match == null || !TimesLeaver(match))
+        if (match == null)
         {
+            return;
+        }
+
+        if (!TimesLeaver(match))
+        {
+            _untimedLeavers.Add(steamId);
             return;
         }
 
@@ -133,6 +146,61 @@ public class SurrenderSystem
         );
 
         _disconnectTimers[team][steamId] = timer;
+    }
+
+    public void MapStatusChanged(eMapStatus previous, eMapStatus status, int mapOrder)
+    {
+        if (LeaverRuleUtility.TimesAbsentPlayers(LeaverRule(), previous, status, mapOrder))
+        {
+            _timesAbsentPlayers = true;
+        }
+
+        TimeAbsentPlayers();
+    }
+
+    // Going live from warmup is only in play once CS2 has ended its warmup, a
+    // round later, so where nobody is timed outside play the first round in
+    // play times them.
+    public void TimeAbsentPlayers()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+
+        if (!_timesAbsentPlayers || match == null || matchData == null || !TimesLeaver(match))
+        {
+            return;
+        }
+
+        _timesAbsentPlayers = false;
+
+        HashSet<ulong> timed = _disconnectTimers
+            .Values.SelectMany(timers => timers.Keys)
+            .Concat(_reportedAbandons)
+            .Concat(_reportedAbsences)
+            .Concat(_timedOutLeavers)
+            .ToHashSet();
+
+        foreach (
+            ulong steamId in ReconnectPauseUtility.AbsentToTime(
+                matchData,
+                MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.Name)),
+                match.GetExpectedPlayerCount(),
+                _untimedLeavers,
+                timed
+            )
+        )
+        {
+            SetupDisconnectTimer(
+                LeaverSurrenderSide(
+                    matchData,
+                    match.GetCurrentMap(),
+                    LeaverLineup(matchData, steamId.ToString(), ""),
+                    Team.None,
+                    _gameServer.GetTotalRoundsPlayed()
+                ),
+                steamId
+            );
+        }
     }
 
     // A fired timer is never left to be killed later.
@@ -270,6 +338,7 @@ public class SurrenderSystem
     {
         _timedOutLeavers.Remove(steamId);
         _reportedAbsences.Remove(steamId);
+        _untimedLeavers.Remove(steamId);
 
         if (!KillDisconnectTimer(steamId))
         {
@@ -336,6 +405,7 @@ public class SurrenderSystem
         );
 
         _timedOutLeavers.RemoveWhere(steamId => IsReplaced(matchData, shortLineups, steamId));
+        _untimedLeavers.RemoveWhere(steamId => IsReplaced(matchData, shortLineups, steamId));
 
         if (LeaverRule() != eLeaverRule.AbandonOnSurrender)
         {
@@ -523,6 +593,8 @@ public class SurrenderSystem
         _reportedAbandons.Clear();
         _reportedAbsences.Clear();
         _timedOutLeavers.Clear();
+        _untimedLeavers.Clear();
+        _timesAbsentPlayers = false;
         KillDisconnectTimers();
     }
 

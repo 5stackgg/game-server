@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using FiveStack;
 using FiveStack.Entities;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -109,6 +110,14 @@ public class LanMatchLeaverTests
         return (HashSet<ulong>)
             typeof(SurrenderSystem)
                 .GetField("_timedOutLeavers", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .GetValue(surrender)!;
+    }
+
+    private static HashSet<ulong> UntimedLeavers(SurrenderSystem surrender)
+    {
+        return (HashSet<ulong>)
+            typeof(SurrenderSystem)
+                .GetField("_untimedLeavers", BindingFlags.NonPublic | BindingFlags.Instance)!
                 .GetValue(surrender)!;
     }
 
@@ -338,6 +347,77 @@ public class LanMatchLeaverTests
         Assert.Empty(TimedOutLeavers(surrender));
     }
 
+    // A player who left where leaving is not timed is timed once the map
+    // starts play, unless a substitute has taken their seat by then.
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void A_Leaver_Left_Untimed_Is_Forgotten_Once_Their_Lineup_Is_Whole(
+        bool lan,
+        bool tournament
+    )
+    {
+        var (surrender, _) = Server(lan: lan, tournament: tournament);
+        UntimedLeavers(surrender).Add(Leaver);
+
+        surrender.ForgetReplacedLeavers(Lineups(), Connected(2, 3, 4, 5, 11, 12, 13, 14, 15), 10);
+
+        Assert.Equal(Leaver, Assert.Single(UntimedLeavers(surrender)));
+
+        surrender.ForgetReplacedLeavers(
+            Lineups(),
+            Connected(2, 3, 4, 5, 6, 11, 12, 13, 14, 15),
+            10
+        );
+
+        Assert.Empty(UntimedLeavers(surrender));
+    }
+
+    [Fact]
+    public void A_Leaver_Left_Untimed_Who_Comes_Back_Is_Forgotten()
+    {
+        var (surrender, _) = Server(lan: false, tournament: false);
+        UntimedLeavers(surrender).Add(Leaver);
+
+        surrender.CancelDisconnectTimer(Leaver);
+
+        Assert.Empty(UntimedLeavers(surrender));
+    }
+
+    [Fact]
+    public void Only_A_New_Match_Forgets_A_Leaver_Left_Untimed()
+    {
+        var (surrender, _) = Server(lan: true, tournament: true);
+        Guid matchId = Guid.NewGuid();
+        surrender.OnMatchSetup(new MatchData { id = matchId });
+        UntimedLeavers(surrender).Add(Leaver);
+
+        surrender.OnMatchSetup(new MatchData { id = matchId });
+
+        Assert.Equal(Leaver, Assert.Single(UntimedLeavers(surrender)));
+
+        surrender.OnMatchSetup(new MatchData { id = Guid.NewGuid() });
+
+        Assert.Empty(UntimedLeavers(surrender));
+    }
+
+    // A map that is over, or a resume, starts no play.
+    [Theory]
+    [InlineData(eMapStatus.Live, eMapStatus.WaitingForTV)]
+    [InlineData(eMapStatus.Paused, eMapStatus.Live)]
+    [InlineData(eMapStatus.Unknown, eMapStatus.Live)]
+    public void A_Status_Change_That_Starts_No_Play_Times_Nobody(eMapStatus from, eMapStatus to)
+    {
+        var (surrender, events) = Server(lan: true, tournament: true);
+        UntimedLeavers(surrender).Add(Leaver);
+
+        surrender.MapStatusChanged(from, to, 2);
+
+        Assert.False(HasTimer(surrender, Leaver));
+        Assert.Equal(0, events.Sent("player-absent"));
+    }
+
     // The rest needs the engine, so it reads the plugin.
     private static string SourceDir([CallerFilePath] string testFile = "")
     {
@@ -441,7 +521,7 @@ public class LanMatchLeaverTests
         string source = Surrender();
 
         Assert.Matches(
-            @"^public void SetupDisconnectTimer\([^)]*\)\s*\{\s*MatchManager\? match = _matchService\.GetCurrentMatch\(\);\s*if \(match == null \|\| !TimesLeaver\(match\)\)\s*\{\s*return;\s*\}",
+            @"^public void SetupDisconnectTimer\([^)]*\)\s*\{\s*MatchManager\? match = _matchService\.GetCurrentMatch\(\);\s*if \(match == null\)\s*\{\s*return;\s*\}\s*if \(!TimesLeaver\(match\)\)\s*\{\s*_untimedLeavers\.Add\(steamId\);\s*return;\s*\}",
             Method(source, "public void SetupDisconnectTimer(")
         );
         Assert.Matches(
@@ -473,13 +553,13 @@ public class LanMatchLeaverTests
     }
 
     [Fact]
-    public void Nothing_But_A_Disconnect_Starts_A_Leavers_Timer()
+    public void Only_A_Disconnect_Or_A_Map_Starting_Play_Starts_A_Leavers_Timer()
     {
         string src = SourceDir();
         string[] built = { "bin", "obj", "build" };
 
         Assert.Equal(
-            2,
+            3,
             Directory
                 .EnumerateFiles(src, "*.cs", SearchOption.AllDirectories)
                 .Where(file =>
@@ -490,6 +570,65 @@ public class LanMatchLeaverTests
                 .Sum(file =>
                     Regex.Matches(File.ReadAllText(file), @"\bSetupDisconnectTimer\(").Count
                 )
+        );
+        Assert.Single(
+            Regex.Matches(
+                Method(Surrender(), "public void TimeAbsentPlayers()"),
+                @"\bSetupDisconnectTimer\("
+            )
+        );
+    }
+
+    // Through the disconnect's own gate, and only once per start: the first
+    // round in play is where a map going live from warmup is in play at last.
+    [Fact]
+    public void The_Players_Missing_When_Play_Starts_Are_Timed_Once_Where_The_Rule_Times_Them()
+    {
+        string source = Surrender();
+        string sweep = Method(source, "public void TimeAbsentPlayers()");
+
+        Assert.Matches(
+            @"^public void TimeAbsentPlayers\(\)\s*\{\s*MatchManager\? match = _matchService\.GetCurrentMatch\(\);\s*MatchData\? matchData = match\?\.GetMatchData\(\);\s*if \(!_timesAbsentPlayers \|\| match == null \|\| matchData == null \|\| !TimesLeaver\(match\)\)\s*\{\s*return;\s*\}\s*_timesAbsentPlayers = false;",
+            sweep
+        );
+        Assert.Matches(
+            @"HashSet<ulong> timed = _disconnectTimers\s*\.Values\.SelectMany\(timers => timers\.Keys\)\s*\.Concat\(_reportedAbandons\)\s*\.Concat\(_reportedAbsences\)\s*\.Concat\(_timedOutLeavers\)\s*\.ToHashSet\(\);",
+            sweep
+        );
+        Assert.Matches(
+            @"ReconnectPauseUtility\.AbsentToTime\(\s*matchData,[^;]*match\.GetExpectedPlayerCount\(\),\s*_untimedLeavers,\s*timed\s*\)",
+            sweep
+        );
+        Assert.Matches(
+            @"^public void MapStatusChanged\(eMapStatus previous, eMapStatus status, int mapOrder\)\s*\{\s*if \(LeaverRuleUtility\.TimesAbsentPlayers\(LeaverRule\(\), previous, status, mapOrder\)\)\s*\{\s*_timesAbsentPlayers = true;\s*\}\s*TimeAbsentPlayers\(\);\s*$",
+            Method(source, "public void MapStatusChanged(")
+        );
+
+        string update = Method(
+            Code("FiveStack.Services", "MatchManager.cs"),
+            "public void UpdateMapStatus("
+        );
+        int changed = At(update, "_currentMapStatus = status;");
+
+        Assert.True(
+            At(update, "eMapStatus previousStatus = _currentMapStatus;") < changed,
+            "the status the map left is read after it is overwritten"
+        );
+        Assert.Matches(
+            @"_surrenderSystem\.MapStatusChanged\(previousStatus, status, currentMap\?\.order \?\? 0\);\s*$",
+            update[changed..]
+        );
+
+        string round = Method(
+            Code("FiveStack.Events", "RoundStart.cs"),
+            "public HookResult OnRoundStart("
+        );
+        int timed = At(round, "_surrenderSystem.TimeAbsentPlayers();");
+
+        Assert.True(At(round, "if (!isInPlay)") < timed, "a round outside play times them");
+        Assert.True(
+            timed < At(round, "if (_gameBackupRounds.HoldsRoundResults())"),
+            "a round held for a restore leaves them untimed"
         );
     }
 
@@ -607,7 +746,7 @@ public class LanMatchLeaverTests
     public void A_Replaced_Leavers_Timer_Is_Only_Killed_Where_A_Surrender_Reports_Them()
     {
         Assert.Matches(
-            @"_timedOutLeavers\.RemoveWhere\([^;]*\);\s*if \(LeaverRule\(\) != eLeaverRule\.AbandonOnSurrender\)\s*\{\s*return;\s*\}\s*List<ulong> replaced = _disconnectTimers\s*\.Values\.SelectMany\(timers => timers\.Keys\)\s*\.Where\(steamId => IsReplaced\(matchData, shortLineups, steamId\)\)\s*\.ToList\(\);\s*foreach \(ulong steamId in replaced\)\s*\{\s*KillDisconnectTimer\(steamId\);\s*\}\s*$",
+            @"_timedOutLeavers\.RemoveWhere\([^;]*\);\s*_untimedLeavers\.RemoveWhere\(steamId => IsReplaced\(matchData, shortLineups, steamId\)\);\s*if \(LeaverRule\(\) != eLeaverRule\.AbandonOnSurrender\)\s*\{\s*return;\s*\}\s*List<ulong> replaced = _disconnectTimers\s*\.Values\.SelectMany\(timers => timers\.Keys\)\s*\.Where\(steamId => IsReplaced\(matchData, shortLineups, steamId\)\)\s*\.ToList\(\);\s*foreach \(ulong steamId in replaced\)\s*\{\s*KillDisconnectTimer\(steamId\);\s*\}\s*$",
             Method(Surrender(), "public void ForgetReplacedLeavers(")
         );
     }
