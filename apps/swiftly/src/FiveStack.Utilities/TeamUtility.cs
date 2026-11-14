@@ -183,5 +183,28 @@ namespace FiveStack.Utilities
 
             return totalCash;
         }
+
+        public static List<PlayerMoney> PlayingMoney()
+        {
+            var money = new List<PlayerMoney>();
+
+            foreach (var player in MatchUtility.Players())
+            {
+                if (player.Controller.Team != Team.T && player.Controller.Team != Team.CT)
+                {
+                    continue;
+                }
+
+                money.Add(
+                    new PlayerMoney(
+                        player.SteamID,
+                        player.Controller.InGameMoneyServices?.CashSpentThisRound ?? 0,
+                        player.Controller.ActionTrackingServices?.MatchStats.CashEarned
+                    )
+                );
+            }
+
+            return money;
+        }
     }
 }

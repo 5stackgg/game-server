@@ -794,7 +794,8 @@ public sealed class MapRun
                     lineup1Score,
                     lineup2Score,
                     winnerSide,
-                    winnerSide == Side.T ? eWinReason.TerroristsWin : eWinReason.CTsWin
+                    winnerSide == Side.T ? eWinReason.TerroristsWin : eWinReason.CTsWin,
+                    []
                 );
                 last["backup_file"] = "";
                 _server.Emit(_match.id, _map.id, "score", last, stamped: true);
@@ -816,12 +817,20 @@ public sealed class MapRun
             bool pistolRound =
                 roundsPlayed == 0 || (roundsPlayed == Options.mr && Options.SwapsSides());
 
+            Dictionary<SimPlayer, int> beforeBuy = _roster.All.ToDictionary(
+                player => player,
+                player => player.Money
+            );
             Economy.Buy(terrorists, Side.T, Economy.TeamTier(terrorists, pistolRound), _random);
             Economy.Buy(
                 counterTerrorists,
                 Side.CT,
                 Economy.TeamTier(counterTerrorists, pistolRound),
                 _random
+            );
+            Dictionary<SimPlayer, int> afterBuy = _roster.All.ToDictionary(
+                player => player,
+                player => player.Money
             );
 
             RoundOutcome outcome = RoundSimulator.Play(
@@ -889,7 +898,16 @@ public sealed class MapRun
                 lineup1Score,
                 lineup2Score,
                 outcome.Winner,
-                outcome.Reason
+                outcome.Reason,
+                terrorists
+                    .Concat(counterTerrorists)
+                    .Select(player => new Dictionary<string, object>
+                    {
+                        { "steam_id", player.SteamId },
+                        { "spent", beforeBuy[player] - afterBuy[player] },
+                        { "earned", Math.Max(0, player.Money - afterBuy[player]) },
+                    })
+                    .ToList()
             );
 
             if (SideRules.IsMapOver(Options, lineup1Score, lineup2Score))
@@ -1062,7 +1080,8 @@ public sealed class MapRun
         int lineup1Score,
         int lineup2Score,
         Side winner,
-        eWinReason reason
+        eWinReason reason,
+        List<Dictionary<string, object>> players
     )
     {
         Side lineup1Side = Lineup1Side(roundsPlayed - 1);
@@ -1085,6 +1104,7 @@ public sealed class MapRun
                 "backup_file",
                 SimulatedBackup.Write(roundsPlayed, lineup1Score, lineup2Score, _roster)
             },
+            { "players", players },
         };
     }
 

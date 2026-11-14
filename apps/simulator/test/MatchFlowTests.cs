@@ -135,6 +135,47 @@ public class MatchFlowTests
         Assert.Contains(sink.Events, e => e.Name == "objective");
     }
 
+    // What each player spent and earned is all that moves their money between
+    // two scores, until it goes back to the start amount.
+    [Fact]
+    public async Task EachScoreSaysWhatEveryPlayerSpentAndEarned()
+    {
+        (RecordingSink sink, MatchData match) = await PlayMap(Matches.Build(), seed: 3);
+
+        int playing = match.lineup_1.lineup_players.Count + match.lineup_2.lineup_players.Count;
+        int money = playing * Economy.StartMoney;
+
+        foreach (Published score in sink.Events.Where(e => e.Name == "score"))
+        {
+            var players = (List<Dictionary<string, object>>)score.Data["players"];
+
+            Assert.Equal(playing, players.Count);
+            Assert.All(
+                players,
+                player =>
+                {
+                    Assert.True((int)player["spent"] >= 0);
+                    Assert.True((int)player["earned"] >= 0);
+                }
+            );
+
+            money += players.Sum(player => (int)player["earned"] - (int)player["spent"]);
+            Assert.Equal(money, Int(score, "lineup_1_money") + Int(score, "lineup_2_money"));
+
+            int round = Int(score, "round");
+            if (SideRules.ResetsMoney(match.options, round))
+            {
+                money =
+                    playing
+                    * (
+                        round >= match.options.MaxRounds()
+                            ? Economy.OvertimeStartMoney
+                            : Economy.StartMoney
+                    );
+            }
+        }
+    }
+
     [Fact]
     public async Task NoTwoTimedEventsShareAMillisecond()
     {

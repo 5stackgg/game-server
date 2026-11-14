@@ -9,10 +9,13 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
+    private readonly Dictionary<ulong, int> _cashEarnedAtRoundStart = new();
+
     [GameEventHandler]
     public HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
     {
         _victimHealth.Clear();
+        RoundMoney.Baseline(_cashEarnedAtRoundStart, TeamUtility.PlayingMoney());
 
         MatchManager? matchManager = _matchService.GetCurrentMatch();
         if (matchManager == null)
