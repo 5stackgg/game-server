@@ -189,6 +189,30 @@ public class GapsTests
     }
 
     [Fact]
+    public async Task ADemoIsUploadedOnlyOnceTheApiHasTheMapInUploadingDemo()
+    {
+        MatchData match = Matches.Build();
+        var demos = new RecordingDemos();
+        var sink = new RecordingSink();
+        var flushed = new List<(string Status, int Uploads)>();
+        sink.OnFlush = () => flushed.Add((sink.Statuses()[^1], demos.Uploads.Count));
+        SimulatedServer server = Matches.Server(
+            new FakeSource()
+                .Then(Matches.Live(match))
+                .Then(new MatchFetch(eCurrentMatchAction.Clear)),
+            sink,
+            onGameNode: false
+        );
+        server.Demos = demos;
+
+        await server.RefreshMatch();
+        await Matches.Finish(server.LastRun);
+
+        Assert.Equal([("UploadingDemo", 0)], flushed);
+        Assert.Single(demos.Uploads);
+    }
+
+    [Fact]
     public async Task AMapWhoseDemoUploadTimesOutStillFinishes()
     {
         (List<Published> events, _) = await Play(

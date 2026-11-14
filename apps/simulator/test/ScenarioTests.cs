@@ -105,6 +105,23 @@ public class ScenarioTests
     }
 
     [Fact]
+    public void TheRestOfARestoredMapIsWonInRegulationToo()
+    {
+        var options = new MatchOptions { mr = 12, type = "Competitive" };
+        Guid winner = Guid.NewGuid();
+        Guid loser = Guid.NewGuid();
+
+        for (int seed = 0; seed < 200; seed++)
+        {
+            List<Guid> rounds = MapScript.Rest(options, winner, loser, 4, 2, new Random(seed));
+
+            Assert.Equal(13, 4 + rounds.Count(round => round == winner));
+            Assert.InRange(2 + rounds.Count(round => round == loser), 2, 11);
+            Assert.Equal(winner, rounds[^1]);
+        }
+    }
+
+    [Fact]
     public void ATiedMapEndsLevelWhenThereIsNoOvertime()
     {
         var options = new MatchOptions

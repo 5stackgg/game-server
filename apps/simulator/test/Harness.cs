@@ -44,6 +44,8 @@ public sealed class RecordingSink : IEventSink
 
     public Action<Published>? OnPublish { get; set; }
 
+    public Action? OnFlush { get; set; }
+
     public List<Published> Events
     {
         get
@@ -64,6 +66,12 @@ public sealed class RecordingSink : IEventSink
         }
 
         OnPublish?.Invoke(published);
+    }
+
+    public Task Flushed(CancellationToken token)
+    {
+        OnFlush?.Invoke();
+        return Task.CompletedTask;
     }
 
     public List<string> Statuses()
