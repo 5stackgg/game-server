@@ -103,6 +103,7 @@ public class MatchEvents
         public int LiveCtScore { get; set; }
         public string Lineup1Money { get; set; } = "0";
         public string Lineup2Money { get; set; } = "0";
+        public List<Dictionary<string, object>> Players { get; set; } = new();
         public int Lineup1Timeouts { get; set; }
         public int Lineup2Timeouts { get; set; }
         public CsTeam Winner { get; set; }

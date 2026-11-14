@@ -168,6 +168,11 @@ public partial class FiveStackPlugin
             .GetTeamMoney(matchData, currentMap, matchData.lineup_2_id, currentSideIndex)
             .ToString();
 
+        List<Dictionary<string, object>> players =
+            totalRoundsPlayed >= 1 && !match.IsWarmup() && !match.IsKnife()
+                ? RoundMoney.Payload(_cashEarnedAtRoundStart, TeamUtility.PlayingMoney())
+                : new();
+
         _matchEvents.PendingRoundResult = new MatchEvents.RoundResultSnapshot
         {
             Round = totalRoundsPlayed,
@@ -177,6 +182,7 @@ public partial class FiveStackPlugin
             LiveCtScore = liveCt,
             Lineup1Money = l1Money,
             Lineup2Money = l2Money,
+            Players = players,
             Lineup1Timeouts = l1Timeouts,
             Lineup2Timeouts = l2Timeouts,
             Winner = roundWinner,
@@ -255,6 +261,7 @@ public partial class FiveStackPlugin
                 { "winning_side", $"{TeamUtility.CSTeamToString(snap.Winner)}" },
                 { "winning_reason", $"{snap.WinReason}" },
                 { "backup_file", backupFile },
+                { "players", snap.Players },
             }
         );
 

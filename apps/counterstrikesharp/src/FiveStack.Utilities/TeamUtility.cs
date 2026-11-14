@@ -252,5 +252,28 @@ namespace FiveStack.Utilities
 
             return totalCash;
         }
+
+        public static List<PlayerMoney> PlayingMoney()
+        {
+            var money = new List<PlayerMoney>();
+
+            foreach (var player in MatchUtility.Players())
+            {
+                if (player.Team != CsTeam.Terrorist && player.Team != CsTeam.CounterTerrorist)
+                {
+                    continue;
+                }
+
+                money.Add(
+                    new PlayerMoney(
+                        player.SteamID,
+                        player.InGameMoneyServices?.CashSpentThisRound ?? 0,
+                        player.ActionTrackingServices?.MatchStats.CashEarned
+                    )
+                );
+            }
+
+            return money;
+        }
     }
 }
