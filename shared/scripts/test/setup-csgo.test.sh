@@ -30,6 +30,7 @@ mkdir -p \
   "$workdir/opt/csgo-sourcemod/addons/sourcemod/configs" \
   "$workdir/opt/csgo-metamod/addons/metamod/bin/linux64" \
   "$workdir/opt/csgo-no-lobby-reservation/addons/sourcemod/plugins" \
+  "$workdir/opt/custom-plugins/addons" \
   "$workdir/opt/server-cfg"
 
 echo "appID=730" > "$workdir/base/csgo/steam.inf"
@@ -38,6 +39,7 @@ touch \
   "$workdir/opt/csgo-metamod/addons/metamod_x64.vdf" \
   "$workdir/opt/csgo-metamod/addons/metamod/bin/server.so" \
   "$workdir/opt/csgo-metamod/addons/metamod/bin/linux64/server.so" \
+  "$workdir/opt/custom-plugins/addons/metamod_x64.vdf" \
   "$workdir/opt/server-cfg/mg_public.txt" \
   "$workdir/opt/server-cfg/public.server.cfg"
 
@@ -55,9 +57,16 @@ fi
 
 # srcds_linux is 32-bit, so this loader can only fail, and its "wrong ELF
 # class" line in every boot log reads like the reason a server is broken.
+# The server's own folder holds one too, as after an admin uploads the whole
+# Metamod package through Files.
 echo "setup-csgo.sh leaves out Metamod's 64-bit loader"
-if [ -e "$addons/metamod_x64.vdf" ]; then
+if [ -e "$addons/metamod_x64.vdf" ] || [ -L "$addons/metamod_x64.vdf" ]; then
   fail "metamod_x64.vdf is in the CS:GO server's addons"
+fi
+
+echo "setup-csgo.sh leaves the server's own files alone"
+if [ ! -e "$workdir/opt/custom-plugins/addons/metamod_x64.vdf" ]; then
+  fail "the server's own metamod_x64.vdf was deleted"
 fi
 
 if [ "$failures" -gt 0 ]; then
