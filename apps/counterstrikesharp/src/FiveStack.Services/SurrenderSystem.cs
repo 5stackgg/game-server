@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Entities.Constants;
 using CounterStrikeSharp.API.Modules.Utils;
 using FiveStack.Entities;
 using FiveStack.Enums;
@@ -23,9 +24,14 @@ public class SurrenderSystem
     private Dictionary<CsTeam, Dictionary<ulong, Timer>> _disconnectTimers =
         new Dictionary<CsTeam, Dictionary<ulong, Timer>>();
 
-    // Only a different match clears it.
+    // Only a different match clears them.
     private readonly HashSet<ulong> _reportedAbandons = new HashSet<ulong>();
+    private readonly HashSet<ulong> _reportedAbsences = new HashSet<ulong>();
     private Guid? _matchId;
+
+    // Leavers who ran out of time in a match that only reports them once their
+    // lineup surrenders. Coming back takes a leaver off it.
+    private readonly HashSet<ulong> _timedOutLeavers = new HashSet<ulong>();
 
     // Lineups whose leaver ran out of time while another surrender vote was
     // open, with the side the leaver left from.
@@ -70,12 +76,6 @@ public class SurrenderSystem
             return;
         }
 
-        // A LAN or offline drop is a dead machine or network far more often than a leaver.
-        if (matchData.is_lan || _environmentService.IsOfflineMode())
-        {
-            return;
-        }
-
         MatchMember? member = MatchUtility.GetMemberFromLineup(matchData, steamId.ToString(), playerName);
         if (member == null)
         {
@@ -97,7 +97,7 @@ public class SurrenderSystem
         Timer? timer = null;
 
         // Outlives the map's phase on purpose: a player who quits just before the
-        // map ends is still reported, only no vote is offered outside play.
+        // map ends still runs out of time, only no vote is offered outside play.
         timer = TimerUtility.AddTimer(
             60 * 3,
             () =>
@@ -142,6 +142,14 @@ public class SurrenderSystem
     private bool IsMapInPlay()
     {
         return _matchService.GetCurrentMatch()?.IsInPlay() == true;
+    }
+
+    private eLeaverRule LeaverRule()
+    {
+        return LeaverRuleUtility.For(
+            _matchService.GetCurrentMatch()?.GetMatchData(),
+            _environmentService.IsOfflineMode()
+        );
     }
 
     // An open vote would turn this one away, so the leaver's lineup waits for it.
@@ -242,6 +250,8 @@ public class SurrenderSystem
     // we dont pass the team in because they may not be on the team immediately after reconnecting
     public void CancelDisconnectTimer(ulong steamId)
     {
+        _timedOutLeavers.Remove(steamId);
+
         if (!KillDisconnectTimer(steamId))
         {
             return;
@@ -331,19 +341,9 @@ public class SurrenderSystem
         bool forLeaver = false
     )
     {
-        if (
-            _matchService.GetCurrentMatch()?.GetMatchData()?.is_lan == true
-            || _environmentService.IsOfflineMode()
-        )
+        if (LeaverRule() == eLeaverRule.NoSurrender)
         {
-            if (_environmentService.IsOfflineMode())
-            {
-                player?.PrintToConsole(_gameServer.Localize(player, "surrender.offline"));
-            }
-            else
-            {
-                player?.PrintToConsole(_gameServer.Localize(player, "surrender.lan"));
-            }
+            player?.PrintToConsole(_gameServer.Localize(player, "surrender.lan"));
             return;
         }
 
@@ -434,8 +434,8 @@ public class SurrenderSystem
         );
     }
 
-    // Abandons are reported once per match, never once per map, and a leaver's
-    // timer runs on into the next map, so both only go when a different match loads.
+    // A leaver is reported once per match, never once per map, and their timer
+    // runs on into the next map, so all of it only goes when a different match loads.
     public void OnMatchSetup(MatchData matchData)
     {
         if (_matchId == matchData.id)
@@ -445,6 +445,8 @@ public class SurrenderSystem
 
         _matchId = matchData.id;
         _reportedAbandons.Clear();
+        _reportedAbsences.Clear();
+        _timedOutLeavers.Clear();
         KillDisconnectTimers();
     }
 
@@ -492,9 +494,88 @@ public class SurrenderSystem
 
         winningLineupId = lineupId;
 
+        ReportTimedOutLeavers(match.GetMatchData(), lineupId);
+
         // The winner has to travel with the status. Without it the API records
         // the map as Surrendered with no winner at all.
         match.UpdateMapStatus(eMapStatus.Surrendered, lineupId);
+
+        if (_environmentService.IsOfflineMode())
+        {
+            EndGameForSurrender(match, lineupId);
+        }
+    }
+
+    // Sent ahead of the Surrendered status: that ends the match, and the api
+    // takes no abandon for a match that is over. A leaver who is back, or whose
+    // lineup is not the one giving up, is not reported.
+    private void ReportTimedOutLeavers(MatchData? matchData, Guid winningLineup)
+    {
+        Guid? surrenderingLineup =
+            matchData == null ? null : SurrenderingLineup(matchData, winningLineup);
+
+        if (matchData == null || surrenderingLineup == null)
+        {
+            return;
+        }
+
+        foreach (ulong steamId in _timedOutLeavers)
+        {
+            if (
+                LeaverLineup(matchData, steamId.ToString(), "") == surrenderingLineup
+                && !MatchUtility.Players().Any(player => player.SteamID == steamId)
+            )
+            {
+                ReportAbandon(steamId);
+            }
+        }
+    }
+
+    private const float SurrenderRoundRestartDelay = 5f;
+
+    // Online the api ends the match and stops the server. Offline the round is
+    // ended the way CS2's own surrender vote ends it, which ends the game with
+    // the surrendering side beaten.
+    private void EndGameForSurrender(MatchManager match, Guid winningLineupId)
+    {
+        MatchData? matchData = match.GetMatchData();
+        MatchMap? currentMap = match.GetCurrentMap();
+        CCSGameRules? rules = MatchUtility.Rules();
+
+        if (matchData == null || currentMap == null || rules == null)
+        {
+            return;
+        }
+
+        CsTeam winningSide = TeamUtility.GetLineupSide(
+            matchData,
+            currentMap,
+            winningLineupId,
+            _gameServer.GetTotalRoundsPlayed()
+        );
+
+        if (winningSide != CsTeam.Terrorist && winningSide != CsTeam.CounterTerrorist)
+        {
+            _logger.LogWarning($"No side found for surrender winner {winningLineupId}");
+            return;
+        }
+
+        RoundEndReason reason =
+            winningSide == CsTeam.CounterTerrorist
+                ? RoundEndReason.TerroristsSurrender
+                : RoundEndReason.CTsSurrender;
+
+        _logger.LogInformation($"Ending the game for the surrender: {reason}");
+
+        // A stale gamedata signature throws here. The next round start ends the map.
+        try
+        {
+            rules.TerminateRound(SurrenderRoundRestartDelay, reason);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to end the game for the surrender");
+        }
     }
 
     public Guid? GetWinningLineupId()
@@ -502,16 +583,25 @@ public class SurrenderSystem
         return winningLineupId;
     }
 
+    // The leaver's three minutes ran out and they are still gone.
     public void PlayerAbandonedMatch(ulong steamId)
     {
-        if (
-            _matchService.GetCurrentMatch()?.GetMatchData()?.is_lan == true
-            || _environmentService.IsOfflineMode()
-        )
+        switch (LeaverRule())
         {
-            return;
+            case eLeaverRule.NoSurrender:
+                ReportAbsent(steamId);
+                return;
+            case eLeaverRule.AbandonOnSurrender:
+                _timedOutLeavers.Add(steamId);
+                return;
+            default:
+                ReportAbandon(steamId);
+                return;
         }
+    }
 
+    private void ReportAbandon(ulong steamId)
+    {
         // The api escalates the ban on every report, so one leave reported twice
         // -- after a reconnect, or again on the next map -- costs the player a
         // longer ban than they earned.
@@ -523,6 +613,24 @@ public class SurrenderSystem
 
         _matchEvents.PublishGameEvent(
             "abandoned",
+            new Dictionary<string, object>
+            {
+                { "time", DateTime.Now },
+                { "steam_id", steamId.ToString() },
+            }
+        );
+    }
+
+    // Organizers are told once per match, however often the player drops.
+    private void ReportAbsent(ulong steamId)
+    {
+        if (!_reportedAbsences.Add(steamId))
+        {
+            return;
+        }
+
+        _matchEvents.PublishGameEvent(
+            "player-absent",
             new Dictionary<string, object>
             {
                 { "time", DateTime.Now },

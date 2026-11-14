@@ -21,6 +21,8 @@ public partial class FiveStackPlugin
         return HookResult.Continue;
     }
 
+    // Offline, a surrender ends the map from here when CS2 played on after it,
+    // and its win panel can still follow.
     private void ConcludeMap()
     {
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -78,7 +80,7 @@ public partial class FiveStackPlugin
         }
 
         Guid? winningLineupId = _environmentService.IsOfflineMode()
-            ? OfflineMapWinner(matchData)
+            ? OfflineMapWinner(match, matchData)
             : _matchEvents.GetWinningLineupId();
 
         _logger.LogInformation(
@@ -131,8 +133,13 @@ public partial class FiveStackPlugin
         HandleEndOfMap(winningLineupId, surrendered);
     }
 
-    private Guid? OfflineMapWinner(MatchData matchData)
+    private Guid? OfflineMapWinner(MatchManager match, MatchData matchData)
     {
+        if (match.isSurrendered())
+        {
+            return _surrenderSystem.GetWinningLineupId();
+        }
+
         (int lineup1Score, int lineup2Score, _, _, _) = _matchEvents.GetRoundInformation();
 
         return OfflineMatchState.MapWinner(matchData, lineup1Score, lineup2Score);

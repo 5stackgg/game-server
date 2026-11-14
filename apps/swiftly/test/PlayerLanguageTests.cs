@@ -597,8 +597,7 @@ public class PlayerLanguageTests
     }
 
     [Theory]
-    [InlineData("FiveStack.Services/SurrenderSystem.cs", "There is no surrender in a LAN match")]
-    [InlineData("FiveStack.Services/SurrenderSystem.cs", "There is no surrender in an offline match")]
+    [InlineData("FiveStack.Services/SurrenderSystem.cs", "There is no surrender in a LAN tournament match")]
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "A surrender vote is already in progress")]
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "Unable to start a surrender vote right now")]
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "A surrender can only be called while the map is being played")]
@@ -688,7 +687,6 @@ public class PlayerLanguageTests
     [InlineData("FiveStack.Services/CaptainSystem.cs", "captain.show")]
     [InlineData("FiveStack.Services/CaptainSystem.cs", "captain.assigned")]
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.lan")]
-    [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.offline")]
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.in_progress")]
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.unavailable")]
     [InlineData("FiveStack.Services/SurrenderSystem.cs", "surrender.not_in_play")]
