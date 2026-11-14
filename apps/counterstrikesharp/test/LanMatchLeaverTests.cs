@@ -326,13 +326,17 @@ public class LanMatchLeaverTests
     }
 
     [Fact]
-    public void Only_The_Surrendering_Lineups_Leavers_Who_Are_Still_Gone_Are_Reported()
+    public void Only_A_Short_Surrendering_Lineups_Leavers_Who_Are_Still_Gone_Are_Reported()
     {
         string report = Method(Surrender(), "private void ReportTimedOutLeavers(");
 
         Assert.Contains("SurrenderingLineup(matchData, winningLineup)", report);
         Assert.Matches(
-            @"if \(matchData == null \|\| surrenderingLineup == null\)\s*\{\s*return;\s*\}\s*foreach \(ulong steamId in _timedOutLeavers\)\s*\{\s*if \(\s*LeaverLineup\(matchData, steamId\.ToString\(\), """"\) == surrenderingLineup\s*&&\s*!MatchUtility\.Players\(\)\.Any\(player => player\.SteamID == steamId\)\s*\)\s*\{\s*ReportAbandon\(steamId\);\s*\}\s*\}\s*$",
+            @"if \([^{]*ReconnectPauseUtility\.IsLineupWhole\([^;]*surrenderingLineup\.Value\s*\)\s*\)\s*\{\s*return;\s*\}\s*foreach \(ulong steamId in _timedOutLeavers\)",
+            report
+        );
+        Assert.Matches(
+            @"foreach \(ulong steamId in _timedOutLeavers\)\s*\{\s*if \(\s*LeaverLineup\(matchData, steamId\.ToString\(\), """"\) == surrenderingLineup\s*&&\s*!MatchUtility\.Players\(\)\.Any\(player => player\.SteamID == steamId\)\s*\)\s*\{\s*ReportAbandon\(steamId\);\s*\}\s*\}\s*$",
             report
         );
     }

@@ -507,14 +507,30 @@ public class SurrenderSystem
     }
 
     // Sent ahead of the Surrendered status: that ends the match, and the api
-    // takes no abandon for a match that is over. A leaver who is back, or whose
-    // lineup is not the one giving up, is not reported.
+    // takes no abandon for a match that is over. A leaver who is back, whose
+    // lineup a substitute made whole again, or whose lineup is not the one giving
+    // up, is not reported.
     private void ReportTimedOutLeavers(MatchData? matchData, Guid winningLineup)
     {
         Guid? surrenderingLineup =
             matchData == null ? null : SurrenderingLineup(matchData, winningLineup);
 
         if (matchData == null || surrenderingLineup == null)
+        {
+            return;
+        }
+
+        MatchManager? current = _matchService.GetCurrentMatch();
+
+        if (
+            current != null
+            && ReconnectPauseUtility.IsLineupWhole(
+                matchData,
+                MatchUtility.Players().Select(player => (player.SteamID.ToString(), player.PlayerName)),
+                current.GetExpectedPlayerCount(),
+                surrenderingLineup.Value
+            )
+        )
         {
             return;
         }
@@ -583,7 +599,6 @@ public class SurrenderSystem
         return winningLineupId;
     }
 
-    // The leaver's three minutes ran out and they are still gone.
     public void PlayerAbandonedMatch(ulong steamId)
     {
         switch (LeaverRule())
