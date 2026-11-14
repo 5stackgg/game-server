@@ -70,7 +70,10 @@ if ! docker compose up -d --wait api >/dev/null 2>&1; then
     exit 1
 fi
 sql -f - <seed.sql
-docker compose up -d sim-1 sim-2 sim-3 tools >/dev/null 2>&1
+if ! docker compose up -d sim-1 sim-2 sim-3 tools >/dev/null 2>&1; then
+    docker compose logs --tail 50 sim-1 sim-2 sim-3 tools
+    exit 1
+fi
 
 wanted() {
     local only

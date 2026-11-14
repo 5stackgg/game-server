@@ -118,7 +118,12 @@ wait_for() {
 # The SQL on stdin returns one row per check: name|expected|actual. Prints a
 # line per check and fails if any differ.
 check() {
-    local failed=0 name expected actual
+    local failed=0 rows name expected actual
+    # A query that fails prints no rows, which would read as nothing failing.
+    if ! rows=$(sql "$@" -f -) || [ -z "$rows" ]; then
+        echo "  FAIL  the checks could not be read"
+        return 1
+    fi
     while IFS='|' read -r name expected actual; do
         if [ "$expected" = "$actual" ]; then
             echo "  ok    $name"
@@ -126,7 +131,7 @@ check() {
             echo "  FAIL  $name: expected $expected, got $actual"
             failed=1
         fi
-    done < <(sql "$@" -f -)
+    done <<<"$rows"
     return "$failed"
 }
 

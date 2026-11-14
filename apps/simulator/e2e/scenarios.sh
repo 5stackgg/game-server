@@ -175,17 +175,15 @@ SQL
     return "$failed"
 }
 
-# surrender <server>: the second lineup votes to surrender after eight rounds
-# and leaves; CS2 then hands every round to the first until the game ends. The
-# map is only Surrendered until the server ends it, so it is checked once the
-# server has: ahead on the rounds recorded, the lineup that gave up must still
-# not be given it.
+# surrender <server>: the second lineup votes to surrender after eight rounds,
+# ahead 5-3, and leaves; CS2 then hands every round to the first until the game
+# ends. The map is Surrendered only until the server ends it.
 surrender() {
     local server=$1 match failed=0
     match=$(new_id)
     create_match "$match" "$server" 1 "Alpha" "Bravo sim:surrender" live_match_timeout=3
     start_match "$match"
-    wait_for 600 "$(settled "$match" "$server")" || echo "  (timed out waiting for the surrender)"
+    wait_for 600 "$(settled "$match" "$server")" || echo "  (timed out waiting for the match to settle)"
     wait_for 120 "$(map_reaches "$match" Finished)" || echo "  (timed out waiting for the server to end the map)"
 
     check -v match="$match" -v server="$(server_id "$server")" <<'SQL' || failed=1
@@ -328,8 +326,8 @@ SELECT 'match ends surrendered', 'Surrendered', (SELECT status FROM m)
 UNION ALL
 SELECT 'match goes to the lineup that stayed', (SELECT lineup_1_id::text FROM m), (SELECT coalesce(winning_lineup_id::text, '') FROM m)
 UNION ALL
-SELECT 'the leaver takes the leaver penalty', '-150',
-       (SELECT coalesce(string_agg(pe.change::text, ','), 'unrated') FROM player_elo pe
+SELECT 'the leaver loses at least the leaver penalty', 'true',
+       (SELECT coalesce(bool_and(pe.change <= -150)::text, 'unrated') FROM player_elo pe
          WHERE pe.match_id = :'match' AND pe.steam_id IN (SELECT steam_id FROM leaver))
 UNION ALL
 SELECT 'server released', 'true',

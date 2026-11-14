@@ -43,6 +43,21 @@ public class ScenarioFlowTests
         return lineup.lineup_players.Select(member => member.steam_id!).ToHashSet();
     }
 
+    // The case the api has to get right: the rounds recorded favour the
+    // lineup that gave up.
+    [Fact]
+    public async Task TheLineupThatSurrendersIsAheadWhenItDoes()
+    {
+        (RecordingSink sink, _, _) = await Play("surrender");
+        List<Published> events = sink.Events;
+        Published last = events
+            .Take(IndexOf(events, "mapStatus", "Surrendered"))
+            .Last(e => e.Name == "score");
+
+        Assert.Equal(3, last.Data["lineup_1_score"]);
+        Assert.Equal(5, last.Data["lineup_2_score"]);
+    }
+
     [Fact]
     public async Task ASurrenderHandsTheMapToTheOtherLineupAndTheGameEndsWithoutAnyMoreStats()
     {
