@@ -76,9 +76,10 @@ public partial class FiveStackPlugin
         _surrenderSystem.CancelDisconnectTimer(player.SteamID);
 
         // CancelDisconnectTimer only resumes when that player actually had a
-        // timer, which is never the case for someone who left during warmup or
-        // knife, or when the pause came from RoundStart going short-handed. If
-        // the roster is whole again there is nothing left to wait for.
+        // timer, which outside a LAN tournament is never the case for someone
+        // who left during warmup or knife, or when the pause came from
+        // RoundStart going short-handed. If the roster is whole again there is
+        // nothing left to wait for.
         _surrenderSystem.ResumeIfRosterWhole();
         _core.Scheduler.NextTick(() => _gameBackupRounds.OfferPendingRestore());
 

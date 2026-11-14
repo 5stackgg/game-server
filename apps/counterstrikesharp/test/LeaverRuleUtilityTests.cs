@@ -61,4 +61,37 @@ public class LeaverRuleUtilityTests
         Assert.Equal(eLeaverRule.Abandon, LeaverRuleUtility.For(null, offline: false));
         Assert.Equal(eLeaverRule.AbandonOnSurrender, LeaverRuleUtility.For(null, offline: true));
     }
+
+    [Theory]
+    [InlineData(eLeaverRule.Abandon)]
+    [InlineData(eLeaverRule.AbandonOnSurrender)]
+    [InlineData(eLeaverRule.NoSurrender)]
+    public void Every_Match_Times_A_Player_Who_Drops_During_Play(eLeaverRule rule)
+    {
+        Assert.True(LeaverRuleUtility.TimesLeaver(rule, inPlay: true, mapOver: false));
+    }
+
+    // Warmup, knife and the wait for the next map: no vote and no abandon can
+    // come of a drop there, but a LAN tournament's organizers are still told.
+    [Theory]
+    [InlineData(eLeaverRule.Abandon, false)]
+    [InlineData(eLeaverRule.AbandonOnSurrender, false)]
+    [InlineData(eLeaverRule.NoSurrender, true)]
+    public void Only_A_Lan_Tournament_Match_Times_A_Player_Who_Drops_Outside_Play(
+        eLeaverRule rule,
+        bool timed
+    )
+    {
+        Assert.Equal(timed, LeaverRuleUtility.TimesLeaver(rule, inPlay: false, mapOver: false));
+    }
+
+    // Everyone leaves a map that is over.
+    [Theory]
+    [InlineData(eLeaverRule.Abandon)]
+    [InlineData(eLeaverRule.AbandonOnSurrender)]
+    [InlineData(eLeaverRule.NoSurrender)]
+    public void No_Match_Times_A_Player_Who_Leaves_A_Map_That_Is_Over(eLeaverRule rule)
+    {
+        Assert.False(LeaverRuleUtility.TimesLeaver(rule, inPlay: false, mapOver: true));
+    }
 }

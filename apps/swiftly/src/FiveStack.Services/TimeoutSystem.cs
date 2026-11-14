@@ -430,8 +430,8 @@ public class TimeoutSystem
             && !_cameraSystem.IsBlocking();
     }
 
-    // Someone at the table asked, so unlike the roster's own resume this ends
-    // a LAN pause too.
+    // A player at the table asked, so unlike the roster's own resume this ends
+    // a LAN pause too. Anyone else in the server is only told who is out.
     public void CheckRoster(IPlayer player)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -449,8 +449,17 @@ public class TimeoutSystem
 
         eRosterCheck check = ReconnectPauseUtility.Check(
             match.GetPauseReason(),
+            TimeoutUtility.HasPauseToResume(
+                match.GetCurrentMapStatus(),
+                MatchUtility.Rules()?.MatchWaitingForResume == true
+            ),
             ReconnectPauseUtility.ShouldPause(matchData, connected, match.GetExpectedPlayerCount()),
-            ShouldRequireTeamResume() || _cameraSystem.IsBlocking() || IsTimeoutActive()
+            ShouldRequireTeamResume() || _cameraSystem.IsBlocking() || IsTimeoutActive(),
+            MatchUtility.GetMemberFromLineup(
+                matchData,
+                player.SteamID.ToString(),
+                player.Name
+            ) != null
         );
 
         if (check == eRosterCheck.NotPaused)

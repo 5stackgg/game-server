@@ -30,7 +30,8 @@ public class SurrenderSystem
     private Guid? _matchId;
 
     // Leavers who ran out of time in a match that only reports them once their
-    // lineup surrenders. Coming back takes a leaver off it.
+    // lineup surrenders. Coming back takes a leaver off it, and so does their
+    // lineup being whole without them.
     private readonly HashSet<ulong> _timedOutLeavers = new HashSet<ulong>();
 
     // Lineups whose leaver ran out of time while another surrender vote was
@@ -65,7 +66,7 @@ public class SurrenderSystem
     public void SetupDisconnectTimer(CsTeam team, ulong steamId, string playerName = "")
     {
         MatchManager? match = _matchService.GetCurrentMatch();
-        if (match == null || !match.IsInPlay())
+        if (match == null || !TimesLeaver(match))
         {
             return;
         }
@@ -120,6 +121,13 @@ public class SurrenderSystem
                 }
 
                 PlayerAbandonedMatch(steamId);
+                ForgetReplacedLeavers(
+                    current.GetMatchData() ?? matchData,
+                    MatchUtility
+                        .Players()
+                        .Select(player => (player.SteamID.ToString(), player.PlayerName)),
+                    current.GetExpectedPlayerCount()
+                );
             }
         );
 
@@ -149,6 +157,16 @@ public class SurrenderSystem
         return LeaverRuleUtility.For(
             _matchService.GetCurrentMatch()?.GetMatchData(),
             _environmentService.IsOfflineMode()
+        );
+    }
+
+    private bool TimesLeaver(MatchManager match)
+    {
+        return LeaverRuleUtility.TimesLeaver(
+            LeaverRule(),
+            match.IsInPlay(),
+            match.gameEnded
+                || MatchPhaseUtility.PhaseOf(match.GetCurrentMapStatus()) == eMatchPhase.Over
         );
     }
 
@@ -279,6 +297,8 @@ public class SurrenderSystem
                 .Select(player => (player.SteamID.ToString(), player.PlayerName))
                 .ToList();
 
+            ForgetReplacedLeavers(matchData, connected, match.GetExpectedPlayerCount());
+
             if (LeaverVoteLineupIsWhole(match, connected))
             {
                 surrenderingVote?.CancelVote();
@@ -296,6 +316,22 @@ public class SurrenderSystem
 
             match.ResumeMatch();
         });
+    }
+
+    // A whole lineup has someone in every seat, so a map it gives up later is
+    // not given up over the leavers it has replaced.
+    public void ForgetReplacedLeavers(
+        MatchData matchData,
+        IEnumerable<(string SteamId, string Name)> connected,
+        int expectedPlayers
+    )
+    {
+        List<(string SteamId, string Name)> players = connected.ToList();
+
+        _timedOutLeavers.RemoveWhere(steamId =>
+            LeaverLineup(matchData, steamId.ToString(), "") is Guid lineup
+            && ReconnectPauseUtility.IsLineupWhole(matchData, players, expectedPlayers, lineup)
+        );
     }
 
     private bool LeaverVoteLineupIsWhole(
@@ -554,6 +590,11 @@ public class SurrenderSystem
     // the surrendering side beaten.
     private void EndGameForSurrender(MatchManager match, Guid winningLineupId)
     {
+        // A roster pause never ends itself offline, so the vote mostly passes in
+        // one. A paused round may never restart, and a surrendered map has no
+        // pause left for anyone to resume.
+        _gameServer.SendCommands(["mp_unpause_match"]);
+
         MatchData? matchData = match.GetMatchData();
         MatchMap? currentMap = match.GetCurrentMap();
         CCSGameRules? rules = MatchUtility.Rules();

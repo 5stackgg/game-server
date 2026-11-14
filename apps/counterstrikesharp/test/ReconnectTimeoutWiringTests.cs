@@ -285,17 +285,30 @@ public class ReconnectTimeoutWiringTests
     }
 
     // On a LAN the roster never ends its own pause, so a check is how it ends
-    // there, held to what the roster's own resume is held to.
+    // there, held to what the roster's own resume is held to, and only for a
+    // player on one of the lineups.
     [Fact]
     public void A_Check_Holds_Any_Match_To_What_The_Rosters_Own_Resume_Waits_On()
     {
         string check = Timeout("public void CheckRoster(");
 
         Assert.Matches(
-            @"ReconnectPauseUtility\.Check\(\s*match\.GetPauseReason\(\),\s*ReconnectPauseUtility\.ShouldPause\(matchData, connected, match\.GetExpectedPlayerCount\(\)\),\s*ShouldRequireTeamResume\(\) \|\| _cameraSystem\.IsBlocking\(\) \|\| IsTimeoutActive\(\)\s*\)",
+            @"ReconnectPauseUtility\.Check\(\s*match\.GetPauseReason\(\),\s*TimeoutUtility\.HasPauseToResume\([^;]*?\),\s*ReconnectPauseUtility\.ShouldPause\(matchData, connected, match\.GetExpectedPlayerCount\(\)\),\s*ShouldRequireTeamResume\(\) \|\| _cameraSystem\.IsBlocking\(\) \|\| IsTimeoutActive\(\),\s*MatchUtility\.GetMemberFromLineup\(\s*matchData,\s*player\.SteamID\.ToString\(\),\s*player\.\w+\s*\) != null\s*\);",
             check
         );
         Assert.DoesNotContain("IsLan()", check);
+    }
+
+    // A check that read only the map's status called a round held at halftime
+    // not paused, while a resume ended it.
+    [Fact]
+    public void A_Check_Finds_A_Pause_Wherever_A_Resume_Finds_One()
+    {
+        const string pauseToResume =
+            @"TimeoutUtility\.HasPauseToResume\(\s*match\.GetCurrentMapStatus\(\),\s*MatchUtility\.Rules\(\)\?\.MatchWaitingForResume == true\s*\)";
+
+        Assert.Single(Regex.Matches(Timeout("public void CheckRoster("), pauseToResume));
+        Assert.Single(Regex.Matches(Timeout("public void RequestResume("), pauseToResume));
     }
 
     [Fact]

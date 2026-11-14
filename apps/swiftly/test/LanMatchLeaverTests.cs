@@ -80,6 +80,29 @@ public class LanMatchLeaverTests
         return (surrender, events);
     }
 
+    // Lineup 1 is the leaver, four more and a substitute. Lineup 2 is five.
+    private static MatchData Lineups()
+    {
+        List<MatchMember> Seats(int from, int count) =>
+            Enumerable
+                .Range(from, count)
+                .Select(seat => new MatchMember { steam_id = $"765611980000000{seat:D2}" })
+                .ToList();
+
+        return new MatchData
+        {
+            lineup_1_id = Guid.NewGuid(),
+            lineup_2_id = Guid.NewGuid(),
+            lineup_1 = new MatchLineUp { lineup_players = Seats(1, 6) },
+            lineup_2 = new MatchLineUp { lineup_players = Seats(11, 5) },
+        };
+    }
+
+    private static IEnumerable<(string, string)> Connected(params int[] seats)
+    {
+        return seats.Select(seat => ($"765611980000000{seat:D2}", $"player{seat}"));
+    }
+
     private static HashSet<ulong> TimedOutLeavers(SurrenderSystem surrender)
     {
         return (HashSet<ulong>)
@@ -125,6 +148,48 @@ public class LanMatchLeaverTests
 
         Assert.Empty(TimedOutLeavers(surrender));
         Assert.Equal(0, events.Sent("abandoned"));
+    }
+
+    // The leaver is kicked for a full lineup when they try to come back, so
+    // coming back never takes them off the wait.
+    [Fact]
+    public void A_Lan_Leaver_A_Substitute_Replaced_Is_No_Longer_Waiting_On_A_Surrender()
+    {
+        var (surrender, events) = Server(lan: true, tournament: false);
+        surrender.PlayerAbandonedMatch(Leaver);
+
+        surrender.ForgetReplacedLeavers(
+            Lineups(),
+            Connected(2, 3, 4, 5, 6, 11, 12, 13, 14, 15),
+            10
+        );
+
+        Assert.Empty(TimedOutLeavers(surrender));
+        Assert.Equal(0, events.Sent("abandoned"));
+    }
+
+    [Fact]
+    public void A_Lan_Leaver_Keeps_Waiting_While_Only_The_Other_Lineup_Is_Whole()
+    {
+        var (surrender, _) = Server(lan: true, tournament: false);
+        surrender.PlayerAbandonedMatch(Leaver);
+
+        surrender.ForgetReplacedLeavers(Lineups(), Connected(2, 3, 4, 5, 11, 12, 13, 14, 15), 10);
+
+        Assert.Equal(Leaver, Assert.Single(TimedOutLeavers(surrender)));
+    }
+
+    [Fact]
+    public void A_Whole_Lineup_Only_Takes_Its_Own_Leavers_Off_The_Wait()
+    {
+        const ulong otherLineupsLeaver = 76561198000000011;
+        var (surrender, _) = Server(lan: true, tournament: false);
+        surrender.PlayerAbandonedMatch(Leaver);
+        surrender.PlayerAbandonedMatch(otherLineupsLeaver);
+
+        surrender.ForgetReplacedLeavers(Lineups(), Connected(2, 3, 4, 5, 6, 12, 13, 14, 15), 10);
+
+        Assert.Equal(otherLineupsLeaver, Assert.Single(TimedOutLeavers(surrender)));
     }
 
     [Fact]
@@ -182,13 +247,18 @@ public class LanMatchLeaverTests
         return Path.GetFullPath(Path.Combine(Path.GetDirectoryName(testFile)!, "..", "src"));
     }
 
-    private static string Surrender()
+    private static string Code(string folder, string file)
     {
         return Regex.Replace(
-            File.ReadAllText(Path.Combine(SourceDir(), "FiveStack.Services", "SurrenderSystem.cs")),
+            File.ReadAllText(Path.Combine(SourceDir(), folder, file)),
             @"//[^\n]*",
             ""
         );
+    }
+
+    private static string Surrender()
+    {
+        return Code("FiveStack.Services", "SurrenderSystem.cs");
     }
 
     private static string Method(string source, string signature)
@@ -263,6 +333,66 @@ public class LanMatchLeaverTests
         Assert.True(
             At(timer, "TimerUtility.AddTimer(") < At(timer, "PlayerAbandonedMatch(steamId);"),
             "a leaver whose time ran out is not handed to the match's rule"
+        );
+    }
+
+    // Which drops are timed is in LeaverRuleUtilityTests: play for every match,
+    // and anything short of a map that is over for a LAN tournament.
+    [Fact]
+    public void A_Drop_Is_Only_Timed_Where_The_Matchs_Rule_Times_It()
+    {
+        string source = Surrender();
+
+        Assert.Matches(
+            @"^public void SetupDisconnectTimer\([^)]*\)\s*\{\s*MatchManager\? match = _matchService\.GetCurrentMatch\(\);\s*if \(match == null \|\| !TimesLeaver\(match\)\)\s*\{\s*return;\s*\}",
+            Method(source, "public void SetupDisconnectTimer(")
+        );
+        Assert.Matches(
+            @"^private bool TimesLeaver\(MatchManager match\)\s*\{\s*return LeaverRuleUtility\.TimesLeaver\(\s*LeaverRule\(\),\s*match\.IsInPlay\(\),\s*match\.gameEnded\s*\|\| MatchPhaseUtility\.PhaseOf\(match\.GetCurrentMapStatus\(\)\) == eMatchPhase\.Over\s*\);\s*$",
+            Method(source, "private bool TimesLeaver(MatchManager match)")
+        );
+    }
+
+    // Gated on play in the handler, a LAN tournament player gone from warmup
+    // was never timed. Only a lineup's own player leaving the server gets this
+    // far, so a seat nobody sat in never tells the organizers anything.
+    [Fact]
+    public void Only_A_Lineup_Player_Leaving_Starts_A_Timer_Whatever_The_Phase()
+    {
+        string handler = Method(
+            Code("FiveStack.Events", "PlayerDisconnected.cs"),
+            "public HookResult OnPlayerDisconnect("
+        );
+        int timer = At(handler, "\n        _surrenderSystem.SetupDisconnectTimer(");
+
+        Assert.True(
+            At(handler, "if (handling != eDisconnectHandling.LineupMemberLeft)") < timer,
+            "the timer starts for someone who is not a lineup's player"
+        );
+        Assert.True(
+            At(handler, "if (match.IsInPlay())") < timer,
+            "the pause for a missing player no longer comes first"
+        );
+    }
+
+    [Fact]
+    public void Nothing_But_A_Disconnect_Starts_A_Leavers_Timer()
+    {
+        string src = SourceDir();
+        string[] built = { "bin", "obj", "build" };
+
+        Assert.Equal(
+            2,
+            Directory
+                .EnumerateFiles(src, "*.cs", SearchOption.AllDirectories)
+                .Where(file =>
+                    !Path.GetRelativePath(src, file)
+                        .Split(Path.DirectorySeparatorChar)
+                        .Any(folder => built.Contains(folder))
+                )
+                .Sum(file =>
+                    Regex.Matches(File.ReadAllText(file), @"\bSetupDisconnectTimer\(").Count
+                )
         );
     }
 
@@ -344,7 +474,7 @@ public class LanMatchLeaverTests
     // A vote that fails, or a map that ends, leaves the leaver waiting: a later
     // surrender by their lineup still reports them.
     [Fact]
-    public void Only_Coming_Back_Or_A_New_Match_Takes_A_Leaver_Off_The_Wait()
+    public void Only_Coming_Back_A_Whole_Lineup_Or_A_New_Match_Takes_A_Leaver_Off_The_Wait()
     {
         string source = Surrender();
         string cancel = Method(source, "public void CancelDisconnectTimer(");
@@ -355,6 +485,11 @@ public class LanMatchLeaverTests
             "a leaver whose timer already fired stays waiting once they are back"
         );
         Assert.Single(Regex.Matches(source, @"_timedOutLeavers\.Remove\("));
+        Assert.Single(Regex.Matches(source, @"_timedOutLeavers\.RemoveWhere\("));
+        Assert.Matches(
+            @"_timedOutLeavers\.RemoveWhere\(steamId =>\s*LeaverLineup\(matchData, steamId\.ToString\(\), """"\) is Guid lineup\s*&& ReconnectPauseUtility\.IsLineupWhole\(matchData, players, expectedPlayers, lineup\)\s*\);\s*$",
+            Method(source, "public void ForgetReplacedLeavers(")
+        );
         Assert.Single(Regex.Matches(source, @"_timedOutLeavers\.Clear\("));
         Assert.Single(Regex.Matches(source, @"_reportedAbsences\.Clear\("));
 
@@ -362,5 +497,35 @@ public class LanMatchLeaverTests
 
         Assert.Contains("_timedOutLeavers.Clear();", setup);
         Assert.Contains("_reportedAbsences.Clear();", setup);
+    }
+
+    // A connect is what makes a lineup whole. A leaver whose seat was filled
+    // before their time ran out is taken off the wait as they are put on it.
+    [Fact]
+    public void A_Whole_Lineups_Leavers_Are_Forgotten_On_Every_Connect_And_As_They_Time_Out()
+    {
+        string source = Surrender();
+        string timer = Method(source, "public void SetupDisconnectTimer(");
+
+        Assert.Contains(
+            "ForgetReplacedLeavers(matchData, connected, match.GetExpectedPlayerCount());",
+            Method(source, "public void ResumeIfRosterWhole()")
+        );
+        Assert.True(
+            At(timer, "PlayerAbandonedMatch(steamId);") < At(timer, "ForgetReplacedLeavers("),
+            "a leaver is checked against their lineup before they are waiting on it"
+        );
+        Assert.Equal(3, Regex.Matches(source, @"\bForgetReplacedLeavers\(").Count);
+
+        string connect = Method(
+            Code("FiveStack.Events", "PlayerConnected.cs"),
+            "public HookResult OnPlayerConnect("
+        );
+
+        Assert.True(
+            At(connect, "_overCapacityKicks.Add(player.SteamID);")
+                < At(connect, "_surrenderSystem.ResumeIfRosterWhole();"),
+            "a player about to be kicked for a full lineup counts towards it"
+        );
     }
 }

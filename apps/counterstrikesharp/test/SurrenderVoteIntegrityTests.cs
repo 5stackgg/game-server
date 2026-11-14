@@ -511,7 +511,7 @@ public class SurrenderVoteIntegrityTests
 
         Assert.Contains("Guid matchId = matchData.id;", timer);
         Assert.Matches(
-            @"TimerUtility\.AddTimer\(\s*60 \* 3,\s*\(\)\s*=>\s*\{\s*ForgetFiredTimer\(team, steamId, timer!\);\s*MatchManager\? current = _matchService\.GetCurrentMatch\(\);\s*if \(\s*current == null\s*\|\|\s*current\.GetMatchData\(\)\?\.id != matchId\s*\|\|\s*MatchUtility\.Players\(\)\.Any\(player => player\.SteamID == steamId\)\s*\)\s*\{\s*return;\s*\}\s*if \(current\.IsInPlay\(\)\)\s*\{\s*OfferLeaverSurrender\(lineupId, team\);\s*\}\s*PlayerAbandonedMatch\(steamId\);\s*\}",
+            @"TimerUtility\.AddTimer\(\s*60 \* 3,\s*\(\)\s*=>\s*\{\s*ForgetFiredTimer\(team, steamId, timer!\);\s*MatchManager\? current = _matchService\.GetCurrentMatch\(\);\s*if \(\s*current == null\s*\|\|\s*current\.GetMatchData\(\)\?\.id != matchId\s*\|\|\s*MatchUtility\.Players\(\)\.Any\(player => player\.SteamID == steamId\)\s*\)\s*\{\s*return;\s*\}\s*if \(current\.IsInPlay\(\)\)\s*\{\s*OfferLeaverSurrender\(lineupId, team\);\s*\}\s*PlayerAbandonedMatch\(steamId\);\s*ForgetReplacedLeavers\([^;]*\);\s*\}",
             timer
         );
     }
@@ -622,7 +622,7 @@ public class SurrenderVoteIntegrityTests
 
     // A substitute in the leaver's seat, or the leaver back while their lineup
     // waited on another vote, makes the lineup whole, and a whole lineup is never
-    // asked to give up the map. The leaver's timer still reports them.
+    // asked to give up the map. Online the leaver's timer still reports them.
     [Fact]
     public void A_Whole_Lineup_Is_Never_Asked_To_Surrender_For_A_Leaver()
     {

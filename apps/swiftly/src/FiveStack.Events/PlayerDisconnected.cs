@@ -94,13 +94,13 @@ public partial class FiveStackPlugin
                         ) && match.timeoutSystem.HoldsForRoster()
                 );
             }
-
-            _surrenderSystem.SetupDisconnectTimer(
-                @event.UserIdPlayer.Controller.Team,
-                @event.UserIdPlayer.SteamID,
-                @event.UserIdPlayer.Name
-            );
         }
+
+        _surrenderSystem.SetupDisconnectTimer(
+            @event.UserIdPlayer.Controller.Team,
+            @event.UserIdPlayer.SteamID,
+            @event.UserIdPlayer.Name
+        );
 
         return HookResult.Continue;
     }
