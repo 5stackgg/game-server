@@ -24,8 +24,11 @@ public class SurrenderSystem
     private Dictionary<CsTeam, Dictionary<ulong, Timer>> _disconnectTimers =
         new Dictionary<CsTeam, Dictionary<ulong, Timer>>();
 
-    // Only a different match clears them.
+    // Only a different match clears it.
     private readonly HashSet<ulong> _reportedAbandons = new HashSet<ulong>();
+
+    // Players the organizers have been told are absent. Coming back takes a
+    // player off it, so their next absence is told too.
     private readonly HashSet<ulong> _reportedAbsences = new HashSet<ulong>();
     private Guid? _matchId;
 
@@ -269,6 +272,7 @@ public class SurrenderSystem
     public void CancelDisconnectTimer(ulong steamId)
     {
         _timedOutLeavers.Remove(steamId);
+        _reportedAbsences.Remove(steamId);
 
         if (!KillDisconnectTimer(steamId))
         {
@@ -319,19 +323,43 @@ public class SurrenderSystem
     }
 
     // A whole lineup has someone in every seat, so a map it gives up later is
-    // not given up over the leavers it has replaced.
+    // not given up over the leavers it has replaced. Where a leaver only counts
+    // once their lineup surrenders, one still running out of time is replaced
+    // too: whoever leaves next starts their own three minutes.
     public void ForgetReplacedLeavers(
         MatchData matchData,
         IEnumerable<(string SteamId, string Name)> connected,
         int expectedPlayers
     )
     {
-        List<(string SteamId, string Name)> players = connected.ToList();
-
-        _timedOutLeavers.RemoveWhere(steamId =>
-            LeaverLineup(matchData, steamId.ToString(), "") is Guid lineup
-            && ReconnectPauseUtility.IsLineupWhole(matchData, players, expectedPlayers, lineup)
+        List<Guid> shortLineups = ReconnectPauseUtility.ShortLineups(
+            matchData,
+            connected,
+            expectedPlayers
         );
+
+        _timedOutLeavers.RemoveWhere(steamId => IsReplaced(matchData, shortLineups, steamId));
+
+        if (LeaverRule() != eLeaverRule.AbandonOnSurrender)
+        {
+            return;
+        }
+
+        List<ulong> replaced = _disconnectTimers
+            .Values.SelectMany(timers => timers.Keys)
+            .Where(steamId => IsReplaced(matchData, shortLineups, steamId))
+            .ToList();
+
+        foreach (ulong steamId in replaced)
+        {
+            KillDisconnectTimer(steamId);
+        }
+    }
+
+    private static bool IsReplaced(MatchData matchData, List<Guid> shortLineups, ulong steamId)
+    {
+        return LeaverLineup(matchData, steamId.ToString(), "") is Guid lineup
+            && !shortLineups.Contains(lineup);
     }
 
     private bool LeaverVoteLineupIsWhole(
@@ -470,8 +498,9 @@ public class SurrenderSystem
         );
     }
 
-    // A leaver is reported once per match, never once per map, and their timer
-    // runs on into the next map, so all of it only goes when a different match loads.
+    // An abandon is reported once per match, never once per map, and a leaver's
+    // timer runs on into the next map, so a new map clears none of it and a
+    // different match clears it all.
     public void OnMatchSetup(MatchData matchData)
     {
         if (_matchId == matchData.id)
@@ -677,7 +706,8 @@ public class SurrenderSystem
         );
     }
 
-    // Organizers are told once per match, however often the player drops.
+    // Organizers are told once per absence: a timer only runs out once per
+    // drop, and only coming back lets the next one be told.
     private void ReportAbsent(ulong steamId)
     {
         if (!_reportedAbsences.Add(steamId))

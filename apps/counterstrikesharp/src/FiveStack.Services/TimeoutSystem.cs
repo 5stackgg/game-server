@@ -436,7 +436,8 @@ public class TimeoutSystem
     }
 
     // A player at the table asked, so unlike the roster's own resume this ends
-    // a LAN pause too. Anyone else in the server is only told who is out.
+    // a LAN pause too. Anyone else in the server is only told who is out, and
+    // nobody else reads it.
     public void CheckRoster(CCSPlayerController player)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -452,6 +453,13 @@ public class TimeoutSystem
             .Select(present => (present.SteamID.ToString(), present.PlayerName))
             .ToList();
 
+        bool inLineup =
+            MatchUtility.GetMemberFromLineup(
+                matchData,
+                player.SteamID.ToString(),
+                player.PlayerName
+            ) != null;
+
         eRosterCheck check = ReconnectPauseUtility.Check(
             match.GetPauseReason(),
             TimeoutUtility.HasPauseToResume(
@@ -460,11 +468,7 @@ public class TimeoutSystem
             ),
             ReconnectPauseUtility.ShouldPause(matchData, connected, match.GetExpectedPlayerCount()),
             ShouldRequireTeamResume() || _cameraSystem.IsBlocking() || IsTimeoutActive(),
-            MatchUtility.GetMemberFromLineup(
-                matchData,
-                player.SteamID.ToString(),
-                player.PlayerName
-            ) != null
+            inLineup
         );
 
         if (check == eRosterCheck.NotPaused)
@@ -484,8 +488,9 @@ public class TimeoutSystem
                 ReadyUtility.EmptySeats(matchData, connected, match.GetExpectedPlayerCount())
             );
 
-            _gameServer.MessageEach(
-                HudDestination.Chat,
+            TellRosterCheck(
+                player,
+                inLineup,
                 viewer => _gameServer.Localize(viewer, "timeout.check_missing", missing)
             );
             return;
@@ -493,8 +498,9 @@ public class TimeoutSystem
 
         if (check == eRosterCheck.Whole)
         {
-            _gameServer.MessageEach(
-                HudDestination.Chat,
+            TellRosterCheck(
+                player,
+                inLineup,
                 viewer => _gameServer.Localize(viewer, "timeout.check_whole")
             );
             return;
@@ -505,6 +511,23 @@ public class TimeoutSystem
         match.ResumeMatch(viewer =>
             _gameServer.Localize(viewer, "timeout.check_resumed", checkedBy, ChatColors.Red)
         );
+    }
+
+    // A lineup's own player asks for the table, so everyone reads the answer.
+    // Anyone else is answered alone.
+    private void TellRosterCheck(
+        CCSPlayerController player,
+        bool inLineup,
+        Func<CCSPlayerController?, string> report
+    )
+    {
+        if (inLineup)
+        {
+            _gameServer.MessageEach(HudDestination.Chat, report);
+            return;
+        }
+
+        _gameServer.Message(HudDestination.Chat, report(player), player);
     }
 
     // A LAN match waits for someone to resume it. Any other waits one technical

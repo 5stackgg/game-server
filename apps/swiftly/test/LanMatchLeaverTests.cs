@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -111,6 +112,35 @@ public class LanMatchLeaverTests
                 .GetValue(surrender)!;
     }
 
+    private static readonly FieldInfo DisconnectTimers = typeof(SurrenderSystem).GetField(
+        "_disconnectTimers",
+        BindingFlags.NonPublic | BindingFlags.Instance
+    )!;
+
+    // Leavers' timers as the plugin files them while they run. Only the engine
+    // can make a timer, so each is filed empty.
+    private static void RunTimers(SurrenderSystem surrender, params ulong[] steamIds)
+    {
+        Type[] filed = DisconnectTimers.FieldType.GetGenericArguments();
+        IDictionary timers = (IDictionary)Activator.CreateInstance(filed[1])!;
+
+        foreach (ulong steamId in steamIds)
+        {
+            timers[steamId] = null;
+        }
+
+        IDictionary sides = (IDictionary)DisconnectTimers.GetValue(surrender)!;
+
+        sides[Activator.CreateInstance(filed[0])!] = timers;
+    }
+
+    private static bool HasTimer(SurrenderSystem surrender, ulong steamId)
+    {
+        return ((IDictionary)DisconnectTimers.GetValue(surrender)!)
+            .Values.Cast<IDictionary>()
+            .Any(timers => timers.Contains(steamId));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -192,6 +222,44 @@ public class LanMatchLeaverTests
         Assert.Equal(otherLineupsLeaver, Assert.Single(TimedOutLeavers(surrender)));
     }
 
+    // A substitute joins, then someone else drops: the first leaver's three
+    // minutes would run out into a lineup that is short over the second.
+    [Fact]
+    public void Only_A_Whole_Lineups_Lan_Leavers_Stop_Running_Out_Of_Time()
+    {
+        const ulong otherLineupsLeaver = 76561198000000011;
+        var (surrender, _) = Server(lan: true, tournament: false);
+        RunTimers(surrender, Leaver, otherLineupsLeaver);
+
+        surrender.ForgetReplacedLeavers(Lineups(), Connected(2, 3, 4, 5, 6, 12, 13, 14, 15), 10);
+
+        Assert.False(HasTimer(surrender, Leaver));
+        Assert.True(HasTimer(surrender, otherLineupsLeaver));
+    }
+
+    // Online the timer is what reports the leaver, and in a LAN tournament
+    // what tells the organizers, whoever has the seat by then.
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void A_Replaced_Leaver_Keeps_Running_Out_Of_Time_Where_That_Reports_Them(
+        bool lan,
+        bool tournament
+    )
+    {
+        var (surrender, _) = Server(lan: lan, tournament: tournament);
+        RunTimers(surrender, Leaver);
+
+        surrender.ForgetReplacedLeavers(
+            Lineups(),
+            Connected(2, 3, 4, 5, 6, 11, 12, 13, 14, 15),
+            10
+        );
+
+        Assert.True(HasTimer(surrender, Leaver));
+    }
+
     [Fact]
     public void A_Lan_Tournament_Leaver_Is_Reported_Absent_Once_And_Never_Abandoned()
     {
@@ -205,8 +273,37 @@ public class LanMatchLeaverTests
         Assert.Empty(TimedOutLeavers(surrender));
     }
 
+    // Three minutes away in warmup must not use up the alert for the round
+    // their machine dies in.
     [Fact]
-    public void Only_A_New_Match_Tells_The_Organizers_About_The_Same_Player_Again()
+    public void A_Lan_Tournament_Player_Who_Came_Back_Is_Reported_Absent_The_Next_Time_Too()
+    {
+        var (surrender, events) = Server(lan: true, tournament: true);
+        surrender.PlayerAbandonedMatch(Leaver);
+
+        surrender.CancelDisconnectTimer(Leaver);
+        surrender.PlayerAbandonedMatch(Leaver);
+        surrender.PlayerAbandonedMatch(Leaver);
+
+        Assert.Equal(2, events.Sent("player-absent"));
+        Assert.Equal(0, events.Sent("abandoned"));
+    }
+
+    // The api lengthens the ban on every abandon it is sent.
+    [Fact]
+    public void An_Online_Leaver_Who_Came_Back_Is_Not_Reported_Again()
+    {
+        var (surrender, events) = Server(lan: false, tournament: false);
+        surrender.PlayerAbandonedMatch(Leaver);
+
+        surrender.CancelDisconnectTimer(Leaver);
+        surrender.PlayerAbandonedMatch(Leaver);
+
+        Assert.Equal(1, events.Sent("abandoned"));
+    }
+
+    [Fact]
+    public void The_Same_Match_Loading_Again_Tells_The_Organizers_Nothing_A_New_One_Does()
     {
         var (surrender, events) = Server(lan: true, tournament: true);
         Guid matchId = Guid.NewGuid();
@@ -487,8 +584,12 @@ public class LanMatchLeaverTests
         Assert.Single(Regex.Matches(source, @"_timedOutLeavers\.Remove\("));
         Assert.Single(Regex.Matches(source, @"_timedOutLeavers\.RemoveWhere\("));
         Assert.Matches(
-            @"_timedOutLeavers\.RemoveWhere\(steamId =>\s*LeaverLineup\(matchData, steamId\.ToString\(\), """"\) is Guid lineup\s*&& ReconnectPauseUtility\.IsLineupWhole\(matchData, players, expectedPlayers, lineup\)\s*\);\s*$",
+            @"List<Guid> shortLineups = ReconnectPauseUtility\.ShortLineups\(\s*matchData,\s*connected,\s*expectedPlayers\s*\);\s*_timedOutLeavers\.RemoveWhere\(steamId => IsReplaced\(matchData, shortLineups, steamId\)\);",
             Method(source, "public void ForgetReplacedLeavers(")
+        );
+        Assert.Matches(
+            @"^private static bool IsReplaced\([^)]*\)\s*\{\s*return LeaverLineup\(matchData, steamId\.ToString\(\), """"\) is Guid lineup\s*&& !shortLineups\.Contains\(lineup\);\s*$",
+            Method(source, "private static bool IsReplaced(")
         );
         Assert.Single(Regex.Matches(source, @"_timedOutLeavers\.Clear\("));
         Assert.Single(Regex.Matches(source, @"_reportedAbsences\.Clear\("));
@@ -499,6 +600,37 @@ public class LanMatchLeaverTests
         Assert.Contains("_reportedAbsences.Clear();", setup);
     }
 
+    // Online the timer is what reports a leaver, and in a LAN tournament what
+    // tells the organizers, so a substitute only ends it under the one rule
+    // that reports a leaver for their lineup's surrender.
+    [Fact]
+    public void A_Replaced_Leavers_Timer_Is_Only_Killed_Where_A_Surrender_Reports_Them()
+    {
+        Assert.Matches(
+            @"_timedOutLeavers\.RemoveWhere\([^;]*\);\s*if \(LeaverRule\(\) != eLeaverRule\.AbandonOnSurrender\)\s*\{\s*return;\s*\}\s*List<ulong> replaced = _disconnectTimers\s*\.Values\.SelectMany\(timers => timers\.Keys\)\s*\.Where\(steamId => IsReplaced\(matchData, shortLineups, steamId\)\)\s*\.ToList\(\);\s*foreach \(ulong steamId in replaced\)\s*\{\s*KillDisconnectTimer\(steamId\);\s*\}\s*$",
+            Method(Surrender(), "public void ForgetReplacedLeavers(")
+        );
+    }
+
+    // An absent player's timer has fired by the time they are back, so their
+    // return cannot wait on there being one to kill. An abandon is never taken
+    // back: the api lengthens the ban on every one it is sent.
+    [Fact]
+    public void Coming_Back_Is_What_Lets_The_Organizers_Hear_Of_The_Next_Absence()
+    {
+        string source = Surrender();
+        string cancel = Method(source, "public void CancelDisconnectTimer(");
+
+        Assert.True(
+            At(cancel, "_reportedAbsences.Remove(steamId);")
+                < At(cancel, "if (!KillDisconnectTimer(steamId))"),
+            "a player whose timer already fired stays reported once they are back"
+        );
+        Assert.Single(Regex.Matches(source, @"_reportedAbsences\.Remove\("));
+        Assert.DoesNotContain("_reportedAbandons.Remove", source);
+        Assert.Single(Regex.Matches(source, @"_reportedAbandons\.Clear\("));
+    }
+
     // A connect is what makes a lineup whole. A leaver whose seat was filled
     // before their time ran out is taken off the wait as they are put on it.
     [Fact]
@@ -506,11 +638,17 @@ public class LanMatchLeaverTests
     {
         string source = Surrender();
         string timer = Method(source, "public void SetupDisconnectTimer(");
-
-        Assert.Contains(
-            "ForgetReplacedLeavers(matchData, connected, match.GetExpectedPlayerCount());",
-            Method(source, "public void ResumeIfRosterWhole()")
+        string resume = Method(source, "public void ResumeIfRosterWhole()");
+        int forgotten = At(
+            resume,
+            "ForgetReplacedLeavers(matchData, connected, match.GetExpectedPlayerCount());"
         );
+
+        Assert.True(
+            forgotten < At(resume, "!match.timeoutSystem.RosterOwnsPause()"),
+            "a LAN roster never owns its pause, so nothing after that return runs there"
+        );
+        Assert.Single(Regex.Matches(resume[..forgotten], @"\breturn;"));
         Assert.True(
             At(timer, "PlayerAbandonedMatch(steamId);") < At(timer, "ForgetReplacedLeavers("),
             "a leaver is checked against their lineup before they are waiting on it"
