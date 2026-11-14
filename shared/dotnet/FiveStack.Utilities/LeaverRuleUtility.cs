@@ -34,10 +34,10 @@ public static class LeaverRuleUtility
         return inPlay || (rule == eLeaverRule.NoSurrender && !mapOver);
     }
 
-    // Whoever is missing as a map leaves its warmup or its knife round has no
-    // disconnect left to time them, so they are timed from then. A LAN
-    // tournament also times them from the warmup of every map after the first:
-    // a player who left while the last map was over is missed from there on.
+    // A player who left where leaving was not timed has no disconnect left to
+    // time them, so they are timed once the map leaves its warmup or its knife
+    // round. A LAN tournament also times them from the warmup of every map
+    // after the first, for a player who left while the last map was over.
     public static bool TimesAbsentPlayers(
         eLeaverRule rule,
         eMapStatus current,

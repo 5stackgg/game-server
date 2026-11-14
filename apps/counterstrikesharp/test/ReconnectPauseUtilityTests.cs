@@ -527,8 +527,8 @@ public class ReconnectPauseUtilityTests
         );
     }
 
-    // With a bench, a seat that is missing its player and a substitute who never
-    // came for one look the same, so only those who left are timed.
+    // A substitute who never came is not timed, so the bench does not count
+    // against a lineup.
     [Fact]
     public void A_Short_Lineup_With_A_Bench_Times_Only_Those_Who_Left()
     {

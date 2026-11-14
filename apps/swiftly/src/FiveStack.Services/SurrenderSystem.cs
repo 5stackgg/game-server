@@ -39,7 +39,7 @@ public class SurrenderSystem
     // player off it, and so does their lineup being whole without them.
     private readonly HashSet<ulong> _untimedLeavers = new HashSet<ulong>();
 
-    // A map started play and the players missing then are still to be timed.
+    // A map started play and its untimed leavers are still to be timed.
     private bool _timesAbsentPlayers;
 
     // Lineups whose leaver ran out of time while another surrender vote was
