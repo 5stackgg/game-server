@@ -178,6 +178,105 @@ public class GapsTests
     }
 
     [Fact]
+    public async Task ACameraLostAfterAMapsLastRoundHoldsTheNextMap()
+    {
+        MatchData match = Matches.Series(3);
+        match.options.camera_required = true;
+        string player = match.lineup_1.lineup_players[0].steam_id!;
+        var api = new SeriesApi(match);
+        var sink = new RecordingSink();
+        SimulatedServer server = Matches.Server(api, sink);
+        int waitingForTv = 0;
+        int warmups = 0;
+        bool back = false;
+        bool liveWithoutCamera = false;
+        sink.OnPublish = published =>
+        {
+            api.Observe(published);
+            if (published.Name != "mapStatus")
+            {
+                return;
+            }
+
+            switch ((string)published.Data["status"])
+            {
+                case "WaitingForTV" when ++waitingForTv == 1:
+                    server.Execute($"camera_state {player}");
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(300);
+                        Volatile.Write(ref back, true);
+                        server.Execute("camera_state");
+                    });
+                    break;
+                case "Warmup":
+                    warmups++;
+                    break;
+                case "Live" when warmups == 2 && !Volatile.Read(ref back):
+                    liveWithoutCamera = true;
+                    break;
+            }
+        };
+
+        await server.RefreshMatch();
+
+        DateTime deadline = DateTime.UtcNow.AddSeconds(30);
+        while (!(api.Over && server.LastRun?.Task.IsCompleted == true))
+        {
+            if (DateTime.UtcNow > deadline)
+            {
+                throw new TimeoutException($"series not over: {api.MapWinners.Count} maps played");
+            }
+            await Task.Delay(10);
+        }
+
+        Assert.True(warmups >= 2);
+        Assert.False(liveWithoutCamera);
+    }
+
+    [Fact]
+    public async Task TheCameraScenarioHoldsPlayUntilTheApiReportsACamera()
+    {
+        MatchData match = Matches.Build();
+        match.options.camera_required = true;
+        match.lineup_2.name = "two sim:camera";
+        string player = match.lineup_2.lineup_players[0].steam_id!;
+        int scores = 0;
+        int scoresAtPause = -1;
+
+        (List<Published> events, _) = await Play(
+            match,
+            (server, published) =>
+            {
+                if (published.Name == "score" && ++scores == 3)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(300);
+                        server.Execute($"camera_state {player}");
+                    });
+                }
+
+                if (
+                    published.Name == "mapStatus"
+                    && (string)published.Data["status"] == "Paused"
+                )
+                {
+                    scoresAtPause = scores;
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(50);
+                        server.Execute("camera_state");
+                    });
+                }
+            }
+        );
+
+        Assert.Equal(3, scoresAtPause);
+        Assert.Equal("Finished", Statuses(events)[^1]);
+    }
+
+    [Fact]
     public async Task AServerOffAGameNodeUploadsADemoForEveryMapItPlays()
     {
         MatchData match = Matches.Build();
