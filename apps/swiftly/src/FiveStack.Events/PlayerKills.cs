@@ -66,6 +66,7 @@ public partial class FiveStackPlugin
                 { "blinded", @event.AttackerBlind },
                 { "thru_smoke", @event.ThruSmoke },
                 { "thru_wall", @event.Penetrated > 0 },
+                { "in_air", @event.AttackerInAir },
                 { "headshot", @event.Headshot },
                 { "round", _gameServer.GetCurrentRound() },
                 { "attacker_steam_id", attacker != null ? attacker.SteamID.ToString() : "" },
