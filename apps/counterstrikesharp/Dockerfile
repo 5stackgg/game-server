@@ -119,7 +119,9 @@ ENV METAMOD_URL=https://github.com/alliedmodders/metamod-source/releases/downloa
 ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.380/counterstrikesharp-with-runtime-linux-1.0.380.zip
 
 ENV METAMOD_CSGO_URL=https://mms.alliedmods.net/mmsdrop/1.12/mmsource-1.12.0-git1219-linux.tar.gz
-ENV SOURCEMOD_CSGO_URL=https://sm.alliedmods.net/smdrop/1.13/sourcemod-1.13.0-git7484-linux.tar.gz
+# CS:GO stays on SourceMod 1.12 stable: 1.13 (git7484) segfaults CS:GO at map
+# load, and AlliedMods prunes old 1.13 dev builds.
+ENV SOURCEMOD_CSGO_URL=https://sm.alliedmods.net/smdrop/1.12/sourcemod-1.12.0-git7260-linux.tar.gz
 ENV NO_LOBBY_RESERVATION_URL=https://github.com/nuxencs/NoLobbyReservation/releases/download/v0.0.1/NoLobbyReservation.zip
 
 # steamcmd's 32-bit deps and .NET's libicu67 already ship in the sniper image
