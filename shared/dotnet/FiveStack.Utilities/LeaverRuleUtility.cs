@@ -25,4 +25,12 @@ public static class LeaverRuleUtility
             ? eLeaverRule.NoSurrender
             : eLeaverRule.AbandonOnSurrender;
     }
+
+    // A drop outside play ends in neither a vote nor an abandon, so only a LAN
+    // tournament match times one: its organizers are told about a player gone
+    // from warmup, knife or the wait for the next map too, until the map is over.
+    public static bool TimesLeaver(eLeaverRule rule, bool inPlay, bool mapOver)
+    {
+        return inPlay || (rule == eLeaverRule.NoSurrender && !mapOver);
+    }
 }

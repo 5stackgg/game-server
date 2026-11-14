@@ -430,8 +430,9 @@ public class TimeoutSystem
             && !_cameraSystem.IsBlocking();
     }
 
-    // Someone at the table asked, so unlike the roster's own resume this ends
-    // a LAN pause too.
+    // A player at the table asked, so unlike the roster's own resume this ends
+    // a LAN pause too. Anyone else in the server is only told who is out, and
+    // nobody else reads it.
     public void CheckRoster(IPlayer player)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
@@ -447,10 +448,22 @@ public class TimeoutSystem
             .Select(present => (present.SteamID.ToString(), present.Name))
             .ToList();
 
+        bool inLineup =
+            MatchUtility.GetMemberFromLineup(
+                matchData,
+                player.SteamID.ToString(),
+                player.Name
+            ) != null;
+
         eRosterCheck check = ReconnectPauseUtility.Check(
             match.GetPauseReason(),
+            TimeoutUtility.HasPauseToResume(
+                match.GetCurrentMapStatus(),
+                MatchUtility.Rules()?.MatchWaitingForResume == true
+            ),
             ReconnectPauseUtility.ShouldPause(matchData, connected, match.GetExpectedPlayerCount()),
-            ShouldRequireTeamResume() || _cameraSystem.IsBlocking() || IsTimeoutActive()
+            ShouldRequireTeamResume() || _cameraSystem.IsBlocking() || IsTimeoutActive(),
+            inLineup
         );
 
         if (check == eRosterCheck.NotPaused)
@@ -470,8 +483,9 @@ public class TimeoutSystem
                 ReadyUtility.EmptySeats(matchData, connected, match.GetExpectedPlayerCount())
             );
 
-            _gameServer.MessageEach(
-                MessageType.Chat,
+            TellRosterCheck(
+                player,
+                inLineup,
                 localizer => localizer["timeout.check_missing", missing]
             );
             return;
@@ -479,10 +493,7 @@ public class TimeoutSystem
 
         if (check == eRosterCheck.Whole)
         {
-            _gameServer.MessageEach(
-                MessageType.Chat,
-                localizer => localizer["timeout.check_whole"]
-            );
+            TellRosterCheck(player, inLineup, localizer => localizer["timeout.check_whole"]);
             return;
         }
 
@@ -491,6 +502,19 @@ public class TimeoutSystem
         match.ResumeMatch(
             localizer => localizer["timeout.check_resumed", checkedBy, ChatColors.Red]
         );
+    }
+
+    // A lineup's own player asks for the table, so everyone reads the answer.
+    // Anyone else is answered alone.
+    private void TellRosterCheck(IPlayer player, bool inLineup, Func<ILocalizer, string> report)
+    {
+        if (inLineup)
+        {
+            _gameServer.MessageEach(MessageType.Chat, report);
+            return;
+        }
+
+        _gameServer.Message(MessageType.Chat, report(_gameServer.LocalizerFor(player)), player);
     }
 
     // A LAN match waits for someone to resume it. Any other waits one technical

@@ -21,12 +21,20 @@ public static class ReconnectPauseUtility
         return present < required;
     }
 
-    // Only the pause the roster made is ended by finding everyone back: any other
-    // waits for whoever called it, and so does one the teams, a camera or a
-    // timeout still hold.
-    public static eRosterCheck Check(ePauseReason? pause, bool shortHanded, bool held)
+    // Only the pause the roster made is ended by finding everyone back, and only
+    // for one of the lineups' own players: any other waits for whoever called
+    // it, and so does one the teams, a camera or a timeout still hold. A round
+    // held for a resume with no pause on the map, as at halftime, is one the
+    // roster did not make.
+    public static eRosterCheck Check(
+        ePauseReason? pause,
+        bool hasPauseToResume,
+        bool shortHanded,
+        bool held,
+        bool callerInLineup
+    )
     {
-        if (pause == null)
+        if (pause == null && !hasPauseToResume)
         {
             return eRosterCheck.NotPaused;
         }
@@ -36,7 +44,9 @@ public static class ReconnectPauseUtility
             return eRosterCheck.Missing;
         }
 
-        return pause == ePauseReason.Roster && !held ? eRosterCheck.Resume : eRosterCheck.Whole;
+        return pause == ePauseReason.Roster && !held && callerInLineup
+            ? eRosterCheck.Resume
+            : eRosterCheck.Whole;
     }
 
     // Each lineup's count is capped at what it needs, so a lineup with a spare

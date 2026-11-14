@@ -317,7 +317,7 @@ public class ReconnectPauseUtilityTests
     {
         Assert.Equal(
             eRosterCheck.NotPaused,
-            ReconnectPauseUtility.Check(null, shortHanded, false)
+            ReconnectPauseUtility.Check(null, false, shortHanded, false, true)
         );
     }
 
@@ -333,7 +333,10 @@ public class ReconnectPauseUtilityTests
         bool held
     )
     {
-        Assert.Equal(eRosterCheck.Missing, ReconnectPauseUtility.Check(pause, true, held));
+        Assert.Equal(
+            eRosterCheck.Missing,
+            ReconnectPauseUtility.Check(pause, true, true, held, true)
+        );
     }
 
     [Fact]
@@ -341,7 +344,7 @@ public class ReconnectPauseUtilityTests
     {
         Assert.Equal(
             eRosterCheck.Resume,
-            ReconnectPauseUtility.Check(ePauseReason.Roster, false, false)
+            ReconnectPauseUtility.Check(ePauseReason.Roster, true, false, false, true)
         );
     }
 
@@ -353,7 +356,10 @@ public class ReconnectPauseUtilityTests
     [InlineData(ePauseReason.Admin)]
     public void A_Check_Never_Ends_A_Pause_The_Roster_Did_Not_Make(ePauseReason pause)
     {
-        Assert.Equal(eRosterCheck.Whole, ReconnectPauseUtility.Check(pause, false, false));
+        Assert.Equal(
+            eRosterCheck.Whole,
+            ReconnectPauseUtility.Check(pause, true, false, false, true)
+        );
     }
 
     [Fact]
@@ -361,7 +367,60 @@ public class ReconnectPauseUtilityTests
     {
         Assert.Equal(
             eRosterCheck.Whole,
-            ReconnectPauseUtility.Check(ePauseReason.Roster, false, true)
+            ReconnectPauseUtility.Check(ePauseReason.Roster, true, false, true, true)
+        );
+    }
+
+    // A spectator, a caster or a coach is told what a player is told, and the
+    // pause is left for the lineups to end.
+    [Theory]
+    [InlineData(false, eRosterCheck.Whole)]
+    [InlineData(true, eRosterCheck.Missing)]
+    public void A_Check_By_Someone_In_Neither_Lineup_Never_Ends_The_Rosters_Pause(
+        bool shortHanded,
+        eRosterCheck told
+    )
+    {
+        Assert.Equal(
+            told,
+            ReconnectPauseUtility.Check(ePauseReason.Roster, true, shortHanded, false, false)
+        );
+    }
+
+    // Halftime holds the round for a resume with the map still Live, so no
+    // pause reason is on it.
+    [Theory]
+    [InlineData(false, eRosterCheck.Whole)]
+    [InlineData(true, eRosterCheck.Missing)]
+    public void A_Check_In_A_Round_Held_With_No_Pause_On_The_Map_Reports_And_Never_Resumes(
+        bool shortHanded,
+        eRosterCheck told
+    )
+    {
+        Assert.Equal(
+            told,
+            ReconnectPauseUtility.Check(
+                null,
+                TimeoutUtility.HasPauseToResume(eMapStatus.Live, true),
+                shortHanded,
+                false,
+                true
+            )
+        );
+    }
+
+    [Fact]
+    public void A_Check_In_A_Live_Round_Nothing_Holds_Says_Nothing_Is_Paused()
+    {
+        Assert.Equal(
+            eRosterCheck.NotPaused,
+            ReconnectPauseUtility.Check(
+                null,
+                TimeoutUtility.HasPauseToResume(eMapStatus.Live, false),
+                false,
+                false,
+                true
+            )
         );
     }
 

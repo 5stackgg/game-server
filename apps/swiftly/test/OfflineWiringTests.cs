@@ -168,6 +168,29 @@ public class OfflineWiringTests
         Assert.True(At(end, "rules.TerminateRound(") < At(end, "catch (Exception ex)"));
     }
 
+    // Offline a roster pause never ends itself, so the leaver's vote mostly
+    // passes in one, and the Surrendered status leaves the engine paused with
+    // nothing for a player to resume.
+    [Fact]
+    public void AnOfflineSurrenderUnpausesTheGameItEnds()
+    {
+        string surrenders = Service("SurrenderSystem");
+        string end = Method(surrenders, "private void EndGameForSurrender(");
+        int unpaused = At(end, "_gameServer.SendCommands([\"mp_unpause_match\"]);");
+
+        Assert.True(
+            unpaused < At(end, "return;"),
+            "the game stays paused when its winner has no side"
+        );
+        Assert.True(unpaused < At(end, "rules.TerminateRound("));
+        Assert.Single(Regex.Matches(surrenders, "mp_unpause_match"));
+        Assert.Matches(
+            @"if \(_environmentService\.IsOfflineMode\(\)\)\s*\{\s*EndGameForSurrender\(match, lineupId\);\s*\}\s*$",
+            Method(surrenders, "public void Surrender(Guid lineupId)")
+        );
+        Assert.Equal(2, Regex.Matches(surrenders, @"\bEndGameForSurrender\(").Count);
+    }
+
     [Fact]
     public void ASurrenderTheGamePlaysOnFromIsEndedByThePlugin()
     {

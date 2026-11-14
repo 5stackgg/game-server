@@ -285,17 +285,34 @@ public class ReconnectTimeoutWiringTests
     }
 
     // On a LAN the roster never ends its own pause, so a check is how it ends
-    // there, held to what the roster's own resume is held to.
+    // there, held to what the roster's own resume is held to, and only for a
+    // player on one of the lineups.
     [Fact]
     public void A_Check_Holds_Any_Match_To_What_The_Rosters_Own_Resume_Waits_On()
     {
         string check = Timeout("public void CheckRoster(");
 
         Assert.Matches(
-            @"ReconnectPauseUtility\.Check\(\s*match\.GetPauseReason\(\),\s*ReconnectPauseUtility\.ShouldPause\(matchData, connected, match\.GetExpectedPlayerCount\(\)\),\s*ShouldRequireTeamResume\(\) \|\| _cameraSystem\.IsBlocking\(\) \|\| IsTimeoutActive\(\)\s*\)",
+            @"ReconnectPauseUtility\.Check\(\s*match\.GetPauseReason\(\),\s*TimeoutUtility\.HasPauseToResume\([^;]*?\),\s*ReconnectPauseUtility\.ShouldPause\(matchData, connected, match\.GetExpectedPlayerCount\(\)\),\s*ShouldRequireTeamResume\(\) \|\| _cameraSystem\.IsBlocking\(\) \|\| IsTimeoutActive\(\),\s*inLineup\s*\);",
+            check
+        );
+        Assert.Matches(
+            @"bool inLineup =\s*MatchUtility\.GetMemberFromLineup\(\s*matchData,\s*player\.SteamID\.ToString\(\),\s*player\.\w+\s*\) != null;",
             check
         );
         Assert.DoesNotContain("IsLan()", check);
+    }
+
+    // A check that read only the map's status called a round held at halftime
+    // not paused, while a resume ended it.
+    [Fact]
+    public void A_Check_Finds_A_Pause_Wherever_A_Resume_Finds_One()
+    {
+        const string pauseToResume =
+            @"TimeoutUtility\.HasPauseToResume\(\s*match\.GetCurrentMapStatus\(\),\s*MatchUtility\.Rules\(\)\?\.MatchWaitingForResume == true\s*\)";
+
+        Assert.Single(Regex.Matches(Timeout("public void CheckRoster("), pauseToResume));
+        Assert.Single(Regex.Matches(Timeout("public void RequestResume("), pauseToResume));
     }
 
     [Fact]
@@ -308,12 +325,26 @@ public class ReconnectTimeoutWiringTests
     }
 
     [Fact]
-    public void A_Check_Names_Whoever_Is_Still_Out_To_Everyone_And_Stays_Paused()
+    public void A_Check_Names_Whoever_Is_Still_Out_And_Stays_Paused()
     {
         Assert.Matches(
-            @"if \(check == eRosterCheck\.Missing\)\s*\{[^{}]*ReadyUtility\.EmptySeats\(matchData, connected, match\.GetExpectedPlayerCount\(\)\)[^{}]*_gameServer\.MessageEach\([^{}]*""timeout\.check_missing""[^{}]*return;\s*\}",
+            @"if \(check == eRosterCheck\.Missing\)\s*\{[^{}]*ReadyUtility\.EmptySeats\(matchData, connected, match\.GetExpectedPlayerCount\(\)\)[^{}]*TellRosterCheck\(\s*player,\s*inLineup,[^{}]*""timeout\.check_missing""[^{}]*return;\s*\}",
             Timeout("public void CheckRoster(")
         );
+    }
+
+    // A spectator's check in a LAN pause printed its answer to the whole server.
+    [Fact]
+    public void A_Check_Is_Answered_To_Everyone_Only_For_A_Lineups_Own_Player()
+    {
+        string check = Timeout("public void CheckRoster(");
+
+        Assert.Matches(
+            @"^private void TellRosterCheck\([^)]*\)\s*\{\s*if \(inLineup\)\s*\{\s*_gameServer\.MessageEach\(\w+\.Chat, report\);\s*return;\s*\}\s*_gameServer\.Message\(\w+\.Chat, report\([^;]*\), player\);\s*$",
+            Timeout("private void TellRosterCheck(")
+        );
+        Assert.DoesNotContain("MessageEach", check);
+        Assert.Equal(2, Regex.Matches(check, @"\bTellRosterCheck\(\s*player,\s*inLineup,").Count);
     }
 
     [Fact]
@@ -322,7 +353,7 @@ public class ReconnectTimeoutWiringTests
         string check = Timeout("public void CheckRoster(");
 
         Assert.Matches(
-            @"if \(check == eRosterCheck\.Whole\)\s*\{\s*_gameServer\.MessageEach\([^{}]*""timeout\.check_whole""[^{}]*return;\s*\}\s*string checkedBy = [^;]*;\s*match\.ResumeMatch\([^;]*""timeout\.check_resumed"", checkedBy,",
+            @"if \(check == eRosterCheck\.Whole\)\s*\{\s*TellRosterCheck\(\s*player,\s*inLineup,[^{}]*""timeout\.check_whole""[^{}]*return;\s*\}\s*string checkedBy = [^;]*;\s*match\.ResumeMatch\([^;]*""timeout\.check_resumed"", checkedBy,",
             check
         );
         Assert.Single(Regex.Matches(check, @"ResumeMatch\("));
