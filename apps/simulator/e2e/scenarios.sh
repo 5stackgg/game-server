@@ -197,6 +197,12 @@ SELECT 'the server ended the map', 'Finished', (SELECT status FROM map)
 UNION ALL
 SELECT 'map goes to the lineup that stayed', (SELECT lineup_1_id::text FROM m), (SELECT coalesce(winning_lineup_id::text, '') FROM map)
 UNION ALL
+SELECT 'the rounds played out after the surrender are not recorded', '8',
+       (SELECT coalesce(max(round), 0)::text FROM match_map_rounds WHERE match_map_id = (SELECT id FROM map) AND deleted_at IS NULL)
+UNION ALL
+SELECT 'the server sent the map''s demo', '1',
+       (SELECT count(*)::text FROM match_map_demos WHERE match_map_id = (SELECT id FROM map))
+UNION ALL
 SELECT 'the lineup that gave up left', '5',
        (SELECT count(*)::text FROM match_lineup_players WHERE match_lineup_id = (SELECT lineup_2_id FROM m) AND NOT is_connected)
 UNION ALL
