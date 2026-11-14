@@ -430,6 +430,69 @@ public class TimeoutSystem
             && !_cameraSystem.IsBlocking();
     }
 
+    // Someone at the table asked, so unlike the roster's own resume this ends
+    // a LAN pause too.
+    public void CheckRoster(IPlayer player)
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+
+        if (match == null || matchData == null)
+        {
+            return;
+        }
+
+        List<(string SteamId, string Name)> connected = MatchUtility
+            .Players()
+            .Select(present => (present.SteamID.ToString(), present.Name))
+            .ToList();
+
+        eRosterCheck check = ReconnectPauseUtility.Check(
+            match.GetPauseReason(),
+            ReconnectPauseUtility.ShouldPause(matchData, connected, match.GetExpectedPlayerCount()),
+            ShouldRequireTeamResume() || _cameraSystem.IsBlocking() || IsTimeoutActive()
+        );
+
+        if (check == eRosterCheck.NotPaused)
+        {
+            _gameServer.Message(
+                MessageType.Chat,
+                _gameServer.LocalizerFor(player)["timeout.not_paused", ChatColors.Red],
+                player
+            );
+            return;
+        }
+
+        if (check == eRosterCheck.Missing)
+        {
+            string missing = string.Join(
+                ", ",
+                ReadyUtility.EmptySeats(matchData, connected, match.GetExpectedPlayerCount())
+            );
+
+            _gameServer.MessageEach(
+                MessageType.Chat,
+                localizer => localizer["timeout.check_missing", missing]
+            );
+            return;
+        }
+
+        if (check == eRosterCheck.Whole)
+        {
+            _gameServer.MessageEach(
+                MessageType.Chat,
+                localizer => localizer["timeout.check_whole"]
+            );
+            return;
+        }
+
+        string checkedBy = player.Controller.PlayerName;
+
+        match.ResumeMatch(
+            localizer => localizer["timeout.check_resumed", checkedBy, ChatColors.Red]
+        );
+    }
+
     // A LAN match waits for someone to resume it. Any other waits one technical
     // timeout at a time, each paid by a lineup that is short, and plays on once
     // they are spent.

@@ -6,6 +6,7 @@
   "help.show_captains": "{0}captains - Mostrar capitães",
   "help.tac_timeout": "{0}tac - Pause tático",
   "help.tech_pause": "{0}tech, {1}resume - Pausa técnica",
+  "help.check": "{0}check - Verificar se todos os jogadores voltaram",
   "help.rules": "{0}rules - Regras",
   "help.restore_round": "{0}reset <round> - Restaurar para o início do round",
   "help.stop": "{0}stop - Jogar novamente o round atual",
@@ -84,6 +85,9 @@
   "timeout.called_tactical": "{0} {1}chamou um pause tático ({2} restantes)",
   "timeout.called_admin": "Pause técnico chamado pelo admin",
   "timeout.already_active": "{0}Já existe um pause ativo",
+  "timeout.check_missing": "Ainda aguardando: {0}",
+  "timeout.check_whole": "Todos os jogadores estão conectados",
+  "timeout.check_resumed": "{0} {1}verificou, todos os jogadores voltaram",
 
   "backup.vote.restore_to": "Restaurar para o início do round {0}",
   "backup.round_restored": "{0}Restaurado para o início do round {1} ({2}resume para continuar)",

@@ -6,6 +6,7 @@
   "help.show_captains": " {0}captains - 显示队长",
   "help.tac_timeout": " {0}tac - 战术暂停",
   "help.tech_pause": " {0}tech, {1}resume - 技术暂停",
+  "help.check": " {0}check - 检查所有玩家是否已回来",
   "help.rules": " {0}rules - 规则",
   "help.restore_round": " {0}reset <round> - 恢复到该回合开始",
 
@@ -77,6 +78,9 @@
   "timeout.called_tactical": "{0} {1}请求了战术暂停（剩余 {2}）",
   "timeout.called_admin": "管理员发起了技术暂停",
   "timeout.already_active": " {0}已有暂停进行中",
+  "timeout.check_missing": "仍在等待: {0}",
+  "timeout.check_whole": "所有玩家均已连接",
+  "timeout.check_resumed": "{0} {1}已检查，所有玩家都已回来",
 
   "backup.vote.restore_to": "恢复到第 {0} 回合开始",
   "backup.round_restored": " {0}已恢复到第 {1} 回合开始（{2}resume 继续）",

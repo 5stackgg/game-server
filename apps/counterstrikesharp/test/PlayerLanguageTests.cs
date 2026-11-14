@@ -672,6 +672,9 @@ public class PlayerLanguageTests
     [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.vote.resume_passed")]
     [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.team_already_resumed")]
     [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.team_resumed")]
+    [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.check_missing")]
+    [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.check_whole")]
+    [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.check_resumed")]
     [InlineData("FiveStack.Services/GameBackUpRounds.cs", "backup.round_restored")]
     [InlineData("FiveStack.Services/GameBackUpRounds.cs", "backup.waiting_for_vote")]
     [InlineData("FiveStack.Services/GameBackUpRounds.cs", "backup.blocked")]
@@ -734,6 +737,14 @@ public class PlayerLanguageTests
                 || after.StartsWith(eitherParticle, StringComparison.Ordinal),
             $"ko-KR {key} reads {korean[word]}{after}"
         );
+    }
+
+    // A command is typed the same in every language.
+    [Theory]
+    [MemberData(nameof(LanguageFiles))]
+    public void HelpNamesTheCheckCommandAsItIsTyped(string language)
+    {
+        Assert.Contains("{0}check - ", Translations(language)["help.check"]);
     }
 
     [Fact]

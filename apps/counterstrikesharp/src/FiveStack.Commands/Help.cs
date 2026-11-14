@@ -47,6 +47,8 @@ public partial class FiveStackPlugin
             ]
         );
 
+        command.ReplyToCommand(_localizer["help.check", CommandUtility.PublicChatTrigger]);
+
         command.ReplyToCommand(_localizer["help.rules", CommandUtility.PublicChatTrigger]);
 
         command.ReplyToCommand(_localizer["help.restore_round", CommandUtility.PublicChatTrigger]);

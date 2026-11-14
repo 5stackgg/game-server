@@ -6,6 +6,7 @@
   "help.show_captains": " {0}captains - Показати капітанів",
   "help.tac_timeout": " {0}tac - Тактична пауза",
   "help.tech_pause": " {0}tech, {1}resume - Технічна пауза",
+  "help.check": " {0}check - Перевірити, що всі гравці повернулися",
   "help.rules": " {0}rules - Правила",
   "help.restore_round": " {0}reset <round> - Повернутися до початку раунду",
   "help.stop": " {0}stop - Переграти поточний раунд",
@@ -82,6 +83,9 @@
   "timeout.called_tactical": "{0} {1}викликав тактичну паузу (залишилось {2})",
   "timeout.called_admin": "Технічна пауза від адміністратора",
   "timeout.already_active": " {0}Пауза вже активна",
+  "timeout.check_missing": "Досі очікуємо: {0}",
+  "timeout.check_whole": "Усі гравці підключені",
+  "timeout.check_resumed": "{0} {1}перевірив, усі гравці повернулися",
 
   "backup.vote.restore_to": "Повернутися до початку раунду {0}",
   "backup.round_restored": " {0}Відновлено початок раунду {1} ({2}resume для продовження)",

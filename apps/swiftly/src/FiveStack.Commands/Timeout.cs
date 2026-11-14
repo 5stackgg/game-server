@@ -26,6 +26,17 @@ public partial class FiveStackPlugin
         _matchService.GetCurrentMatch()?.timeoutSystem.RequestResume(context.Sender);
     }
 
+    [Command("check", registerRaw: false, permission: "")]
+    public void OnCheck(ICommandContext context)
+    {
+        if (context.Sender == null)
+        {
+            return;
+        }
+
+        _matchService.GetCurrentMatch()?.timeoutSystem.CheckRoster(context.Sender);
+    }
+
     [Command("tac", registerRaw: false, permission: "")]
     [CommandAlias("timeout", registerRaw: false)]
     public void OnTimeout(ICommandContext context)
