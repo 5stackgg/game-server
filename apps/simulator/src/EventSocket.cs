@@ -9,6 +9,9 @@ namespace FiveStack.Simulator;
 public interface IEventSink
 {
     void Publish(Guid matchId, Guid mapId, string name, Dictionary<string, object> data);
+
+    // Until the api has acknowledged everything published so far.
+    Task Flushed(CancellationToken token) => Task.CompletedTask;
 }
 
 public static class EventMessages
@@ -51,6 +54,7 @@ public sealed class EventSocket : IEventSink
 {
     private const int MaxPending = 1000;
     private static readonly TimeSpan RetryAfter = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan FlushLimit = TimeSpan.FromSeconds(15);
 
     private readonly SimulatorSettings _settings;
     private readonly Func<Task> _onConnected;
@@ -88,6 +92,16 @@ public sealed class EventSocket : IEventSink
         }
 
         _outgoing.Writer.TryWrite(json);
+    }
+
+    public async Task Flushed(CancellationToken token)
+    {
+        DateTime deadline = DateTime.UtcNow + FlushLimit;
+
+        while (!_pending.IsEmpty && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(20, token);
+        }
     }
 
     public Task Run(CancellationToken token)
