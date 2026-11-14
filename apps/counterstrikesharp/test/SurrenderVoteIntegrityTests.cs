@@ -371,7 +371,7 @@ public class SurrenderVoteIntegrityTests
     }
 
     // A phase change ends the surrender vote, not a leaver's timer: a player who
-    // quits just before the map ends is still reported once it runs out.
+    // quits just before the map ends still runs out of time.
     [Theory]
     [InlineData(eMapStatus.Live, eMapStatus.WaitingForTV)]
     [InlineData(eMapStatus.WaitingForTV, eMapStatus.UploadingDemo)]
