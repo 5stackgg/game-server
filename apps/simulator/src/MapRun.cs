@@ -19,6 +19,12 @@ public sealed class MapRun
     private const int TacticalTimeoutAfterRounds = 3;
     private const int TechnicalPauseAfterRounds = 7;
     private const double TimeoutLength = 30;
+    private const int CameraLossAfterRounds = 3;
+
+    // CameraMonitorService only reports a camera that has been down this long
+    // in real time, which a map at real speed outlasts and a map at the
+    // simulator's speed does not.
+    private static readonly TimeSpan CameraReportWait = TimeSpan.FromMinutes(2);
 
     private readonly SimulatedServer _server;
     private readonly MatchData _match;
@@ -40,8 +46,6 @@ public sealed class MapRun
     private Guid? _surrenderedTo;
     private bool _holding;
     private readonly Dictionary<Guid, int> _timeoutsLeft;
-    private readonly HashSet<string> _offlineCameras = new();
-    private TaskCompletionSource? _camerasBack;
     private readonly TaskCompletionSource<int> _restoreRound = new(
         TaskCreationOptions.RunContinuationsAsynchronously
     );
@@ -111,63 +115,16 @@ public sealed class MapRun
 
     public void RestoreRound(int round) => _restoreRound.TrySetResult(round);
 
-    // CameraSystem.UpdateState: the api sends the full set of players without a
-    // working camera every time it changes.
-    public void UpdateCameras(string payload)
-    {
-        lock (_offlineCameras)
-        {
-            _offlineCameras.Clear();
-            foreach (
-                string steamId in payload.Split(
-                    [',', ' '],
-                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
-                )
-            )
-            {
-                if (ulong.TryParse(steamId, out ulong parsed) && parsed > 0)
-                {
-                    _offlineCameras.Add(steamId);
-                }
-            }
-
-            Log.Info(
-                _offlineCameras.Count == 0
-                    ? "cameras: all clear"
-                    : $"cameras offline: {string.Join(", ", _offlineCameras)}"
-            );
-
-            if (_offlineCameras.Count == 0)
-            {
-                _camerasBack?.TrySetResult();
-                _camerasBack = null;
-            }
-        }
-    }
-
     private bool CamerasOffline()
     {
-        lock (_offlineCameras)
-        {
-            return Options.camera_required && _offlineCameras.Count > 0;
-        }
+        return Options.camera_required && _server.Cameras.AnyOffline;
     }
 
     private async Task WaitForCameras(CancellationToken token)
     {
-        while (true)
+        if (Options.camera_required)
         {
-            Task back;
-            lock (_offlineCameras)
-            {
-                if (!Options.camera_required || _offlineCameras.Count == 0)
-                {
-                    return;
-                }
-                _camerasBack ??= Signal();
-                back = _camerasBack.Task;
-            }
-            await back.WaitAsync(token);
+            await _server.Cameras.WaitUntilBack(token);
         }
     }
 
@@ -631,6 +588,7 @@ public sealed class MapRun
         bool surrenders = _scenario.Surrender && ScenarioMap;
         bool timeouts = _scenario.Timeouts && ScenarioMap;
         bool chats = _scenario.Chat && ScenarioMap;
+        bool cameraLoss = _scenario.CameraLoss && ScenarioMap && Options.camera_required;
         bool leaves = (_scenario.Disconnect || _scenario.Abandon) && ScenarioMap;
         SimPlayer? leaver = null;
         List<Guid>? script = surrenders
@@ -687,6 +645,15 @@ public sealed class MapRun
             if (resumed != null)
             {
                 await resumed.Task.WaitAsync(token);
+            }
+
+            if (cameraLoss && roundsPlayed == CameraLossAfterRounds)
+            {
+                Log.Info("waiting for the api to report a camera");
+                if (!await _server.Cameras.WaitUntilLost(CameraReportWait, token))
+                {
+                    Log.Warn("the api reported no camera, playing on");
+                }
             }
 
             // CameraSystem: a player who lost their camera stops play, and

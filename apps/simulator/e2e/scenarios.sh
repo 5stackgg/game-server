@@ -619,7 +619,7 @@ camera() {
     match=$(new_id)
     first=$((76561198000000000 + server * 10 - 9))
     late=$first
-    create_match "$match" "$server" 3 "Alpha" "Bravo" camera_required=true
+    create_match "$match" "$server" 3 "Alpha" "Bravo sim:camera" camera_required=true
     for ((player = first; player <= first + 9; player++)); do
         if [ "$player" != "$late" ]; then
             tool camera-on "camera-$match-$player"

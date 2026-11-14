@@ -49,6 +49,7 @@ public sealed class SimulatedServer
     public bool HoldFetches { get; set; }
     public Action? MapLoaded { get; set; }
     public IDemoUploader? Demos { get; set; }
+    public Cameras Cameras { get; } = new();
 
     public MatchData? Match => _match;
     public MapRun? Run => _run;
@@ -96,6 +97,7 @@ public sealed class SimulatedServer
 
             StopRun();
             _match = null;
+            Cameras.Clear();
             return;
         }
 
@@ -105,6 +107,7 @@ public sealed class SimulatedServer
         {
             Log.Info($"new match incoming: {_match?.id.ToString() ?? "none"} -> {match.id}");
             StopRun();
+            Cameras.Clear();
         }
 
         _match = match;
@@ -353,7 +356,7 @@ public sealed class SimulatedServer
                     ? $"{RestoreRefused} round restores are disabled in {_match.options.type}"
                     : $"{RestoreRefused} the simulated server keeps no round backups";
             case "camera_state":
-                run?.UpdateCameras(args);
+                Cameras.Update(args);
                 return null;
             case "fivestack_status":
                 return StatusReport();
