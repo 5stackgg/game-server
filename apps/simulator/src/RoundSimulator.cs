@@ -491,7 +491,6 @@ public sealed class RoundSimulator
                 { "blinded", blinded },
                 { "thru_smoke", _random.NextDouble() < 0.05 },
                 { "thru_wall", _random.NextDouble() < 0.07 },
-                { "in_air", _random.NextDouble() < 0.02 },
                 { "headshot", hitgroup == "Head" },
                 { "attacker_steam_id", attacker.SteamId },
                 { "attacker_team", SideRules.ToApi(_sides[attacker.SteamId]) },
