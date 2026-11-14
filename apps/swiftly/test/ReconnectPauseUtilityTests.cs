@@ -466,6 +466,11 @@ public class ReconnectPauseUtilityTests
         return ulong.Parse($"7656119800000{seat:D4}");
     }
 
+    private static readonly HashSet<ulong> Everyone = Enumerable
+        .Range(0, 12)
+        .Select(SteamId)
+        .ToHashSet();
+
     private static List<ulong> AbsentToTime(
         MatchData match,
         IEnumerable<(string, string)> connected,
@@ -482,14 +487,25 @@ public class ReconnectPauseUtilityTests
         );
     }
 
-    // A map starting play times whoever a short lineup is missing, however they
-    // came to be missing: gone outside play, or never there.
     [Fact]
-    public void The_Players_A_Short_Lineup_Is_Missing_Are_Timed()
+    public void The_Players_A_Short_Lineup_Lost_Outside_Play_Are_Timed()
     {
         Assert.Equal(
             new[] { SteamId(3), SteamId(9) },
-            AbsentToTime(BuildMatch(), Players(0, 3).Concat(Players(4, 5)))
+            AbsentToTime(BuildMatch(), Players(0, 3).Concat(Players(4, 5)), leftUntimed: Everyone)
+        );
+    }
+
+    // Online that would be an abandon for someone who was never in the server.
+    [Fact]
+    public void A_Player_Who_Never_Connected_Is_Not_Timed()
+    {
+        var connected = Players(0, 3).Concat(Players(4, 5));
+
+        Assert.Empty(AbsentToTime(BuildMatch(), connected));
+        Assert.Equal(
+            new[] { SteamId(9) },
+            AbsentToTime(BuildMatch(), connected, leftUntimed: new HashSet<ulong> { SteamId(9) })
         );
     }
 
@@ -535,11 +551,11 @@ public class ReconnectPauseUtilityTests
     {
         MatchData match = BuildMatch(new MatchMember { steam_id = null, placeholder_name = "Bob" });
 
-        Assert.Equal(new[] { SteamId(8) }, AbsentToTime(match, Roster(8)));
+        Assert.Equal(new[] { SteamId(8) }, AbsentToTime(match, Roster(8), leftUntimed: Everyone));
 
         match.lineup_2.coach_steam_id = $"7656119800000{8:D4}";
 
-        Assert.Empty(AbsentToTime(match, Roster(8)));
+        Assert.Empty(AbsentToTime(match, Roster(8), leftUntimed: Everyone));
     }
 
     [Fact]
@@ -561,13 +577,13 @@ public class ReconnectPauseUtilityTests
             },
         };
 
-        Assert.Empty(AbsentToTime(match, Roster(5)));
+        Assert.Empty(AbsentToTime(match, Roster(5), leftUntimed: Everyone));
     }
 
     [Fact]
     public void A_Lineup_Short_By_Design_Times_Nobody()
     {
-        Assert.Empty(AbsentToTime(FiveVersusFour(), Roster(9)));
+        Assert.Empty(AbsentToTime(FiveVersusFour(), Roster(9), leftUntimed: Everyone));
     }
 
     // A running timer keeps its three minutes, and an abandon or an absence
@@ -577,7 +593,12 @@ public class ReconnectPauseUtilityTests
     {
         Assert.Equal(
             new[] { SteamId(8) },
-            AbsentToTime(BuildMatch(), Roster(8), timed: new HashSet<ulong> { SteamId(9) })
+            AbsentToTime(
+                BuildMatch(),
+                Roster(8),
+                leftUntimed: Everyone,
+                timed: new HashSet<ulong> { SteamId(9) }
+            )
         );
     }
 }

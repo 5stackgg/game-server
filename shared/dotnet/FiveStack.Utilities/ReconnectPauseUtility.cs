@@ -188,9 +188,10 @@ public static class ReconnectPauseUtility
             ) >= required;
     }
 
-    // A lineup missing more of its players than it has empty seats has a bench,
-    // and a substitute who never came has no seat to have left: there only
-    // those who left where leaving was not timed are timed.
+    // Only someone who left while leaving was not timed. A player who never
+    // connected was the match's deadline to settle, and a match started without
+    // them was started that way on purpose; with a bench, they also look the
+    // same as a substitute nobody needed.
     public static List<ulong> AbsentToTime(
         MatchData matchData,
         IEnumerable<(string SteamId, string Name)> connected,
@@ -227,9 +228,7 @@ public static class ReconnectPauseUtility
                 .Where(steamId => steamId != 0)
                 .ToList();
 
-            absent.AddRange(
-                missing.Count <= emptySeats ? missing : missing.Where(leftUntimed.Contains)
-            );
+            absent.AddRange(missing.Where(leftUntimed.Contains));
         }
 
         return absent.Where(steamId => !timed.Contains(steamId)).ToList();
