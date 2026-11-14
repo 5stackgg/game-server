@@ -25,6 +25,9 @@ jobs:
       - name: Test server launch
         run: bash shared/scripts/test/server-launch.test.sh
 
+      - name: Test CS:GO setup
+        run: bash shared/scripts/test/setup-csgo.test.sh
+
   test:
     runs-on: ubuntu-latest
     strategy:

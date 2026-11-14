@@ -35,6 +35,8 @@ done
 cp -R "/opt/csgo-sourcemod/cfg" "${INSTANCE_SERVER_DIR}/csgo"
 cp -R "/opt/csgo-sourcemod/addons" "${INSTANCE_SERVER_DIR}/csgo"
 cp -R "/opt/csgo-metamod/addons" "${INSTANCE_SERVER_DIR}/csgo"
+# srcds_linux is 32-bit; the 64-bit loader only logs a failed dlopen.
+rm -f "${INSTANCE_SERVER_DIR}/csgo/addons/metamod_x64.vdf"
 cp -R "/opt/csgo-no-lobby-reservation/addons" "${INSTANCE_SERVER_DIR}/csgo"
 
 if [ ! -d "/opt/custom-plugins" ]; then
