@@ -460,4 +460,124 @@ public class ReconnectPauseUtilityTests
             );
         }
     }
+
+    private static ulong SteamId(int seat)
+    {
+        return ulong.Parse($"7656119800000{seat:D4}");
+    }
+
+    private static List<ulong> AbsentToTime(
+        MatchData match,
+        IEnumerable<(string, string)> connected,
+        HashSet<ulong>? leftUntimed = null,
+        HashSet<ulong>? timed = null
+    )
+    {
+        return ReconnectPauseUtility.AbsentToTime(
+            match,
+            connected,
+            10,
+            leftUntimed ?? new HashSet<ulong>(),
+            timed ?? new HashSet<ulong>()
+        );
+    }
+
+    // A map starting play times whoever a short lineup is missing, however they
+    // came to be missing: gone outside play, or never there.
+    [Fact]
+    public void The_Players_A_Short_Lineup_Is_Missing_Are_Timed()
+    {
+        Assert.Equal(
+            new[] { SteamId(3), SteamId(9) },
+            AbsentToTime(BuildMatch(), Players(0, 3).Concat(Players(4, 5)))
+        );
+    }
+
+    [Fact]
+    public void A_Whole_Lineup_Times_Nobody_Its_Substitute_Replaced()
+    {
+        var match = new MatchData
+        {
+            lineup_1 = new MatchLineUp { lineup_players = Members(0, 6) },
+            lineup_2 = new MatchLineUp { lineup_players = Members(6, 5) },
+        };
+
+        Assert.Empty(
+            AbsentToTime(
+                match,
+                Players(1, 5).Concat(Players(6, 5)),
+                leftUntimed: new HashSet<ulong> { SteamId(0) }
+            )
+        );
+    }
+
+    // With a bench, a seat that is missing its player and a substitute who never
+    // came for one look the same, so only those who left are timed.
+    [Fact]
+    public void A_Short_Lineup_With_A_Bench_Times_Only_Those_Who_Left()
+    {
+        var match = new MatchData
+        {
+            lineup_1 = new MatchLineUp { lineup_players = Members(0, 6) },
+            lineup_2 = new MatchLineUp { lineup_players = Members(6, 5) },
+        };
+        var connected = Players(1, 4).Concat(Players(6, 5));
+
+        Assert.Empty(AbsentToTime(match, connected));
+        Assert.Equal(
+            new[] { SteamId(5) },
+            AbsentToTime(match, connected, leftUntimed: new HashSet<ulong> { SteamId(5) })
+        );
+    }
+
+    [Fact]
+    public void An_Unbound_Seat_Or_A_Coach_Is_Never_Timed()
+    {
+        MatchData match = BuildMatch(new MatchMember { steam_id = null, placeholder_name = "Bob" });
+
+        Assert.Equal(new[] { SteamId(8) }, AbsentToTime(match, Roster(8)));
+
+        match.lineup_2.coach_steam_id = $"7656119800000{8:D4}";
+
+        Assert.Empty(AbsentToTime(match, Roster(8)));
+    }
+
+    [Fact]
+    public void A_Lineup_Nobody_Is_Bound_To_Times_Nobody()
+    {
+        var match = new MatchData
+        {
+            lineup_1 = new MatchLineUp { lineup_players = Members(0, 5) },
+            lineup_2 = new MatchLineUp
+            {
+                lineup_players = Enumerable
+                    .Range(0, 5)
+                    .Select(seat => new MatchMember
+                    {
+                        steam_id = null,
+                        placeholder_name = $"seat{seat}",
+                    })
+                    .ToList(),
+            },
+        };
+
+        Assert.Empty(AbsentToTime(match, Roster(5)));
+    }
+
+    [Fact]
+    public void A_Lineup_Short_By_Design_Times_Nobody()
+    {
+        Assert.Empty(AbsentToTime(FiveVersusFour(), Roster(9)));
+    }
+
+    // A running timer keeps its three minutes, and an abandon or an absence
+    // already reported is never reported again.
+    [Fact]
+    public void A_Player_Already_Timed_Is_Not_Timed_Again()
+    {
+        Assert.Equal(
+            new[] { SteamId(8) },
+            AbsentToTime(BuildMatch(), Roster(8), timed: new HashSet<ulong> { SteamId(9) })
+        );
+    }
 }

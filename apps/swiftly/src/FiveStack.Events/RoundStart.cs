@@ -53,6 +53,8 @@ public partial class FiveStackPlugin
             return HookResult.Continue;
         }
 
+        _surrenderSystem.TimeAbsentPlayers();
+
         if (_gameBackupRounds.HoldsRoundResults())
         {
             // A restart can unpause the round the hold paused.

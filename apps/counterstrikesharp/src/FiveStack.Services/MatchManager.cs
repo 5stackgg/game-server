@@ -609,6 +609,7 @@ public class MatchManager
         }
 
         _matchEvents.PublishMapStatus(status, winningLineupId, replay);
+        eMapStatus previousStatus = _currentMapStatus;
         _currentMapStatus = status;
 
         if (_environmentService.IsOfflineMode() && currentMap != null)
@@ -616,6 +617,8 @@ public class MatchManager
             OfflineMatchState.Record(currentMap, status, winningLineupId);
             _matchService.SaveOfflineProgress();
         }
+
+        _surrenderSystem.MapStatusChanged(previousStatus, status, currentMap?.order ?? 0);
     }
 
     public void AnnounceOfflineMatchOver()

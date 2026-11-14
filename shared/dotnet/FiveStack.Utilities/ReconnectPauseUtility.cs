@@ -187,4 +187,51 @@ public static class ReconnectPauseUtility
                 LineupMembership.LineupNumber(matchData, player.SteamId, player.Name) == lineup
             ) >= required;
     }
+
+    // A lineup missing more of its players than it has empty seats has a bench,
+    // and a substitute who never came has no seat to have left: there only
+    // those who left where leaving was not timed are timed.
+    public static List<ulong> AbsentToTime(
+        MatchData matchData,
+        IEnumerable<(string SteamId, string Name)> connected,
+        int expectedPlayers,
+        IReadOnlySet<ulong> leftUntimed,
+        IReadOnlySet<ulong> timed
+    )
+    {
+        List<(string SteamId, string Name)> players = connected.ToList();
+        string[] coaches = [matchData.lineup_1.coach_steam_id, matchData.lineup_2.coach_steam_id];
+        List<ulong> absent = [];
+
+        for (int number = 1; number <= 2; number++)
+        {
+            MatchLineUp lineup = number == 1 ? matchData.lineup_1 : matchData.lineup_2;
+            int emptySeats =
+                BoundSeats(lineup, expectedPlayers)
+                - players.Count(player =>
+                    LineupMembership.LineupNumber(matchData, player.SteamId, player.Name) == number
+                );
+
+            if (emptySeats <= 0)
+            {
+                continue;
+            }
+
+            List<ulong> missing = lineup
+                .lineup_players.Select(member => member.steam_id)
+                .OfType<string>()
+                .Where(steamId =>
+                    !coaches.Contains(steamId) && players.All(player => player.SteamId != steamId)
+                )
+                .Select(steamId => ulong.TryParse(steamId, out ulong id) ? id : 0)
+                .Where(steamId => steamId != 0)
+                .ToList();
+
+            absent.AddRange(
+                missing.Count <= emptySeats ? missing : missing.Where(leftUntimed.Contains)
+            );
+        }
+
+        return absent.Where(steamId => !timed.Contains(steamId)).ToList();
+    }
 }
