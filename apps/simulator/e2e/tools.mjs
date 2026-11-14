@@ -1,10 +1,10 @@
-// Runs inside the api container, which can reach the simulators and
-// mediamtx by name:
+// Runs in the tools container, which can reach the simulators and mediamtx
+// by name:
 //   rcon <host> <password> <command...>   what the panel's console sends
 //   camera-on <path> / camera-off <path>  a webcam publishing to mediamtx, or not
 import net from "node:net";
 
-const [command, ...args] = process.argv.slice(process.argv.indexOf("-") + 1);
+const [command, ...args] = process.argv.slice(2);
 
 function packet(id, type, body) {
   const payload = Buffer.from(body, "utf8");

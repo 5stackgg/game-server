@@ -67,9 +67,8 @@ COMMIT;
 SQL
 }
 
-# tools.mjs from inside the api container.
 tool() {
-    docker compose exec -T api node --input-type=module - "$@" <tools.mjs
+    docker compose exec -T tools node /tools.mjs "$@"
 }
 
 start_match() {
