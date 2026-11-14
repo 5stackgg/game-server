@@ -72,6 +72,10 @@ ln -s "/opt/custom-plugins/addons/sourcemod/configs" "${INSTANCE_SERVER_DIR}/csg
 
 create_symlinks "/opt/custom-plugins" "${INSTANCE_SERVER_DIR}/csgo"
 
+# srcds_linux is 32-bit; the 64-bit loader only logs a failed dlopen. Removed
+# after the server's own folder is linked in, which can hold a copy of it.
+rm -f "${INSTANCE_SERVER_DIR}/csgo/addons/metamod_x64.vdf"
+
 echo "---Create Symbolic Links---"
 create_symlinks "$BASE_SERVER_DIR" "$INSTANCE_SERVER_DIR"
 
