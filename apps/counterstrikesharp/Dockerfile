@@ -120,7 +120,7 @@ ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/re
 
 ENV METAMOD_CSGO_URL=https://mms.alliedmods.net/mmsdrop/1.12/mmsource-1.12.0-git1219-linux.tar.gz
 # CS:GO stays on SourceMod 1.12 stable: 1.13 (git7484) segfaults CS:GO at map
-# load, and AlliedMods prunes old 1.13 dev builds.
+# load. AlliedMods prunes old 1.12 builds too, just far slower than 1.13's.
 ENV SOURCEMOD_CSGO_URL=https://sm.alliedmods.net/smdrop/1.12/sourcemod-1.12.0-git7260-linux.tar.gz
 ENV NO_LOBBY_RESERVATION_URL=https://github.com/nuxencs/NoLobbyReservation/releases/download/v0.0.1/NoLobbyReservation.zip
 
