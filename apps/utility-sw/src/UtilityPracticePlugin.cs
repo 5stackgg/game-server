@@ -88,6 +88,7 @@ public partial class UtilityPracticePlugin : BasePlugin
     private EventDelegates.OnPrecacheResource? _precacheHandler;
     private EventDelegates.OnClientSteamAuthorize? _authorizeHandler;
     private EventDelegates.OnClientPutInServer? _putInServerHandler;
+    private EventDelegates.OnSteamAPIActivated? _steamActivatedHandler;
     private EventDelegates.OnCustomHudClicked? _hudClickHandler;
 
     public UtilityPracticePlugin(ISwiftlyCore core)
@@ -303,6 +304,14 @@ public partial class UtilityPracticePlugin : BasePlugin
             _hud?.Forget(@event.PlayerId);
         };
         Core.Event.OnClientPutInServer += _putInServerHandler;
+
+        _steamActivatedHandler = _relay.SteamActivated;
+        Core.Event.OnSteamAPIActivated += _steamActivatedHandler;
+
+        if (hotReload)
+        {
+            _relay.SteamActivated();
+        }
 
         InitializeConnectClientHook();
         InitializeTerminateRoundHook();
@@ -521,6 +530,11 @@ public partial class UtilityPracticePlugin : BasePlugin
         if (_putInServerHandler != null)
         {
             Core.Event.OnClientPutInServer -= _putInServerHandler;
+        }
+
+        if (_steamActivatedHandler != null)
+        {
+            Core.Event.OnSteamAPIActivated -= _steamActivatedHandler;
         }
 
         UninstallConnectClientHook();
