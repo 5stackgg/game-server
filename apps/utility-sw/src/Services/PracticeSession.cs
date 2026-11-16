@@ -40,6 +40,7 @@ public class PracticeSession
     public string? WorkshopId { get; set; }
 
     private int _refreshing;
+    private int _notRunning;
     private DateTime _lastAttempt = DateTime.MinValue;
 
     // The map-load fetch is one shot, and an unattended server has nobody on it
@@ -95,20 +96,39 @@ public class PracticeSession
             return;
         }
 
-        PracticeSessionData? session = await _api.Session(Map, WorkshopId, relay);
+        UtilityApiClient.SessionFetch fetched = await _api.Session(Map, WorkshopId, relay);
+        PracticeSessionData? session = fetched.Session;
 
         // A failed fetch must not empty the roster: everyone already connected
         // stays connected, and the door keeps the policy it had.
         if (session == null)
         {
-            _logger.LogWarning(
-                "unable to refresh the practice session; keeping the last roster ({roster})",
+            string roster =
                 _session == null
                     ? "none loaded"
-                    : $"{_session.allowed_steam_ids.Count} players, loaded {LoadedAt:u}"
+                    : $"{_session.allowed_steam_ids.Count} players, loaded {LoadedAt:u}";
+
+            // An idle server asks every 15 seconds; say so once, not every time.
+            if (fetched.NotRunning)
+            {
+                _logger.Log(
+                    Interlocked.Exchange(ref _notRunning, 1) == 0
+                        ? LogLevel.Information
+                        : LogLevel.Debug,
+                    "this server is not running a practice session; keeping the last roster ({roster})",
+                    roster
+                );
+                return;
+            }
+
+            _logger.LogWarning(
+                "unable to refresh the practice session; keeping the last roster ({roster})",
+                roster
             );
             return;
         }
+
+        Interlocked.Exchange(ref _notRunning, 0);
 
         List<string> previous = _session?.allowed_steam_ids ?? new List<string>();
 

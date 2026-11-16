@@ -390,10 +390,14 @@ public class UtilityApiClient
         await SendText(HttpMethod.Post, "/utility/callouts", body);
     }
 
+    // NotRunning is the panel's answer for a server nobody has opened a
+    // session on: the normal state of an idle practice server, not a failure.
+    public readonly record struct SessionFetch(PracticeSessionData? Session, bool NotRunning);
+
     // The panel calls this server up the moment it asks for its session, and
     // hands out a connect string straight after. So where it can be reached
     // goes with the question, not on the next occupancy report.
-    public async Task<PracticeSessionData?> Session(
+    public async Task<SessionFetch> Session(
         string? map,
         string? workshopId,
         SteamRelayReport relay
@@ -404,7 +408,7 @@ public class UtilityApiClient
         if (!_config.IsConnected())
         {
             _logger.LogWarning("no panel url or api password; cannot fetch the practice session");
-            return null;
+            return default;
         }
 
         var query = new List<string>();
@@ -427,24 +431,36 @@ public class UtilityApiClient
 
         string route = $"/utility/session?{string.Join("&", query)}";
 
-        string? body = await SendText(HttpMethod.Get, route, null);
+        var outcome = new SendOutcome { Expected = NotRunning };
+        string? body = await SendText(HttpMethod.Get, route, null, outcome);
 
         if (body == null)
         {
-            return null;
+            return new SessionFetch(null, NotRunning(outcome.Status, outcome.Reason));
         }
 
         try
         {
-            return JsonSerializer
-                .Deserialize<UtilitySessionRow>(body, PracticeJson.Options)
-                ?.ToSession();
+            return new SessionFetch(
+                JsonSerializer
+                    .Deserialize<UtilitySessionRow>(body, PracticeJson.Options)
+                    ?.ToSession(),
+                false
+            );
         }
         catch (Exception error)
         {
             _logger.LogError(error, "unable to read the practice session");
-            return null;
+            return default;
         }
+    }
+
+    // Matched on the message too: any other 404, a wrong panel url or a panel
+    // without this route, is a real failure.
+    private static bool NotRunning(int status, string reason)
+    {
+        return status == 404
+            && reason.Contains("not running a practice session", StringComparison.Ordinal);
     }
 
     // The panel recomputes the distance from the lineup it owns, so this is a
@@ -1032,6 +1048,9 @@ public class UtilityApiClient
         // act on, so the status and the body both have to survive the call.
         public int Status { get; set; }
         public string Reason { get; set; } = "";
+
+        // An answer the caller expects and handles, logged at Debug only.
+        public Func<int, string, bool>? Expected { get; init; }
     }
 
     private async Task<string?> SendText(
@@ -1114,7 +1133,10 @@ public class UtilityApiClient
                     // A failure we cannot read is still a failure worth logging.
                 }
 
-                _logger.LogWarning(
+                _logger.Log(
+                    outcome?.Expected?.Invoke((int)response.StatusCode, reason) == true
+                        ? LogLevel.Debug
+                        : LogLevel.Warning,
                     "{method} {path} returned {status}: {reason}",
                     method.Method,
                     path,

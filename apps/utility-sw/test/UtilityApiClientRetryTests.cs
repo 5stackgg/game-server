@@ -856,6 +856,41 @@ public class UtilityApiClientRetryTests : IDisposable
     }
 
     [Fact]
+    public async Task AServerWithNoSessionIsToldSoRatherThanFailing()
+    {
+        _panel.Answer(
+            404,
+            "{\"message\":\"this server is not running a practice session\",\"statusCode\":404}"
+        );
+
+        UtilityApiClient.SessionFetch fetched = await _api.Session(
+            Mirage,
+            "",
+            new SteamRelayReport(false, null)
+        );
+
+        Assert.Null(fetched.Session);
+        Assert.True(fetched.NotRunning);
+    }
+
+    [Theory]
+    [InlineData(404, "{\"message\":\"Cannot GET /utility/session\"}")]
+    [InlineData(500, "{\"message\":\"this server is not running a practice session\"}")]
+    public async Task AnyOtherRefusedSessionIsStillAFailure(int status, string body)
+    {
+        _panel.Answer(status, body);
+
+        UtilityApiClient.SessionFetch fetched = await _api.Session(
+            Mirage,
+            "",
+            new SteamRelayReport(false, null)
+        );
+
+        Assert.Null(fetched.Session);
+        Assert.False(fetched.NotRunning);
+    }
+
+    [Fact]
     public async Task AFirstSendFromAnotherMapIsRefusedToo()
     {
         _api.Map = "de_inferno";

@@ -24,6 +24,7 @@ public class PracticeRelay
     private readonly ILogger<PracticeRelay> _logger;
     private readonly bool _listening;
     private readonly bool _expected;
+    private volatile bool _steamActive;
 
     public PracticeRelay(ISwiftlyCore core, ILogger<PracticeRelay> logger)
     {
@@ -35,6 +36,11 @@ public class PracticeRelay
         {
             _logger.LogError(SteamRelayUtility.NotListening);
         }
+    }
+
+    public void SteamActivated()
+    {
+        _steamActive = true;
     }
 
     public SteamRelayReport Report()
@@ -49,6 +55,12 @@ public class PracticeRelay
             return SteamIdUtility.ConvertSteamID64ToSteamID(
                 SteamGameServer.GetSteamID().GetSteamID64()
             );
+        }
+        // Before Steam activates the game server there is no address yet, and
+        // the report stays pending; only a failure after that is worth a stack.
+        catch (InvalidOperationException) when (!_steamActive)
+        {
+            return null;
         }
         catch (Exception error)
         {
