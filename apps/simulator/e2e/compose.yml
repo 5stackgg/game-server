@@ -51,7 +51,7 @@ x-sim: &sim
 
 services:
   postgres:
-    image: timescale/timescaledb:2.31.0-pg18
+    image: timescale/timescaledb:2.32.0-pg18
     environment:
       POSTGRES_USER: hasura
       POSTGRES_PASSWORD: hasura
@@ -74,14 +74,14 @@ services:
       retries: 30
 
   redis:
-    image: redis:8.10.2-alpine
+    image: redis:8.10.3-alpine
 
   typesense:
     image: typesense/typesense:30.2
     command: ["--data-dir=/tmp", "--api-key=e2e"]
 
   rustfs:
-    image: rustfs/rustfs:1.0.0
+    image: rustfs/rustfs:1.0.6
     environment:
       RUSTFS_VOLUMES: /data
       RUSTFS_ADDRESS: 0.0.0.0:9000
@@ -90,7 +90,7 @@ services:
 
   # The bucket the panel's rustfs bootstrap makes.
   buckets:
-    image: rustfs/rc:v0.1.36
+    image: rustfs/rc:v0.1.37
     entrypoint: ["/bin/sh", "-c"]
     command:
       - until wget -q -O /dev/null http://rustfs:9000/health; do sleep 1; done;
@@ -141,7 +141,7 @@ services:
         condition: service_started
 
   hasura:
-    image: hasura/graphql-engine:v2.50.5-ce.cli-migrations-v3
+    image: hasura/graphql-engine:v2.51.8-ce.cli-migrations-v3
     volumes:
       - metadata:/hasura-metadata:ro
     environment:
