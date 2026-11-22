@@ -43,21 +43,30 @@ VALIDATE_ARG=""
 [ "${VALIDATE}" = "true" ] && VALIDATE_ARG="validate"
 
 echo "---Update Server To ${BRANCH}${BUILD_ID:+ (build ${BUILD_ID})}---"
-UPDATE_LOG="$(mktemp)"
-"${STEAMCMD_DIR}/steamcmd.sh" +force_install_dir "${BASE_SERVER_DIR}" +login anonymous +app_update "${GAME_ID}" -beta "${BRANCH}" ${VALIDATE_ARG} +quit 2>&1 | tee "${UPDATE_LOG}"
+RESULT="unfinished"
+while IFS= read -r line; do
+    echo "${line}"
+    case "${line}" in
+        *"Success! App '${GAME_ID}'"*) RESULT="installed" ;;
+        *"state is 0x202"* | *"ot enough disk space"*) RESULT="no space" ;;
+    esac
+done < <("${STEAMCMD_DIR}/steamcmd.sh" +force_install_dir "${BASE_SERVER_DIR}" +login anonymous +app_update "${GAME_ID}" -beta "${BRANCH}" ${VALIDATE_ARG} +quit 2>&1)
 
-if grep -q "Success! App '${GAME_ID}'" "${UPDATE_LOG}"; then
-    rm -f "${UPDATE_LOG}"
-    exit 0
-fi
-
-if grep -qE "state is 0x202|[Nn]ot enough disk space" "${UPDATE_LOG}"; then
-    rm -f "${UPDATE_LOG}"
+if [ "${RESULT}" = "no space" ]; then
     FREE_GB=$(df -Pk "${BASE_SERVER_DIR}" | awk 'NR == 2 { printf "%d", $4 / 1048576 }')
     echo "Not enough disk space to update ${GAME_NAME} (${FREE_GB} GB free). Free up space on the node, then retry."
     exit 1
 fi
 
-rm -f "${UPDATE_LOG}"
-echo "steamcmd did not finish the ${GAME_NAME} update. Exiting."
-exit 1
+if [ "${RESULT}" != "installed" ]; then
+    echo "steamcmd did not finish the ${GAME_NAME} update. Exiting."
+    exit 1
+fi
+
+if [ -n "${BUILD_ID:-}" ]; then
+    INSTALLED_BUILD=$(sed -nE 's/^[[:space:]]*"buildid"[[:space:]]+"([0-9]+)".*/\1/p' "${BASE_SERVER_DIR}/steamapps/appmanifest_${GAME_ID}.acf" 2>/dev/null | head -n 1)
+    if [ "${INSTALLED_BUILD}" != "${BUILD_ID}" ]; then
+        echo "Steam branch ${BRANCH} installed build ${INSTALLED_BUILD:-none}, not pinned build ${BUILD_ID}. Exiting."
+        exit 1
+    fi
+fi

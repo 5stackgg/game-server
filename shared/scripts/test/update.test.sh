@@ -26,8 +26,9 @@ echo "/dev/sda1 104857600 92274688 12582912 89% /"
 EOF
 chmod +x "$root/bin/df"
 
-# A fresh node, its steamcmd stubbed: every call is recorded, and an
-# app_update prints what $STEAM_REPLY names.
+# A fresh node, its steamcmd stubbed: every call is recorded with whether
+# Steam's manifest was there, and an app_update prints what $STEAM_REPLY names
+# and installs $STEAM_BUILD.
 setup() {
   work="$root/$1"
   mkdir -p "$work/steamcmd" "$work/serverfiles/game/csgo" "$work/serverfiles/steamapps"
@@ -35,11 +36,18 @@ setup() {
   echo manifest > "$work/serverfiles/steamapps/appmanifest_730.acf"
   cat > "$work/steamcmd/steamcmd.sh" <<'EOF'
 #!/bin/bash
-echo "$*" >> "$(dirname "$0")/calls"
+calls="$(dirname "$0")/calls"
+echo "$*" >> "$calls"
 case "$*" in
   *app_update*)
+    acf="${BASE_SERVER_DIR}/steamapps/appmanifest_${GAME_ID}.acf"
+    [ -f "$acf" ] && echo "manifest present" >> "$calls" || echo "manifest missing" >> "$calls"
     case "${STEAM_REPLY:-ok}" in
-      ok) echo "Success! App '${GAME_ID}' fully installed." ;;
+      ok)
+        mkdir -p "$(dirname "$acf")"
+        printf '"AppState"\n{\n\t"buildid"\t\t"%s"\n}\n' "${STEAM_BUILD:-26798866}" > "$acf"
+        echo "Success! App '${GAME_ID}' fully installed."
+        ;;
       disk) echo "Error! App '${GAME_ID}' state is 0x202 after update job." ;;
       fail) echo "Error! App '${GAME_ID}' state is 0x602 after update job." ;;
     esac
@@ -57,6 +65,7 @@ run() {
     VALIDATE="${VALIDATE:-false}" \
     STEAM_USER=anonymous STEAM_PASSWORD="" \
     STEAM_REPLY="${STEAM_REPLY:-ok}" \
+    STEAM_BUILD="${STEAM_BUILD:-26798866}" \
     "$@" bash "$UPDATE_SH" > "$work/out" 2>&1
   echo $? > "$work/exit"
 }
@@ -65,11 +74,15 @@ app_update() {
   grep "app_update" "$work/steamcmd/calls" 2>/dev/null
 }
 
+manifest_at_update() {
+  grep -E "^manifest (present|missing)$" "$work/steamcmd/calls" 2>/dev/null
+}
+
 echo "an update keeps the install and Steam's manifest, so only changed files download"
 setup keep
 run
 [ "$(cat "$work/exit")" = "0" ] || fail "update exited $(cat "$work/exit")"
-[ -f "$work/serverfiles/steamapps/appmanifest_730.acf" ] || fail "appmanifest_730.acf was deleted"
+[ "$(manifest_at_update)" = "manifest present" ] || fail "appmanifest_730.acf was deleted before steamcmd ran"
 [ -f "$work/serverfiles/game/csgo/pak01_000.vpk" ] || fail "the install was deleted"
 
 echo "an unpinned update names the public branch, so it leaves a pin Steam remembers"
@@ -79,19 +92,27 @@ echo "VALIDATE=false does not validate every file"
 app_update | grep -qw validate && fail "validate passed with VALIDATE=false"
 
 echo "VALIDATE=true validates"
-setup validate
+setup check
 VALIDATE=true run
 app_update | grep -qw validate || fail "validate not passed with VALIDATE=true"
 
 echo "a pin updates the same install in place through its Steam branch"
 setup pin
-run BUILD_ID=25218825 BUILD_BRANCH=1.41.8.1 BUILD_MANIFESTS='[{"gid":"2053759441494650084","depotId":"2347770"}]'
+STEAM_BUILD=25218825 run BUILD_ID=25218825 BUILD_BRANCH=1.41.8.1 BUILD_MANIFESTS='[{"gid":"2053759441494650084","depotId":"2347770"}]'
 [ "$(cat "$work/exit")" = "0" ] || fail "pinned update exited $(cat "$work/exit")"
 app_update | grep -q -- "-beta 1.41.8.1" || fail "app_update without -beta 1.41.8.1: $(app_update)"
 app_update | grep -q -- "+force_install_dir $work/serverfiles" || fail "pin not installed into serverfiles"
 grep -q "download_depot" "$work/steamcmd/calls" && fail "pin still downloads depots beside the install"
 [ -f "$work/serverfiles/game/csgo/pak01_000.vpk" ] || fail "pinning deleted the install"
-[ -f "$work/serverfiles/steamapps/appmanifest_730.acf" ] || fail "pinning deleted Steam's manifest"
+[ "$(manifest_at_update)" = "manifest present" ] || fail "pinning deleted Steam's manifest"
+
+echo "a pin fails when its branch installs some other build"
+setup moved
+STEAM_BUILD=26798866 run BUILD_ID=25218825 BUILD_BRANCH=public
+[ "$(cat "$work/exit")" = "1" ] || fail "pin on the wrong build exited $(cat "$work/exit")"
+last="$(tail -n 1 "$work/out")"
+[ "$last" = "Steam branch public installed build 26798866, not pinned build 25218825. Exiting." ] \
+  || fail "last line: $last"
 
 echo "a pin without its branch stops instead of installing the latest build"
 setup nobranch
@@ -105,8 +126,9 @@ echo 25218825 > "$work/serverfiles/.5stack.build"
 mkdir -p "$work/steamcmd/linux32/steamapps/content/app_730/depot_2347770"
 echo chunk > "$work/steamcmd/linux32/steamapps/content/app_730/depot_2347770/pak01_000.vpk"
 run
+[ "$(cat "$work/exit")" = "0" ] || fail "legacy update exited $(cat "$work/exit")"
 [ -e "$work/serverfiles/.5stack.build" ] && fail ".5stack.build was kept"
-[ -e "$work/serverfiles/steamapps/appmanifest_730.acf" ] && fail "the stub appmanifest was kept"
+[ "$(manifest_at_update)" = "manifest missing" ] || fail "the stub appmanifest was kept"
 [ -e "$work/steamcmd/linux32/steamapps" ] && fail "the old depot copy was kept"
 [ -f "$work/serverfiles/game/csgo/pak01_000.vpk" ] || fail "the old pinned install was deleted"
 
