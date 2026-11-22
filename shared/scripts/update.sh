@@ -44,8 +44,8 @@ VALIDATE_ARG=""
 
 echo "---Update Server To ${BRANCH}${BUILD_ID:+ (build ${BUILD_ID})}---"
 RESULT="unfinished"
-while IFS= read -r line; do
-    echo "${line}"
+while IFS= read -r line || [ -n "${line}" ]; do
+    printf '%s\n' "${line}"
     case "${line}" in
         *"Success! App '${GAME_ID}'"*) RESULT="installed" ;;
         *"state is 0x202"* | *"ot enough disk space"*) RESULT="no space" ;;

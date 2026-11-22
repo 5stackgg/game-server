@@ -50,6 +50,11 @@ case "$*" in
         ;;
       disk) echo "Error! App '${GAME_ID}' state is 0x202 after update job." ;;
       fail) echo "Error! App '${GAME_ID}' state is 0x602 after update job." ;;
+      unterminated)
+        mkdir -p "$(dirname "$acf")"
+        printf '"AppState"\n{\n\t"buildid"\t\t"%s"\n}\n' "${STEAM_BUILD:-26798866}" > "$acf"
+        printf "Success! App '%s' fully installed." "${GAME_ID}"
+        ;;
     esac
     ;;
 esac
@@ -145,6 +150,11 @@ echo "CS:GO names itself when it runs out of room"
 setup csgo
 GAME_ID=740 STEAM_REPLY=disk run
 tail -n 1 "$work/out" | grep -q "update CS:GO (12 GB free)" || fail "last line: $(tail -n 1 "$work/out")"
+
+echo "steamcmd's last line counts even without a newline"
+setup unterminated
+STEAM_REPLY=unterminated run
+[ "$(cat "$work/exit")" = "0" ] || fail "an unterminated success line exited $(cat "$work/exit")"
 
 echo "any other steamcmd failure fails the job"
 setup other
