@@ -28,6 +28,9 @@ jobs:
       - name: Test CS:GO setup
         run: bash shared/scripts/test/setup-csgo.test.sh
 
+      - name: Test game updates
+        run: bash shared/scripts/test/update.test.sh
+
   test:
     runs-on: ubuntu-latest
     strategy:
