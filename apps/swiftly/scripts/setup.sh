@@ -46,6 +46,14 @@ if [ "$ENABLE_CSS_COMPAT" = "true" ] && [ -d "/opt/addons-css" ]; then
   cp -r "/opt/addons-css/." "${INSTANCE_SERVER_DIR}/game/csgo/addons"
 fi
 
+# A plugin the panel marks as needing Metamod sets ENABLE_METAMOD. Copied before
+# plugins link, so addons/metamod is a real directory and each plugin's .vdf
+# links in on its own, gated like every other plugin file.
+if [ "$ENABLE_METAMOD" = "true" ] && [ "$ENABLE_CSS_COMPAT" != "true" ] && [ -d "/opt/addons-metamod" ]; then
+  echo "---Install Metamod---"
+  cp -r "/opt/addons-metamod/." "${INSTANCE_SERVER_DIR}/game/csgo/addons"
+fi
+
 echo "---Create Symbolic Links---"
 
 if [ "$SERVER_TYPE" = "Ranked" ]; then
@@ -296,17 +304,12 @@ if ! grep -qFx "$new_line" "$gameinfo_path"; then
     sed -i "${line_number}a\\$new_line" "$gameinfo_path"
 fi
 
-if [ "$ENABLE_CSS_COMPAT" = "true" ]; then
-    metamod_line="                        Game    csgo/addons/metamod"
-
-    # SwiftlyS2 requires its own entry to come FIRST; metamod (and therefore
-    # CounterStrikeSharp) is anchored after it, not after Game_LowViolence.
-    if ! grep -qFx "$metamod_line" "$gameinfo_path"; then
-        echo "---Adding Metamod Loader (CSS compatibility) ---"
-        line_number=$(grep -nFx "$new_line" "$gameinfo_path" | cut -d: -f1 | head -n 1)
-        sed -i "${line_number}a\\$metamod_line" "$gameinfo_path"
-    fi
+metamod_wanted="false"
+if [ "$ENABLE_CSS_COMPAT" = "true" ] || [ "$ENABLE_METAMOD" = "true" ]; then
+    metamod_wanted="true"
 fi
+
+place_metamod_loader "$gameinfo_path" "$new_line" "$metamod_wanted"
 
 if [ "$STEAM_RELAY" = "true" ]; then
   echo "---Enable Steam Relay---"

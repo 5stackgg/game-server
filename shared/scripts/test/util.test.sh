@@ -257,6 +257,101 @@ assert_equals "$([ -L "$workdir/instance/game/csgo/addons/swiftlys2/configs" ] &
   "dir" "a gated directory was left linked to the server's disk"
 teardown
 
+metamod_line="                        Game    csgo/addons/metamod"
+swiftlys2_line="                        Game    csgo/addons/swiftlys2"
+
+# Valve's file is CRLF; the loader lines setup.sh adds are not.
+gameinfo_sample() {
+  printf '"GameInfo"\r\n{\r\n\tFileSystem\r\n\t{\r\n\t\tSearchPaths\r\n\t\t{\r\n\t\t\tGame_LowViolence\tcsgo_lv\r\n%s\n\t\t\tGame\tcsgo\r\n\t\t}\r\n\t}\r\n}\r\n' "$swiftlys2_line" \
+    > "$workdir/gameinfo.gi"
+}
+
+loader_order() {
+  grep -n 'csgo/addons/\(metamod\|swiftlys2\)' "$workdir/gameinfo.gi" | sed 's/:.*addons\//:/' | tr '\n' ' '
+}
+
+echo "place_metamod_loader puts Metamod directly above SwiftlyS2"
+setup
+gameinfo_sample
+place_metamod_loader "$workdir/gameinfo.gi" "$swiftlys2_line" "true" > /dev/null
+assert_equals "$(loader_order)" "8:metamod 9:swiftlys2 " "Metamod is not the line right above SwiftlyS2"
+assert_equals "$(grep -cFx "$metamod_line" "$workdir/gameinfo.gi")" "1" "the Metamod line is not exactly 5Stack's"
+assert_equals "$(grep -c $'\r$' "$workdir/gameinfo.gi")" "11" "Valve's own lines lost their CRLF"
+teardown
+
+echo "place_metamod_loader adds it once across boots"
+setup
+gameinfo_sample
+place_metamod_loader "$workdir/gameinfo.gi" "$swiftlys2_line" "true" > /dev/null
+place_metamod_loader "$workdir/gameinfo.gi" "$swiftlys2_line" "true" > /dev/null
+assert_equals "$(loader_order)" "8:metamod 9:swiftlys2 " "a second boot moved or doubled the Metamod line"
+teardown
+
+# Where CSS compatibility mode used to put it, below SwiftlyS2, Metamod never loads.
+echo "place_metamod_loader moves a Metamod line found below SwiftlyS2"
+setup
+gameinfo_sample
+sed -i "$(grep -nFx "$swiftlys2_line" "$workdir/gameinfo.gi" | cut -d: -f1)a\\$metamod_line" "$workdir/gameinfo.gi"
+place_metamod_loader "$workdir/gameinfo.gi" "$swiftlys2_line" "true" > /dev/null
+assert_equals "$(loader_order)" "8:metamod 9:swiftlys2 " "a Metamod line below SwiftlyS2 was left there"
+teardown
+
+echo "place_metamod_loader leaves a server that does not want Metamod alone"
+setup
+gameinfo_sample
+cp "$workdir/gameinfo.gi" "$workdir/before.gi"
+place_metamod_loader "$workdir/gameinfo.gi" "$swiftlys2_line" "false" > /dev/null
+assert_equals "$(cmp -s "$workdir/gameinfo.gi" "$workdir/before.gi" && echo same || echo changed)" "same" \
+  "a server without Metamod had its gameinfo.gi changed"
+teardown
+
+metamod_plugin_setup() {
+  setup
+  mkdir -p "$workdir/plugins/addons/metamod" "$workdir/plugins/addons/cs2ac/bin/linuxsteamrt64" "$workdir/plugins/cfg"
+  echo '"Metamod Plugin" {}' > "$workdir/plugins/addons/metamod/cs2ac.vdf"
+  echo "SO" > "$workdir/plugins/addons/cs2ac/bin/linuxsteamrt64/cs2ac.so"
+  echo "cs2ac_enabled 1" > "$workdir/plugins/cfg/cs2ac.cfg"
+  for file in addons/metamod/cs2ac.vdf addons/cs2ac/bin/linuxsteamrt64/cs2ac.so cfg/cs2ac.cfg; do
+    printf 'zerolag-ac\t1.0.14\t%s\n' "$file" >> "$workdir/plugins/.5stack-plugins/index"
+  done
+  mkdir -p "$workdir/instance/game/csgo/addons/metamod/bin" "$workdir/instance/game/csgo/cfg"
+  echo "" > "$workdir/instance/game/csgo/addons/metamod/metaplugins.ini"
+}
+
+echo "a Metamod plugin the mode loads links its .vdf next to Metamod"
+metamod_plugin_setup
+ENABLED_PLUGINS="zerolag-ac@1.0.14" \
+  link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
+assert_equals "$(cat "$workdir/instance/game/csgo/addons/metamod/cs2ac.vdf" 2>/dev/null)" '"Metamod Plugin" {}' \
+  "the enabled plugin's .vdf did not link into addons/metamod"
+assert_equals "$(cat "$workdir/instance/game/csgo/addons/metamod/metaplugins.ini" 2>/dev/null)" "" \
+  "Metamod's own file was replaced"
+assert_equals "$(cat "$workdir/instance/game/csgo/addons/cs2ac/bin/linuxsteamrt64/cs2ac.so" 2>/dev/null)" "SO" \
+  "the enabled plugin's binary did not link"
+assert_equals "$(cat "$workdir/instance/game/csgo/cfg/cs2ac.cfg" 2>/dev/null)" "cs2ac_enabled 1" \
+  "the enabled plugin's cfg did not link"
+teardown
+
+echo "a Metamod plugin the mode leaves out links nothing"
+metamod_plugin_setup
+ENABLED_PLUGINS="inventory-simulator@3.1.0" \
+  link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
+assert_missing "$workdir/instance/game/csgo/addons/metamod/cs2ac.vdf" "a plugin the mode left out still linked its .vdf"
+assert_missing "$workdir/instance/game/csgo/addons/cs2ac" "a plugin the mode left out still linked its binary"
+teardown
+
+echo "the SwiftlyS2 setup.sh installs Metamod before any plugin links, and only when asked"
+sw_setup="${SCRIPT_DIR}/../../../apps/swiftly/scripts/setup.sh"
+metamod_copy_line="$(grep -n 'cp -r "/opt/addons-metamod/\." ' "$sw_setup" | head -n 1 | cut -d: -f1)"
+first_link_line="$(grep -n '^[[:space:]]*link_plugins ' "$sw_setup" | head -n 1 | cut -d: -f1)"
+if [ -z "$metamod_copy_line" ] || [ -z "$first_link_line" ] || [ "$metamod_copy_line" -ge "$first_link_line" ]; then
+  fail "addons/metamod must exist before plugins link (copy line '${metamod_copy_line}', first link line '${first_link_line}')"
+fi
+assert_equals "$(grep -c '^if \[ "\$ENABLE_METAMOD" = "true" \] && \[ "\$ENABLE_CSS_COMPAT" != "true" \]' "$sw_setup")" "1" \
+  "the SwiftlyS2 setup.sh copies Metamod without ENABLE_METAMOD"
+assert_equals "$(grep -c '^place_metamod_loader "\$gameinfo_path" "\$new_line" "\$metamod_wanted"' "$sw_setup")" "1" \
+  "the SwiftlyS2 setup.sh never places the Metamod loader"
+
 database_jsonc() { printf '%s' "$workdir/instance/game/csgo/addons/swiftlys2/configs/database.jsonc"; }
 
 echo "write_plugin_configs fills a plugin database password from its env var"
