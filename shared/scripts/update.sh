@@ -42,15 +42,31 @@ fi
 VALIDATE_ARG=""
 [ "${VALIDATE}" = "true" ] && VALIDATE_ARG="validate"
 
+MANIFEST="${BASE_SERVER_DIR}/steamapps/appmanifest_${GAME_ID}.acf"
+
+steam_update() {
+    RESULT="unfinished"
+    while IFS= read -r line || [ -n "${line}" ]; do
+        printf '%s\n' "${line}"
+        case "${line}" in
+            *"Success! App '${GAME_ID}'"*) RESULT="installed" ;;
+            *"state is 0x202"* | *"ot enough disk space"*) RESULT="no space" ;;
+        esac
+    done < <("${STEAMCMD_DIR}/steamcmd.sh" +force_install_dir "${BASE_SERVER_DIR}" +login anonymous +app_update "${GAME_ID}" -beta "${BRANCH}" ${VALIDATE_ARG} +quit 2>&1)
+}
+
 echo "---Update Server To ${BRANCH}${BUILD_ID:+ (build ${BUILD_ID})}---"
-RESULT="unfinished"
-while IFS= read -r line || [ -n "${line}" ]; do
-    printf '%s\n' "${line}"
-    case "${line}" in
-        *"Success! App '${GAME_ID}'"*) RESULT="installed" ;;
-        *"state is 0x202"* | *"ot enough disk space"*) RESULT="no space" ;;
-    esac
-done < <("${STEAMCMD_DIR}/steamcmd.sh" +force_install_dir "${BASE_SERVER_DIR}" +login anonymous +app_update "${GAME_ID}" -beta "${BRANCH}" ${VALIDATE_ARG} +quit 2>&1)
+steam_update
+
+# An anonymous login only gets the file lists of builds still on a Steam
+# branch, so patching from a build that has left them all is refused ("Access
+# Denied", state 0x6). Without its manifest, steamcmd checks the files on disk
+# against the new build and downloads only what differs.
+if [ "${RESULT}" = "unfinished" ] && [ -f "${MANIFEST}" ]; then
+    echo "---Steam refused to patch the installed build, checking the install file by file---"
+    rm -f "${MANIFEST}"
+    steam_update
+fi
 
 if [ "${RESULT}" = "no space" ]; then
     FREE_GB=$(df -Pk "${BASE_SERVER_DIR}" | awk 'NR == 2 { printf "%d", $4 / 1048576 }')
@@ -64,7 +80,7 @@ if [ "${RESULT}" != "installed" ]; then
 fi
 
 if [ -n "${BUILD_ID:-}" ]; then
-    INSTALLED_BUILD=$(sed -nE 's/^[[:space:]]*"buildid"[[:space:]]+"([0-9]+)".*/\1/p' "${BASE_SERVER_DIR}/steamapps/appmanifest_${GAME_ID}.acf" 2>/dev/null | head -n 1)
+    INSTALLED_BUILD=$(sed -nE 's/^[[:space:]]*"buildid"[[:space:]]+"([0-9]+)".*/\1/p' "${MANIFEST}" 2>/dev/null | head -n 1)
     if [ "${INSTALLED_BUILD}" != "${BUILD_ID}" ]; then
         echo "Steam branch ${BRANCH} installed build ${INSTALLED_BUILD:-none}, not pinned build ${BUILD_ID}. Exiting."
         exit 1
