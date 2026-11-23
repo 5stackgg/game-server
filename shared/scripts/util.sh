@@ -388,18 +388,38 @@ ensure_p2p_ice_disabled() {
   printf 'net_option P2P_Transport_ICE_Enable 0\n' >> "$file"
 }
 
-# Metamod ships no .vdf inside addons/metamod, so one there is a plugin that was
-# linked in for this server. A broken link is a plugin that is gone.
-has_metamod_plugins() {
-  local dir="$1" vdf
+# The engine loads only the first libserver.so on the search path. With
+# Metamod's directly above SwiftlyS2's, Metamod loads and then takes SwiftlyS2's
+# as the game; the other way round Metamod never loads at all. So the line is
+# moved there wherever it was. A server that doesn't want Metamod is left alone.
+place_metamod_loader() {
+  local gameinfo="$1"
+  local swiftlys2_line="$2"
+  local wanted="$3"
+  local metamod_line="                        Game    csgo/addons/metamod"
 
-  for vdf in "$dir"/*.vdf; do
-    if [ -e "$vdf" ]; then
-      return 0
-    fi
-  done
+  if [ "$wanted" != "true" ]; then
+    return 0
+  fi
 
-  return 1
+  local metamod_at swiftlys2_at
+  metamod_at=$(grep -nFx "$metamod_line" "$gameinfo" | cut -d: -f1 | head -n 1)
+  swiftlys2_at=$(grep -nFx "$swiftlys2_line" "$gameinfo" | cut -d: -f1 | head -n 1)
+
+  if [ -z "$swiftlys2_at" ]; then
+    echo "---Metamod: no SwiftlyS2 loader in ${gameinfo}, leaving Metamod off---" >&2
+    return 1
+  fi
+
+  if [ -n "$metamod_at" ] && [ "$metamod_at" -eq $((swiftlys2_at - 1)) ] &&
+    [ "$(grep -c 'csgo/addons/metamod' "$gameinfo")" -eq 1 ]; then
+    return 0
+  fi
+
+  echo "---Adding Metamod Loader above SwiftlyS2---"
+  sed -i '/^[[:space:]]*Game[[:space:]]\+csgo\/addons\/metamod[[:space:]]*\r\?$/d' "$gameinfo"
+  swiftlys2_at=$(grep -nFx "$swiftlys2_line" "$gameinfo" | cut -d: -f1 | head -n 1)
+  sed -i "${swiftlys2_at}i\\$metamod_line" "$gameinfo"
 }
 
 # Only whole-line // comments are stripped; a trailing // may be inside a URL.
