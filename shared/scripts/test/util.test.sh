@@ -257,6 +257,56 @@ assert_equals "$([ -L "$workdir/instance/game/csgo/addons/swiftlys2/configs" ] &
   "dir" "a gated directory was left linked to the server's disk"
 teardown
 
+database_jsonc() { printf '%s' "$workdir/instance/game/csgo/addons/swiftlys2/configs/database.jsonc"; }
+
+echo "write_plugin_configs fills a plugin database password from its env var"
+setup
+PLUGIN_DATABASE_PASSWORD_ARENAS="0123abcd" \
+  PLUGIN_CONFIGS="$(jq -cn '{"addons/swiftlys2/configs/database.jsonc": "{\"pass\": \"${PLUGIN_DATABASE_PASSWORD_ARENAS}\"}"}' | base64)" \
+  write_plugin_configs "$workdir/instance/game/csgo" > /dev/null 2>&1
+assert_equals "$(jq -r '.pass' "$(database_jsonc)" 2>/dev/null)" "0123abcd" \
+  "the password placeholder was not filled"
+teardown
+
+echo "write_plugin_configs JSON-escapes a password with quotes and backslashes"
+setup
+PLUGIN_DATABASE_PASSWORD_ARENAS='a"b\c' \
+  PLUGIN_CONFIGS="$(jq -cn '{"addons/swiftlys2/configs/database.jsonc": "{\"pass\": \"${PLUGIN_DATABASE_PASSWORD_ARENAS}\"}"}' | base64)" \
+  write_plugin_configs "$workdir/instance/game/csgo" > /dev/null 2>&1
+assert_equals "$(jq -r '.pass' "$(database_jsonc)" 2>/dev/null)" 'a"b\c' \
+  "the filled password did not survive as one JSON string"
+teardown
+
+echo "write_plugin_configs leaves any other \${...} in a config as written"
+setup
+HOME_DIR="should-not-appear" PLUGIN_DATABASE_PASSWORD_ARENAS="secret" \
+  PLUGIN_CONFIGS="$(jq -cn '{"addons/swiftlys2/configs/plugins/Existing/config.jsonc": "${HOME_DIR} ${PLUGIN_DATABASE_PASSWORD_arenas} $PLUGIN_DATABASE_PASSWORD_ARENAS"}' | base64)" \
+  write_plugin_configs "$workdir/instance/game/csgo" > /dev/null 2>&1
+assert_equals "$(cat "$workdir/instance/game/csgo/addons/swiftlys2/configs/plugins/Existing/config.jsonc")" \
+  '${HOME_DIR} ${PLUGIN_DATABASE_PASSWORD_arenas} $PLUGIN_DATABASE_PASSWORD_ARENAS' \
+  "something other than a plugin database placeholder was replaced"
+teardown
+
+echo "write_plugin_configs names a missing password, keeps its placeholder and writes the other files"
+setup
+output="$(PLUGIN_DATABASE_PASSWORD_RANKS="ranks-secret" \
+  PLUGIN_CONFIGS="$(jq -cn '{"addons/swiftlys2/configs/database.jsonc": "{\"a\": \"${PLUGIN_DATABASE_PASSWORD_ARENAS}\", \"r\": \"${PLUGIN_DATABASE_PASSWORD_RANKS}\"}", "addons/swiftlys2/configs/plugins/Existing/config.jsonc": "OTHER"}' | base64)" \
+  write_plugin_configs "$workdir/instance/game/csgo" 2>&1)"
+case "$output" in
+  *"needs PLUGIN_DATABASE_PASSWORD_ARENAS, which is not set"*) ;;
+  *) fail "the missing password's variable was not named" ;;
+esac
+case "$output" in
+  *"ranks-secret"*) fail "a password value reached the log" ;;
+esac
+assert_equals "$(jq -r '.a' "$(database_jsonc)" 2>/dev/null)" '${PLUGIN_DATABASE_PASSWORD_ARENAS}' \
+  "the unset placeholder did not stay as written"
+assert_equals "$(jq -r '.r' "$(database_jsonc)" 2>/dev/null)" "ranks-secret" \
+  "the set password next to it was not filled"
+assert_equals "$(cat "$workdir/instance/game/csgo/addons/swiftlys2/configs/plugins/Existing/config.jsonc")" \
+  "OTHER" "another file was not written"
+teardown
+
 echo "write_plugin_configs refuses absolute and traversal paths"
 setup
 output="$(PLUGIN_CONFIGS="$(printf '%s' '{"/etc/passwd":"x","../escape":"y"}' | base64)" \

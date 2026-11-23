@@ -191,6 +191,12 @@ materialize_for_write() {
   printf '%s/%s\n' "$current" "$(basename "$relative")"
 }
 
+# A plugin database's password reaches the server as an env var from a k8s
+# Secret, and its place in the file as ${PLUGIN_DATABASE_PASSWORD_<NAME>}.
+# The value lands inside a JSON string, so it is escaped. Any other ${...} in a
+# config is the plugin's own and stays as written.
+PLUGIN_DATABASE_PASSWORD_RE='\$\{(?<name>PLUGIN_DATABASE_PASSWORD_[A-Z][A-Z0-9_]{1,29})\}'
+
 # PLUGIN_CONFIGS is base64 JSON mapping a game/csgo-relative path to its contents.
 write_plugin_configs() {
   local root="$1"
@@ -233,7 +239,23 @@ write_plugin_configs() {
       rm -f "$destination"
     fi
 
-    printf '%s' "$decoded" | jq -r --arg key "$relative" '.[$key]' > "$destination"
+    local unset_name
+    while IFS= read -r unset_name; do
+      if [ -n "$unset_name" ]; then
+        echo "---Plugin Configs: ${relative} needs ${unset_name}, which is not set---" >&2
+      fi
+    done < <(printf '%s' "$decoded" | jq -r --arg key "$relative" --arg re "$PLUGIN_DATABASE_PASSWORD_RE" '
+      .[$key]
+      | if type == "string" then [scan($re) | .[0]] else [] end
+      | unique[]
+      | select(($ENV[.] // "") == "")' 2>/dev/null)
+
+    printf '%s' "$decoded" | jq -r --arg key "$relative" --arg re "$PLUGIN_DATABASE_PASSWORD_RE" '
+      .[$key]
+      | if type == "string" and test($re) then
+          gsub($re; if ($ENV[.name] // "") == "" then "${" + .name + "}"
+                    else $ENV[.name] | tojson | .[1:-1] end)
+        else . end' > "$destination"
     echo "---Plugin Configs: wrote ${relative}---"
   done <<< "$paths"
 }
