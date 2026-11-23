@@ -388,6 +388,20 @@ ensure_p2p_ice_disabled() {
   printf 'net_option P2P_Transport_ICE_Enable 0\n' >> "$file"
 }
 
+# Metamod ships no .vdf inside addons/metamod, so one there is a plugin that was
+# linked in for this server. A broken link is a plugin that is gone.
+has_metamod_plugins() {
+  local dir="$1" vdf
+
+  for vdf in "$dir"/*.vdf; do
+    if [ -e "$vdf" ]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 # Only whole-line // comments are stripped; a trailing // may be inside a URL.
 ensure_command_prefix() {
   local file="$1"

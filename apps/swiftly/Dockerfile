@@ -138,7 +138,7 @@ ENV SWIFTLYS2_URL=https://github.com/swiftly-solution/swiftlys2/releases/downloa
 
 ENV ENABLE_CSS_COMPAT=false
 
-ENV METAMOD_URL=https://github.com/alliedmodders/metamod-source/releases/download/2.0.0.1410/mmsource-2.0.0-git1410-linux.tar.gz
+ENV METAMOD_URL=https://github.com/alliedmodders/metamod-source/releases/download/2.0.0.1491/mmsource-2.0.0-git1491-linux.tar.gz
 ENV COUNTER_STRIKE_SHARP_URL=https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.371/counterstrikesharp-with-runtime-linux-1.0.371.zip
 
 ENV METAMOD_CSGO_URL=https://mms.alliedmods.net/mmsdrop/1.12/mmsource-1.12.0-git1219-linux.tar.gz
@@ -202,6 +202,8 @@ RUN mkdir -p /opt/metamod /opt/counterstrikesharp && \
 	wget -q $COUNTER_STRIKE_SHARP_URL -O /tmp/counterstrikesharp.zip && \
 	unzip -q /tmp/counterstrikesharp.zip -d /opt/counterstrikesharp && \
 	rm /tmp/counterstrikesharp.zip && \
+	mkdir -p /opt/addons-metamod && \
+	cp -R /opt/metamod/addons/metamod /opt/addons-metamod && \
 	mv /opt/metamod/addons /opt/addons-css && \
 	cp -R /opt/counterstrikesharp/addons/metamod /opt/addons-css && \
 	cp -R /opt/counterstrikesharp/addons/counterstrikesharp /opt/addons-css && \

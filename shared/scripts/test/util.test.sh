@@ -257,6 +257,73 @@ assert_equals "$([ -L "$workdir/instance/game/csgo/addons/swiftlys2/configs" ] &
   "dir" "a gated directory was left linked to the server's disk"
 teardown
 
+metamod_verdict() {
+  if has_metamod_plugins "$1"; then
+    echo yes
+  else
+    echo no
+  fi
+}
+
+echo "has_metamod_plugins sees only a plugin's .vdf"
+setup
+metamod_dir="$workdir/instance/game/csgo/addons/metamod"
+assert_equals "$(metamod_verdict "$metamod_dir")" "no" "a missing addons/metamod counted as a plugin"
+mkdir -p "$metamod_dir/bin/linuxsteamrt64"
+echo "MM" > "$metamod_dir/bin/linuxsteamrt64/metamod.2.cs2.so"
+echo "" > "$metamod_dir/metaplugins.ini"
+assert_equals "$(metamod_verdict "$metamod_dir")" "no" "Metamod's own files counted as a plugin"
+ln -s "$workdir/gone.vdf" "$metamod_dir/gone.vdf"
+assert_equals "$(metamod_verdict "$metamod_dir")" "no" "a broken .vdf link counted as a plugin"
+echo '"Metamod Plugin" {}' > "$workdir/real.vdf"
+ln -s "$workdir/real.vdf" "$metamod_dir/real.vdf"
+assert_equals "$(metamod_verdict "$metamod_dir")" "yes" "a linked plugin .vdf was missed"
+teardown
+
+metamod_plugin_setup() {
+  setup
+  mkdir -p "$workdir/plugins/addons/metamod" "$workdir/plugins/addons/cs2ac/bin/linuxsteamrt64" "$workdir/plugins/cfg"
+  echo '"Metamod Plugin" {}' > "$workdir/plugins/addons/metamod/cs2ac.vdf"
+  echo "SO" > "$workdir/plugins/addons/cs2ac/bin/linuxsteamrt64/cs2ac.so"
+  echo "cs2ac_enabled 1" > "$workdir/plugins/cfg/cs2ac.cfg"
+  for file in addons/metamod/cs2ac.vdf addons/cs2ac/bin/linuxsteamrt64/cs2ac.so cfg/cs2ac.cfg; do
+    printf 'zerolag-ac\t1.0.14\t%s\n' "$file" >> "$workdir/plugins/.5stack-plugins/index"
+  done
+  mkdir -p "$workdir/instance/game/csgo/addons/metamod/bin" "$workdir/instance/game/csgo/cfg"
+  echo "" > "$workdir/instance/game/csgo/addons/metamod/metaplugins.ini"
+}
+
+echo "a Metamod plugin the mode loads turns Metamod on"
+metamod_plugin_setup
+ENABLED_PLUGINS="zerolag-ac@1.0.14" \
+  link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
+assert_equals "$(metamod_verdict "$workdir/instance/game/csgo/addons/metamod")" "yes" \
+  "the enabled plugin's .vdf did not link into addons/metamod"
+assert_equals "$(cat "$workdir/instance/game/csgo/addons/cs2ac/bin/linuxsteamrt64/cs2ac.so" 2>/dev/null)" "SO" \
+  "the enabled plugin's binary did not link"
+assert_equals "$(cat "$workdir/instance/game/csgo/cfg/cs2ac.cfg" 2>/dev/null)" "cs2ac_enabled 1" \
+  "the enabled plugin's cfg did not link"
+teardown
+
+echo "a Metamod plugin the mode leaves out keeps Metamod off"
+metamod_plugin_setup
+ENABLED_PLUGINS="inventory-simulator@3.1.0" \
+  link_plugins "$workdir/plugins" "$workdir/instance/game/csgo" > /dev/null 2>&1
+assert_equals "$(metamod_verdict "$workdir/instance/game/csgo/addons/metamod")" "no" \
+  "a plugin the mode left out still turned Metamod on"
+assert_missing "$workdir/instance/game/csgo/addons/cs2ac" "a plugin the mode left out still linked its binary"
+teardown
+
+echo "the SwiftlyS2 setup.sh installs Metamod before any plugin links"
+sw_setup="${SCRIPT_DIR}/../../../apps/swiftly/scripts/setup.sh"
+metamod_copy_line="$(grep -n 'cp -r "/opt/addons-metamod/\." ' "$sw_setup" | head -n 1 | cut -d: -f1)"
+first_link_line="$(grep -n '^[[:space:]]*link_plugins ' "$sw_setup" | head -n 1 | cut -d: -f1)"
+if [ -z "$metamod_copy_line" ] || [ -z "$first_link_line" ] || [ "$metamod_copy_line" -ge "$first_link_line" ]; then
+  fail "addons/metamod must exist before plugins link (copy line '${metamod_copy_line}', first link line '${first_link_line}')"
+fi
+assert_equals "$(grep -c 'has_metamod_plugins "${INSTANCE_SERVER_DIR}/game/csgo/addons/metamod"' "$sw_setup")" "1" \
+  "the SwiftlyS2 setup.sh never adds the Metamod loader for a Metamod plugin"
+
 database_jsonc() { printf '%s' "$workdir/instance/game/csgo/addons/swiftlys2/configs/database.jsonc"; }
 
 echo "write_plugin_configs fills a plugin database password from its env var"

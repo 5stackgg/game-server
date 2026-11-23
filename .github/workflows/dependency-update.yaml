@@ -186,12 +186,14 @@ jobs:
           fi
           BUILD_ID=$(echo "$LATEST_URL" | grep -oP '(?<=mmsource-)[^/]+(?=-linux)')
 
-          sed -i "s|ENV METAMOD_URL=.*|ENV METAMOD_URL=${LATEST_URL}|" apps/counterstrikesharp/Dockerfile
-          grep -qF "ENV METAMOD_URL=${LATEST_URL}" apps/counterstrikesharp/Dockerfile \
-            || { echo "::error::could not set METAMOD_URL in apps/counterstrikesharp/Dockerfile"; exit 1; }
+          for dockerfile in apps/counterstrikesharp/Dockerfile apps/swiftly/Dockerfile; do
+            sed -i "s|ENV METAMOD_URL=.*|ENV METAMOD_URL=${LATEST_URL}|" "$dockerfile"
+            grep -qF "ENV METAMOD_URL=${LATEST_URL}" "$dockerfile" \
+              || { echo "::error::could not set METAMOD_URL in $dockerfile"; exit 1; }
+            git add "$dockerfile"
+          done
 
-          git add apps/counterstrikesharp/Dockerfile
-          printf 'css\nvalidator\n' >> "$RUNNER_TEMP/images"
+          printf 'css\nsw\nvalidator\n' >> "$RUNNER_TEMP/images"
           echo "Metamod to ${BUILD_ID}" >> "$RUNNER_TEMP/bumps"
 
       - name: AddonsManager
