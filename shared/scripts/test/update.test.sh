@@ -48,6 +48,17 @@ case "$*" in
         printf '"AppState"\n{\n\t"buildid"\t\t"%s"\n}\n' "${STEAM_BUILD:-26798866}" > "$acf"
         echo "Success! App '${GAME_ID}' fully installed."
         ;;
+      stale)
+        # Steam refuses to patch from a build it no longer lists, but checks
+        # the files of an install it has no manifest for.
+        if [ -f "$acf" ]; then
+          echo "Error! App '${GAME_ID}' state is 0x6 after update job."
+        else
+          mkdir -p "$(dirname "$acf")"
+          printf '"AppState"\n{\n\t"buildid"\t\t"%s"\n}\n' "${STEAM_BUILD:-26798866}" > "$acf"
+          echo "Success! App '${GAME_ID}' fully installed."
+        fi
+        ;;
       disk) echo "Error! App '${GAME_ID}' state is 0x202 after update job." ;;
       fail) echo "Error! App '${GAME_ID}' state is 0x602 after update job." ;;
       unterminated)
@@ -137,10 +148,27 @@ run
 [ -e "$work/steamcmd/linux32/steamapps" ] && fail "the old depot copy was kept"
 [ -f "$work/serverfiles/game/csgo/pak01_000.vpk" ] || fail "the old pinned install was deleted"
 
+echo "an install on a build Steam no longer lists is checked file by file instead"
+setup stale
+STEAM_REPLY=stale run
+[ "$(cat "$work/exit")" = "0" ] || fail "stale update exited $(cat "$work/exit")"
+[ "$(manifest_at_update | tr '\n' ' ')" = "manifest present manifest missing " ] \
+  || fail "manifest at each app_update: $(manifest_at_update | tr '\n' ' ')"
+[ "$(app_update | wc -l | tr -d ' ')" = "2" ] || fail "app_update ran $(app_update | wc -l | tr -d ' ') times"
+[ -f "$work/serverfiles/game/csgo/pak01_000.vpk" ] || fail "the file check deleted the install"
+[ -e "$work/serverfiles/steamapps/appmanifest_730.acf.kept" ] && fail "the old manifest was kept after the file check installed"
+
+echo "a pin whose old build Steam no longer lists still lands on its build"
+setup stalepin
+STEAM_REPLY=stale STEAM_BUILD=25218825 run BUILD_ID=25218825 BUILD_BRANCH=1.41.8.1
+[ "$(cat "$work/exit")" = "0" ] || fail "stale pinned update exited $(cat "$work/exit")"
+
 echo "no room for the changed files fails with how much space is free"
 setup disk
 STEAM_REPLY=disk run
 [ "$(cat "$work/exit")" = "1" ] || fail "disk-full update exited $(cat "$work/exit")"
+[ "$(app_update | wc -l | tr -d ' ')" = "1" ] || fail "a disk-full update ran app_update $(app_update | wc -l | tr -d ' ') times"
+[ "$(cat "$work/serverfiles/steamapps/appmanifest_730.acf" 2>/dev/null)" = "manifest" ] || fail "a disk-full update dropped Steam's manifest"
 last="$(tail -n 1 "$work/out")"
 [ "$last" = "Not enough disk space to update CS2 (12 GB free). Free up space on the node, then retry." ] \
   || fail "last line: $last"
@@ -160,6 +188,9 @@ echo "any other steamcmd failure fails the job"
 setup other
 STEAM_REPLY=fail run
 [ "$(cat "$work/exit")" = "1" ] || fail "failed update exited $(cat "$work/exit")"
+[ "$(app_update | wc -l | tr -d ' ')" = "2" ] || fail "a failing update ran app_update $(app_update | wc -l | tr -d ' ') times, not once plus one file check"
+[ "$(cat "$work/serverfiles/steamapps/appmanifest_730.acf" 2>/dev/null)" = "manifest" ] || fail "a failed file check left the node without Steam's manifest"
+[ -e "$work/serverfiles/steamapps/appmanifest_730.acf.kept" ] && fail "the kept manifest was left beside the real one"
 tail -n 1 "$work/out" | grep -q "steamcmd did not finish the CS2 update" || fail "last line: $(tail -n 1 "$work/out")"
 
 if [ "$failures" -gt 0 ]; then
