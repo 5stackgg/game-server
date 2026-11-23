@@ -61,11 +61,17 @@ steam_update
 # An anonymous login only gets the file lists of builds still on a Steam
 # branch, so patching from a build that has left them all is refused ("Access
 # Denied", state 0x6). Without its manifest, steamcmd checks the files on disk
-# against the new build and downloads only what differs.
+# against the new build and downloads only what differs. If that fails too,
+# the manifest goes back so the node still reports the build it has.
 if [ "${RESULT}" = "unfinished" ] && [ -f "${MANIFEST}" ]; then
     echo "---Steam refused to patch the installed build, checking the install file by file---"
-    rm -f "${MANIFEST}"
+    mv -f "${MANIFEST}" "${MANIFEST}.kept"
     steam_update
+    if [ "${RESULT}" = "installed" ]; then
+        rm -f "${MANIFEST}.kept"
+    else
+        mv -f "${MANIFEST}.kept" "${MANIFEST}"
+    fi
 fi
 
 if [ "${RESULT}" = "no space" ]; then
