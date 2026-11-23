@@ -511,17 +511,6 @@ public class MatchManager
 
         var currentMap = GetCurrentMap();
 
-        // TODO - this should only happen discord matches
-        // if (
-        //     _currentMapStatus == eMapStatus.Warmup
-        //     && status != eMapStatus.Warmup
-        //     && currentMap != null
-        //     && currentMap.order == 1
-        // )
-        // {
-        //     SendUpdatedMatchLineups();
-        // }
-
         switch (status)
         {
             case eMapStatus.Scheduled:
@@ -1660,67 +1649,6 @@ public class MatchManager
         }
 
         _gameServer.SendCommands(["bot_kick"]);
-    }
-
-    private void SendUpdatedMatchLineups()
-    {
-        bool shouldUpdateApi = false;
-        MatchMap? _currentMap = GetCurrentMap();
-
-        if (_matchData == null || _currentMap == null)
-        {
-            return;
-        }
-
-        var lineups = new Dictionary<string, List<object>>
-        {
-            { "lineup_1", new List<object>() },
-            { "lineup_2", new List<object>() },
-        };
-
-        foreach (var player in MatchUtility.Players())
-        {
-            MatchMember? member = MatchUtility.GetMemberFromLineup(
-                _matchData,
-                player.SteamID.ToString(),
-                player.PlayerName
-            );
-            if (member == null)
-            {
-                shouldUpdateApi = true;
-            }
-
-            if (TeamUtility.TeamStringToCsTeam(_currentMap.lineup_1_side) == player.Team)
-            {
-                ((List<object>)lineups["lineup_1"]).Add(
-                    new
-                    {
-                        name = player.PlayerName,
-                        steam_id = player.SteamID.ToString(),
-                        captain = captainSystem.IsCaptain(player, player.Team),
-                    }
-                );
-            }
-            else
-            {
-                ((List<object>)lineups["lineup_2"]).Add(
-                    new
-                    {
-                        name = player.PlayerName,
-                        steam_id = player.SteamID.ToString(),
-                        captain = captainSystem.IsCaptain(player, player.Team),
-                    }
-                );
-            }
-        }
-
-        if (shouldUpdateApi)
-        {
-            _matchEvents.PublishGameEvent(
-                "updateLineups",
-                new Dictionary<string, object> { { "lineups", lineups } }
-            );
-        }
     }
 
     public void UpdatePlayerName(CCSPlayerController player, string name, string? tag = null)
