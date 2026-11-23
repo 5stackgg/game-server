@@ -167,7 +167,8 @@ jobs:
         run: |
           set -euo pipefail
           git checkout -- .
-          CURRENT_URL=$(grep -oP 'ENV METAMOD_URL=\K\S+' apps/counterstrikesharp/Dockerfile)
+          METAMOD_DOCKERFILES=(apps/counterstrikesharp/Dockerfile apps/swiftly/Dockerfile)
+          CURRENT_URL=$(grep -ohP 'ENV METAMOD_URL=\K\S+' "${METAMOD_DOCKERFILES[@]}" | sort -u | paste -sd' ' -)
           # not every release ships a linux tarball, so take the newest one that does
           LATEST_URL=$(gh api "repos/alliedmodders/metamod-source/releases?per_page=20" \
             --jq '[.[] | select(.tag_name | startswith("2.")) | .assets[] | select(.name | test("^mmsource-.*-linux\\.tar\\.gz$")) | .browser_download_url] | first // ""')
@@ -186,12 +187,14 @@ jobs:
           fi
           BUILD_ID=$(echo "$LATEST_URL" | grep -oP '(?<=mmsource-)[^/]+(?=-linux)')
 
-          for dockerfile in apps/counterstrikesharp/Dockerfile apps/swiftly/Dockerfile; do
+          # Both images move together or not at all: nothing is staged until
+          # every Dockerfile carries the new URL.
+          for dockerfile in "${METAMOD_DOCKERFILES[@]}"; do
             sed -i "s|ENV METAMOD_URL=.*|ENV METAMOD_URL=${LATEST_URL}|" "$dockerfile"
             grep -qF "ENV METAMOD_URL=${LATEST_URL}" "$dockerfile" \
-              || { echo "::error::could not set METAMOD_URL in $dockerfile"; exit 1; }
-            git add "$dockerfile"
+              || { echo "::error::could not set METAMOD_URL in $dockerfile"; git checkout -- "${METAMOD_DOCKERFILES[@]}"; exit 1; }
           done
+          git add "${METAMOD_DOCKERFILES[@]}"
 
           printf 'css\nsw\nvalidator\n' >> "$RUNNER_TEMP/images"
           echo "Metamod to ${BUILD_ID}" >> "$RUNNER_TEMP/bumps"
