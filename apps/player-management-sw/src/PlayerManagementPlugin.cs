@@ -55,9 +55,13 @@ public partial class PlayerManagementPlugin : BasePlugin
     private readonly HashSet<ulong> _mutedByUs = new();
     private readonly HashSet<ulong> _kicked = new();
 
+    // Kept after they leave, unlike _kicked, so a rejoin is refused at connect.
+    private readonly HashSet<ulong> _kickedForBan = new();
+
     private readonly HealthBook _health = new();
 
     private EventDelegates.OnTick? _tickHandler;
+    private EventDelegates.OnClientConnected? _connectHandler;
     private EventDelegates.OnClientPutInServer? _putInServerHandler;
     private EventDelegates.OnClientSteamAuthorize? _authorizeHandler;
     private EventDelegates.OnClientDisconnected? _disconnectHandler;
@@ -111,6 +115,15 @@ public partial class PlayerManagementPlugin : BasePlugin
 
         _tickHandler = OnTick;
         Core.Event.OnTick += _tickHandler;
+
+        _connectHandler = @event =>
+        {
+            if (RefuseBanned(@event.PlayerId))
+            {
+                @event.Result = HookResult.Stop;
+            }
+        };
+        Core.Event.OnClientConnected += _connectHandler;
 
         _putInServerHandler = @event => OnJoined(@event.PlayerId);
         Core.Event.OnClientPutInServer += _putInServerHandler;
@@ -226,6 +239,11 @@ public partial class PlayerManagementPlugin : BasePlugin
             Core.Event.OnTick -= _tickHandler;
         }
 
+        if (_connectHandler != null)
+        {
+            Core.Event.OnClientConnected -= _connectHandler;
+        }
+
         if (_putInServerHandler != null)
         {
             Core.Event.OnClientPutInServer -= _putInServerHandler;
@@ -329,6 +347,48 @@ public partial class PlayerManagementPlugin : BasePlugin
         _loop?.Request();
     }
 
+    // A player this server kicked for a ban is refused on the way back in while
+    // the cache still holds the ban, instead of loading in to be kicked again.
+    // The refusal asks the panel about them, so a lifted ban lets the next try in.
+    private bool RefuseBanned(int playerId)
+    {
+        try
+        {
+            IPlayer? player = Core.PlayerManager.GetPlayer(playerId);
+
+            if (player == null || player.IsFakeClient)
+            {
+                return false;
+            }
+
+            ulong steamId = player.UnauthorizedSteamID;
+
+            if (steamId == 0 || !_kickedForBan.Contains(steamId))
+            {
+                return false;
+            }
+
+            if (!_book.StateFor(steamId.ToString(), DateTimeOffset.UtcNow).IsBanned)
+            {
+                _kickedForBan.Remove(steamId);
+                return false;
+            }
+
+            _book.Joined(steamId.ToString());
+            _loop?.Request();
+
+            _logger.LogInformation("refusing banned player {steamId} at connect", steamId);
+
+            return true;
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "ban check at connect failed; letting the connect through");
+
+            return false;
+        }
+    }
+
     // Throttled off the tick rather than a repeating timer: SwiftlyS2 replays
     // every missed run of a timer after hibernation, and a timer whose
     // callback throws is never scheduled again.
@@ -392,6 +452,8 @@ public partial class PlayerManagementPlugin : BasePlugin
             {
                 if (_kicked.Add(steamId))
                 {
+                    _kickedForBan.Add(steamId);
+
                     _logger.LogInformation(
                         "kicking banned player {name} ({steamId})",
                         player.Name,
