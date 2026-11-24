@@ -48,6 +48,9 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
     private readonly HashSet<ulong> _mutedByUs = new();
     private readonly HashSet<ulong> _kicked = new();
 
+    // Kept after they leave, unlike _kicked, so a rejoin is refused at connect.
+    private readonly BannedRejoinGate _rejoin = new();
+
     private readonly HealthBook _health = new();
 
     private long _lastEnforceMs;
@@ -348,6 +351,8 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             {
                 if (_kicked.Add(steamId))
                 {
+                    _rejoin.Kicked(steamId);
+
                     Logger.LogInformation(
                         "kicking banned player {name} ({steamId})",
                         player.PlayerName,
