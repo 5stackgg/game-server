@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
@@ -38,5 +39,26 @@ public partial class FiveStackPlugin
         }
 
         match.readySystem.Skip();
+    }
+
+    [ConsoleCommand("ready_status", "Reports who the ready check still waits on")]
+    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public void OnReadyStatus(CCSPlayerController? player, CommandInfo command)
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        bool waiting = match != null && match.IsWarmup() && match.readySystem.IsWaitingForReady();
+
+        command.ReplyToCommand(
+            JsonSerializer.Serialize(
+                new
+                {
+                    match_id = match?.GetMatchData()?.id,
+                    waiting,
+                    not_ready = waiting
+                        ? match!.readySystem.GetNotReadySteamIds()
+                        : new List<string>(),
+                }
+            )
+        );
     }
 }

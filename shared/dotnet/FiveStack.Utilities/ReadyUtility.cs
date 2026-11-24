@@ -93,6 +93,41 @@ namespace FiveStack.Utilities
             return (0, 1);
         }
 
+        // The lineups ReadyCount still waits on: in Players mode each lineup short of
+        // its seats, in Captains mode each lineup without a ready captain. Coach and
+        // Admin readies never wait on lineup players.
+        public static HashSet<int> WaitingLineups(
+            eReadySettings setting,
+            MatchData matchData,
+            IEnumerable<(string SteamId, string Name)> ready,
+            int expectedPlayers
+        )
+        {
+            List<int> readyLineups = ready
+                .Select(player =>
+                    LineupMembership.LineupNumber(matchData, player.SteamId, player.Name)
+                )
+                .OfType<int>()
+                .ToList();
+
+            return new[] { 1, 2 }
+                .Where(lineup =>
+                {
+                    int target = setting switch
+                    {
+                        eReadySettings.Players => ReconnectPauseUtility.Seats(
+                            lineup == 1 ? matchData.lineup_1 : matchData.lineup_2,
+                            expectedPlayers
+                        ),
+                        eReadySettings.Captains => 1,
+                        _ => 0,
+                    };
+
+                    return readyLineups.Count(readyLineup => readyLineup == lineup) < target;
+                })
+                .ToHashSet();
+        }
+
         private static int? CoachedLineup(MatchData matchData, string steamId)
         {
             if (string.IsNullOrEmpty(steamId))

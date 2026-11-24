@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FiveStack.Enums;
 using SwiftlyS2.Shared.Commands;
 using SwiftlyS2.Shared.Players;
@@ -41,5 +42,31 @@ public partial class FiveStackPlugin
         }
 
         match.readySystem.Skip();
+    }
+
+    [Command("ready_status", registerRaw: true, permission: "")]
+    public void OnReadyStatus(ICommandContext context)
+    {
+        if (context.IsSentByPlayer)
+        {
+            return;
+        }
+
+        context.Reply(BuildReadyStatus());
+    }
+
+    private string BuildReadyStatus()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        bool waiting = match != null && match.IsWarmup() && match.readySystem.IsWaitingForReady();
+
+        return JsonSerializer.Serialize(
+            new
+            {
+                match_id = match?.GetMatchData()?.id,
+                waiting,
+                not_ready = waiting ? match!.readySystem.GetNotReadySteamIds() : new List<string>(),
+            }
+        );
     }
 }

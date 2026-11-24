@@ -324,6 +324,17 @@ public sealed class SimulatedServer
             case "force_ready":
                 run?.ForceReady();
                 return null;
+            // simulated players ready on their own; a run still waiting waits on
+            // an admin or a coach, never on a lineup player
+            case "ready_status":
+                return JsonSerializer.Serialize(
+                    new
+                    {
+                        match_id = _match?.id,
+                        waiting = run?.WaitingForReady == true,
+                        not_ready = Array.Empty<string>(),
+                    }
+                );
             case "skip_knife":
                 run?.SkipKnife();
                 return null;

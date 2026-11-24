@@ -390,6 +390,48 @@ public class ReadySystem
         match.UpdateMapStatus(eMapStatus.Live);
     }
 
+    // Who the ready check still waits on, for the api to record as no-shows if
+    // the match is canceled: only on lineups ReadyCount still counts short, and
+    // never a player the camera check keeps from readying.
+    public List<string> GetNotReadySteamIds()
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+
+        if (match == null || matchData == null || !IsWaitingForReady())
+        {
+            return new List<string>();
+        }
+
+        List<CCSPlayerController> voters = MatchUtility
+            .Players()
+            .Where(player => player.UserId != null && CanVote(player))
+            .ToList();
+        HashSet<int> waiting = ReadyUtility.WaitingLineups(
+            GetReadySetting(),
+            matchData,
+            voters
+                .Where(player => _readyPlayers.GetValueOrDefault(player.UserId!.Value))
+                .Select(player => (player.SteamID.ToString(), player.PlayerName)),
+            match.GetExpectedPlayerCount()
+        );
+
+        return voters
+            .Where(player =>
+                !_readyPlayers.GetValueOrDefault(player.UserId!.Value)
+                && !_cameraSystem.IsPlayerBlocked(player)
+                && waiting.Contains(
+                    LineupMembership.LineupNumber(
+                        matchData,
+                        player.SteamID.ToString(),
+                        player.PlayerName
+                    ) ?? 0
+                )
+            )
+            .Select(player => player.SteamID.ToString())
+            .ToList();
+    }
+
     private string[] GetNotReadyPlayers()
     {
         List<string> notReadyPlayers = new List<string>();

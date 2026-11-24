@@ -274,4 +274,57 @@ public class ReadyUtilityTests
 
         Assert.Empty(ReadyUtility.EmptySeats(match, Connected(0, 5).Concat(Connected(6, 5)), 10));
     }
+
+    [Fact]
+    public void Only_A_Lineup_Still_Short_Of_Its_Seats_Is_Waited_On()
+    {
+        var match = new MatchData
+        {
+            lineup_1 = new MatchLineUp { lineup_players = Members(0, 6) },
+            lineup_2 = new MatchLineUp { lineup_players = Members(6, 5) },
+        };
+
+        Assert.Equal(
+            new HashSet<int> { 2 },
+            ReadyUtility.WaitingLineups(
+                eReadySettings.Players,
+                match,
+                Connected(0, 5).Concat(Connected(6, 4)),
+                10
+            )
+        );
+    }
+
+    [Fact]
+    public void Only_A_Lineup_Without_A_Ready_Captain_Is_Waited_On()
+    {
+        Assert.Equal(
+            new HashSet<int> { 2 },
+            ReadyUtility.WaitingLineups(
+                eReadySettings.Captains,
+                FiveVersusFour(),
+                Connected(0, 2),
+                10
+            )
+        );
+        Assert.Empty(
+            ReadyUtility.WaitingLineups(
+                eReadySettings.Captains,
+                FiveVersusFour(),
+                Connected(0, 1).Concat(Connected(5, 1)),
+                10
+            )
+        );
+    }
+
+    [Fact]
+    public void A_Coach_Or_Admin_Ready_Never_Waits_On_Lineup_Players()
+    {
+        foreach (eReadySettings setting in new[] { eReadySettings.Coach, eReadySettings.Admin })
+        {
+            Assert.Empty(
+                ReadyUtility.WaitingLineups(setting, FiveVersusFour(), Connected(0, 0), 10)
+            );
+        }
+    }
 }

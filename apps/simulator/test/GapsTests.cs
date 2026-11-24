@@ -366,6 +366,7 @@ public class GapsTests
             await Task.Delay(10);
         }
         Assert.True(server.LastRun!.WaitingForReady);
+        Assert.Contains("\"waiting\":true,\"not_ready\":[]", server.Execute("ready_status"));
 
         server.Execute("force_ready");
         await Matches.Finish(server.LastRun);
