@@ -4,6 +4,50 @@ using Xunit;
 
 public class TimerUtilityTests
 {
+    private static void Fire(CancellationTokenSource timer, Action callback)
+    {
+        typeof(TimerUtility).GetMethod("RunOnce", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+            .Invoke(null, new object[] { timer, callback });
+    }
+
+    [Fact]
+    public void Completed_Timers_Are_Forgotten_Even_When_Their_Callback_Throws()
+    {
+        using var timer = new CancellationTokenSource();
+        TimerUtility.Timers.Add(timer);
+        var error = Assert.Throws<System.Reflection.TargetInvocationException>(() =>
+            Fire(timer, () => throw new InvalidOperationException("fixture")));
+        Assert.IsType<InvalidOperationException>(error.InnerException);
+        Assert.DoesNotContain(timer, TimerUtility.Timers);
+    }
+
+    [Fact]
+    public void Completed_Timers_Release_Only_Their_Own_Registry_Entry()
+    {
+        using var completed = new CancellationTokenSource();
+        using var waiting = new CancellationTokenSource();
+        TimerUtility.Timers.Add(completed);
+        TimerUtility.Timers.Add(waiting);
+        try
+        {
+            int calls = 0;
+            Fire(completed, () => calls++);
+            Assert.Equal(1, calls);
+            Assert.DoesNotContain(completed, TimerUtility.Timers);
+            Assert.Contains(waiting, TimerUtility.Timers);
+        }
+        finally { TimerUtility.Kill(waiting); }
+    }
+
+    [Fact]
+    public void Canceled_One_Shot_Callbacks_Do_Not_Run_And_Are_Forgotten()
+    {
+        using var timer = new CancellationTokenSource();
+        TimerUtility.Timers.Add(timer);
+        timer.Cancel();
+        Fire(timer, () => throw new InvalidOperationException("must not run"));
+        Assert.DoesNotContain(timer, TimerUtility.Timers);
+    }
     private static string Source([CallerFilePath] string testFile = "")
     {
         return File.ReadAllText(

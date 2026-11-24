@@ -28,20 +28,31 @@ namespace FiveStack.Utilities
             if (TooShortToDelay(interval))
             {
                 CancellationTokenSource immediate = new CancellationTokenSource();
-                _core!.Scheduler.NextTick(() =>
-                {
-                    if (!immediate.IsCancellationRequested)
-                    {
-                        callback();
-                    }
-                });
                 Timers.Add(immediate);
+                _core!.Scheduler.NextTick(() => RunOnce(immediate, callback));
                 return immediate;
             }
 
-            CancellationTokenSource timer = _core!.Scheduler.DelayBySeconds(interval, callback);
+            CancellationTokenSource? timer = null;
+            timer = _core!.Scheduler.DelayBySeconds(interval, () => RunOnce(timer!, callback));
             Timers.Add(timer);
             return timer;
+        }
+
+        private static void RunOnce(CancellationTokenSource timer, Action callback)
+        {
+            try
+            {
+                if (!timer.IsCancellationRequested)
+                {
+                    callback();
+                }
+            }
+            finally
+            {
+                // Scheduler tokens are owned by SwiftlyS2; only forget our reference.
+                Timers.Remove(timer);
+            }
         }
 
         public static CancellationTokenSource Repeat(float interval, Action callback)
