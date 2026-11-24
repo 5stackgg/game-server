@@ -430,6 +430,27 @@ public partial class PlayerManagementPlugin : BasePlugin
         {
             ulong steamId = SteamIdOf(player);
 
+            // Before the awaiting skip: a refused player must not play while
+            // the sanctions answer is still out.
+            if (_access.IsDenied(steamId.ToString()))
+            {
+                if (_kicked.Add(steamId))
+                {
+                    _logger.LogInformation(
+                        "kicking {name} ({steamId}): not on the server's access list",
+                        player.Name,
+                        steamId
+                    );
+
+                    player.Kick(
+                        _access.KickReason(LocalizerFor(player)["access.denied"]),
+                        ENetworkDisconnectionReason.NETWORK_DISCONNECT_KICKED
+                    );
+                }
+
+                continue;
+            }
+
             if (_book.IsAwaiting(steamId.ToString()))
             {
                 continue;
@@ -456,25 +477,6 @@ public partial class PlayerManagementPlugin : BasePlugin
                     player.Kick(
                         SanctionBook.KickReason(state.Ban!),
                         ENetworkDisconnectionReason.NETWORK_DISCONNECT_BANADDED
-                    );
-                }
-
-                continue;
-            }
-
-            if (_access.IsDenied(steamId.ToString()))
-            {
-                if (_kicked.Add(steamId))
-                {
-                    _logger.LogInformation(
-                        "kicking {name} ({steamId}): not on the server's access list",
-                        player.Name,
-                        steamId
-                    );
-
-                    player.Kick(
-                        _access.KickReason(LocalizerFor(player)["access.denied"]),
-                        ENetworkDisconnectionReason.NETWORK_DISCONNECT_KICKED
                     );
                 }
 
@@ -1144,6 +1146,11 @@ public partial class PlayerManagementPlugin : BasePlugin
         if (player == null || !IsHuman(player))
         {
             return HookResult.Continue;
+        }
+
+        if (_access.IsDenied(SteamIdOf(player).ToString()))
+        {
+            return HookResult.Stop;
         }
 
         SanctionState state = _book.StateFor(SteamIdOf(player).ToString(), DateTimeOffset.UtcNow);

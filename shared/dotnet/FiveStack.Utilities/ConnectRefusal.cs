@@ -5,7 +5,8 @@ namespace FiveStack.Utilities;
 // was full. With a server password the client is handed this one instead, and
 // the engine refuses it once. It holds a control character, which no password
 // can. The engine reads an empty sv_password or "none" as no password at all,
-// and then this would let the client in, so those keep the empty ticket.
+// and then this would let the client in, so without one the client is let in
+// and kicked with a reason once it is in game.
 public static class ConnectRefusal
 {
     public const string Password = "\u0001refused";

@@ -48,45 +48,69 @@ public class ConnectRefusalTests
         Assert.Contains(ConnectRefusal.Password, character => char.IsControl(character));
     }
 
-    private static void RefusesWithThePasswordBeforeStrippingTheTicket(string hook, string byPassword, string stripped)
+    // Without a password the Swiftly gate lets the client in and kicks it
+    // with the reason, so it never strips the ticket.
+    [Fact]
+    public void TheSwiftlyAccessGateRefusesWithThePasswordAndOtherwiseMarksTheKick()
     {
-        Match password = Regex.Match(hook, byPassword);
-        Match ticket = Regex.Match(hook, stripped);
+        string hook = Code("player-management-sw", "ConnectGate.cs");
 
-        Assert.True(password.Success, "the refused password path is gone or changed");
-        Assert.True(ticket.Success, "the empty ticket path is gone or changed");
-        Assert.True(password.Index < ticket.Index);
+        Assert.Matches(
+            @"if\s*\(\s*access == eServerAccess\.Denied\s*&&\s*ConnectRefusal\.ByPassword\(\s*Core\.ConVar\.Find<string>\(""sv_password""\)\?\.Value\s*\)\s*\)\s*\{\s*return next\(\)\(\s*server,\s*name,\s*address,\s*netInfo,\s*connectMsg,\s*RefusedPasswordBuffer,\s*authTicket,\s*authTicketLength,\s*isLowViolence\s*\);",
+            hook
+        );
+        Assert.DoesNotMatch(@"nint\.Zero,\s*0,\s*isLowViolence", hook);
+        Assert.Matches(
+            @"_access\.Connecting\(\s*steamId\.ToString\(\),\s*access == eServerAccess\.Denied,",
+            hook
+        );
+    }
+
+    [Fact]
+    public void TheCounterStrikeSharpAccessGateRefusesWithThePasswordAndOtherwiseMarksTheKick()
+    {
+        string hook = Code("player-management-css", "ConnectGate.cs");
+
+        Assert.Matches(
+            @"if\s*\(\s*access == eServerAccess\.Denied\s*&&\s*ConnectRefusal\.ByPassword\(ConVar\.Find\(""sv_password""\)\?\.StringValue\)\s*\)\s*\{\s*hook\.SetParam\(5, RefusedPasswordBuffer\);\s*\}",
+            hook
+        );
         Assert.Matches(
             @"RefusedPasswordBuffer = Marshal\.StringToCoTaskMemUTF8\(\s*ConnectRefusal\.Password\s*\)",
             hook
         );
-    }
-
-    [Fact]
-    public void TheSwiftlyAccessGateRefusesWithThePasswordAndOnlyStripsTheTicketWithoutOne()
-    {
-        RefusesWithThePasswordBeforeStrippingTheTicket(
-            Code("player-management-sw", "ConnectGate.cs"),
-            @"if\s*\(\s*access == eServerAccess\.Denied\s*&&\s*ConnectRefusal\.ByPassword\(\s*Core\.ConVar\.Find<string>\(""sv_password""\)\?\.Value\s*\)\s*\)\s*\{\s*return next\(\)\(\s*server,\s*name,\s*address,\s*netInfo,\s*connectMsg,\s*RefusedPasswordBuffer,\s*authTicket,\s*authTicketLength,\s*isLowViolence\s*\);",
-            @"if\s*\(access == eServerAccess\.Denied\)\s*\{\s*return next\(\)\(\s*server,\s*name,\s*address,\s*netInfo,\s*connectMsg,\s*password,\s*nint\.Zero,\s*0,"
-        );
-    }
-
-    [Fact]
-    public void TheCounterStrikeSharpAccessGateRefusesWithThePasswordAndOnlyStripsTheTicketWithoutOne()
-    {
-        string hook = Code("player-management-css", "ConnectGate.cs");
-
-        RefusesWithThePasswordBeforeStrippingTheTicket(
-            hook,
-            @"if\s*\(\s*ConnectRefusal\.ByPassword\(ConVar\.Find\(""sv_password""\)\?\.StringValue\)\s*\)\s*\{\s*hook\.SetParam\(5, RefusedPasswordBuffer\);\s*\}",
-            @"else\s*\{\s*hook\.SetParam\(6, 0\);\s*hook\.SetParam\(7, 0\);"
-        );
-        // A denied player and a banned one coming back are refused the same way.
-        Assert.Matches(@"if \(access == eServerAccess\.Denied\)\s*\{\s*Refuse\(hook\);", hook);
+        Assert.DoesNotMatch(@"hook\.SetParam\(\s*[67]\s*,", hook);
         Assert.Matches(
-            @"if \(_rejoin\.Refuse\(steamId, _book, DateTimeOffset\.UtcNow\)\)\s*\{[\s\S]*?Refuse\(hook\);",
+            @"_access\.Connecting\(\s*steamId\.ToString\(\),\s*access == eServerAccess\.Denied,\s*Humans\(\)\.Any\(",
             hook
+        );
+        // A banned player coming back is refused the same way, only on a password server.
+        Assert.Matches(
+            @"_rejoin\.Refuse\(steamId, _book, DateTimeOffset\.UtcNow\)\s*&&\s*ConnectRefusal\.ByPassword\(ConVar\.Find\(""sv_password""\)\?\.StringValue\)\s*\)\s*\{[\s\S]*?hook\.SetParam\(5, RefusedPasswordBuffer\);",
+            hook
+        );
+    }
+
+    // A refused player is kicked even while the sanctions answer is out, and
+    // says nothing on the way.
+    [Theory]
+    [InlineData("player-management-sw")]
+    [InlineData("player-management-css")]
+    public void ARefusedPlayerIsKickedBeforeTheSanctionsAnswerAndCannotChat(string app)
+    {
+        string plugin = Code(app, "PlayerManagementPlugin.cs");
+
+        int enforce = plugin.IndexOf("private void Enforce(", StringComparison.Ordinal);
+        Assert.True(enforce >= 0, "Enforce is gone or renamed");
+
+        int denied = plugin.IndexOf("_access.IsDenied(steamId.ToString())", enforce, StringComparison.Ordinal);
+        int awaiting = plugin.IndexOf("_book.IsAwaiting(steamId.ToString())", enforce, StringComparison.Ordinal);
+        Assert.True(denied >= 0 && awaiting >= 0);
+        Assert.True(denied < awaiting, "the access kick must come before the awaiting skip");
+
+        Assert.Matches(
+            @"if\s*\(_access\.IsDenied\(SteamIdOf\(player\)\.ToString\(\)\)\)\s*\{\s*return HookResult\.Stop;\s*\}\s*SanctionState state = _book\.StateFor\(",
+            plugin
         );
     }
 }
