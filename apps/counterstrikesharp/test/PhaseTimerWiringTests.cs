@@ -29,6 +29,8 @@ public class PhaseTimerWiringTests
         // Outlives the phase on purpose: a leaver who is still gone when it runs
         // out is reported even once the map is over or back in warmup.
         "SurrenderSystem.SetupDisconnectTimer",
+        // The kick of a client refused at connect is about the client, not the phase.
+        "PlayerConnected.OnPlayerConnect",
         "FiveStackPlugin.FiveStackPlugin",
         "FiveStackPlugin.Load",
         "TimerUtility.AddTimer",

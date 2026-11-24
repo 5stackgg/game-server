@@ -3,6 +3,7 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
+using CounterStrikeSharp.API.ValveConstants.Protobuf;
 using FiveStack.Entities;
 using FiveStack.Utilities;
 using Microsoft.Extensions.Logging;
@@ -12,12 +13,51 @@ namespace FiveStack;
 public partial class FiveStackPlugin
 {
     private readonly HashSet<ulong> _overCapacityKicks = new();
+    private readonly HashSet<ulong> _refusedKicks = new();
+    private const float RefusedKickDelaySeconds = 4f;
 
     [GameEventHandler]
     public HookResult OnPlayerConnect(EventPlayerConnectFull @event, GameEventInfo info)
     {
         if (@event.Userid == null || !@event.Userid.IsValid || @event.Userid.IsBot)
         {
+            return HookResult.Continue;
+        }
+
+        // Still marked after a map change inside the kick delay: kicked again.
+        if (
+            RefusedConnects.Take(@event.Userid.SteamID)
+            || _refusedKicks.Contains(@event.Userid.SteamID)
+        )
+        {
+            CCSPlayerController refused = @event.Userid;
+            ulong steamId = refused.SteamID;
+            string reason = _gameServer.Localize(refused, "player.join.refused");
+
+            _logger.LogInformation($"Kicking {refused.PlayerName} ({steamId}): refused at connect");
+            _refusedKicks.Add(steamId);
+
+            // CounterStrikeSharp cannot put a reason on the kick, so it is
+            // shown first.
+            refused.ChangeTeam(CsTeam.Spectator);
+            refused.PrintToChat(reason);
+            refused.PrintToCenter(reason);
+            TimerUtility.AddTimer(
+                RefusedKickDelaySeconds,
+                () =>
+                {
+                    // Gone and back in the meantime: that connect decides again.
+                    if (
+                        refused.IsValid
+                        && refused.SteamID == steamId
+                        && refused.Connected == PlayerConnectedState.Connected
+                        && _refusedKicks.Contains(steamId)
+                    )
+                    {
+                        refused.Disconnect(NetworkDisconnectionReason.NETWORK_DISCONNECT_KICKED);
+                    }
+                }
+            );
             return HookResult.Continue;
         }
 

@@ -19,6 +19,7 @@ public partial class FiveStackPlugin
         ConnectRefusal.Password
     );
     public static ConnectRoleBook ConnectRoles = new();
+    public static RefusedConnects RefusedConnects = new();
 
     // near "CNetworkGameServerBase::ConnectClient( name=\'%s\', remote=\'%s\' )\n"
     private static string ConnectClientSignature = RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
@@ -68,6 +69,15 @@ public partial class FiveStackPlugin
         ConnectDecision decision = ConnectUtility.Authorize(rules, steamId, token);
 
         ConnectRoles.Offer(steamId, rules?.match_id, decision.pending_role);
+        // With a password the engine refuses the client itself; without one it is
+        // let in and kicked with a reason at connect full.
+        bool refusedByPassword =
+            decision.action == eConnectAction.Reject
+            && ConnectRefusal.ByPassword(ConVar.Find("sv_password")?.StringValue);
+        RefusedConnects.Record(
+            steamId,
+            decision.action == eConnectAction.Reject && !refusedByPassword
+        );
 
         _logger.LogInformation(
             "{connect}",
@@ -91,14 +101,9 @@ public partial class FiveStackPlugin
                 }
                 break;
             case eConnectAction.Reject:
-                if (ConnectRefusal.ByPassword(ConVar.Find("sv_password")?.StringValue))
+                if (refusedByPassword)
                 {
                     hook.SetParam(5, RefusedPasswordBuffer);
-                }
-                else
-                {
-                    hook.SetParam(6, 0);
-                    hook.SetParam(7, 0);
                 }
                 break;
         }

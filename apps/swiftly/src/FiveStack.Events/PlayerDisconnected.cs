@@ -39,7 +39,7 @@ public partial class FiveStackPlugin
 
         eDisconnectHandling handling = PlayerDisconnectUtility.Handle(
             player.IsFakeClient,
-            _overCapacityKicks.Remove(player.SteamID),
+            _overCapacityKicks.Remove(player.SteamID) | _refusedKicks.Remove(ClaimedSteamId(player)),
             member != null
         );
 

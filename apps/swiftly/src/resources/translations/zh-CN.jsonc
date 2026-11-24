@@ -113,6 +113,7 @@
   "player.join.help_hint": " 输入 {0}{1}help {2} 查看可用命令",
   "player.join.ready_hint": " 输入 {0}{1}r{2} 以就绪！",
   "player.join.link_discord": " 没有队伍？请用 Discord 账号登录 5stack.gg 以占据你的位置，然后保持连接",
+  "player.join.refused": "此服务器正在进行一场比赛，而你不在其阵容中。请通过面板加入比赛。",
   "match.resume_hint": "要继续请输入 {0}resume",
   "match.received_data": "已接收比赛数据",
   "match.tv_delay": "TV 延迟（剩余 {0}s）",

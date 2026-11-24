@@ -5,6 +5,7 @@ using SwiftlyS2.Shared.GameEventDefinitions;
 using SwiftlyS2.Shared.GameEvents;
 using SwiftlyS2.Shared.Misc;
 using SwiftlyS2.Shared.Players;
+using SwiftlyS2.Shared.ProtobufDefinitions;
 using SwiftlyS2.Shared.SchemaDefinitions;
 
 namespace FiveStack;
@@ -12,6 +13,14 @@ namespace FiveStack;
 public partial class FiveStackPlugin
 {
     private readonly HashSet<ulong> _overCapacityKicks = new();
+    private readonly HashSet<ulong> _refusedKicks = new();
+
+    // The connect hook only sees the id the client claims; SteamID reads 0 until
+    // Steam verifies the player.
+    private static ulong ClaimedSteamId(IPlayer player)
+    {
+        return player.IsAuthorized ? player.SteamID : player.UnauthorizedSteamID;
+    }
 
     [GameEventHandler(HookMode.Post)]
     public HookResult OnPlayerConnect(EventPlayerConnectFull @event)
@@ -22,6 +31,20 @@ public partial class FiveStackPlugin
             || @event.UserIdPlayer.IsFakeClient
         )
         {
+            return HookResult.Continue;
+        }
+
+        if (RefusedConnects.Take(ClaimedSteamId(@event.UserIdPlayer)))
+        {
+            IPlayer refused = @event.UserIdPlayer;
+            ulong steamId = ClaimedSteamId(refused);
+
+            _logger.LogInformation($"Kicking {refused.Name} ({steamId}): refused at connect");
+            _refusedKicks.Add(steamId);
+            refused.Kick(
+                _gameServer.LocalizerFor(refused)["player.join.refused"],
+                ENetworkDisconnectionReason.NETWORK_DISCONNECT_KICKED
+            );
             return HookResult.Continue;
         }
 

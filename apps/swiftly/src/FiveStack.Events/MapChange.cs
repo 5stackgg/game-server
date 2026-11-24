@@ -11,6 +11,7 @@ public partial class FiveStackPlugin
     public async void OnMapLoad(IOnMapLoadEvent @event)
     {
         FiveStack.Utilities.MatchUtility.InvalidateCache();
+        RefusedConnects.Clear();
 
         _logger.LogInformation("map changed: precaching models");
 

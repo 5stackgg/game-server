@@ -4,7 +4,8 @@ using Xunit;
 
 // An empty Steam ticket made the engine challenge a refused client again,
 // forever, each try holding a slot until the server was full. With a server
-// password the client is handed one that can't match, and refused once.
+// password the client is handed one that can't match, and refused once;
+// without one it is let in and kicked with a reason at connect full.
 public class ConnectRefusalTests
 {
     private static string Code(string app, params string[] path)
@@ -48,27 +49,45 @@ public class ConnectRefusalTests
         Assert.Contains(ConnectRefusal.Password, character => char.IsControl(character));
     }
 
-    private static void RefusesWithThePasswordBeforeStrippingTheTicket(string hook, string byPassword, string stripped)
+    [Fact]
+    public void TheMatchConnectHookRefusesWithThePasswordAndNeverStripsTheTicket()
     {
-        Match password = Regex.Match(hook, byPassword);
-        Match ticket = Regex.Match(hook, stripped);
+        string hook = Code("counterstrikesharp", "FiveStack.Events", "InitConnect.cs");
 
-        Assert.True(password.Success, "the refused password path is gone or changed");
-        Assert.True(ticket.Success, "the empty ticket path is gone or changed");
-        Assert.True(password.Index < ticket.Index);
+        Assert.Matches(@"bool refusedByPassword =\s*decision\.action == eConnectAction\.Reject\s*&&\s*ConnectRefusal\.ByPassword\(ConVar\.Find\(""sv_password""\)\?\.StringValue\);", hook);
+        Assert.Matches(@"case eConnectAction\.Reject:\s*if\s*\(refusedByPassword\)\s*\{\s*hook\.SetParam\(5, RefusedPasswordBuffer\);\s*\}\s*break;", hook);
         Assert.Matches(
             @"RefusedPasswordBuffer = Marshal\.StringToCoTaskMemUTF8\(\s*ConnectRefusal\.Password\s*\)",
             hook
         );
+        Assert.DoesNotMatch(@"SetParam\(\s*[67]\s*,|nint\.Zero,\s*0,", hook);
+
+        int authorize = hook.IndexOf("ConnectUtility.Authorize(");
+        int record = hook.IndexOf("RefusedConnects.Record(");
+        Assert.True(authorize >= 0 && record > authorize, "the hook no longer records its decision");
+        // Only a refusal the engine does not enforce itself is kicked later.
+        Assert.Matches(
+            @"RefusedConnects\.Record\(\s*steamId,\s*decision\.action == eConnectAction\.Reject && !refusedByPassword\s*\)",
+            hook
+        );
+        Assert.Contains("RefusedConnects.Clear();", Code("counterstrikesharp", "FiveStack.Events", "MapChange.cs"));
     }
 
     [Fact]
-    public void TheMatchConnectHookRefusesWithThePasswordAndOnlyStripsTheTicketWithoutOne()
+    public void ARefusedClientIsKickedWithAReasonBeforeAnythingElseAtConnectFull()
     {
-        RefusesWithThePasswordBeforeStrippingTheTicket(
-            Code("counterstrikesharp", "FiveStack.Events", "InitConnect.cs"),
-            @"case eConnectAction\.Reject:\s*if\s*\(ConnectRefusal\.ByPassword\(ConVar\.Find\(""sv_password""\)\?\.StringValue\)\)\s*\{\s*hook\.SetParam\(5, RefusedPasswordBuffer\);\s*\}",
-            @"else\s*\{\s*hook\.SetParam\(6, 0\);\s*hook\.SetParam\(7, 0\);\s*\}\s*break;"
+        string connected = Code("counterstrikesharp", "FiveStack.Events", "PlayerConnected.cs");
+        string disconnected = Code("counterstrikesharp", "FiveStack.Events", "PlayerDisconnected.cs");
+
+        int take = connected.IndexOf("RefusedConnects.Take(");
+        Assert.True(take >= 0, "connect full no longer takes refused clients");
+        Assert.True(take < connected.IndexOf("ClearCommunicationAbuseMute("));
+        Assert.Contains("\"player.join.refused\"", connected);
+        Assert.Contains("_refusedKicks.Add(", connected);
+        Assert.Contains("_refusedKicks.Remove(player.SteamID)", disconnected);
+        Assert.Matches(
+            @"refused\.Connected == PlayerConnectedState\.Connected\s*&& _refusedKicks\.Contains\(steamId\)\s*\)\s*\{\s*refused\.Disconnect\(",
+            connected
         );
     }
 }

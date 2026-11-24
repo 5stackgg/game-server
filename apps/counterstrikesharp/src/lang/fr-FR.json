@@ -108,6 +108,7 @@
   "player.join.help_hint": " Tapez {0}{1}help {2} pour les commandes disponibles",
   "player.join.ready_hint": " Tapez {0}{1}r{2} pour être prêt !",
   "player.join.link_discord": " Pas dans une équipe ? Connecte-toi sur 5stack.gg avec ton compte Discord pour prendre ta place, puis reste connecté",
+  "player.join.refused": "Ce serveur accueille un match et vous ne faites pas partie de sa composition. Rejoignez les matchs depuis le panneau.",
   "match.resume_hint": "pour reprendre tapez {0}resume",
   "match.received_data": "Données du match reçues",
   "match.tv_delay": "Délai TV ({0}s restants)",

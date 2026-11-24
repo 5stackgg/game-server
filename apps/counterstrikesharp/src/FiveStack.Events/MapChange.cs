@@ -14,6 +14,7 @@ public partial class FiveStackPlugin
             async (mapName) =>
             {
                 _logger.LogInformation("map changed: precaching models");
+                RefusedConnects.Clear();
 
                 Server.PrecacheModel(ModelPathCtmSas);
                 Server.PrecacheModel(ModelPathTmPhoenix);

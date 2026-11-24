@@ -29,6 +29,7 @@ public partial class FiveStackPlugin
         ConnectRefusal.Password
     );
     public static ConnectRoleBook ConnectRoles = new();
+    public static RefusedConnects RefusedConnects = new();
 
     /**
      * Function signature:
@@ -123,6 +124,17 @@ public partial class FiveStackPlugin
                         ConnectDecision decision = ConnectUtility.Authorize(rules, steamId, token);
 
                         ConnectRoles.Offer(steamId, rules?.match_id, decision.pending_role);
+                        // With a password the engine refuses the client itself;
+                        // without one it is let in and kicked at connect full.
+                        bool refusedByPassword =
+                            decision.action == eConnectAction.Reject
+                            && ConnectRefusal.ByPassword(
+                                Core.ConVar.FindAsString("sv_password")?.ValueAsString
+                            );
+                        RefusedConnects.Record(
+                            steamId,
+                            decision.action == eConnectAction.Reject && !refusedByPassword
+                        );
 
                         _logger.LogInformation(
                             "{connect}",
@@ -155,12 +167,7 @@ public partial class FiveStackPlugin
                             );
                         }
 
-                        if (
-                            decision.action == eConnectAction.Reject
-                            && ConnectRefusal.ByPassword(
-                                Core.ConVar.FindAsString("sv_password")?.ValueAsString
-                            )
-                        )
+                        if (refusedByPassword)
                         {
                             return next()(
                                 param1,
@@ -171,21 +178,6 @@ public partial class FiveStackPlugin
                                 RefusedPasswordBuffer,
                                 param7,
                                 param8,
-                                param9
-                            );
-                        }
-
-                        if (decision.action == eConnectAction.Reject)
-                        {
-                            return next()(
-                                param1,
-                                param2,
-                                param3,
-                                param4,
-                                param5,
-                                param6,
-                                nint.Zero,
-                                0,
                                 param9
                             );
                         }

@@ -108,6 +108,7 @@
   "player.join.help_hint": " Tippe {0}{1}help {2} für verfügbare Befehle",
   "player.join.ready_hint": " Tippe {0}{1}r{2} um bereit zu sein!",
   "player.join.link_discord": " Kein Team? Melde dich auf 5stack.gg mit deinem Discord-Konto an, um deinen Platz einzunehmen, und bleib verbunden",
+  "player.join.refused": "Auf diesem Server läuft ein Match, und du bist nicht im Aufgebot. Tritt Matches über das Panel bei.",
   "match.resume_hint": "zum Fortsetzen {0}resume eingeben",
   "match.received_data": "Matchdaten empfangen",
   "match.tv_delay": "TV‑Verzögerung ({0}s übrig)",
