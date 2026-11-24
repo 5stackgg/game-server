@@ -109,6 +109,18 @@ public partial class PlayerManagementPlugin
                 hook.GetParam<nint>(6),
                 hook.GetParam<int>(7)
             );
+
+            // A player this server kicked for a ban, still banned: refused
+            // here rather than loading in to be kicked again.
+            if (_rejoin.Refuse(steamId, _book, DateTimeOffset.UtcNow))
+            {
+                _loop?.Request();
+                Logger.LogInformation("refusing banned player {steamId} at connect", steamId);
+                Refuse(hook);
+
+                return HookResult.Continue;
+            }
+
             eServerAccess access = _access.Decide(steamId.ToString());
 
             if (access is eServerAccess.Unknown or eServerAccess.Open)
@@ -127,17 +139,9 @@ public partial class PlayerManagementPlugin
                 password != nint.Zero
             );
 
-            if (
-                access == eServerAccess.Denied
-                && ConnectRefusal.ByPassword(ConVar.Find("sv_password")?.StringValue)
-            )
+            if (access == eServerAccess.Denied)
             {
-                hook.SetParam(5, RefusedPasswordBuffer);
-            }
-            else if (access == eServerAccess.Denied)
-            {
-                hook.SetParam(6, 0);
-                hook.SetParam(7, 0);
+                Refuse(hook);
             }
             else if (password != nint.Zero)
             {
@@ -150,6 +154,21 @@ public partial class PlayerManagementPlugin
         }
 
         return HookResult.Continue;
+    }
+
+    // A wrong password on a password server, where the engine refuses it as
+    // one; elsewhere no auth ticket, which the engine refuses too.
+    private static void Refuse(DynamicHook hook)
+    {
+        if (ConnectRefusal.ByPassword(ConVar.Find("sv_password")?.StringValue))
+        {
+            hook.SetParam(5, RefusedPasswordBuffer);
+        }
+        else
+        {
+            hook.SetParam(6, 0);
+            hook.SetParam(7, 0);
+        }
     }
 
     // Read at connect time: the owner can change sv_password over RCON while

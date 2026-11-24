@@ -75,10 +75,18 @@ public class ConnectRefusalTests
     [Fact]
     public void TheCounterStrikeSharpAccessGateRefusesWithThePasswordAndOnlyStripsTheTicketWithoutOne()
     {
+        string hook = Code("player-management-css", "ConnectGate.cs");
+
         RefusesWithThePasswordBeforeStrippingTheTicket(
-            Code("player-management-css", "ConnectGate.cs"),
-            @"if\s*\(\s*access == eServerAccess\.Denied\s*&&\s*ConnectRefusal\.ByPassword\(ConVar\.Find\(""sv_password""\)\?\.StringValue\)\s*\)\s*\{\s*hook\.SetParam\(5, RefusedPasswordBuffer\);\s*\}",
-            @"else if \(access == eServerAccess\.Denied\)\s*\{\s*hook\.SetParam\(6, 0\);\s*hook\.SetParam\(7, 0\);"
+            hook,
+            @"if\s*\(\s*ConnectRefusal\.ByPassword\(ConVar\.Find\(""sv_password""\)\?\.StringValue\)\s*\)\s*\{\s*hook\.SetParam\(5, RefusedPasswordBuffer\);\s*\}",
+            @"else\s*\{\s*hook\.SetParam\(6, 0\);\s*hook\.SetParam\(7, 0\);"
+        );
+        // A denied player and a banned one coming back are refused the same way.
+        Assert.Matches(@"if \(access == eServerAccess\.Denied\)\s*\{\s*Refuse\(hook\);", hook);
+        Assert.Matches(
+            @"if \(_rejoin\.Refuse\(steamId, _book, DateTimeOffset\.UtcNow\)\)\s*\{[\s\S]*?Refuse\(hook\);",
+            hook
         );
     }
 }

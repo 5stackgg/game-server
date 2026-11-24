@@ -56,7 +56,7 @@ public partial class PlayerManagementPlugin : BasePlugin
     private readonly HashSet<ulong> _kicked = new();
 
     // Kept after they leave, unlike _kicked, so a rejoin is refused at connect.
-    private readonly HashSet<ulong> _kickedForBan = new();
+    private readonly BannedRejoinGate _rejoin = new();
 
     private readonly HealthBook _health = new();
 
@@ -363,18 +363,11 @@ public partial class PlayerManagementPlugin : BasePlugin
 
             ulong steamId = player.UnauthorizedSteamID;
 
-            if (steamId == 0 || !_kickedForBan.Contains(steamId))
+            if (!_rejoin.Refuse(steamId, _book, DateTimeOffset.UtcNow))
             {
                 return false;
             }
 
-            if (!_book.StateFor(steamId.ToString(), DateTimeOffset.UtcNow).IsBanned)
-            {
-                _kickedForBan.Remove(steamId);
-                return false;
-            }
-
-            _book.Joined(steamId.ToString());
             _loop?.Request();
 
             _logger.LogInformation("refusing banned player {steamId} at connect", steamId);
@@ -452,7 +445,7 @@ public partial class PlayerManagementPlugin : BasePlugin
             {
                 if (_kicked.Add(steamId))
                 {
-                    _kickedForBan.Add(steamId);
+                    _rejoin.Kicked(steamId);
 
                     _logger.LogInformation(
                         "kicking banned player {name} ({steamId})",
