@@ -5,6 +5,7 @@ using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Cvars;
+using CounterStrikeSharp.API.Modules.Utils;
 using CounterStrikeSharp.API.ValveConstants.Protobuf;
 using FiveStack.Entities.PlayerManagement;
 using FiveStack.Enums;
@@ -336,6 +337,48 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
         {
             ulong steamId = SteamIdOf(player);
 
+            // Before the awaiting skip: a refused player must not play while
+            // the sanctions answer is still out. CounterStrikeSharp disconnects
+            // with a reason code only, so the reason is shown once the player
+            // is in game and the kick follows a few seconds later.
+            if (_access.IsDenied(steamId.ToString()))
+            {
+                if (player.Connected == PlayerConnectedState.Connected && _kicked.Add(steamId))
+                {
+                    Logger.LogInformation(
+                        "kicking {name} ({steamId}): not on the server's access list",
+                        player.PlayerName,
+                        steamId
+                    );
+
+                    string reason = _access.KickReason(
+                        Localizer.ForPlayer(player, "access.denied")
+                    );
+                    player.ChangeTeam(CsTeam.Spectator);
+                    player.PrintToChat(reason);
+                    player.PrintToCenter(reason);
+
+                    AddTimer(
+                        RefusedKickDelaySeconds,
+                        () =>
+                        {
+                            if (
+                                player.IsValid
+                                && SteamIdOf(player) == steamId
+                                && _access.IsDenied(steamId.ToString())
+                            )
+                            {
+                                player.Disconnect(
+                                    NetworkDisconnectionReason.NETWORK_DISCONNECT_KICKED
+                                );
+                            }
+                        }
+                    );
+                }
+
+                continue;
+            }
+
             if (_book.IsAwaiting(steamId.ToString()))
             {
                 continue;
@@ -360,27 +403,6 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
                     );
 
                     player.Disconnect(NetworkDisconnectionReason.NETWORK_DISCONNECT_BANADDED);
-                }
-
-                continue;
-            }
-
-            // CounterStrikeSharp disconnects with a reason code only, so the
-            // text goes to chat on the way out.
-            if (_access.IsDenied(steamId.ToString()))
-            {
-                if (_kicked.Add(steamId))
-                {
-                    Logger.LogInformation(
-                        "kicking {name} ({steamId}): not on the server's access list",
-                        player.PlayerName,
-                        steamId
-                    );
-
-                    player.PrintToChat(
-                        _access.KickReason(Localizer.ForPlayer(player, "access.denied"))
-                    );
-                    player.Disconnect(NetworkDisconnectionReason.NETWORK_DISCONNECT_KICKED);
                 }
 
                 continue;
@@ -982,6 +1004,11 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
             return HookResult.Continue;
         }
 
+        if (_access.IsDenied(SteamIdOf(player).ToString()))
+        {
+            return HookResult.Stop;
+        }
+
         SanctionState state = _book.StateFor(SteamIdOf(player).ToString(), DateTimeOffset.UtcNow);
 
         if (!state.IsGagged)
@@ -1011,6 +1038,8 @@ public partial class PlayerManagementPlugin : BasePlugin, IPluginConfig<PlayerMa
                 : Localizer.ForPlayer(player, "sanction.until", until)
         );
     }
+
+    private const float RefusedKickDelaySeconds = 4f;
 
     private static List<CCSPlayerController> Humans()
     {

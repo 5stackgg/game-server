@@ -111,17 +111,41 @@ public partial class PlayerManagementPlugin
             );
 
             // A player this server kicked for a ban, still banned: refused
-            // here rather than loading in to be kicked again.
-            if (_rejoin.Refuse(steamId, _book, DateTimeOffset.UtcNow))
+            // here on a password server. Without one, Enforce kicks them again
+            // (an empty ticket loops).
+            if (
+                _rejoin.Refuse(steamId, _book, DateTimeOffset.UtcNow)
+                && ConnectRefusal.ByPassword(ConVar.Find("sv_password")?.StringValue)
+            )
             {
                 _loop?.Request();
                 Logger.LogInformation("refusing banned player {steamId} at connect", steamId);
-                Refuse(hook);
+                hook.SetParam(5, RefusedPasswordBuffer);
 
                 return HookResult.Continue;
             }
 
             eServerAccess access = _access.Decide(steamId.ToString());
+
+            if (steamId != 0)
+            {
+                // Its own guard: a failure here must not skip the password swap.
+                try
+                {
+                    _access.Connecting(
+                        steamId.ToString(),
+                        access == eServerAccess.Denied,
+                        Humans().Any(player =>
+                            SteamIdOf(player) == steamId
+                            && player.Connected == PlayerConnectedState.Connected
+                        )
+                    );
+                }
+                catch (Exception error)
+                {
+                    Logger.LogError(error, "access bookkeeping failed for {steamId}", steamId);
+                }
+            }
 
             if (access is eServerAccess.Unknown or eServerAccess.Open)
             {
@@ -139,9 +163,15 @@ public partial class PlayerManagementPlugin
                 password != nint.Zero
             );
 
-            if (access == eServerAccess.Denied)
+            // Without a password there is no clean refusal at the door (an
+            // empty ticket loops), so a refused player is let in and kicked
+            // with the reason by Enforce.
+            if (
+                access == eServerAccess.Denied
+                && ConnectRefusal.ByPassword(ConVar.Find("sv_password")?.StringValue)
+            )
             {
-                Refuse(hook);
+                hook.SetParam(5, RefusedPasswordBuffer);
             }
             else if (password != nint.Zero)
             {
@@ -154,21 +184,6 @@ public partial class PlayerManagementPlugin
         }
 
         return HookResult.Continue;
-    }
-
-    // A wrong password on a password server, where the engine refuses it as
-    // one; elsewhere no auth ticket, which the engine refuses too.
-    private static void Refuse(DynamicHook hook)
-    {
-        if (ConnectRefusal.ByPassword(ConVar.Find("sv_password")?.StringValue))
-        {
-            hook.SetParam(5, RefusedPasswordBuffer);
-        }
-        else
-        {
-            hook.SetParam(6, 0);
-            hook.SetParam(7, 0);
-        }
     }
 
     // Read at connect time: the owner can change sv_password over RCON while

@@ -108,6 +108,31 @@ public class ServerAccessBookTests
     }
 
     [Fact]
+    public void TheConnectGatesVerdictMarksAndClearsADenial()
+    {
+        ServerAccessBook book = new();
+
+        book.Connecting("1", true, false);
+        Assert.True(book.IsDenied("1"));
+
+        book.Connecting("1", false, false);
+        Assert.False(book.IsDenied("1"));
+    }
+
+    [Fact]
+    public void AConnectUnderTheIdOfAPlayerAlreadyHereChangesNothing()
+    {
+        ServerAccessBook book = new();
+
+        book.Connecting("1", true, true);
+        Assert.False(book.IsDenied("1"));
+
+        book.Answered(["2"], ["2"], null);
+        book.Connecting("2", false, true);
+        Assert.True(book.IsDenied("2"));
+    }
+
+    [Fact]
     public void LeavingForgetsADenial()
     {
         ServerAccessBook book = new();

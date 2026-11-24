@@ -120,21 +120,9 @@ public partial class PlayerManagementPlugin
                         );
                     }
 
-                    if (access == eServerAccess.Denied)
-                    {
-                        return next()(
-                            server,
-                            name,
-                            address,
-                            netInfo,
-                            connectMsg,
-                            password,
-                            nint.Zero,
-                            0,
-                            isLowViolence
-                        );
-                    }
-
+                    // Without a password there is no clean refusal at the door (an
+                    // empty ticket loops), so the player is let in and kicked
+                    // with the reason by Enforce.
                     return next()(
                         server,
                         name,
@@ -198,6 +186,15 @@ public partial class PlayerManagementPlugin
         {
             ulong steamId = ServerAccessBook.TicketSteamId(authTicket, authTicketLength);
             eServerAccess access = _access.Decide(steamId.ToString());
+
+            if (steamId != 0)
+            {
+                _access.Connecting(
+                    steamId.ToString(),
+                    access == eServerAccess.Denied,
+                    Humans().Any(player => SteamIdOf(player) == steamId)
+                );
+            }
 
             if (access is eServerAccess.Unknown or eServerAccess.Open)
             {

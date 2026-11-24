@@ -93,6 +93,30 @@ public class ServerAccessBook
         }
     }
 
+    // The connect gate's own verdict, so a player let in only to be kicked
+    // is kicked with the reason even while the panel cannot be reached. A
+    // connect under the id of a player already here (a stale list, or a
+    // claimed id) must not get that player kicked.
+    public void Connecting(string steamId, bool denied, bool alreadyHere)
+    {
+        if (alreadyHere)
+        {
+            return;
+        }
+
+        lock (_lock)
+        {
+            if (denied)
+            {
+                _denied.Add(steamId);
+            }
+            else
+            {
+                _denied.Remove(steamId);
+            }
+        }
+    }
+
     // A denial is only good for the visit it was given on: a player removed
     // and later re-added must not be kicked on the way back in by a stale one.
     public void Left(string steamId)
