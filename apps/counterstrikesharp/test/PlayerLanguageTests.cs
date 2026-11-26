@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using CounterStrikeSharp.API.Modules.Utils;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using Xunit;
 
@@ -217,24 +218,26 @@ public class PlayerLanguageTests
     }
 
     [Fact]
-    public void ARefusedTimeoutNamesWhatWasRefusedInThePlayersLanguage()
+    public void ARefusedTimeoutSaysWhoMayCallItInThePlayersLanguage()
     {
-        MatchCollection refusals = Regex.Matches(
-            Compact(Path.Combine("FiveStack.Services", "TimeoutSystem.cs")),
-            @"CannotPauseMessage\(player,""([^""]*)""\)"
-        );
+        string timeout = Compact(Path.Combine("FiveStack.Services", "TimeoutSystem.cs"));
 
-        Assert.Equal(2, refusals.Count);
-
-        foreach (Match refusal in refusals)
-        {
-            EveryLanguageHas(refusal.Groups[1].Value);
-        }
-
+        Assert.Equal(2, Regex.Matches(timeout, @"CannotPauseMessage\(player,").Count);
         Assert.Contains(
-            "_gameServer.Localize(player,\"timeout.not_allowed\",ChatColors.Red,_gameServer.Localize(player,refusedKey))",
-            Compact(Path.Combine("FiveStack.Services", "TimeoutSystem.cs"))
+            "CannotPauseMessage(player,TimeoutUtility.ResumeRefusal(GetTechnicalPauseSetting()))",
+            timeout
         );
+        Assert.Contains(
+            "CannotPauseMessage(player,TimeoutUtility.TacticalTimeoutRefusal(GetTacticalTimeoutSetting()))",
+            timeout
+        );
+        Assert.Contains("_gameServer.Localize(player,refusalKey,ChatColors.Red)", timeout);
+
+        foreach (eTimeoutSettings setting in Enum.GetValues<eTimeoutSettings>())
+        {
+            EveryLanguageHas(TimeoutUtility.ResumeRefusal(setting));
+            EveryLanguageHas(TimeoutUtility.TacticalTimeoutRefusal(setting));
+        }
     }
 
     [Fact]
@@ -685,6 +688,7 @@ public class PlayerLanguageTests
     [InlineData("FiveStack.Services/MatchManager.cs", "match.resume_hint")]
     [InlineData("FiveStack.Services/MatchManager.cs", "match.reconnect_timeout")]
     [InlineData("FiveStack.Services/TimeoutSystem.cs", "match.reconnect_timeout_over")]
+    [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.tac_needs_team")]
     [InlineData("FiveStack.Services/MatchManager.cs", "match.offline_over")]
     [InlineData("FiveStack.Services/MatchManager.cs", "match.received_data")]
     [InlineData("FiveStack.Services/MatchManager.cs", "match.tv_delay")]
@@ -713,8 +717,6 @@ public class PlayerLanguageTests
     }
 
     [Theory]
-    [InlineData("timeout.not_allowed", "{1}", "timeout.not_allowed.tactical_timeout", "을", "을(를)")]
-    [InlineData("timeout.not_allowed", "{1}", "timeout.not_allowed.resume", "를", "을(를)")]
     [InlineData("ready.marked", "{0}", "ready.ready", "으로", "(으)로")]
     [InlineData("ready.marked", "{0}", "ready.not_ready", "로", "(으)로")]
     public void AKoreanParticleFitsTheWordBeforeIt(

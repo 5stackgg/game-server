@@ -54,6 +54,34 @@ namespace FiveStack.Utilities
             return true;
         }
 
+        // A refusal says who may call a tactical timeout under the setting that
+        // refused it. CoachAndPlayers lets every player through.
+        public static string TacticalTimeoutRefusal(eTimeoutSettings setting)
+        {
+            switch (setting)
+            {
+                case eTimeoutSettings.Coach:
+                    return "timeout.not_allowed.tactical_timeout.coach";
+                case eTimeoutSettings.CoachAndCaptains:
+                    return "timeout.not_allowed.tactical_timeout.coach_and_captains";
+                default:
+                    return "timeout.not_allowed.tactical_timeout.admin";
+            }
+        }
+
+        public static string ResumeRefusal(eTimeoutSettings setting)
+        {
+            switch (setting)
+            {
+                case eTimeoutSettings.Coach:
+                    return "timeout.not_allowed.resume.coach";
+                case eTimeoutSettings.CoachAndCaptains:
+                    return "timeout.not_allowed.resume.coach_and_captains";
+                default:
+                    return "timeout.not_allowed.resume.admin";
+            }
+        }
+
         // Halftime and a round restore hold the round for a resume without the
         // map's status ever reading Paused.
         public static bool HasPauseToResume(eMapStatus status, bool waitingForResume)
