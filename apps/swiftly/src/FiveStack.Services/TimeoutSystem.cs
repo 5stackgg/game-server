@@ -173,6 +173,8 @@ public class TimeoutSystem
         );
     }
 
+    // Staff get the same override as for a technical pause: a connected admin
+    // or organizer always, a lineup player's own staff role under Admin only.
     private bool CanCallTacticalTimeout(IPlayer? player)
     {
         if (player == null)
@@ -180,37 +182,22 @@ public class TimeoutSystem
             return true;
         }
 
-        bool isCoach = _coachSystem.IsCoach(player, player.Controller.Team);
-        bool isCaptain = _captainSystem.IsCaptain(player, player.Controller.Team);
+        MatchData? matchData = _matchService.GetCurrentMatch()?.GetMatchData();
 
-        switch (GetTacticalTimeoutSetting())
-        {
-            case eTimeoutSettings.Coach:
-                if (!isCoach)
-                {
-                    return false;
-                }
-                break;
-            case eTimeoutSettings.CoachAndCaptains:
-                if (!isCoach && !isCaptain)
-                {
-                    return false;
-                }
-                break;
-            case eTimeoutSettings.Admin:
-                return false;
-        }
-
-        return true;
+        return TimeoutUtility.CanPause(
+            GetTacticalTimeoutSetting(),
+            ConnectedRole(player, matchData),
+            LineupRole(player, matchData),
+            _coachSystem.IsCoach(player, player.Controller.Team),
+            _captainSystem.IsCaptain(player, player.Controller.Team)
+        );
     }
 
-    private void CannotPauseMessage(IPlayer? player, string refusedKey)
+    private void CannotPauseMessage(IPlayer? player, string refusalKey)
     {
-        ILocalizer localizer = _gameServer.LocalizerFor(player);
-
         _gameServer.Message(
             MessageType.Chat,
-            localizer["timeout.not_allowed", ChatColors.Red, localizer[refusedKey]],
+            _gameServer.LocalizerFor(player)[refusalKey, ChatColors.Red],
             player
         );
     }
@@ -292,7 +279,10 @@ public class TimeoutSystem
 
                 if (!CanPause(player))
                 {
-                    CannotPauseMessage(player, "timeout.not_allowed.resume");
+                    CannotPauseMessage(
+                        player,
+                        TimeoutUtility.ResumeRefusal(GetTechnicalPauseSetting())
+                    );
                     return;
                 }
 
@@ -874,7 +864,21 @@ public class TimeoutSystem
         {
             if (!CanCallTacticalTimeout(player))
             {
-                CannotPauseMessage(player, "timeout.not_allowed.tactical_timeout");
+                CannotPauseMessage(
+                    player,
+                    TimeoutUtility.TacticalTimeoutRefusal(GetTacticalTimeoutSetting())
+                );
+                return;
+            }
+
+            // CS2 counts timeouts per side, so a spectator has none to call.
+            if (player.Controller.Team != Team.T && player.Controller.Team != Team.CT)
+            {
+                _gameServer.Message(
+                    MessageType.Chat,
+                    _gameServer.LocalizerFor(player)["timeout.tac_needs_team", ChatColors.Red],
+                    player
+                );
                 return;
             }
 
