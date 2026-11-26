@@ -146,5 +146,13 @@
   "camera.tag": "kamera yok",
   "camera.not_required": "Bu maç kamera gerektirmiyor",
   "camera.yours_ok": "Kameranız bağlı",
-  "camera.yours_down": "Kameranız bağlı DEĞİL - maç sayfasından yeniden bağlayın"
+  "camera.yours_down": "Kameranız bağlı DEĞİL - maç sayfasından yeniden bağlayın",
+  "break.halftime": "Devre arası: takımın hazır olduğunda {0}r yazın.",
+  "break.overtime": "Sırada {0}. uzatma var: takımın hazır olduğunda {1}r yazın.",
+  "break.team_ready": "{0} hazır, {1} bekleniyor.",
+  "break.team_already_ready": " {0}Takımın zaten hazır. {1} bekleniyor.",
+  "break.not_in_lineup": " {0}Bir takımı yalnızca maçtaki oyuncular ve koçlar hazır yapabilir.",
+  "break.center_both": "Ara: iki takım da hazır olduğunda {0}r yazsın",
+  "break.center_one": "Ara: {0} bekleniyor, {1}r yazın",
+  "break.both_ready": "İki takım da hazır, oyun devam ediyor."
 }

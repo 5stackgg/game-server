@@ -138,5 +138,13 @@
   "camera.not_required": "Esta partida não exige câmera",
   "camera.yours_ok": "Sua câmera está conectada",
   "camera.yours_down": "Sua câmera NÃO está conectada - reconecte pela página da partida",
-  "match.offline_over": "A partida acabou — não há mais nada para jogar neste servidor."
+  "match.offline_over": "A partida acabou — não há mais nada para jogar neste servidor.",
+  "break.halftime": "Intervalo de meio-tempo: digite {0}r quando seu time estiver pronto.",
+  "break.overtime": "Overtime {0} é o próximo: digite {1}r quando seu time estiver pronto.",
+  "break.team_ready": "{0}: pronto, aguardando {1}.",
+  "break.team_already_ready": " {0}Seu time já está pronto. Aguardando {1}.",
+  "break.not_in_lineup": " {0}Só jogadores e coaches da partida podem marcar um time como pronto.",
+  "break.center_both": "Intervalo: os dois times digitam {0}r quando estiverem prontos",
+  "break.center_one": "Intervalo: aguardando {0}, digite {1}r",
+  "break.both_ready": "Os dois times estão prontos, o jogo continua."
 }

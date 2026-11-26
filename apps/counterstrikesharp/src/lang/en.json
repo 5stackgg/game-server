@@ -138,5 +138,13 @@
   "camera.tag": "no cam",
   "camera.not_required": "This match does not require a camera",
   "camera.yours_ok": "Your camera is connected",
-  "camera.yours_down": "Your camera is NOT connected - reconnect it from the match page"
+  "camera.yours_down": "Your camera is NOT connected - reconnect it from the match page",
+  "break.halftime": "Halftime break: type {0}r when your team is ready.",
+  "break.overtime": "Overtime {0} is next: type {1}r when your team is ready.",
+  "break.team_ready": "{0} is ready, waiting for {1}.",
+  "break.team_already_ready": " {0}Your team is already ready. Waiting for {1}.",
+  "break.not_in_lineup": " {0}Only players and coaches in the match can ready a team.",
+  "break.center_both": "Break: both teams type {0}r when ready",
+  "break.center_one": "Break: waiting for {0} to type {1}r",
+  "break.both_ready": "Both teams are ready, play resumes."
 }

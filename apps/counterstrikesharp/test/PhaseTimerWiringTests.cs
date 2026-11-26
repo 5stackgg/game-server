@@ -231,7 +231,7 @@ public class PhaseTimerWiringTests
     [Fact]
     public void Ready_Needs_The_Map_In_Warmup_Not_The_Knife_Side_Pick()
     {
-        string ready = Method(Code("FiveStack.Commands", "Ready.cs"), "public void OnReady(");
+        string ready = Method(Code("FiveStack.Commands", "Ready.cs"), "private static void ToggleWarmupReady(");
 
         Assert.Contains("GetCurrentMapStatus() != eMapStatus.Warmup", ready);
         Assert.DoesNotContain("IsWarmup()", ready);

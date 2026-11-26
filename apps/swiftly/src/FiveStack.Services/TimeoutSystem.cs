@@ -21,6 +21,9 @@ public class TimeoutSystem
     private DateTime? _reconnectTimeoutEnds;
     private bool _reconnectTimeoutOwed;
     private bool _waitsOnEmptyLineup;
+    private bool _breakPause;
+    private readonly HashSet<(Guid MapId, int Round)> _breaksTaken = new();
+    private (Guid MapId, int Round)? _breakKey;
     private readonly ISwiftlyCore _core;
     private readonly MatchEvents _matchEvents;
     private readonly GameServer _gameServer;
@@ -215,7 +218,7 @@ public class TimeoutSystem
         );
     }
 
-    public void RequestResume(IPlayer? player)
+    public void RequestResume(IPlayer? player, bool readyCommand = false)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
         MatchData? matchData = match?.GetMatchData();
@@ -223,6 +226,19 @@ public class TimeoutSystem
         if (match == null || matchData == null)
         {
             return;
+        }
+
+        bool overrides = player != null && IsAdminOrOrganizer(player, matchData);
+
+        if (player != null && IsBreak())
+        {
+            // A lineup player's own staff role does not end the other team's break.
+            overrides =
+                BreakUtility.WhoReadies(
+                    TimeoutUtility.IsStaff(ConnectedRole(player, matchData), null),
+                    InMatch(player, matchData),
+                    readyCommand
+                ) == eBreakReady.Force;
         }
 
         bool somethingToResume = TimeoutUtility.HasPauseToResume(
@@ -252,7 +268,7 @@ public class TimeoutSystem
         // their override for a camera that is never coming back.
         if (
             player != null
-            && !IsAdminOrOrganizer(player, matchData)
+            && !overrides
             && _cameraSystem.IsBlocking()
         )
         {
@@ -270,7 +286,7 @@ public class TimeoutSystem
         // Console/RCON is unaffected; this only gates the chat command, and
         // admins keep their override -- they are the ones who have to unstick a
         // match nobody is coming back to.
-        if (player != null && !IsAdminOrOrganizer(player, matchData) && IsATeamEmpty())
+        if (player != null && !overrides && IsATeamEmpty())
         {
             _gameServer.Message(
                 MessageType.Chat,
@@ -284,9 +300,19 @@ public class TimeoutSystem
         {
             if (ShouldRequireTeamResume())
             {
-                if (IsAdminOrOrganizer(player, matchData))
+                if (overrides)
                 {
-                    Resume(match, resumeMessage);
+                    if (!BreakResumeWaits(player))
+                    {
+                        Resume(match, resumeMessage);
+                    }
+
+                    return;
+                }
+
+                if (_breakPause)
+                {
+                    ReadyForBreak(match, matchData, player);
                     return;
                 }
 
@@ -410,6 +436,289 @@ public class TimeoutSystem
     {
         _teamsPendingResume.Clear();
         _requiresTeamResumeForCurrentPause = false;
+        _breakPause = false;
+    }
+
+    public bool IsBreak()
+    {
+        return _breakPause && _matchService.GetCurrentMatch()?.IsPaused() == true;
+    }
+
+    // Called at each round start. A round held for a restore never gets here,
+    // and each break is taken once per map, so a replayed round count does not
+    // take it again.
+    public void StartBreak()
+    {
+        ArmBreak(false);
+    }
+
+    // A plugin reload during a break comes back paused with no reason; in the
+    // freeze time of a break round that pause is the break again.
+    public bool RearmBreak()
+    {
+        return _matchService.GetCurrentMatch()?.IsFreezePeriod() == true && ArmBreak(true);
+    }
+
+    private bool ArmBreak(bool reloaded)
+    {
+        MatchManager? match = _matchService.GetCurrentMatch();
+        MatchData? matchData = match?.GetMatchData();
+        MatchMap? currentMap = match?.GetCurrentMap();
+
+        if (match == null || matchData == null || currentMap == null)
+        {
+            return false;
+        }
+
+        int roundsPlayed = _gameServer.GetTotalRoundsPlayed();
+        (Guid MapId, int Round) key = (match.GetActiveMapId() ?? currentMap.id, roundsPlayed);
+        int? breakNumber = BreakUtility.BreakBefore(
+            roundsPlayed,
+            matchData.options.mr,
+            TechnicalTimeoutSetting("mp_overtime_maxrounds", 6),
+            matchData.options.SwapsSides(),
+            matchData.options.OvertimeEnabled()
+        );
+
+        if (
+            !BreakUtility.Owed(
+                matchData.options.halftime_pausematch,
+                (reloaded || match.IsInPlay()) && !match.isSurrendered(),
+                _backUpManagement.HoldsRoundResults() || _backUpManagement.IsResettingRound(),
+                _breaksTaken.Contains(key),
+                ScoresTied(),
+                breakNumber
+            )
+        )
+        {
+            return false;
+        }
+
+        _breaksTaken.Add(key);
+        _breakKey = key;
+
+        pauseVote?.Abandon();
+        pauseVote = null;
+        resumeVote?.Abandon();
+        resumeVote = null;
+
+        _teamsPendingResume.Clear();
+        _teamsPendingResume.Add(Team.CT);
+        _teamsPendingResume.Add(Team.T);
+        _requiresTeamResumeForCurrentPause = true;
+        _breakPause = true;
+
+        int overtime = breakNumber!.Value;
+        string trigger = CommandUtility.PublicChatTrigger;
+
+        _logger.LogInformation($"Break before round {roundsPlayed + 1} (overtime {overtime})");
+
+        _gameServer.MessageEach(
+            MessageType.Chat,
+            localizer =>
+                overtime == BreakUtility.Halftime
+                    ? localizer["break.halftime", trigger]
+                    : localizer["break.overtime", overtime, trigger]
+        );
+
+        match.PauseMatch(
+            ePauseReason.Break,
+            skipUpdate: reloaded,
+            stillRequired: () => _breakPause && ShouldRequireTeamResume()
+        );
+
+        return true;
+    }
+
+    // A restore or a missing player takes the pause over from the break. A
+    // restore gives the break back, as the rounds before it are played again.
+    public void EndBreakFor(ePauseReason reason)
+    {
+        if (!_breakPause)
+        {
+            return;
+        }
+
+        if (reason == ePauseReason.Restore && _breakKey != null)
+        {
+            _breaksTaken.Remove(_breakKey.Value);
+        }
+
+        ClearPendingTeamResumes();
+        _matchService.GetCurrentMatch()?.HandPauseTo(reason);
+    }
+
+    // ResumeMatch refuses during a tactical timeout or a restore, and the break
+    // must still be there after it does.
+    private bool BreakResumeWaits(IPlayer? player)
+    {
+        if (!_breakPause)
+        {
+            return false;
+        }
+
+        if (IsTimeoutActive())
+        {
+            SendTimeoutAlreadyActiveMessage(player);
+            return true;
+        }
+
+        if (_backUpManagement.IsResettingRound())
+        {
+            _backUpManagement.TellWhyResumeWaits();
+            return true;
+        }
+
+        return false;
+    }
+
+    // Both teams ready with a player still gone: the roster's own pause takes
+    // over, with its reconnect timeout, as at any other round start.
+    private bool HandBreakToRoster(MatchManager match, MatchData matchData)
+    {
+        List<(string SteamId, string Name)> players = MatchUtility
+            .Players()
+            .Select(player => (player.SteamID.ToString(), player.Name))
+            .ToList();
+
+        if (!ReconnectPauseUtility.ShouldPause(matchData, players, match.GetExpectedPlayerCount()))
+        {
+            return false;
+        }
+
+        EndBreakFor(ePauseReason.Roster);
+
+        if (!HoldForRoster(players))
+        {
+            return false;
+        }
+
+        _gameServer.MessageEach(MessageType.Alert, localizer => localizer["match.waiting_reconnect"]);
+
+        return true;
+    }
+
+    public Func<ILocalizer, string>? BreakHint()
+    {
+        if (!_breakPause || !ShouldRequireTeamResume())
+        {
+            return null;
+        }
+
+        string trigger = CommandUtility.PublicChatTrigger;
+
+        if (_teamsPendingResume.Count > 1)
+        {
+            return localizer => localizer["break.center_both", trigger];
+        }
+
+        Team waiting = _teamsPendingResume.First();
+
+        return localizer =>
+            localizer["break.center_one", localizer[TeamUtility.TeamNameKey(waiting)], trigger];
+    }
+
+    // The side comes from the lineup, so a coach readies the team they coach
+    // wherever they stand.
+    private void ReadyForBreak(MatchManager match, MatchData matchData, IPlayer player)
+    {
+        Guid? lineupId = BreakUtility.LineupOf(matchData, player.SteamID.ToString());
+        MatchMap? currentMap = match.GetCurrentMap();
+        Team side =
+            lineupId == null || currentMap == null
+                ? Team.None
+                : TeamUtility.GetLineupSide(
+                    matchData,
+                    currentMap,
+                    lineupId.Value,
+                    _gameServer.GetTotalRoundsPlayed()
+                );
+
+        if (lineupId != null && side != Team.CT && side != Team.T)
+        {
+            side = player.Controller.Team;
+        }
+
+        if (side != Team.CT && side != Team.T)
+        {
+            _gameServer.Message(
+                MessageType.Chat,
+                _gameServer.LocalizerFor(player)["break.not_in_lineup", ChatColors.Red],
+                player
+            );
+            return;
+        }
+
+        Team other = side == Team.CT ? Team.T : Team.CT;
+
+        if (!_teamsPendingResume.Contains(side))
+        {
+            ILocalizer localizer = _gameServer.LocalizerFor(player);
+
+            _gameServer.Message(
+                MessageType.Chat,
+                localizer[
+                    "break.team_already_ready",
+                    ChatColors.Red,
+                    localizer[TeamUtility.TeamNameKey(other)]
+                ],
+                player
+            );
+            return;
+        }
+
+        if (_teamsPendingResume.Count == 1 && BreakResumeWaits(player))
+        {
+            return;
+        }
+
+        _teamsPendingResume.Remove(side);
+
+        if (ShouldRequireTeamResume())
+        {
+            _gameServer.MessageEach(
+                MessageType.Chat,
+                localizer =>
+                    localizer[
+                        "break.team_ready",
+                        localizer[TeamUtility.TeamNameKey(side)],
+                        localizer[TeamUtility.TeamNameKey(other)]
+                    ]
+            );
+            return;
+        }
+
+        if (HandBreakToRoster(match, matchData))
+        {
+            return;
+        }
+
+        Resume(match, localizer => localizer["break.both_ready"]);
+    }
+
+    private bool InMatch(IPlayer player, MatchData matchData)
+    {
+        return BreakUtility.LineupOf(matchData, player.SteamID.ToString()) != null;
+    }
+
+    private static bool ScoresTied()
+    {
+        int? t = null;
+        int? ct = null;
+
+        foreach (var team in MatchUtility.Teams())
+        {
+            if (team.TeamNum == (int)Team.T)
+            {
+                t = team.Score;
+            }
+            else if (team.TeamNum == (int)Team.CT)
+            {
+                ct = team.Score;
+            }
+        }
+
+        return t == ct;
     }
 
     public bool ShouldRequireTeamResume()
@@ -861,6 +1170,14 @@ public class TimeoutSystem
                 _gameServer.LocalizerFor(player)["timeout.cannot_tac_not_live", ChatColors.Red],
                 player
             );
+            return;
+        }
+
+        // CS2 does not hold its pause around a tactical timeout, so one called in
+        // the break would start the round when it ends.
+        if (_breakPause)
+        {
+            SendAlreadyPausedMessage(player);
             return;
         }
 

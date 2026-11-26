@@ -745,6 +745,7 @@ public class GameBackUpRounds
                 );
 
             _gameServer.SendCommands([$"mp_backup_restore_load_file {backupRoundFileName}"]);
+            _matchService.GetCurrentMatch()?.timeoutSystem.EndBreakFor(ePauseReason.Restore);
             _matchService.GetCurrentMatch()?.PauseMatch(ePauseReason.Restore);
         });
     }

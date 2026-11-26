@@ -147,5 +147,13 @@
   "camera.tag": "pas de cam",
   "camera.not_required": "Ce match ne nécessite pas de caméra",
   "camera.yours_ok": "Votre caméra est connectée",
-  "camera.yours_down": "Votre caméra n'est PAS connectée - reconnectez-la depuis la page du match"
+  "camera.yours_down": "Votre caméra n'est PAS connectée - reconnectez-la depuis la page du match",
+  "break.halftime": "Pause de mi-temps : tapez {0}r quand votre équipe est prête.",
+  "break.overtime": "Prolongation {0} à suivre : tapez {1}r quand votre équipe est prête.",
+  "break.team_ready": "{0} : prêts, en attente de {1}.",
+  "break.team_already_ready": " {0}Votre équipe est déjà prête. En attente de {1}.",
+  "break.not_in_lineup": " {0}Seuls les joueurs et coachs du match peuvent déclarer une équipe prête.",
+  "break.center_both": "Pause : les deux équipes tapent {0}r quand elles sont prêtes",
+  "break.center_one": "Pause : en attente de {0}, tapez {1}r",
+  "break.both_ready": "Les deux équipes sont prêtes, le jeu reprend."
 }

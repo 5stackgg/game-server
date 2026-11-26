@@ -145,5 +145,13 @@
   "camera.tag": "sin cám",
   "camera.not_required": "Esta partida no requiere cámara",
   "camera.yours_ok": "Tu cámara está conectada",
-  "camera.yours_down": "Tu cámara NO está conectada - vuelve a conectarla desde la página de la partida"
+  "camera.yours_down": "Tu cámara NO está conectada - vuelve a conectarla desde la página de la partida",
+  "break.halftime": "Descanso de medio tiempo: escribe {0}r cuando tu equipo esté listo.",
+  "break.overtime": "Sigue la prórroga {0}: escribe {1}r cuando tu equipo esté listo.",
+  "break.team_ready": "{0}: listos, esperando a {1}.",
+  "break.team_already_ready": " {0}Tu equipo ya está listo. Esperando a {1}.",
+  "break.not_in_lineup": " {0}Solo los jugadores y entrenadores de la partida pueden marcar un equipo como listo.",
+  "break.center_both": "Descanso: ambos equipos escriben {0}r cuando estén listos",
+  "break.center_one": "Descanso: esperando a {0}, escribe {1}r",
+  "break.both_ready": "Ambos equipos están listos, se reanuda el juego."
 }

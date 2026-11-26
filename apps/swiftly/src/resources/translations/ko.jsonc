@@ -146,5 +146,13 @@
   "camera.tag": "캠 없음",
   "camera.not_required": "이 경기는 카메라가 필요하지 않습니다",
   "camera.yours_ok": "카메라가 연결되어 있습니다",
-  "camera.yours_down": "카메라가 연결되어 있지 않습니다 - 경기 페이지에서 다시 연결하세요"
+  "camera.yours_down": "카메라가 연결되어 있지 않습니다 - 경기 페이지에서 다시 연결하세요",
+  "break.halftime": "하프타임 휴식: 팀이 준비되면 {0}r 입력하세요.",
+  "break.overtime": "다음은 연장 {0}: 팀이 준비되면 {1}r 입력하세요.",
+  "break.team_ready": "{0} 준비 완료, {1} 기다리는 중.",
+  "break.team_already_ready": " {0}팀이 이미 준비되었습니다. {1} 기다리는 중입니다.",
+  "break.not_in_lineup": " {0}경기의 선수와 코치만 팀을 준비 상태로 만들 수 있습니다.",
+  "break.center_both": "휴식: 준비되면 양 팀 모두 {0}r 입력",
+  "break.center_one": "휴식: {0}의 {1}r 입력을 기다리는 중",
+  "break.both_ready": "양 팀 모두 준비되었습니다. 경기를 재개합니다."
 }

@@ -771,4 +771,22 @@ public class PlayerLanguageTests
         );
         EveryLanguageHas("player.join.link_discord");
     }
+
+    // The break lines tell each team the command that readies it.
+    [Theory]
+    [MemberData(nameof(LanguageFiles))]
+    public void EveryLanguageNamesTheBreakReadyCommand(string language)
+    {
+        Dictionary<string, string> lines = Translations(language);
+
+        Assert.Contains("{0}r", lines["break.halftime"]);
+        Assert.Contains("{1}r", lines["break.overtime"]);
+        Assert.Contains("{0}r", lines["break.center_both"]);
+        Assert.Contains("{1}r", lines["break.center_one"]);
+
+        foreach (string key in new[] { "break.team_ready", "break.team_already_ready", "break.not_in_lineup", "break.both_ready" })
+        {
+            Assert.True(lines.ContainsKey(key), $"{language} has no {key}");
+        }
+    }
 }

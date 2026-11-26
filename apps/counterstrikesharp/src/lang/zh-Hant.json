@@ -145,5 +145,13 @@
   "camera.tag": "無攝影機",
   "camera.not_required": "本場比賽不需要攝影機",
   "camera.yours_ok": "你的攝影機已連線",
-  "camera.yours_down": "你的攝影機未連線 - 請在比賽頁面重新連線"
+  "camera.yours_down": "你的攝影機未連線 - 請在比賽頁面重新連線",
+  "break.halftime": "半場休息：隊伍準備好後輸入 {0}r。",
+  "break.overtime": "即將進入第 {0} 次加時：隊伍準備好後輸入 {1}r。",
+  "break.team_ready": "{0} 已就緒，等待 {1}。",
+  "break.team_already_ready": " {0}你的隊伍已經就緒。等待 {1}。",
+  "break.not_in_lineup": " {0}只有本場比賽的選手和教練可以讓隊伍就緒。",
+  "break.center_both": "休息：兩隊準備好後輸入 {0}r",
+  "break.center_one": "休息：等待 {0} 輸入 {1}r",
+  "break.both_ready": "兩隊皆已就緒，比賽繼續。"
 }

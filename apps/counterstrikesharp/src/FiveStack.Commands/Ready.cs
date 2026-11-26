@@ -7,17 +7,37 @@ namespace FiveStack;
 
 public partial class FiveStackPlugin
 {
+    // During a halftime or overtime break .r readies the player's team.
     [
         ConsoleCommand("css_r", "Toggles the player as ready"),
-        ConsoleCommand("css_ready", "Toggles the player as ready"),
-        ConsoleCommand("css_unready", "Toggles the player as ready"),
-        ConsoleCommand("css_ur", "Toggles the player as ready")
+        ConsoleCommand("css_ready", "Toggles the player as ready")
     ]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnReady(CCSPlayerController? player, CommandInfo? command)
     {
         MatchManager? match = _matchService.GetCurrentMatch();
 
+        if (player != null && match != null && match.timeoutSystem.IsBreak())
+        {
+            match.timeoutSystem.RequestResume(player, readyCommand: true);
+            return;
+        }
+
+        ToggleWarmupReady(match, player);
+    }
+
+    [
+        ConsoleCommand("css_unready", "Toggles the player as ready"),
+        ConsoleCommand("css_ur", "Toggles the player as ready")
+    ]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    public void OnUnready(CCSPlayerController? player, CommandInfo? command)
+    {
+        ToggleWarmupReady(_matchService.GetCurrentMatch(), player);
+    }
+
+    private static void ToggleWarmupReady(MatchManager? match, CCSPlayerController? player)
+    {
         if (player == null || match == null || match.GetCurrentMapStatus() != eMapStatus.Warmup)
         {
             return;

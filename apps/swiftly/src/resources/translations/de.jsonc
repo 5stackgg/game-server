@@ -147,5 +147,13 @@
   "camera.tag": "keine Kam",
   "camera.not_required": "Dieses Match erfordert keine Kamera",
   "camera.yours_ok": "Deine Kamera ist verbunden",
-  "camera.yours_down": "Deine Kamera ist NICHT verbunden - verbinde sie über die Match-Seite neu"
+  "camera.yours_down": "Deine Kamera ist NICHT verbunden - verbinde sie über die Match-Seite neu",
+  "break.halftime": "Halbzeitpause: Tippe {0}r, wenn dein Team bereit ist.",
+  "break.overtime": "Als Nächstes Verlängerung {0}: Tippe {1}r, wenn dein Team bereit ist.",
+  "break.team_ready": "{0}: bereit, warten auf {1}.",
+  "break.team_already_ready": " {0}Dein Team ist bereits bereit. Warten auf {1}.",
+  "break.not_in_lineup": " {0}Nur Spieler und Coaches des Matches können ein Team bereit melden.",
+  "break.center_both": "Pause: Beide Teams tippen {0}r, wenn sie bereit sind",
+  "break.center_one": "Pause: Warten auf {0}, tippe {1}r",
+  "break.both_ready": "Beide Teams sind bereit, es geht weiter."
 }
