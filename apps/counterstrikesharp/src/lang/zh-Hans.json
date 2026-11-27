@@ -145,5 +145,13 @@
   "camera.tag": "无摄像头",
   "camera.not_required": "本场比赛不需要摄像头",
   "camera.yours_ok": "你的摄像头已连接",
-  "camera.yours_down": "你的摄像头未连接 - 请在比赛页面重新连接"
+  "camera.yours_down": "你的摄像头未连接 - 请在比赛页面重新连接",
+  "break.halftime": "半场休息：队伍准备好后输入 {0}r。",
+  "break.overtime": "即将进入第 {0} 次加时：队伍准备好后输入 {1}r。",
+  "break.team_ready": "{0} 已就绪，等待 {1}。",
+  "break.team_already_ready": " {0}你的队伍已经就绪。等待 {1}。",
+  "break.not_in_lineup": " {0}只有本场比赛的选手和教练可以让队伍就绪。",
+  "break.center_both": "休息：两队准备好后输入 {0}r",
+  "break.center_one": "休息：等待 {0} 输入 {1}r",
+  "break.both_ready": "两队均已就绪，比赛继续。"
 }

@@ -377,6 +377,14 @@ public class MatchManager
                     return;
                 }
 
+                Func<ILocalizer, string>? breakHint = _timeoutSystem.BreakHint();
+
+                if (breakHint != null)
+                {
+                    _gameServer.MessageEach(MessageType.Center, breakHint);
+                    return;
+                }
+
                 int? reconnectSeconds = _timeoutSystem.ReconnectTimeoutSecondsLeft();
 
                 _gameServer.MessageEach(
@@ -396,6 +404,15 @@ public class MatchManager
         }
 
         UpdateMapStatus(eMapStatus.Paused);
+    }
+
+    // Only for the break, which ranks above the pauses that take it over.
+    public void HandPauseTo(ePauseReason reason)
+    {
+        if (IsPaused())
+        {
+            _pauseReason = reason;
+        }
     }
 
     private void HoldPauseFor(ePauseReason reason)
@@ -554,6 +571,11 @@ public class MatchManager
                 if (IsWarmup())
                 {
                     _gameServer.SendCommands(["mp_warmup_end"]);
+                }
+
+                if (_pauseReason == null && _timeoutSystem.RearmBreak())
+                {
+                    break;
                 }
 
                 PauseMatch(_pauseReason ?? ePauseReason.Admin, null, true);
@@ -1322,13 +1344,12 @@ public class MatchManager
         {
             string value = cvar.Value;
 
-            // A per-match option beats the shared default. StartLive sets this
-            // one from the match config, and re-asserting the table value here
-            // would silently turn the halftime break back off for every match
-            // that asked for it.
-            if (cvar.Key == "mp_halftime_pausematch")
+            // A match that asks for a halftime break gets the plugin's own,
+            // which waits for both teams, so CS2's stays off whatever a cfg says.
+            if (cvar.Key == "mp_halftime_pausematch" && _matchData.options.halftime_pausematch)
             {
-                value = _matchData.options.halftime_pausematch ? "1" : "0";
+                _gameServer.SendCommands([$"{cvar.Key} 0"]);
+                continue;
             }
 
             foreach (var overrideCfg in overridesByPrecedence)
@@ -1372,7 +1393,7 @@ public class MatchManager
 
         SetConVar("mp_maxrounds", _matchData.options.MaxRounds());
         SetConVar("mp_overtime_enable", _matchData.options.OvertimeEnabled());
-        SetConVar("mp_halftime_pausematch", _matchData.options.halftime_pausematch);
+        SetConVar("mp_halftime_pausematch", false);
 
         _gameServer.SendCommands(MatchConfigExecCommands());
 

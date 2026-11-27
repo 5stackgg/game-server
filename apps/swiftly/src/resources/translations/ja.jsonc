@@ -147,5 +147,13 @@
   "camera.tag": "カメラなし",
   "camera.not_required": "この試合ではカメラは不要です",
   "camera.yours_ok": "あなたのカメラは接続されています",
-  "camera.yours_down": "あなたのカメラは接続されていません - 試合ページから再接続してください"
+  "camera.yours_down": "あなたのカメラは接続されていません - 試合ページから再接続してください",
+  "break.halftime": "ハーフタイム休憩：チームの準備ができたら {0}r と入力してください。",
+  "break.overtime": "次は延長 {0}：チームの準備ができたら {1}r と入力してください。",
+  "break.team_ready": "{0} 準備完了、{1} を待っています。",
+  "break.team_already_ready": " {0}あなたのチームはすでに準備完了です。{1} を待っています。",
+  "break.not_in_lineup": " {0}チームの準備を完了できるのは、試合のプレイヤーとコーチのみです。",
+  "break.center_both": "休憩：準備ができたら両チームとも {0}r と入力",
+  "break.center_one": "休憩：{0} の {1}r を待っています",
+  "break.both_ready": "両チームの準備が完了しました。試合を再開します。"
 }

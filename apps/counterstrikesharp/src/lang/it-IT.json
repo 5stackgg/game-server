@@ -145,5 +145,13 @@
   "camera.tag": "no cam",
   "camera.not_required": "Questo match non richiede una webcam",
   "camera.yours_ok": "La tua webcam è connessa",
-  "camera.yours_down": "La tua webcam NON è connessa - ricollegala dalla pagina del match"
+  "camera.yours_down": "La tua webcam NON è connessa - ricollegala dalla pagina del match",
+  "break.halftime": "Pausa di metà partita: digita {0}r quando la tua squadra è pronta.",
+  "break.overtime": "Ora tocca al tempo supplementare {0}: digita {1}r quando la tua squadra è pronta.",
+  "break.team_ready": "{0}: pronti, in attesa di {1}.",
+  "break.team_already_ready": " {0}La tua squadra è già pronta. In attesa di {1}.",
+  "break.not_in_lineup": " {0}Solo i giocatori e gli allenatori del match possono dichiarare pronta una squadra.",
+  "break.center_both": "Pausa: entrambe le squadre digitano {0}r quando sono pronte",
+  "break.center_one": "Pausa: in attesa di {0}, digita {1}r",
+  "break.both_ready": "Entrambe le squadre sono pronte, si riprende a giocare."
 }

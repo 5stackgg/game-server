@@ -50,6 +50,7 @@ public class PauseReasonWiringTests
     [InlineData("FiveStack.Services", "CameraSystem.cs", "private void OnCamerasLost(", "Camera")]
     [InlineData("FiveStack.Services", "GameBackUpRounds.cs", "public void RestoreRound(", "Restore")]
     [InlineData("FiveStack.Services", "TimeoutSystem.cs", "private void PauseTechMatch(", "Tech")]
+    [InlineData("FiveStack.Services", "TimeoutSystem.cs", "private bool ArmBreak(", "Break")]
     public void Every_Pause_Says_Why(string folder, string file, string signature, string reason)
     {
         MatchCollection pauses = Regex.Matches(

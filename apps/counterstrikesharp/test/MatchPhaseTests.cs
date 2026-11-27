@@ -388,6 +388,7 @@ public class MatchPhaseTests
     [InlineData("Tech")]
     [InlineData("Admin")]
     [InlineData("Restore")]
+    [InlineData("Break")]
     public void A_Whole_Roster_Leaves_A_Pause_It_Did_Not_Make(string reason)
     {
         Assert.False(RosterOwnsPause(PausedFor(reason)));
@@ -446,6 +447,7 @@ public class MatchPhaseTests
     [InlineData("Tech")]
     [InlineData("Admin")]
     [InlineData("Restore")]
+    [InlineData("Break")]
     public void A_Drop_Under_A_Pause_Someone_Else_Made_Costs_No_Timeout(string reason)
     {
         Server server = PausedFor(reason);
@@ -644,5 +646,104 @@ public class MatchPhaseTests
 
         Assert.Equal(status, server.Match.GetCurrentMapStatus());
         Assert.Null(Get(server.Camera, "_reminderTimer"));
+    }
+
+    private static Server OnBreak()
+    {
+        Server server = PausedFor("Break");
+        WaitingOn(server.Timeout, CsTeam.CounterTerrorist, CsTeam.Terrorist);
+        Set(server.Timeout, "_breakPause", true);
+
+        return server;
+    }
+
+    [Fact]
+    public void A_Break_Waits_For_Both_Teams_And_Hints_Until_It_Ends()
+    {
+        Server server = OnBreak();
+
+        Assert.True(server.Timeout.IsBreak());
+        Assert.True(server.Timeout.ShouldRequireTeamResume());
+        Assert.NotNull(server.Timeout.BreakHint());
+        Assert.False(RosterOwnsPause(server));
+    }
+
+    [Fact]
+    public void A_Break_Ends_With_Its_Pause()
+    {
+        Server server = OnBreak();
+
+        server.Timeout.ClearPendingTeamResumes();
+
+        Assert.False(server.Timeout.IsBreak());
+        Assert.False(server.Timeout.ShouldRequireTeamResume());
+        Assert.Null(server.Timeout.BreakHint());
+    }
+
+    [Fact]
+    public void A_Break_Is_Over_Once_Play_Goes_On()
+    {
+        Server server = OnBreak();
+        Set(server.Match, "_currentMapStatus", eMapStatus.Live);
+
+        Assert.False(server.Timeout.IsBreak());
+    }
+
+    [Fact]
+    public void A_Tech_Pause_Is_Not_A_Break()
+    {
+        Server server = PausedFor("Tech");
+        WaitingOn(server.Timeout, CsTeam.CounterTerrorist, CsTeam.Terrorist);
+
+        Assert.False(server.Timeout.IsBreak());
+        Assert.Null(server.Timeout.BreakHint());
+    }
+
+    private static HashSet<(Guid, int)> BreaksTaken(Server server)
+    {
+        return (HashSet<(Guid, int)>)Get(server.Timeout, "_breaksTaken")!;
+    }
+
+    [Fact]
+    public void A_Restore_In_A_Break_Takes_The_Pause_And_Gives_The_Break_Back()
+    {
+        Server server = OnBreak();
+        (Guid, int) key = (Guid.NewGuid(), 12);
+        BreaksTaken(server).Add(key);
+        Set(server.Timeout, "_breakKey", key);
+
+        server.Timeout.EndBreakFor(ePauseReason.Restore);
+
+        Assert.False(server.Timeout.IsBreak());
+        Assert.False(server.Timeout.ShouldRequireTeamResume());
+        Assert.Equal(Reason("Restore"), server.Match.GetPauseReason());
+        Assert.Empty(BreaksTaken(server));
+    }
+
+    [Fact]
+    public void A_Break_Handed_To_The_Roster_Stays_Taken()
+    {
+        Server server = OnBreak();
+        (Guid, int) key = (Guid.NewGuid(), 12);
+        BreaksTaken(server).Add(key);
+        Set(server.Timeout, "_breakKey", key);
+
+        server.Timeout.EndBreakFor(ePauseReason.Roster);
+
+        Assert.False(server.Timeout.IsBreak());
+        Assert.Equal(Reason("Roster"), server.Match.GetPauseReason());
+        Assert.Contains(key, BreaksTaken(server));
+    }
+
+    [Fact]
+    public void Ending_A_Break_Leaves_Any_Other_Pause_Alone()
+    {
+        Server server = PausedFor("Tech");
+        WaitingOn(server.Timeout, CsTeam.Terrorist);
+
+        server.Timeout.EndBreakFor(ePauseReason.Restore);
+
+        Assert.True(server.Timeout.ShouldRequireTeamResume());
+        Assert.Equal(Reason("Tech"), server.Match.GetPauseReason());
     }
 }

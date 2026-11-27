@@ -147,5 +147,13 @@
   "camera.tag": "ingen kam",
   "camera.not_required": "Den här matchen kräver ingen kamera",
   "camera.yours_ok": "Din kamera är ansluten",
-  "camera.yours_down": "Din kamera är INTE ansluten - anslut den igen från matchsidan"
+  "camera.yours_down": "Din kamera är INTE ansluten - anslut den igen från matchsidan",
+  "break.halftime": "Halvtidspaus: skriv {0}r när ditt lag är redo.",
+  "break.overtime": "Förlängning {0} är nästa: skriv {1}r när ditt lag är redo.",
+  "break.team_ready": "{0}: redo, väntar på {1}.",
+  "break.team_already_ready": " {0}Ditt lag är redan redo. Väntar på {1}.",
+  "break.not_in_lineup": " {0}Bara spelare och tränare i matchen kan göra ett lag redo.",
+  "break.center_both": "Paus: båda lagen skriver {0}r när de är redo",
+  "break.center_one": "Paus: väntar på {0}, skriv {1}r",
+  "break.both_ready": "Båda lagen är redo, spelet fortsätter."
 }

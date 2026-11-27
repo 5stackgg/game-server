@@ -75,6 +75,10 @@ public partial class FiveStackPlugin
 
         matchManager.ReconcileMemberTeams();
 
+        // Before the roster check, so a player missing at the break is waited
+        // on by the break and costs no reconnect timeout.
+        matchManager.timeoutSystem.StartBreak();
+
         int expectedPlayers = _matchService.GetCurrentMatch()?.GetExpectedPlayerCount() ?? 10;
         MatchData? roundMatchData = matchManager.GetMatchData();
 

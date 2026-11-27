@@ -145,5 +145,13 @@
   "camera.tag": "brak kam",
   "camera.not_required": "Ten mecz nie wymaga kamery",
   "camera.yours_ok": "Twoja kamera jest połączona",
-  "camera.yours_down": "Twoja kamera NIE jest połączona - połącz ją ponownie ze strony meczu"
+  "camera.yours_down": "Twoja kamera NIE jest połączona - połącz ją ponownie ze strony meczu",
+  "break.halftime": "Przerwa w połowie meczu: wpisz {0}r, gdy twoja drużyna będzie gotowa.",
+  "break.overtime": "Za chwilę dogrywka {0}: wpisz {1}r, gdy twoja drużyna będzie gotowa.",
+  "break.team_ready": "{0}: gotowi. Czekamy jeszcze: {1}.",
+  "break.team_already_ready": " {0}Twoja drużyna jest już gotowa. Czekamy jeszcze: {1}.",
+  "break.not_in_lineup": " {0}Tylko gracze i trenerzy meczu mogą zgłosić gotowość drużyny.",
+  "break.center_both": "Przerwa: obie drużyny wpisują {0}r, gdy są gotowe",
+  "break.center_one": "Przerwa: czekamy jeszcze: {0}, wpisz {1}r",
+  "break.both_ready": "Obie drużyny są gotowe, gra zostaje wznowiona."
 }
