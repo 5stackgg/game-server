@@ -1247,12 +1247,27 @@ public class MatchManager
         return keys;
     }
 
+    // A cfg exec mid-overtime would cap money at the type's value again.
     public string[] MatchConfigExecCommands()
     {
-        return MatchConfigExecCommands(
+        string[] commands = MatchConfigExecCommands(
             _matchData,
             (key) => _logger.LogWarning($"Refusing config layer: {key}")
         );
+
+        return InOvertime(_gameServer.GetTotalRoundsPlayed())
+            ? [.. commands, OvertimeMoney.Command]
+            : commands;
+    }
+
+    public bool InOvertime(int roundsPlayed)
+    {
+        return _matchData != null
+            && OvertimeMoney.InOvertime(
+                roundsPlayed,
+                _matchData.options.mr,
+                _matchData.options.OvertimeEnabled()
+            );
     }
 
     public static string[] MatchConfigExecCommands(
@@ -1292,6 +1307,52 @@ public class MatchManager
             .. execs,
             .. options,
         ];
+    }
+
+    private int? _regulationMaxMoney;
+
+    // Runs at round prestart, before CS2 hands out the overtime start money.
+    public void ApplyOvertimeMoney(int roundsPlayed)
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        int current;
+        try
+        {
+            current = _core.ConVar.Find<int>("mp_maxmoney")?.Value ?? OvertimeMoney.MaxMoney;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Overtime: could not read mp_maxmoney");
+            return;
+        }
+
+        if (InOvertime(roundsPlayed))
+        {
+            if (current == OvertimeMoney.MaxMoney)
+            {
+                return;
+            }
+
+            _regulationMaxMoney = current;
+            _logger.LogInformation(
+                $"Overtime: mp_maxmoney {current} -> {OvertimeMoney.MaxMoney} (roundsPlayed={roundsPlayed})"
+            );
+            SetConVar("mp_maxmoney", OvertimeMoney.MaxMoney);
+            return;
+        }
+
+        if (_regulationMaxMoney is int regulation)
+        {
+            _regulationMaxMoney = null;
+            if (current == OvertimeMoney.MaxMoney)
+            {
+                SetConVar("mp_maxmoney", regulation);
+            }
+        }
     }
 
     private void ApplyWorkshopBlockedCvars()

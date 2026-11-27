@@ -1258,12 +1258,27 @@ public class MatchManager
         return keys;
     }
 
+    // A cfg exec mid-overtime would cap money at the type's value again.
     public string[] MatchConfigExecCommands()
     {
-        return MatchConfigExecCommands(
+        string[] commands = MatchConfigExecCommands(
             _matchData,
             (key) => _logger.LogWarning($"Refusing config layer: {key}")
         );
+
+        return InOvertime(_gameServer.GetTotalRoundsPlayed())
+            ? [.. commands, OvertimeMoney.Command]
+            : commands;
+    }
+
+    public bool InOvertime(int roundsPlayed)
+    {
+        return _matchData != null
+            && OvertimeMoney.InOvertime(
+                roundsPlayed,
+                _matchData.options.mr,
+                _matchData.options.OvertimeEnabled()
+            );
     }
 
     public static string[] MatchConfigExecCommands(
@@ -1303,6 +1318,43 @@ public class MatchManager
             .. execs,
             .. options,
         ];
+    }
+
+    private int? _regulationMaxMoney;
+
+    // Runs at round prestart, before CS2 hands out the overtime start money.
+    public void ApplyOvertimeMoney(int roundsPlayed)
+    {
+        if (_matchData == null)
+        {
+            return;
+        }
+
+        int current = ConVar.Find("mp_maxmoney")?.GetPrimitiveValue<int>() ?? OvertimeMoney.MaxMoney;
+
+        if (InOvertime(roundsPlayed))
+        {
+            if (current == OvertimeMoney.MaxMoney)
+            {
+                return;
+            }
+
+            _regulationMaxMoney = current;
+            _logger.LogInformation(
+                $"Overtime: mp_maxmoney {current} -> {OvertimeMoney.MaxMoney} (roundsPlayed={roundsPlayed})"
+            );
+            ConVar.Find("mp_maxmoney")?.SetValue(OvertimeMoney.MaxMoney);
+            return;
+        }
+
+        if (_regulationMaxMoney is int regulation)
+        {
+            _regulationMaxMoney = null;
+            if (current == OvertimeMoney.MaxMoney)
+            {
+                ConVar.Find("mp_maxmoney")?.SetValue(regulation);
+            }
+        }
     }
 
     private void ApplyWorkshopBlockedCvars()
