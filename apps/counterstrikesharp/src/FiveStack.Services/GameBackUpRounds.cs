@@ -744,7 +744,14 @@ public class GameBackUpRounds
                     })
                 );
 
-            _gameServer.SendCommands([$"mp_backup_restore_load_file {backupRoundFileName}"]);
+            // The restored cash is capped by mp_maxmoney as it loads.
+            string[] overtimeMoney =
+                _matchService.GetCurrentMatch()?.InOvertime(round) == true
+                    ? [OvertimeMoney.Command]
+                    : [];
+            _gameServer.SendCommands(
+                [.. overtimeMoney, $"mp_backup_restore_load_file {backupRoundFileName}"]
+            );
             _matchService.GetCurrentMatch()?.PauseMatch(ePauseReason.Restore);
         });
     }

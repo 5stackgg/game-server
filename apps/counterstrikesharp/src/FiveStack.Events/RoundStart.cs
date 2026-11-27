@@ -11,6 +11,13 @@ public partial class FiveStackPlugin
 {
     private readonly Dictionary<ulong, int> _cashEarnedAtRoundStart = new();
 
+    [GameEventHandler(HookMode.Pre)]
+    public HookResult OnRoundPrestart(EventRoundPrestart @event, GameEventInfo info)
+    {
+        _matchService.GetCurrentMatch()?.ApplyOvertimeMoney(_gameServer.GetTotalRoundsPlayed());
+        return HookResult.Continue;
+    }
+
     [GameEventHandler]
     public HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
     {
@@ -34,6 +41,8 @@ public partial class FiveStackPlugin
         _logger.LogInformation(
             $"OnRoundStart totalRoundsPlayed={totalRoundsPlayed} isInPlay={isInPlay} isWarmup={isWarmup} isKnife={isKnife}"
         );
+
+        matchManager.ApplyOvertimeMoney(totalRoundsPlayed);
 
         if (
             _environmentService.IsOfflineMode()
