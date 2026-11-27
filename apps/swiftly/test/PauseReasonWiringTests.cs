@@ -193,4 +193,24 @@ public class PauseReasonWiringTests
         Assert.Contains("forLeaver: true", Method(source, "private void OfferLeaverSurrender("));
         Assert.DoesNotContain("forLeaver", Code("FiveStack.Commands", "Surrender.cs"));
     }
+
+    // Staff get past a tactical timeout's setting as they do a technical pause's,
+    // but still need a live match, no timeout running, a side and one left.
+    [Fact]
+    public void Staff_Call_A_Tactical_Timeout_Like_A_Technical_Pause()
+    {
+        string timeout = Code("FiveStack.Services", "TimeoutSystem.cs");
+
+        Assert.Matches(
+            @"return TimeoutUtility\.CanPause\(\s*GetTacticalTimeoutSetting\(\),\s*ConnectedRole\(player, matchData\),\s*LineupRole\(player, matchData\),",
+            Method(timeout, "private bool CanCallTacticalTimeout(")
+        );
+
+        string call = Method(timeout, "public void CallTacTimeout(");
+
+        Before(call, "\"timeout.cannot_tac_not_live\"", "CanCallTacticalTimeout(player)");
+        Before(call, "IsTimeoutActive()", "CanCallTacticalTimeout(player)");
+        Before(call, "CanCallTacticalTimeout(player)", "\"timeout.tac_needs_team\"");
+        Before(call, "\"timeout.tac_needs_team\"", "timeoutsAvailable == 0");
+    }
 }

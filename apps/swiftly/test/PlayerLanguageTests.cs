@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using FiveStack.Enums;
 using FiveStack.Utilities;
 using SwiftlyS2.Shared.Players;
 using Xunit;
@@ -619,8 +620,6 @@ public class PlayerLanguageTests
     }
 
     [Theory]
-    [InlineData("timeout.not_allowed", "{1}", "timeout.not_allowed.tactical_timeout", "을", "을(를)")]
-    [InlineData("timeout.not_allowed", "{1}", "timeout.not_allowed.resume", "를", "을(를)")]
     [InlineData("ready.marked", "{0}", "ready.ready", "으로", "(으)로")]
     [InlineData("ready.marked", "{0}", "ready.not_ready", "로", "(으)로")]
     public void AKoreanParticleFitsTheWordBeforeIt(
@@ -663,7 +662,7 @@ public class PlayerLanguageTests
     [InlineData("FiveStack.Services/ReadySystem.cs", "ready.waiting_coach")]
     [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.cannot_pause_not_live")]
     [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.already_active")]
-    [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.not_allowed")]
+    [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.tac_needs_team")]
     [InlineData("FiveStack.Services/TimeoutSystem.cs", "camera.cannot_resume")]
     [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.cannot_resume_empty_team")]
     [InlineData("FiveStack.Services/TimeoutSystem.cs", "timeout.cannot_tac_not_live")]
@@ -774,22 +773,30 @@ public class PlayerLanguageTests
     }
 
     [Fact]
-    public void ARefusedTimeoutNamesWhatWasRefusedInThePlayersLanguage()
+    public void ARefusedTimeoutSaysWhoMayCallItInThePlayersLanguage()
     {
-        Dictionary<string, string> english = Translations("en.jsonc");
-        MatchCollection refusals = Regex.Matches(
-            Compact(Path.Combine("FiveStack.Services", "TimeoutSystem.cs")),
-            @"CannotPauseMessage\(player,""([^""]*)""\)"
+        string timeout = Compact(Path.Combine("FiveStack.Services", "TimeoutSystem.cs"));
+
+        Assert.Equal(2, Regex.Matches(timeout, @"CannotPauseMessage\(player,").Count);
+        Assert.Contains(
+            "CannotPauseMessage(player,TimeoutUtility.ResumeRefusal(GetTechnicalPauseSetting()))",
+            timeout
         );
+        Assert.Contains(
+            "CannotPauseMessage(player,TimeoutUtility.TacticalTimeoutRefusal(GetTacticalTimeoutSetting()))",
+            timeout
+        );
+        Assert.Contains("_gameServer.LocalizerFor(player)[refusalKey,ChatColors.Red]", timeout);
 
-        Assert.Equal(2, refusals.Count);
-
-        foreach (Match refusal in refusals)
+        foreach (object[] language in Languages())
         {
-            Assert.True(
-                english.ContainsKey(refusal.Groups[1].Value),
-                $"\"{refusal.Groups[1].Value}\" is English, not a translation key"
-            );
+            Dictionary<string, string> translated = Translations((string)language[0]);
+
+            foreach (eTimeoutSettings setting in Enum.GetValues<eTimeoutSettings>())
+            {
+                Assert.True(translated.ContainsKey(TimeoutUtility.ResumeRefusal(setting)));
+                Assert.True(translated.ContainsKey(TimeoutUtility.TacticalTimeoutRefusal(setting)));
+            }
         }
     }
 

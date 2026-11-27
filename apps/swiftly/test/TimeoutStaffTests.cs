@@ -139,4 +139,17 @@ public class TimeoutStaffTests
             TimeoutUtility.CanPause(setting, null, ePlayerRoles.Administrator, false, false)
         );
     }
+
+    [Theory]
+    [InlineData(eTimeoutSettings.Coach, "coach")]
+    [InlineData(eTimeoutSettings.CoachAndCaptains, "coach_and_captains")]
+    [InlineData(eTimeoutSettings.Admin, "admin")]
+    public void A_Refusal_Says_Who_The_Setting_Lets_Through(eTimeoutSettings setting, string who)
+    {
+        Assert.Equal(
+            $"timeout.not_allowed.tactical_timeout.{who}",
+            TimeoutUtility.TacticalTimeoutRefusal(setting)
+        );
+        Assert.Equal($"timeout.not_allowed.resume.{who}", TimeoutUtility.ResumeRefusal(setting));
+    }
 }
